@@ -1,0 +1,13 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "workspaces": {
+    "apps/desktop": {
+      "ignoreDependencies": [
+        "ajv",
+        "ssh2",
+        "zustand"
+      ]
+    }
+  },
+  "ignore": ["apps/desktop/src/renderer/global.d.ts"]
+}

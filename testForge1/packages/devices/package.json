@@ -1,0 +1,17 @@
+{
+  "name": "@testforge/devices",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": ".\/src\/index.ts",
+  "scripts": { "typecheck": "tsc -p tsconfig.json --noEmit", "test": "vitest run" },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.1",
+    "@testforge/contracts": "workspace:*",
+    "@testforge/storage": "workspace:*",
+    "ajv": "^8.17.1",
+    "fflate": "^0.8.3",
+    "ssh2": "^1.16.0"
+  },
+  "devDependencies": { "@types/ssh2": "^1.15.5", "typescript": "^5.8.3", "vitest": "^3.1.3" }
+}

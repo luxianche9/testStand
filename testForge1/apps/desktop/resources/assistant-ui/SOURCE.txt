@@ -1,0 +1,10 @@
+TestForge's Agent sidebar is adapted from the official assistant-ui OpenCode
+example and UI components.
+
+Project: https://github.com/assistant-ui/assistant-ui
+Source commit: 8bba3aaadcae042b4750436e6aa62bbba4815dde
+License: MIT (see adjacent LICENSE)
+
+Local adaptations: Chinese product copy, Electron/OpenCode runtime integration,
+16rem overlay thread drawer, isolated Tailwind theme without preflight, and
+removal of attachment, voice, remote-image, and upstream branding UI.

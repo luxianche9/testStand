@@ -1,0 +1,40 @@
+{
+  "name": "testforge",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "packageManager": "pnpm@10.15.0",
+  "scripts": {
+    "dev": "pnpm --filter @testforge/desktop dev",
+    "clean": "node scripts/clean.mjs",
+    "build": "node scripts/verify-production-build.mjs",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "eslint packages apps --ext .ts,.tsx",
+    "test": "pnpm -r test",
+    "test:python": "node scripts/run-python-tests.mjs",
+    "test:e2e": "pnpm --filter @testforge/desktop test:e2e",
+    "package:templates": "node scripts/package-templates.mjs",
+    "check:imports": "node scripts/check-import-boundaries.mjs",
+    "check:dependencies": "depcruise --config .dependency-cruiser.cjs packages apps/desktop/src --output-type err && knip --config knip.json --include \"dependencies,unlisted,exports,types,cycles\"",
+    "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm test:python && pnpm check:imports && pnpm check:dependencies && pnpm build",
+    "verify:full": "pnpm verify && pnpm test:e2e"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "@typescript-eslint/eslint-plugin": "^8.39.0",
+    "@typescript-eslint/parser": "^8.39.0",
+    "dependency-cruiser": "^18.2.0",
+    "eslint": "^9.32.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "knip": "^6.32.1",
+    "typescript": "^5.8.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "cpu-features",
+      "esbuild",
+      "ssh2",
+      "electron"
+    ]
+  }
+}

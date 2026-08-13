@@ -1,0 +1,180 @@
+import type { ComputerStatus, HardwareAvailability, ManagedHardware, McpServerConfig, RemoteComputer, RemoteServiceLog, ServerStatus } from "@testforge/contracts/devices";
+import { mcpServerSchema, remoteComputerSchema } from "@testforge/contracts/devices";
+import type { SecretStore } from "@testforge/storage";
+import type { DeviceStore } from "./device-store.js";
+import type { McpClientPool } from "./mcp-client.js";
+import { SshManager, type SshCredential, type SshResult } from "./ssh.js";
+
+export class DeviceService {
+  readonly ssh: SshManager;
+  private readonly statuses = new Map<string, ComputerStatus>();
+  private readonly serverStatuses = new Map<string, ServerStatus>();
+  private hardware: ManagedHardware[] = [];
+  private readonly availability = new Map<string, HardwareAvailability>();
+
+  constructor(readonly store: DeviceStore, readonly secrets: SecretStore, readonly pool: McpClientPool) {
+    this.ssh = new SshManager(secrets);
+  }
+
+  listComputers(): RemoteComputer[] { return this.store.listComputers(); }
+  listStatuses(): ComputerStatus[] { return [...this.statuses.values()]; }
+  listServers(): McpServerConfig[] { return this.store.listServers(); }
+  listServerStatuses(): ServerStatus[] { return [...this.serverStatuses.values()]; }
+  listHardware(): ManagedHardware[] { return this.hardware; }
+  listAvailability(): HardwareAvailability[] { return [...this.availability.values()]; }
+  listTools() { return this.pool.listTools(); }
+  async callTool(name: string, args: Record<string, unknown>, options?: { timeoutMs?: number; signal?: AbortSignal }): Promise<unknown> {
+    return await this.callAggregatedTool(name, args, options);
+  }
+
+  async saveComputer(input: RemoteComputer, credentials?: { ssh?: SshCredential | string }): Promise<RemoteComputer> {
+    const computer = remoteComputerSchema.parse(input);
+    if (credentials?.ssh !== undefined) {
+      const value: SshCredential = typeof credentials.ssh === "string" ? { kind: "password", password: credentials.ssh } : credentials.ssh;
+      await this.secrets.set(`ssh:${computer.id}`, value);
+    }
+    void this.ssh.disconnect(computer.id);
+    return await this.store.saveComputer(computer);
+  }
+
+  async removeComputer(computerId: string): Promise<void> {
+    for (const server of this.store.listServers().filter((item) => item.computerId === computerId)) {
+      await this.pool.disconnect(server.serverId);
+      await this.secrets.remove(`mcp:${server.serverId}`);
+      this.serverStatuses.delete(server.serverId);
+      this.hardware = this.hardware.filter((item) => item.serverId !== server.serverId);
+    }
+    await this.ssh.disconnect(computerId);
+    await this.store.removeComputer(computerId);
+    await this.secrets.remove(`ssh:${computerId}`);
+    this.statuses.delete(computerId);
+  }
+
+  async saveServer(input: McpServerConfig, credentials?: { mcpToken?: string }): Promise<McpServerConfig> {
+    const server = mcpServerSchema.parse(input);
+    this.requireComputer(server.computerId);
+    if (credentials?.mcpToken !== undefined) await this.secrets.set(`mcp:${server.serverId}`, { token: credentials.mcpToken });
+    const saved = await this.store.saveServer(server);
+    await this.pool.disconnect(server.serverId);
+    return saved;
+  }
+
+  async removeServer(serverId: string): Promise<void> {
+    this.requireServer(serverId);
+    await this.pool.disconnect(serverId);
+    await this.store.removeServer(serverId);
+    await this.secrets.remove(`mcp:${serverId}`);
+    this.serverStatuses.delete(serverId);
+    this.hardware = this.hardware.filter((item) => item.serverId !== serverId);
+  }
+
+  private requireComputer(computerId: string): RemoteComputer {
+    const computer = this.store.getComputer(computerId);
+    if (!computer) throw new Error(`Remote computer not found: ${computerId}`);
+    return computer;
+  }
+  private requireServer(serverId: string): McpServerConfig {
+    const server = this.store.getServer(serverId);
+    if (!server) throw new Error(`MCP server not found: ${serverId}`);
+    return server;
+  }
+
+  async execute(computerId: string, command: string, timeoutMs = 60_000): Promise<SshResult> {
+    return await this.ssh.execute(this.requireComputer(computerId), command, Math.min(Math.max(timeoutMs, 1_000), 300_000));
+  }
+
+  async refreshComputer(computerId: string): Promise<ComputerStatus> {
+    const computer = this.requireComputer(computerId);
+    const started = Date.now();
+    const status: ComputerStatus = { computerId, ssh: { state: "checking" } };
+    this.statuses.set(computerId, status);
+    try {
+      await this.ssh.execute(computer, "$PSVersionTable.PSVersion.Major", 15_000);
+      status.ssh = { state: "online", checkedAt: new Date().toISOString(), latencyMs: Date.now() - started };
+    } catch (error) {
+      status.ssh = { state: "offline", checkedAt: new Date().toISOString(), message: String(error) };
+    }
+    return status;
+  }
+
+  async refreshServer(serverId: string): Promise<ServerStatus> {
+    const status: ServerStatus = { serverId, computerId: this.store.getServer(serverId)?.computerId ?? "", service: { state: "checking", serviceState: "Unknown" }, mcp: { state: "checking" } };
+    this.serverStatuses.set(serverId, status);
+    let server: McpServerConfig;
+    let computer: RemoteComputer;
+    try { server = this.requireServer(serverId); computer = this.requireComputer(server.computerId); }
+    catch (error) {
+      status.service = { state: "error", checkedAt: new Date().toISOString(), serviceState: "Unknown", message: String(error) };
+      status.mcp = { state: "error", checkedAt: new Date().toISOString(), message: String(error) };
+      return status;
+    }
+    try {
+      const session = await this.pool.connect(server);
+      const hardware = (session as { hardware?: ManagedHardware }).hardware;
+      if (hardware) this.hardware = [...this.hardware.filter((item) => item.serverId !== serverId), hardware];
+      status.mcp = { state: "online", checkedAt: new Date().toISOString() };
+      status.service = { state: "unknown", checkedAt: new Date().toISOString(), serviceState: "Unknown", message: "Not queried: MCP is available" };
+      this.availability.set(hardware?.hardwareId ?? server.hardwareId, { hardwareId: hardware?.hardwareId ?? server.hardwareId, state: hardware?.state === "faulted" ? "faulted" : "available", checkedAt: new Date().toISOString(), ...(hardware?.lastError?.message ? { message: hardware.lastError.message } : {}) });
+    } catch (error) {
+      status.mcp = { state: "offline", checkedAt: new Date().toISOString(), message: String(error) };
+      try {
+        const service = await this.ssh.execute(computer, server.lifecycle.statusCommand, 15_000);
+        const parsed = JSON.parse(service.stdout.trim() || "{}") as { state?: string; message?: string };
+        const serviceState = normalizeServiceState(parsed.state);
+        status.service = { state: serviceState === "Running" ? "online" : "offline", checkedAt: new Date().toISOString(), serviceState, message: parsed.message ?? parsed.state ?? "Unknown" };
+        const processMessage = parsed.message ?? parsed.state;
+        this.availability.set(server.hardwareId, { hardwareId: server.hardwareId, state: serviceState === "Running" ? "faulted" : "unavailable", checkedAt: new Date().toISOString(), message: String(error), diagnostics: { mcp: String(error), ...(processMessage ? { process: processMessage } : {}) } });
+      } catch (diagnosticError) {
+        status.service = { state: "unknown", checkedAt: new Date().toISOString(), serviceState: "Unknown", message: String(diagnosticError) };
+        this.availability.set(server.hardwareId, { hardwareId: server.hardwareId, state: "unavailable", checkedAt: new Date().toISOString(), message: String(error), diagnostics: { mcp: String(error), ssh: String(diagnosticError) } });
+      }
+    }
+    return status;
+  }
+
+  async refreshAllServers(): Promise<ServerStatus[]> {
+    const results = await Promise.allSettled(this.store.listServers().map((server) => this.refreshServer(server.serverId)));
+    return results.flatMap((result) => result.status === "fulfilled" ? [result.value] : []);
+  }
+
+  async serverAction(serverId: string, action: "start" | "stop" | "restart" | "force-stop"): Promise<ServerStatus> {
+    const server = this.requireServer(serverId);
+    if (action !== "start" && action !== "force-stop") {
+      try { await this.pool.ensure(server); await this.pool.prepareShutdown(serverId); }
+      catch (error) { throw Object.assign(new Error(`Safe-stop failed; ${serverId} was left running. Use force-stop only after assessing the physical risk.`), { category: "safe_stop_failed", cause: error }); }
+    }
+    if (action === "restart") {
+      const stopped = await this.execute(server.computerId, server.lifecycle.stopCommand, 90_000);
+      if (stopped.exitCode !== 0) throw new Error(stopped.stderr || "Remote MCP stop command failed");
+    }
+    const command = action === "stop" || action === "force-stop" ? server.lifecycle.stopCommand : server.lifecycle.startCommand;
+    const result = await this.execute(server.computerId, command, 90_000);
+    if (result.exitCode !== 0) throw new Error(result.stderr || `Remote MCP ${action} command failed`);
+    if (action === "stop" || action === "force-stop") await this.pool.disconnect(serverId);
+    else {
+      let lastError: unknown;
+      for (let attempt = 0; attempt < 20; attempt += 1) {
+        try { await this.pool.connect(server); lastError = undefined; break; }
+        catch (error) { lastError = error; await new Promise((resolve) => setTimeout(resolve, 1_000)); }
+      }
+      if (lastError) throw lastError;
+    }
+    return await this.refreshServer(serverId);
+  }
+
+  async readServerLogs(serverId: string, lines = 200): Promise<RemoteServiceLog> {
+    const safeLines = Math.min(Math.max(lines, 1), 2_000);
+    const server = this.requireServer(serverId);
+    const logPath = server.lifecycle.logPath.replace(/'/g, "''");
+    const result = await this.execute(server.computerId, `Get-ChildItem -LiteralPath '${logPath}' -Filter '*.log' -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime | ForEach-Object { '===== ' + $_.Name + ' ====='; Get-Content -LiteralPath $_.FullName -Tail ${safeLines} -ErrorAction SilentlyContinue }`, 15_000);
+    return { lines: result.stdout.split(/\r?\n/).filter(Boolean), truncated: result.truncated };
+  }
+  async refreshHardware(): Promise<ManagedHardware[]> { this.hardware = await this.pool.listHardware(this.store.listServers()); return this.hardware; }
+  async callAggregatedTool(externalName: string, args: Record<string, unknown>, options?: { timeoutMs?: number; signal?: AbortSignal }): Promise<unknown> { const { session, tool } = this.pool.findTool(externalName); return await this.pool.call(session.server.serverId, tool.remoteName, args, options); }
+  async close(): Promise<void> { await this.ssh.close(); }
+}
+
+function normalizeServiceState(value: string | undefined): NonNullable<ServerStatus["service"]["serviceState"]> {
+  if (value === "Running" || value === "Stopped" || value === "StartPending" || value === "StopPending") return value;
+  return "Unknown";
+}
