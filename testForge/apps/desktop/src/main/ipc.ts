@@ -1,5 +1,5 @@
 import { TESTFORGE_IPC, type TestForgeAgentsApi, type TestForgeSettingsApi } from "@testforge/contracts/desktop";
-import type { DeviceBundleKind, Hardware, HardwareImageTarget, McpServerConfig, RemoteComputer } from "@testforge/contracts/devices";
+import type { DeviceBundleApplyInput, DeviceBundleKind, Hardware, HardwareImageTarget, McpServerConfig, RemoteComputer } from "@testforge/contracts/devices";
 import type { TestTask } from "@testforge/contracts/orchestration";
 import type { ProjectDocument } from "@testforge/contracts/projects";
 import { llmSettingsInputSchema } from "@testforge/contracts/storage";
@@ -77,6 +77,18 @@ export function registerDesktopIpc(ipc: IpcMainPort, dependencies: DesktopIpcDep
     const kind = rawKind as DeviceBundleKind;
     const data = await dialogs.openBundle(kind);
     return data ? { kind, ...await application.devices.importBundle(HUMAN_REQUEST_CONTEXT, data) } : null;
+  });
+  handle(TESTFORGE_IPC.devices.previewBundle, async (rawKind) => {
+    const kind = rawKind as DeviceBundleKind;
+    const data = await dialogs.openBundle(kind);
+    return data ? { kind, hardware: await application.devices.inspectBundle(HUMAN_REQUEST_CONTEXT, data), data } : null;
+  });
+  handle(TESTFORGE_IPC.devices.applyBundle, async (rawInput) => {
+    const input = rawInput as DeviceBundleApplyInput;
+    return {
+      kind: input.kind,
+      ...await application.devices.importBundleForServer(HUMAN_REQUEST_CONTEXT, input.data, String(input.hardwareId), String(input.serverId))
+    };
   });
 
   handle(TESTFORGE_IPC.projects.current, () => application.projects.document(HUMAN_REQUEST_CONTEXT));

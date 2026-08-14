@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "testforge-sim-hardware"
+version = "0.1.0"
+description = "Deterministic virtual hardware MCP servers for TestForge development"
+requires-python = ">=3.10"
+dependencies = [
+  "mcp>=1.26,<1.29",
+  "pydantic>=2,<3",
+  "pydantic-settings>=2.5.2,<2.15",
+  "uvicorn>=0.30,<1"
+]
+
+[project.scripts]
+testforge-sim-hardware = "testforge_sim_hardware.server:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

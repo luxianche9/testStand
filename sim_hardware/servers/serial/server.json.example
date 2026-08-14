@@ -1,0 +1,16 @@
+{
+  "serverId": "SIM_SERIAL_MCP",
+  "hardwareId": "SIM_PC.SIM_SERIAL_0",
+  "label": "虚拟串口通信卡",
+  "manufacturer": "TestForge",
+  "model": "Virtual Serial Card 2-Port",
+  "serverVersion": "0.1.0",
+  "host": "127.0.0.1",
+  "port": 8103,
+  "token": "testforge-sim-local-only",
+  "driver": {
+    "kind": "serial",
+    "inputs": ["SIM_PORT0_INPUT", "SIM_PORT1_INPUT"]
+  }
+}
+

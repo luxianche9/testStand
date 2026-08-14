@@ -32,7 +32,9 @@ export function createTestForgeApi(ipc: IpcRendererPort): TestForgeApi {
       removeHardwareImage: (input) => invoke(TESTFORGE_IPC.devices.removeHardwareImage, input),
       hardwareImageUrl: (hardwareId, assetId) => invoke(TESTFORGE_IPC.devices.hardwareImageUrl, hardwareId, assetId),
       exportBundle: (kind, id) => invoke(TESTFORGE_IPC.devices.exportBundle, kind, id),
-      importBundle: (kind) => invoke(TESTFORGE_IPC.devices.importBundle, kind)
+      importBundle: (kind) => invoke(TESTFORGE_IPC.devices.importBundle, kind),
+      previewBundle: (kind) => invoke(TESTFORGE_IPC.devices.previewBundle, kind),
+      applyBundle: (input) => invoke(TESTFORGE_IPC.devices.applyBundle, input)
     },
     projects: {
       current: () => invoke(TESTFORGE_IPC.projects.current),

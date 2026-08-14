@@ -1,0 +1,19 @@
+{
+  "formatVersion": 2,
+  "hardwareId": "SIM_PC.SIM_AO_0",
+  "label": "虚拟模拟输出卡",
+  "ports": [
+    {
+      "portId": "ANALOG_OUT",
+      "name": "4 通道模拟输出",
+      "pins": [
+        { "pinId": "AO0", "position": 1, "label": "模拟输出 0" },
+        { "pinId": "AO1", "position": 2, "label": "模拟输出 1" },
+        { "pinId": "AO2", "position": 3, "label": "模拟输出 2" },
+        { "pinId": "AO3", "position": 4, "label": "模拟输出 3" },
+        { "pinId": "AGND", "position": 5, "label": "模拟地" }
+      ]
+    }
+  ]
+}
+

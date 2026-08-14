@@ -23,6 +23,7 @@ describe("preload API", () => {
     void api.devices.readServerLogs("S"); void api.devices.executeSsh("PC", "x"); void api.devices.refreshManagedHardware(); void api.devices.listHardware();
     void api.devices.saveHardware(hardware); void api.devices.removeHardware("H"); void api.devices.importHardwareImage({ hardwareId: "H" });
     void api.devices.removeHardwareImage({ hardwareId: "H" }); void api.devices.hardwareImageUrl("H", "a.png"); void api.devices.exportBundle("hardware", "H"); void api.devices.importBundle("hardware");
+    void api.devices.previewBundle("hardware"); void api.devices.applyBundle({ kind: "hardware", hardwareId: "H", serverId: "S", data: new Uint8Array() });
     void api.projects.current(); void api.projects.chooseFolder(); void api.projects.openFolder("C:\\project"); void api.projects.initializeFolder("C:\\project");
     void api.projects.save(); void api.projects.leave(); void api.projects.listRecent(); void api.projects.forgetRecent("C:\\project");
     void api.wiring.update({ nodes: [], connections: [] }); void api.wiring.requestTask({ portA: "A.P", portB: "B.P", action: "connect" });

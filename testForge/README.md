@@ -18,7 +18,7 @@ TestForge 是面向硬件测试与实验室自动化的 Electron 桌面应用。
 
 ## 快速开始
 
-需要 Node.js、仓库声明的 `pnpm@10.15.0`，以及 Windows 桌面环境。Python MCP 模板需要 Python 3.10 或更高版本。
+需要 Node.js、仓库声明的 `pnpm@10.15.0`，以及 Windows 桌面环境。
 
 ```powershell
 corepack enable
@@ -29,17 +29,9 @@ pnpm dev
 常用检查：
 
 ```powershell
-pnpm verify       # 类型、lint、TS/Python 测试、边界检查和生产构建
+pnpm verify       # 类型、lint、测试、边界检查和生产构建
 pnpm verify:full  # verify + Electron E2E
 ```
-
-生成可独立复制的 MCP Server 模板 ZIP：
-
-```powershell
-pnpm package:templates
-```
-
-产物位于 `output/mcp-templates/`，每个 ZIP 均包含模板本身和公共 runtime。
 
 ## 文档
 
@@ -48,5 +40,3 @@ pnpm package:templates
 - [安全部署与授权模型](docs/security.md)
 - [架构决策记录](docs/adr/)
 - [硬件手册索引](docs/hardware-manuals/README.md)
-
-MCP 模板说明分别位于 [C/C++ SDK 模板](mcp_templates/c_server/README.md) 和 [VISA/SCPI 模板](mcp_templates/visascpi_server/README.md)。

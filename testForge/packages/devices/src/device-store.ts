@@ -15,6 +15,11 @@ import {
 } from "@testforge/contracts/devices";
 import { atomicJson } from "@testforge/storage";
 
+export interface HardwareBundleImportOptions {
+  expectedHardwareId?: string;
+  allowManagedServerId?: string;
+}
+
 /** Global file-backed library. Infrastructure records are flat JSON files; hardware owns a
  * directory because its canonical definition and images travel together in a `.tfhw` bundle. */
 export class DeviceStore {
@@ -166,23 +171,18 @@ export class DeviceStore {
     }
     return zipSync(files, { level: 6 });
   }
-  async importBundle(data: Uint8Array): Promise<{ id: string; label: string; replaced: boolean }> {
-    const entries = await unzipBundle(data);
-    const manifest = decodeJson<{ formatVersion?: number; kind?: string; id?: string }>(entries["bundle.json"], "bundle.json");
-    if (manifest.formatVersion !== 2 || manifest.kind !== "hardware") throw new Error("Only formatVersion 2 hardware bundles are supported");
-    const stored = parseStoredHardware(decodeJson(entries["hardware.json"], "hardware.json"));
-    if (manifest.id !== stored.hardwareId) throw new Error("Bundle manifest id does not match hardware.json");
+  async inspectBundle(data: Uint8Array): Promise<StoredHardwareDefinition> {
+    return (await parseHardwareBundle(data)).stored;
+  }
+  async importBundle(data: Uint8Array, options: HardwareBundleImportOptions = {}): Promise<{ id: string; label: string; replaced: boolean }> {
+    const { entries, stored, assets } = await parseHardwareBundle(data);
+    if (options.expectedHardwareId && options.expectedHardwareId !== stored.hardwareId) {
+      throw new Error(`Bundle hardwareId ${stored.hardwareId} does not match expected hardwareId ${options.expectedHardwareId}`);
+    }
     const replaced = this.getStoredHardware(stored.hardwareId) !== undefined;
-    if (replaced && this.listServers().some((item) => item.hardwareId === stored.hardwareId)) throw new Error(`Cannot replace managed hardware ${stored.hardwareId}`);
-
-    const assets = assetIds(stored);
-    const allowedEntries = new Set(["bundle.json", "hardware.json", ...assets]);
-    const unexpected = Object.keys(entries).find((name) => !allowedEntries.has(name));
-    if (unexpected) throw new Error(`Bundle contains unexpected entry ${unexpected}`);
-    for (const assetId of assets) {
-      const content = entries[assetId];
-      if (!content) throw new Error(`Bundle is missing image ${assetId}`);
-      resolveImageExtension(content, assetId);
+    const assigned = this.listServers().find((item) => item.hardwareId === stored.hardwareId);
+    if (replaced && assigned && assigned.serverId !== options.allowManagedServerId) {
+      throw new Error(`Cannot replace managed hardware ${stored.hardwareId}`);
     }
 
     const stagingRoot = await mkdtemp(join(this.hardwareDir, ".import-"));
@@ -385,4 +385,27 @@ function resolveInside(root: string, relativePath: string): string {
 
 async function pathExists(path: string): Promise<boolean> {
   try { await stat(path); return true; } catch { return false; }
+}
+
+async function parseHardwareBundle(data: Uint8Array): Promise<{
+  entries: Record<string, Uint8Array>;
+  stored: StoredHardwareDefinition;
+  assets: string[];
+}> {
+  const entries = await unzipBundle(data);
+  const manifest = decodeJson<{ formatVersion?: number; kind?: string; id?: string }>(entries["bundle.json"], "bundle.json");
+  if (manifest.formatVersion !== 2 || manifest.kind !== "hardware") throw new Error("Only formatVersion 2 hardware bundles are supported");
+  const stored = parseStoredHardware(decodeJson(entries["hardware.json"], "hardware.json"));
+  if (manifest.id !== stored.hardwareId) throw new Error("Bundle manifest id does not match hardware.json");
+
+  const assets = assetIds(stored);
+  const allowedEntries = new Set(["bundle.json", "hardware.json", ...assets]);
+  const unexpected = Object.keys(entries).find((name) => !allowedEntries.has(name));
+  if (unexpected) throw new Error(`Bundle contains unexpected entry ${unexpected}`);
+  for (const assetId of assets) {
+    const content = entries[assetId];
+    if (!content) throw new Error(`Bundle is missing image ${assetId}`);
+    resolveImageExtension(content, assetId);
+  }
+  return { entries, stored, assets };
 }

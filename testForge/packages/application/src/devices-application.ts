@@ -133,6 +133,19 @@ export class DevicesApplication {
     return await this.service.store.importBundle(data);
   }
 
+  async inspectBundle(context: RequestContext, data: Uint8Array) {
+    this.authorizer.authorize(context, "hardware.manage");
+    return await this.service.store.inspectBundle(data);
+  }
+
+  async importBundleForServer(context: RequestContext, data: Uint8Array, hardwareId: string, serverId: string) {
+    this.authorizer.authorize(context, "hardware.manage");
+    const server = this.service.listServers().find((item) => item.serverId === serverId);
+    if (!server) throw new Error(`MCP server not found: ${serverId}`);
+    if (server.hardwareId !== hardwareId) throw new Error(`MCP server ${serverId} is assigned to hardware ${server.hardwareId}, not ${hardwareId}`);
+    return await this.service.store.importBundle(data, { expectedHardwareId: hardwareId, allowManagedServerId: serverId });
+  }
+
   async callTool(context: RequestContext, name: string, args: Record<string, unknown>) {
     this.authorizer.authorize(context, "hardware.executeTools");
     this.service.pool.findTool(name);

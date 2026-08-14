@@ -89,7 +89,7 @@ export function PortEditor({ hardwareId, ports, saved, onChange, onImageChanged 
                 />
                 <Badge tone={port.pins.length ? "muted" : "accent"}>{port.pins.length ? `${port.pins.length} 针` : "无针脚"}</Badge>
                 <span className="port-image-actions">
-                  {port.imageAssetId && (
+                  {saved && port.imageAssetId && (
                     <Btn variant="subtle" onClick={() => setPreview({ title: `${port.name} 端口图`, assetId: port.imageAssetId! })}>预览</Btn>
                   )}
                   <Btn
@@ -100,7 +100,14 @@ export function PortEditor({ hardwareId, ports, saved, onChange, onImageChanged 
                     onClick={() => image.mutate({ action: "import", portId: port.portId })}
                   >{port.imageAssetId ? "更换" : "端口图"}</Btn>
                   {port.imageAssetId && (
-                    <Btn variant="subtle" disabled={image.isPending} onClick={() => image.mutate({ action: "remove", portId: port.portId })}>移除图</Btn>
+                    <Btn
+                      variant="subtle"
+                      disabled={image.isPending}
+                      onClick={() => {
+                        if (saved) image.mutate({ action: "remove", portId: port.portId });
+                        else update(port.portId, (item) => { const { imageAssetId: _removed, ...rest } = item; return rest; });
+                      }}
+                    >移除图</Btn>
                   )}
                 </span>
                 <button

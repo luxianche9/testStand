@@ -1,5 +1,5 @@
 import type { AgentIntegrationPreview, AgentIntegrationStatus, AgentKind, AgentToolInfo, McpGatewayStatus, OpenCodeRuntimeStatus } from "./agents.js";
-import type { ComputerStatus, DeviceBundleExport, DeviceBundleImport, DeviceBundleKind, Hardware, HardwareAvailability, HardwareImageTarget, ManagedHardware, McpServerConfig, RemoteComputer, RemoteServiceLog, ServerStatus, ToolCatalogItem } from "./devices.js";
+import type { ComputerStatus, DeviceBundleApplyInput, DeviceBundleExport, DeviceBundleImport, DeviceBundleKind, DeviceBundlePreview, Hardware, HardwareAvailability, HardwareImageTarget, ManagedHardware, McpServerConfig, RemoteComputer, RemoteServiceLog, ServerStatus, ToolCatalogItem } from "./devices.js";
 import type { LlmSettings, LlmSettingsInput, ProjectView } from "./storage.js";
 import type { OperatorDecision, TaskValidationResult, TestNodeRun, TestRun, TestRunDetail, TestTask } from "./orchestration.js";
 import type { ProjectDocument, ProjectFolderSelection, RecentProjectSummary } from "./projects.js";
@@ -27,7 +27,8 @@ export const TESTFORGE_IPC = {
     serverAction: "testforge:devices:server-action", readServerLogs: "testforge:devices:server-logs", executeSsh: "testforge:devices:ssh-execute",
     refreshManagedHardware: "testforge:devices:refresh-managed-hardware", listHardware: "testforge:devices:list-hardware", saveHardware: "testforge:devices:save-hardware",
     removeHardware: "testforge:devices:remove-hardware", importHardwareImage: "testforge:devices:import-hardware-image", removeHardwareImage: "testforge:devices:remove-hardware-image",
-    hardwareImageUrl: "testforge:devices:hardware-image-url", exportBundle: "testforge:devices:export-bundle", importBundle: "testforge:devices:import-bundle"
+    hardwareImageUrl: "testforge:devices:hardware-image-url", exportBundle: "testforge:devices:export-bundle", importBundle: "testforge:devices:import-bundle",
+    previewBundle: "testforge:devices:preview-bundle", applyBundle: "testforge:devices:apply-bundle"
   },
   projects: {
     current: "testforge:projects:current", chooseFolder: "testforge:projects:choose-folder", openFolder: "testforge:projects:open-folder",
@@ -88,6 +89,8 @@ export interface TestForgeDevicesApi {
   hardwareImageUrl(hardwareId: string, assetId: string): Promise<string>;
   exportBundle(kind: DeviceBundleKind, id: string): Promise<DeviceBundleExport | null>;
   importBundle(kind: DeviceBundleKind): Promise<DeviceBundleImport | null>;
+  previewBundle(kind: DeviceBundleKind): Promise<DeviceBundlePreview | null>;
+  applyBundle(input: DeviceBundleApplyInput): Promise<DeviceBundleImport>;
 }
 
 export interface TestForgeProjectsApi {

@@ -20,6 +20,7 @@ tmp/
 logs/
 mcp-server/
 run/
+sim_hardware/servers/*/server.json
 
 playwright-report/
 test-results/

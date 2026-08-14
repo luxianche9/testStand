@@ -126,3 +126,10 @@ export interface HardwareAvailability {
 export type DeviceBundleKind = "hardware";
 export interface DeviceBundleExport { path: string; kind: "hardware"; id: string }
 export interface DeviceBundleImport { kind: "hardware"; id: string; label: string; replaced: boolean }
+export interface DeviceBundlePreview { kind: "hardware"; hardware: StoredHardwareDefinition; data: Uint8Array }
+export interface DeviceBundleApplyInput {
+  kind: "hardware";
+  hardwareId: string;
+  serverId: string;
+  data: Uint8Array;
+}

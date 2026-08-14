@@ -57,6 +57,34 @@ describe("DeviceStore", () => {
     expect(await readFile(store.imagePath("DUT_1", "ports/J1.png"))).toEqual(PNG);
   });
 
+  it("previews a validated bundle without creating passive hardware", async () => {
+    const { store } = await fixture();
+    const bundle = zipSync({
+      "bundle.json": new TextEncoder().encode(JSON.stringify({ formatVersion: 2, kind: "hardware", id: "CARD" })),
+      "hardware.json": new TextEncoder().encode(JSON.stringify({ formatVersion: 2, hardwareId: "CARD", label: "Preview card", ports: [] }))
+    });
+
+    await expect(store.inspectBundle(bundle)).resolves.toMatchObject({ hardwareId: "CARD", label: "Preview card" });
+    expect(store.listHardware()).toEqual([]);
+  });
+
+  it("only applies a bundle to the managed hardware owned by the named server", async () => {
+    const { store } = await fixture();
+    await store.saveComputer({ id: "PC1", label: "PC", address: "10.0.0.2", ssh: { port: 22, username: "u" } });
+    await store.saveServer(server("S1", "CARD"));
+    const bundle = zipSync({
+      "bundle.json": new TextEncoder().encode(JSON.stringify({ formatVersion: 2, kind: "hardware", id: "CARD" })),
+      "hardware.json": new TextEncoder().encode(JSON.stringify({ formatVersion: 2, hardwareId: "CARD", label: "Updated card", ports: [] }))
+    });
+
+    await expect(store.importBundle(bundle)).rejects.toThrow(/Cannot replace managed hardware/);
+    await expect(store.importBundle(bundle, { expectedHardwareId: "OTHER", allowManagedServerId: "S1" })).rejects.toThrow(/does not match expected/);
+    expect(store.requireHardware("CARD").label).toBe("CARD");
+
+    await expect(store.importBundle(bundle, { expectedHardwareId: "CARD", allowManagedServerId: "S1" })).resolves.toMatchObject({ id: "CARD", replaced: true });
+    expect(store.requireHardware("CARD")).toMatchObject({ label: "Updated card", kind: "managed", serverId: "S1" });
+  });
+
   it("drops unknown legacy fields during bundle export", async () => {
     const { store } = await fixture();
     await store.saveHardware({ ...hardware("DUT_1"), extra: "ignored" } as Hardware);
