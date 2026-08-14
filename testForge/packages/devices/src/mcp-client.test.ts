@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import Ajv from "ajv";
 import type { ManagedHardware, McpServerConfig } from "@testforge/contracts/devices";
 import { McpClientPool } from "./mcp-client.js";
 
@@ -26,6 +27,14 @@ const hardware = {
 
 type PoolInternals = {
   refreshSingleHardware(session: { server: McpServerConfig }): Promise<ManagedHardware>;
+};
+
+type PoolCallInternals = {
+  sessions: Map<string, {
+    server: McpServerConfig;
+    client: { callTool: ReturnType<typeof vi.fn> };
+    validators: Map<string, { input: ReturnType<Ajv["compile"]> }>;
+  }>;
 };
 
 function fixture(response: unknown) {
@@ -67,5 +76,25 @@ describe("McpClientPool one-Server-one-hardware contract", () => {
       computerId: server.computerId,
       serverId: server.serverId
     });
+  });
+
+  it("uses AJV for the authoritative pre-call input validation", async () => {
+    const pool = new McpClientPool({} as never);
+    const callTool = vi.fn();
+    const input = new Ajv({ allErrors: true }).compile({
+      type: "object",
+      additionalProperties: false,
+      properties: { hardwareId: { const: server.hardwareId }, channel: { type: "integer", minimum: 0, maximum: 3 } },
+      required: ["hardwareId", "channel"]
+    });
+    (pool as unknown as PoolCallInternals).sessions.set(server.serverId, {
+      server,
+      client: { callTool },
+      validators: new Map([["read_channel", { input }]])
+    });
+
+    await expect(pool.call(server.serverId, "read_channel", { hardwareId: server.hardwareId, channel: 9 }))
+      .rejects.toMatchObject({ category: "invalid_argument", message: expect.stringContaining("Invalid input") });
+    expect(callTool).not.toHaveBeenCalled();
   });
 });

@@ -6,10 +6,15 @@ import type {
   TestRun,
   TestRunDetail,
   TestRunEvent,
+  TestRunListQuery,
+  TestRunListResult,
+  TestRunLogArchive,
   TestStep,
   TestTask,
   WorkflowValidationIssue
 } from "@testforge/contracts/orchestration";
+import { testRunListQuerySchema } from "@testforge/contracts/orchestration";
+import type { ActiveExecutionActivity } from "@testforge/contracts/execution";
 import type { Hardware, ToolCatalogItem } from "@testforge/contracts/devices";
 import type { ProjectDocument } from "@testforge/contracts/projects";
 import type { ProjectWiring } from "@testforge/contracts/wiring";
@@ -24,7 +29,7 @@ import {
 } from "./workflow.js";
 
 type DecisionWaiter = { resolve: (value: string) => void; reject: (error: Error) => void; options: Map<string, unknown> };
-type ActiveRun = { controller: AbortController; decisions: Map<string, DecisionWaiter>; context: Record<string, unknown>; variableTypes: Map<string, string>; completion?: Promise<void> };
+type ActiveRun = { controller: AbortController; decisions: Map<string, DecisionWaiter>; context: Record<string, unknown>; variableTypes: Map<string, string>; lease: OrchestrationExecutionLease; completion?: Promise<void> };
 type StepOutcome = { status: "passed" | "failed" | "cancelled"; message?: string };
 
 export interface OrchestrationProjectPort {
@@ -32,6 +37,7 @@ export interface OrchestrationProjectPort {
   wiring(): ProjectWiring;
   updateTask(task: TestTask): ProjectDocument;
   projectId(): string;
+  session(): { projectId: string; rootPath: string } | undefined;
 }
 
 export interface OrchestrationToolPort {
@@ -43,9 +49,21 @@ export interface OrchestrationCatalogPort {
   getHardware(hardwareId: string): Hardware;
 }
 
+export interface OrchestrationExecutionLease { release(): void }
+export interface OrchestrationExecutionPort {
+  assertIdle(): void;
+  acquire(activity: ActiveExecutionActivity): OrchestrationExecutionLease;
+}
+export interface OrchestrationRunLogPort {
+  load(rootPath: string): Promise<{ archives: TestRunLogArchive[]; warnings: string[] }>;
+  save(rootPath: string, archive: TestRunLogArchive): Promise<void>;
+  remove(rootPath: string, runId: string): Promise<void>;
+  clear(rootPath: string, runIds: string[]): Promise<void>;
+}
+
 /**
- * Runs, node runs and events are session-scoped memory. Switching project files clears them.
- * The single test task lives in the project document buffer owned by ProjectService.
+ * The active project keeps an in-memory working set backed by one atomic archive per Run.
+ * Switching projects flushes the current set and loads the target project's history.
  */
 export class TaskOrchestrationService {
   private readonly activeRuns = new Map<string, ActiveRun>();
@@ -55,19 +73,47 @@ export class TaskOrchestrationService {
   private readonly events = new Map<string, TestRunEvent[]>();
   private nextEventId = 1;
   private startOperation: Promise<unknown> = Promise.resolve();
+  private closing = false;
+  private closeOperation: Promise<void> | undefined;
   private notifier?: (event: "run" | "nodeRun" | "operator", payload: unknown) => void;
+  private warnings: string[] = [];
+  private readonly dirtyRuns = new Set<string>();
+  private persistWorker: Promise<void> | undefined;
 
   constructor(
     readonly projects: OrchestrationProjectPort,
     readonly tools: OrchestrationToolPort,
     readonly catalog: OrchestrationCatalogPort,
-    _appVersion?: string
+    _appVersion?: string,
+    private readonly execution: OrchestrationExecutionPort = NOOP_EXECUTION,
+    private readonly runLogs: OrchestrationRunLogPort = NOOP_RUN_LOGS
   ) {}
 
   setNotifier(notifier: (event: "run" | "nodeRun" | "operator", payload: unknown) => void): void { this.notifier = notifier; }
 
-  initialize(): void {
-    /* memory starts empty — no crash recovery across process restarts */
+  async initialize(): Promise<void> {
+    const session = this.projects.session();
+    if (!session) return;
+    const loaded = await this.runLogs.load(session.rootPath);
+    this.warnings = [...loaded.warnings];
+    for (const archive of loaded.archives) {
+      if (archive.run.projectId !== session.projectId) {
+        this.warnings.push(`${archive.run.runId}: projectId does not match the open project`);
+        continue;
+      }
+      this.loadArchive(archive);
+    }
+    for (const run of [...this.runs.values()]) {
+      if (!ACTIVE_RUN_STATUSES.has(run.status)) continue;
+      this.updateRun({
+        ...run,
+        status: "interrupted",
+        completedAt: new Date().toISOString(),
+        summary: this.summary(run.runId, "Application restarted before the Run completed")
+      });
+      this.addEvent(run.runId, "run.interrupted", { reason: "application_restart" });
+    }
+    await this.flushPersistence();
   }
 
   /** Drop session run state when the operator opens or creates another project file. */
@@ -77,6 +123,9 @@ export class TaskOrchestrationService {
     this.nodeOrder.clear();
     this.events.clear();
     this.nextEventId = 1;
+    this.warnings = [];
+    this.dirtyRuns.clear();
+    this.persistWorker = undefined;
   }
 
   getTask(): TestTask {
@@ -108,6 +157,7 @@ export class TaskOrchestrationService {
   }
 
   async startRun(input: { inputs?: Record<string, unknown> } = {}): Promise<TestRunDetail> {
+    if (this.closing) throw conflict("Orchestration is closing");
     const previous = this.startOperation;
     let release!: () => void;
     const current = new Promise<void>((resolve) => { release = resolve; });
@@ -119,9 +169,11 @@ export class TaskOrchestrationService {
   }
 
   private async startRunUnlocked(input: { inputs?: Record<string, unknown> }): Promise<TestRunDetail> {
+    if (this.closing) throw conflict("Orchestration is closing");
     if ([...this.runs.values()].some((run) => run.status === "running" || run.status === "cancelling")) {
       throw Object.assign(new Error("The project already has an active test run"), { category: "conflict" });
     }
+    this.execution.assertIdle();
     const task = this.projects.task();
     const wiring = this.projects.wiring();
     const preflight = this.preflight(task, wiring.nodes.map((item) => item.hardwareId), input.inputs ?? {});
@@ -135,12 +187,24 @@ export class TaskOrchestrationService {
 
     const hardwareIds = [...new Set(collectTaskSteps(task).filter((step): step is Extract<TestStep, { type: "tool" }> => step.type === "tool" && step.enabled).map((step) => step.hardwareId))].sort(codePointCompare);
     const run = this.newRun(task, input.inputs ?? {}, "running", now);
-    this.insertRun(run);
-    this.addEvent(run.runId, "run.started", { hardwareIds });
-    const activeRun: ActiveRun = { controller: new AbortController(), decisions: new Map(), context: createWorkflowContext(task, input.inputs ?? {}), variableTypes: new Map(task.variables.map((item) => [item.name, item.type])) };
-    this.activeRuns.set(run.runId, activeRun);
-    activeRun.completion = this.executeRun(run.runId, task, activeRun).catch((error) => this.finishUnexpected(run.runId, error));
-    return this.getRun(run.runId);
+    const lease = this.execution.acquire({ state: "run", runId: run.runId, startedAt: now });
+    try {
+      this.insertRun(run);
+      this.addEvent(run.runId, "run.started", { hardwareIds });
+      const activeRun: ActiveRun = {
+        controller: new AbortController(),
+        decisions: new Map(),
+        context: createWorkflowContext(task, input.inputs ?? {}),
+        variableTypes: new Map(task.variables.map((item) => [item.name, item.type])),
+        lease
+      };
+      this.activeRuns.set(run.runId, activeRun);
+      activeRun.completion = this.executeRun(run.runId, task, activeRun).catch((error) => this.finishUnexpected(run.runId, error));
+      return this.getRun(run.runId);
+    } catch (error) {
+      lease.release();
+      throw error;
+    }
   }
 
   async cancelRun(runId: string): Promise<TestRun> {
@@ -158,11 +222,56 @@ export class TaskOrchestrationService {
   }
 
   getRun(runId: string, sinceEventId = 0, nodeOffset = 0, nodeLimit = 200): TestRunDetail {
+    const order = this.nodeOrder.get(runId) ?? [];
     return {
       run: this.getRunRecord(runId),
       nodeRuns: this.listNodeRuns(runId, nodeOffset, nodeLimit),
-      events: this.listEvents(runId, sinceEventId)
+      events: this.listEvents(runId, sinceEventId),
+      nodeTotal: order.length
     };
+  }
+
+  listRuns(raw: TestRunListQuery = {}): TestRunListResult {
+    const query = testRunListQuerySchema.parse(raw);
+    const statuses = query.statuses?.length ? new Set(query.statuses) : undefined;
+    const search = query.search?.trim().toLocaleLowerCase();
+    const from = query.from ? Date.parse(query.from) : undefined;
+    const to = query.to ? Date.parse(query.to) : undefined;
+    const filtered = [...this.runs.values()]
+      .filter((run) => !statuses || statuses.has(run.status))
+      .filter((run) => from === undefined || Date.parse(run.createdAt) >= from)
+      .filter((run) => to === undefined || Date.parse(run.createdAt) <= to)
+      .filter((run) => !search || [run.runId, run.taskName, run.summary?.message ?? ""].some((value) => value.toLocaleLowerCase().includes(search)))
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt) || right.runId.localeCompare(left.runId));
+    return {
+      items: filtered.slice(query.offset, query.offset + query.limit).map((run) => structuredClone(run)),
+      total: filtered.length,
+      warnings: [...this.warnings]
+    };
+  }
+
+  exportRun(runId: string): TestRunLogArchive {
+    this.getRunRecord(runId);
+    return this.archive(runId);
+  }
+
+  async deleteRun(runId: string): Promise<{ runId: string }> {
+    const run = this.getRunRecord(runId);
+    if (ACTIVE_RUN_STATUSES.has(run.status)) throw conflict(`Run ${runId} is active and cannot be deleted`);
+    await this.flushPersistence();
+    const session = this.requireSession();
+    await this.runLogs.remove(session.rootPath, runId);
+    this.removeRunFromMemory(runId);
+    return { runId };
+  }
+
+  async clearCompletedRuns(): Promise<{ deleted: number }> {
+    const runIds = [...this.runs.values()].filter((run) => !ACTIVE_RUN_STATUSES.has(run.status)).map((run) => run.runId);
+    await this.flushPersistence();
+    const session = this.requireSession();
+    await this.runLogs.clear(session.rootPath, runIds);
+    for (const runId of runIds) this.removeRunFromMemory(runId);
+    return { deleted: runIds.length };
   }
 
   listOperatorDecisions(): OperatorDecision[] {
@@ -193,6 +302,19 @@ export class TaskOrchestrationService {
   }
 
   async close(): Promise<void> {
+    if (this.closeOperation) return await this.closeOperation;
+    this.closing = true;
+    const operation = this.closeUnlocked();
+    this.closeOperation = operation;
+    try { await operation; }
+    finally {
+      if (this.closeOperation === operation) this.closeOperation = undefined;
+      this.closing = false;
+    }
+  }
+
+  private async closeUnlocked(): Promise<void> {
+    await this.startOperation.catch(() => undefined);
     const completions: Promise<void>[] = [];
     for (const [runId, active] of this.activeRuns) {
       const run = this.getRunRecord(runId);
@@ -206,7 +328,9 @@ export class TaskOrchestrationService {
       if (active.completion) completions.push(active.completion);
     }
     await Promise.allSettled(completions);
+    for (const active of this.activeRuns.values()) active.lease.release();
     this.activeRuns.clear();
+    await this.flushPersistence();
   }
 
   private preflight(task: TestTask, canvasHardware: string[], inputs: Record<string, unknown>): WorkflowValidationIssue[] {
@@ -228,22 +352,26 @@ export class TaskOrchestrationService {
   }
 
   private async executeRun(runId: string, task: TestTask, active: ActiveRun): Promise<void> {
-    let main: StepOutcome = { status: "passed" };
-    let cleanup: StepOutcome = { status: "passed" };
-    try { main = await this.executeSequence(runId, [...task.setup, ...task.steps], active.context, active, "root", [], false); }
-    catch (error) { main = { status: isAbort(error) ? "cancelled" : "failed", message: error instanceof Error ? error.message : String(error) }; this.addEvent(runId, "run.execution_error", { error: normalizeError(error) }); }
-    const cleanupController = new AbortController();
-    const cleanupActive: ActiveRun = { ...active, controller: cleanupController };
-    try { cleanup = await this.executeSequence(runId, task.cleanup, active.context, cleanupActive, "cleanup", [], true); }
-    catch (error) { cleanup = { status: "failed", message: error instanceof Error ? error.message : String(error) }; this.addEvent(runId, "run.cleanup_error", { error: normalizeError(error) }); }
-    const current = this.getRunRecord(runId);
-    if (current.status === "interrupted") { this.activeRuns.delete(runId); return; }
-    const cancelled = current.status === "cancelling" || active.controller.signal.aborted || main.status === "cancelled";
-    const status: TestRun["status"] = cancelled ? "cancelled" : main.status === "passed" && cleanup.status === "passed" ? "passed" : "failed";
-    const message = cleanup.status === "failed" ? `Cleanup failed: ${cleanup.message ?? "unknown error"}` : main.message;
-    this.updateRun({ ...current, status, completedAt: new Date().toISOString(), summary: this.summary(runId, message) });
-    this.addEvent(runId, `run.${status}`, { main, cleanup });
-    this.activeRuns.delete(runId);
+    try {
+      let main: StepOutcome = { status: "passed" };
+      let cleanup: StepOutcome = { status: "passed" };
+      try { main = await this.executeSequence(runId, [...task.setup, ...task.steps], active.context, active, "root", [], false); }
+      catch (error) { main = { status: isAbort(error) ? "cancelled" : "failed", message: error instanceof Error ? error.message : String(error) }; this.addEvent(runId, "run.execution_error", { error: normalizeError(error) }); }
+      const cleanupController = new AbortController();
+      const cleanupActive: ActiveRun = { ...active, controller: cleanupController };
+      try { cleanup = await this.executeSequence(runId, task.cleanup, active.context, cleanupActive, "cleanup", [], true); }
+      catch (error) { cleanup = { status: "failed", message: error instanceof Error ? error.message : String(error) }; this.addEvent(runId, "run.cleanup_error", { error: normalizeError(error) }); }
+      const current = this.getRunRecord(runId);
+      if (current.status === "interrupted") return;
+      const cancelled = current.status === "cancelling" || active.controller.signal.aborted || main.status === "cancelled";
+      const status: TestRun["status"] = cancelled ? "cancelled" : main.status === "passed" && cleanup.status === "passed" ? "passed" : "failed";
+      const message = cleanup.status === "failed" ? `Cleanup failed: ${cleanup.message ?? "unknown error"}` : main.message;
+      this.updateRun({ ...current, status, completedAt: new Date().toISOString(), summary: this.summary(runId, message) });
+      this.addEvent(runId, `run.${status}`, { main, cleanup });
+    } finally {
+      this.activeRuns.delete(runId);
+      active.lease.release();
+    }
   }
 
   private async executeSequence(runId: string, steps: TestStep[], context: Record<string, unknown>, active: ActiveRun, branchPath: string, iterationPath: number[], cleanup: boolean): Promise<StepOutcome> {
@@ -351,7 +479,7 @@ export class TaskOrchestrationService {
 
   private newRun(task: TestTask, inputs: Record<string, unknown>, status: "running" | "blocked", now: string, validationIssues?: WorkflowValidationIssue[]): TestRun {
     return {
-      runId: randomUUID(), taskId: task.taskId, projectId: this.projects.projectId(), status, inputs: structuredClone(inputs), createdAt: now,
+      runId: randomUUID(), taskId: task.taskId, taskName: task.name, projectId: this.projects.projectId(), status, inputs: boundedRecord(inputs), createdAt: now,
       ...(status === "running" ? { startedAt: now } : { completedAt: now, ...(validationIssues ? { validationIssues } : {}), summary: { passedNodes: 0, failedNodes: 0, cancelledNodes: 0, message: "Run blocked by preflight validation" } })
     };
   }
@@ -361,10 +489,12 @@ export class TaskOrchestrationService {
     this.nodeOrder.set(run.runId, []);
     this.events.set(run.runId, []);
     this.notifier?.("run", structuredClone(run));
+    this.schedulePersist(run.runId);
   }
   private updateRun(run: TestRun): void {
     this.runs.set(run.runId, structuredClone(run));
     this.notifier?.("run", structuredClone(run));
+    this.schedulePersist(run.runId);
   }
   private getRunRecord(runId: string): TestRun {
     const run = this.runs.get(runId);
@@ -377,10 +507,12 @@ export class TaskOrchestrationService {
     order.push(node.nodeRunId);
     this.nodeOrder.set(node.runId, order);
     this.notifier?.("nodeRun", structuredClone(node));
+    this.schedulePersist(node.runId);
   }
   private saveNodeRun(node: TestNodeRun): void {
     this.nodeRuns.set(node.nodeRunId, structuredClone(node));
     this.notifier?.("nodeRun", structuredClone(node));
+    this.schedulePersist(node.runId);
   }
   private getNodeRun(nodeRunId: string): TestNodeRun {
     const node = this.nodeRuns.get(nodeRunId);
@@ -403,6 +535,7 @@ export class TaskOrchestrationService {
     };
     list.push(event);
     this.events.set(runId, list);
+    this.schedulePersist(runId);
   }
   private listEvents(runId: string, sinceEventId: number): TestRunEvent[] {
     return (this.events.get(runId) ?? [])
@@ -410,7 +543,7 @@ export class TaskOrchestrationService {
       .map((event) => structuredClone(event));
   }
   private summary(runId: string, message?: string): NonNullable<TestRun["summary"]> {
-    const nodes = this.listNodeRuns(runId, 0, 10_000);
+    const nodes = (this.nodeOrder.get(runId) ?? []).map((nodeRunId) => this.nodeRuns.get(nodeRunId)!).filter(Boolean);
     return {
       passedNodes: nodes.filter((item) => item.status === "passed").length,
       failedNodes: nodes.filter((item) => item.status === "failed").length,
@@ -424,16 +557,141 @@ export class TaskOrchestrationService {
     const status = run.status === "cancelling" ? "cancelled" : "failed";
     this.updateRun({ ...run, status, completedAt: new Date().toISOString(), summary: this.summary(runId, error instanceof Error ? error.message : String(error)) });
     this.addEvent(runId, `run.${status}`, { error: normalizeError(error) });
+    const active = this.activeRuns.get(runId);
+    active?.lease.release();
     this.activeRuns.delete(runId);
+  }
+
+  private loadArchive(archive: TestRunLogArchive): void {
+    if (this.runs.has(archive.run.runId)) {
+      this.addWarning(`${archive.run.runId}: duplicate Run archive`);
+      return;
+    }
+    this.runs.set(archive.run.runId, structuredClone(archive.run));
+    const order: string[] = [];
+    for (const node of archive.nodeRuns) {
+      if (this.nodeRuns.has(node.nodeRunId)) {
+        this.addWarning(`${archive.run.runId}: duplicate nodeRunId ${node.nodeRunId}`);
+        continue;
+      }
+      this.nodeRuns.set(node.nodeRunId, structuredClone(node));
+      order.push(node.nodeRunId);
+    }
+    this.nodeOrder.set(archive.run.runId, order);
+    this.events.set(archive.run.runId, archive.events.map((event) => structuredClone(event)));
+    for (const event of archive.events) this.nextEventId = Math.max(this.nextEventId, event.eventId + 1);
+  }
+
+  private archive(runId: string): TestRunLogArchive {
+    const run = this.getRunRecord(runId);
+    const nodeRuns = (this.nodeOrder.get(runId) ?? []).map((nodeRunId) => structuredClone(this.nodeRuns.get(nodeRunId)!));
+    const events = (this.events.get(runId) ?? []).map((event) => structuredClone(event));
+    return { formatVersion: 1, run, nodeRuns, events };
+  }
+
+  private schedulePersist(runId: string): void {
+    if (!this.projects.session() || !this.runs.has(runId)) return;
+    this.dirtyRuns.add(runId);
+    this.startPersistWorker();
+  }
+
+  private startPersistWorker(): void {
+    if (this.persistWorker || this.dirtyRuns.size === 0) return;
+    const worker = this.persistDirtyRuns();
+    let wrapped!: Promise<void>;
+    wrapped = worker.finally(() => {
+      if (this.persistWorker === wrapped) this.persistWorker = undefined;
+      if (this.dirtyRuns.size > 0) this.startPersistWorker();
+    });
+    this.persistWorker = wrapped;
+  }
+
+  private async persistDirtyRuns(): Promise<void> {
+    while (this.dirtyRuns.size > 0) {
+      const runId = this.dirtyRuns.values().next().value as string;
+      this.dirtyRuns.delete(runId);
+      if (!this.runs.has(runId)) continue;
+      const session = this.projects.session();
+      if (!session) continue;
+      try { await this.runLogs.save(session.rootPath, this.archive(runId)); }
+      catch (error) { this.addWarning(`${runId}: failed to persist Run log: ${errorMessage(error)}`); }
+    }
+  }
+
+  private async flushPersistence(): Promise<void> {
+    this.startPersistWorker();
+    while (this.persistWorker) await this.persistWorker;
+  }
+
+  private removeRunFromMemory(runId: string): void {
+    for (const nodeRunId of this.nodeOrder.get(runId) ?? []) this.nodeRuns.delete(nodeRunId);
+    this.nodeOrder.delete(runId);
+    this.events.delete(runId);
+    this.runs.delete(runId);
+    this.dirtyRuns.delete(runId);
+  }
+
+  private requireSession(): { projectId: string; rootPath: string } {
+    const session = this.projects.session();
+    if (!session) throw Object.assign(new Error("No project is open"), { category: "requires_project" });
+    return session;
+  }
+
+  private addWarning(message: string): void {
+    if (!this.warnings.includes(message)) this.warnings.push(message);
   }
 }
 
+const ACTIVE_RUN_STATUSES = new Set<TestRun["status"]>(["running", "cancelling"]);
+const NOOP_EXECUTION: OrchestrationExecutionPort = { assertIdle: () => undefined, acquire: () => ({ release: () => undefined }) };
+const NOOP_RUN_LOGS: OrchestrationRunLogPort = {
+  load: async () => ({ archives: [], warnings: [] }),
+  save: async () => undefined,
+  remove: async () => undefined,
+  clear: async () => undefined
+};
+
 function issue(code: string, message: string, nodeId?: string): WorkflowValidationIssue { return { severity: "error", code, message, ...(nodeId ? { nodeId } : {}) }; }
+function conflict(message: string): Error { return Object.assign(new Error(message), { category: "conflict" }); }
+function errorMessage(error: unknown): string { return error instanceof Error ? error.message : String(error); }
 function matchesType(value: unknown, type: string): boolean { if (type === "unknown") return true; if (type === "array") return Array.isArray(value); if (type === "object") return Boolean(value) && typeof value === "object" && !Array.isArray(value); return typeof value === type; }
-function normalizeError(error: unknown): { category: string; message: string } { return { category: (error as { category?: string })?.category ?? (isAbort(error) ? "cancelled" : "error"), message: error instanceof Error ? error.message : String(error) }; }
+function normalizeError(error: unknown): { category: string; message: string; truncation?: TruncatedValue } {
+  const rawCategory = (error as { category?: unknown })?.category;
+  const category = typeof rawCategory === "string" ? rawCategory : isAbort(error) ? "cancelled" : "error";
+  const bounded = boundedValue(error instanceof Error ? error.message : String(error));
+  if (typeof bounded === "string") return { category, message: bounded };
+  if (isTruncatedValue(bounded)) return { category, message: bounded.preview, truncation: bounded };
+  return { category, message: String(error) };
+}
 function isAbort(error: unknown): boolean { return error instanceof Error && error.name === "AbortError"; }
 function abortError(message: string): Error { return Object.assign(new Error(message), { name: "AbortError" }); }
-function boundedValue(value: unknown): unknown { if (value === undefined) return undefined; try { const text = JSON.stringify(value); return text.length <= 100_000 ? JSON.parse(text) : { truncated: true, bytes: Buffer.byteLength(text), preview: text.slice(0, 4_000) }; } catch { return { unserializable: true, summary: String(value) }; } }
+type TruncatedValue = { truncated: true; bytes: number; preview: string };
+function boundedRecord(value: Record<string, unknown>): Record<string, unknown> {
+  const bounded = boundedValue(value);
+  return bounded && typeof bounded === "object" && !Array.isArray(bounded) ? bounded as Record<string, unknown> : { value: bounded };
+}
+function boundedValue(value: unknown): unknown {
+  if (value === undefined) return undefined;
+  try {
+    const text = JSON.stringify(value);
+    const bytes = Buffer.byteLength(text, "utf8");
+    return bytes <= 100_000 ? JSON.parse(text) : { truncated: true, bytes, preview: utf8Preview(text, 4_000) } satisfies TruncatedValue;
+  } catch { return { unserializable: true, summary: String(value) }; }
+}
+function isTruncatedValue(value: unknown): value is TruncatedValue {
+  return Boolean(value) && typeof value === "object" && (value as { truncated?: unknown }).truncated === true;
+}
+function utf8Preview(value: string, maxBytes: number): string {
+  if (Buffer.byteLength(value, "utf8") <= maxBytes) return value;
+  let low = 0;
+  let high = value.length;
+  while (low < high) {
+    const middle = Math.ceil((low + high) / 2);
+    if (Buffer.byteLength(value.slice(0, middle), "utf8") <= maxBytes) low = middle;
+    else high = middle - 1;
+  }
+  return value.slice(0, low);
+}
 function encodeOption(value: unknown): string { return workflowContentHash(value); }
 function codePointCompare(left: string, right: string): number { return left < right ? -1 : left > right ? 1 : 0; }
 function writeVariable(context: Record<string, unknown>, active: ActiveRun, name: string, value: unknown): void {

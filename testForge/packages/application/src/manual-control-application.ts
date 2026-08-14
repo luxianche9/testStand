@@ -1,0 +1,84 @@
+import type { RequestContext } from "@testforge/contracts/agents";
+import { manualToolInvocationInputSchema, type ManualToolInvocationInput, type ManualToolInvocationResult } from "@testforge/contracts/execution";
+import type { DeviceCatalogService, DeviceService } from "@testforge/devices";
+import type { Authorizer } from "./authorization.js";
+import type { ExecutionCoordinator } from "./execution-coordinator.js";
+
+export class ManualControlApplication {
+  private active: { controller: AbortController; completion: Promise<ManualToolInvocationResult> } | undefined;
+
+  constructor(
+    private readonly authorizer: Authorizer,
+    private readonly devices: DeviceService,
+    private readonly catalog: DeviceCatalogService,
+    private readonly execution: ExecutionCoordinator
+  ) {}
+
+  async invokeTool(context: RequestContext, raw: ManualToolInvocationInput): Promise<ManualToolInvocationResult> {
+    this.authorizer.authorize(context, "hardware.executeTools");
+    const input = manualToolInvocationInputSchema.parse(raw);
+    const hardware = this.catalog.getHardware(input.hardwareId);
+    if (hardware.kind !== "managed" || !hardware.serverId) {
+      throw invalidArgument(`Hardware ${input.hardwareId} is passive and cannot execute MCP tools`);
+    }
+    const tool = this.devices.listTools().find((item) => item.externalName === input.toolName);
+    if (!tool) throw unavailable(`MCP tool is unavailable: ${input.toolName}`);
+    if (tool.kind !== "hardware") throw invalidArgument(`Tool ${input.toolName} is not hardware-scoped`);
+    if (tool.serverId !== hardware.serverId) {
+      throw invalidArgument(`Tool ${input.toolName} belongs to ${tool.serverId}, not hardware server ${hardware.serverId}`);
+    }
+    const availability = this.devices.listAvailability().find((item) => item.hardwareId === input.hardwareId);
+    if (!availability || availability.state !== "available") {
+      throw unavailable(availability?.message ?? `Hardware ${input.hardwareId} is ${availability?.state ?? "not yet checked"}`);
+    }
+
+    const startedAt = new Date().toISOString();
+    const started = performance.now();
+    const lease = this.execution.acquire({
+      state: "manual",
+      hardwareId: input.hardwareId,
+      toolName: input.toolName,
+      startedAt
+    });
+    const controller = new AbortController();
+    let completion!: Promise<ManualToolInvocationResult>;
+    completion = (async () => {
+      try {
+        const output = await this.devices.callTool(
+          input.toolName,
+          { ...input.arguments, hardwareId: input.hardwareId },
+          { timeoutMs: input.timeoutMs, signal: controller.signal }
+        );
+        const completedAt = new Date().toISOString();
+        return {
+          hardwareId: input.hardwareId,
+          toolName: input.toolName,
+          startedAt,
+          completedAt,
+          durationMs: Math.max(0, Math.round(performance.now() - started)),
+          output
+        };
+      } finally {
+        if (this.active?.completion === completion) this.active = undefined;
+        lease.release();
+      }
+    })();
+    this.active = { controller, completion };
+    return await completion;
+  }
+
+  async close(): Promise<void> {
+    const active = this.active;
+    if (!active) return;
+    active.controller.abort(Object.assign(new Error("Application shutdown"), { name: "AbortError" }));
+    await active.completion.catch(() => undefined);
+  }
+}
+
+function invalidArgument(message: string): Error {
+  return Object.assign(new Error(message), { category: "invalid_argument" });
+}
+
+function unavailable(message: string): Error {
+  return Object.assign(new Error(message), { category: "unavailable" });
+}

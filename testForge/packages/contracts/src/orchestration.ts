@@ -64,20 +64,108 @@ export const testTaskSchema = z.object({
 export interface TestTask { formatVersion: 2; taskId: string; name: string; inputs: WorkflowVariableDefinition[]; variables: WorkflowVariableDefinition[]; setup: TestStep[]; steps: TestStep[]; cleanup: TestStep[] }
 export interface TaskValidationResult { valid: boolean; issues: WorkflowValidationIssue[] }
 
-export type TestRunStatus = "blocked" | "running" | "cancelling" | "passed" | "failed" | "cancelled" | "interrupted";
-export type TestNodeRunStatus = "pending" | "running" | "waiting_operator" | "passed" | "failed" | "cancelled" | "skipped";
-export interface TestRun {
-  runId: string; taskId: string; projectId: string; status: TestRunStatus; inputs: Record<string, unknown>; createdAt: string;
-  startedAt?: string; completedAt?: string; cancelRequestedAt?: string;
-  summary?: { passedNodes: number; failedNodes: number; cancelledNodes: number; message?: string };
-  validationIssues?: WorkflowValidationIssue[];
-}
-export interface TestNodeRun {
-  nodeRunId: string; runId: string; nodeId: string; nodeLabel: string; nodeType: TestStep["type"];
-  status: TestNodeRunStatus; branchPath: string; iterationPath: number[]; attempt: number; startedAt: string;
-  completedAt?: string; input?: unknown; output?: unknown; error?: { category: string; message: string };
-  decision?: { prompt: string; options: { label: string; value: string }[]; selectedValue?: string };
-}
-export interface TestRunEvent { eventId: number; runId: string; timestamp: string; type: string; data?: unknown }
-export interface TestRunDetail { run: TestRun; nodeRuns: TestNodeRun[]; events: TestRunEvent[] }
+export const testRunStatusSchema = z.enum(["blocked", "running", "cancelling", "passed", "failed", "cancelled", "interrupted"]);
+export type TestRunStatus = z.infer<typeof testRunStatusSchema>;
+export const testNodeRunStatusSchema = z.enum(["pending", "running", "waiting_operator", "passed", "failed", "cancelled", "skipped"]);
+export type TestNodeRunStatus = z.infer<typeof testNodeRunStatusSchema>;
+
+const workflowValidationIssueSchema = z.object({
+  severity: z.enum(["error", "warning"]),
+  code: z.string().min(1),
+  message: z.string(),
+  nodeId: z.string().optional(),
+  edgeId: z.string().optional()
+});
+
+export const testRunSchema = z.object({
+  runId: z.string().min(1),
+  taskId: z.string().min(1),
+  taskName: z.string().min(1),
+  projectId: z.string().min(1),
+  status: testRunStatusSchema,
+  inputs: z.record(z.unknown()),
+  createdAt: z.string().datetime(),
+  startedAt: z.string().datetime().optional(),
+  completedAt: z.string().datetime().optional(),
+  cancelRequestedAt: z.string().datetime().optional(),
+  summary: z.object({
+    passedNodes: z.number().int().min(0),
+    failedNodes: z.number().int().min(0),
+    cancelledNodes: z.number().int().min(0),
+    message: z.string().optional()
+  }).optional(),
+  validationIssues: z.array(workflowValidationIssueSchema).optional()
+});
+export type TestRun = z.infer<typeof testRunSchema>;
+
+const testStepTypeSchema = z.enum(["tool", "delay", "set_variable", "assert", "if", "loop", "parallel", "operator"]);
+export const testNodeRunSchema = z.object({
+  nodeRunId: z.string().min(1),
+  runId: z.string().min(1),
+  nodeId: z.string().min(1),
+  nodeLabel: z.string(),
+  nodeType: testStepTypeSchema,
+  status: testNodeRunStatusSchema,
+  branchPath: z.string(),
+  iterationPath: z.array(z.number().int().min(0)),
+  attempt: z.number().int().min(1),
+  startedAt: z.string().datetime(),
+  completedAt: z.string().datetime().optional(),
+  input: z.unknown().optional(),
+  output: z.unknown().optional(),
+  error: z.object({
+    category: z.string(),
+    message: z.string(),
+    truncation: z.object({ truncated: z.literal(true), bytes: z.number().int().nonnegative(), preview: z.string() }).optional()
+  }).optional(),
+  decision: z.object({
+    prompt: z.string(),
+    options: z.array(z.object({ label: z.string(), value: z.string() })),
+    selectedValue: z.string().optional()
+  }).optional()
+});
+export type TestNodeRun = z.infer<typeof testNodeRunSchema>;
+
+export const testRunEventSchema = z.object({
+  eventId: z.number().int().min(1),
+  runId: z.string().min(1),
+  timestamp: z.string().datetime(),
+  type: z.string().min(1),
+  data: z.unknown().optional()
+});
+export type TestRunEvent = z.infer<typeof testRunEventSchema>;
+
+export const testRunLogArchiveSchema = z.object({
+  formatVersion: z.literal(1),
+  run: testRunSchema,
+  nodeRuns: z.array(testNodeRunSchema),
+  events: z.array(testRunEventSchema)
+}).superRefine((archive, context) => {
+  const nodeIds = new Set<string>();
+  for (const [index, node] of archive.nodeRuns.entries()) {
+    if (node.runId !== archive.run.runId) context.addIssue({ code: z.ZodIssueCode.custom, path: ["nodeRuns", index, "runId"], message: "node Run id does not match archive Run" });
+    if (nodeIds.has(node.nodeRunId)) context.addIssue({ code: z.ZodIssueCode.custom, path: ["nodeRuns", index, "nodeRunId"], message: "duplicate nodeRunId" });
+    nodeIds.add(node.nodeRunId);
+  }
+  const eventIds = new Set<number>();
+  for (const [index, event] of archive.events.entries()) {
+    if (event.runId !== archive.run.runId) context.addIssue({ code: z.ZodIssueCode.custom, path: ["events", index, "runId"], message: "event Run id does not match archive Run" });
+    if (eventIds.has(event.eventId)) context.addIssue({ code: z.ZodIssueCode.custom, path: ["events", index, "eventId"], message: "duplicate eventId" });
+    eventIds.add(event.eventId);
+  }
+});
+export type TestRunLogArchive = z.infer<typeof testRunLogArchiveSchema>;
+
+export const testRunListQuerySchema = z.object({
+  statuses: z.array(testRunStatusSchema).optional(),
+  search: z.string().max(200).optional(),
+  from: z.string().datetime().optional(),
+  to: z.string().datetime().optional(),
+  offset: z.number().int().min(0).default(0),
+  limit: z.number().int().min(1).max(200).default(50)
+}).strict();
+export type TestRunListQuery = z.input<typeof testRunListQuerySchema>;
+export interface TestRunListResult { items: TestRun[]; total: number; warnings: string[] }
+
+export interface TestRunDetail { run: TestRun; nodeRuns: TestNodeRun[]; events: TestRunEvent[]; nodeTotal: number }
 export interface OperatorDecision { nodeRunId: string; runId: string; nodeId: string; prompt: string; options: { label: string; value: string }[] }

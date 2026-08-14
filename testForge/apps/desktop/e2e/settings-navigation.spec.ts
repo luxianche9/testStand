@@ -32,12 +32,12 @@ test("settings returns to the page that opened it", async () => {
     await openSettingsAndReturn(page, () => expect(page.getByRole("button", { name: "应用" })).toBeVisible());
 
     await page.getByRole("tab", { name: "手动控制" }).click();
-    await expect(page.getByText("手动控制页面尚未实现")).toBeVisible();
-    await openSettingsAndReturn(page, () => expect(page.getByText("手动控制页面尚未实现")).toBeVisible());
+    await expect(page.getByRole("heading", { name: "手动控制" })).toBeVisible();
+    await openSettingsAndReturn(page, () => expect(page.getByRole("heading", { name: "手动控制" })).toBeVisible());
 
     await page.getByRole("tab", { name: "运行日志" }).click();
-    await expect(page.getByText("运行日志页面尚未实现")).toBeVisible();
-    await openSettingsAndReturn(page, () => expect(page.getByText("运行日志页面尚未实现")).toBeVisible());
+    await expect(page.getByRole("heading", { name: "运行日志" })).toBeVisible();
+    await openSettingsAndReturn(page, () => expect(page.getByRole("heading", { name: "运行日志" })).toBeVisible());
   } finally {
     await application.close().catch(() => undefined);
     await rm(userDataDir, { recursive: true, force: true });

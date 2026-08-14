@@ -66,11 +66,11 @@ export class ProjectsApplication {
     try {
       const result = await action();
       await this.wiring.initialize();
-      this.orchestration.initialize();
+      await this.orchestration.initialize();
       return result;
     } catch (error) {
       await this.wiring.initialize();
-      this.orchestration.initialize();
+      await this.orchestration.initialize();
       throw error;
     }
   }

@@ -1,7 +1,8 @@
 import type { AgentIntegrationPreview, AgentIntegrationStatus, AgentKind, AgentToolInfo, McpGatewayStatus, OpenCodeRuntimeStatus } from "./agents.js";
 import type { ComputerStatus, DeviceBundleApplyInput, DeviceBundleExport, DeviceBundleImport, DeviceBundleKind, DeviceBundlePreview, Hardware, HardwareAvailability, HardwareImageTarget, ManagedHardware, McpServerConfig, RemoteComputer, RemoteServiceLog, ServerStatus, ToolCatalogItem } from "./devices.js";
+import type { ExecutionActivity, ManualToolInvocationInput, ManualToolInvocationResult } from "./execution.js";
 import type { LlmSettings, LlmSettingsInput, ProjectView } from "./storage.js";
-import type { OperatorDecision, TaskValidationResult, TestNodeRun, TestRun, TestRunDetail, TestTask } from "./orchestration.js";
+import type { OperatorDecision, TaskValidationResult, TestNodeRun, TestRun, TestRunDetail, TestRunListQuery, TestRunListResult, TestRunLogArchive, TestTask } from "./orchestration.js";
 import type { ProjectDocument, ProjectFolderSelection, RecentProjectSummary } from "./projects.js";
 import type { ProjectWiring, RequestWiringTaskInput, WiringTask, WiringTaskStatus } from "./wiring.js";
 
@@ -13,6 +14,7 @@ export interface DashboardSnapshot {
   hardware: ManagedHardware[];
   tools: ToolCatalogItem[];
   gateway: McpGatewayStatus;
+  execution: ExecutionActivity;
   availability?: HardwareAvailability[];
 }
 
@@ -42,7 +44,11 @@ export const TESTFORGE_IPC = {
   orchestration: {
     updateTask: "testforge:orchestration:update-task", validateTask: "testforge:orchestration:validate-task", startRun: "testforge:orchestration:start-run",
     cancelRun: "testforge:orchestration:cancel-run", getRun: "testforge:orchestration:get-run", listOperatorDecisions: "testforge:orchestration:list-operator-decisions",
-    respondOperatorDecision: "testforge:orchestration:respond-operator-decision"
+    respondOperatorDecision: "testforge:orchestration:respond-operator-decision", listRuns: "testforge:orchestration:list-runs",
+    exportRun: "testforge:orchestration:export-run", deleteRun: "testforge:orchestration:delete-run", clearCompletedRuns: "testforge:orchestration:clear-completed-runs"
+  },
+  manual: {
+    invokeTool: "testforge:manual:invoke-tool"
   },
   agents: {
     gatewayToken: "testforge:agents:gateway-token", rotateGatewayToken: "testforge:agents:rotate-gateway-token", status: "testforge:agents:status",
@@ -59,9 +65,9 @@ export const TESTFORGE_IPC = {
   }
 } as const;
 
-export type TestForgeEventName = "availability" | "run" | "nodeRun" | "wiringTask" | "operator" | "project" | "opencode" | "window-state";
+export type TestForgeEventName = "availability" | "execution" | "run" | "nodeRun" | "wiringTask" | "operator" | "project" | "opencode" | "window-state";
 export const TESTFORGE_EVENT_CHANNELS: Record<TestForgeEventName, string> = {
-  availability: "testforge:event:availability", run: "testforge:event:run", nodeRun: "testforge:event:nodeRun", wiringTask: "testforge:event:wiringTask",
+  availability: "testforge:event:availability", execution: "testforge:event:execution", run: "testforge:event:run", nodeRun: "testforge:event:nodeRun", wiringTask: "testforge:event:wiringTask",
   operator: "testforge:event:operator", project: "testforge:event:project", opencode: "testforge:event:opencode", "window-state": "testforge:event:window-state"
 };
 
@@ -120,8 +126,16 @@ export interface TestForgeOrchestrationApi {
   startRun(input?: { inputs?: Record<string, unknown> }): Promise<TestRunDetail>;
   cancelRun(runId: string): Promise<TestRun>;
   getRun(runId: string, sinceEventId?: number, nodeOffset?: number, nodeLimit?: number): Promise<TestRunDetail>;
+  listRuns(input?: TestRunListQuery): Promise<TestRunListResult>;
+  exportRun(runId: string): Promise<TestRunLogArchive>;
+  deleteRun(runId: string): Promise<{ runId: string }>;
+  clearCompletedRuns(): Promise<{ deleted: number }>;
   listOperatorDecisions(): Promise<OperatorDecision[]>;
   respondOperatorDecision(nodeRunId: string, selectedValue: string): Promise<TestNodeRun>;
+}
+
+export interface TestForgeManualApi {
+  invokeTool(input: ManualToolInvocationInput): Promise<ManualToolInvocationResult>;
 }
 
 export interface TestForgeAgentsApi {
@@ -166,6 +180,7 @@ export interface TestForgeApi {
   projects: TestForgeProjectsApi;
   wiring: TestForgeWiringApi;
   orchestration: TestForgeOrchestrationApi;
+  manual: TestForgeManualApi;
   agents: TestForgeAgentsApi;
   settings: TestForgeSettingsApi;
   window: TestForgeWindowApi;

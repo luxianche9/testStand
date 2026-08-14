@@ -48,12 +48,13 @@ test.describe.serial("TestForge folder project desktop", () => {
   test("starts on the welcome page and gates project-only navigation", async () => {
     await expect(page.getByRole("heading", { name: "最近项目" })).toBeVisible();
     await expect(page.getByRole("button", { name: "打开项目文件夹" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "设备管理", exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "工位接线", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "设置", exact: true })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "工位接线", exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "打开 AI 侧栏" })).toHaveCount(0);
+    await page.getByRole("button", { name: "设置", exact: true }).click();
     await page.getByRole("button", { name: "设备管理", exact: true }).click();
     await expect(page.getByRole("heading", { name: "设备管理" })).toBeVisible();
-    await page.getByRole("button", { name: "TestForge" }).click();
+    await page.getByRole("button", { name: "返回", exact: true }).click();
     await expect(page.getByRole("heading", { name: "最近项目" })).toBeVisible();
     await page.screenshot({ path: resolve(artifactDir, "welcome-light.png"), fullPage: true });
     expect(await page.evaluate(() => typeof window.testforge)).toBe("object");
@@ -68,9 +69,10 @@ test.describe.serial("TestForge folder project desktop", () => {
     // Every launch still returns to the welcome page even when recent projects exist.
     await expect(page.getByRole("heading", { name: "最近项目" })).toBeVisible();
     await page.getByText("project-a", { exact: true }).first().click();
-    await expect(page.getByRole("button", { name: "设备管理", exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "工位接线", exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "编排测试", exact: true })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "工位接线", exact: true })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "编排测试", exact: true })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "手动控制", exact: true })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "运行日志", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "打开 AI 侧栏" })).toBeVisible();
   });
 
@@ -100,17 +102,19 @@ test.describe.serial("TestForge folder project desktop", () => {
     expect(result.afterSave.dirty).toBe(false);
     expect(result.beforeSave?.file.wiring.connections[0]?.pins).toEqual([{ a: "1", b: "1" }, { a: "2", b: "2" }]);
 
+    await page.getByRole("button", { name: "设置", exact: true }).click();
     await page.getByRole("button", { name: "设备管理", exact: true }).click();
     await expect(page.getByRole("heading", { name: "设备管理" })).toBeVisible();
     await expect(page.getByRole("treeitem", { name: /DUT_A/ })).toBeVisible();
     await page.screenshot({ path: resolve(artifactDir, "devices-page.png"), fullPage: true });
 
-    await page.getByRole("button", { name: "工位接线", exact: true }).click();
+    await page.getByRole("button", { name: "返回", exact: true }).click();
+    await page.getByRole("tab", { name: "工位接线", exact: true }).click();
     await expect(page.getByText("硬件库")).toBeVisible();
-    await expect(page.getByRole("button", { name: "调用日志" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "接线调用历史" })).toBeVisible();
     await page.screenshot({ path: resolve(artifactDir, "project-wiring.png") });
 
-    await page.getByRole("button", { name: "编排测试", exact: true }).click();
+    await page.getByRole("tab", { name: "编排测试", exact: true }).click();
     await expect(page.getByRole("button", { name: "应用" })).toBeVisible();
     await expect(page.getByRole("button", { name: "校验" })).toBeVisible();
     await expect(page.getByRole("button", { name: "运行" })).toBeVisible();
@@ -132,7 +136,7 @@ test.describe.serial("TestForge folder project desktop", () => {
     await expect(page.getByText("MCP Gateway", { exact: false }).first()).toBeVisible();
     await expect(page.getByText("Codex", { exact: true }).first()).toBeVisible();
 
-    await page.getByRole("button", { name: "工位接线", exact: true }).click();
+    await page.getByRole("tab", { name: "工位接线", exact: true }).click();
     await page.getByRole("button", { name: "打开 AI 侧栏" }).click();
     const sidebar = page.locator(".tf-agent-sidebar");
     await expect(sidebar).toBeVisible();
@@ -148,14 +152,14 @@ test.describe.serial("TestForge folder project desktop", () => {
       if (!current) throw new Error("project missing");
       await window.testforge.wiring.update({ ...current.file.wiring, nodes: [...current.file.wiring.nodes, { hardwareId: "EXTRA", x: 300, y: 20, showImage: true, portPositions: {} }] });
     });
-    await page.getByRole("button", { name: "TestForge" }).click();
+    await requestLeaveProject(page);
     const dialog = page.getByRole("dialog", { name: "保存项目修改" });
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole("button", { name: "保存并继续" })).toBeVisible();
     await expect(dialog.getByRole("button", { name: "放弃修改" })).toBeVisible();
     await dialog.getByRole("button", { name: "取消" }).click();
-    await expect(page.getByRole("button", { name: "工位接线", exact: true })).toBeVisible();
-    await page.getByRole("button", { name: "TestForge" }).click();
+    await expect(page.getByRole("tab", { name: "工位接线", exact: true })).toBeVisible();
+    await requestLeaveProject(page);
     await dialog.getByRole("button", { name: "放弃修改" }).click();
     await expect(page.getByRole("heading", { name: "最近项目" })).toBeVisible();
     await expect(page.getByRole("button", { name: "打开 AI 侧栏" })).toHaveCount(0);
@@ -174,3 +178,8 @@ test.describe.serial("TestForge folder project desktop", () => {
     expect(rendererErrors).toEqual([]);
   });
 });
+
+async function requestLeaveProject(page: Page): Promise<void> {
+  await page.getByRole("button", { name: "项目文件夹菜单" }).click();
+  await page.getByRole("menuitem", { name: "退出", exact: true }).click();
+}

@@ -1,6 +1,7 @@
 import { TESTFORGE_IPC, type TestForgeAgentsApi, type TestForgeSettingsApi } from "@testforge/contracts/desktop";
 import type { DeviceBundleApplyInput, DeviceBundleKind, Hardware, HardwareImageTarget, McpServerConfig, RemoteComputer } from "@testforge/contracts/devices";
-import type { TestTask } from "@testforge/contracts/orchestration";
+import type { ManualToolInvocationInput } from "@testforge/contracts/execution";
+import type { TestRunListQuery, TestTask } from "@testforge/contracts/orchestration";
 import type { ProjectDocument } from "@testforge/contracts/projects";
 import { llmSettingsInputSchema } from "@testforge/contracts/storage";
 import type { ProjectWiring, RequestWiringTaskInput, WiringTaskStatus } from "@testforge/contracts/wiring";
@@ -128,8 +129,14 @@ export function registerDesktopIpc(ipc: IpcMainPort, dependencies: DesktopIpcDep
   handle(TESTFORGE_IPC.orchestration.startRun, (raw) => application.orchestration.startRun(HUMAN_REQUEST_CONTEXT, raw as { inputs?: Record<string, unknown> } | undefined));
   handle(TESTFORGE_IPC.orchestration.cancelRun, (id) => application.orchestration.cancelRun(HUMAN_REQUEST_CONTEXT, String(id)));
   handle(TESTFORGE_IPC.orchestration.getRun, (id, since, offset, limit) => application.orchestration.getRun(HUMAN_REQUEST_CONTEXT, String(id), Number(since ?? 0), Number(offset ?? 0), Number(limit ?? 200)));
+  handle(TESTFORGE_IPC.orchestration.listRuns, (raw) => application.orchestration.listRuns(HUMAN_REQUEST_CONTEXT, raw as TestRunListQuery | undefined));
+  handle(TESTFORGE_IPC.orchestration.exportRun, (id) => application.orchestration.exportRun(HUMAN_REQUEST_CONTEXT, String(id)));
+  handle(TESTFORGE_IPC.orchestration.deleteRun, (id) => application.orchestration.deleteRun(HUMAN_REQUEST_CONTEXT, String(id)));
+  handle(TESTFORGE_IPC.orchestration.clearCompletedRuns, () => application.orchestration.clearCompletedRuns(HUMAN_REQUEST_CONTEXT));
   handle(TESTFORGE_IPC.orchestration.listOperatorDecisions, () => application.orchestration.listOperatorDecisions(HUMAN_REQUEST_CONTEXT));
   handle(TESTFORGE_IPC.orchestration.respondOperatorDecision, (nodeRunId, value) => application.orchestration.respondOperatorDecision(HUMAN_REQUEST_CONTEXT, String(nodeRunId), String(value)));
+
+  handle(TESTFORGE_IPC.manual.invokeTool, (raw) => application.manual.invokeTool(HUMAN_REQUEST_CONTEXT, raw as ManualToolInvocationInput));
 
   handle(TESTFORGE_IPC.agents.gatewayToken, () => agents.gatewayToken());
   handle(TESTFORGE_IPC.agents.rotateGatewayToken, () => agents.rotateGatewayToken());

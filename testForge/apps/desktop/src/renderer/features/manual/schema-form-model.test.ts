@@ -1,0 +1,100 @@
+import { describe, expect, it } from "vitest";
+import {
+  initialSchemaValue,
+  requiresJsonFallback,
+  stripSchemaProperties,
+  validateSchemaArguments
+} from "./schema-form-model.js";
+
+describe("manual JSON Schema form model", () => {
+  it("builds required nested values and optional defaults without inventing other optional fields", () => {
+    const schema = {
+      type: "object",
+      properties: {
+        name: { type: "string", default: "fixture" },
+        enabled: { type: "boolean" },
+        limits: {
+          type: "object",
+          properties: { minimum: { type: "number", minimum: -10 }, maximum: { type: "number", default: 10 } },
+          required: ["minimum"]
+        },
+        samples: { type: "array", items: { type: "integer" } },
+        note: { type: "string" }
+      },
+      required: ["enabled", "limits", "samples"]
+    };
+
+    expect(initialSchemaValue(schema)).toEqual({
+      name: "fixture",
+      enabled: false,
+      limits: { minimum: -10, maximum: 10 },
+      samples: []
+    });
+  });
+
+  it("removes hardwareId from both visible properties and required fields", () => {
+    const visible = stripSchemaProperties({
+      type: "object",
+      properties: { hardwareId: { type: "string" }, channel: { type: "integer" } },
+      required: ["hardwareId", "channel"]
+    }, ["hardwareId"]);
+    expect(visible).toEqual({
+      type: "object",
+      properties: { channel: { type: "integer" } },
+      required: ["channel"]
+    });
+
+    const composed = stripSchemaProperties({
+      allOf: [{
+        type: "object",
+        properties: { hardwareId: { type: "string" }, channel: { type: "integer" } },
+        required: ["hardwareId", "channel"]
+      }]
+    }, ["hardwareId"]);
+    expect(composed).toMatchObject({ allOf: [{ properties: { channel: { type: "integer" } }, required: ["channel"] }] });
+  });
+
+  it("uses JSON fallback for combinators, tuples and dynamic nested objects", () => {
+    expect(requiresJsonFallback({ oneOf: [{ type: "string" }, { type: "number" }] })).toBe(true);
+    expect(requiresJsonFallback({ type: "array", items: [{ type: "string" }, { type: "number" }] })).toBe(true);
+    expect(requiresJsonFallback({ type: "object", properties: { fixed: { type: "string" } }, patternProperties: { "^x": { type: "number" } } })).toBe(true);
+    expect(requiresJsonFallback({ type: "object", properties: { fixed: { type: "string" } } })).toBe(false);
+  });
+
+  it("validates the form after forcibly injecting the selected hardwareId", () => {
+    const schema = {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        hardwareId: { const: "HW1" },
+        channel: { type: "integer", minimum: 0, maximum: 3 },
+        options: {
+          type: "object",
+          additionalProperties: false,
+          properties: { enabled: { type: "boolean" } },
+          required: ["enabled"]
+        }
+      },
+      required: ["hardwareId", "channel", "options"]
+    };
+
+    expect(validateSchemaArguments(schema, "HW1", { hardwareId: "spoofed", channel: 2, options: { enabled: true } })).toEqual({ valid: true, errors: [] });
+    const invalid = validateSchemaArguments(schema, "HW1", { channel: 8, options: {} });
+    expect(invalid.valid).toBe(false);
+    expect(invalid.errors.join(" ")).toMatch(/小于或等于 3|必填/);
+    expect(validateSchemaArguments(schema, undefined, {})).toEqual({ valid: false, errors: [] });
+  });
+
+  it("reports unsupported root schemas and malformed patterns without using eval", () => {
+    expect(validateSchemaArguments({ type: "string" }, "HW1", {})).toMatchObject({ valid: false, errors: [expect.stringContaining("object")] });
+    expect(validateSchemaArguments({
+      oneOf: [{
+        type: "object",
+        properties: { hardwareId: { const: "HW1" }, channel: { type: "integer" } },
+        required: ["hardwareId", "channel"]
+      }]
+    }, "HW1", { channel: 1 })).toEqual({ valid: true, errors: [] });
+    expect(validateSchemaArguments({ type: "object", properties: { value: { type: "string", pattern: "[" } }, required: ["value"] }, "HW1", { value: "x" }))
+      .toMatchObject({ valid: false, errors: [expect.stringContaining("pattern")] });
+  });
+});

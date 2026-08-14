@@ -124,6 +124,7 @@ describe("TestForgeApplication policy", () => {
     await expect(app.devices.executeSsh(AGENT_REQUEST_CONTEXT, "PC1", "whoami")).rejects.toMatchObject({ category: "permission_denied" });
     await expect(app.devices.serverAction(AGENT_REQUEST_CONTEXT, "S1", "force-stop")).rejects.toMatchObject({ category: "permission_denied" });
     await expect(app.wiring.startTask(AGENT_REQUEST_CONTEXT, "WT")).rejects.toMatchObject({ category: "permission_denied" });
+    await expect(app.orchestration.deleteRun(AGENT_REQUEST_CONTEXT, "R")).rejects.toMatchObject({ category: "permission_denied" });
     expect(() => app.orchestration.respondOperatorDecision(AGENT_REQUEST_CONTEXT, "N", "yes")).toThrowError(/not authorized/);
 
     expect(devices.saveComputer).not.toHaveBeenCalled();

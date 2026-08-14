@@ -48,6 +48,7 @@ function AppShell() {
   }, [client]);
 
   useEffect(() => window.testforge.events.subscribe("availability", () => { void client.invalidateQueries({ queryKey: ["dashboard"] }); }), [client]);
+  useEffect(() => window.testforge.events.subscribe("execution", () => { void client.invalidateQueries({ queryKey: ["dashboard"] }); }), [client]);
   useEffect(() => window.testforge.events.subscribe("project", (payload) => {
     client.setQueryData(["project-document"], payload as ProjectDocument | null);
     void client.invalidateQueries({ queryKey: ["wiring-tasks"] });

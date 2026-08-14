@@ -61,8 +61,15 @@ export function createTestForgeApi(ipc: IpcRendererPort): TestForgeApi {
       startRun: (input) => invoke(TESTFORGE_IPC.orchestration.startRun, input),
       cancelRun: (runId) => invoke(TESTFORGE_IPC.orchestration.cancelRun, runId),
       getRun: (runId, sinceEventId, nodeOffset, nodeLimit) => invoke(TESTFORGE_IPC.orchestration.getRun, runId, sinceEventId, nodeOffset, nodeLimit),
+      listRuns: (input) => invoke(TESTFORGE_IPC.orchestration.listRuns, input),
+      exportRun: (runId) => invoke(TESTFORGE_IPC.orchestration.exportRun, runId),
+      deleteRun: (runId) => invoke(TESTFORGE_IPC.orchestration.deleteRun, runId),
+      clearCompletedRuns: () => invoke(TESTFORGE_IPC.orchestration.clearCompletedRuns),
       listOperatorDecisions: () => invoke(TESTFORGE_IPC.orchestration.listOperatorDecisions),
       respondOperatorDecision: (nodeRunId, selectedValue) => invoke(TESTFORGE_IPC.orchestration.respondOperatorDecision, nodeRunId, selectedValue)
+    },
+    manual: {
+      invokeTool: (input) => invoke(TESTFORGE_IPC.manual.invokeTool, input)
     },
     agents: {
       gatewayToken: () => invoke(TESTFORGE_IPC.agents.gatewayToken),

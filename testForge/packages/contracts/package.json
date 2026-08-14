@@ -7,6 +7,7 @@
     "./devices": "./src/devices.ts",
     "./storage": "./src/storage.ts",
     "./agents": "./src/agents.ts",
+    "./execution": "./src/execution.ts",
     "./wiring": "./src/wiring.ts",
     "./orchestration": "./src/orchestration.ts",
     "./projects": "./src/projects.ts",

@@ -43,6 +43,11 @@ export class ProjectService {
     return this.requireDocument();
   }
 
+  session(): { projectId: string; rootPath: string } | undefined {
+    if (!this.file || !this.rootPath) return undefined;
+    return { projectId: this.file.projectId, rootPath: this.rootPath };
+  }
+
   /** Project id for run records and other callers that only need the open document's identity. */
   projectId(): string {
     return this.requireFile().projectId;

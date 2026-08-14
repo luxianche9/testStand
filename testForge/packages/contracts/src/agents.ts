@@ -58,6 +58,7 @@ export const CAPABILITIES = [
   "orchestration.read",
   "orchestration.manage",
   "orchestration.run",
+  "orchestration.logs.manage",
   "orchestration.respondOperator"
 ] as const;
 

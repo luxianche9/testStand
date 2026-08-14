@@ -36,6 +36,39 @@ describe("Desktop IPC registration", () => {
     await handler?.({}, { baseUrl: " https://example.com/v1 ", model: " model " });
     expect(saveLlm).toHaveBeenCalledWith({ baseUrl: "https://example.com/v1", model: "model" });
   });
+
+  it("routes manual control and Run-log management through the application layer", async () => {
+    const handlers = new Map<string, (event: unknown, ...args: unknown[]) => unknown>();
+    const invokeTool = vi.fn(async (context, input) => ({ context, input }));
+    const listRuns = vi.fn((context, input) => ({ context, input, items: [] }));
+    const exportRun = vi.fn((context, runId) => ({ context, runId }));
+    const deleteRun = vi.fn(async (context, runId) => ({ context, runId }));
+    const clearCompletedRuns = vi.fn(async (context) => ({ context, deleted: 0 }));
+    registerDesktopIpc({ handle: (channel, listener) => { handlers.set(channel, listener); } }, {
+      application: {
+        manual: { invokeTool },
+        orchestration: { listRuns, exportRun, deleteRun, clearCompletedRuns }
+      } as never,
+      agents: {} as never,
+      settings: {} as never,
+      dialogs: {} as never,
+      windows: {} as never,
+      workspaceChanged: vi.fn()
+    });
+
+    const manualInput = { hardwareId: "HW1", toolName: "SERVER__write", arguments: { value: 1 } };
+    await handlers.get(TESTFORGE_IPC.manual.invokeTool)?.({}, manualInput);
+    await handlers.get(TESTFORGE_IPC.orchestration.listRuns)?.({}, { statuses: ["failed"] });
+    await handlers.get(TESTFORGE_IPC.orchestration.exportRun)?.({}, "RUN1");
+    await handlers.get(TESTFORGE_IPC.orchestration.deleteRun)?.({}, "RUN1");
+    await handlers.get(TESTFORGE_IPC.orchestration.clearCompletedRuns)?.({});
+
+    expect(invokeTool).toHaveBeenCalledWith(expect.objectContaining({ actor: "human" }), manualInput);
+    expect(listRuns).toHaveBeenCalledWith(expect.objectContaining({ actor: "human" }), { statuses: ["failed"] });
+    expect(exportRun).toHaveBeenCalledWith(expect.objectContaining({ actor: "human" }), "RUN1");
+    expect(deleteRun).toHaveBeenCalledWith(expect.objectContaining({ actor: "human" }), "RUN1");
+    expect(clearCompletedRuns).toHaveBeenCalledWith(expect.objectContaining({ actor: "human" }));
+  });
 });
 
 function flattenChannels(value: object): string[] {

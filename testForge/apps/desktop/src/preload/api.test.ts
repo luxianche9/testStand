@@ -29,7 +29,9 @@ describe("preload API", () => {
     void api.wiring.update({ nodes: [], connections: [] }); void api.wiring.requestTask({ portA: "A.P", portB: "B.P", action: "connect" });
     void api.wiring.startTask("W"); void api.wiring.completeTask("W", "confirmed"); void api.wiring.cancelTask("W"); void api.wiring.getTask("W"); void api.wiring.listTasks();
     void api.orchestration.updateTask(task); void api.orchestration.validateTask(task); void api.orchestration.startRun(); void api.orchestration.cancelRun("R");
-    void api.orchestration.getRun("R"); void api.orchestration.listOperatorDecisions(); void api.orchestration.respondOperatorDecision("N", "yes");
+    void api.orchestration.getRun("R"); void api.orchestration.listRuns(); void api.orchestration.exportRun("R"); void api.orchestration.deleteRun("R");
+    void api.orchestration.clearCompletedRuns(); void api.orchestration.listOperatorDecisions(); void api.orchestration.respondOperatorDecision("N", "yes");
+    void api.manual.invokeTool({ hardwareId: "H", toolName: "S__write", arguments: { value: 1 } });
     void api.agents.gatewayToken(); void api.agents.rotateGatewayToken(); void api.agents.status("codex"); void api.agents.preview("codex"); void api.agents.install("codex");
     void api.agents.remove("codex"); void api.agents.test("codex"); void api.agents.listTools(); void api.agents.openCodeStatus(); void api.agents.startOpenCode(); void api.agents.stopOpenCode(); void api.agents.restartOpenCode();
     void api.settings.getTheme(); void api.settings.setTheme("system"); void api.settings.getProjectView(); void api.settings.setProjectView("wiring");
@@ -40,7 +42,7 @@ describe("preload API", () => {
 
     expect(new Set(invoked)).toEqual(new Set(flattenChannels(TESTFORGE_IPC)));
     expect(new Set(listened)).toEqual(new Set(Object.values(TESTFORGE_EVENT_CHANNELS)));
-    expect(Object.keys(api)).toEqual(["system", "devices", "projects", "wiring", "orchestration", "agents", "settings", "window", "events"]);
+    expect(Object.keys(api)).toEqual(["system", "devices", "projects", "wiring", "orchestration", "manual", "agents", "settings", "window", "events"]);
   });
 });
 

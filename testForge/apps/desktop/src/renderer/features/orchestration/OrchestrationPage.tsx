@@ -6,10 +6,11 @@ import { IconAlert, IconPlay, IconRefresh } from "../../shared/icons.js";
 import { Badge, Btn, Modal, Spinner } from "../../shared/ui.js";
 import { useDashboard, useProjectDocument } from "../../shared/queries.js";
 import { useResizableWidth } from "../../shared/resizable.js";
+import { RunDetail } from "../run-logs/index.js";
 import { StepPalette, StepOutline } from "./StepOutline.js";
 import { StepProperties, VariableEditor } from "./StepEditor.js";
 import { ValidationPanel } from "./ValidationPanel.js";
-import { OperatorDecisionModal, RunInputsModal, RunInspector } from "./RunPanel.js";
+import { OperatorDecisionModal, RunInputsModal } from "./RunPanel.js";
 import { duplicateTaskStep, findStep, moveTaskStep, newStep, removeTaskStep, replaceTaskStep, stepTypeLabel } from "./workflow-model.js";
 
 const SECTIONS = ["setup", "steps", "cleanup"] as const;
@@ -60,6 +61,7 @@ function TaskWorkspace({ project, selectedRunId, onRunSelected }: {
 }) {
   const client = useQueryClient();
   const tools = useDashboard();
+  const manualBusy = tools.data?.execution.state === "manual";
 
   const [draft, setDraft] = useState<TestTask>(() => structuredClone(project.file.task));
   const [selectedStepId, setSelectedStepId] = useState<string>();
@@ -126,12 +128,13 @@ function TaskWorkspace({ project, selectedRunId, onRunSelected }: {
       <Btn
         variant="primary"
         icon={<IconPlay size={13} />}
-        disabled={start.isPending}
+        disabled={start.isPending || manualBusy}
+        title={manualBusy ? "手动硬件调用正在执行" : undefined}
         onClick={() => { if (task.inputs.length > 0) setRunInputsOpen(true); else start.mutate({}); }}
       >运行</Btn>
     </div>
 
-    {(error || notice) && <div className={error ? "orchestration-error" : "orchestration-notice"}>{error ? <><IconAlert size={15} />{String(error)}</> : notice}</div>}
+    {(error || notice || manualBusy) && <div className={error ? "orchestration-error" : "orchestration-notice"}>{error ? <><IconAlert size={15} />{String(error)}</> : manualBusy ? "手动硬件调用正在执行，完成后才能启动 Run。" : notice}</div>}
 
     <div className="suite-editor-grid" style={{ gridTemplateColumns: `150px minmax(0, 1fr)${editing ? ` 5px ${inspector.width}px` : ""}` }}>
       <StepPalette onAdd={addStep} />
@@ -176,13 +179,13 @@ function TaskWorkspace({ project, selectedRunId, onRunSelected }: {
       title="运行结果"
       width={760}
     >
-      {selectedRunId && <RunInspector runId={selectedRunId} />}
+      {selectedRunId && <RunDetail key={selectedRunId} runId={selectedRunId} />}
     </Modal>
 
     <RunInputsModal
       open={runInputsOpen}
       inputs={task.inputs}
-      pending={start.isPending}
+      pending={start.isPending || manualBusy}
       onClose={() => setRunInputsOpen(false)}
       onRun={(values) => start.mutate(values)}
     />

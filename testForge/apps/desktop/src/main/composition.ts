@@ -1,14 +1,14 @@
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { app, safeStorage } from "electron";
-import { AGENT_REQUEST_CONTEXT, TestForgeApplication } from "@testforge/application";
+import { AGENT_REQUEST_CONTEXT, ExecutionCoordinator, TestForgeApplication } from "@testforge/application";
 import type { AgentToolInfo } from "@testforge/contracts/agents";
 import type { TestForgeAgentsApi, TestForgeSettingsApi } from "@testforge/contracts/desktop";
 import { DeviceCatalogService, DeviceService, DeviceStore, McpClientPool } from "@testforge/devices";
 import { LocalMcpGateway } from "@testforge/mcp-gateway";
 import { TaskOrchestrationService } from "@testforge/orchestration";
 import { ProjectService } from "@testforge/projects";
-import { SecretStore, SettingsStore, type SecretProtector } from "@testforge/storage";
+import { ProjectRunLogStore, SecretStore, SettingsStore, type SecretProtector } from "@testforge/storage";
 import { ProjectWiringService } from "@testforge/wiring";
 import { CodexAgentIntegrationService, MemoryCodexCommandRunner, MemoryUserEnvironmentStore } from "./agent-integration.js";
 import { autoStartOpenCode, reconcileOpenCodeSettings, reconcileOpenCodeWorkspace } from "./opencode-lifecycle.js";
@@ -49,8 +49,10 @@ export async function createDesktopComposition(windows: DesktopWindows): Promise
   const catalog = new DeviceCatalogService(deviceStore);
   const projectWiring = new ProjectWiringService(projects, catalog);
   await projectWiring.initialize();
-  const taskOrchestration = new TaskOrchestrationService(projects, devices, catalog, app.getVersion());
-  taskOrchestration.initialize();
+  const execution = new ExecutionCoordinator();
+  const runLogs = new ProjectRunLogStore();
+  const taskOrchestration = new TaskOrchestrationService(projects, devices, catalog, app.getVersion(), execution, runLogs);
+  await taskOrchestration.initialize();
 
   projectWiring.setNotifier((task) => {
     windows.publish("wiringTask", task);
@@ -58,6 +60,7 @@ export async function createDesktopComposition(windows: DesktopWindows): Promise
   });
   projectWiring.setProjectNotifier(() => windows.publish("project", projects.current()));
   taskOrchestration.setNotifier((event, payload) => windows.publish(event, payload));
+  execution.setNotifier((activity) => windows.publish("execution", activity));
 
   let gateway!: LocalMcpGateway;
   const application = new TestForgeApplication({
@@ -66,6 +69,7 @@ export async function createDesktopComposition(windows: DesktopWindows): Promise
     projects,
     wiring: projectWiring,
     orchestration: taskOrchestration,
+    execution,
     system: { gatewayStatus: () => gateway.status() }
   });
   gateway = new LocalMcpGateway(application, secrets, Number(process.env.TESTFORGE_GATEWAY_PORT ?? 8000));
@@ -158,6 +162,7 @@ export async function createDesktopComposition(windows: DesktopWindows): Promise
     autoStartAgentRuntime: async () => { await autoStartOpenCode(openCodeRuntime, llmApiKey(), Boolean(projects.current())); },
     shutdown: () => shutdownPromise ??= (async () => {
       await openCodeRuntime.stop().catch(() => undefined);
+      await application.manual.close();
       await application.projects.close();
       await Promise.allSettled([gateway.stop(), pool.close(), devices.close()]);
       await secrets.flush();
