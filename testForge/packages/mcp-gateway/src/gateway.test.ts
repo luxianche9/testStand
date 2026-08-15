@@ -1,7 +1,7 @@
 import http from "node:http";
 import Ajv from "ajv";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { testTaskSchema } from "@testforge/contracts/orchestration";
+import { testTaskSchema, type TestStep } from "@testforge/contracts/orchestration";
 import { TestForgeApplication } from "@testforge/application";
 import { LocalMcpGateway } from "./gateway.js";
 import { UPDATE_TEST_TASK_INPUT_SCHEMA } from "./tools/index.js";
@@ -105,9 +105,41 @@ describe("LocalMcpGateway transport", () => {
     expect(await request(port, { authorization: `Bearer ${token}` })).not.toBe(401);
   });
 
+  it("rejects request bodies larger than one MiB", async () => {
+    const port = 18005;
+    gateway = new LocalMcpGateway(makeApplication().application, secretStore() as never, port);
+    await gateway.start();
+
+    const oversized = JSON.stringify({ value: "x".repeat(1_048_576) });
+    expect(await request(port, {
+      authorization: "Bearer test-token",
+      "content-type": "application/json"
+    }, oversized)).toBe(413);
+  });
+
+  it("falls back to an ephemeral port when the preferred port is occupied", async () => {
+    const occupied = http.createServer();
+    await new Promise<void>((resolve) => occupied.listen(0, "127.0.0.1", resolve));
+    const address = occupied.address();
+    if (!address || typeof address === "string") throw new Error("Expected a TCP address");
+    try {
+      gateway = new LocalMcpGateway(makeApplication().application, secretStore() as never, address.port);
+      await gateway.start();
+
+      const status = gateway.status();
+      expect(status.running).toBe(true);
+      expect(new URL(status.endpoint).port).not.toBe(String(address.port));
+      expect(status.lastError).toMatch(/port was occupied/i);
+    } finally {
+      await new Promise<void>((resolve, reject) => occupied.close((error) => error ? reject(error) : resolve()));
+    }
+  });
+
   it("maintains a stateful session and exposes only authorized Agent tools", async () => {
     const port = 18004;
-    gateway = new LocalMcpGateway(makeApplication().application, secretStore() as never, port);
+    const fixture = makeApplication();
+    const authorize = vi.spyOn(fixture.application.authorizer, "authorize");
+    gateway = new LocalMcpGateway(fixture.application, secretStore() as never, port);
     await gateway.start();
     const headers = { authorization: "Bearer test-token", accept: "application/json, text/event-stream", "content-type": "application/json" };
     const initialize = JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "codex", version: "1.0" } } });
@@ -126,24 +158,27 @@ describe("LocalMcpGateway transport", () => {
     expect(tools.body).not.toContain("ssh_execute");
     expect(tools.body).not.toContain("force_stop_remote_mcp_service");
     expect(gateway.status().lastClient).toMatchObject({ name: "codex", version: "1.0" });
+    await protocolRequest(port, "POST", sessionHeaders, JSON.stringify({ jsonrpc: "2.0", id: 3, method: "tools/call", params: { name: "get_test_task", arguments: {} } }));
+    const sessionContext = authorize.mock.calls.find(([, capability]) => capability === "orchestration.read")?.[0];
+    expect(sessionContext).toMatchObject({ actor: "agent", source: "mcp", subjectId: "codex@1.0", requestId: expect.any(String) });
     expect((await protocolRequest(port, "DELETE", sessionHeaders)).status).toBe(200);
   });
 });
 
 describe("MCP tool registry", () => {
-  it("filters denied tools from listing and rejects direct invocation", async () => {
+  it("omits permanently unsupported privileged tools", async () => {
     const gateway = new LocalMcpGateway(makeApplication().application, secretStore() as never);
     const names = gateway.listBuiltinTools().map((tool) => tool.name);
     expect(names).not.toContain("save_remote_computer");
     expect(names).not.toContain("register_mcp_server");
     expect(names).not.toContain("ssh_execute");
     expect(names).not.toContain("force_stop_remote_mcp_service");
-    await expect(gateway.invokeTool("save_remote_computer", {})).rejects.toMatchObject({ category: "permission_denied" });
-    await expect(gateway.invokeTool("ssh_execute", {})).rejects.toMatchObject({ category: "permission_denied" });
+    await expect(gateway.invokeTool("save_remote_computer", {})).rejects.toMatchObject({ category: "not_found" });
+    await expect(gateway.invokeTool("ssh_execute", {})).rejects.toMatchObject({ category: "not_found" });
   });
 
   it("routes allowed wiring, orchestration and aggregated hardware calls", async () => {
-    const remoteTool = { externalName: "S1.measure", remoteName: "measure", serverId: "S1", inputSchema: { type: "object" }, schemaHash: "x", kind: "hardware" };
+    const remoteTool = { externalName: "S1.measure", remoteName: "measure", serverId: "S1", inputSchema: { type: "object" }, kind: "hardware" };
     const fixture = makeApplication({ devices: { listTools: vi.fn(() => [remoteTool]) } });
     const gateway = new LocalMcpGateway(fixture.application, secretStore() as never);
     await gateway.invokeTool("request_wiring_task", { portA: "A.J1", portB: "B.J1", action: "connect" });
@@ -155,7 +190,7 @@ describe("MCP tool registry", () => {
   });
 
   it("has unique names and valid object schemas, including aggregated tools", () => {
-    const remoteTool = { externalName: "S1.measure", remoteName: "measure", serverId: "S1", inputSchema: { type: "object", properties: {} }, schemaHash: "x", kind: "hardware" };
+    const remoteTool = { externalName: "S1.measure", remoteName: "measure", serverId: "S1", inputSchema: { type: "object", properties: {} }, kind: "hardware" };
     const gateway = new LocalMcpGateway(makeApplication({ devices: { listTools: () => [remoteTool] } }).application, secretStore() as never);
     const tools = gateway.listTools();
     expect(new Set(tools.map((tool) => tool.name)).size).toBe(tools.length);
@@ -163,21 +198,34 @@ describe("MCP tool registry", () => {
   });
 
   it("rejects a remote tool name that collides with a builtin", () => {
-    const duplicate = { externalName: "get_test_task", remoteName: "duplicate", serverId: "S1", inputSchema: { type: "object" }, schemaHash: "x", kind: "hardware" };
+    const duplicate = { externalName: "get_test_task", remoteName: "duplicate", serverId: "S1", inputSchema: { type: "object" }, kind: "hardware" };
     const gateway = new LocalMcpGateway(makeApplication({ devices: { listTools: () => [duplicate] } }).application, secretStore() as never);
     expect(() => gateway.listTools()).toThrow(/Duplicate MCP tool name/);
   });
 
-  it("keeps recursive workflow JSON Schema consistent with the contracts fixture", () => {
-    const fixture = testTaskSchema.parse({
-      formatVersion: 2, taskId: "TASK", name: "Fixture", inputs: [], variables: [], setup: [],
-      steps: [{ stepId: "loop", label: "Loop", enabled: true, type: "loop", mode: "count", count: { kind: "literal", value: 2 }, maxIterations: 10, indexVariable: "i", body: [{ stepId: "delay", label: "Wait", enabled: true, type: "delay", durationMs: { kind: "literal", value: 1 } }] }],
-      cleanup: []
-    });
+  it("keeps all recursive workflow variants bidirectionally consistent", () => {
+    const steps: TestStep[] = [
+      { stepId: "tool", label: "Tool", enabled: true, type: "tool", toolName: "S1.measure", hardwareId: "HW1", arguments: { voltage: { kind: "literal", value: 5 } }, outputBindings: [{ variable: "result", pointer: "" }], timeoutMs: 1_000, idempotent: false, retry: { maxAttempts: 1, delayMs: 0, backoff: "fixed", retryOn: ["unavailable"] } },
+      { stepId: "delay", label: "Delay", enabled: true, type: "delay", durationMs: { kind: "literal", value: 1 } },
+      { stepId: "set", label: "Set", enabled: true, type: "set_variable", variable: "result", value: { kind: "literal", value: 1 } },
+      { stepId: "assert", label: "Assert", enabled: true, type: "assert", expression: { kind: "literal", value: true }, message: "failed" },
+      { stepId: "if", label: "If", enabled: true, type: "if", condition: { kind: "literal", value: true }, then: [], else: [] },
+      { stepId: "loop", label: "Loop", enabled: true, type: "loop", mode: "count", count: { kind: "literal", value: 2 }, maxIterations: 10, indexVariable: "i", body: [] },
+      { stepId: "parallel", label: "Parallel", enabled: true, type: "parallel", branches: [{ branchId: "a", name: "A", steps: [] }, { branchId: "b", name: "B", steps: [] }] },
+      { stepId: "operator", label: "Operator", enabled: true, type: "operator", prompt: "Continue?", options: [{ label: "Yes", value: "yes" }], resultVariable: "result" }
+    ];
     const validate = new Ajv({ strict: false }).compile(UPDATE_TEST_TASK_INPUT_SCHEMA);
-    expect(validate({ task: fixture })).toBe(true);
-    const invalid = { task: { ...fixture, formatVersion: 1 } };
-    expect(validate(invalid)).toBe(false);
-    expect(testTaskSchema.safeParse(invalid.task).success).toBe(false);
+    for (const step of steps) {
+      const fixture = { formatVersion: 2 as const, taskId: `TASK-${step.type}`, name: "Fixture", inputs: [], variables: [], setup: [], steps: [step], cleanup: [] };
+      expect(testTaskSchema.safeParse(structuredClone(fixture)).success, step.type).toBe(true);
+      expect(validate({ task: structuredClone(fixture) }), step.type).toBe(true);
+      const parsed = testTaskSchema.parse(fixture);
+      expect(validate({ task: structuredClone(parsed) }), `${step.type} from zod`).toBe(true);
+
+      const invalidStep = { ...structuredClone(step), unexpected: true };
+      const invalid = { ...fixture, steps: [invalidStep] };
+      expect(testTaskSchema.safeParse(invalid).success, `${step.type} zod rejects extras`).toBe(false);
+      expect(validate({ task: invalid }), `${step.type} json schema rejects extras`).toBe(false);
+    }
   });
 });

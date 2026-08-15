@@ -1,6 +1,7 @@
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import type { RequestContext } from "@testforge/contracts/agents";
 import type { ToolCatalogItem } from "@testforge/contracts/devices";
+import { appError } from "@testforge/contracts/errors";
 import type { TestForgeApplication } from "@testforge/application";
 import { BUILTIN_TOOL_DEFINITIONS, type GatewayToolDefinition } from "./tools/index.js";
 
@@ -37,7 +38,7 @@ export class ToolRegistry {
     }
     this.application.authorizer.authorize(context, "hardware.executeTools");
     const remote = this.application.devices.listTools(context).find((tool) => tool.externalName === name);
-    if (!remote) throw Object.assign(new Error(`Unknown MCP tool: ${name}`), { category: "not_found" });
+    if (!remote) throw appError("not_found", `Unknown MCP tool: ${name}`);
     return { ok: true, data: await this.application.devices.callTool(context, name, args) };
   }
 }
@@ -62,7 +63,7 @@ function aggregatedTool(tool: ToolCatalogItem): Tool {
 function assertUniqueToolNames(tools: Tool[]): void {
   const names = new Set<string>();
   for (const tool of tools) {
-    if (names.has(tool.name)) throw Object.assign(new Error(`Duplicate MCP tool name: ${tool.name}`), { category: "conflict" });
+    if (names.has(tool.name)) throw appError("conflict", `Duplicate MCP tool name: ${tool.name}`);
     names.add(tool.name);
   }
 }

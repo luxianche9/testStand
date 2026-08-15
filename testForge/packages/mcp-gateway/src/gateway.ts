@@ -12,22 +12,28 @@ export interface GatewayTokenStore {
 }
 
 export class LocalMcpGateway {
-  private lastError?: string;
+  private lastError: string | undefined;
   private lastClient?: McpGatewayStatus["lastClient"];
   private activeToken?: string;
   private readonly registry: ToolRegistry;
   private readonly sessions: McpSessionManager;
-  private readonly transport: GatewayHttpTransport;
+  private transport: GatewayHttpTransport;
+  private port: number;
 
   constructor(
     application: TestForgeApplication,
     private readonly secrets: GatewayTokenStore,
-    private readonly port = 8000,
+    preferredPort = 8000,
     private readonly requestContext: RequestContext = AGENT_REQUEST_CONTEXT
   ) {
+    this.port = preferredPort;
     this.registry = new ToolRegistry(application);
     this.sessions = new McpSessionManager(this.registry, requestContext, (error) => { this.lastError = error.message; });
-    this.transport = new GatewayHttpTransport({
+    this.transport = this.createTransport(preferredPort);
+  }
+
+  private createTransport(port: number): GatewayHttpTransport {
+    return new GatewayHttpTransport({
       port,
       token: () => this.token(),
       handle: (req, res, body) => this.sessions.handle(req, res, body),
@@ -78,7 +84,25 @@ export class LocalMcpGateway {
   async start(): Promise<void> {
     if (this.transport.running) return;
     this.activeToken ??= await this.secrets.ensureToken("gateway");
-    await this.transport.start();
+    try {
+      await this.transport.start();
+      this.port = this.transport.port;
+      this.lastError = undefined;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "EADDRINUSE" && this.port !== 0) {
+        this.transport = this.createTransport(0);
+        try {
+          await this.transport.start();
+          this.port = this.transport.port;
+          this.lastError = `Preferred Gateway port was occupied; using ${this.port}`;
+          return;
+        } catch (fallbackError) {
+          this.lastError = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+          return;
+        }
+      }
+      this.lastError = error instanceof Error ? error.message : String(error);
+    }
   }
 
   async stop(): Promise<void> {

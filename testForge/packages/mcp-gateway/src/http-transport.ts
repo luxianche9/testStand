@@ -1,4 +1,8 @@
+import { timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import type { AddressInfo } from "node:net";
+
+const DEFAULT_MAX_BODY_BYTES = 1_048_576;
 
 interface GatewayHttpTransportOptions {
   port: number;
@@ -6,6 +10,7 @@ interface GatewayHttpTransportOptions {
   handle(req: IncomingMessage, res: ServerResponse, body: unknown): Promise<void>;
   onBody(body: unknown): void;
   onError(error: unknown): void;
+  maxBodyBytes?: number;
 }
 
 export class GatewayHttpTransport {
@@ -14,23 +19,25 @@ export class GatewayHttpTransport {
   constructor(private readonly options: GatewayHttpTransportOptions) {}
 
   get running(): boolean { return this.server !== undefined; }
+  get port(): number { return (this.server?.address() as AddressInfo | null)?.port ?? this.options.port; }
 
   async start(): Promise<void> {
     if (this.server) return;
     const server = createServer(async (req, res) => {
       try {
-        if (!isLocal(req) || req.headers.host !== `127.0.0.1:${this.options.port}` || !isAllowedOrigin(req, this.options.port)) return reply(res, 403, { error: "local access only" });
-        if (req.headers.authorization !== `Bearer ${this.options.token()}`) return reply(res, 401, { error: "unauthorized" });
+        const port = this.port;
+        if (!isLocal(req) || req.headers.host !== `127.0.0.1:${port}` || !isAllowedOrigin(req, port)) return reply(res, 403, { error: "local access only" });
+        if (!authorized(req.headers.authorization, this.options.token())) return reply(res, 401, { error: "unauthorized" });
         if (req.url !== "/mcp" || !["GET", "POST", "DELETE"].includes(req.method ?? "")) {
           res.setHeader("allow", "GET, POST, DELETE");
           return reply(res, 405, { error: "method not allowed" });
         }
-        const body = req.method === "POST" ? await readJson(req) : undefined;
+        const body = req.method === "POST" ? await readJson(req, this.options.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES) : undefined;
         if (body !== undefined) this.options.onBody(body);
         await this.options.handle(req, res, body);
       } catch (error) {
         this.options.onError(error);
-        if (!res.headersSent) reply(res, 500, { error: "internal error" });
+        if (!res.headersSent) reply(res, error instanceof HttpError ? error.status : 500, { error: error instanceof HttpError ? error.message : "internal error" });
       }
     });
     try {
@@ -67,8 +74,27 @@ function reply(res: ServerResponse, status: number, body: unknown): void {
   res.end(JSON.stringify(body));
 }
 
-async function readJson(req: IncomingMessage): Promise<unknown> {
+function authorized(header: string | undefined, token: string): boolean {
+  if (!header?.startsWith("Bearer ")) return false;
+  const supplied = Buffer.from(header.slice("Bearer ".length));
+  const expected = Buffer.from(token);
+  return supplied.length === expected.length && timingSafeEqual(supplied, expected);
+}
+
+class HttpError extends Error {
+  constructor(readonly status: number, message: string) {
+    super(message);
+  }
+}
+
+async function readJson(req: IncomingMessage, maximumBytes: number): Promise<unknown> {
   const chunks: Buffer[] = [];
-  for await (const chunk of req) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  let bytes = 0;
+  for await (const chunk of req) {
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    bytes += buffer.length;
+    if (bytes > maximumBytes) throw new HttpError(413, "request body too large");
+    chunks.push(buffer);
+  }
   return JSON.parse(Buffer.concat(chunks).toString("utf8"));
 }

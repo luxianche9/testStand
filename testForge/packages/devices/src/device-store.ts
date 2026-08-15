@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { readdirSync, readFileSync, type Dirent } from "node:fs";
+import { readdirSync, readFileSync, statSync, type Dirent } from "node:fs";
 import { mkdir, mkdtemp, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, extname, join, resolve, sep } from "node:path";
 import { Unzip, UnzipInflate, zipSync } from "fflate";
@@ -26,6 +26,7 @@ export class DeviceStore {
   private readonly computerDir: string;
   private readonly serverDir: string;
   private readonly hardwareDir: string;
+  private readonly readCache = new Map<string, { signature: string; values: unknown[] }>();
 
   constructor(
     readonly root: string,
@@ -47,6 +48,7 @@ export class DeviceStore {
   async saveComputer(input: RemoteComputer): Promise<RemoteComputer> {
     const computer = remoteComputerSchema.parse(input);
     await atomicJson(join(this.computerDir, `${safeSegment(computer.id)}.json`), computer);
+    this.readCache.clear();
     return computer;
   }
   async removeComputer(id: string): Promise<string[]> {
@@ -56,6 +58,7 @@ export class DeviceStore {
       await this.removeServer(server.serverId);
     }
     await rm(join(this.computerDir, `${safeSegment(id)}.json`), { force: true });
+    this.readCache.clear();
     return removedServers;
   }
 
@@ -72,19 +75,24 @@ export class DeviceStore {
     if (conflict) throw new Error(`Hardware ${server.hardwareId} is already assigned to MCP server ${conflict.serverId}`);
     await atomicJson(join(this.serverDir, `${safeSegment(server.serverId)}.json`), server);
     await rm(join(this.serverDir, safeSegment(server.serverId)), { recursive: true, force: true });
+    this.readCache.clear();
     if (!this.getStoredHardware(server.hardwareId)) await this.saveStoredHardware({ formatVersion: 2, hardwareId: server.hardwareId, label: server.hardwareId, ports: [] });
     return server;
   }
   async removeServer(serverId: string): Promise<void> {
     await rm(join(this.serverDir, `${safeSegment(serverId)}.json`), { force: true });
     await rm(join(this.serverDir, safeSegment(serverId)), { recursive: true, force: true });
+    this.readCache.clear();
   }
 
   listStoredHardware(): StoredHardwareDefinition[] {
     return this.readAll(this.hardwareDir, "hardware.json", parseStoredHardware).sort(byKey((item) => item.hardwareId));
   }
   getStoredHardware(hardwareId: string): StoredHardwareDefinition | undefined { return this.listStoredHardware().find((item) => item.hardwareId === hardwareId); }
-  listHardware(): Hardware[] { return this.listStoredHardware().map((item) => this.deriveHardware(item)); }
+  listHardware(): Hardware[] {
+    const serversByHardware = new Map(this.listServers().map((server) => [server.hardwareId, server]));
+    return this.listStoredHardware().map((item) => this.deriveHardware(item, serversByHardware));
+  }
   getHardware(hardwareId: string): Hardware | undefined { return this.listHardware().find((item) => item.hardwareId === hardwareId); }
   requireHardware(hardwareId: string): Hardware {
     const value = this.getHardware(hardwareId);
@@ -113,6 +121,7 @@ export class DeviceStore {
     const server = this.listServers().find((item) => item.hardwareId === hardwareId);
     if (server) throw new Error(`Hardware ${hardwareId} is assigned to MCP server ${server.serverId}`);
     await rm(this.hardwarePath(hardwareId), { recursive: true, force: true });
+    this.readCache.clear();
   }
 
   async putImage(hardwareId: string, portId: string | undefined, source: string): Promise<Hardware> {
@@ -227,17 +236,19 @@ export class DeviceStore {
     } finally {
       await rm(stagingRoot, { recursive: true, force: true }).catch(() => undefined);
     }
+    this.readCache.clear();
     return { id: stored.hardwareId, label: stored.label, replaced };
   }
 
-  private deriveHardware(stored: StoredHardwareDefinition): Hardware {
-    const server = this.listServers().find((item) => item.hardwareId === stored.hardwareId);
+  private deriveHardware(stored: StoredHardwareDefinition, serversByHardware?: Map<string, McpServerConfig>): Hardware {
+    const server = serversByHardware ? serversByHardware.get(stored.hardwareId) : this.listServers().find((item) => item.hardwareId === stored.hardwareId);
     return hardwareSchema.parse({ ...stored, kind: server ? "managed" : "passive", ...(server ? { serverId: server.serverId, computerId: server.computerId } : {}) });
   }
   private async saveStoredHardware(stored: StoredHardwareDefinition): Promise<void> {
     const parsed = storedHardwareDefinitionSchema.parse(stored);
     await mkdir(this.hardwarePath(parsed.hardwareId), { recursive: true });
     await atomicJson(join(this.hardwarePath(parsed.hardwareId), "hardware.json"), parsed);
+    this.readCache.clear();
   }
   private hardwarePath(hardwareId: string): string { return join(this.hardwareDir, safeSegment(hardwareId)); }
   private async deleteAsset(hardwareId: string, assetId: string): Promise<void> { await rm(this.imagePath(hardwareId, assetId), { force: true }).catch(() => undefined); }
@@ -245,8 +256,16 @@ export class DeviceStore {
     let entries: Dirent[];
     try { entries = readdirSync(directory, { withFileTypes: true }); } catch { return []; }
     const paths = documentName ? entries.filter((entry) => entry.isDirectory()).map((entry) => join(directory, entry.name, documentName)) : entries.filter((entry) => entry.isFile() && entry.name.endsWith(".json")).map((entry) => join(directory, entry.name));
+    const signature = paths.sort().map((path) => {
+      try { const info = statSync(path); return `${path}:${info.mtimeMs}:${info.size}`; }
+      catch { return `${path}:missing`; }
+    }).join("|");
+    const cacheKey = `${directory}\0${documentName}`;
+    const cached = this.readCache.get(cacheKey);
+    if (cached?.signature === signature) return structuredClone(cached.values) as T[];
     const output: T[] = [];
     for (const path of paths) try { output.push(parse(JSON.parse(readFileSync(path, "utf8")))); } catch { /* isolate damaged records */ }
+    this.readCache.set(cacheKey, { signature, values: structuredClone(output) });
     return output;
   }
 }
@@ -268,7 +287,11 @@ function decodeJson<T = unknown>(content: Uint8Array | undefined, name: string):
   if (content.byteLength > BUNDLE_JSON_LIMIT) throw new Error(`${name} exceeds the 1 MB limit`);
   return JSON.parse(new TextDecoder().decode(content)) as T;
 }
-function safeSegment(value: string): string { const cleaned = [...value].map((character) => /[<>:"/\\|?*]/.test(character) || character.codePointAt(0)! < 0x20 ? "_" : character).join(""); const trimmed = cleaned.replace(/^\.+$/, "_").trim(); if (!trimmed) throw new Error(`Identifier cannot be used as a file name: ${value}`); return trimmed; }
+function safeSegment(value: string): string {
+  if (!value.trim()) throw new Error(`Identifier cannot be used as a file name: ${value}`);
+  const encoded = encodeURIComponent(value).replace(/[!'()*]/g, (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`);
+  return encoded === "." || encoded === ".." ? encoded.replaceAll(".", "%2E") : encoded;
+}
 function imageExtension(source: string): string {
   const extension = extname(source).toLowerCase() || (source.startsWith(".") ? source.toLowerCase() : `.${source.toLowerCase()}`);
   return extension === ".jpeg" ? ".jpg" : extension;

@@ -10,6 +10,9 @@ import type { DeviceStore } from "./device-store.js";
  * stored locally, which is also why a device can be registered while its remote is unreachable.
  */
 export class DeviceCatalogService {
+  private portIndexSignature = "";
+  private portIndex = new Map<string, { hardware: Hardware; port: HardwarePort }>();
+
   constructor(readonly store: DeviceStore) {}
 
   listHardware(): Hardware[] { return this.store.listHardware(); }
@@ -20,9 +23,16 @@ export class DeviceCatalogService {
 
   findHardware(hardwareId: string): Hardware | undefined { return this.store.getHardware(hardwareId); }
 
-  saveHardware(input: Hardware): Promise<Hardware> { return this.store.saveHardware(input); }
+  async saveHardware(input: Hardware): Promise<Hardware> {
+    const saved = await this.store.saveHardware(input);
+    this.portIndexSignature = "";
+    return saved;
+  }
 
-  removeHardware(hardwareId: string): Promise<void> { return this.store.removeHardware(hardwareId); }
+  async removeHardware(hardwareId: string): Promise<void> {
+    await this.store.removeHardware(hardwareId);
+    this.portIndexSignature = "";
+  }
 
   hardwareForServer(serverId: string): Hardware | undefined {
     return this.listHardware().find((item) => item.kind === "managed" && item.serverId === serverId);
@@ -33,15 +43,22 @@ export class DeviceCatalogService {
    * shadow `DUT_10`; the remainder is the portId, which may itself contain dots.
    */
   resolvePort(portRef: string): { hardware: Hardware; port: HardwarePort } {
-    const candidates = [...this.listHardware()].sort((a, b) => b.hardwareId.length - a.hardwareId.length);
-    for (const hardware of candidates) {
-      if (!portRef.startsWith(`${hardware.hardwareId}.`)) continue;
-      const portId = portRef.slice(hardware.hardwareId.length + 1);
-      const port = hardware.ports.find((item) => item.portId === portId);
-      if (port) return { hardware, port };
-      throw new Error(`Hardware ${hardware.hardwareId} has no port ${portId}`);
+    this.refreshPortIndex();
+    const resolved = this.portIndex.get(portRef);
+    if (resolved) return resolved;
+    const separator = portRef.indexOf(".");
+    if (separator > 0 && this.listHardware().some((hardware) => hardware.hardwareId === portRef.slice(0, separator))) {
+      throw new Error(`Hardware ${portRef.slice(0, separator)} has no port ${portRef.slice(separator + 1)}`);
     }
     throw new Error(`No hardware matches port reference ${portRef}`);
+  }
+
+  private refreshPortIndex(): void {
+    const hardware = this.listHardware();
+    const signature = hardware.map((item) => `${item.hardwareId}:${item.ports.map((port) => port.portId).join(",")}`).join("|");
+    if (signature === this.portIndexSignature) return;
+    this.portIndex = new Map(hardware.flatMap((item) => item.ports.map((port) => [`${item.hardwareId}.${port.portId}`, { hardware: item, port }] as const)));
+    this.portIndexSignature = signature;
   }
 
   /** Every pin pair must name a pin that actually exists on its side. Counts may differ: a partial

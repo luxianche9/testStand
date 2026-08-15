@@ -1,9 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import Ajv from "ajv";
 import type { ManagedHardware, McpServerConfig } from "@testforge/contracts/devices";
-import { McpClientPool } from "./mcp-client.js";
+import { McpHttpTransport } from "./mcp-client.js";
 
 const server: McpServerConfig = {
+  transport: "mcp-http",
   serverId: "PCI1710L_MCP",
   computerId: "REMOTE_PC_1",
   label: "PCI-1710L",
@@ -33,17 +34,17 @@ type PoolCallInternals = {
   sessions: Map<string, {
     server: McpServerConfig;
     client: { callTool: ReturnType<typeof vi.fn> };
-    validators: Map<string, { input: ReturnType<Ajv["compile"]> }>;
+    validators: Map<string, { input: ReturnType<Ajv["compile"]>; injectHardwareId: boolean }>;
   }>;
 };
 
 function fixture(response: unknown) {
-  const pool = new McpClientPool({} as never);
-  vi.spyOn(pool, "call").mockResolvedValue(response);
+  const pool = new McpHttpTransport({} as never);
+  vi.spyOn(pool, "callRemote").mockResolvedValue(response);
   return pool;
 }
 
-describe("McpClientPool one-Server-one-hardware contract", () => {
+describe("McpHttpTransport one-Server-one-hardware contract", () => {
   it.each([
     ["zero", []],
     ["multiple", [hardware, { ...hardware, hardwareId: "SECOND" }]],
@@ -79,7 +80,7 @@ describe("McpClientPool one-Server-one-hardware contract", () => {
   });
 
   it("uses AJV for the authoritative pre-call input validation", async () => {
-    const pool = new McpClientPool({} as never);
+    const pool = new McpHttpTransport({} as never);
     const callTool = vi.fn();
     const input = new Ajv({ allErrors: true }).compile({
       type: "object",
@@ -90,11 +91,40 @@ describe("McpClientPool one-Server-one-hardware contract", () => {
     (pool as unknown as PoolCallInternals).sessions.set(server.serverId, {
       server,
       client: { callTool },
-      validators: new Map([["read_channel", { input }]])
+      validators: new Map([["read_channel", { input, injectHardwareId: true }]])
     });
 
-    await expect(pool.call(server.serverId, "read_channel", { hardwareId: server.hardwareId, channel: 9 }))
+    await expect(pool.callRemote(server.serverId, "read_channel", { channel: 9 }, { metadata: { hardwareId: server.hardwareId } }))
       .rejects.toMatchObject({ category: "invalid_argument", message: expect.stringContaining("Invalid input") });
     expect(callTool).not.toHaveBeenCalled();
+  });
+
+  it("sends execution context through MCP _meta and injects hardwareId only for legacy-declared schemas", async () => {
+    const pool = new McpHttpTransport({} as never);
+    const callTool = vi.fn(async () => ({ structuredContent: { ok: true, data: { value: 1 } } }));
+    const input = new Ajv().compile({
+      type: "object",
+      additionalProperties: false,
+      properties: { hardwareId: { const: server.hardwareId }, channel: { type: "integer" } },
+      required: ["hardwareId", "channel"]
+    });
+    (pool as unknown as PoolCallInternals).sessions.set(server.serverId, {
+      server,
+      client: { callTool },
+      validators: new Map([["read_channel", { input, injectHardwareId: true }]])
+    });
+
+    await expect(pool.callRemote(server.serverId, "read_channel", { channel: 2 }, {
+      metadata: { hardwareId: server.hardwareId, attempt: 2, idempotencyKey: "stable-key" }
+    })).resolves.toEqual({ value: 1 });
+    expect(callTool).toHaveBeenCalledWith(expect.objectContaining({
+      arguments: { hardwareId: server.hardwareId, channel: 2 },
+      _meta: { testforge: { hardwareId: server.hardwareId, attempt: 2, idempotencyKey: "stable-key" } }
+    }), undefined, {});
+  });
+
+  it("rejects untrusted hardware state before it reaches availability logic", async () => {
+    const pool = fixture([{ ...hardware, state: "vendor-specific-ready" }]);
+    await expect((pool as unknown as PoolInternals).refreshSingleHardware({ server })).rejects.toThrow();
   });
 });

@@ -43,7 +43,12 @@ export const UPDATE_TEST_TASK_INPUT_SCHEMA: Tool["inputSchema"] = {
     },
     retry: {
       type: "object",
-      properties: { maxAttempts: { type: "integer", minimum: 1, maximum: 10 }, delayMs: { type: "integer", minimum: 0, maximum: 300000 } },
+      properties: {
+        maxAttempts: { type: "integer", minimum: 1, maximum: 10 },
+        delayMs: { type: "integer", minimum: 0, maximum: 300000 },
+        backoff: { type: "string", enum: ["fixed", "exponential"], default: "fixed" },
+        retryOn: { type: "array", items: { type: "string", enum: ["permission_denied", "invalid_argument", "unavailable", "conflict", "not_found", "validation_failed", "requires_project", "safe_stop_failed", "invalid_response", "loop_limit", "assertion_failed", "project_exists", "invalid_project", "project_uninitialized", "invalid_project_folder", "cancelled", "error"] }, default: ["unavailable"] }
+      },
       required: ["maxAttempts", "delayMs"],
       additionalProperties: false
     },
@@ -54,7 +59,7 @@ export const UPDATE_TEST_TASK_INPUT_SCHEMA: Tool["inputSchema"] = {
           properties: {
             stepId: { type: "string", minLength: 1 }, label: { type: "string", minLength: 1 }, enabled: { type: "boolean", default: true }, type: { const: "tool" },
             toolName: { type: "string", minLength: 1 }, hardwareId: { type: "string", minLength: 1 }, arguments: { type: "object", additionalProperties: { $ref: "#/$defs/valueTemplate" } },
-            outputBindings: { type: "array", items: { $ref: "#/$defs/outputBinding" } }, timeoutMs: { type: "integer", minimum: 100, maximum: 1800000 }, retry: { $ref: "#/$defs/retry" }
+            outputBindings: { type: "array", items: { $ref: "#/$defs/outputBinding" } }, timeoutMs: { type: "integer", minimum: 100, maximum: 1800000 }, idempotent: { type: "boolean", default: false }, retry: { $ref: "#/$defs/retry" }
           },
           required: ["stepId", "label", "type", "toolName", "hardwareId", "arguments", "outputBindings", "timeoutMs", "retry"],
           additionalProperties: false

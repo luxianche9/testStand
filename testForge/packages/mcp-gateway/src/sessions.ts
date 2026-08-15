@@ -31,7 +31,7 @@ export class McpSessionManager {
     }
     if (req.method !== "POST" || !isInitializeRequest(body)) return reply(res, 400, { error: "missing MCP session" });
 
-    const session = await this.create();
+    const session = await this.create(body);
     try {
       await session.transport.handleRequest(req, res, body);
       if (!session.transport.sessionId) await this.closeSession(session);
@@ -47,12 +47,12 @@ export class McpSessionManager {
     await Promise.allSettled(sessions.map((session) => this.closeSession(session)));
   }
 
-  private createProtocolServer(): Server {
+  private createProtocolServer(context: RequestContext): Server {
     const server = new Server({ name: "testforge", version: "0.1.0" }, { capabilities: { tools: {} } });
-    server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: this.registry.list(this.context) }));
+    server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: this.registry.list(context) }));
     server.setRequestHandler(CallToolRequestSchema, async (request) => {
       try {
-        const data = await this.registry.invoke(this.context, request.params.name, (request.params.arguments ?? {}) as Record<string, unknown>);
+        const data = await this.registry.invoke(context, request.params.name, (request.params.arguments ?? {}) as Record<string, unknown>);
         return { content: [{ type: "text", text: JSON.stringify(data) }], structuredContent: data };
       } catch (error) {
         const failure = error as { category?: string; issues?: WorkflowValidationIssue[] };
@@ -70,8 +70,8 @@ export class McpSessionManager {
     return server;
   }
 
-  private async create(): Promise<GatewaySession> {
-    const protocol = this.createProtocolServer();
+  private async create(initializeBody: unknown): Promise<GatewaySession> {
+    const protocol = this.createProtocolServer(this.sessionContext(initializeBody));
     let session!: GatewaySession;
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: () => randomUUID(),
@@ -85,6 +85,16 @@ export class McpSessionManager {
     };
     await protocol.connect(transport as never);
     return session;
+  }
+
+  private sessionContext(initializeBody: unknown): RequestContext {
+    const request = initializeBody as { params?: { clientInfo?: { name?: unknown; version?: unknown } } };
+    const name = request?.params?.clientInfo?.name;
+    const version = request?.params?.clientInfo?.version;
+    const subjectId = typeof name === "string"
+      ? `${name}${typeof version === "string" ? `@${version}` : ""}`
+      : "unknown-mcp-client";
+    return { ...this.context, requestId: randomUUID(), subjectId };
   }
 
   private async closeSession(session: GatewaySession): Promise<void> {

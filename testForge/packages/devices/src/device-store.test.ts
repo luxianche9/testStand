@@ -1,7 +1,7 @@
 import { mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { unzipSync, zipSync } from "fflate";
 import type { Hardware, McpServerConfig } from "@testforge/contracts/devices";
 import { DeviceStore } from "./device-store.js";
@@ -12,12 +12,12 @@ const PNG = Buffer.from("89504e470d0a1a0a0000000d49484452", "hex");
 
 async function fixture() { const root = await mkdtemp(join(tmpdir(), "testforge-store-")); roots.push(root); const store = new DeviceStore(join(root, "devices")); await store.initialize(); return { store, root }; }
 function hardware(hardwareId: string): Hardware { return { formatVersion: 2, hardwareId, label: hardwareId, kind: "passive", ports: [{ portId: "J1", name: "J1", pins: [{ pinId: "1", position: 1, label: "TX" }] }] }; }
-function server(serverId: string, hardwareId: string): McpServerConfig { return { serverId, computerId: "PC1", label: serverId, hardwareId, url: "http://10.0.0.2:8011/mcp", enabled: true, lifecycle: { statusCommand: "s", startCommand: "b", stopCommand: "t", logPath: "l" } }; }
+function server(serverId: string, hardwareId: string): McpServerConfig { return { transport: "mcp-http", serverId, computerId: "PC1", label: serverId, hardwareId, url: "http://10.0.0.2:8011/mcp", enabled: true, lifecycle: { statusCommand: "s", startCommand: "b", stopCommand: "t", logPath: "l" } }; }
 
 describe("DeviceStore", () => {
   it("persists canonical files and derives managed hardware", async () => {
     const { store } = await fixture();
-    await store.saveComputer({ id: "PC1", label: "PC", address: "10.0.0.2", ssh: { port: 22, username: "u" } });
+    await store.saveComputer({ id: "PC1", label: "PC", address: "10.0.0.2", ssh: { port: 22, username: "u", shell: "powershell" } });
     await store.saveHardware(hardware("CARD"));
     await store.saveServer(server("S1", "CARD"));
     expect(store.requireHardware("CARD")).toMatchObject({ kind: "managed", serverId: "S1", computerId: "PC1" });
@@ -26,9 +26,20 @@ describe("DeviceStore", () => {
     expect(await readFile(join(store.root, "servers", "S1.json"), "utf8")).not.toContain("credential");
   });
 
+  it("derives a hardware list with one server index instead of an N+1 directory scan", async () => {
+    const { store } = await fixture();
+    await store.saveHardware(hardware("A"));
+    await store.saveHardware(hardware("B"));
+    await store.saveHardware(hardware("C"));
+    const readAll = vi.spyOn(store as unknown as { readAll(...args: unknown[]): unknown[] }, "readAll");
+
+    expect(store.listHardware()).toHaveLength(3);
+    expect(readAll).toHaveBeenCalledTimes(3);
+  });
+
   it("enforces one server per hardware and deletion rules", async () => {
     const { store } = await fixture();
-    await store.saveComputer({ id: "PC1", label: "PC", address: "10.0.0.2", ssh: { port: 22, username: "u" } });
+    await store.saveComputer({ id: "PC1", label: "PC", address: "10.0.0.2", ssh: { port: 22, username: "u", shell: "powershell" } });
     await store.saveServer(server("S1", "CARD"));
     await expect(store.saveServer(server("S2", "CARD"))).rejects.toThrow(/already assigned/);
     await expect(store.removeHardware("CARD")).rejects.toThrow(/assigned/);
@@ -38,7 +49,7 @@ describe("DeviceStore", () => {
 
   it("cascades computer servers but retains their hardware", async () => {
     const { store } = await fixture();
-    await store.saveComputer({ id: "PC1", label: "PC", address: "10.0.0.2", ssh: { port: 22, username: "u" } });
+    await store.saveComputer({ id: "PC1", label: "PC", address: "10.0.0.2", ssh: { port: 22, username: "u", shell: "powershell" } });
     await store.saveServer(server("S1", "CARD"));
     await store.removeComputer("PC1");
     expect(store.listServers()).toEqual([]);
@@ -70,7 +81,7 @@ describe("DeviceStore", () => {
 
   it("only applies a bundle to the managed hardware owned by the named server", async () => {
     const { store } = await fixture();
-    await store.saveComputer({ id: "PC1", label: "PC", address: "10.0.0.2", ssh: { port: 22, username: "u" } });
+    await store.saveComputer({ id: "PC1", label: "PC", address: "10.0.0.2", ssh: { port: 22, username: "u", shell: "powershell" } });
     await store.saveServer(server("S1", "CARD"));
     const bundle = zipSync({
       "bundle.json": new TextEncoder().encode(JSON.stringify({ formatVersion: 2, kind: "hardware", id: "CARD" })),

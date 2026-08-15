@@ -1,4 +1,5 @@
 import { hardwareSchema } from "@testforge/contracts/devices";
+import { appError } from "@testforge/contracts/errors";
 import { z } from "zod";
 import { defineTool, type GatewayToolDefinition } from "./definition.js";
 
@@ -40,8 +41,8 @@ export const HARDWARE_TOOLS: GatewayToolDefinition[] = [
 function decodeBase64Image(value: string): Uint8Array {
   const trimmed = value.trim();
   const payload = trimmed.startsWith("data:") ? trimmed.slice(trimmed.indexOf(",") + 1) : trimmed;
-  if (!payload) throw Object.assign(new Error("imageBase64 is required"), { category: "invalid_argument" });
+  if (!payload) throw appError("invalid_argument", "imageBase64 is required");
   const bytes = Buffer.from(payload, "base64");
-  if (bytes.byteLength === 0) throw Object.assign(new Error("imageBase64 is not valid base64"), { category: "invalid_argument" });
+  if (bytes.byteLength === 0) throw appError("invalid_argument", "imageBase64 is not valid base64");
   return new Uint8Array(bytes);
 }

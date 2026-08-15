@@ -117,14 +117,12 @@ export class SshManager {
   async execute(computer: RemoteComputer, command: string, timeoutMs = 60_000, maxBytes = 64 * 1024): Promise<SshResult> {
     const client = await this.connect(computer);
     const started = Date.now();
-    const encoded = Buffer.from(command, "utf16le").toString("base64");
-    const remoteCommand = `powershell -NoProfile -NonInteractive -EncodedCommand ${encoded}`;
     return await new Promise((resolve, reject) => {
         const timer = setTimeout(() => {
           void this.disconnect(computer.id);
           reject(new Error(`SSH command timed out after ${timeoutMs} ms`));
         }, timeoutMs);
-        client.exec(remoteCommand, (error, stream) => {
+        client.exec(command, (error, stream) => {
           if (error) {
             clearTimeout(timer);
             reject(error);

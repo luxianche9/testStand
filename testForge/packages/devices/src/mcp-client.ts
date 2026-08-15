@@ -1,9 +1,10 @@
-import { createHash } from "node:crypto";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import type { ManagedHardware, McpServerConfig, ToolCatalogItem } from "@testforge/contracts/devices";
+import { managedHardwareSchema, reportedManagedHardwareSchema, type ManagedHardware, type McpServerConfig, type ToolCatalogItem } from "@testforge/contracts/devices";
+import { appError } from "@testforge/contracts/errors";
 import Ajv, { type ValidateFunction } from "ajv";
 import type { SecretStore } from "@testforge/storage";
+import type { DeviceCallOptions, DeviceTransport } from "./device-transport.js";
 
 interface RemoteToken { token: string }
 
@@ -12,11 +13,12 @@ interface Session {
   client: Client;
   transport: StreamableHTTPClientTransport;
   tools: ToolCatalogItem[];
-  validators: Map<string, { input: ValidateFunction; output?: ValidateFunction }>;
+  validators: Map<string, { input: ValidateFunction; output?: ValidateFunction; injectHardwareId: boolean }>;
   hardware?: ManagedHardware;
 }
 
-export class McpClientPool {
+export class McpHttpTransport implements DeviceTransport {
+  readonly kind = "mcp-http" as const;
   private readonly sessions = new Map<string, Session>();
   private readonly connecting = new Map<string, Promise<Session>>();
   private readonly generations = new Map<string, number>();
@@ -48,12 +50,14 @@ export class McpClientPool {
     const client = new Client({ name: "testforge-internal-client", version: "0.1.0" }, { capabilities: {} });
     await client.connect(transport as never);
     const listed = await client.listTools();
-    const validators = new Map<string, { input: ValidateFunction; output?: ValidateFunction }>();
+    const validators = new Map<string, { input: ValidateFunction; output?: ValidateFunction; injectHardwareId: boolean }>();
     const tools = listed.tools.map((tool) => {
       const meta = (tool._meta?.testforge ?? {}) as Record<string, unknown>;
       const raw = tool as typeof tool & { outputSchema?: Record<string, unknown> };
+      const injectHardwareId = declaresProperty(tool.inputSchema, "hardwareId");
       validators.set(tool.name, {
         input: this.ajv.compile(tool.inputSchema),
+        injectHardwareId,
         ...(raw.outputSchema ? { output: this.ajv.compile(raw.outputSchema) } : {})
       });
       return {
@@ -61,8 +65,7 @@ export class McpClientPool {
         remoteName: tool.name,
         serverId: server.serverId,
         ...(tool.description ? { description: tool.description } : {}),
-        inputSchema: tool.inputSchema as Record<string, unknown>,
-        schemaHash: createHash("sha256").update(stableStringify(tool.inputSchema)).digest("hex"),
+        inputSchema: omitInjectedProperty(tool.inputSchema as Record<string, unknown>, "hardwareId"),
         kind: typeof meta.kind === "string" ? meta.kind : "unknown"
       } satisfies ToolCatalogItem;
     });
@@ -117,25 +120,34 @@ export class McpClientPool {
     throw new Error(`Unknown aggregated tool: ${externalName}`);
   }
 
-  async call(serverId: string, name: string, args: Record<string, unknown>, options?: { timeoutMs?: number; signal?: AbortSignal }): Promise<unknown> {
+  hasTool(externalName: string): boolean {
+    return [...this.sessions.values()].some((session) => session.tools.some((tool) => tool.externalName === externalName));
+  }
+
+  async call(externalName: string, args: Record<string, unknown>, options?: DeviceCallOptions): Promise<unknown> {
+    const { session, tool } = this.findTool(externalName);
+    return await this.callRemote(session.server.serverId, tool.remoteName, args, options);
+  }
+
+  async callRemote(serverId: string, name: string, args: Record<string, unknown>, options?: DeviceCallOptions): Promise<unknown> {
     const session = this.sessions.get(serverId);
     if (!session) throw new Error(`MCP server is not connected: ${serverId}`);
     const validators = session.validators.get(name);
-    if (validators && !validators.input(args)) {
-      const error = new Error(`Invalid input for ${name}: ${this.ajv.errorsText(validators.input.errors)}`) as Error & { category?: string };
-      error.category = "invalid_argument";
-      throw error;
+    const requestArgs = validators?.injectHardwareId && options?.metadata?.hardwareId
+      ? { ...args, hardwareId: options.metadata.hardwareId }
+      : args;
+    if (validators && !validators.input(requestArgs)) {
+      throw appError("invalid_argument", `Invalid input for ${name}: ${this.ajv.errorsText(validators.input.errors)}`);
     }
     const requestOptions = { ...(options?.timeoutMs === undefined ? {} : { timeout: options.timeoutMs }), ...(options?.signal === undefined ? {} : { signal: options.signal }) };
     const result = await session.client.callTool({
       name,
-      arguments: args
+      arguments: requestArgs,
+      ...(options?.metadata ? { _meta: { testforge: options.metadata } } : {})
     }, undefined, requestOptions);
     const structured = result.structuredContent as { ok?: boolean; data?: unknown; error?: { category?: string; message?: string; details?: unknown } } | undefined;
     if (validators?.output && structured !== undefined && !validators.output(structured)) {
-      const error = new Error(`Invalid structuredContent from ${name}: ${this.ajv.errorsText(validators.output.errors)}`) as Error & { category?: string };
-      error.category = "invalid_response";
-      throw error;
+      throw appError("invalid_response", `Invalid structuredContent from ${name}: ${this.ajv.errorsText(validators.output.errors)}`);
     }
     if (structured?.ok === false) {
       const error = new Error(structured.error?.message ?? "Remote MCP tool failed") as Error & { category?: string; details?: unknown };
@@ -162,26 +174,32 @@ export class McpClientPool {
     return output;
   }
 
+  async describeHardware(server: McpServerConfig): Promise<ManagedHardware> {
+    const session = await this.ensure(server);
+    session.hardware = await this.refreshSingleHardware(session);
+    return session.hardware;
+  }
+
   private async refreshSingleHardware(session: Session): Promise<ManagedHardware> {
-    const data = await this.call(session.server.serverId, "list_hardware", {});
+    const data = await this.callRemote(session.server.serverId, "list_hardware", {});
     if (!Array.isArray(data) || data.length !== 1) {
       throw new Error(`MCP server ${session.server.serverId} violates one-Server-one-hardware: list_hardware returned ${Array.isArray(data) ? data.length : "a non-array"}`);
     }
-    const item = data[0] as Record<string, unknown>;
+    const item = reportedManagedHardwareSchema.parse(data[0]);
     if (item.hardwareId !== session.server.hardwareId) {
       throw new Error(`MCP server ${session.server.serverId} returned hardwareId ${String(item.hardwareId)}; expected ${session.server.hardwareId}`);
     }
     // Identity beyond hardwareId is not the Server's to assert: manufacturer, model, ports and
     // images are authored in Device Management, so anything else the remote reports is ignored.
-    return {
-      ...(item as unknown as Omit<ManagedHardware, "computerId" | "serverId">),
+    return managedHardwareSchema.parse({
+      ...item,
       computerId: session.server.computerId,
       serverId: session.server.serverId
-    };
+    });
   }
 
   async prepareShutdown(serverId: string): Promise<unknown> {
-    return await this.call(serverId, "testforge_prepare_shutdown", {});
+    return await this.callRemote(serverId, "testforge_prepare_shutdown", {});
   }
 }
 
@@ -192,4 +210,18 @@ function stableStringify(value: unknown): string {
     return `{${entries.map(([key, item]) => `${JSON.stringify(key)}:${stableStringify(item)}`).join(",")}}`;
   }
   return JSON.stringify(value);
+}
+
+function declaresProperty(schema: Record<string, unknown>, property: string): boolean {
+  const properties = schema.properties;
+  return Boolean(properties && typeof properties === "object" && !Array.isArray(properties) && Object.hasOwn(properties, property));
+}
+
+function omitInjectedProperty(schema: Record<string, unknown>, property: string): Record<string, unknown> {
+  if (!declaresProperty(schema, property)) return structuredClone(schema);
+  const output = structuredClone(schema);
+  const properties = output.properties as Record<string, unknown>;
+  delete properties[property];
+  if (Array.isArray(output.required)) output.required = output.required.filter((item) => item !== property);
+  return output;
 }
