@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import type { Hardware, HardwarePort } from "@testforge/contracts/devices";
 import { IconAlert, IconChevron, IconImage, IconPlus, IconTrash } from "../../shared/icons.js";
 import { Badge, Btn, Modal, Spinner } from "../../shared/ui.js";
+import { queryKeys } from "../../shared/query-keys.js";
 
 /**
  * Two-level editor for a device's ports and their pins.
@@ -233,7 +234,7 @@ function PortImageModal({ open, title, hardwareId, assetId, onClose }: {
 
 function HardwareImage({ hardwareId, assetId, alt = "" }: { hardwareId: string; assetId: string; alt?: string }) {
   const url = useQuery({
-    queryKey: ["hardware-image", hardwareId, assetId],
+    queryKey: queryKeys.hardwareImage(hardwareId, assetId),
     queryFn: () => window.testforge.devices.hardwareImageUrl(hardwareId, assetId),
     staleTime: Infinity
   });

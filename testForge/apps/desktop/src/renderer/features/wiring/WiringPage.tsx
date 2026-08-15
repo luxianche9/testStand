@@ -16,9 +16,12 @@ import { SmartSmoothStepEdge } from "@tisoap/react-flow-smart-edge";
 import "@xyflow/react/dist/style.css";
 import type { Hardware } from "@testforge/contracts/devices";
 import type { PinPair, PortPosition, PortSide, ProjectWiring } from "@testforge/contracts/wiring";
+import { errorMessage } from "../../shared/errors.js";
 import { IconAlert, IconChip } from "../../shared/icons.js";
-import { Spinner } from "../../shared/ui.js";
+import { Btn, Modal, Spinner } from "../../shared/ui.js";
 import { useDeviceCatalog, useWiringTasks } from "../../shared/queries.js";
+import { invalidateWiringData } from "../../shared/mutations.js";
+import { queryKeys } from "../../shared/query-keys.js";
 import { useResizableWidth } from "../../shared/resizable.js";
 import { HardwareLibrary, wiringNodeTypes } from "./WiringCanvas.js";
 import { ConnectionDrawer, WiringList } from "./WiringInspector.js";
@@ -51,14 +54,14 @@ export function WiringPage() {
 /** Edits push into the main-process project buffer and mark the document dirty; disk write is explicit. */
 function useWiringData() {
   const client = useQueryClient();
-  const project = useQuery({ queryKey: ["project-document"], queryFn: () => window.testforge.projects.current() });
+  const project = useQuery({ queryKey: queryKeys.projectDocument, queryFn: () => window.testforge.projects.current() });
   const catalog = useDeviceCatalog();
   // wiringTask/project 事件的订阅在 AppShell 全局进行，这里只读共享缓存。
   const tasks = useWiringTasks();
 
   const save = useMutation({
     mutationFn: (next: ProjectWiring) => window.testforge.wiring.update(next),
-    onSuccess: (doc) => { client.setQueryData(["project-document"], doc); }
+    onSuccess: (doc) => { client.setQueryData(queryKeys.projectDocument, doc); }
   });
 
   const wiringDoc = {
@@ -79,6 +82,7 @@ function WiringWorkbench() {
   const [editingConnectionId, setEditingConnectionId] = useState<string>();
   const [selectedConnectionId, setSelectedConnectionId] = useState<string>();
   const [nodeMenu, setNodeMenu] = useState<NodeMenu>();
+  const [pendingRemoveHardwareId, setPendingRemoveHardwareId] = useState<string>();
   const [editingPortHardwareId, setEditingPortHardwareId] = useState<string>();
   const [assetUrls, setAssetUrls] = useState<Record<string, string>>({});
   const [nodes, setNodes, onNodesChange] = useNodesState<HardwareFlowNode>([]);
@@ -112,17 +116,25 @@ function WiringWorkbench() {
     });
   }, [hardware, persist, wiring]);
 
-  const removeNode = useCallback((hardwareId: string) => {
+  const commitRemoveNode = useCallback((hardwareId: string) => {
     if (!wiring) return;
-    const item = hardware.find((entry) => entry.hardwareId === hardwareId);
-    const referenced = wiring.connections.some((entry) => touchesHardware(entry, hardwareId));
-    if (referenced && !confirm(`${item?.label ?? hardwareId} 上还有已确认的接线。移除画布节点会同时删除这些接线记录，确定继续？`)) return;
     persist({
       ...wiring,
       nodes: wiring.nodes.filter((entry) => entry.hardwareId !== hardwareId),
       connections: wiring.connections.filter((entry) => !touchesHardware(entry, hardwareId))
     });
-  }, [hardware, persist, wiring]);
+    setPendingRemoveHardwareId(undefined);
+  }, [persist, wiring]);
+
+  const removeNode = useCallback((hardwareId: string) => {
+    if (!wiring) return;
+    const referenced = wiring.connections.some((entry) => touchesHardware(entry, hardwareId));
+    if (referenced) {
+      setPendingRemoveHardwareId(hardwareId);
+      return;
+    }
+    commitRemoveNode(hardwareId);
+  }, [commitRemoveNode, wiring]);
 
   const movePort = useCallback((hardwareId: string, portId: string, side: PortSide, offset: number) => {
     if (!wiring) return;
@@ -292,16 +304,10 @@ function WiringWorkbench() {
     addNode(hardwareId, flow.screenToFlowPosition({ x: event.clientX, y: event.clientY }));
   }, [addNode, flow]);
 
-  const refreshAll = useCallback(async () => {
-    await Promise.all([
-      client.invalidateQueries({ queryKey: ["project-document"] }),
-      client.invalidateQueries({ queryKey: ["device-catalog"] }),
-      client.invalidateQueries({ queryKey: ["wiring-tasks"] })
-    ]);
-  }, [client]);
+  const refreshAll = useCallback(async () => invalidateWiringData(client), [client]);
 
   if (wiringDoc.isLoading || catalog.isLoading || !wiring) return <main className="wiring-page wiring-loading"><Spinner label="正在加载接线画布" /></main>;
-  if (wiringDoc.isError) return <main className="wiring-page wiring-loading"><div className="alert"><IconAlert size={16} />{String(wiringDoc.error)}</div></main>;
+  if (wiringDoc.isError) return <main className="wiring-page wiring-loading"><div className="alert"><IconAlert size={16} />{errorMessage(wiringDoc.error)}</div></main>;
 
   const selectedConnection = connections.find((item) => item.connectionId === selectedConnectionId);
   const editingConnection = connections.find((item) => item.connectionId === editingConnectionId);
@@ -319,7 +325,7 @@ function WiringWorkbench() {
         />
         <div className="col-resize-handle" role="separator" aria-orientation="vertical" aria-label="调整硬件库宽度" title="拖拽调整宽度" {...library.handleProps} />
         <section className="flow-main">
-          {save.isError && <div className="flow-inline-error alert"><IconAlert size={15} />{String(save.error)}</div>}
+          {save.isError && <div className="flow-inline-error alert"><IconAlert size={15} />{errorMessage(save.error)}</div>}
           <div className={view === "canvas" ? "react-flow-wrap" : "wiring-list-wrap"} onDrop={view === "canvas" ? onDrop : undefined} onDragOver={view === "canvas" ? (event) => { event.preventDefault(); event.dataTransfer.dropEffect = "move"; } : undefined}>
             <WiringViewSwitch view={view} onChange={setView} />
             {view === "canvas" ? (
@@ -399,6 +405,17 @@ function WiringWorkbench() {
         onClose={() => setEditingConnectionId(undefined)}
         onSave={(connectionId, pins) => { updateConnectionPins(connectionId, pins); setEditingConnectionId(undefined); }}
       />
+      <Modal
+        open={Boolean(pendingRemoveHardwareId)}
+        onClose={() => setPendingRemoveHardwareId(undefined)}
+        title="移除画布节点"
+        footer={<>
+          <Btn onClick={() => setPendingRemoveHardwareId(undefined)}>取消</Btn>
+          <Btn variant="danger" onClick={() => { if (pendingRemoveHardwareId) commitRemoveNode(pendingRemoveHardwareId); }}>移除并删除接线</Btn>
+        </>}
+      >
+        <p>{hardware.find((item) => item.hardwareId === pendingRemoveHardwareId)?.label ?? pendingRemoveHardwareId} 上还有已确认的接线。移除画布节点会同时删除这些接线记录。</p>
+      </Modal>
     </main>
   );
 }

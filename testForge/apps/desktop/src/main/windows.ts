@@ -1,7 +1,11 @@
 import { join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { BrowserWindow, nativeTheme } from "electron";
-import { TESTFORGE_EVENT_CHANNELS, type TestForgeEventName } from "@testforge/contracts/desktop";
+import type { TestForgeEventName } from "@testforge/contracts/desktop";
+import { DesktopEventHub, type DesktopEventListener } from "./desktop-events.js";
 import { injectOpenCodeAuthorization } from "./opencode-auth.js";
+
+const mainDirectory = fileURLToPath(new URL(".", import.meta.url));
 
 interface WindowOptions {
   preloadPath?: string;
@@ -12,6 +16,7 @@ interface WindowOptions {
 
 export class DesktopWindows {
   private mainWindow: BrowserWindow | undefined;
+  private readonly events = new DesktopEventHub();
 
   current(): BrowserWindow | undefined { return this.mainWindow; }
 
@@ -26,25 +31,31 @@ export class DesktopWindows {
       frame: false,
       backgroundColor: backgroundColor(options.theme),
       webPreferences: {
-        preload: options.preloadPath ?? join(__dirname, "../preload/index.cjs"),
+        preload: options.preloadPath ?? join(mainDirectory, "../preload/index.cjs"),
         contextIsolation: true,
         nodeIntegration: false,
         sandbox: true
       }
     });
     this.mainWindow = window;
+    const rendererTarget = options.rendererUrl ?? pathToFileURL(join(mainDirectory, "../renderer/index.html")).toString();
+    installNavigationGuards(window, rendererTarget);
     installOpenCodeAuthorization(window, options.connectionInfo);
     window.on("closed", () => { if (this.mainWindow === window) this.mainWindow = undefined; });
     window.on("maximize", () => this.publish("window-state", { maximized: true }));
     window.on("unmaximize", () => this.publish("window-state", { maximized: false }));
     window.once("ready-to-show", () => window.show());
     if (options.rendererUrl) void window.loadURL(options.rendererUrl);
-    else void window.loadFile(join(__dirname, "../renderer/index.html"));
+    else void window.loadFile(join(mainDirectory, "../renderer/index.html"));
     return window;
   }
 
   publish(event: TestForgeEventName, payload: unknown): void {
-    this.mainWindow?.webContents.send(TESTFORGE_EVENT_CHANNELS[event], payload);
+    this.events.publish(event, payload);
+  }
+
+  subscribe(event: TestForgeEventName, listener: DesktopEventListener): () => void {
+    return this.events.subscribe(event, listener);
   }
 
   flashFrame(flag: boolean): void { this.mainWindow?.flashFrame(flag); }
@@ -63,6 +74,24 @@ export class DesktopWindows {
     nativeTheme.themeSource = theme;
     this.mainWindow?.setBackgroundColor(backgroundColor(theme));
   }
+}
+
+function installNavigationGuards(target: BrowserWindow, rendererTarget: string): void {
+  const allowed = new URL(rendererTarget);
+  target.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  target.webContents.on("will-navigate", (event, url) => {
+    try {
+      const candidate = new URL(url);
+      const sameRenderer = allowed.protocol === "file:"
+        ? candidate.protocol === "file:" && candidate.pathname === allowed.pathname
+        : candidate.origin === allowed.origin;
+      if (sameRenderer) return;
+    } catch {
+      // Invalid navigation targets are denied below.
+    }
+    event.preventDefault();
+  });
+  target.webContents.session.setPermissionRequestHandler((_webContents, _permission, callback) => callback(false));
 }
 
 function backgroundColor(theme: "system" | "light" | "dark"): string {

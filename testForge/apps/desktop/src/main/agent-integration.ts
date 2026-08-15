@@ -4,6 +4,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import type { AgentIntegrationPreview, AgentIntegrationStatus, AgentKind, McpGatewayStatus } from "@testforge/contracts/agents";
+import { redactSecrets } from "./logger.js";
 
 const execFileAsync = promisify(execFile);
 export const CODEX_TOKEN_ENV = "TESTFORGE_MCP_TOKEN";
@@ -393,6 +394,6 @@ export class CodexAgentIntegrationService {
     const candidate = error as { message?: unknown; stderr?: unknown; stdout?: unknown };
     const raw = [candidate.message, candidate.stderr, candidate.stdout].find((item) => typeof item === "string" && item.trim()) as string | undefined;
     const secrets = [this.gateway.token()].filter(Boolean);
-    return secrets.reduce((message, secret) => message.replaceAll(secret, "<redacted>"), raw?.trim() || String(error));
+    return redactSecrets(raw?.trim() || String(error), secrets);
   }
 }

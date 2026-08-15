@@ -11,6 +11,7 @@ const desktopDir = resolve(import.meta.dirname, "..");
 const workspaceDir = resolve(desktopDir, "../..");
 const artifactDir = resolve(workspaceDir, "output/playwright");
 const gatewayPort = 18080;
+const gatewayTestToken = "testforge-e2e-gateway-token";
 
 let application: ElectronApplication;
 let page: Page;
@@ -24,7 +25,13 @@ test.describe.serial("TestForge folder project desktop", () => {
     userDataDir = await mkdtemp(resolve(tmpdir(), "testforge-e2e-"));
     projectRoot = join(userDataDir, "project-a");
     await mkdir(projectRoot);
-    const env = { ...process.env, TESTFORGE_USER_DATA_DIR: userDataDir, TESTFORGE_GATEWAY_PORT: String(gatewayPort), TESTFORGE_AGENT_INTEGRATION_TEST_MODE: "1" };
+    const env = {
+      ...process.env,
+      TESTFORGE_USER_DATA_DIR: userDataDir,
+      TESTFORGE_GATEWAY_PORT: String(gatewayPort),
+      TESTFORGE_AGENT_INTEGRATION_TEST_MODE: "1",
+      TESTFORGE_GATEWAY_TEST_TOKEN: gatewayTestToken
+    };
     delete env.ELECTRON_RUN_AS_NODE;
     application = await electron.launch({ args: [desktopDir], cwd: desktopDir, env, timeout: 90_000 });
     page = await application.firstWindow({ timeout: 90_000 });
@@ -166,9 +173,8 @@ test.describe.serial("TestForge folder project desktop", () => {
   });
 
   test("exposes gateway tools and rejects project tools while no project is active", async () => {
-    const token = await page.evaluate(() => window.testforge.agents.gatewayToken());
     const client = new Client({ name: "e2e", version: "0.0.0" });
-    const transport = new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${gatewayPort}/mcp`), { requestInit: { headers: { Authorization: `Bearer ${token}` } } });
+    const transport = new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${gatewayPort}/mcp`), { requestInit: { headers: { Authorization: `Bearer ${gatewayTestToken}` } } });
     await client.connect(transport);
     const names = (await client.listTools()).tools.map((tool) => tool.name);
     expect(names).toContain("request_wiring_task");

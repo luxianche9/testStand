@@ -28,10 +28,14 @@ function createThreadListAdapter(initialize: RemoteThreadListAdapter["initialize
   };
 }
 
+function useRuntimeHook() {
+  return useLocalRuntime(modelAdapter);
+}
+
 function Runtime({ adapter, onCreated }: { adapter: RemoteThreadListAdapter; onCreated: () => void }) {
   const runtime = useRemoteThreadListRuntime({
     adapter,
-    runtimeHook: () => useLocalRuntime(modelAdapter)
+    runtimeHook: useRuntimeHook
   });
   return <AssistantRuntimeProvider runtime={runtime}><ThreadList onThreadSelected={onCreated} /></AssistantRuntimeProvider>;
 }

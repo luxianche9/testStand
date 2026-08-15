@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { queryKeys } from "./query-keys.js";
 
 /**
  * Queries shared by more than one page. Keeping them here means a page cannot silently disagree
@@ -10,7 +11,7 @@ import { useQuery } from "@tanstack/react-query";
  *  event channel, so it is polled rather than left stale. */
 export function useDeviceCatalog() {
   return useQuery({
-    queryKey: ["device-catalog"],
+    queryKey: queryKeys.deviceCatalog,
     queryFn: async () => ({ hardware: await window.testforge.devices.listHardware() }),
     refetchInterval: 10_000
   });
@@ -19,19 +20,19 @@ export function useDeviceCatalog() {
 /** Remote availability is pushed on the `availability` channel; this poll is the dropped-event
  *  fallback described in docs/architecture.md. */
 export function useDashboard() {
-  return useQuery({ queryKey: ["dashboard"], queryFn: () => window.testforge.system.dashboard(), refetchInterval: 10_000 });
+  return useQuery({ queryKey: queryKeys.dashboard, queryFn: () => window.testforge.system.dashboard(), refetchInterval: 10_000 });
 }
 
 /** Main-process project document buffer: path, dirty flag, and the single file contents. */
 export function useProjectDocument() {
-  return useQuery({ queryKey: ["project-document"], queryFn: () => window.testforge.projects.current() });
+  return useQuery({ queryKey: queryKeys.projectDocument, queryFn: () => window.testforge.projects.current() });
 }
 
 export function useRecentProjects() {
-  return useQuery({ queryKey: ["recent-projects"], queryFn: () => window.testforge.projects.listRecent() });
+  return useQuery({ queryKey: queryKeys.recentProjects, queryFn: () => window.testforge.projects.listRecent() });
 }
 
 /** AI 发起的人工接线任务（含调用历史）。刷新由 AppShell 的 wiringTask/project 订阅驱动。 */
 export function useWiringTasks() {
-  return useQuery({ queryKey: ["wiring-tasks"], queryFn: () => window.testforge.wiring.listTasks({ limit: 200 }) });
+  return useQuery({ queryKey: queryKeys.wiringTasks, queryFn: () => window.testforge.wiring.listTasks({ limit: 200 }) });
 }

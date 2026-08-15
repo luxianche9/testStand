@@ -1,17 +1,21 @@
 import { useCallback, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { activeExecutionActivities, executionHardwareIds } from "@testforge/contracts/execution";
 import type { TaskValidationResult, TestStep, TestTask } from "@testforge/contracts/orchestration";
 import type { ProjectDocument } from "@testforge/contracts/projects";
+import { errorMessage } from "../../shared/errors.js";
 import { IconAlert, IconPlay, IconRefresh } from "../../shared/icons.js";
 import { Badge, Btn, Modal, Spinner } from "../../shared/ui.js";
 import { useDashboard, useProjectDocument } from "../../shared/queries.js";
+import { queryKeys } from "../../shared/query-keys.js";
 import { useResizableWidth } from "../../shared/resizable.js";
 import { RunDetail } from "../run-logs/index.js";
 import { StepPalette, StepOutline } from "./StepOutline.js";
 import { StepProperties, VariableEditor } from "./StepEditor.js";
 import { ValidationPanel } from "./ValidationPanel.js";
 import { OperatorDecisionModal, RunInputsModal } from "./RunPanel.js";
-import { duplicateTaskStep, findStep, moveTaskStep, newStep, removeTaskStep, replaceTaskStep, stepTypeLabel } from "./workflow-model.js";
+import { duplicateTaskStep, findStep, moveTaskStep, newStep, removeTaskStep, replaceTaskStep, stepTypeLabel, taskHardwareIds } from "./workflow-model.js";
+import { acceptAppliedTask, createTaskDraftState, receiveExternalTask, resolveExternalTask, updateTaskDraft } from "./task-draft-state.js";
 
 const SECTIONS = ["setup", "steps", "cleanup"] as const;
 type SectionName = (typeof SECTIONS)[number];
@@ -21,36 +25,34 @@ export function OrchestrationPage() {
   const client = useQueryClient();
   const [selectedRunId, setSelectedRunId] = useState<string>();
   const project = useProjectDocument();
-  const decisions = useQuery({ queryKey: ["operator-decisions"], queryFn: () => window.testforge.orchestration.listOperatorDecisions() });
+  const decisions = useQuery({ queryKey: queryKeys.operatorDecisions, queryFn: () => window.testforge.orchestration.listOperatorDecisions() });
 
   useEffect(() => {
-    const refreshDecisions = () => void client.invalidateQueries({ queryKey: ["operator-decisions"] });
+    const refreshDecisions = () => void client.invalidateQueries({ queryKey: queryKeys.operatorDecisions });
     const stopOperator = window.testforge.events.subscribe("operator", refreshDecisions);
-    const stopProject = window.testforge.events.subscribe("project", (payload) => {
-      client.setQueryData(["project-document"], payload);
-      setSelectedRunId(undefined);
-    });
     const stopRun = window.testforge.events.subscribe("run", (payload) => {
       const run = payload as { runId?: string };
       if (run.runId) setSelectedRunId(run.runId);
     });
     const fallback = window.setInterval(() => { refreshDecisions(); }, 15_000);
-    return () => { stopOperator(); stopProject(); stopRun(); window.clearInterval(fallback); };
+    return () => { stopOperator(); stopRun(); window.clearInterval(fallback); };
   }, [client]);
 
+  useEffect(() => { setSelectedRunId(undefined); }, [project.data?.path, project.data?.file.task.taskId]);
+
   if (project.isLoading) return <div className="centered"><Spinner label="正在加载测试编排…" /></div>;
-  if (project.isError || !project.data) return <div className="centered alert"><IconAlert size={15} /><span>{String(project.error ?? "未打开工程")}</span></div>;
+  if (project.isError || !project.data) return <div className="centered alert"><IconAlert size={15} /><span>{errorMessage(project.error ?? "未打开工程")}</span></div>;
 
   return <main className="orchestration-page">
     <div className="orchestration-shell single-task">
       <TaskWorkspace
-        key={project.data.file.task.taskId + (project.data.path ?? "untitled")}
+        key={`${project.data.file.projectId}:${project.data.path ?? "untitled"}`}
         project={project.data}
         selectedRunId={selectedRunId}
         onRunSelected={setSelectedRunId}
       />
     </div>
-    <OperatorDecisionModal decision={decisions.data?.[0]} onResponded={() => void client.invalidateQueries({ queryKey: ["operator-decisions"] })} />
+    <OperatorDecisionModal decision={decisions.data?.[0]} onResponded={() => void client.invalidateQueries({ queryKey: queryKeys.operatorDecisions })} />
   </main>;
 }
 
@@ -61,9 +63,9 @@ function TaskWorkspace({ project, selectedRunId, onRunSelected }: {
 }) {
   const client = useQueryClient();
   const tools = useDashboard();
-  const manualBusy = tools.data?.execution.state === "manual";
 
-  const [draft, setDraft] = useState<TestTask>(() => structuredClone(project.file.task));
+  const projectIdentity = `${project.file.projectId}:${project.path ?? "untitled"}`;
+  const [draftState, setDraftState] = useState(() => createTaskDraftState(projectIdentity, project.file.task));
   const [selectedStepId, setSelectedStepId] = useState<string>();
   const [editingStepId, setEditingStepId] = useState<string>();
   const [section, setSection] = useState<SectionName>("steps");
@@ -72,20 +74,26 @@ function TaskWorkspace({ project, selectedRunId, onRunSelected }: {
   const [notice, setNotice] = useState<string>();
   const inspector = useResizableWidth({ defaultWidth: 340, min: 260, max: 640, direction: "left" });
 
-  // When the open project file changes (new/open), reset the local draft to the buffer's task.
+  // External file changes are adopted automatically only while the local draft is clean.
   useEffect(() => {
-    setDraft(structuredClone(project.file.task));
+    setDraftState((current) => receiveExternalTask(current, projectIdentity, project.file.task));
     setValidation(undefined);
     setNotice(undefined);
-  }, [project.file.task.taskId, project.path]);
+  }, [project.file.task, projectIdentity]);
 
-  const task = draft;
+  const task = draftState.draft;
+  const requiredHardwareIds = new Set(taskHardwareIds(task));
+  const manualBusyHardwareIds = [...new Set(activeExecutionActivities(tools.data?.execution)
+    .filter((activity) => activity.state === "manual")
+    .flatMap(executionHardwareIds)
+    .filter((hardwareId) => requiredHardwareIds.has(hardwareId)))];
+  const manualBusy = manualBusyHardwareIds.length > 0;
 
   const apply = useMutation({
     mutationFn: async (next: TestTask) => await window.testforge.orchestration.updateTask(next),
     onSuccess: async (doc) => {
-      client.setQueryData(["project-document"], doc);
-      setDraft(structuredClone(doc.file.task));
+      client.setQueryData(queryKeys.projectDocument, doc);
+      setDraftState((current) => acceptAppliedTask(current, doc.file.task));
       setNotice("已应用到工程（尚未写盘，请用文件菜单保存）");
     }
   });
@@ -103,11 +111,11 @@ function TaskWorkspace({ project, selectedRunId, onRunSelected }: {
       setRunInputsOpen(false);
       onRunSelected(detail.run.runId);
       setNotice(`Run ${detail.run.status}`);
-      await client.invalidateQueries({ queryKey: ["project-document"] });
+      await client.invalidateQueries({ queryKey: queryKeys.projectDocument });
     }
   });
 
-  const update = useCallback((next: TestTask) => { setDraft(next); setNotice(undefined); }, []);
+  const update = useCallback((next: TestTask) => { setDraftState((current) => updateTaskDraft(current, next)); setNotice(undefined); }, []);
   const addStep = (type: TestStep["type"]) => {
     if (!task) return;
     const step = newStep(type);
@@ -122,19 +130,19 @@ function TaskWorkspace({ project, selectedRunId, onRunSelected }: {
 
   return <section className="suite-workspace">
     <div className="suite-toolbar">
-      <Btn variant="subtle" icon={<IconRefresh size={14} />} onClick={() => { void client.invalidateQueries({ queryKey: ["project-document"] }); }}>刷新</Btn>
+      <Btn variant="subtle" icon={<IconRefresh size={14} />} onClick={() => { void client.invalidateQueries({ queryKey: queryKeys.projectDocument }); }}>刷新</Btn>
       <Btn variant="subtle" disabled={apply.isPending} onClick={() => apply.mutate(task)}>应用</Btn>
       <Btn variant="subtle" disabled={validate.isPending} onClick={() => validate.mutate(task)}>校验</Btn>
       <Btn
         variant="primary"
         icon={<IconPlay size={13} />}
         disabled={start.isPending || manualBusy}
-        title={manualBusy ? "手动硬件调用正在执行" : undefined}
+        title={manualBusy ? `手动调用正在使用：${manualBusyHardwareIds.join(", ")}` : undefined}
         onClick={() => { if (task.inputs.length > 0) setRunInputsOpen(true); else start.mutate({}); }}
       >运行</Btn>
     </div>
 
-    {(error || notice || manualBusy) && <div className={error ? "orchestration-error" : "orchestration-notice"}>{error ? <><IconAlert size={15} />{String(error)}</> : manualBusy ? "手动硬件调用正在执行，完成后才能启动 Run。" : notice}</div>}
+    {(error || notice || manualBusy) && <div className={error ? "orchestration-error" : "orchestration-notice"}>{error ? <><IconAlert size={15} />{errorMessage(error)}</> : manualBusy ? `手动调用正在使用 Run 所需硬件（${manualBusyHardwareIds.join(", ")}），完成后才能启动。` : notice}</div>}
 
     <div className="suite-editor-grid" style={{ gridTemplateColumns: `150px minmax(0, 1fr)${editing ? ` 5px ${inspector.width}px` : ""}` }}>
       <StepPalette onAdd={addStep} />
@@ -189,5 +197,15 @@ function TaskWorkspace({ project, selectedRunId, onRunSelected }: {
       onClose={() => setRunInputsOpen(false)}
       onRun={(values) => start.mutate(values)}
     />
+    <Modal
+      open={Boolean(draftState.pendingExternal)}
+      title="工程中的编排已在外部更新"
+      footer={<>
+        <Btn onClick={() => setDraftState((current) => resolveExternalTask(current, "adopt-external"))}>采用外部版本</Btn>
+        <Btn variant="primary" onClick={() => setDraftState((current) => resolveExternalTask(current, "keep-local"))}>保留我的编辑</Btn>
+      </>}
+    >
+      <p>检测到工程文件中的任务已变化，同时当前页面还有未应用的编辑。请选择要继续使用的版本；此操作不会写入磁盘。</p>
+    </Modal>
   </section>;
 }

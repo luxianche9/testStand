@@ -5,7 +5,9 @@ import type { DashboardSnapshot } from "@testforge/contracts/desktop";
 import { ArrowLeftIcon, BotIcon, EyeIcon, EyeOffIcon, PaletteIcon, PlugZapIcon, RefreshCwIcon, ServerIcon, Settings2Icon, SquareIcon } from "lucide-react";
 import { Btn, Badge } from "../../shared/ui.js";
 import { QueryGate } from "../../shared/layout.js";
-import type { ThemeChoice } from "../../shared/theme.js";
+import { errorMessage } from "../../shared/errors.js";
+import { queryKeys } from "../../shared/query-keys.js";
+import type { ThemeChoice } from "@testforge/contracts/storage";
 import { AgentIntegrationPage } from "../agent/AgentIntegrationPage.js";
 import { DevicesPage } from "../devices/index.js";
 
@@ -52,8 +54,8 @@ function AppearanceSettings({ value, onChange }: { value: ThemeChoice; onChange:
 }
 
 function ModelSettings() {
-  const settings = useQuery({ queryKey: ["llm-settings"], queryFn: () => window.testforge.settings.getLlm() });
-  const runtime = useQuery({ queryKey: ["opencode-status"], queryFn: () => window.testforge.agents.openCodeStatus(), refetchInterval: 5_000 });
+  const settings = useQuery({ queryKey: queryKeys.llmSettings, queryFn: () => window.testforge.settings.getLlm() });
+  const runtime = useQuery({ queryKey: queryKeys.openCodeStatus, queryFn: () => window.testforge.agents.openCodeStatus(), refetchInterval: 5_000 });
   const [baseUrl, setBaseUrl] = useState("https://api.openai.com/v1");
   const [model, setModel] = useState("gpt-4.1");
   const [apiKey, setApiKey] = useState("");
@@ -118,4 +120,3 @@ function runtimeTone(status?: OpenCodeRuntimeStatus): "muted" | "ok" | "warn" | 
 function runtimeLabel(status?: OpenCodeRuntimeStatus) {
   return ({ running: "运行中", starting: "启动中", stopping: "停止中", stopped: "已停止", error: "启动失败" } as Record<string, string>)[status?.state ?? ""] ?? "读取中";
 }
-function errorMessage(value: unknown) { return value instanceof Error ? value.message : String(value); }

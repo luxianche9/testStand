@@ -11,6 +11,8 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { OpenCodeRuntimeStatus } from "@testforge/contracts/agents";
 import type { LlmSettings } from "@testforge/contracts/storage";
+import { errorMessage } from "../../shared/errors.js";
+import { queryKeys } from "../../shared/query-keys.js";
 import {
   AlertCircleIcon,
   BotIcon,
@@ -63,24 +65,20 @@ function maxSidebarWidth() {
   return Math.min(720, Math.max(MIN_WIDTH, window.innerWidth - 468));
 }
 
-function errorMessage(value: unknown) {
-  return value instanceof Error ? value.message : String(value);
-}
-
 export function AssistantSidebar({ gatewayRunning, onClose, onOpenSettings }: { gatewayRunning: boolean; onClose: () => void; onOpenSettings: () => void }) {
   const rootRef = useRef<HTMLElement>(null);
   const resizeRef = useRef<{ startX: number; startWidth: number } | undefined>(undefined);
   const [actionError, setActionError] = useState<string>();
   const queryClient = useQueryClient();
-  const statusQuery = useQuery({ queryKey: ["opencode-status"], queryFn: () => window.testforge.agents.openCodeStatus(), refetchInterval: 5_000 });
-  const settingsQuery = useQuery({ queryKey: ["llm-settings"], queryFn: () => window.testforge.settings.getLlm() });
+  const statusQuery = useQuery({ queryKey: queryKeys.openCodeStatus, queryFn: () => window.testforge.agents.openCodeStatus(), refetchInterval: 5_000 });
+  const settingsQuery = useQuery({ queryKey: queryKeys.llmSettings, queryFn: () => window.testforge.settings.getLlm() });
   const current = statusQuery.data;
   const settings = settingsQuery.data;
   const running = current?.state === "running" && Boolean(current.apiUrl);
   const [drawerOpen, setDrawerOpen] = usePersistedThreadDrawer(running);
 
   useEffect(() => window.testforge.events.subscribe("opencode", () => {
-    void queryClient.invalidateQueries({ queryKey: ["opencode-status"] });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.openCodeStatus });
   }), [queryClient]);
 
   const setWidth = (next: number) => {

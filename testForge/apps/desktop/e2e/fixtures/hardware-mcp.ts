@@ -4,7 +4,7 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { CallToolRequestSchema, ListToolsRequestSchema, isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 
-export interface HardwareFixtureCall { name: string; arguments: Record<string, unknown> }
+interface HardwareFixtureCall { name: string; arguments: Record<string, unknown> }
 export interface HardwareMcpFixture {
   url: string;
   token: string;
@@ -112,6 +112,8 @@ function fixtureTools() {
         additionalProperties: false,
         properties: {
           hardwareId: { type: "string", title: "Hardware ID" },
+          attempt: { type: "integer", minimum: 1 },
+          idempotencyKey: { type: "string", minLength: 1 },
           voltage: { type: "number", title: "Voltage", minimum: -10, maximum: 10, default: 1.25 },
           mode: { type: "string", title: "Mode", enum: ["dc", "pulse"], default: "dc" },
           options: {

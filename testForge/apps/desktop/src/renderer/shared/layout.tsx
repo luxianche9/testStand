@@ -1,12 +1,12 @@
 import type { ReactNode } from "react";
 import type { UseQueryResult } from "@tanstack/react-query";
-import type { DashboardSnapshot } from "@testforge/contracts/desktop";
+import { errorMessage } from "./errors.js";
 import { IconAlert } from "./icons.js";
 import { Btn, EmptyState, Spinner } from "./ui.js";
 
 /* --------------------------------- 公共 --------------------------------- */
 
-export function QueryGate({ query, children }: { query: UseQueryResult<DashboardSnapshot>; children: (data: DashboardSnapshot) => ReactNode }) {
+export function QueryGate<T>({ query, children }: { query: UseQueryResult<T>; children: (data: T) => ReactNode }) {
   if (query.isLoading) {
     return <div className="centered"><Spinner label="正在加载…" /></div>;
   }
@@ -16,7 +16,7 @@ export function QueryGate({ query, children }: { query: UseQueryResult<Dashboard
         <EmptyState
           icon={<IconAlert size={30} />}
           title="无法加载数据"
-          {...(query.error ? { body: String(query.error) } : {})}
+          {...(query.error ? { body: errorMessage(query.error) } : {})}
           action={<Btn variant="primary" onClick={() => void query.refetch()}>重试</Btn>}
         />
       </div>

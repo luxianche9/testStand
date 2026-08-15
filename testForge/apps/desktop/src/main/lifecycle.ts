@@ -1,9 +1,11 @@
-import { app, ipcMain, Menu } from "electron";
+import { app, Menu } from "electron";
 import { createDesktopComposition } from "./composition.js";
 import { DesktopDialogs } from "./dialogs.js";
-import { registerDesktopIpc } from "./ipc.js";
+import { createElectronTrpcV11Handler } from "./electron-trpc-v11.js";
+import { createDesktopRouter } from "./ipc.js";
 import { registerAssetProtocol } from "./protocols.js";
 import { DesktopWindows } from "./windows.js";
+import { logger } from "./logger.js";
 
 export async function startDesktop(): Promise<void> {
   Menu.setApplicationMenu(null);
@@ -12,7 +14,7 @@ export async function startDesktop(): Promise<void> {
   const dialogs = new DesktopDialogs(() => windows.current());
 
   registerAssetProtocol(composition.resolveImagePath);
-  registerDesktopIpc(ipcMain as never, {
+  const router = createDesktopRouter({
     application: composition.application,
     agents: composition.agents,
     settings: composition.settings,
@@ -20,16 +22,17 @@ export async function startDesktop(): Promise<void> {
     windows,
     workspaceChanged: composition.workspaceChanged
   });
-  windows.create({
+  const window = windows.create({
     theme: composition.theme(),
     ...(process.env.ELECTRON_RENDERER_URL ? { rendererUrl: process.env.ELECTRON_RENDERER_URL } : {}),
     connectionInfo: composition.connectionInfo
   });
+  createElectronTrpcV11Handler({ router, windows: [window] });
 
   const probe = async () => windows.publish("availability", await composition.probeAvailability());
   void probe();
   const availabilityTimer = setInterval(() => { void probe(); }, 10_000);
-  void composition.autoStartAgentRuntime().catch((error) => console.error("OpenCode automatic startup failed", error));
+  void composition.autoStartAgentRuntime().catch((error) => logger.error("OpenCode automatic startup failed", error));
 
   let exiting = false;
   app.on("window-all-closed", () => app.quit());
@@ -39,7 +42,7 @@ export async function startDesktop(): Promise<void> {
     exiting = true;
     clearInterval(availabilityTimer);
     void composition.shutdown()
-      .catch((error) => console.error("Desktop shutdown failed", error))
+      .catch((error) => logger.error("Desktop shutdown failed", error))
       .finally(() => app.exit(0));
   });
 }

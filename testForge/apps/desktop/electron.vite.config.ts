@@ -12,7 +12,10 @@ export default defineConfig({
       "@testforge/orchestration",
       "@testforge/projects",
       "@testforge/storage",
-      "@testforge/wiring"
+      "@testforge/wiring",
+      "@trpc/server",
+      "electron-log",
+      "electron-trpc"
     ] })],
     build: {
       rollupOptions: {
@@ -21,7 +24,7 @@ export default defineConfig({
     }
   },
   preload: {
-    plugins: [externalizeDepsPlugin({ exclude: ["@testforge/contracts"] })],
+    plugins: [externalizeDepsPlugin({ exclude: ["@testforge/contracts", "@trpc/client", "@trpc/server", "electron-trpc"] })],
     build: {
       rollupOptions: {
         output: {

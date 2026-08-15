@@ -1,19 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
-import { TESTFORGE_EVENT_CHANNELS, TESTFORGE_IPC } from "@testforge/contracts/desktop";
-import { createTestForgeApi } from "./api.js";
+import { TESTFORGE_IPC } from "@testforge/contracts/desktop";
+import { createTestForgeApi, type DesktopTrpcClient } from "./api.js";
 
 describe("preload API", () => {
-  it("exposes every grouped API method through its shared IPC channel", () => {
-    const invoked: string[] = [];
-    const listened: string[] = [];
-    const ipc = {
-      invoke: vi.fn(async (channel: string) => { invoked.push(channel); return undefined; }),
-      on: vi.fn((channel: string) => { listened.push(channel); }),
-      removeListener: vi.fn()
-    };
-    const api = createTestForgeApi(ipc);
-    const computer = { id: "PC", label: "PC", address: "127.0.0.1", ssh: { port: 22, username: "u" } };
-    const server = { serverId: "S", computerId: "PC", label: "S", hardwareId: "H", url: "http://127.0.0.1:1/mcp", enabled: true, lifecycle: { statusCommand: "s", startCommand: "a", stopCommand: "x", logPath: "l" } };
+  it("preserves the complete window.testforge facade while calling tRPC procedures", () => {
+    const calls: string[] = [];
+    const unsubscribe = vi.fn();
+    const client = createRecordingClient(calls, unsubscribe);
+    const api = createTestForgeApi(client);
+    const computer = { id: "PC", label: "PC", address: "127.0.0.1", ssh: { port: 22, username: "u", shell: "powershell" as const } };
+    const server = { transport: "mcp-http" as const, serverId: "S", computerId: "PC", label: "S", hardwareId: "H", url: "http://127.0.0.1:1/mcp", enabled: true, lifecycle: { statusCommand: "s", startCommand: "a", stopCommand: "x", logPath: "l" } };
     const hardware = { formatVersion: 2 as const, hardwareId: "H", label: "H", kind: "passive" as const, ports: [] };
     const task = { formatVersion: 2 as const, taskId: "T", name: "T", inputs: [], variables: [], setup: [], steps: [], cleanup: [] };
 
@@ -32,20 +28,46 @@ describe("preload API", () => {
     void api.orchestration.getRun("R"); void api.orchestration.listRuns(); void api.orchestration.exportRun("R"); void api.orchestration.deleteRun("R");
     void api.orchestration.clearCompletedRuns(); void api.orchestration.listOperatorDecisions(); void api.orchestration.respondOperatorDecision("N", "yes");
     void api.manual.invokeTool({ hardwareId: "H", toolName: "S__write", arguments: { value: 1 } });
-    void api.agents.gatewayToken(); void api.agents.rotateGatewayToken(); void api.agents.status("codex"); void api.agents.preview("codex"); void api.agents.install("codex");
+    void api.agents.rotateGatewayToken(); void api.agents.status("codex"); void api.agents.preview("codex"); void api.agents.install("codex");
     void api.agents.remove("codex"); void api.agents.test("codex"); void api.agents.listTools(); void api.agents.openCodeStatus(); void api.agents.startOpenCode(); void api.agents.stopOpenCode(); void api.agents.restartOpenCode();
     void api.settings.getTheme(); void api.settings.setTheme("system"); void api.settings.getProjectView(); void api.settings.setProjectView("wiring");
     void api.settings.getWelcomeLayout(); void api.settings.setWelcomeLayout("grid"); void api.settings.getLlm();
     void api.settings.saveLlm({ baseUrl: "http://127.0.0.1", model: "m" });
     void api.window.minimize(); void api.window.toggleMaximize(); void api.window.close();
-    for (const event of Object.keys(TESTFORGE_EVENT_CHANNELS) as (keyof typeof TESTFORGE_EVENT_CHANNELS)[]) api.events.subscribe(event, () => undefined);
+    const stop = api.events.subscribe("project", () => undefined);
+    stop();
 
-    expect(new Set(invoked)).toEqual(new Set(flattenChannels(TESTFORGE_IPC)));
-    expect(new Set(listened)).toEqual(new Set(Object.values(TESTFORGE_EVENT_CHANNELS)));
+    expect(new Set(calls.map((call) => call.replace(/\.(query|mutate|subscribe)$/, ""))))
+      .toEqual(new Set([...flattenProcedurePaths(TESTFORGE_IPC), "events.subscribe"]));
+    expect(unsubscribe).toHaveBeenCalledOnce();
     expect(Object.keys(api)).toEqual(["system", "devices", "projects", "wiring", "orchestration", "manual", "agents", "settings", "window", "events"]);
+  });
+
+  it("restores the domain error category from a tRPC client error", async () => {
+    const client = {
+      system: { dashboard: { query: vi.fn(async () => Promise.reject({ message: "Project required", data: { category: "requires_project" } })) } }
+    } as unknown as DesktopTrpcClient;
+    const api = createTestForgeApi(client);
+
+    await expect(api.system.dashboard()).rejects.toMatchObject({ name: "AppError", category: "requires_project", message: "Project required" });
   });
 });
 
-function flattenChannels(value: object): string[] {
-  return Object.values(value).flatMap((item) => typeof item === "string" ? [item] : flattenChannels(item as object));
+function createRecordingClient(calls: string[], unsubscribe: () => void): DesktopTrpcClient {
+  const proxy = (path: string[]): unknown => new Proxy(() => undefined, {
+    get: (_target, key) => proxy([...path, String(key)]),
+    apply: () => {
+      const fullPath = path.join(".");
+      calls.push(fullPath);
+      return path.at(-1) === "subscribe" ? { unsubscribe } : Promise.resolve(undefined);
+    }
+  });
+  return proxy([]) as DesktopTrpcClient;
+}
+
+function flattenProcedurePaths(value: object, prefix = ""): string[] {
+  return Object.entries(value).flatMap(([key, item]) => {
+    const path = prefix ? `${prefix}.${key}` : key;
+    return typeof item === "string" ? [path] : flattenProcedurePaths(item as object, path);
+  });
 }

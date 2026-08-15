@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import type { Hardware } from "@testforge/contracts/devices";
 import type { WiringTask } from "@testforge/contracts/wiring";
+import { errorMessage } from "../../shared/errors.js";
 import { IconAlert } from "../../shared/icons.js";
 import { Badge, Btn, Modal } from "../../shared/ui.js";
 import { pinText, resolvePortRef } from "../../shared/hardware.js";
@@ -19,7 +20,6 @@ export function WiringTaskModal({ task, hardware, assetUrls, onAssetUrl, onChang
   const b = resolvePortRef(task.portB, hardware);
   return <Modal
     open
-    onClose={() => undefined}
     title={task.action === "connect" ? "人工接线任务" : "人工断线任务"}
     width={880}
     footer={<>
@@ -53,7 +53,7 @@ export function WiringTaskModal({ task, hardware, assetUrls, onAssetUrl, onChang
         ? "请按照端口图片上的针脚编号，逐条完成上表中的物理接线。确认「已完成」后，工程接线文档才会更新。"
         : "两端都没有登记针脚，按整个端口完成物理连接即可。确认「已完成」后，工程接线文档才会更新。"}
     </p>
-    {complete.isError && <div className="alert"><IconAlert size={15} /><span>{String(complete.error)}</span></div>}
+    {complete.isError && <div className="alert"><IconAlert size={15} /><span>{errorMessage(complete.error)}</span></div>}
   </Modal>;
 }
 

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import type { OperatorDecision, WorkflowVariableDefinition } from "@testforge/contracts/orchestration";
+import { errorMessage } from "../../shared/errors.js";
 import { IconAlert, IconPlay } from "../../shared/icons.js";
 import { Badge, Btn, Modal } from "../../shared/ui.js";
 import { JSON_ERROR, literalText, matchesType, parseLiteral, tryJson } from "./workflow-model.js";
@@ -53,12 +54,12 @@ export function OperatorDecisionModal({ decision, onResponded }: { decision?: Op
     onSuccess: onResponded
   });
   if (!decision) return null;
-  return <Modal open onClose={() => undefined} title="测试运行等待操作员判断" width={660}>
+  return <Modal open title="测试运行等待操作员判断" width={660}>
     <div className="operator-decision">
       <Badge tone="warn">阻塞执行</Badge>
       <h3>{decision.prompt}</h3>
       <div>{decision.options.map((option) => <Btn key={String(option.value)} variant="primary" disabled={respond.isPending} onClick={() => respond.mutate(String(option.value))}>{option.label}</Btn>)}</div>
-      {respond.isError && <div className="alert"><IconAlert size={15} /><span>{String(respond.error)}</span></div>}
+      {respond.isError && <div className="alert"><IconAlert size={15} /><span>{errorMessage(respond.error)}</span></div>}
       <small className="muted-copy">该确认只属于当前 Run；应用关闭后 Run 会被标记为 interrupted。</small>
     </div>
   </Modal>;

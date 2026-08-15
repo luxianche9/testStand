@@ -77,7 +77,7 @@ test.describe.serial("manual control and persisted Run logs", () => {
             options: { kind: "literal" as const, value: { enabled: true } },
             tags: { kind: "literal" as const, value: ["run"] }
           },
-          outputBindings: [], timeoutMs: 30_000, retry: { maxAttempts: 1, delayMs: 0 }
+          outputBindings: [], timeoutMs: 30_000, idempotent: false, retry: { maxAttempts: 1, delayMs: 0, backoff: "fixed", retryOn: ["unavailable"] }
         }]
       };
       await window.testforge.orchestration.updateTask(task);

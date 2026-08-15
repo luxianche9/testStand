@@ -14,7 +14,7 @@ import {
   XIcon
 } from "lucide-react";
 import type { ProjectDocument } from "@testforge/contracts/projects";
-import type { ProjectView } from "../features/projects/ProjectWorkspace.js";
+import type { ProjectView } from "@testforge/contracts/storage";
 import { IconMaximize, IconRestore } from "../shared/icons.js";
 import type { AppPage } from "./app-navigation.js";
 

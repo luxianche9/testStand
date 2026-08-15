@@ -1,8 +1,5 @@
 import { useEffect, useState } from "react";
-
-export type ThemeChoice = "system" | "light" | "dark";
-
-export const themeLabels: Record<ThemeChoice, string> = { system: "跟随系统", light: "浅色", dark: "深色" };
+import type { ThemeChoice } from "@testforge/contracts/storage";
 
 export function useTheme() {
   const [choice, setChoice] = useState<ThemeChoice>("system");
@@ -23,9 +20,5 @@ export function useTheme() {
     setChoice(next);
     await window.testforge.settings.setTheme(next);
   };
-  const cycle = async () => {
-    const next: ThemeChoice = choice === "system" ? "light" : choice === "light" ? "dark" : "system";
-    await select(next);
-  };
-  return { choice, resolved, select, cycle };
+  return { choice, select };
 }

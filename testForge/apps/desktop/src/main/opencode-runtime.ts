@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import type { OpenCodeRuntimeStatus } from "@testforge/contracts/agents";
 import type { LlmSettings } from "@testforge/contracts/storage";
+import { redactSecrets } from "./logger.js";
 
 const execFileAsync = promisify(execFile);
 const OPENCODE_VERSION = "1.18.15";
@@ -328,7 +329,7 @@ export class OpenCodeRuntimeService {
     let apiKey: string | undefined;
     try { apiKey = this.options.apiKey(); } catch { /* a damaged secret must not mask the original startup error */ }
     const secrets = [this.options.gateway.token(), apiKey, this.connection?.password].filter((item): item is string => Boolean(item));
-    return secrets.reduce((message, secret) => message.replaceAll(secret, "<redacted>"), raw);
+    return redactSecrets(raw, secrets);
   }
 }
 

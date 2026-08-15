@@ -5,7 +5,7 @@ export const STEP_TYPES: TestStep["type"][] = ["tool", "delay", "set_variable", 
 export function newStep(type: TestStep["type"]): TestStep {
   const base = { stepId: crypto.randomUUID(), label: stepTypeLabel(type), enabled: true };
   switch (type) {
-    case "tool": return { ...base, type, toolName: "", hardwareId: "", arguments: {}, outputBindings: [], timeoutMs: 30_000, retry: { maxAttempts: 1, delayMs: 0 } };
+    case "tool": return { ...base, type, toolName: "", hardwareId: "", arguments: {}, outputBindings: [], timeoutMs: 30_000, idempotent: false, retry: { maxAttempts: 1, delayMs: 0, backoff: "fixed", retryOn: ["unavailable"] } };
     case "delay": return { ...base, type, durationMs: { kind: "literal", value: 1000 } };
     case "set_variable": return { ...base, type, variable: "", value: { kind: "literal", value: "" } };
     case "assert": return { ...base, type, expression: { kind: "literal", value: true }, message: "断言失败" };
@@ -25,6 +25,13 @@ function childLists(step: TestStep): TestStep[][] {
 
 function flattenSteps(steps: TestStep[]): TestStep[] {
   return steps.flatMap((step) => [step, ...childLists(step).flatMap(flattenSteps)]);
+}
+
+export function taskHardwareIds(task: TestTask): string[] {
+  const steps = [...task.setup, ...task.steps, ...task.cleanup];
+  return [...new Set(flattenSteps(steps)
+    .filter((step): step is Extract<TestStep, { type: "tool" }> => step.type === "tool" && step.enabled)
+    .map((step) => step.hardwareId))].sort(codePointCompare);
 }
 
 export function findStep(task: TestTask, stepId?: string): TestStep | undefined {
@@ -135,18 +142,4 @@ export function stepTypeLabel(type: TestStep["type"]): string {
   return ({ tool: "硬件动作", delay: "延时", set_variable: "变量赋值", assert: "断言", if: "判断", loop: "循环", parallel: "并行", operator: "人工确认" } as Record<string, string>)[type] ?? type;
 }
 
-export function runTone(status: TestRun["status"]): "muted" | "ok" | "warn" | "bad" | "accent" {
-  if (status === "passed") return "ok";
-  if (status === "running") return "accent";
-  if (status === "cancelling") return "warn";
-  if (status === "blocked" || status === "failed" || status === "interrupted") return "bad";
-  return "muted";
-}
-
-export function nodeStatusTone(status: string): "muted" | "ok" | "warn" | "bad" | "accent" {
-  if (status === "passed") return "ok";
-  if (status === "running") return "accent";
-  if (status === "waiting_operator") return "warn";
-  if (status === "failed") return "bad";
-  return "muted";
-}
+function codePointCompare(left: string, right: string): number { return left < right ? -1 : left > right ? 1 : 0; }

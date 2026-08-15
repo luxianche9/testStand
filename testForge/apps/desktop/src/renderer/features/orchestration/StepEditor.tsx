@@ -1,9 +1,12 @@
 import { useState, type ReactNode } from "react";
 import type { ToolCatalogItem } from "@testforge/contracts/devices";
+import type { ErrorCategory } from "@testforge/contracts/errors";
 import type { TestStep, TestTask, WorkflowExpression, WorkflowValueTemplate, WorkflowVariableDefinition } from "@testforge/contracts/orchestration";
 import { IconCopy, IconPlus, IconTrash } from "../../shared/icons.js";
 import { Btn } from "../../shared/ui.js";
 import { STEP_TYPES, literalText, newExpression, newStep, newValueTemplate, parseLiteral, stepTypeLabel } from "./workflow-model.js";
+
+const RETRY_CATEGORIES: ErrorCategory[] = ["unavailable", "conflict", "error"];
 
 export function VariableEditor({ task, onChange }: { task: TestTask; onChange: (task: TestTask) => void }) {
   const [tab, setTab] = useState<"inputs" | "variables">("variables");
@@ -102,10 +105,14 @@ export function StepProperties({ step, task, tools, onChange, onDelete, onDuplic
     </label>
     <label className="field"><span className="field-label">Hardware ID</span><input className="input" value={step.hardwareId} onChange={(event) => onChange({ ...step, hardwareId: event.target.value })} /></label>
     <label className="field"><span className="field-label">超时 ms</span><input className="input" type="number" value={step.timeoutMs} onChange={(event) => onChange({ ...step, timeoutMs: Number(event.target.value) })} /></label>
+    <label className="field checkbox-field"><input type="checkbox" checked={step.idempotent} onChange={(event) => onChange({ ...step, idempotent: event.target.checked, retry: event.target.checked ? step.retry : { ...step.retry, maxAttempts: 1 } })} /><span className="field-label">该操作可安全重复（幂等）</span></label>
     <div className="variable-row">
-      <label className="field"><span className="field-label">重试次数</span><input className="input" type="number" value={step.retry.maxAttempts} onChange={(event) => onChange({ ...step, retry: { ...step.retry, maxAttempts: Number(event.target.value) } })} /></label>
+      <label className="field"><span className="field-label">重试次数</span><input className="input" type="number" disabled={!step.idempotent} value={step.idempotent ? step.retry.maxAttempts : 1} onChange={(event) => onChange({ ...step, retry: { ...step.retry, maxAttempts: Number(event.target.value) } })} /></label>
       <label className="field"><span className="field-label">重试间隔 ms</span><input className="input" type="number" value={step.retry.delayMs} onChange={(event) => onChange({ ...step, retry: { ...step.retry, delayMs: Number(event.target.value) } })} /></label>
+      <label className="field"><span className="field-label">退避</span><select className="input" value={step.retry.backoff} onChange={(event) => onChange({ ...step, retry: { ...step.retry, backoff: event.target.value as "fixed" | "exponential" } })}><option value="fixed">固定</option><option value="exponential">指数</option></select></label>
     </div>
+    <div className="field"><span className="field-label">仅重试错误类别</span><div className="variable-row">{RETRY_CATEGORIES.map((category) => <label key={category} className="checkbox-field"><input type="checkbox" disabled={!step.idempotent} checked={step.retry.retryOn.includes(category)} onChange={(event) => onChange({ ...step, retry: { ...step.retry, retryOn: event.target.checked ? [...step.retry.retryOn, category] : step.retry.retryOn.filter((item) => item !== category) } })} />{category}</label>)}</div></div>
+    {!step.idempotent && <small className="muted-copy">非幂等操作强制只执行一次，避免真实硬件动作被盲目重发。</small>}
     <div className="nested-box">
       <strong>调用参数</strong>
       {Object.entries(step.arguments).map(([name, value]) => <div className="nested-box" key={name}>

@@ -61,12 +61,11 @@ describe("manual JSON Schema form model", () => {
     expect(requiresJsonFallback({ type: "object", properties: { fixed: { type: "string" } } })).toBe(false);
   });
 
-  it("validates the form after forcibly injecting the selected hardwareId", () => {
+  it("validates only the public tool arguments while hardware context stays in metadata", () => {
     const schema = {
       type: "object",
       additionalProperties: false,
       properties: {
-        hardwareId: { const: "HW1" },
         channel: { type: "integer", minimum: 0, maximum: 3 },
         options: {
           type: "object",
@@ -75,26 +74,26 @@ describe("manual JSON Schema form model", () => {
           required: ["enabled"]
         }
       },
-      required: ["hardwareId", "channel", "options"]
+      required: ["channel", "options"]
     };
 
-    expect(validateSchemaArguments(schema, "HW1", { hardwareId: "spoofed", channel: 2, options: { enabled: true } })).toEqual({ valid: true, errors: [] });
-    const invalid = validateSchemaArguments(schema, "HW1", { channel: 8, options: {} });
+    expect(validateSchemaArguments(schema, { channel: 2, options: { enabled: true } })).toEqual({ valid: true, errors: [] });
+    const invalid = validateSchemaArguments(schema, { channel: 8, options: {} });
     expect(invalid.valid).toBe(false);
     expect(invalid.errors.join(" ")).toMatch(/小于或等于 3|必填/);
-    expect(validateSchemaArguments(schema, undefined, {})).toEqual({ valid: false, errors: [] });
+    expect(validateSchemaArguments(schema, {})).toMatchObject({ valid: false });
   });
 
   it("reports unsupported root schemas and malformed patterns without using eval", () => {
-    expect(validateSchemaArguments({ type: "string" }, "HW1", {})).toMatchObject({ valid: false, errors: [expect.stringContaining("object")] });
+    expect(validateSchemaArguments({ type: "string" }, {})).toMatchObject({ valid: false, errors: [expect.stringContaining("object")] });
     expect(validateSchemaArguments({
       oneOf: [{
         type: "object",
-        properties: { hardwareId: { const: "HW1" }, channel: { type: "integer" } },
-        required: ["hardwareId", "channel"]
+        properties: { channel: { type: "integer" } },
+        required: ["channel"]
       }]
-    }, "HW1", { channel: 1 })).toEqual({ valid: true, errors: [] });
-    expect(validateSchemaArguments({ type: "object", properties: { value: { type: "string", pattern: "[" } }, required: ["value"] }, "HW1", { value: "x" }))
+    }, { channel: 1 })).toEqual({ valid: true, errors: [] });
+    expect(validateSchemaArguments({ type: "object", properties: { value: { type: "string", pattern: "[" } }, required: ["value"] }, { value: "x" }))
       .toMatchObject({ valid: false, errors: [expect.stringContaining("pattern")] });
   });
 });

@@ -110,7 +110,13 @@ function readLegacyComputers(root: string, database: LegacyDatabase | undefined,
 function readLegacyServers(root: string, database: LegacyDatabase | undefined, tables: Set<string>): { value: McpServerConfig; legacySecretKey?: string }[] {
   const raw = [...readEntityDocuments(join(root, "servers"), ""), ...readEntityDocuments(join(root, "servers"), "server.json")];
   if (database && tables.has("mcp_servers")) raw.push(...(database.prepare("SELECT document FROM mcp_servers").all() as { document: string }[]).map((row) => JSON.parse(row.document)));
-  return unique(raw.flatMap((item) => { const value = item as Record<string, unknown>; const oldKey = value[legacyReferenceField]; const parsed = mcpServerSchema.safeParse({ ...value, [legacyReferenceField]: undefined }); return parsed.success ? [{ value: parsed.data, ...(typeof oldKey === "string" ? { legacySecretKey: oldKey } : {}) }] : []; }), (item) => item.value.serverId);
+  return unique(raw.flatMap((item) => {
+    const value = { ...(item as Record<string, unknown>) };
+    const oldKey = value[legacyReferenceField];
+    delete value[legacyReferenceField];
+    const parsed = mcpServerSchema.safeParse(value);
+    return parsed.success ? [{ value: parsed.data, ...(typeof oldKey === "string" ? { legacySecretKey: oldKey } : {}) }] : [];
+  }), (item) => item.value.serverId);
 }
 function readEntityDocuments(directory: string, nestedName: string): unknown[] {
   if (!existsSync(directory)) return [];

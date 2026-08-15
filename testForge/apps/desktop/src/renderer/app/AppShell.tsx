@@ -1,19 +1,23 @@
-import { lazy, Suspense, useCallback, useEffect, useReducer, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { QueryClient, QueryClientProvider, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { ProjectDocument, ProjectFolderSelection } from "@testforge/contracts/projects";
 import type { WiringTask } from "@testforge/contracts/wiring";
 import { Spinner, Btn, Modal } from "../shared/ui.js";
 import { useDashboard, useDeviceCatalog, useProjectDocument, useWiringTasks } from "../shared/queries.js";
 import { useTheme } from "../shared/theme.js";
-import { ProjectWorkspace, type ProjectView } from "../features/projects/ProjectWorkspace.js";
-import { WelcomePage } from "../features/projects/WelcomePage.js";
-import { SettingsPage } from "../features/settings/SettingsPage.js";
+import type { ProjectView } from "@testforge/contracts/storage";
 import { pinCountText, taskTitle, taskTone } from "../features/wiring/wiring-model.js";
+import { ErrorBoundary } from "../shared/ErrorBoundary.js";
+import { errorMessage } from "../shared/errors.js";
+import { queryKeys } from "../shared/query-keys.js";
 import { appNavigationReducer, initialAppNavigation, isProjectView, type AppPage } from "./app-navigation.js";
 import { readAssistantOpen, writeAssistantOpen } from "./assistant-preference.js";
 import { TitleBar } from "./TitleBar.js";
 
 const AssistantSidebar = lazy(() => import("../features/agent/assistant.js").then((module) => ({ default: module.AssistantSidebar })));
+const ProjectWorkspace = lazy(() => import("../features/projects/ProjectWorkspace.js").then((module) => ({ default: module.ProjectWorkspace })));
+const WelcomePage = lazy(() => import("../features/projects/WelcomePage.js").then((module) => ({ default: module.WelcomePage })));
+const SettingsPage = lazy(() => import("../features/settings/SettingsPage.js").then((module) => ({ default: module.SettingsPage })));
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { refetchOnWindowFocus: false, retry: 1 } } });
 
@@ -38,27 +42,27 @@ function AppShell() {
   const [wiringLogOpen, setWiringLogOpen] = useState(false);
 
   const syncProject = useCallback(async (document?: ProjectDocument | null) => {
-    if (document !== undefined) client.setQueryData(["project-document"], document);
-    else await client.invalidateQueries({ queryKey: ["project-document"] });
+    if (document !== undefined) client.setQueryData(queryKeys.projectDocument, document);
+    else await client.invalidateQueries({ queryKey: queryKeys.projectDocument });
     await Promise.all([
-      client.invalidateQueries({ queryKey: ["recent-projects"] }),
-      client.invalidateQueries({ queryKey: ["wiring-tasks"] }),
-      client.invalidateQueries({ queryKey: ["opencode-status"] })
+      client.invalidateQueries({ queryKey: queryKeys.recentProjects }),
+      client.invalidateQueries({ queryKey: queryKeys.wiringTasks }),
+      client.invalidateQueries({ queryKey: queryKeys.openCodeStatus })
     ]);
   }, [client]);
 
-  useEffect(() => window.testforge.events.subscribe("availability", () => { void client.invalidateQueries({ queryKey: ["dashboard"] }); }), [client]);
-  useEffect(() => window.testforge.events.subscribe("execution", () => { void client.invalidateQueries({ queryKey: ["dashboard"] }); }), [client]);
+  useEffect(() => window.testforge.events.subscribe("availability", () => { void client.invalidateQueries({ queryKey: queryKeys.dashboard }); }), [client]);
+  useEffect(() => window.testforge.events.subscribe("execution", () => { void client.invalidateQueries({ queryKey: queryKeys.dashboard }); }), [client]);
   useEffect(() => window.testforge.events.subscribe("project", (payload) => {
-    client.setQueryData(["project-document"], payload as ProjectDocument | null);
-    void client.invalidateQueries({ queryKey: ["wiring-tasks"] });
+    client.setQueryData(queryKeys.projectDocument, payload as ProjectDocument | null);
+    void client.invalidateQueries({ queryKey: queryKeys.wiringTasks });
   }), [client]);
   useEffect(() => window.testforge.events.subscribe("wiringTask", () => {
-    void client.invalidateQueries({ queryKey: ["wiring-tasks"] });
-    void client.invalidateQueries({ queryKey: ["project-document"] });
+    void client.invalidateQueries({ queryKey: queryKeys.wiringTasks });
+    void client.invalidateQueries({ queryKey: queryKeys.projectDocument });
   }), [client]);
   useEffect(() => {
-    const fallback = window.setInterval(() => { void client.invalidateQueries({ queryKey: ["wiring-tasks"] }); }, 15_000);
+    const fallback = window.setInterval(() => { void client.invalidateQueries({ queryKey: queryKeys.wiringTasks }); }, 15_000);
     return () => window.clearInterval(fallback);
   }, [client]);
   useEffect(() => { writeAssistantOpen(assistantOpen); }, [assistantOpen]);
@@ -72,21 +76,24 @@ function AppShell() {
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [project.data?.dirty]);
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "s" || !project.data) return;
-      event.preventDefault();
-      void save.mutateAsync();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  });
 
   const save = useMutation({
     mutationFn: () => window.testforge.projects.save(),
     onSuccess: (document) => void syncProject(document),
     onError: (reason) => setError(errorMessage(reason))
   });
+  const saveShortcutRef = useRef(save.mutateAsync);
+  useEffect(() => { saveShortcutRef.current = save.mutateAsync; }, [save.mutateAsync]);
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "s" || !project.data) return;
+      event.preventDefault();
+      void saveShortcutRef.current();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [project.data]);
 
   const guardDirty = useCallback((label: string, run: () => Promise<void>) => {
     if (!project.data?.dirty) { void run(); return; }
@@ -176,13 +183,21 @@ function AppShell() {
     <div className="app">
       <TitleBar page={page} projectView={navigation.projectView} project={currentProject} assistantOpen={assistantOpen} busy={busy} pendingTaskCount={pendingTasks.length} wiringLogOpen={wiringLogOpen} onToggleWiringLog={() => setWiringLogOpen((open) => !open)} onNavigate={switchPage} onProjectAction={handleProjectAction} onToggleAssistant={() => setAssistantOpen((open) => !open)} />
       <div className="app-body">
-        <Suspense fallback={<FeatureFallback />}>
-          {page === "welcome" ? <WelcomePage onOpened={enterProject} />
-            : page === "settings" ? <SettingsPage dashboard={dashboard} theme={theme.choice} onThemeChange={theme.select} onBack={returnFromSettings} />
-              : currentProject ? <ProjectWorkspace view={page as ProjectView} />
-                : <WelcomePage onOpened={enterProject} />}
-        </Suspense>
-        {page !== "welcome" && assistantOpen && currentProject && <Suspense fallback={<aside className="assistant-sidebar"><FeatureFallback /></aside>}><AssistantSidebar gatewayRunning={dashboard.data?.gateway.running ?? false} onClose={() => setAssistantOpen(false)} onOpenSettings={openSettings} /></Suspense>}
+        <ErrorBoundary key={`content-${page}`}>
+          <Suspense fallback={<FeatureFallback />}>
+            {page === "welcome" ? <WelcomePage onOpened={enterProject} />
+              : page === "settings" ? <SettingsPage dashboard={dashboard} theme={theme.choice} onThemeChange={theme.select} onBack={returnFromSettings} />
+                : currentProject ? <ProjectWorkspace view={page as ProjectView} />
+                  : <WelcomePage onOpened={enterProject} />}
+          </Suspense>
+        </ErrorBoundary>
+        {page !== "welcome" && assistantOpen && currentProject && (
+          <ErrorBoundary key={`assistant-${currentProject.rootPath}`} fallback={<aside className="assistant-sidebar"><section className="feature-error" role="alert">AI 助手暂时无法显示</section></aside>}>
+            <Suspense fallback={<aside className="assistant-sidebar"><FeatureFallback /></aside>}>
+              <AssistantSidebar gatewayRunning={dashboard.data?.gateway.running ?? false} onClose={() => setAssistantOpen(false)} onOpenSettings={openSettings} />
+            </Suspense>
+          </ErrorBoundary>
+        )}
       </div>
       {error && <div className="app-error" role="alert"><span>{error}</span><button aria-label="关闭错误" onClick={() => setError(undefined)}>×</button></div>}
 
@@ -201,7 +216,6 @@ function AppShell() {
 }
 
 function FeatureFallback() { return <div className="centered"><Spinner label="正在加载功能…" /></div>; }
-function errorMessage(value: unknown) { return value instanceof Error ? value.message : String(value); }
 /** 信箱下拉的接线调用历史：portal 到 body，点击遮罩或历史区以外关闭。 */
 function WiringLogDropdown({ tasks, hardware, onClose }: {
   tasks: WiringTask[]; hardware: Parameters<typeof taskTitle>[1]; onClose: () => void;

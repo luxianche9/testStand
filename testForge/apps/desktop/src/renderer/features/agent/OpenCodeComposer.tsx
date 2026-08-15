@@ -12,6 +12,7 @@ import {
   useOpenCodeSession,
   useOpenCodeThreadState
 } from "@assistant-ui/react-opencode";
+import { errorMessage } from "../../shared/errors.js";
 import {
   ArrowUpIcon,
   BotIcon,
@@ -108,10 +109,6 @@ const REQUEST_OPTIONS = { throwOnError: true } as const;
 const RECENT_FILES_KEY = "testforge.opencode-recent-files";
 const MAX_RECENT_FILES = 8;
 
-function errorMessage(value: unknown) {
-  return value instanceof Error ? value.message : String(value);
-}
-
 export function useOpenCodeCatalog(client: OpencodeClient, fallbackModelID: string) {
   const [catalog, setCatalog] = useState<OpenCodeCatalog>({ models: [], agents: [], commands: [], loading: true });
 
@@ -181,14 +178,13 @@ function selectionFromSession(session: Session | null, fallback: OpenCodeSelecti
 
 export function useSessionSelection(fallback: OpenCodeSelection) {
   const session = useOpenCodeSession();
-  const sessionId = session?.id;
   const fallbackRef = useRef(fallback);
-  fallbackRef.current = fallback;
+  useEffect(() => { fallbackRef.current = fallback; }, [fallback]);
   const [selection, setSelection] = useState<OpenCodeSelection>(() => selectionFromSession(session, fallback));
 
   useEffect(() => {
     setSelection(selectionFromSession(session, fallbackRef.current));
-  }, [sessionId]);
+  }, [session]);
 
   return [selection, setSelection] as const;
 }

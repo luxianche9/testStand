@@ -11,7 +11,7 @@ export function registerAssetProtocol(resolveImagePath: (hardwareId: string, ass
     const [hardwareId, ...rest] = url.pathname.replace(/^\//, "").split("/").map(decodeURIComponent);
     if (!hardwareId || rest.length === 0) return new Response("Not found", { status: 404 });
     try {
-      return net.fetch(pathToFileURL(resolveImagePath(hardwareId, rest.join("/"))).toString());
+      return await net.fetch(pathToFileURL(resolveImagePath(hardwareId, rest.join("/"))).toString());
     } catch {
       return new Response("Forbidden", { status: 403 });
     }

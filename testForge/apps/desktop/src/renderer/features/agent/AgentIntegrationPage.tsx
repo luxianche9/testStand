@@ -2,11 +2,13 @@ import { useState } from "react";
 import { useMutation, useQuery, type UseQueryResult } from "@tanstack/react-query";
 import type { AgentIntegrationPreview, AgentIntegrationStatus, AgentToolInfo } from "@testforge/contracts/agents";
 import type { DashboardSnapshot } from "@testforge/contracts/desktop";
+import { errorMessage } from "../../shared/errors.js";
 import {
-  IconAlert, IconCopy, IconDownload, IconEye, IconEyeOff, IconPlay, IconRefresh, IconStop, IconTrash
+  IconAlert, IconDownload, IconPlay, IconRefresh, IconStop, IconTrash
 } from "../../shared/icons.js";
 import { Badge, Btn, Dot, Modal } from "../../shared/ui.js";
 import { PageHeader, PropRow, QueryGate } from "../../shared/layout.js";
+import { queryKeys } from "../../shared/query-keys.js";
 
 /* ------------------------------- Agent 接入页 ------------------------------- */
 
@@ -34,15 +36,13 @@ export function AgentIntegrationPage({ query, gateway, embedded = false }: { que
 }
 
 function AgentConfig({ gateway, showHeader = true }: { gateway: DashboardSnapshot["gateway"]; showHeader?: boolean }) {
-  const [token, setToken] = useState("");
-  const [showToken, setShowToken] = useState(false);
   const [preview, setPreview] = useState<AgentIntegrationPreview>();
   const [removeOpen, setRemoveOpen] = useState(false);
   const [rotateOpen, setRotateOpen] = useState(false);
   const [notice, setNotice] = useState<string>();
   const [actionError, setActionError] = useState<string>();
   const status = useQuery({
-    queryKey: ["agent-integration", "codex"],
+    queryKey: queryKeys.agentIntegration("codex"),
     queryFn: () => window.testforge.agents.status("codex"),
     refetchInterval: 15_000
   });
@@ -54,27 +54,26 @@ function AgentConfig({ gateway, showHeader = true }: { gateway: DashboardSnapsho
   const install = useMutation({
     mutationFn: () => window.testforge.agents.install("codex"),
     onSuccess: async (result) => { setPreview(undefined); await finish(result); },
-    onError: (error) => setActionError(String(error))
+    onError: (error) => setActionError(errorMessage(error))
   });
   const remove = useMutation({
     mutationFn: () => window.testforge.agents.remove("codex"),
-    onSuccess: async (result) => { setRemoveOpen(false); setToken(""); setShowToken(false); await finish(result); },
-    onError: (error) => setActionError(String(error))
+    onSuccess: async (result) => { setRemoveOpen(false); await finish(result); },
+    onError: (error) => setActionError(errorMessage(error))
   });
   const test = useMutation({
     mutationFn: () => window.testforge.agents.test("codex"),
     onSuccess: finish,
-    onError: (error) => setActionError(String(error))
+    onError: (error) => setActionError(errorMessage(error))
   });
   const rotate = useMutation({
     mutationFn: () => window.testforge.agents.rotateGatewayToken(),
-    onSuccess: async (result) => { setRotateOpen(false); setToken(""); setShowToken(false); await finish(result); },
-    onError: (error) => setActionError(String(error))
+    onSuccess: async (result) => { setRotateOpen(false); await finish(result); },
+    onError: (error) => setActionError(errorMessage(error))
   });
   const current = status.data;
   const busy = install.isPending || remove.isPending || test.isPending || rotate.isPending;
   const primaryLabel = current?.state === "misconfigured" ? "修复 Codex 配置" : current?.state === "configured" ? "重新安装" : "接入 Codex";
-  const manualHeader = `Authorization: Bearer ${showToken ? token : "<TestForge Token>"}`;
   return (
     <>
       {showHeader && <PageHeader title="Agent 接入" />}
@@ -85,7 +84,7 @@ function AgentConfig({ gateway, showHeader = true }: { gateway: DashboardSnapsho
       </section>
       {!gateway.running && <div className="alert"><IconAlert size={15} /><span>TestForge 必须保持打开，Codex 才能连接本地 MCP Gateway。</span></div>}
       {notice && <div className="agent-notice success"><span>{notice}</span></div>}
-      {(actionError || status.isError) && <div className="alert"><IconAlert size={15} /><span>{actionError ?? String(status.error)}</span></div>}
+      {(actionError || status.isError) && <div className="alert"><IconAlert size={15} /><span>{actionError ?? errorMessage(status.error)}</span></div>}
 
       <section className="panel agent-card">
         <header className="panel-head agent-card-head">
@@ -105,7 +104,7 @@ function AgentConfig({ gateway, showHeader = true }: { gateway: DashboardSnapsho
             onClick={async () => {
               setActionError(undefined);
               try { setPreview(await window.testforge.agents.preview("codex")); }
-              catch (error) { setActionError(String(error)); }
+              catch (error) { setActionError(errorMessage(error)); }
             }}
           >{primaryLabel}</Btn>
           <Btn icon={<IconRefresh size={14} className={test.isPending ? "spin" : undefined} />} disabled={busy} onClick={() => test.mutate()}>检测连接</Btn>
@@ -121,8 +120,7 @@ function AgentConfig({ gateway, showHeader = true }: { gateway: DashboardSnapsho
           <PropRow label="Codex CLI"><code>{current?.cli.path ?? "未发现"}</code></PropRow>
           <PropRow label="手动命令"><code>codex mcp add testforge --url {gateway.endpoint} --bearer-token-env-var TESTFORGE_MCP_TOKEN</code></PropRow>
           <div className="agent-secret-row">
-            <Btn variant="subtle" icon={showToken ? <IconEyeOff size={14} /> : <IconEye size={14} />} onClick={async () => { if (!showToken) setToken(await window.testforge.agents.gatewayToken()); setShowToken(!showToken); }}>{showToken ? "隐藏令牌" : "临时显示令牌"}</Btn>
-            <Btn variant="subtle" icon={<IconCopy size={14} />} disabled={!showToken} onClick={() => void navigator.clipboard.writeText(token)}>复制令牌</Btn>
+            <span className="muted-copy">Gateway 令牌仅保存在主进程和受管环境变量中，不下发到渲染进程。</span>
             <Btn variant="danger" disabled={busy} onClick={() => setRotateOpen(true)}>轮换令牌</Btn>
           </div>
         </div>
@@ -133,7 +131,7 @@ function AgentConfig({ gateway, showHeader = true }: { gateway: DashboardSnapsho
         <div className="agent-details-body manual-agent-grid">
           <div><strong>Claude Code</strong><p>在 Claude Code 的 MCP 设置中添加 HTTP Server，并配置 Authorization 标头。</p></div>
           <div><strong>OpenCode（外部）</strong><p>外部 OpenCode 也可手动添加相同端点与 Bearer；内嵌 OpenCode 已自动配置，无需手动接入。</p></div>
-          <pre className="code-block span-2">{`${gateway.endpoint}\n${manualHeader}`}</pre>
+          <pre className="code-block span-2">{`${gateway.endpoint}\nAuthorization: Bearer <从受保护环境变量读取>`}</pre>
         </div>
       </details>
 
@@ -160,7 +158,7 @@ function AgentStatusRow({ label, ok, value, detail, neutral = false }: { label: 
  *  JSON export of the same catalog the MCP `tools/list` response is built from. */
 function AgentToolsSection() {
   const [notice, setNotice] = useState<string>();
-  const tools = useQuery({ queryKey: ["agent-tools"], queryFn: () => window.testforge.agents.listTools(), refetchInterval: 10_000 });
+  const tools = useQuery({ queryKey: queryKeys.agentTools, queryFn: () => window.testforge.agents.listTools(), refetchInterval: 10_000 });
   const exportTools = useMutation({
     mutationFn: () => window.testforge.system.exportText("testforge-tools.json", JSON.stringify(tools.data ?? [], null, 2)),
     onSuccess: (path) => setNotice(path ? `已导出到 ${path}` : undefined)

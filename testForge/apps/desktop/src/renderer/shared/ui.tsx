@@ -1,5 +1,6 @@
-import { useEffect, type ButtonHTMLAttributes, type ReactNode } from "react";
-import { IconClose } from "./icons";
+import { useEffect, useRef, type ButtonHTMLAttributes, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { IconClose } from "./icons.js";
 
 type BtnProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "default" | "primary" | "danger" | "subtle";
@@ -48,30 +49,68 @@ export function EmptyState({ icon, title, body, action }: { icon?: ReactNode; ti
 
 export function Modal({ open, onClose, title, width = 560, children, footer }: {
   open: boolean;
-  onClose: () => void;
+  onClose?: () => void;
   title: string;
   width?: number;
   children: ReactNode;
   footer?: ReactNode;
 }) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (!open) return;
-    const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const focusable = () => [...(dialogRef.current?.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    ) ?? [])].filter((element) => !element.hasAttribute("inert") && element.getAttribute("aria-hidden") !== "true");
+    (focusable()[0] ?? dialogRef.current)?.focus();
+
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && onClose) {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const items = focusable();
+      if (items.length === 0) {
+        event.preventDefault();
+        dialogRef.current?.focus();
+        return;
+      }
+      const first = items[0];
+      const last = items.at(-1);
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === dialogRef.current)) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = previousOverflow;
+      previousFocus?.focus();
+    };
   }, [open, onClose]);
 
   if (!open) return null;
-  return (
-    <div className="modal-overlay" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <div className="modal" style={{ width }} role="dialog" aria-modal="true" aria-label={title}>
+  return createPortal(
+    <div className="modal-overlay" onMouseDown={(event) => { if (onClose && event.target === event.currentTarget) onClose(); }}>
+      <div ref={dialogRef} className="modal" style={{ width }} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1}>
         <header className="modal-head">
           <h2>{title}</h2>
-          <Btn variant="subtle" icon={<IconClose size={14} />} aria-label="关闭" onClick={onClose} />
+          {onClose && <Btn variant="subtle" icon={<IconClose size={14} />} aria-label="关闭" onClick={onClose} />}
         </header>
         <div className="modal-body">{children}</div>
         {footer && <footer className="modal-foot">{footer}</footer>}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -1,28 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Background, BackgroundVariant, ConnectionMode, ReactFlow } from "@xyflow/react";
-import { SmartSmoothStepEdge } from "@tisoap/react-flow-smart-edge";
 import "@xyflow/react/dist/style.css";
 import type { Hardware } from "@testforge/contracts/devices";
 import type { ProjectFolderSelection, RecentProjectSummary } from "@testforge/contracts/projects";
 import { FolderOpenIcon, Grid2X2Icon, ListIcon, Trash2Icon } from "lucide-react";
 import { Btn, Modal, Spinner } from "../../shared/ui.js";
+import { errorMessage } from "../../shared/errors.js";
 import { useDeviceCatalog, useRecentProjects } from "../../shared/queries.js";
-import { wiringNodeTypes } from "../wiring/WiringCanvas.js";
-import {
-  DEFAULT_CARD_HEIGHT,
-  DEFAULT_CARD_WIDTH,
-  MIN_CARD_HEIGHT_LABEL,
-  clampCardHeight,
-  clampCardWidth,
-  splitPortRef,
-  type HardwareFlowNode,
-  type TopologyEdge
-} from "../wiring/wiring-model.js";
-
-const previewEdgeTypes = { smart: SmartSmoothStepEdge };
-const noopMovePort = () => undefined;
-const noopResizeNode = () => undefined;
+import { queryKeys } from "../../shared/query-keys.js";
+const TopologyPreview = lazy(() => import("../wiring/TopologyPreview.js").then((module) => ({ default: module.TopologyPreview })));
 
 export function WelcomePage({ onOpened }: { onOpened: (rootPath: string) => Promise<void> | void }) {
   const client = useQueryClient();
@@ -72,7 +58,7 @@ export function WelcomePage({ onOpened }: { onOpened: (rootPath: string) => Prom
   });
   const forget = useMutation({
     mutationFn: (rootPath: string) => window.testforge.projects.forgetRecent(rootPath),
-    onSuccess: async () => { await client.invalidateQueries({ queryKey: ["recent-projects"] }); }
+    onSuccess: async () => { await client.invalidateQueries({ queryKey: queryKeys.recentProjects }); }
   });
 
   const changeLayout = (next: "grid" | "list") => {
@@ -138,7 +124,9 @@ function RecentProject({ project, hardware, layout, disabled, onOpen, onForget }
   return (
     <article className={`recent-project ${project.status}`}>
       <button className="recent-project-main" disabled={disabled || project.status !== "available"} onClick={onOpen}>
-        <TopologyPreview project={project} hardware={hardware} compact={layout === "list"} />
+        <Suspense fallback={<TopologyPreviewPlaceholder projectName={project.name} compact={layout === "list"} />}>
+          <TopologyPreview project={project} hardware={hardware} compact={layout === "list"} />
+        </Suspense>
         <span className="recent-project-copy">
           <strong>{project.name}</strong>
           <small>{project.rootPath}</small>
@@ -150,114 +138,8 @@ function RecentProject({ project, hardware, layout, disabled, onOpen, onForget }
   );
 }
 
-function TopologyPreview({ project, hardware, compact }: { project: RecentProjectSummary; hardware: Hardware[]; compact: boolean }) {
-  const topology = useMemo(() => buildPreviewTopology(project, hardware), [hardware, project]);
-  return (
-    <div className={`topology-preview${compact ? " compact" : ""}`} role="img" aria-label={`${project.name} 工位接线缩略图`}>
-      {topology.nodes.length ? (
-        <ReactFlow<HardwareFlowNode, TopologyEdge>
-          nodes={topology.nodes}
-          edges={topology.edges}
-          nodeTypes={wiringNodeTypes}
-          edgeTypes={previewEdgeTypes}
-          connectionMode={ConnectionMode.Loose}
-          fitView
-          fitViewOptions={{ padding: compact ? 0.08 : 0.16, minZoom: 0.1, maxZoom: compact ? 0.75 : 1 }}
-          minZoom={0.1}
-          maxZoom={1}
-          nodesDraggable={false}
-          nodesConnectable={false}
-          nodesFocusable={false}
-          edgesFocusable={false}
-          elementsSelectable={false}
-          panOnDrag={false}
-          panOnScroll={false}
-          zoomOnScroll={false}
-          zoomOnPinch={false}
-          zoomOnDoubleClick={false}
-          preventScrolling={false}
-          disableKeyboardA11y
-          proOptions={{ hideAttribution: true }}
-        >
-          <Background variant={BackgroundVariant.Lines} gap={24} size={1} color="var(--canvas-grid)" bgColor="var(--canvas-bg)" />
-        </ReactFlow>
-      ) : <span className="topology-empty">暂无接线数据</span>}
-    </div>
-  );
-}
-
-function buildPreviewTopology(project: RecentProjectSummary, hardware: Hardware[]) {
-  const source = project.preview.nodes;
-  if (!source.length) return { nodes: [] as HardwareFlowNode[], edges: [] as TopologyEdge[] };
-  const nodes: HardwareFlowNode[] = source.map((node) => {
-    const item = hardware.find((entry) => entry.hardwareId === node.hardwareId);
-    const showImage = node.showImage !== false;
-    const width = clampCardWidth(node.width ?? DEFAULT_CARD_WIDTH);
-    const height = clampCardHeight(node.height ?? (showImage ? DEFAULT_CARD_HEIGHT : MIN_CARD_HEIGHT_LABEL + 8), showImage);
-    return {
-      id: node.hardwareId,
-      type: "hardware",
-      position: { x: node.x, y: node.y },
-      width,
-      height,
-      style: { width, height },
-      draggable: false,
-      selectable: false,
-      focusable: false,
-      deletable: false,
-      data: {
-        hardware: item ?? unresolvedHardware(node.hardwareId, project.preview.connections),
-        resolved: Boolean(item),
-        imageUrl: item?.appearanceAssetId ? hardwareImageUrl(item.hardwareId, item.appearanceAssetId) : undefined,
-        showImage,
-        portPositions: node.portPositions,
-        portEditing: false,
-        interactive: false,
-        movePort: noopMovePort,
-        resizeNode: noopResizeNode
-      }
-    };
-  });
-  const edges: TopologyEdge[] = project.preview.connections.flatMap((connection) => {
-    const a = splitPortRef(connection.portA, nodes.map((node) => node.data.hardware));
-    const b = splitPortRef(connection.portB, nodes.map((node) => node.data.hardware));
-    if (!a || !b) return [];
-    return [{
-      id: connection.connectionId,
-      source: a.hardwareId,
-      sourceHandle: a.portId,
-      target: b.hardwareId,
-      targetHandle: b.portId,
-      type: "smart",
-      className: "wiring-flow-edge",
-      selectable: false,
-      focusable: false,
-      deletable: false,
-      data: { connectionId: connection.connectionId }
-    }];
-  });
-  return { nodes, edges };
-}
-
-function unresolvedHardware(hardwareId: string, connections: RecentProjectSummary["preview"]["connections"]): Hardware {
-  const portIds = new Set<string>();
-  for (const connection of connections) {
-    for (const ref of [connection.portA, connection.portB]) {
-      if (ref.startsWith(`${hardwareId}.`)) portIds.add(ref.slice(hardwareId.length + 1));
-    }
-  }
-  return {
-    formatVersion: 2,
-    hardwareId,
-    kind: "passive",
-    label: hardwareId,
-    ports: [...portIds].map((portId) => ({ portId, name: portId, pins: [] }))
-  };
-}
-
-function hardwareImageUrl(hardwareId: string, assetId: string) {
-  return `testforge-asset://local/${encodeURIComponent(hardwareId)}/${assetId.split("/").map(encodeURIComponent).join("/")}`;
+function TopologyPreviewPlaceholder({ projectName, compact }: { projectName: string; compact: boolean }) {
+  return <div className={`topology-preview${compact ? " compact" : ""}`} role="img" aria-label={`${projectName} 工位接线缩略图`} />;
 }
 function statusLabel(status: RecentProjectSummary["status"]) { return status === "missing" ? "项目文件夹不存在" : "项目清单无效"; }
 function formatTime(value: string) { try { return new Date(value).toLocaleString(); } catch { return value; } }
-function errorMessage(value: unknown) { return value instanceof Error ? value.message : String(value); }

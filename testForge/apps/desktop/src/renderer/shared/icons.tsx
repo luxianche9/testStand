@@ -40,19 +40,6 @@ export const IconDesktop = make(<>
   <path d="M8 21h8M12 17v4" />
 </>);
 
-export const IconFolder = make(<>
-  <path d="M3 7a2 2 0 012-2h4l2 2.5h8a2 2 0 012 2V17a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
-</>);
-
-/** 工程：一份带接线/编排的工程文档。 */
-export const IconProject = make(<>
-  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-  <path d="M14 2v6h6" />
-  <path d="M8.5 15.5 10 17l1.5-1.5M10 17v-3.5" />
-  <circle cx="15.5" cy="13.5" r="1.6" />
-  <path d="M15.5 15.1v2.4M13.9 17.5h3.2" />
-</>);
-
 /** 接线/连接：两个端口节点相连。 */
 export const IconWiring = make(<>
   <circle cx="5.5" cy="12" r="2.5" />
@@ -94,28 +81,11 @@ export const IconRefresh = make(<>
 
 export const IconPlus = make(<path d="M12 5v14M5 12h14" />);
 
-export const IconSun = make(<>
-  <circle cx="12" cy="12" r="4.5" />
-  <path d="M12 1.5v2M12 20.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M1.5 12h2M20.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4" />
-</>);
-
-export const IconMoon = make(<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />);
-
-export const IconSystem = make(<>
-  <circle cx="12" cy="12" r="9" />
-  <path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none" />
-</>);
-
 export const IconChevron = make(<path d="M9 6l6 6-6 6" />);
 
 export const IconPlay = make(<path d="M7 4.5 19 12 7 19.5z" />);
 
 export const IconStop = make(<rect x="5.5" y="5.5" width="13" height="13" rx="1.5" />);
-
-export const IconLog = make(<>
-  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-  <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
-</>);
 
 export const IconEdit = make(<path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />);
 
@@ -130,16 +100,6 @@ export const IconCopy = make(<>
 </>);
 
 export const IconClose = make(<path d="M18 6 6 18M6 6l12 12" />);
-
-export const IconEye = make(<>
-  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-  <circle cx="12" cy="12" r="3" />
-</>);
-
-export const IconEyeOff = make(<>
-  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-  <path d="M1 1l22 22" />
-</>);
 
 export const IconAlert = make(<>
   <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
@@ -156,9 +116,6 @@ export const IconDownload = make(<>
   <path d="M12 3v12M7 11l5 5 5-5" />
   <path d="M3 20h18" />
 </>);
-
-/** 窗口最小化。 */
-export const IconMinus = make(<path d="M5 12h14" />);
 
 /** 窗口最大化。 */
 export const IconMaximize = make(<rect x="5" y="5" width="14" height="14" rx="1" />);

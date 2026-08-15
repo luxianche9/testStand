@@ -72,18 +72,17 @@ export function requiresJsonFallback(schema: JsonSchema): boolean {
   return !["string", "number", "integer", "boolean", "array", "object", "null"].includes(type);
 }
 
-export function validateSchemaArguments(schema: JsonSchema, hardwareId: string | undefined, args: Record<string, unknown>): { valid: boolean; errors: string[] } {
-  if (!hardwareId) return { valid: false, errors: [] };
+export function validateSchemaArguments(schema: JsonSchema, args: Record<string, unknown>): { valid: boolean; errors: string[] } {
   const declaredTypes = typeof schema.type === "string" ? [schema.type] : Array.isArray(schema.type) ? schema.type.filter((item): item is string => typeof item === "string") : [];
   if (declaredTypes.length > 0 && !declaredTypes.includes("object")) return { valid: false, errors: ["输入 Schema 根节点必须是 object"] };
   const errors: string[] = [];
-  validateValue(schema, { ...args, hardwareId }, "参数", errors);
+  validateValue(schema, args, "参数", errors);
   return { valid: errors.length === 0, errors };
 }
 
 /**
  * CSP-safe feedback for the generated form. The authoritative validation still happens in the
- * main process: McpClientPool runs AJV against the hardwareId-injected arguments immediately
+ * main process: the selected DeviceTransport runs authoritative validation immediately
  * before issuing the MCP call.
  */
 function validateValue(schema: JsonSchema, value: unknown, path: string, errors: string[]): void {

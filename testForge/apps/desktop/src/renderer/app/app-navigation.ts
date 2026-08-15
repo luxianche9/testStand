@@ -1,6 +1,6 @@
-import type { ProjectView } from "../features/projects/ProjectWorkspace.js";
+import type { ProjectView } from "@testforge/contracts/storage";
 
-export type ContentPage = "welcome" | ProjectView;
+type ContentPage = "welcome" | ProjectView;
 export type AppPage = ContentPage | "settings";
 
 export type AppNavigationState = {
