@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-export type WiringAction = "connect" | "disconnect";
+export const wiringActionSchema = z.enum(["connect", "disconnect"]);
+export type WiringAction = z.infer<typeof wiringActionSchema>;
 export const portPositionSchema = z.object({ side: z.enum(["top", "right", "bottom", "left"]), offset: z.number().min(0).max(1) });
 export type PortPosition = z.infer<typeof portPositionSchema>;
 export type PortSide = PortPosition["side"];
@@ -30,7 +31,11 @@ export type ProjectWiringConnection = z.infer<typeof projectWiringConnectionSche
 export const projectWiringSchema = z.object({ nodes: z.array(projectCanvasNodeSchema), connections: z.array(projectWiringConnectionSchema) });
 export type ProjectWiring = z.infer<typeof projectWiringSchema>;
 
-export type WiringTaskStatus = "pending" | "in_progress" | "confirmed" | "rejected" | "cancelled" | "timed_out" | "failed";
+export const wiringTaskStatusSchema = z.enum(["pending", "in_progress", "confirmed", "rejected", "cancelled", "timed_out", "failed"]);
+export type WiringTaskStatus = z.infer<typeof wiringTaskStatusSchema>;
+export const wiringOutcomeSchema = z.enum(["confirmed", "rejected"]);
+export type WiringOutcome = z.infer<typeof wiringOutcomeSchema>;
+export const wiringTaskIdInputSchema = z.object({ id: z.string().min(1) }).strict();
 export interface WiringTask {
   wiringTaskId: string;
   action: WiringAction;
@@ -47,11 +52,17 @@ export interface WiringTask {
   message?: string;
   warnings: string[];
 }
-export interface RequestWiringTaskInput {
-  portA: string;
-  portB: string;
-  pins?: PinPair[];
-  action: WiringAction;
-  timeoutMs?: number;
-  requestedBy?: string;
-}
+export const requestWiringTaskInputSchema = z.object({
+  portA: z.string().min(1),
+  portB: z.string().min(1),
+  pins: z.array(pinPairSchema).optional(),
+  action: wiringActionSchema,
+  timeoutMs: z.number().int().min(1).optional(),
+  requestedBy: z.string().min(1).optional()
+}).strict();
+export type RequestWiringTaskInput = z.infer<typeof requestWiringTaskInputSchema>;
+
+export const wiringTaskListQuerySchema = z.object({
+  status: wiringTaskStatusSchema.optional(),
+  limit: z.number().int().min(1).max(500).optional()
+}).strict();

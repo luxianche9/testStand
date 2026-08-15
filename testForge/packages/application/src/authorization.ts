@@ -1,4 +1,5 @@
 import { CAPABILITIES, type Capability, type RequestContext } from "@testforge/contracts/agents";
+import { appError } from "@testforge/contracts/errors";
 
 export interface Authorizer {
   isAllowed(context: RequestContext, capability: Capability): boolean;
@@ -29,10 +30,7 @@ export class DefaultAuthorizer implements Authorizer {
 
   authorize(context: RequestContext, capability: Capability): void {
     if (this.isAllowed(context, capability)) return;
-    throw Object.assign(
-      new Error(`${context.actor} is not authorized for capability ${capability}`),
-      { category: "permission_denied", capability }
-    );
+    throw appError("permission_denied", `${context.actor} is not authorized for capability ${capability}`, { capability });
   }
 
   allowedCapabilities(context: RequestContext): Capability[] {

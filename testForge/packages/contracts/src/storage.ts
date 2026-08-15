@@ -1,17 +1,21 @@
 import { z } from "zod";
 
+export const themeChoiceSchema = z.enum(["system", "light", "dark"]);
+export type ThemeChoice = z.infer<typeof themeChoiceSchema>;
+export const welcomeLayoutSchema = z.enum(["grid", "list"]);
+export type WelcomeLayout = z.infer<typeof welcomeLayoutSchema>;
 export const projectViewSchema = z.enum(["wiring", "orchestration", "manual", "logs"]).catch("wiring");
 export type ProjectView = z.infer<typeof projectViewSchema>;
 
 export const userSettingsSchema = z.object({
   formatVersion: z.literal(1).default(1),
-  theme: z.enum(["system", "light", "dark"]).default("system"),
+  theme: themeChoiceSchema.default("system"),
   recentProjects: z.array(z.object({
     rootPath: z.string().min(1),
     name: z.string().min(1),
     openedAt: z.string().datetime()
   })).default([]),
-  welcomeLayout: z.enum(["grid", "list"]).default("grid"),
+  welcomeLayout: welcomeLayoutSchema.default("grid"),
   projectView: projectViewSchema.default("wiring"),
   llm: z.object({
     baseUrl: z.string().url().default("https://api.openai.com/v1"),

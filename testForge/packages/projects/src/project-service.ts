@@ -10,6 +10,7 @@ import {
 } from "@testforge/contracts/projects";
 import { projectWiringSchema, type ProjectWiring } from "@testforge/contracts/wiring";
 import { testTaskSchema, type TestTask } from "@testforge/contracts/orchestration";
+import { appError } from "@testforge/contracts/errors";
 import { atomicJson, readJson, type SettingsStore } from "@testforge/storage";
 
 const EMPTY_WIRING: ProjectWiring = { nodes: [], connections: [] };
@@ -77,8 +78,8 @@ export class ProjectService {
 
   async initializeFolder(rootPath: string): Promise<ProjectDocument> {
     const selection = await this.inspectFolder(rootPath);
-    if (selection.state === "ready") throw projectError("project_exists", "该文件夹已经包含 TestForge 项目。");
-    if (selection.state === "invalid") throw projectError("invalid_project", selection.message ?? "项目清单无效。");
+    if (selection.state === "ready") throw appError("project_exists", "project_exists");
+    if (selection.state === "invalid") throw appError("invalid_project", selection.message ?? "invalid_project");
     const file = emptyProjectFile(selection.name);
     const path = projectPath(selection.rootPath);
     await atomicJson(path, file);
@@ -92,10 +93,12 @@ export class ProjectService {
 
   async openFolder(rootPath: string): Promise<ProjectDocument> {
     const selection = await this.inspectFolder(rootPath);
-    if (selection.state === "uninitialized") throw projectError("project_uninitialized", "该文件夹尚未初始化为 TestForge 项目。");
-    if (selection.state === "invalid") throw projectError("invalid_project", selection.message ?? "项目清单无效。");
+    if (selection.state === "uninitialized") throw appError("project_uninitialized", "project_uninitialized");
+    if (selection.state === "invalid") throw appError("invalid_project", selection.message ?? "invalid_project");
     const path = projectPath(selection.rootPath);
-    const file = projectFileSchema.parse(await readJson(path));
+    const raw = await readJson(path);
+    const file = projectFileSchema.parse(raw);
+    if (storedProjectVersion(raw) !== file.formatVersion) await atomicJson(path, file);
     this.rootPath = selection.rootPath;
     this.path = path;
     this.file = file;
@@ -133,13 +136,13 @@ export class ProjectService {
       };
       try {
         const info = await stat(rootPath);
-        if (!info.isDirectory()) return { ...fallback, status: "missing", message: "项目文件夹不存在。" };
+        if (!info.isDirectory()) return { ...fallback, status: "missing", message: "project_folder_missing" };
       } catch (error) {
         return { ...fallback, status: "missing", message: errorMessage(error) };
       }
       try {
         const raw = await readJson(projectPath(rootPath));
-        if (raw === undefined) return { ...fallback, status: "invalid", message: "项目清单不存在。" };
+        if (raw === undefined) return { ...fallback, status: "invalid", message: "project_manifest_missing" };
         const file = projectFileSchema.parse(raw);
         return {
           rootPath,
@@ -193,13 +196,13 @@ export class ProjectService {
   }
 
   private requireFile(): ProjectFile {
-    if (!this.file) throw projectError("requires_project", "请先打开项目文件夹。");
+    if (!this.file) throw appError("requires_project", "requires_project");
     return this.file;
   }
 
   private requireDocument(): ProjectDocument {
     const file = this.requireFile();
-    if (!this.rootPath || !this.path) throw projectError("requires_project", "请先打开项目文件夹。");
+    if (!this.rootPath || !this.path) throw appError("requires_project", "requires_project");
     return { rootPath: this.rootPath, path: this.path, dirty: this.dirty, file: structuredClone(file) };
   }
 
@@ -221,7 +224,7 @@ export class ProjectService {
   }
 }
 
-export function emptyProjectFile(name = "未命名工程"): ProjectFile {
+export function emptyProjectFile(name = "Untitled project"): ProjectFile {
   const now = new Date().toISOString();
   return projectFileSchema.parse({
     formatVersion: 3,
@@ -231,7 +234,7 @@ export function emptyProjectFile(name = "未命名工程"): ProjectFile {
     task: {
       formatVersion: 2,
       taskId: randomUUID(),
-      name: "未命名任务",
+      name: "Untitled task",
       inputs: [],
       variables: [],
       setup: [],
@@ -254,7 +257,7 @@ export function projectDisplayName(document: ProjectDocument): string {
 async function canonicalDirectory(rootPath: string): Promise<string> {
   const target = resolve(rootPath);
   const info = await stat(target);
-  if (!info.isDirectory()) throw projectError("invalid_project_folder", "选择的路径不是文件夹。");
+  if (!info.isDirectory()) throw appError("invalid_project_folder", "invalid_project_folder");
   try { return await realpath(target); }
   catch { return target; }
 }
@@ -264,10 +267,12 @@ function normalizedPath(value: string): string {
   return process.platform === "win32" ? target.toLowerCase() : target;
 }
 
-function projectError(category: string, message: string): Error {
-  return Object.assign(new Error(message), { category });
-}
-
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function storedProjectVersion(raw: unknown): number | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const version = (raw as { formatVersion?: unknown }).formatVersion;
+  return typeof version === "number" ? version : undefined;
 }

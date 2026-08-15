@@ -7,7 +7,11 @@ export interface McpGatewayStatus {
   lastClient?: { name: string; version?: string; connectedAt: string };
 }
 
-export type AgentKind = "codex";
+import { z } from "zod";
+
+export const agentKindSchema = z.literal("codex");
+export type AgentKind = z.infer<typeof agentKindSchema>;
+export const agentKindInputSchema = z.object({ id: agentKindSchema }).strict();
 export type AgentIntegrationState = "unavailable" | "not_installed" | "misconfigured" | "configured" | "error";
 export interface AgentIntegrationStatus {
   agent: AgentKind;

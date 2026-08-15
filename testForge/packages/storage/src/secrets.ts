@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { encryptedSecretFileSchema, type EncryptedSecretFile } from "@testforge/contracts/storage";
 import { atomicJson, readJson } from "./file-storage.js";
+import { SerializedWriter } from "./serialized-writer.js";
 
 export interface SecretProtector {
   encrypt(value: string): Buffer;
@@ -9,7 +10,7 @@ export interface SecretProtector {
 
 export class SecretStore {
   private value: EncryptedSecretFile = { formatVersion: 1, entries: {} };
-  private writeTail: Promise<void> = Promise.resolve();
+  private readonly writer = new SerializedWriter();
 
   constructor(
     readonly path: string,
@@ -18,9 +19,11 @@ export class SecretStore {
   ) {}
 
   async initialize(): Promise<void> {
-    const stored = await readJson(this.path);
-    this.value = stored === undefined ? this.value : encryptedSecretFileSchema.parse(stored);
-    await this.writeJson(this.path, this.value);
+    await this.writer.enqueue(async () => {
+      const stored = await readJson(this.path);
+      this.value = stored === undefined ? this.value : encryptedSecretFileSchema.parse(stored);
+      await this.writeJson(this.path, this.value);
+    });
   }
 
   has(key: string): boolean { return Object.hasOwn(this.value.entries, key); }
@@ -59,10 +62,10 @@ export class SecretStore {
     });
   }
 
-  async flush(): Promise<void> { await this.writeTail; }
+  async flush(): Promise<void> { await this.writer.flush(); }
 
   private enqueue<T>(mutate: (next: EncryptedSecretFile) => { changed: boolean; value: T }): Promise<T> {
-    const operation = this.writeTail.then(async () => {
+    return this.writer.enqueue(async () => {
       const next = structuredClone(this.value);
       const result = mutate(next);
       if (result.changed) {
@@ -71,7 +74,5 @@ export class SecretStore {
       }
       return result.value;
     });
-    this.writeTail = operation.then(() => undefined, () => undefined);
-    return operation;
   }
 }

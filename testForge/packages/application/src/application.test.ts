@@ -117,7 +117,7 @@ describe("TestForgeApplication policy", () => {
 
   it("denies Agent computer/server management, arbitrary SSH, force-stop and human confirmations", async () => {
     const { app, devices, wiring, orchestration } = makeApp();
-    const computer = { id: "PC1", label: "Lab", address: "10.0.0.2", ssh: { port: 22, username: "u" } };
+    const computer = { id: "PC1", label: "Lab", address: "10.0.0.2", ssh: { port: 22, username: "u", shell: "powershell" as const } };
 
     await expect(app.devices.saveComputer(AGENT_REQUEST_CONTEXT, computer)).rejects.toMatchObject({ category: "permission_denied" });
     await expect(app.devices.removeServer(AGENT_REQUEST_CONTEXT, "S1")).rejects.toMatchObject({ category: "permission_denied" });
@@ -135,7 +135,7 @@ describe("TestForgeApplication policy", () => {
 
   it("allows humans to manage infrastructure and confirm operator work", async () => {
     const { app, devices, wiring, orchestration } = makeApp();
-    await app.devices.saveComputer(HUMAN_REQUEST_CONTEXT, { id: "PC1", label: "Lab", address: "10.0.0.2", ssh: { port: 22, username: "u" } });
+    await app.devices.saveComputer(HUMAN_REQUEST_CONTEXT, { id: "PC1", label: "Lab", address: "10.0.0.2", ssh: { port: 22, username: "u", shell: "powershell" } });
     await app.devices.serverAction(HUMAN_REQUEST_CONTEXT, "S1", "force-stop");
     await app.wiring.startTask(HUMAN_REQUEST_CONTEXT, "WT", "operator");
     await app.orchestration.respondOperatorDecision(HUMAN_REQUEST_CONTEXT, "N", "yes");

@@ -12,6 +12,7 @@ import type {
 import type { Hardware, HardwarePort } from "@testforge/contracts/devices";
 import type { ProjectDocument } from "@testforge/contracts/projects";
 import type { ProjectWiring } from "@testforge/contracts/wiring";
+import { appError } from "@testforge/contracts/errors";
 
 export interface WiringProjectPort {
   wiring(): ProjectWiring;
@@ -62,10 +63,10 @@ export class ProjectWiringService {
   async addManagedHardwareToCanvas(hardwareId: string): Promise<{ added: boolean; node: ProjectCanvasNode; dirty: boolean }> {
     return await this.withLock("canvas:nodes", async () => {
       const id = hardwareId.trim();
-      if (!id) throw Object.assign(new Error("hardwareId is required"), { category: "invalid_argument" });
+      if (!id) throw appError("invalid_argument", "hardwareId is required");
       const hardware = this.catalog.getHardware(id);
       if (hardware.kind !== "managed") {
-        throw Object.assign(new Error(`Only managed hardware can be added by an Agent: ${id}`), { category: "permission_denied" });
+        throw appError("permission_denied", `Only managed hardware can be added by an Agent: ${id}`);
       }
       const wiring = this.projects.wiring();
       const existing = wiring.nodes.find((item) => item.hardwareId === id);
@@ -100,7 +101,7 @@ export class ProjectWiringService {
     for (const existing of this.tasks.values()) {
       if (!["pending", "in_progress"].includes(existing.status)) continue;
       if (existing.portA === portA && existing.portB === portB) {
-        throw Object.assign(new Error("A pending wiring task already exists for this port pair"), { category: "conflict" });
+        throw appError("conflict", "A pending wiring task already exists for this port pair");
       }
     }
     const task: WiringTask = {
@@ -117,7 +118,7 @@ export class ProjectWiringService {
     return await this.withLock(wiringTaskId, async () => {
       const task = this.getTask(wiringTaskId);
       this.applyLazyTimeout(task);
-      if (task.status !== "pending") throw Object.assign(new Error(`Wiring task is ${task.status}, not pending`), { category: "conflict" });
+      if (task.status !== "pending") throw appError("conflict", `Wiring task is ${task.status}, not pending`);
       const started: WiringTask = {
         ...task, status: "in_progress", startedAt: new Date().toISOString(), operatorName: operatorName.trim() || "operator"
       };
@@ -130,7 +131,7 @@ export class ProjectWiringService {
   async completeTask(wiringTaskId: string, outcome: "confirmed" | "rejected", message?: string): Promise<WiringTask> {
     return await this.withLock(wiringTaskId, async () => {
       const task = this.getTask(wiringTaskId);
-      if (task.status !== "in_progress") throw Object.assign(new Error("Wiring task is not in progress"), { category: "conflict" });
+      if (task.status !== "in_progress") throw appError("conflict", "Wiring task is not in progress");
       if (outcome === "confirmed") {
         try { this.applyConfirmedWiring(task); }
         catch (error) { return await this.finish(task, "failed", `Failed to update wiring: ${error instanceof Error ? error.message : String(error)}`); }

@@ -1,4 +1,5 @@
 import type { RequestContext } from "@testforge/contracts/agents";
+import { appError } from "@testforge/contracts/errors";
 import type { Hardware, McpServerConfig, RemoteComputer } from "@testforge/contracts/devices";
 import { hardwareSchema, mcpServerSchema, remoteComputerSchema } from "@testforge/contracts/devices";
 import type { DeviceCatalogService, DeviceService, SshCredential } from "@testforge/devices";
@@ -148,7 +149,6 @@ export class DevicesApplication {
 
   async callTool(context: RequestContext, name: string, args: Record<string, unknown>) {
     this.authorizer.authorize(context, "hardware.executeTools");
-    this.service.pool.findTool(name);
     return await this.service.callAggregatedTool(name, args);
   }
 
@@ -160,16 +160,10 @@ export class DevicesApplication {
   private assertHardwareKindWrite(hardware: Hardware): void {
     const assigned = this.service.listServers().find((server) => server.hardwareId === hardware.hardwareId);
     if (hardware.kind === "managed" && !assigned) {
-      throw Object.assign(
-        new Error(`Hardware ${hardware.hardwareId} is not assigned to an MCP server; register_mcp_server first or save as kind passive`),
-        { category: "invalid_argument" }
-      );
+      throw appError("invalid_argument", `Hardware ${hardware.hardwareId} is not assigned to an MCP server; register_mcp_server first or save as kind passive`);
     }
     if (hardware.kind === "passive" && assigned) {
-      throw Object.assign(
-        new Error(`Hardware ${hardware.hardwareId} is assigned to MCP server ${assigned.serverId}; unregister that server before treating it as passive`),
-        { category: "invalid_argument" }
-      );
+      throw appError("invalid_argument", `Hardware ${hardware.hardwareId} is assigned to MCP server ${assigned.serverId}; unregister that server before treating it as passive`);
     }
   }
 }

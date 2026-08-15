@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "exports": ".\/src\/index.ts",
-  "scripts": { "typecheck": "tsc -p tsconfig.json --noEmit", "test": "vitest run --passWithNoTests" },
+  "scripts": { "typecheck": "tsc -p tsconfig.json --noEmit", "test": "vitest run" },
   "dependencies": { "@testforge/contracts": "workspace:*" },
   "devDependencies": { "typescript": "^5.8.3", "vitest": "^3.1.3" }
 }

@@ -1,10 +1,10 @@
 import type { AgentIntegrationPreview, AgentIntegrationStatus, AgentKind, AgentToolInfo, McpGatewayStatus, OpenCodeRuntimeStatus } from "./agents.js";
 import type { ComputerStatus, DeviceBundleApplyInput, DeviceBundleExport, DeviceBundleImport, DeviceBundleKind, DeviceBundlePreview, Hardware, HardwareAvailability, HardwareImageTarget, ManagedHardware, McpServerConfig, RemoteComputer, RemoteServiceLog, ServerStatus, ToolCatalogItem } from "./devices.js";
 import type { ExecutionActivity, ManualToolInvocationInput, ManualToolInvocationResult } from "./execution.js";
-import type { LlmSettings, LlmSettingsInput, ProjectView } from "./storage.js";
+import type { LlmSettings, LlmSettingsInput, ProjectView, ThemeChoice, WelcomeLayout } from "./storage.js";
 import type { OperatorDecision, TaskValidationResult, TestNodeRun, TestRun, TestRunDetail, TestRunListQuery, TestRunListResult, TestRunLogArchive, TestTask } from "./orchestration.js";
 import type { ProjectDocument, ProjectFolderSelection, RecentProjectSummary } from "./projects.js";
-import type { ProjectWiring, RequestWiringTaskInput, WiringTask, WiringTaskStatus } from "./wiring.js";
+import type { ProjectWiring, RequestWiringTaskInput, WiringOutcome, WiringTask, WiringTaskStatus } from "./wiring.js";
 
 export interface DashboardSnapshot {
   computers: RemoteComputer[];
@@ -51,7 +51,7 @@ export const TESTFORGE_IPC = {
     invokeTool: "testforge:manual:invoke-tool"
   },
   agents: {
-    gatewayToken: "testforge:agents:gateway-token", rotateGatewayToken: "testforge:agents:rotate-gateway-token", status: "testforge:agents:status",
+    rotateGatewayToken: "testforge:agents:rotate-gateway-token", status: "testforge:agents:status",
     preview: "testforge:agents:preview", install: "testforge:agents:install", remove: "testforge:agents:remove", test: "testforge:agents:test", listTools: "testforge:agents:list-tools",
     openCodeStatus: "testforge:agents:opencode-status", startOpenCode: "testforge:agents:opencode-start", stopOpenCode: "testforge:agents:opencode-stop", restartOpenCode: "testforge:agents:opencode-restart"
   },
@@ -66,10 +66,6 @@ export const TESTFORGE_IPC = {
 } as const;
 
 export type TestForgeEventName = "availability" | "execution" | "run" | "nodeRun" | "wiringTask" | "operator" | "project" | "opencode" | "window-state";
-export const TESTFORGE_EVENT_CHANNELS: Record<TestForgeEventName, string> = {
-  availability: "testforge:event:availability", execution: "testforge:event:execution", run: "testforge:event:run", nodeRun: "testforge:event:nodeRun", wiringTask: "testforge:event:wiringTask",
-  operator: "testforge:event:operator", project: "testforge:event:project", opencode: "testforge:event:opencode", "window-state": "testforge:event:window-state"
-};
 
 export interface TestForgeSystemApi {
   dashboard(): Promise<DashboardSnapshot>;
@@ -114,7 +110,7 @@ export interface TestForgeWiringApi {
   update(wiring: ProjectWiring): Promise<ProjectDocument>;
   requestTask(input: RequestWiringTaskInput): Promise<WiringTask>;
   startTask(wiringTaskId: string, operatorName?: string): Promise<WiringTask>;
-  completeTask(wiringTaskId: string, outcome: "confirmed" | "rejected", message?: string): Promise<WiringTask>;
+  completeTask(wiringTaskId: string, outcome: WiringOutcome, message?: string): Promise<WiringTask>;
   cancelTask(wiringTaskId: string, message?: string): Promise<WiringTask>;
   getTask(wiringTaskId: string): Promise<WiringTask>;
   listTasks(input?: { status?: WiringTaskStatus; limit?: number }): Promise<WiringTask[]>;
@@ -139,7 +135,6 @@ export interface TestForgeManualApi {
 }
 
 export interface TestForgeAgentsApi {
-  gatewayToken(): Promise<string>;
   rotateGatewayToken(): Promise<AgentIntegrationStatus>;
   status(agent: AgentKind): Promise<AgentIntegrationStatus>;
   preview(agent: AgentKind): Promise<AgentIntegrationPreview>;
@@ -154,12 +149,12 @@ export interface TestForgeAgentsApi {
 }
 
 export interface TestForgeSettingsApi {
-  setTheme(theme: "system" | "light" | "dark"): Promise<void>;
-  getTheme(): Promise<"system" | "light" | "dark">;
+  setTheme(theme: ThemeChoice): Promise<void>;
+  getTheme(): Promise<ThemeChoice>;
   setProjectView(view: ProjectView): Promise<void>;
   getProjectView(): Promise<ProjectView>;
-  setWelcomeLayout(layout: "grid" | "list"): Promise<void>;
-  getWelcomeLayout(): Promise<"grid" | "list">;
+  setWelcomeLayout(layout: WelcomeLayout): Promise<void>;
+  getWelcomeLayout(): Promise<WelcomeLayout>;
   getLlm(): Promise<LlmSettings>;
   saveLlm(input: LlmSettingsInput): Promise<LlmSettings>;
 }

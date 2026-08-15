@@ -19,7 +19,6 @@ const hardwareTool = {
   remoteName: "write_value",
   serverId: "SERVER1",
   inputSchema: { type: "object", properties: { hardwareId: { type: "string" }, value: { type: "number" } }, required: ["hardwareId", "value"] },
-  schemaHash: "hash",
   kind: "hardware"
 };
 
@@ -42,16 +41,48 @@ function fixture(overrides: {
 }
 
 describe("ExecutionCoordinator", () => {
-  it("publishes acquisition and idempotent release while rejecting overlap", () => {
+  it("allows disjoint leases and publishes a complete aggregate activity", () => {
     const execution = new ExecutionCoordinator();
     const states: string[] = [];
     execution.setNotifier((activity) => states.push(activity.state));
-    const lease = execution.acquire({ state: "manual", hardwareId: "HW1", toolName: "write", startedAt: new Date().toISOString() });
-    expect(() => execution.acquire({ state: "run", runId: "RUN1", startedAt: new Date().toISOString() })).toThrowError(expect.objectContaining({ category: "conflict" }));
-    lease.release();
-    lease.release();
+    const manual = execution.acquire({ state: "manual", hardwareId: "HW2", toolName: "write", startedAt: "2026-08-15T00:00:00.000Z" });
+    const run = execution.acquire({ state: "run", runId: "RUN1", hardwareIds: ["HW1"], startedAt: "2026-08-15T00:00:01.000Z" });
+    expect(execution.current()).toMatchObject({
+      state: "run",
+      runId: "RUN1",
+      hardwareIds: ["HW1"],
+      activities: [
+        { state: "manual", hardwareId: "HW2" },
+        { state: "run", runId: "RUN1", hardwareIds: ["HW1"] }
+      ]
+    });
+    run.release();
+    manual.release();
+    manual.release();
     expect(execution.current()).toEqual({ state: "idle" });
-    expect(states).toEqual(["manual", "idle"]);
+    expect(states).toEqual(["manual", "run", "manual", "idle"]);
+  });
+
+  it("acquires multiple hardware keys atomically", () => {
+    const execution = new ExecutionCoordinator();
+    const hw2 = execution.acquire({ state: "manual", hardwareId: "HW2", toolName: "write", startedAt: "2026-08-15T00:00:00.000Z" });
+    expect(() => execution.acquire({ state: "run", runId: "RUN1", hardwareIds: ["HW2", "HW1", "HW1"], startedAt: "2026-08-15T00:00:01.000Z" }))
+      .toThrowError(expect.objectContaining({ category: "conflict", details: expect.objectContaining({ hardwareIds: ["HW2"] }) }));
+    const hw1 = execution.acquire({ state: "manual", hardwareId: "HW1", toolName: "read", startedAt: "2026-08-15T00:00:02.000Z" });
+    hw1.release();
+    hw2.release();
+    expect(execution.current()).toEqual({ state: "idle" });
+  });
+
+  it("keeps newer holders safe from stale and idempotent releases", () => {
+    const execution = new ExecutionCoordinator();
+    const oldLease = execution.acquire({ state: "run", runId: "RUN1", hardwareIds: ["HW1"], startedAt: "2026-08-15T00:00:00.000Z" });
+    oldLease.release();
+    const currentLease = execution.acquire({ state: "manual", hardwareId: "HW1", toolName: "write", startedAt: "2026-08-15T00:00:01.000Z" });
+    oldLease.release();
+    expect(execution.current()).toMatchObject({ state: "manual", hardwareId: "HW1" });
+    currentLease.release();
+    expect(execution.current()).toEqual({ state: "idle" });
   });
 });
 
@@ -66,8 +97,8 @@ describe("ManualControlApplication", () => {
 
     expect(callTool).toHaveBeenCalledWith(
       hardwareTool.externalName,
-      { hardwareId: "HW1", value: 3.5 },
-      { timeoutMs: 30_000, signal: expect.any(AbortSignal) }
+      { hardwareId: "spoofed", value: 3.5 },
+      { timeoutMs: 30_000, signal: expect.any(AbortSignal), metadata: { hardwareId: "HW1" } }
     );
     expect(result).toMatchObject({ hardwareId: "HW1", toolName: hardwareTool.externalName, output: { accepted: true } });
     expect(result.durationMs).toBeGreaterThanOrEqual(0);
@@ -89,7 +120,7 @@ describe("ManualControlApplication", () => {
     expect(callTool).not.toHaveBeenCalled();
   });
 
-  it("releases the global activity after a remote error", async () => {
+  it("releases its hardware lease after a remote error", async () => {
     const remoteError = Object.assign(new Error("remote rejected"), { category: "remote_error" });
     const { manual, execution } = fixture({ callTool: vi.fn(async () => { throw remoteError; }) });
     await expect(manual.invokeTool(HUMAN_REQUEST_CONTEXT, {
@@ -98,7 +129,7 @@ describe("ManualControlApplication", () => {
     expect(execution.current()).toEqual({ state: "idle" });
   });
 
-  it("blocks a Run while a manual call is active and aborts the call during shutdown", async () => {
+  it("conflicts only with Runs that need the same hardware and aborts the call during shutdown", async () => {
     const callTool = vi.fn((_name: string, _args: Record<string, unknown>, options: { signal?: AbortSignal }) => new Promise((_resolve, reject) => {
       options.signal?.addEventListener("abort", () => reject(options.signal?.reason), { once: true });
     }));
@@ -107,8 +138,10 @@ describe("ManualControlApplication", () => {
       hardwareId: "HW1", toolName: hardwareTool.externalName, arguments: { value: 1 }
     });
     await vi.waitFor(() => expect(execution.current().state).toBe("manual"));
-    expect(() => execution.acquire({ state: "run", runId: "RUN1", startedAt: new Date().toISOString() }))
+    const disjointRun = execution.acquire({ state: "run", runId: "RUN2", hardwareIds: ["HW2"], startedAt: new Date().toISOString() });
+    expect(() => execution.acquire({ state: "run", runId: "RUN1", hardwareIds: ["HW1"], startedAt: new Date().toISOString() }))
       .toThrowError(expect.objectContaining({ category: "conflict" }));
+    disjointRun.release();
     await manual.close();
     await expect(pending).rejects.toMatchObject({ name: "AbortError" });
     expect(execution.current()).toEqual({ state: "idle" });
@@ -116,7 +149,7 @@ describe("ManualControlApplication", () => {
 
   it("rejects a valid manual call while a Run lease is active", async () => {
     const { manual, execution, callTool } = fixture();
-    const runLease = execution.acquire({ state: "run", runId: "RUN1", startedAt: new Date().toISOString() });
+    const runLease = execution.acquire({ state: "run", runId: "RUN1", hardwareIds: ["HW1"], startedAt: new Date().toISOString() });
     await expect(manual.invokeTool(HUMAN_REQUEST_CONTEXT, {
       hardwareId: "HW1", toolName: hardwareTool.externalName, arguments: { value: 1 }
     })).rejects.toMatchObject({ category: "conflict" });

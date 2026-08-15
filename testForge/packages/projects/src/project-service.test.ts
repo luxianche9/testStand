@@ -1,6 +1,6 @@
 import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { SettingsStore } from "@testforge/storage";
 import { ProjectService, projectPath } from "./project-service.js";
@@ -53,6 +53,42 @@ describe("ProjectService folder projects", () => {
     expect(await service.inspectFolder(folder)).toMatchObject({ state: "invalid" });
     await expect(service.initializeFolder(folder)).rejects.toMatchObject({ category: "invalid_project" });
     expect(await readFile(projectPath(folder), "utf8")).toBe("{ broken");
+  });
+
+  it("opens legacy manifests through the migration chain and persists formatVersion 3", async () => {
+    const { root, service } = await fixture();
+    const folder = join(root, "legacy");
+    await mkdir(dirname(projectPath(folder)), { recursive: true });
+    const timestamp = "2025-01-02T03:04:05.000Z";
+    await writeFile(projectPath(folder), JSON.stringify({
+      formatVersion: 1,
+      projectId: "LEGACY",
+      name: "Legacy bench",
+      wiring: { nodes: [], connections: [] },
+      createdAt: timestamp,
+      updatedAt: timestamp
+    }), "utf8");
+
+    expect(await service.inspectFolder(folder)).toMatchObject({ state: "ready", name: "Legacy bench" });
+    const opened = await service.openFolder(folder);
+    expect(opened.file).toMatchObject({
+      formatVersion: 3,
+      projectId: "LEGACY",
+      task: { formatVersion: 2, taskId: "LEGACY-task", name: "Legacy bench" }
+    });
+    expect(JSON.parse(await readFile(projectPath(folder), "utf8"))).toMatchObject({ formatVersion: 3, projectId: "LEGACY" });
+  });
+
+  it("rejects future manifest versions without modifying them", async () => {
+    const { root, service } = await fixture();
+    const folder = join(root, "future");
+    await mkdir(dirname(projectPath(folder)), { recursive: true });
+    const raw = JSON.stringify({ formatVersion: 99, projectId: "FUTURE" });
+    await writeFile(projectPath(folder), raw, "utf8");
+
+    expect(await service.inspectFolder(folder)).toMatchObject({ state: "invalid" });
+    await expect(service.openFolder(folder)).rejects.toMatchObject({ category: "invalid_project" });
+    expect(await readFile(projectPath(folder), "utf8")).toBe(raw);
   });
 
   it("keeps all recent projects newest-first, deduplicates canonical paths, and preserves broken entries", async () => {
