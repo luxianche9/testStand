@@ -2,12 +2,9 @@
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "workspaces": {
     "apps/desktop": {
-      "ignoreDependencies": [
-        "ajv",
-        "ssh2",
-        "zustand"
-      ]
+      "ignoreDependencies": ["ssh2"]
     }
   },
+  "ignoreDependencies": ["electron", "electron-vite"],
   "ignore": ["apps/desktop/src/renderer/global.d.ts"]
 }

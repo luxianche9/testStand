@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 18 * * 0"
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Verify
+        if: github.event_name != 'schedule'
+        run: pnpm verify
+      - name: Coverage
+        if: github.event_name != 'schedule'
+        run: pnpm test:coverage
+      - name: Full Electron verification
+        if: github.event_name == 'schedule'
+        run: pnpm verify:full
+      - uses: actions/upload-artifact@v4
+        if: always() && github.event_name != 'schedule'
+        with:
+          name: coverage
+          path: coverage
+          if-no-files-found: ignore

@@ -17,7 +17,7 @@ out/
 output/
 tmp/
 
-logs/
+/logs/
 mcp-server/
 run/
 sim_hardware/servers/*/server.json
@@ -27,4 +27,4 @@ test-results/
 
 examples/
 ref_projects/
-docs/
+/docs/

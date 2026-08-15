@@ -14,7 +14,7 @@ TestForge 是面向硬件测试与实验室自动化的 Electron 桌面应用。
 - `@testforge/mcp-gateway`
 - `@testforge/desktop`
 
-本阶段保持既有工程、设备和设置文件格式不变；SQLite、多用户中央控制面、Edge Agent 与 UI 视觉重做不在当前范围内。
+对外导出的 Run 日志继续使用 `TestRunLogArchive formatVersion: 1`。工程清单当前写入 `formatVersion: 3`，打开 v1/v2 清单时会先完整校验、逐版本升级，再以原子写入方式持久化。SQLite、多用户中央控制面、Edge Agent 与 UI 视觉重做不在当前范围内。
 
 ## 快速开始
 
