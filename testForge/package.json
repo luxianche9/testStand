@@ -36,6 +36,9 @@
       "esbuild",
       "ssh2",
       "electron"
-    ]
+    ],
+    "patchedDependencies": {
+      "@assistant-ui/react-opencode@0.2.18": "patches/@assistant-ui__react-opencode@0.2.18.patch"
+    }
   }
 }

@@ -311,7 +311,7 @@ function WiringWorkbench() {
 
   const selectedConnection = connections.find((item) => item.connectionId === selectedConnectionId);
   const editingConnection = connections.find((item) => item.connectionId === editingConnectionId);
-  const activeTask = taskList.find((task) => task.status === "in_progress");
+  const activeTask = taskList.find((task) => task.status === "in_progress") ?? taskList.find((task) => task.status === "pending");
 
   return (
     <main className="wiring-page">

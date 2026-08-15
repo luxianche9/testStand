@@ -420,7 +420,7 @@ export function OpenCodeComposer({
       </ComposerPrimitive.AttachmentDropzone>
       <p className="mt-1.5 flex items-center justify-between px-1 text-[10px] text-muted-foreground">
         <span>Enter 发送，Shift+Enter 换行</span>
-        <span>{isRunning ? runState === "cancelling" ? "正在停止" : "OpenCode 正在执行" : session ? "上下文仅作用于当前会话" : "正在初始化会话"}</span>
+        <span>{isRunning ? runState === "cancelling" ? "正在停止" : "OpenCode 正在执行" : session ? "上下文仅作用于当前会话" : "正在创建工作区会话"}</span>
       </p>
     </ComposerPrimitive.Root>
   );

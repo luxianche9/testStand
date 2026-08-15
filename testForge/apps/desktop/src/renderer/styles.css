@@ -30,6 +30,8 @@
   --selected: color-mix(in srgb, var(--accent) 10%, transparent);
   --canvas-bg: #f1f4f7;
   --canvas-grid: #c3ccd6;
+  --wiring-edge: #006eff;
+  --wiring-edge-strong: #0052cc;
 }
 
 :root[data-theme="dark"] {
@@ -55,6 +57,8 @@
   --selected: color-mix(in srgb, var(--accent) 14%, transparent);
   --canvas-bg: #11161d;
   --canvas-grid: #39424d;
+  --wiring-edge: #39a0ff;
+  --wiring-edge-strong: #78bdff;
 }
 
 /* ------------------------------- 基础 ------------------------------- */
@@ -846,6 +850,19 @@ body.resizing-col { cursor: col-resize; user-select: none; }
 .view-switch button.active { background: var(--bg); color: var(--fg); box-shadow: 0 1px 3px color-mix(in srgb, #000 12%, transparent); }
 /* 相对工作区定位：300px 硬件库 + 内边距 */
 .flow-inline-error { position: absolute; z-index: 20; top: 54px; left: 312px; right: 12px; }
+.feature-error {
+  min-height: 0;
+  flex: 1;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  padding: 32px;
+  color: var(--fg-muted);
+  text-align: center;
+}
+.feature-error strong { color: var(--fg); font-size: 16px; }
+.feature-error-actions { display: flex; gap: 8px; margin-top: 8px; }
 .react-flow-wrap { min-height: 0; position: relative; }
 .react-flow { background: var(--canvas-bg); }
 .react-flow__controls { overflow: hidden; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); box-shadow: 0 4px 14px color-mix(in srgb, #000 10%, transparent); }
@@ -1071,7 +1088,22 @@ body.resizing-col { cursor: col-resize; user-select: none; }
   background: var(--accent) !important;
 }
 .react-flow__edge-path { stroke: var(--accent); stroke-width: 2; }
-.react-flow__edge.selected .react-flow__edge-path { stroke: var(--accent-strong); stroke-width: 3; }
+.react-flow__edge.wiring-flow-edge .react-flow__edge-path {
+  stroke: var(--wiring-edge);
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  opacity: 1;
+  filter: drop-shadow(0 0 2px color-mix(in srgb, var(--wiring-edge) 55%, transparent));
+}
+.react-flow__edge.wiring-flow-edge.selected .react-flow__edge-path {
+  stroke: var(--wiring-edge-strong);
+  stroke-width: 4.5;
+}
+.react-flow__connection-path {
+  stroke: var(--wiring-edge);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
 .react-flow__resize-control.handle {
   width: 8px !important;
   height: 8px !important;

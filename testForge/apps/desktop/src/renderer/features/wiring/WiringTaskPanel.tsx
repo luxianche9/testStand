@@ -12,23 +12,33 @@ export function WiringTaskModal({ task, hardware, assetUrls, onAssetUrl, onChang
   task: WiringTask; hardware: Hardware[];
   assetUrls: Record<string, string>; onAssetUrl: (key: string, url: string) => void; onChanged: () => Promise<void>;
 }) {
+  const start = useMutation({
+    mutationFn: () => window.testforge.wiring.startTask(task.wiringTaskId, "operator"),
+    onSuccess: async () => { await onChanged(); }
+  });
   const complete = useMutation({
     mutationFn: (outcome: "confirmed" | "rejected") => window.testforge.wiring.completeTask(task.wiringTaskId, outcome),
     onSuccess: async () => { await onChanged(); }
   });
   const a = resolvePortRef(task.portA, hardware);
   const b = resolvePortRef(task.portB, hardware);
+  const pending = task.status === "pending";
+  const busy = start.isPending || complete.isPending;
   return <Modal
     open
-    title={task.action === "connect" ? "人工接线任务" : "人工断线任务"}
+    title={pending
+      ? task.action === "connect" ? "待处理人工接线任务" : "待处理人工断线任务"
+      : task.action === "connect" ? "人工接线任务" : "人工断线任务"}
     width={880}
-    footer={<>
-      <Btn onClick={() => complete.mutate("rejected")} disabled={complete.isPending}>无法完成</Btn>
-      <Btn variant="primary" onClick={() => complete.mutate("confirmed")} disabled={complete.isPending}>已完成</Btn>
-    </>}
+    footer={pending
+      ? <Btn variant="primary" onClick={() => start.mutate()} disabled={busy}>开始处理</Btn>
+      : <>
+        <Btn onClick={() => complete.mutate("rejected")} disabled={busy}>无法完成</Btn>
+        <Btn variant="primary" onClick={() => complete.mutate("confirmed")} disabled={busy}>已完成</Btn>
+      </>}
   >
     <div className="task-instruction">
-      <Badge tone="warn">硬件已独占</Badge>
+      <Badge tone="warn">{pending ? "等待开始" : "硬件已独占"}</Badge>
       <strong>{taskTitle(task, hardware)}</strong>
       <Countdown expiresAt={task.expiresAt} />
     </div>
@@ -53,7 +63,7 @@ export function WiringTaskModal({ task, hardware, assetUrls, onAssetUrl, onChang
         ? "请按照端口图片上的针脚编号，逐条完成上表中的物理接线。确认「已完成」后，工程接线文档才会更新。"
         : "两端都没有登记针脚，按整个端口完成物理连接即可。确认「已完成」后，工程接线文档才会更新。"}
     </p>
-    {complete.isError && <div className="alert"><IconAlert size={15} /><span>{errorMessage(complete.error)}</span></div>}
+    {(start.isError || complete.isError) && <div className="alert"><IconAlert size={15} /><span>{errorMessage(start.error ?? complete.error)}</span></div>}
   </Modal>;
 }
 

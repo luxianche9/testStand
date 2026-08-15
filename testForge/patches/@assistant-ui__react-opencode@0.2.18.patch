@@ -1,0 +1,71 @@
+diff --git a/dist/OpenCodeThreadController.js b/dist/OpenCodeThreadController.js
+index 6fabbe3a99e28a5ad4518df0040e6e9ff581016f..640fb2ef9199c035692f0df38b91d8a2aab0d972 100644
+--- a/dist/OpenCodeThreadController.js
++++ b/dist/OpenCodeThreadController.js
+@@ -410,6 +410,10 @@ var OpenCodeThreadController = class OpenCodeThreadController {
+ 		this.dispatch({ type: "run.cancelling" });
+ 		try {
+ 			await this.client.session.abort({ sessionID: this.sessionId }, OPEN_CODE_REQUEST_OPTIONS);
++			this.dispatch({
++				type: "session.idle",
++				sessionId: this.sessionId
++			});
+ 		} catch (error) {
+ 			this.dispatch({
+ 				type: "run.failed",
+diff --git a/dist/openCodeThreadState.js b/dist/openCodeThreadState.js
+index a5583a98e04b179e5bb1ee5205dfda24f6df4932..96c6285741b66210fc3209be8f1569b8bbf129b8 100644
+--- a/dist/openCodeThreadState.js
++++ b/dist/openCodeThreadState.js
+@@ -175,7 +175,8 @@ const reduceOpenCodeThreadState = (state, event) => {
+ 			runState: {
+ 				type: "error",
+ 				error: event.error
+-			}
++			},
++			sessionStatus: { type: "idle" }
+ 		};
+ 		case "session.updated": return {
+ 			...state,
+@@ -441,7 +442,8 @@ const reduceOpenCodeThreadState = (state, event) => {
+ 				runState: {
+ 					type: "error",
+ 					error: event.error
+-				}
++				},
++				sessionStatus: { type: "idle" }
+ 			};
+ 		}
+ 	}
+diff --git a/src/OpenCodeThreadController.ts b/src/OpenCodeThreadController.ts
+index 5ebfe4f59ba04cdfb9a4c5fc324b98e99716e850..2a2cacd0f336bd85a56fcfd1340d513c86272ebf 100644
+--- a/src/OpenCodeThreadController.ts
++++ b/src/OpenCodeThreadController.ts
+@@ -666,6 +666,7 @@ export class OpenCodeThreadController implements OpenCodeThreadControllerLike {
+         },
+         OPEN_CODE_REQUEST_OPTIONS,
+       );
++      this.dispatch({ type: "session.idle", sessionId: this.sessionId });
+     } catch (error) {
+       this.dispatch({ type: "run.failed", error });
+       throw error;
+diff --git a/src/openCodeThreadState.ts b/src/openCodeThreadState.ts
+index 36f2d25958f4e98f9fbe592d2bf78fb50d1ed344..affdc318d7f7732dfa3778f6f58f76de1ef5d6b8 100644
+--- a/src/openCodeThreadState.ts
++++ b/src/openCodeThreadState.ts
+@@ -333,6 +333,7 @@ export const reduceOpenCodeThreadState = (
+       return {
+         ...state,
+         runState: { type: "error", error: event.error },
++        sessionStatus: { type: "idle" },
+       };
+ 
+     case "session.updated":
+@@ -674,6 +675,7 @@ export const reduceOpenCodeThreadState = (
+           },
+         },
+         runState: { type: "error", error: event.error },
++        sessionStatus: { type: "idle" },
+       };
+     }
+   }

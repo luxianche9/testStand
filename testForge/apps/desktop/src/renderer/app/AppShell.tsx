@@ -10,6 +10,7 @@ import { pinCountText, taskTitle, taskTone } from "../features/wiring/wiring-mod
 import { ErrorBoundary } from "../shared/ErrorBoundary.js";
 import { errorMessage } from "../shared/errors.js";
 import { queryKeys } from "../shared/query-keys.js";
+import { invalidateWiringData } from "../shared/mutations.js";
 import { appNavigationReducer, initialAppNavigation, isProjectView, type AppPage } from "./app-navigation.js";
 import { readAssistantOpen, writeAssistantOpen } from "./assistant-preference.js";
 import { TitleBar } from "./TitleBar.js";
@@ -179,6 +180,20 @@ function AppShell() {
   const hardwareList = catalog.data?.hardware ?? [];
   const pendingTasks = currentProject ? taskList.filter((task) => task.status === "pending") : [];
   const page = navigation.page;
+  const goToWiringTasks = async () => {
+    const nextTask = pendingTasks[0];
+    switchPage("wiring");
+    if (!nextTask) return;
+    setError(undefined);
+    try {
+      await window.testforge.wiring.startTask(nextTask.wiringTaskId, "operator");
+    } catch (reason) {
+      const latest = await window.testforge.wiring.getTask(nextTask.wiringTaskId).catch(() => undefined);
+      if (latest?.status !== "in_progress") setError(errorMessage(reason));
+    } finally {
+      await invalidateWiringData(client);
+    }
+  };
   return (
     <div className="app">
       <TitleBar page={page} projectView={navigation.projectView} project={currentProject} assistantOpen={assistantOpen} busy={busy} pendingTaskCount={pendingTasks.length} wiringLogOpen={wiringLogOpen} onToggleWiringLog={() => setWiringLogOpen((open) => !open)} onNavigate={switchPage} onProjectAction={handleProjectAction} onToggleAssistant={() => setAssistantOpen((open) => !open)} />
@@ -202,7 +217,7 @@ function AppShell() {
       {error && <div className="app-error" role="alert"><span>{error}</span><button aria-label="关闭错误" onClick={() => setError(undefined)}>×</button></div>}
 
       {wiringLogOpen && currentProject && <WiringLogDropdown tasks={taskList} hardware={hardwareList} onClose={() => setWiringLogOpen(false)} />}
-      {pendingTasks.length > 0 && <WiringAlertModal tasks={pendingTasks} hardware={hardwareList} onGoWiring={() => switchPage("wiring")} />}
+      {page !== "wiring" && pendingTasks.length > 0 && <WiringAlertModal tasks={pendingTasks} hardware={hardwareList} onGoWiring={() => void goToWiringTasks()} />}
 
       <Modal open={Boolean(pendingAction)} onClose={() => setPendingAction(undefined)} title="保存项目修改" footer={<><Btn onClick={() => setPendingAction(undefined)}>取消</Btn><Btn variant="danger" onClick={() => void continuePending(false)}>放弃修改</Btn><Btn variant="primary" onClick={() => void continuePending(true)}>保存并继续</Btn></>}>
         <p>当前项目有未保存的修改。要在{pendingAction?.label}前保存吗？</p>

@@ -60,6 +60,9 @@ test("renders the saved wiring canvas as a recent-project React Flow preview", a
     const preview = page.getByRole("img", { name: "project-preview 工位接线缩略图" });
     await expect(preview.locator(".react-flow__node")).toHaveCount(2);
     await expect(preview.locator(".react-flow__edge")).toHaveCount(1);
+    const edgePath = preview.locator(".react-flow__edge.wiring-flow-edge .react-flow__edge-path");
+    await expect(edgePath).toHaveCSS("stroke", "rgb(0, 110, 255)");
+    await expect(edgePath).toHaveCSS("stroke-width", "3.5px");
     await expect(preview.locator('[data-hardware-id="DUT_A"]')).toHaveAttribute("data-show-image", "true");
     await expect(preview.locator('[data-hardware-id="DUT_A"] img')).toHaveCount(1);
     await expect(preview.locator('[data-hardware-id="DUT_A"]')).toContainText("主控工位");

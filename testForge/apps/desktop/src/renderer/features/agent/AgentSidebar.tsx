@@ -1,12 +1,14 @@
 import {
   AssistantRuntimeProvider,
-  useAui
+  useAui,
+  useAuiState
 } from "@assistant-ui/react";
 import {
   OpenCodeAttachmentAdapter,
-  createOpencodeClient,
+  type OpencodeClient,
   useOpenCodeRuntime,
-  useOpenCodeSession
+  useOpenCodeSession,
+  useOpenCodeThreadState
 } from "@assistant-ui/react-opencode";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { OpenCodeRuntimeStatus } from "@testforge/contracts/agents";
@@ -26,6 +28,7 @@ import {
 } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -48,13 +51,18 @@ import { ThreadList } from "./ThreadList";
 import { Button, TooltipIconButton } from "./ui";
 import { FallbackTool } from "./tools/OpenCodeTools";
 import { OpenCodeToolUIs } from "./tools/toolkit";
+import {
+  createWorkspaceOpencodeClient,
+  persistWorkspaceThread,
+  resolveWorkspaceThread
+} from "./workspace-opencode-client";
 
 const WIDTH_KEY = "testforge.assistant-sidebar-width";
 const DEFAULT_WIDTH = 420;
 const MIN_WIDTH = 300;
 
 const stateLabels: Record<OpenCodeRuntimeStatus["state"], string> = {
-  running: "运行中",
+  running: "已就绪",
   starting: "启动中",
   stopping: "停止中",
   stopped: "已停止",
@@ -74,12 +82,14 @@ export function AssistantSidebar({ gatewayRunning, onClose, onOpenSettings }: { 
   const settingsQuery = useQuery({ queryKey: queryKeys.llmSettings, queryFn: () => window.testforge.settings.getLlm() });
   const current = statusQuery.data;
   const settings = settingsQuery.data;
-  const running = current?.state === "running" && Boolean(current.apiUrl);
+  const running = current?.state === "running" && current.workspaceState === "ready" && Boolean(current.apiUrl) && Boolean(current.workspace);
   const [drawerOpen, setDrawerOpen] = usePersistedThreadDrawer(running);
 
   useEffect(() => window.testforge.events.subscribe("opencode", () => {
     void queryClient.invalidateQueries({ queryKey: queryKeys.openCodeStatus });
   }), [queryClient]);
+
+  useEffect(() => setActionError(undefined), [current?.apiUrl, current?.workspace]);
 
   const setWidth = (next: number) => {
     const width = Math.round(Math.min(maxSidebarWidth(), Math.max(MIN_WIDTH, next)));
@@ -159,6 +169,7 @@ export function AssistantSidebar({ gatewayRunning, onClose, onOpenSettings }: { 
         {running && current?.apiUrl && settings ? (
           <OpenCodeAssistant
             apiUrl={current.apiUrl}
+            workspace={current.workspace!}
             model={settings.model}
             drawerOpen={drawerOpen}
             onDrawerOpenChange={setDrawerOpen}
@@ -243,6 +254,10 @@ function RuntimeEmptyState({
     title = "OpenCode 启动失败";
     body = error ?? status?.message ?? "请检查模型配置后重试。";
     actions = <Button size="sm" variant="outline" onClick={onOpenSettings}><SettingsIcon />打开设置</Button>;
+  } else if (status?.state === "running" && (!status.workspace || status.workspaceState !== "ready")) {
+    icon = <AlertCircleIcon className="size-7 text-destructive" />;
+    title = "OpenCode 工作区不可用";
+    body = "请重新打开项目文件夹，侧栏只会加载当前工作区的会话。";
   } else if (status?.state === "stopped") {
     icon = <SquareIcon className="size-7" />;
     title = "OpenCode 已停止";
@@ -270,6 +285,7 @@ function SetFallbackDataUI() {
 
 function OpenCodeAssistant({
   apiUrl,
+  workspace,
   model,
   drawerOpen,
   onDrawerOpenChange,
@@ -277,18 +293,100 @@ function OpenCodeAssistant({
   headerProps
 }: {
   apiUrl: string;
+  workspace: string;
   model: string;
   drawerOpen: boolean;
   onDrawerOpenChange: (open: boolean) => void;
   onRuntimeError: (reason: unknown) => void;
   headerProps: HeaderProps;
 }) {
-  const client = useMemo(() => createOpencodeClient({ baseUrl: apiUrl }), [apiUrl]);
+  const client = useMemo(() => createWorkspaceOpencodeClient(apiUrl, workspace), [apiUrl, workspace]);
+  const [resolution, setResolution] = useState<{ state: "loading" } | { state: "ready"; sessionId: string | undefined } | { state: "error"; error: unknown }>({ state: "loading" });
+  const [retryToken, setRetryToken] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    setResolution({ state: "loading" });
+    void resolveWorkspaceThread(client, workspace, localStorage).then((sessionId) => {
+      if (active) setResolution({ state: "ready", sessionId });
+    }).catch((error) => {
+      if (active) setResolution({ state: "error", error });
+    });
+    return () => { active = false; };
+  }, [client, retryToken, workspace]);
+
+  if (resolution.state !== "ready") {
+    return (
+      <>
+        <AgentHeader {...headerProps} drawerEnabled={false} />
+        <SessionResolutionState
+          error={resolution.state === "error" ? resolution.error : undefined}
+          onRetry={() => setRetryToken((value) => value + 1)}
+        />
+      </>
+    );
+  }
+
+  return (
+    <OpenCodeRuntimeAssistant
+      key={`${apiUrl}\u0000${workspace}\u0000${resolution.sessionId ?? "new"}`}
+      client={client}
+      workspace={workspace}
+      initialSessionId={resolution.sessionId}
+      model={model}
+      drawerOpen={drawerOpen}
+      onDrawerOpenChange={onDrawerOpenChange}
+      onRuntimeError={onRuntimeError}
+      headerProps={headerProps}
+    />
+  );
+}
+
+function SessionResolutionState({ error, onRetry }: { error: unknown | undefined; onRetry: () => void }) {
+  const hasError = error !== undefined;
+  return (
+    <div className="grid min-h-0 flex-1 place-items-center overflow-auto p-6">
+      <section className="flex max-w-sm flex-col items-center text-center">
+        <div className="mb-4 grid size-12 place-items-center rounded-2xl bg-muted text-muted-foreground">
+          {hasError ? <AlertCircleIcon className="size-7 text-destructive" /> : <Loader2Icon className="size-7 animate-spin" />}
+        </div>
+        <h2 className="text-base font-semibold">{hasError ? "恢复工作区会话失败" : "正在恢复工作区会话"}</h2>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{hasError ? errorMessage(error) : "正在查找当前项目最近使用的会话；如果没有，将自动创建新对话。"}</p>
+        {hasError && <Button className="mt-5" size="sm" variant="outline" onClick={onRetry}>重试</Button>}
+      </section>
+    </div>
+  );
+}
+
+function OpenCodeRuntimeAssistant({
+  client,
+  workspace,
+  initialSessionId,
+  model,
+  drawerOpen,
+  onDrawerOpenChange,
+  onRuntimeError,
+  headerProps
+}: {
+  client: OpencodeClient;
+  workspace: string;
+  initialSessionId: string | undefined;
+  model: string;
+  drawerOpen: boolean;
+  onDrawerOpenChange: (open: boolean) => void;
+  onRuntimeError: (reason: unknown) => void;
+  headerProps: HeaderProps;
+}) {
   const attachments = useMemo(() => new OpenCodeAttachmentAdapter(), []);
   const fallbackSelection = useMemo<OpenCodeSelection>(() => ({ model: { providerID: "openai", modelID: model } }), [model]);
   const [selection, setSelection] = useState<OpenCodeSelection>(fallbackSelection);
+  const onThreadIdChange = useCallback((threadId: string | undefined) => {
+    if (threadId) persistWorkspaceThread(localStorage, workspace, threadId);
+  }, [workspace]);
   const runtime = useOpenCodeRuntime({
     client,
+    ...(initialSessionId ? { initialSessionId } : {}),
+    onThreadIdChange,
     defaultModel: selection.model,
     defaultAgent: selection.agent,
     adapters: { attachments },
@@ -326,7 +424,7 @@ function RunningShell({
   onRuntimeError,
   headerProps
 }: {
-  client: ReturnType<typeof createOpencodeClient>;
+  client: OpencodeClient;
   fallbackSelection: OpenCodeSelection;
   selection: OpenCodeSelection;
   onSelectionChange: (selection: OpenCodeSelection) => void;
@@ -351,7 +449,7 @@ function RunningShell({
     onSelectionChange(sessionSelection);
   }, [onSelectionChange, selection.agent, selection.model.modelID, selection.model.providerID, sessionSelection]);
 
-  const createNewThread = () => {
+  const createNewThread = useCallback(() => {
     const runtime = aui.threads.__internal_getAssistantRuntime?.();
     if (!runtime) {
       onRuntimeError(new Error("OpenCode 会话运行时尚未就绪"));
@@ -365,11 +463,12 @@ function RunningShell({
         onRuntimeError(reason);
       }
     })();
-  };
+  }, [aui, onRuntimeError]);
 
   return (
     <DialogPrimitive.Root open={drawerOpen} onOpenChange={onDrawerOpenChange}>
       <div className="flex min-h-0 flex-1 flex-col">
+        <AutoInitializeThread onError={onRuntimeError} />
         <AgentHeader
           {...headerProps}
           drawerEnabled
@@ -381,6 +480,7 @@ function RunningShell({
           newThreadTrigger={<TooltipIconButton tooltip="新建对话" aria-label="新建对话" onClick={createNewThread}><PlusIcon className="size-4" /></TooltipIconButton>}
         />
         <div ref={setWorkspace} className="relative min-h-0 flex-1 overflow-hidden">
+          <OpenCodeRunErrorNotice onNewThread={createNewThread} />
           <Thread components={{
             Composer: <OpenCodeComposer
               client={client}
@@ -413,5 +513,42 @@ function RunningShell({
         </div>
       </div>
     </DialogPrimitive.Root>
+  );
+}
+
+function AutoInitializeThread({ onError }: { onError: (reason: unknown) => void }) {
+  const aui = useAui();
+  const threadsLoading = useAuiState((state) => state.threads.isLoading);
+  const threadStatus = useAuiState((state) => state.threadListItem.status);
+  const attempted = useRef(false);
+
+  useEffect(() => {
+    if (threadsLoading || threadStatus !== "new" || attempted.current) return;
+    const runtime = aui.threads.__internal_getAssistantRuntime?.();
+    if (!runtime) return;
+    attempted.current = true;
+    void runtime.threads.mainItem.initialize().catch(onError);
+  }, [aui, onError, threadStatus, threadsLoading]);
+  return null;
+}
+
+function OpenCodeRunErrorNotice({ onNewThread }: { onNewThread: () => void }) {
+  const error = useOpenCodeThreadState((state) => state.runState.type === "error" ? state.runState.error : undefined);
+  const sessionId = useOpenCodeThreadState((state) => state.sessionId);
+  const [dismissed, setDismissed] = useState<unknown>();
+
+  useEffect(() => setDismissed(undefined), [sessionId]);
+  if (error === undefined || dismissed === error) return null;
+
+  return (
+    <div role="alert" className="absolute inset-x-3 top-3 z-40 flex items-start gap-2 rounded-lg border border-destructive/30 bg-background/95 p-3 text-xs text-destructive shadow-md">
+      <AlertCircleIcon className="mt-0.5 size-4 shrink-0" />
+      <div className="min-w-0 flex-1">
+        <p className="font-medium">OpenCode 执行失败</p>
+        <p className="mt-1 break-words text-foreground/80">{errorMessage(error)}</p>
+        <Button className="mt-2" size="xs" variant="outline" onClick={onNewThread}>新建对话</Button>
+      </div>
+      <button type="button" aria-label="关闭执行错误提示" onClick={() => setDismissed(error)}><XIcon className="size-3.5" /></button>
+    </div>
   );
 }

@@ -128,6 +128,46 @@ test.describe.serial("TestForge folder project desktop", () => {
     await page.screenshot({ path: resolve(artifactDir, "project-orchestration.png") });
   });
 
+  test("processes consecutive Agent wiring requests through clickable confirmations", async () => {
+    const taskIds = await page.evaluate(async () => {
+      const connect = await window.testforge.wiring.requestTask({
+        portA: "DUT_A.FIBER",
+        portB: "DUT_B.FIBER",
+        action: "connect"
+      });
+      const disconnect = await window.testforge.wiring.requestTask({
+        portA: "DUT_A.J1",
+        portB: "DUT_B.J1",
+        pins: [{ a: "1", b: "1" }, { a: "2", b: "2" }],
+        action: "disconnect"
+      });
+      return [connect.wiringTaskId, disconnect.wiringTaskId];
+    });
+
+    const alert = page.getByRole("dialog", { name: "AI 请求人工接线" });
+    await expect(alert).toBeVisible();
+    await expect(alert.getByText("2 对针脚")).toBeVisible();
+    await alert.getByRole("button", { name: "前往处理" }).click();
+
+    const firstConfirm = page.getByRole("button", { name: "已完成" });
+    await expect(firstConfirm).toBeVisible();
+    await expect(firstConfirm).toBeEnabled();
+    await firstConfirm.click();
+
+    const startNext = page.getByRole("button", { name: "开始处理" });
+    await expect(startNext).toBeVisible();
+    await expect(startNext).toBeEnabled();
+    await startNext.click();
+    const secondConfirm = page.getByRole("button", { name: "已完成" });
+    await expect(secondConfirm).toBeVisible();
+    await expect(secondConfirm).toBeEnabled();
+    await secondConfirm.click();
+
+    await expect(page.getByRole("dialog", { name: /人工(?:接线|断线)任务/ })).toHaveCount(0);
+    const completed = await page.evaluate(async (ids) => Promise.all(ids.map((id) => window.testforge.wiring.getTask(id))), taskIds);
+    expect(completed.map((task) => task.status)).toEqual(["confirmed", "confirmed"]);
+  });
+
   test("uses settings as the only configuration surface and switches themes", async () => {
     await page.getByRole("button", { name: "设置" }).click();
     await expect(page.getByRole("heading", { name: "外观" })).toBeVisible();
