@@ -91,10 +91,12 @@ test.describe.serial("manual control and persisted Run logs", () => {
     await page.getByText("manual-logs-project", { exact: true }).first().click();
     await page.getByRole("tab", { name: "运行日志" }).click();
     await expect(page.getByRole("heading", { name: "运行日志" })).toBeVisible();
-    await page.getByPlaceholder("搜索 Run ID、任务或消息").fill("Persisted fixture");
+    await page.getByLabel("搜索运行日志").fill("Persisted fixture");
     await expect(page.getByText("Persisted fixture Run", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("Write fixture voltage", { exact: true })).toBeVisible();
-    await expect(page.getByText("run.passed", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "打开完整详情" }).click();
+    await expect(page.getByRole("dialog", { name: "运行详情" }).getByText("run.passed", { exact: true })).toBeVisible();
+    await page.getByRole("dialog", { name: "运行详情" }).getByRole("button", { name: "关闭" }).click();
 
     const exported = await page.evaluate((id) => window.testforge.orchestration.exportRun(id), runId);
     expect(exported).toMatchObject({ formatVersion: 1, run: { runId, taskName: "Persisted fixture Run", status: "passed" }, nodeRuns: [{ nodeLabel: "Write fixture voltage", status: "passed" }] });

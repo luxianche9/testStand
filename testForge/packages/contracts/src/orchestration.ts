@@ -178,16 +178,21 @@ export const testRunExecutionSnapshotSchema = z.object({
 }).strict();
 export type TestRunExecutionSnapshot = z.infer<typeof testRunExecutionSnapshotSchema>;
 
+export const testRunListSortBySchema = z.enum(["createdAt", "taskName", "status", "duration", "failedNodes"]);
+export type TestRunListSortBy = z.infer<typeof testRunListSortBySchema>;
 export const testRunListQuerySchema = z.object({
   statuses: z.array(testRunStatusSchema).optional(),
   search: z.string().max(200).optional(),
   from: z.string().datetime().optional(),
   to: z.string().datetime().optional(),
+  taskName: z.string().min(1).max(200).optional(),
+  sortBy: testRunListSortBySchema.default("createdAt"),
+  sortDir: z.enum(["asc", "desc"]).default("desc"),
   offset: z.number().int().min(0).default(0),
   limit: z.number().int().min(1).max(200).default(50)
 }).strict();
 export type TestRunListQuery = z.input<typeof testRunListQuerySchema>;
-export interface TestRunListResult { items: TestRun[]; total: number; warnings: string[] }
+export interface TestRunListResult { items: TestRun[]; total: number; warnings: string[]; taskNames: string[] }
 
 export interface TestRunDetail { run: TestRun; nodeRuns: TestNodeRun[]; events: TestRunEvent[]; nodeTotal: number }
 export interface OperatorDecision { nodeRunId: string; runId: string; nodeId: string; prompt: string; options: { label: string; value: string }[] }

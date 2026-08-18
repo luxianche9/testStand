@@ -192,6 +192,10 @@ describe("TaskOrchestrationService Run logs", () => {
     expect(service.listRuns({ statuses: ["failed"] }).items.map((item) => item.runId)).toEqual(["RUN2"]);
     expect(service.listRuns({ from: "2026-08-12T00:00:00.000Z", to: "2026-08-13T23:59:59.999Z" }).total).toBe(2);
     expect(service.listRuns({ offset: 1, limit: 1 }).items[0]?.runId).toBe("RUN2");
+    expect(service.listRuns({ taskName: "Alpha" }).items.map((item) => item.runId)).toEqual(["RUN1"]);
+    expect(service.listRuns().taskNames).toEqual(["Alpha", "Alpha retry", "Beta"]);
+    expect(service.listRuns({ sortBy: "taskName", sortDir: "asc" }).items.map((item) => item.taskName)).toEqual(["Alpha", "Alpha retry", "Beta"]);
+    expect(service.listRuns({ sortBy: "status", sortDir: "asc" }).items.map((item) => item.status)).toEqual(["blocked", "failed", "passed"]);
     expect(service.listRuns().warnings).toEqual(expect.arrayContaining(["broken.json: invalid JSON", expect.stringContaining("projectId") ]));
     expect(service.exportRun("RUN1").run.taskName).toBe("Alpha");
 

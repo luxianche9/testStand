@@ -6,6 +6,7 @@ import type {
   TestRunEvent,
   TestRunListQuery,
   TestRunListResult,
+  TestRunListSortBy,
   TestRunLogArchive
 } from "@testforge/contracts/orchestration";
 import { testRunListQuerySchema } from "@testforge/contracts/orchestration";
@@ -78,20 +79,24 @@ export class RunStore {
 
   listRuns(raw: TestRunListQuery = {}): TestRunListResult {
     const query = testRunListQuerySchema.parse(raw);
+    const all = [...this.runs.values()];
+    const taskNames = [...new Set(all.map((run) => run.taskName))].sort((left, right) => left.localeCompare(right, "zh"));
     const statuses = query.statuses?.length ? new Set(query.statuses) : undefined;
     const search = query.search?.trim().toLocaleLowerCase();
     const from = query.from ? Date.parse(query.from) : undefined;
     const to = query.to ? Date.parse(query.to) : undefined;
-    const filtered = [...this.runs.values()]
+    const filtered = all
       .filter((run) => !statuses || statuses.has(run.status))
       .filter((run) => from === undefined || Date.parse(run.createdAt) >= from)
       .filter((run) => to === undefined || Date.parse(run.createdAt) <= to)
+      .filter((run) => !query.taskName || run.taskName === query.taskName)
       .filter((run) => !search || [run.runId, run.taskName, run.summary?.message ?? ""].some((value) => value.toLocaleLowerCase().includes(search)))
-      .sort((left, right) => right.createdAt.localeCompare(left.createdAt) || right.runId.localeCompare(left.runId));
+      .sort((left, right) => compareRuns(left, right, query.sortBy, query.sortDir));
     return {
       items: filtered.slice(query.offset, query.offset + query.limit).map((run) => structuredClone(run)),
       total: filtered.length,
-      warnings: [...this.warnings]
+      warnings: [...this.warnings],
+      taskNames
     };
   }
 
@@ -217,4 +222,25 @@ export class RunStore {
 
 function sameNumbers(left: number[], right: number[]): boolean {
   return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
+function compareRuns(left: TestRun, right: TestRun, sortBy: TestRunListSortBy, sortDir: "asc" | "desc"): number {
+  const direction = sortDir === "asc" ? 1 : -1;
+  const primary = sortKey(left, sortBy).localeCompare(sortKey(right, sortBy), "zh", { numeric: true });
+  if (primary !== 0) return primary * direction;
+  return right.runId.localeCompare(left.runId);
+}
+
+function sortKey(run: TestRun, sortBy: TestRunListSortBy): string {
+  if (sortBy === "taskName") return run.taskName;
+  if (sortBy === "status") return run.status;
+  if (sortBy === "failedNodes") return String(run.summary?.failedNodes ?? 0).padStart(8, "0");
+  if (sortBy === "duration") return String(runDurationMs(run)).padStart(16, "0");
+  return run.createdAt;
+}
+
+function runDurationMs(run: TestRun): number {
+  const start = Date.parse(run.startedAt ?? run.createdAt);
+  const end = run.completedAt ? Date.parse(run.completedAt) : Date.now();
+  return Number.isFinite(start) ? Math.max(0, end - start) : 0;
 }

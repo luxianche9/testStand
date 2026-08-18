@@ -41,7 +41,7 @@ describe("Desktop tRPC router", () => {
     await caller.orchestration.clearCompletedRuns();
 
     expect(invokeTool).toHaveBeenCalledWith(expect.objectContaining({ actor: "human" }), { ...manualInput, timeoutMs: 30_000 });
-    expect(listRuns).toHaveBeenCalledWith(expect.objectContaining({ actor: "human" }), { statuses: ["failed"], offset: 0, limit: 50 });
+    expect(listRuns).toHaveBeenCalledWith(expect.objectContaining({ actor: "human" }), { statuses: ["failed"], sortBy: "createdAt", sortDir: "desc", offset: 0, limit: 50 });
     expect(exportRun).toHaveBeenCalledWith(expect.objectContaining({ actor: "human" }), "RUN1");
     expect(deleteRun).toHaveBeenCalledWith(expect.objectContaining({ actor: "human" }), "RUN1");
     expect(clearCompletedRuns).toHaveBeenCalledWith(expect.objectContaining({ actor: "human" }));
