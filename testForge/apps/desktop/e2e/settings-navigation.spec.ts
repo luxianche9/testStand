@@ -31,9 +31,9 @@ test("settings returns to the page that opened it", async () => {
     await expect(page.getByRole("button", { name: "应用" })).toBeVisible();
     await openSettingsAndReturn(page, () => expect(page.getByRole("button", { name: "应用" })).toBeVisible());
 
-    await page.getByRole("tab", { name: "手动控制" }).click();
-    await expect(page.getByRole("heading", { name: "手动控制" })).toBeVisible();
-    await openSettingsAndReturn(page, () => expect(page.getByRole("heading", { name: "手动控制" })).toBeVisible());
+    await page.getByRole("tab", { name: "设备管理" }).click();
+    await expect(page.getByRole("heading", { name: "设备管理" })).toBeVisible();
+    await openSettingsAndReturn(page, () => expect(page.getByRole("heading", { name: "设备管理" })).toBeVisible());
 
     await page.getByRole("tab", { name: "运行日志" }).click();
     await expect(page.getByRole("heading", { name: "运行日志" })).toBeVisible();

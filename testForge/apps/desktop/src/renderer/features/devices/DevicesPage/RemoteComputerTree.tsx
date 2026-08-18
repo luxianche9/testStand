@@ -78,7 +78,7 @@ export function RemoteComputerTree({ data, selected, isOpen, onSelect, onToggle,
               {serverOpen && tools.map((tool) => {
                 const toolKey = `t:${tool.externalName}`;
                 return <div className="tree-node" key={toolKey}>
-                  <TreeRow className="tool-row" depth={3} icon={<IconMcp size={14} />} label={tool.externalName} title={tool.description} hasChildren open={isOpen(toolKey)} selected={false} onClick={() => onToggle(toolKey)} />
+                  <TreeRow className="tool-row" depth={3} icon={<IconMcp size={14} />} label={tool.externalName} title={tool.description} hasChildren open={isOpen(toolKey)} selected={selected === toolKey} onClick={() => { onSelect(toolKey); onToggle(toolKey); }} />
                   {isOpen(toolKey) && <InlineDetail depth={3}><ToolInline tool={tool} /></InlineDetail>}
                 </div>;
               })}

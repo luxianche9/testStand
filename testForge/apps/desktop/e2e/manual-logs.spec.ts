@@ -47,10 +47,10 @@ test.describe.serial("manual control and persisted Run logs", () => {
     }, { projectRoot, fixtureUrl: fixture.url, token: fixture.token });
     await page.reload();
     await page.getByText("manual-logs-project", { exact: true }).first().click();
-    await page.getByRole("tab", { name: "手动控制" }).click();
+    await page.getByRole("tab", { name: "设备管理" }).click();
 
-    await expect(page.getByRole("heading", { name: "手动控制" })).toBeVisible();
-    await page.getByRole("button", { name: /E2E fixture card/ }).click();
+    await expect(page.getByRole("heading", { name: "设备管理" })).toBeVisible();
+    await page.getByRole("treeitem", { name: /E2E fixture MCP/ }).click();
     await page.getByRole("button", { name: /write_voltage/ }).click();
     await expect(page.locator(".schema-fields").getByText("Hardware ID", { exact: true })).toHaveCount(0);
     await page.getByLabel("Voltage").fill("4.2");

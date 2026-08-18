@@ -1,1 +1,1 @@
-export { ManualControlPage } from "./ManualControlPage.js";
+export { ManualInvokePanel } from "./ManualInvokePanel.js";

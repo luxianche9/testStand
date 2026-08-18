@@ -7,8 +7,8 @@ import {
   FolderIcon,
   InboxIcon,
   MinusIcon,
-  MousePointerClickIcon,
   Repeat2Icon,
+  ServerIcon,
   SettingsIcon,
   SquareIcon,
   XIcon
@@ -84,7 +84,7 @@ function NavButton({ active, label, icon, onClick }: { active: boolean; label: s
 const PROJECT_VIEWS: { view: ProjectView; label: string; icon: ReactNode }[] = [
   { view: "wiring", label: "工位接线", icon: <CableIcon size={15} /> },
   { view: "orchestration", label: "编排测试", icon: <Repeat2Icon size={15} /> },
-  { view: "manual", label: "手动控制", icon: <MousePointerClickIcon size={15} /> },
+  { view: "manual", label: "设备管理", icon: <ServerIcon size={15} /> },
   { view: "logs", label: "运行日志", icon: <ClipboardClockIcon size={15} /> }
 ];
 

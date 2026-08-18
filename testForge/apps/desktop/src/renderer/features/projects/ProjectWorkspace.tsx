@@ -5,7 +5,7 @@ import { ErrorBoundary } from "../../shared/ErrorBoundary.js";
 
 const WiringPage = lazy(() => import("../wiring/index.js").then((module) => ({ default: module.WiringPage })));
 const OrchestrationPage = lazy(() => import("../orchestration/index.js").then((module) => ({ default: module.OrchestrationPage })));
-const ManualControlPage = lazy(() => import("../manual/index.js").then((module) => ({ default: module.ManualControlPage })));
+const DevicesPage = lazy(() => import("../devices/index.js").then((module) => ({ default: module.DevicesPage })));
 const LogsPage = lazy(() => import("../logs/index.js").then((module) => ({ default: module.LogsPage })));
 
 export function ProjectWorkspace({ view }: { view: ProjectView }) {
@@ -15,7 +15,7 @@ export function ProjectWorkspace({ view }: { view: ProjectView }) {
         <Suspense fallback={<div className="centered"><Spinner label="正在加载项目功能…" /></div>}>
           {view === "orchestration" ? <OrchestrationPage />
             : view === "wiring" ? <WiringPage />
-              : view === "manual" ? <ManualControlPage />
+              : view === "manual" ? <DevicesPage />
                 : <LogsPage />}
         </Suspense>
       </ErrorBoundary>

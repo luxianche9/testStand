@@ -59,8 +59,8 @@ test.describe.serial("TestForge folder project desktop", () => {
     await expect(page.getByRole("tab", { name: "工位接线", exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "打开 AI 侧栏" })).toHaveCount(0);
     await page.getByRole("button", { name: "设置", exact: true }).click();
-    await page.getByRole("button", { name: "设备管理", exact: true }).click();
-    await expect(page.getByRole("heading", { name: "设备管理" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "外观" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "设备管理", exact: true })).toHaveCount(0);
     await page.getByRole("button", { name: "返回", exact: true }).click();
     await expect(page.getByRole("heading", { name: "最近项目" })).toBeVisible();
     await page.screenshot({ path: resolve(artifactDir, "welcome-light.png"), fullPage: true });
@@ -78,7 +78,7 @@ test.describe.serial("TestForge folder project desktop", () => {
     await page.getByText("project-a", { exact: true }).first().click();
     await expect(page.getByRole("tab", { name: "工位接线", exact: true })).toBeVisible();
     await expect(page.getByRole("tab", { name: "编排测试", exact: true })).toBeVisible();
-    await expect(page.getByRole("tab", { name: "手动控制", exact: true })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "设备管理", exact: true })).toBeVisible();
     await expect(page.getByRole("tab", { name: "运行日志", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "打开 AI 侧栏" })).toBeVisible();
   });
@@ -109,13 +109,11 @@ test.describe.serial("TestForge folder project desktop", () => {
     expect(result.afterSave.dirty).toBe(false);
     expect(result.beforeSave?.file.wiring.connections[0]?.pins).toEqual([{ a: "1", b: "1" }, { a: "2", b: "2" }]);
 
-    await page.getByRole("button", { name: "设置", exact: true }).click();
-    await page.getByRole("button", { name: "设备管理", exact: true }).click();
+    await page.getByRole("tab", { name: "设备管理", exact: true }).click();
     await expect(page.getByRole("heading", { name: "设备管理" })).toBeVisible();
     await expect(page.getByRole("treeitem", { name: /DUT_A/ })).toBeVisible();
     await page.screenshot({ path: resolve(artifactDir, "devices-page.png"), fullPage: true });
 
-    await page.getByRole("button", { name: "返回", exact: true }).click();
     await page.getByRole("tab", { name: "工位接线", exact: true }).click();
     await expect(page.getByText("硬件库")).toBeVisible();
     await expect(page.getByRole("button", { name: "接线调用历史" })).toBeVisible();

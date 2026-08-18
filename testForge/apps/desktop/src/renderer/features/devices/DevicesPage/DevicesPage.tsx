@@ -1,19 +1,20 @@
-import { useEffect, useRef, useState } from "react";
-import { useMutation, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
-import type { DashboardSnapshot } from "@testforge/contracts/desktop";
-import type { Hardware, McpServerConfig, RemoteComputer } from "@testforge/contracts/devices";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import type { Hardware, ManagedHardware, McpServerConfig, RemoteComputer, ToolCatalogItem } from "@testforge/contracts/devices";
 import { IconRefresh } from "../../../shared/icons.js";
-import { PageHeader, QueryGate } from "../../../shared/layout.js";
+import { QueryGate } from "../../../shared/layout.js";
 import { invalidateDeviceData } from "../../../shared/mutations.js";
-import { useDeviceCatalog } from "../../../shared/queries.js";
+import { useDashboard, useDeviceCatalog } from "../../../shared/queries.js";
 import { Btn } from "../../../shared/ui.js";
+import { ManualInvokePanel } from "../../manual/index.js";
 import { HardwareListTree } from "./HardwareListTree.js";
 import { RemoteComputerTree } from "./RemoteComputerTree.js";
 import { ComputerEditor } from "./editors/ComputerEditor.js";
 import { HardwareEditor } from "./editors/HardwareEditor.js";
 import { ServerEditor } from "./editors/ServerEditor.js";
 
-export function DevicesPage({ query }: { query: UseQueryResult<DashboardSnapshot> }) {
+export function DevicesPage() {
+  const query = useDashboard();
   const client = useQueryClient();
   const [selected, setSelected] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -61,37 +62,69 @@ export function DevicesPage({ query }: { query: UseQueryResult<DashboardSnapshot
   const data = query.data;
   const hardware = catalog.data?.hardware ?? [];
   const effectiveSelected = selected ?? (data?.computers[0] ? `c:${data.computers[0].id}` : null);
+  const invokeTarget = useMemo(() => resolveInvokeTarget(effectiveSelected, data?.servers ?? [], data?.tools ?? [], data?.hardware ?? []), [data, effectiveSelected]);
 
-  return <main className="page">
-    <div className="page-inner">
-      <PageHeader title="设备管理" actions={<Btn icon={<IconRefresh size={14} className={probeStatuses.isPending ? "spin" : undefined} />} onClick={() => probeStatuses.mutate()} disabled={probeStatuses.isPending || !data}>状态检测</Btn>} />
-      <QueryGate query={query}>{(snapshot) => <div className="device-trees">
-        <RemoteComputerTree
-          data={snapshot}
-          selected={effectiveSelected}
-          isOpen={isOpen}
-          onSelect={setSelected}
-          onToggle={toggle}
-          onAddComputer={() => setComputerEditor({ open: true })}
-          onEditComputer={(computer) => setComputerEditor({ open: true, computer })}
-          onAddServer={(computerId) => setServerEditor({ open: true, computerId })}
-          onEditServer={(server) => setServerEditor({ open: true, server, computerId: server.computerId })}
-          onChanged={refreshAll}
-        />
-        <HardwareListTree
-          hardware={hardware}
-          selected={effectiveSelected}
-          isOpen={isOpen}
-          onSelect={setSelected}
-          onToggle={toggle}
-          onAddHardware={() => setHardwareEditor({ open: true })}
-          onEditHardware={(item) => setHardwareEditor({ open: true, hardware: item })}
-          onChanged={refreshAll}
-        />
-      </div>}</QueryGate>
+  return <main className="devices-workspace">
+    <div className="devices-toolbar">
+      <h1>设备管理</h1>
+      <Btn icon={<IconRefresh size={14} className={probeStatuses.isPending ? "spin" : undefined} />} onClick={() => probeStatuses.mutate()} disabled={probeStatuses.isPending || !data}>状态检测</Btn>
+    </div>
+    <div className="devices-body">
+      <div className="devices-tree-column">
+        <QueryGate query={query}>{(snapshot) => <div className="device-trees">
+          <RemoteComputerTree
+            data={snapshot}
+            selected={effectiveSelected}
+            isOpen={isOpen}
+            onSelect={setSelected}
+            onToggle={toggle}
+            onAddComputer={() => setComputerEditor({ open: true })}
+            onEditComputer={(computer) => setComputerEditor({ open: true, computer })}
+            onAddServer={(computerId) => setServerEditor({ open: true, computerId })}
+            onEditServer={(server) => setServerEditor({ open: true, server, computerId: server.computerId })}
+            onChanged={refreshAll}
+          />
+          <HardwareListTree
+            hardware={hardware}
+            selected={effectiveSelected}
+            isOpen={isOpen}
+            onSelect={setSelected}
+            onToggle={toggle}
+            onAddHardware={() => setHardwareEditor({ open: true })}
+            onEditHardware={(item) => setHardwareEditor({ open: true, hardware: item })}
+            onChanged={refreshAll}
+          />
+        </div>}</QueryGate>
+      </div>
+      <section className="devices-invoke-column" aria-label="手动调用">
+        <ManualInvokePanel hardwareId={invokeTarget.hardwareId} preferredToolName={invokeTarget.toolName} />
+      </section>
     </div>
     <ComputerEditor open={computerEditor.open} computer={computerEditor.computer} onClose={() => setComputerEditor({ open: false })} onChanged={refreshAll} />
     <ServerEditor open={serverEditor.open} server={serverEditor.server} computerId={serverEditor.computerId} computers={data?.computers ?? []} hardware={hardware} onClose={() => setServerEditor({ open: false })} onChanged={refreshAll} />
     <HardwareEditor open={hardwareEditor.open} hardware={hardwareEditor.hardware} onClose={() => setHardwareEditor({ open: false })} onChanged={refreshAll} />
   </main>;
+}
+
+export function resolveInvokeTarget(
+  selected: string | null,
+  servers: McpServerConfig[],
+  tools: ToolCatalogItem[],
+  managed: ManagedHardware[]
+): { hardwareId?: string; toolName?: string } {
+  if (!selected) return {};
+  if (selected.startsWith("t:")) {
+    const toolName = selected.slice(2);
+    const tool = tools.find((item) => item.externalName === toolName);
+    const hardwareId = managed.find((item) => item.serverId === tool?.serverId)?.hardwareId
+      ?? servers.find((item) => item.serverId === tool?.serverId)?.hardwareId;
+    return hardwareId ? { hardwareId, toolName } : {};
+  }
+  if (selected.startsWith("s:")) {
+    const serverId = selected.slice(2);
+    const hardwareId = managed.find((item) => item.serverId === serverId)?.hardwareId
+      ?? servers.find((item) => item.serverId === serverId)?.hardwareId;
+    return hardwareId ? { hardwareId } : {};
+  }
+  return {};
 }

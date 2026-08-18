@@ -1,20 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Hardware, HardwareAvailability } from "@testforge/contracts/devices";
+import type { HardwareAvailability } from "@testforge/contracts/devices";
 import { isHardwareExecuting, type ManualToolInvocationResult } from "@testforge/contracts/execution";
-import { IconAlert, IconChip, IconPlay, IconRefresh } from "../../shared/icons.js";
+import { IconAlert, IconPlay } from "../../shared/icons.js";
 import { errorMessage } from "../../shared/errors.js";
-import { Badge, type BadgeTone, Btn, EmptyState, Spinner } from "../../shared/ui.js";
-import { useDashboard, useDeviceCatalog } from "../../shared/queries.js";
+import { Badge, type BadgeTone, Btn, EmptyState } from "../../shared/ui.js";
+import { useDashboard } from "../../shared/queries.js";
 import { queryKeys } from "../../shared/query-keys.js";
 import { SchemaArgumentsForm } from "./SchemaForm.js";
 import { initialSchemaValue, validateSchemaArguments } from "./schema-form-model.js";
 
-export function ManualControlPage() {
+export function ManualInvokePanel({ hardwareId, preferredToolName }: {
+  hardwareId?: string | undefined;
+  preferredToolName?: string | undefined;
+}) {
   const client = useQueryClient();
-  const catalog = useDeviceCatalog();
   const dashboard = useDashboard();
-  const [hardwareId, setHardwareId] = useState<string>();
   const [toolName, setToolName] = useState<string>();
   const [argumentsValue, setArgumentsValue] = useState<Record<string, unknown>>({});
   const [formValid, setFormValid] = useState(true);
@@ -22,15 +23,20 @@ export function ManualControlPage() {
   const [callError, setCallError] = useState<{ message: string; durationMs: number }>();
   const startedRef = useRef(0);
 
-  const hardware = useMemo(() => (catalog.data?.hardware ?? []).filter((item): item is Hardware & { kind: "managed"; serverId: string; computerId: string } => item.kind === "managed" && Boolean(item.serverId && item.computerId)), [catalog.data?.hardware]);
+  const tools = useMemo(() => {
+    const serverId = dashboard.data?.servers.find((item) => item.hardwareId === hardwareId)?.serverId
+      ?? dashboard.data?.hardware.find((item) => item.hardwareId === hardwareId)?.serverId;
+    return (dashboard.data?.tools ?? []).filter((item) => item.kind === "hardware" && item.serverId === serverId);
+  }, [dashboard.data, hardwareId]);
+
   useEffect(() => {
-    if (!hardwareId || !hardware.some((item) => item.hardwareId === hardwareId)) setHardwareId(hardware[0]?.hardwareId);
-  }, [hardware, hardwareId]);
-  const selectedHardware = hardware.find((item) => item.hardwareId === hardwareId);
-  const tools = useMemo(() => (dashboard.data?.tools ?? []).filter((item) => item.kind === "hardware" && item.serverId === selectedHardware?.serverId), [dashboard.data?.tools, selectedHardware?.serverId]);
-  useEffect(() => {
+    if (preferredToolName && tools.some((item) => item.externalName === preferredToolName)) {
+      setToolName(preferredToolName);
+      return;
+    }
     if (!toolName || !tools.some((item) => item.externalName === toolName)) setToolName(tools[0]?.externalName);
-  }, [toolName, tools]);
+  }, [preferredToolName, toolName, tools]);
+
   const selectedTool = tools.find((item) => item.externalName === toolName);
   const displaySchema = selectedTool?.inputSchema;
   useEffect(() => {
@@ -67,23 +73,16 @@ export function ManualControlPage() {
     return () => { stopExecution(); stopAvailability(); };
   }, [client]);
 
-  if (catalog.isLoading || dashboard.isLoading) return <div className="centered"><Spinner label="正在加载受管硬件…" /></div>;
-  return <main className="manual-page">
-    <aside className="manual-hardware-panel">
-      <header className="feature-heading"><span><h1>手动控制</h1><small>一次调用一个 MCP 硬件工具</small></span><Btn variant="subtle" icon={<IconRefresh size={14} />} aria-label="刷新硬件状态" onClick={() => { void catalog.refetch(); void dashboard.refetch(); }} /></header>
-      <div className="manual-hardware-list">
-        {hardware.map((item) => {
-          const state = availabilityFor(item.hardwareId, dashboard.data?.availability ?? []);
-          return <button key={item.hardwareId} disabled={invoke.isPending} className={item.hardwareId === hardwareId ? "active" : ""} onClick={() => setHardwareId(item.hardwareId)}><IconChip size={16} /><span><strong>{item.label}</strong><small>{item.hardwareId}</small></span><Badge tone={availabilityTone(state)}>{state}</Badge></button>;
-        })}
-        {!hardware.length && <EmptyState title="没有受管硬件" body="请先在设备管理中登记 MCP Server 及其硬件定义。" />}
-      </div>
-    </aside>
+  if (!hardwareId) {
+    return <EmptyState title="选择一个 MCP Server 或硬件工具" body="在左侧树中点选受管硬件对应的 Server，即可在此手动调用。" />;
+  }
+
+  return <div className="manual-invoke">
     <aside className="manual-tool-panel">
       <header><strong>硬件工具</strong><span>{tools.length}</span></header>
       {tools.map((tool) => <button key={tool.externalName} disabled={invoke.isPending} className={tool.externalName === toolName ? "active" : ""} onClick={() => setToolName(tool.externalName)}><strong>{tool.remoteName}</strong><small>{tool.description || tool.externalName}</small></button>)}
-      {selectedHardware && availability !== "available" && <div className="manual-tool-empty"><IconAlert size={15} /><span>硬件当前为 {availability}，恢复在线后才能执行。</span></div>}
-      {selectedHardware && availability === "available" && !tools.length && <div className="manual-tool-empty">该 Server 未暴露 hardware 工具。</div>}
+      {availability !== "available" && <div className="manual-tool-empty"><IconAlert size={15} /><span>硬件当前为 {availability}，恢复在线后才能执行。</span></div>}
+      {availability === "available" && !tools.length && <div className="manual-tool-empty">该 Server 未暴露 hardware 工具。</div>}
     </aside>
     <section className="manual-call-panel">
       {selectedTool && displaySchema ? <>
@@ -94,9 +93,9 @@ export function ManualControlPage() {
         {validation.errors.length > 0 && <div className="validation-box invalid"><strong>参数校验</strong>{validation.errors.map((message, index) => <div key={index}><code>input</code><span>{message}</span></div>)}</div>}
         <div className="manual-call-actions"><Btn variant="primary" icon={<IconPlay size={13} />} disabled={!formValid || !validation.valid || availability !== "available" || runBusy || manualBusy || invoke.isPending} onClick={() => invoke.mutate()}>{invoke.isPending ? "正在执行…" : "执行一次"}</Btn><span>超时 30 秒 · 硬件上下文由 TestForge 通过协议元数据传递</span></div>
         {(result || callError) && <section className={`manual-result${callError ? " failed" : ""}`}><header><strong>{callError ? "调用失败" : "调用成功"}</strong><span>{callError ? `${callError.durationMs} ms` : `${result!.durationMs} ms`}</span></header>{callError ? <div className="alert"><IconAlert size={15} /><span>{callError.message}</span></div> : <pre>{pretty(result!.output)}</pre>}</section>}
-      </> : <EmptyState title={selectedHardware ? "选择一个硬件工具" : "选择受管硬件"} body="参数表单会根据 MCP 工具的 JSON Schema 自动生成。" />}
+      </> : <EmptyState title="选择一个硬件工具" body="参数表单会根据 MCP 工具的 JSON Schema 自动生成。" />}
     </section>
-  </main>;
+  </div>;
 }
 
 function availabilityFor(hardwareId: string | undefined, availability: HardwareAvailability[]): HardwareAvailability["state"] {

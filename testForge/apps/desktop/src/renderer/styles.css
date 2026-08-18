@@ -350,6 +350,15 @@ code, pre { font-family: var(--font-mono); }
 .library-notice { display: inline-flex; align-items: center; gap: 6px; max-width: 320px; color: var(--fg-muted); font-size: 12px; line-height: 1.4; }
 .library-notice.error { color: var(--bad); }
 
+.devices-workspace { min-height: 0; flex: 1; display: flex; flex-direction: column; background: var(--bg); }
+.devices-toolbar { flex: none; display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--panel); }
+.devices-toolbar h1 { margin: 0; font-size: 15px; }
+.devices-body { min-height: 0; flex: 1; display: grid; grid-template-columns: minmax(280px, 360px) minmax(0, 1fr); }
+.devices-tree-column { min-height: 0; overflow: auto; padding: 10px; border-right: 1px solid var(--border); background: var(--panel); }
+.devices-invoke-column { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.devices-invoke-column > .empty { margin: auto; }
+.manual-invoke { min-height: 0; flex: 1; display: grid; grid-template-columns: 230px minmax(0, 1fr); }
+
 /* 设备管理：两棵独立树，左对齐、同宽 */
 .device-trees {
   display: grid;
@@ -1322,20 +1331,17 @@ body.resizing-col { cursor: col-resize; user-select: none; }
 .orchestration-notice { display: flex; align-items: center; gap: 8px; margin: 0 16px; padding: 8px 12px; border-radius: 6px; font-size: 11px; color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, transparent); border: 1px solid color-mix(in srgb, var(--ok) 40%, transparent); }
 
 /* Manual hardware control */
-.manual-page { min-height: 0; flex: 1; display: grid; grid-template-columns: 280px 250px minmax(0, 1fr); background: var(--bg); }
-.manual-hardware-panel, .manual-tool-panel { min-height: 0; display: flex; flex-direction: column; border-right: 1px solid var(--border); background: var(--panel); }
+.manual-tool-panel { min-height: 0; display: flex; flex-direction: column; border-right: 1px solid var(--border); background: var(--panel); }
 .feature-heading { min-height: 58px; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
 .feature-heading > span { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .feature-heading h1 { margin: 0; font-size: 15px; }
 .feature-heading small { color: var(--muted); font-size: 10px; }
-.manual-hardware-list, .manual-tool-panel { overflow: auto; }
-.manual-hardware-list { padding: 6px; }
-.manual-hardware-list > button { width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 9px 8px; border: 0; border-radius: 5px; color: var(--fg); background: transparent; text-align: left; cursor: pointer; }
-.manual-hardware-list > button:hover, .manual-hardware-list > button.active, .manual-tool-panel > button:hover, .manual-tool-panel > button.active { background: var(--hover); }
-.manual-hardware-list > button.active, .manual-tool-panel > button.active { box-shadow: inset 2px 0 var(--accent); }
-.manual-hardware-list button > span, .manual-tool-panel > button { min-width: 0; }
-.manual-hardware-list strong, .manual-hardware-list small, .manual-tool-panel strong, .manual-tool-panel small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.manual-hardware-list small, .manual-tool-panel small { margin-top: 2px; color: var(--muted); font-size: 10px; }
+.manual-tool-panel { overflow: auto; }
+.manual-tool-panel > button:hover, .manual-tool-panel > button.active { background: var(--hover); }
+.manual-tool-panel > button.active { box-shadow: inset 2px 0 var(--accent); }
+.manual-tool-panel > button { min-width: 0; }
+.manual-tool-panel strong, .manual-tool-panel small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.manual-tool-panel small { margin-top: 2px; color: var(--muted); font-size: 10px; }
 .manual-tool-panel > header { min-height: 58px; display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid var(--border); }
 .manual-tool-panel > button { flex: none; padding: 10px 12px; border: 0; border-bottom: 1px solid var(--border-muted); color: var(--fg); background: transparent; text-align: left; cursor: pointer; }
 .manual-tool-empty { display: flex; align-items: flex-start; gap: 7px; padding: 14px 12px; color: var(--muted); font-size: 11px; line-height: 1.5; }
@@ -1428,7 +1434,8 @@ body.resizing-col { cursor: col-resize; user-select: none; }
 .run-virtual-item { position: absolute; inset-inline: 0; top: 0; width: 100%; }
 
 @media (max-width: 1100px) {
-  .manual-page { grid-template-columns: 230px 210px minmax(0, 1fr); }
+  .devices-body { grid-template-columns: 250px minmax(0, 1fr); }
+  .manual-invoke { grid-template-columns: 190px minmax(0, 1fr); }
 }
 .validation-box div[role="button"] { cursor: pointer; }
 .ide-empty { color: var(--fg-faint); padding: 18px; text-align: center; font-size: 11px; }

@@ -2,16 +2,15 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useMutation, useQuery, type UseQueryResult } from "@tanstack/react-query";
 import type { OpenCodeRuntimeStatus } from "@testforge/contracts/agents";
 import type { DashboardSnapshot } from "@testforge/contracts/desktop";
-import { ArrowLeftIcon, BotIcon, EyeIcon, EyeOffIcon, PaletteIcon, PlugZapIcon, RefreshCwIcon, ServerIcon, Settings2Icon, SquareIcon } from "lucide-react";
+import { ArrowLeftIcon, BotIcon, EyeIcon, EyeOffIcon, PaletteIcon, PlugZapIcon, RefreshCwIcon, Settings2Icon, SquareIcon } from "lucide-react";
 import { Btn, Badge } from "../../shared/ui.js";
 import { QueryGate } from "../../shared/layout.js";
 import { errorMessage } from "../../shared/errors.js";
 import { queryKeys } from "../../shared/query-keys.js";
 import type { ThemeChoice } from "@testforge/contracts/storage";
 import { AgentIntegrationPage } from "../agent/AgentIntegrationPage.js";
-import { DevicesPage } from "../devices/index.js";
 
-type SettingsSection = "appearance" | "model" | "agents" | "devices";
+type SettingsSection = "appearance" | "model" | "agents";
 
 export function SettingsPage({ dashboard, theme, onThemeChange, onBack }: {
   dashboard: UseQueryResult<DashboardSnapshot>;
@@ -28,13 +27,11 @@ export function SettingsPage({ dashboard, theme, onThemeChange, onBack }: {
         <SettingsNavButton active={section === "appearance"} icon={<PaletteIcon size={15} />} label="外观" onClick={() => setSection("appearance")} />
         <SettingsNavButton active={section === "model"} icon={<BotIcon size={15} />} label="AI 模型" onClick={() => setSection("model")} />
         <SettingsNavButton active={section === "agents"} icon={<PlugZapIcon size={15} />} label="Agent 接入" onClick={() => setSection("agents")} />
-        <SettingsNavButton active={section === "devices"} icon={<ServerIcon size={15} />} label="设备管理" onClick={() => setSection("devices")} />
       </aside>
       <div className="settings-content">
         {section === "appearance" && <AppearanceSettings value={theme} onChange={onThemeChange} />}
         {section === "model" && <ModelSettings />}
         {section === "agents" && <QueryGate query={dashboard}>{(data) => <AgentIntegrationPage query={dashboard} gateway={data.gateway} embedded />}</QueryGate>}
-        {section === "devices" && <DevicesPage query={dashboard} />}
       </div>
     </main>
   );

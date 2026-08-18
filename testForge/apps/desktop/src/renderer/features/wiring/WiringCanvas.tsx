@@ -61,7 +61,7 @@ export function HardwareLibrary({ hardware, assetUrls, placed, onAdd, onRefresh 
           </button>
         </article>;
       })}
-      {!hardware.length && <div className="library-empty">还没有登记设备。请到「设置 → 设备管理」页登记硬件及其端口。</div>}
+      {!hardware.length && <div className="library-empty">还没有登记设备。请到「设备管理」页登记硬件及其端口。</div>}
     </div>
   </aside>;
 }
