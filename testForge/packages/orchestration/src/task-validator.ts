@@ -39,6 +39,7 @@ export class TaskValidator {
     for (const step of collectTaskSteps(task)) {
       if (step.type !== "tool" || !step.enabled) continue;
       if (!canvas.has(step.hardwareId)) issues.push(issue("hardware_not_on_canvas", `Hardware ${step.hardwareId} is not present on the project wiring canvas`, step.stepId));
+      if (!this.tools.isHardwareOccupied(step.hardwareId)) issues.push(issue("hardware_not_occupied", `Hardware ${step.hardwareId} must be occupied before this Run can start`, step.stepId));
       try { this.catalog.getHardware(step.hardwareId); }
       catch { issues.push(issue("unresolved_hardware", `Hardware ${step.hardwareId} is unresolved`, step.stepId)); }
     }

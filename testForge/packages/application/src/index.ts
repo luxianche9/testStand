@@ -1,5 +1,6 @@
 export { TestForgeApplication, type TestForgeApplicationDependencies } from "./application.js";
 export { ExecutionCoordinator, type ExecutionLease } from "./execution-coordinator.js";
+export { HardwareOccupancyApplication } from "./hardware-occupancy-application.js";
 export {
   AGENT_REQUEST_CONTEXT,
   DefaultAuthorizer,

@@ -51,6 +51,8 @@ export function ManualInvokePanel({ hardwareId, preferredToolName }: {
   const availability = availabilityFor(hardwareId, dashboard.data?.availability ?? []);
   const runBusy = hardwareId ? isHardwareExecuting(dashboard.data?.execution, hardwareId, "run") : false;
   const manualBusy = hardwareId ? isHardwareExecuting(dashboard.data?.execution, hardwareId, "manual") : false;
+  const occupancy = hardwareId ? dashboard.data?.occupancy.find((item) => item.hardwareId === hardwareId) : undefined;
+  const occupied = occupancy?.state === "occupied_by_self";
   const invoke = useMutation({
     mutationFn: () => {
       if (!hardwareId || !toolName) throw new Error("请选择硬件和工具");
@@ -70,7 +72,8 @@ export function ManualInvokePanel({ hardwareId, preferredToolName }: {
     const refresh = () => { void client.invalidateQueries({ queryKey: queryKeys.dashboard }); };
     const stopExecution = window.testforge.events.subscribe("execution", refresh);
     const stopAvailability = window.testforge.events.subscribe("availability", refresh);
-    return () => { stopExecution(); stopAvailability(); };
+    const stopOccupancy = window.testforge.events.subscribe("occupancy", refresh);
+    return () => { stopExecution(); stopAvailability(); stopOccupancy(); };
   }, [client]);
 
   if (!hardwareId) {
@@ -89,9 +92,10 @@ export function ManualInvokePanel({ hardwareId, preferredToolName }: {
         <header className="manual-call-head"><span><h2>{selectedTool.remoteName}</h2><small>{selectedTool.externalName}</small></span><Badge tone={availabilityTone(availability)}>{availability}</Badge></header>
         {selectedTool.description && <p className="muted-copy">{selectedTool.description}</p>}
         {runBusy && <div className="alert"><IconAlert size={15} /><span>自动测试 Run 正在使用此硬件，手动调用已禁用。</span></div>}
+        {!occupied && <div className="alert"><IconAlert size={15} /><span>{occupancy?.state === "occupied_elsewhere" ? `硬件已被 ${occupancy.holderLabel ?? "其他客户端"} 占用。` : "请先在设备管理树中由人工点击“占用硬件”，再执行手动调用。"}</span></div>}
         <SchemaArgumentsForm schema={displaySchema} value={argumentsValue} onChange={setArgumentsValue} onValidityChange={setFormValid} />
         {validation.errors.length > 0 && <div className="validation-box invalid"><strong>参数校验</strong>{validation.errors.map((message, index) => <div key={index}><code>input</code><span>{message}</span></div>)}</div>}
-        <div className="manual-call-actions"><Btn variant="primary" icon={<IconPlay size={13} />} disabled={!formValid || !validation.valid || availability !== "available" || runBusy || manualBusy || invoke.isPending} onClick={() => invoke.mutate()}>{invoke.isPending ? "正在执行…" : "执行一次"}</Btn><span>超时 30 秒 · 硬件上下文由 TestForge 通过协议元数据传递</span></div>
+        <div className="manual-call-actions"><Btn variant="primary" icon={<IconPlay size={13} />} disabled={!occupied || !formValid || !validation.valid || availability !== "available" || runBusy || manualBusy || invoke.isPending} onClick={() => invoke.mutate()}>{invoke.isPending ? "正在执行…" : "执行一次"}</Btn><span>超时 30 秒 · 硬件上下文由 TestForge 通过协议元数据传递</span></div>
         {(result || callError) && <section className={`manual-result${callError ? " failed" : ""}`}><header><strong>{callError ? "调用失败" : "调用成功"}</strong><span>{callError ? `${callError.durationMs} ms` : `${result!.durationMs} ms`}</span></header>{callError ? <div className="alert"><IconAlert size={15} /><span>{callError.message}</span></div> : <pre>{pretty(result!.output)}</pre>}</section>}
       </> : <EmptyState title="选择一个硬件工具" body="参数表单会根据 MCP 工具的 JSON Schema 自动生成。" />}
     </section>

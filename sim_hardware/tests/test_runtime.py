@@ -41,12 +41,23 @@ class RuntimeTests(unittest.TestCase):
 
     def test_invoke_unwraps_success_and_normalizes_errors(self) -> None:
         host = runtime()
-        success = host.invoke("SIM_PC.SIM_AI_0", lambda: {"value": 1})
-        failure = host.invoke("OTHER", lambda: None)
+        host.occupancy.action("SIM_PC.SIM_AI_0", "acquire", "holder", "Human", "lease")
+        success = host.invoke("SIM_PC.SIM_AI_0", "lease", lambda: {"value": 1})
+        failure = host.invoke("OTHER", "lease", lambda: None)
         self.assertTrue(success["ok"])
         self.assertEqual(success["data"], {"value": 1})
         self.assertFalse(failure["ok"])
         self.assertEqual(failure["error"]["category"], "invalid_argument")
+
+    def test_hardware_call_requires_current_occupancy_lease(self) -> None:
+        host = runtime()
+        denied = host.invoke("SIM_PC.SIM_AI_0", None, lambda: {"value": 1})
+        host.occupancy.action("SIM_PC.SIM_AI_0", "acquire", "holder", "Human", "lease")
+        stale = host.invoke("SIM_PC.SIM_AI_0", "old", lambda: {"value": 1})
+        allowed = host.invoke("SIM_PC.SIM_AI_0", "lease", lambda: {"value": 1})
+        self.assertEqual(denied["error"]["category"], "occupancy_required")
+        self.assertEqual(stale["error"]["category"], "occupancy_required")
+        self.assertTrue(allowed["ok"])
 
     def test_health_is_public_but_other_routes_require_bearer_token(self) -> None:
         async def ok(_: Request) -> JSONResponse:

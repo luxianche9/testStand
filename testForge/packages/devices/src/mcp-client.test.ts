@@ -115,11 +115,11 @@ describe("McpHttpTransport one-Server-one-hardware contract", () => {
     });
 
     await expect(pool.callRemote(server.serverId, "read_channel", { channel: 2 }, {
-      metadata: { hardwareId: server.hardwareId, attempt: 2, idempotencyKey: "stable-key" }
+      metadata: { hardwareId: server.hardwareId, attempt: 2, idempotencyKey: "stable-key", occupancyLeaseId: "lease-1" }
     })).resolves.toEqual({ value: 1 });
     expect(callTool).toHaveBeenCalledWith(expect.objectContaining({
       arguments: { hardwareId: server.hardwareId, channel: 2 },
-      _meta: { testforge: { hardwareId: server.hardwareId, attempt: 2, idempotencyKey: "stable-key" } }
+      _meta: { testforge: { hardwareId: server.hardwareId, attempt: 2, idempotencyKey: "stable-key", occupancyLeaseId: "lease-1" } }
     }), undefined, {});
   });
 

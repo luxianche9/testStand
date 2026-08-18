@@ -10,6 +10,7 @@ export const errorCategorySchema = z.enum([
   "requires_project",
   "safe_stop_failed",
   "invalid_response",
+  "occupancy_required",
   "loop_limit",
   "assertion_failed",
   "project_exists",

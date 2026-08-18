@@ -4,9 +4,10 @@ import hmac
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any, Callable
+from threading import RLock
 
 import uvicorn
-from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp import Context, FastMCP
 from mcp.types import ToolAnnotations
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -26,6 +27,7 @@ from testforge_sim_hardware.contract import (
 )
 from testforge_sim_hardware.drivers import BaseDriver
 from testforge_sim_hardware.shutdown import prepare_safe_shutdown
+from testforge_sim_hardware.occupancy import HardwareOccupancy
 
 
 class BearerMiddleware(BaseHTTPMiddleware):
@@ -51,6 +53,8 @@ class TestForgeSimRuntime:
     def __init__(self, config: ServerConfig, driver: BaseDriver) -> None:
         self.config = config
         self.driver = driver
+        self.operation_lock = RLock()
+        self.occupancy = HardwareOccupancy(config.hardware_id, driver.safe_stop, self.operation_lock)
         self.mcp = FastMCP(
             name=config.server_id,
             instructions="One MCP Server process controls exactly one deterministic virtual hardware device.",
@@ -83,10 +87,12 @@ class TestForgeSimRuntime:
             setattr(error, "category", "invalid_argument")
             raise error
 
-    def invoke(self, hardware_id: str, operation: Callable[[], Any]) -> dict[str, Any]:
+    def invoke(self, hardware_id: str, lease_id: str | None, operation: Callable[[], Any]) -> dict[str, Any]:
         try:
-            self.require_hardware(hardware_id)
-            return {"ok": True, "data": operation(), "meta": {"timestamp": self.now()}}
+            with self.operation_lock:
+                self.require_hardware(hardware_id)
+                self.occupancy.require(lease_id)
+                return {"ok": True, "data": operation(), "meta": {"timestamp": self.now()}}
         except Exception as exc:
             return {"ok": False, "error": self.failure(exc).model_dump(), "meta": {"timestamp": self.now()}}
 
@@ -117,11 +123,13 @@ class TestForgeSimRuntime:
         async def lifespan(application):
             self.driver.open()
             self.driver.safe_stop()
+            self.occupancy.start()
             try:
                 async with original_lifespan(application):
                     yield
             finally:
                 try:
+                    self.occupancy.close()
                     self.driver.safe_stop()
                 finally:
                     self.driver.shutdown()
@@ -197,3 +205,19 @@ class TestForgeSimRuntime:
         async def testforge_prepare_shutdown() -> dict[str, Any]:
             return await self.prepare_shutdown()
 
+        @self.mcp.tool(annotations=self.internal, meta={"testforge": {"kind": "internal"}})
+        def testforge_hardware_occupancy(hardwareId: str, action: str, ctx: Context,
+                                         holderId: str | None = None, holderLabel: str | None = None,
+                                         leaseId: str | None = None) -> dict[str, Any]:
+            return self.occupancy.action(hardwareId, action, holderId, holderLabel, leaseId)
+
+
+def occupancy_lease_id(ctx: Context) -> str | None:
+    meta = ctx.request_context.meta
+    testforge = getattr(meta, "testforge", None)
+    if testforge is None and getattr(meta, "model_extra", None):
+        testforge = meta.model_extra.get("testforge")
+    if isinstance(testforge, dict):
+        value = testforge.get("occupancyLeaseId")
+        return value if isinstance(value, str) else None
+    return None

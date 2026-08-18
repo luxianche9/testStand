@@ -77,6 +77,10 @@ export class TaskOrchestrationService {
 
   async cancelRun(runId: string): Promise<TestRun> { return await this.lifecycle.cancelRun(runId); }
 
+  async handleHardwareLeaseLost(hardwareId: string, message: string): Promise<void> {
+    await this.lifecycle.handleHardwareLeaseLost(hardwareId, message);
+  }
+
   getRun(runId: string, sinceEventId = 0, nodeOffset = 0, nodeLimit = 200): TestRunDetail {
     return this.store.getRun(runId, sinceEventId, nodeOffset, nodeLimit);
   }

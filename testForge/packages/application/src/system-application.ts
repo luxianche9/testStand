@@ -27,6 +27,7 @@ export class SystemApplication {
       tools: this.devices.listTools(),
       gateway: this.system.gatewayStatus(),
       execution: this.execution.current(),
+      occupancy: this.devices.occupancy.list(),
       availability: this.devices.listAvailability()
     };
   }

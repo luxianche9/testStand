@@ -2,8 +2,9 @@ import { lazy, Suspense, useCallback, useEffect, useReducer, useRef, useState } 
 import { QueryClient, QueryClientProvider, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { ProjectDocument, ProjectFolderSelection } from "@testforge/contracts/projects";
 import type { WiringTask } from "@testforge/contracts/wiring";
+import type { HardwareOccupancyRequest } from "@testforge/contracts/occupancy";
 import { Spinner, Btn, Modal } from "../shared/ui.js";
-import { useDashboard, useDeviceCatalog, useProjectDocument, useWiringTasks } from "../shared/queries.js";
+import { useDashboard, useDeviceCatalog, useOccupancyRequests, useProjectDocument, useWiringTasks } from "../shared/queries.js";
 import { useTheme } from "../shared/theme.js";
 import type { ProjectView } from "@testforge/contracts/storage";
 import { pinCountText, taskTitle, taskTone } from "../features/wiring/wiring-model.js";
@@ -39,6 +40,7 @@ function AppShell() {
   const [pendingSelection, setPendingSelection] = useState<ProjectFolderSelection>();
   const [error, setError] = useState<string>();
   const wiringTasks = useWiringTasks();
+  const occupancyRequests = useOccupancyRequests();
   const catalog = useDeviceCatalog();
   const [wiringLogOpen, setWiringLogOpen] = useState(false);
 
@@ -48,12 +50,15 @@ function AppShell() {
     await Promise.all([
       client.invalidateQueries({ queryKey: queryKeys.recentProjects }),
       client.invalidateQueries({ queryKey: queryKeys.wiringTasks }),
+      client.invalidateQueries({ queryKey: queryKeys.occupancyRequests }),
       client.invalidateQueries({ queryKey: queryKeys.openCodeStatus })
     ]);
   }, [client]);
 
   useEffect(() => window.testforge.events.subscribe("availability", () => { void client.invalidateQueries({ queryKey: queryKeys.dashboard }); }), [client]);
   useEffect(() => window.testforge.events.subscribe("execution", () => { void client.invalidateQueries({ queryKey: queryKeys.dashboard }); }), [client]);
+  useEffect(() => window.testforge.events.subscribe("occupancy", () => { void client.invalidateQueries({ queryKey: queryKeys.dashboard }); }), [client]);
+  useEffect(() => window.testforge.events.subscribe("occupancyRequest", () => { void client.invalidateQueries({ queryKey: queryKeys.occupancyRequests }); }), [client]);
   useEffect(() => window.testforge.events.subscribe("project", (payload) => {
     client.setQueryData(queryKeys.projectDocument, payload as ProjectDocument | null);
     void client.invalidateQueries({ queryKey: queryKeys.wiringTasks });
@@ -63,7 +68,10 @@ function AppShell() {
     void client.invalidateQueries({ queryKey: queryKeys.projectDocument });
   }), [client]);
   useEffect(() => {
-    const fallback = window.setInterval(() => { void client.invalidateQueries({ queryKey: queryKeys.wiringTasks }); }, 15_000);
+    const fallback = window.setInterval(() => {
+      void client.invalidateQueries({ queryKey: queryKeys.wiringTasks });
+      void client.invalidateQueries({ queryKey: queryKeys.occupancyRequests });
+    }, 15_000);
     return () => window.clearInterval(fallback);
   }, [client]);
   useEffect(() => { writeAssistantOpen(assistantOpen); }, [assistantOpen]);
@@ -177,8 +185,20 @@ function AppShell() {
   const currentProject = project.data ?? null;
   const busy = save.isPending;
   const taskList = wiringTasks.data ?? [];
+  const occupancyRequestList = occupancyRequests.data ?? [];
   const hardwareList = catalog.data?.hardware ?? [];
   const pendingTasks = currentProject ? taskList.filter((task) => task.status === "pending") : [];
+  const pendingOccupancyRequests = occupancyRequestList.filter((request) => request.status === "pending");
+  const occupancyDecision = useMutation({
+    mutationFn: ({ id, action }: { id: string; action: "acquire" | "reject" }) => action === "acquire"
+      ? window.testforge.occupancy.acquireRequest(id)
+      : window.testforge.occupancy.rejectRequest(id, "人工拒绝了硬件占用请求"),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: queryKeys.occupancyRequests });
+      void client.invalidateQueries({ queryKey: queryKeys.dashboard });
+    },
+    onError: (reason) => setError(errorMessage(reason))
+  });
   const page = navigation.page;
   const goToWiringTasks = async () => {
     const nextTask = pendingTasks[0];
@@ -196,7 +216,7 @@ function AppShell() {
   };
   return (
     <div className="app">
-      <TitleBar page={page} projectView={navigation.projectView} project={currentProject} assistantOpen={assistantOpen} busy={busy} pendingTaskCount={pendingTasks.length} wiringLogOpen={wiringLogOpen} onToggleWiringLog={() => setWiringLogOpen((open) => !open)} onNavigate={switchPage} onProjectAction={handleProjectAction} onToggleAssistant={() => setAssistantOpen((open) => !open)} />
+      <TitleBar page={page} projectView={navigation.projectView} project={currentProject} assistantOpen={assistantOpen} busy={busy} pendingTaskCount={pendingTasks.length + pendingOccupancyRequests.length} wiringLogOpen={wiringLogOpen} onToggleWiringLog={() => setWiringLogOpen((open) => !open)} onNavigate={switchPage} onProjectAction={handleProjectAction} onToggleAssistant={() => setAssistantOpen((open) => !open)} />
       <div className="app-body">
         <ErrorBoundary key={`content-${page}`}>
           <Suspense fallback={<FeatureFallback />}>
@@ -216,8 +236,9 @@ function AppShell() {
       </div>
       {error && <div className="app-error" role="alert"><span>{error}</span><button aria-label="关闭错误" onClick={() => setError(undefined)}>×</button></div>}
 
-      {wiringLogOpen && currentProject && <WiringLogDropdown tasks={taskList} hardware={hardwareList} onClose={() => setWiringLogOpen(false)} />}
-      {page !== "wiring" && pendingTasks.length > 0 && <WiringAlertModal tasks={pendingTasks} hardware={hardwareList} onGoWiring={() => void goToWiringTasks()} />}
+      {wiringLogOpen && <MailboxDropdown tasks={currentProject ? taskList : []} occupancyRequests={occupancyRequestList} hardware={hardwareList} busyRequestId={occupancyDecision.isPending ? occupancyDecision.variables?.id : undefined} onOccupancyAction={(id, action) => occupancyDecision.mutate({ id, action })} onClose={() => setWiringLogOpen(false)} />}
+      {!wiringLogOpen && pendingOccupancyRequests.length > 0 && <OccupancyAlertModal requests={pendingOccupancyRequests} busyRequestId={occupancyDecision.isPending ? occupancyDecision.variables?.id : undefined} onAction={(id, action) => occupancyDecision.mutate({ id, action })} />}
+      {!wiringLogOpen && pendingOccupancyRequests.length === 0 && page !== "wiring" && pendingTasks.length > 0 && <WiringAlertModal tasks={pendingTasks} hardware={hardwareList} onGoWiring={() => void goToWiringTasks()} />}
 
       <Modal open={Boolean(pendingAction)} onClose={() => setPendingAction(undefined)} title="保存项目修改" footer={<><Btn onClick={() => setPendingAction(undefined)}>取消</Btn><Btn variant="danger" onClick={() => void continuePending(false)}>放弃修改</Btn><Btn variant="primary" onClick={() => void continuePending(true)}>保存并继续</Btn></>}>
         <p>当前项目有未保存的修改。要在{pendingAction?.label}前保存吗？</p>
@@ -231,28 +252,80 @@ function AppShell() {
 }
 
 function FeatureFallback() { return <div className="centered"><Spinner label="正在加载功能…" /></div>; }
-/** 信箱下拉的接线调用历史：portal 到 body，点击遮罩或历史区以外关闭。 */
-function WiringLogDropdown({ tasks, hardware, onClose }: {
-  tasks: WiringTask[]; hardware: Parameters<typeof taskTitle>[1]; onClose: () => void;
+/** Global session mailbox, combining wiring tasks and hardware occupancy requests. */
+function MailboxDropdown({ tasks, occupancyRequests, hardware, busyRequestId, onOccupancyAction, onClose }: {
+  tasks: WiringTask[];
+  occupancyRequests: HardwareOccupancyRequest[];
+  hardware: Parameters<typeof taskTitle>[1];
+  busyRequestId: string | undefined;
+  onOccupancyAction: (id: string, action: "acquire" | "reject") => void;
+  onClose: () => void;
 }) {
+  const items = [
+    ...tasks.map((task) => ({ kind: "wiring" as const, requestedAt: task.requestedAt, task })),
+    ...occupancyRequests.map((request) => ({ kind: "occupancy" as const, requestedAt: request.requestedAt, request }))
+  ].sort((left, right) => right.requestedAt.localeCompare(left.requestedAt));
   return (
     <div className="wiring-log-overlay" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <section className="wiring-log-dropdown" role="dialog" aria-label="接线调用历史">
-        <header><strong>接线调用历史</strong><span>{tasks.length} 条</span></header>
+      <section className="wiring-log-dropdown" role="dialog" aria-label="信箱">
+        <header><strong>信箱</strong><span>{items.length} 条</span></header>
         <div className="wiring-log-dropdown-list">
-          {tasks.map((task) => <div key={task.wiringTaskId} className="wiring-log-row">
-            <span className={`badge badge-${taskTone(task.status)}`}>{task.status}</span>
-            <span className="wiring-log-copy">
-              <strong>{taskTitle(task, hardware)}</strong>
-              <small>{task.message || (task.warnings.length ? task.warnings.join("；") : pinCountText(task))}</small>
-            </span>
-            <time>{new Date(task.requestedAt).toLocaleString()}</time>
-          </div>)}
-          {!tasks.length && <div className="wiring-log-empty">尚无接线调用记录。</div>}
+          {items.map((item) => item.kind === "wiring" ? <div key={item.task.wiringTaskId} className="wiring-log-row">
+              <span className={`badge badge-${taskTone(item.task.status)}`}>{item.task.status}</span>
+              <span className="wiring-log-copy">
+                <strong>接线 · {taskTitle(item.task, hardware)}</strong>
+                <small>{item.task.message || (item.task.warnings.length ? item.task.warnings.join("；") : pinCountText(item.task))}</small>
+              </span>
+              <time>{new Date(item.task.requestedAt).toLocaleString()}</time>
+            </div> : <div key={item.request.occupancyRequestId} className="wiring-log-row">
+              <span className={`badge badge-${occupancyTone(item.request.status)}`}>{item.request.status}</span>
+              <span className="wiring-log-copy">
+                <strong>硬件占用 · {occupancyHardwareLabel(item.request, hardware)}</strong>
+                <small>{item.request.message || item.request.reason || "AI 请求人工占用硬件"}</small>
+                {item.request.status === "pending" && <span className="mailbox-actions">
+                  <Btn variant="primary" disabled={busyRequestId === item.request.occupancyRequestId} onClick={() => onOccupancyAction(item.request.occupancyRequestId, "acquire")}>占用全部</Btn>
+                  <Btn disabled={busyRequestId === item.request.occupancyRequestId} onClick={() => onOccupancyAction(item.request.occupancyRequestId, "reject")}>拒绝</Btn>
+                </span>}
+              </span>
+              <time>{new Date(item.request.requestedAt).toLocaleString()}</time>
+            </div>)}
+          {!items.length && <div className="wiring-log-empty">信箱中暂无请求。</div>}
         </div>
       </section>
     </div>
   );
+}
+
+function OccupancyAlertModal({ requests, busyRequestId, onAction }: {
+  requests: HardwareOccupancyRequest[];
+  busyRequestId: string | undefined;
+  onAction: (id: string, action: "acquire" | "reject") => void;
+}) {
+  return <Modal open onClose={() => undefined} title="AI 请求人工占用硬件" width={560}>
+    <div className="wiring-alert-list">
+      {requests.map((request) => <div key={request.occupancyRequestId} className="wiring-alert-item">
+        <strong>{occupancyHardwareLabel(request, [])}</strong>
+        <small>{request.reason || "AI 请求在操作前占用这些硬件。"}</small>
+        {request.message && <small>{request.message}</small>}
+        <span className="mailbox-actions">
+          <Btn variant="primary" disabled={busyRequestId === request.occupancyRequestId} onClick={() => onAction(request.occupancyRequestId, "acquire")}>占用全部</Btn>
+          <Btn disabled={busyRequestId === request.occupancyRequestId} onClick={() => onAction(request.occupancyRequestId, "reject")}>拒绝</Btn>
+        </span>
+      </div>)}
+    </div>
+    <p className="form-note">该操作必须由人类点击。任一硬件占用失败时，只回滚本次新获得的租约。</p>
+  </Modal>;
+}
+
+function occupancyHardwareLabel(request: HardwareOccupancyRequest, hardware: Parameters<typeof taskTitle>[1]): string {
+  return request.hardwareIds.map((hardwareId) => hardware.find((item) => item.hardwareId === hardwareId)?.label ?? hardwareId).join("、");
+}
+
+function occupancyTone(status: HardwareOccupancyRequest["status"]): ReturnType<typeof taskTone> {
+  if (status === "confirmed") return "ok";
+  if (status === "pending") return "warn";
+  if (status === "rejected" || status === "failed" || status === "timed_out") return "bad";
+  return "muted";
 }
 
 /** AI 请求人工接线时全局弹窗提醒，确认后跳到接线页处理。 */

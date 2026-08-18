@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import type { Hardware, McpServerConfig, RemoteComputer, ServerStatus } from "@testforge/contracts/devices";
+import type { HardwareOccupancyStatus } from "@testforge/contracts/occupancy";
+import { LockKeyholeIcon, LockOpenIcon } from "lucide-react";
 import { errorMessage } from "../../../shared/errors.js";
 import { IconAlert, IconEdit, IconPlay, IconPlus, IconStop, IconTrash } from "../../../shared/icons.js";
 import { Btn, Modal } from "../../../shared/ui.js";
@@ -34,9 +36,11 @@ export function ComputerActions({ computer, onEdit, onAddServer, onChanged }: {
   </>;
 }
 
-export function ServerActions({ server, status, sshOnline, onEdit, onChanged }: {
+export function ServerActions({ server, status, occupancy, hardwareExecuting, sshOnline, onEdit, onChanged }: {
   server: McpServerConfig;
   status?: ServerStatus | undefined;
+  occupancy?: HardwareOccupancyStatus | undefined;
+  hardwareExecuting: boolean;
   sshOnline: boolean;
   onEdit: () => void;
   onChanged: () => Promise<void>;
@@ -55,17 +59,33 @@ export function ServerActions({ server, status, sshOnline, onEdit, onChanged }: 
     onError: (_error, kind) => { if (kind === "stop") setStopFailed(true); },
     onSettled: () => { void onChanged(); }
   });
+  const occupancyAction = useMutation({
+    mutationFn: () => occupancy?.state === "occupied_by_self"
+      ? window.testforge.occupancy.release(server.hardwareId)
+      : window.testforge.occupancy.acquire(server.hardwareId),
+    onSettled: () => { void onChanged(); }
+  });
   const fire = (kind: "start" | "stop" | "force-stop") => (event: React.MouseEvent) => { event.stopPropagation(); action.mutate(kind); };
   const open = (handler: () => void) => (event: React.MouseEvent) => { event.stopPropagation(); handler(); };
   const gateTitle = (label: string) => (sshOnline ? label : "所属电脑 SSH 在线后才能操作");
+  const occupancyOnline = status?.transport.state === "online";
+  const held = occupancy?.state === "occupied_by_self";
+  const occupancyDisabled = occupancyAction.isPending || !occupancyOnline || (!held && occupancy?.state !== "unoccupied") || (held && hardwareExecuting);
+  const occupancyTitle = !occupancyOnline ? "MCP Server 在线后才能占用硬件"
+    : held && hardwareExecuting ? "硬件正在执行；先结束手动调用或取消 Run"
+      : occupancy?.state === "occupied_elsewhere" ? `已被 ${occupancy.holderLabel ?? "其他客户端"} 占用`
+        : occupancy?.state === "unknown" || !occupancy ? "占用状态未知，请先刷新状态"
+          : held ? "释放硬件并进入安全态" : "人工占用硬件";
   return <>
     <span className="row-actions" onClick={(event) => event.stopPropagation()}>
+      <button type="button" className={`row-action${held ? " accent" : ""}`} title={occupancyTitle} aria-label={held ? "释放硬件" : "占用硬件"} onClick={(event) => { event.stopPropagation(); occupancyAction.mutate(); }} disabled={occupancyDisabled}>{held ? <LockOpenIcon size={13} /> : <LockKeyholeIcon size={13} />}</button>
       <button type="button" className="row-action accent" title={gateTitle("启动 MCP 服务")} aria-label="启动 MCP 服务" onClick={fire("start")} disabled={!sshOnline || action.isPending || status?.service.serviceState === "running"}><IconPlay size={13} /></button>
       <button type="button" className="row-action" title={gateTitle("终止 MCP 服务")} aria-label="终止 MCP 服务" onClick={fire("stop")} disabled={!sshOnline || action.isPending || status?.service.serviceState === "stopped"}><IconStop size={13} /></button>
       {stopFailed && <button type="button" className="row-action danger" title="安全停止失败，强制结束进程" aria-label="强制终止 MCP 服务" onClick={fire("force-stop")} disabled={action.isPending}><IconAlert size={14} /></button>}
       <button type="button" className="row-action" title="编辑信息" aria-label="编辑信息" onClick={open(onEdit)}><IconEdit size={14} /></button>
       <button type="button" className="row-action" title="删除该 MCP Server（不会删除远程文件）" aria-label="删除 MCP Server" onClick={open(() => setConfirmOpen(true))} disabled={action.isPending}><IconTrash size={14} /></button>
       {action.isError && <span className="row-error" title={errorMessage(action.error)}><IconAlert size={14} /></span>}
+      {occupancyAction.isError && <span className="row-error" title={errorMessage(occupancyAction.error)}><IconAlert size={14} /></span>}
     </span>
     <Modal
       open={confirmOpen}

@@ -1,0 +1,46 @@
+{
+  "computer": {
+    "host": "192.168.3.63",
+    "port": 22,
+    "username": "Davi",
+    "credentialKey": "ssh:REMOTE_PC_1"
+  },
+  "servers": [
+    {
+      "id": "pci1710l",
+      "label": "PCI-1710L",
+      "remoteRoot": "E:\\pci1710l_mcp_server",
+      "hardwareId": "PC1_MCP.PCI1710L_CARD_0",
+      "mcpUrl": "http://192.168.3.63:8011/mcp",
+      "mcpCredentialKey": "mcp:PCI1710L_MCP",
+      "healthUrl": "http://192.168.3.63:8011/health"
+    },
+    {
+      "id": "pci1762",
+      "label": "PCI-1762",
+      "remoteRoot": "E:\\pci1762_mcp_server",
+      "hardwareId": "PC1_MCP.PCI1762_CARD_0",
+      "mcpUrl": "http://192.168.3.63:8012/mcp",
+      "mcpCredentialKey": "mcp:PCI1762_MCP",
+      "healthUrl": "http://192.168.3.63:8012/health"
+    },
+    {
+      "id": "pci6208v",
+      "label": "PCI-6208V",
+      "remoteRoot": "E:\\pci6208v_mcp_server",
+      "hardwareId": "PC1_MCP.PCI6208V_CARD_0",
+      "mcpUrl": "http://192.168.3.63:8013/mcp",
+      "mcpCredentialKey": "mcp:PCI6208V_MCP",
+      "healthUrl": "http://192.168.3.63:8013/health"
+    },
+    {
+      "id": "cp118u_i",
+      "label": "CP-118U-I",
+      "remoteRoot": "E:\\cp118u_i_mcp_server",
+      "hardwareId": "PC1_MCP.CP118U_I_CARD_0",
+      "mcpUrl": "http://192.168.3.63:8014/mcp",
+      "mcpCredentialKey": "mcp:CP118U_I_MCP",
+      "healthUrl": "http://192.168.3.63:8014/health"
+    }
+  ]
+}

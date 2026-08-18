@@ -94,6 +94,7 @@ describe("DefaultAuthorizer", () => {
     const allowed = new Set<Capability>([
       "system.read", "devices.read", "devices.controlServers", "hardware.read", "hardware.manage",
       "hardware.executeTools", "projects.read", "projects.manage", "wiring.read", "wiring.request",
+      "hardware.readOccupancy", "hardware.requestOccupancy",
       "orchestration.read", "orchestration.manage", "orchestration.run"
     ]);
     expect(Object.fromEntries(CAPABILITIES.map((capability) => [capability, authorizer.isAllowed(AGENT_REQUEST_CONTEXT, capability)])))

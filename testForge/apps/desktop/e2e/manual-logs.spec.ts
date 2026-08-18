@@ -2,10 +2,13 @@ import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from "@playwright/test";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { startHardwareMcpFixture, type HardwareMcpFixture } from "./fixtures/hardware-mcp.js";
 
 const desktopDir = resolve(import.meta.dirname, "..");
 const gatewayPort = 18086;
+const gatewayToken = "testforge-occupancy-e2e-token";
 
 test.describe.serial("manual control and persisted Run logs", () => {
   let fixture: HardwareMcpFixture;
@@ -51,6 +54,9 @@ test.describe.serial("manual control and persisted Run logs", () => {
 
     await expect(page.getByRole("heading", { name: "设备管理" })).toBeVisible();
     await page.getByRole("treeitem", { name: /E2E fixture MCP/ }).click();
+    await expect(page.getByRole("button", { name: "占用硬件" })).toBeEnabled();
+    await page.getByRole("button", { name: "占用硬件" }).click();
+    await expect(page.getByRole("button", { name: "释放硬件" })).toBeVisible();
     await page.getByRole("button", { name: /write_voltage/ }).click();
     await expect(page.locator(".schema-fields").getByText("Hardware ID", { exact: true })).toHaveCount(0);
     await page.getByLabel("Voltage").fill("4.2");
@@ -92,8 +98,10 @@ test.describe.serial("manual control and persisted Run logs", () => {
     await page.getByRole("tab", { name: "运行日志" }).click();
     await expect(page.getByRole("heading", { name: "运行日志" })).toBeVisible();
     await page.getByLabel("搜索运行日志").fill("Persisted fixture");
-    await expect(page.getByText("Persisted fixture Run", { exact: true }).first()).toBeVisible();
-    await expect(page.getByText("Write fixture voltage", { exact: true })).toBeVisible();
+    const runRow = page.getByRole("row", { name: /Persisted fixture Run passed/ });
+    await expect(runRow).toBeVisible();
+    await runRow.click();
+    await expect(page.getByRole("complementary", { name: "运行检查器" })).toContainText("Write fixture voltage");
     await page.getByRole("button", { name: "打开完整详情" }).click();
     await expect(page.getByRole("dialog", { name: "运行详情" }).getByText("run.passed", { exact: true })).toBeVisible();
     await page.getByRole("dialog", { name: "运行详情" }).getByRole("button", { name: "关闭" }).click();
@@ -107,10 +115,39 @@ test.describe.serial("manual control and persisted Run logs", () => {
     await expect(page.getByText("没有符合条件的运行记录。")).toBeVisible();
     expect(await page.evaluate((id) => window.testforge.orchestration.getRun(id).then(() => false, () => true), runId)).toBe(true);
   });
+
+  test("delivers an AI occupancy request to the global mailbox for one human click", async () => {
+    const transport = new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${gatewayPort}/mcp`), {
+      requestInit: { headers: { Authorization: `Bearer ${gatewayToken}` } }
+    });
+    const client = new Client({ name: "occupancy-e2e-agent", version: "1.0.0" }, { capabilities: {} });
+    await client.connect(transport);
+    try {
+      await client.callTool({ name: "request_hardware_occupancy", arguments: { hardwareIds: ["E2E_CARD"], reason: "AI E2E Run" } });
+    } finally {
+      await transport.close();
+    }
+
+    const prompt = page.getByRole("dialog", { name: "AI 请求人工占用硬件" });
+    await expect(prompt).toContainText("E2E_CARD");
+    await prompt.getByRole("button", { name: "占用全部" }).click();
+    await expect(prompt).toBeHidden();
+
+    await page.getByRole("button", { name: "信箱" }).click();
+    const mailbox = page.getByRole("dialog", { name: "信箱" });
+    await expect(mailbox).toContainText("E2E fixture card");
+    await expect(mailbox).toContainText("confirmed");
+  });
 });
 
 async function launch(userDataDir: string): Promise<{ application: ElectronApplication; page: Page }> {
-  const env = { ...process.env, TESTFORGE_USER_DATA_DIR: userDataDir, TESTFORGE_GATEWAY_PORT: String(gatewayPort), TESTFORGE_AGENT_INTEGRATION_TEST_MODE: "1" };
+  const env = {
+    ...process.env,
+    TESTFORGE_USER_DATA_DIR: userDataDir,
+    TESTFORGE_GATEWAY_PORT: String(gatewayPort),
+    TESTFORGE_GATEWAY_TEST_TOKEN: gatewayToken,
+    TESTFORGE_AGENT_INTEGRATION_TEST_MODE: "1"
+  };
   delete env.ELECTRON_RUN_AS_NODE;
   const application = await electron.launch({ args: [desktopDir], cwd: desktopDir, env, timeout: 90_000 });
   const page = await application.firstWindow({ timeout: 90_000 });

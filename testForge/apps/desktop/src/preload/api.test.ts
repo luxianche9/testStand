@@ -28,6 +28,8 @@ describe("preload API", () => {
     void api.orchestration.getRun("R"); void api.orchestration.listRuns(); void api.orchestration.exportRun("R"); void api.orchestration.deleteRun("R");
     void api.orchestration.clearCompletedRuns(); void api.orchestration.listOperatorDecisions(); void api.orchestration.respondOperatorDecision("N", "yes");
     void api.manual.invokeTool({ hardwareId: "H", toolName: "S__write", arguments: { value: 1 } });
+    void api.occupancy.list(); void api.occupancy.acquire("H"); void api.occupancy.release("H"); void api.occupancy.listRequests();
+    void api.occupancy.acquireRequest("O"); void api.occupancy.rejectRequest("O"); void api.occupancy.cancelRequest("O");
     void api.agents.rotateGatewayToken(); void api.agents.status("codex"); void api.agents.preview("codex"); void api.agents.install("codex");
     void api.agents.remove("codex"); void api.agents.test("codex"); void api.agents.listTools(); void api.agents.openCodeStatus(); void api.agents.startOpenCode(); void api.agents.stopOpenCode(); void api.agents.restartOpenCode();
     void api.settings.getTheme(); void api.settings.setTheme("system"); void api.settings.getProjectView(); void api.settings.setProjectView("wiring");
@@ -40,7 +42,7 @@ describe("preload API", () => {
     expect(new Set(calls.map((call) => call.replace(/\.(query|mutate|subscribe)$/, ""))))
       .toEqual(new Set([...flattenProcedurePaths(TESTFORGE_IPC), "events.subscribe"]));
     expect(unsubscribe).toHaveBeenCalledOnce();
-    expect(Object.keys(api)).toEqual(["system", "devices", "projects", "wiring", "orchestration", "manual", "agents", "settings", "window", "events"]);
+    expect(Object.keys(api)).toEqual(["system", "devices", "projects", "wiring", "orchestration", "manual", "occupancy", "agents", "settings", "window", "events"]);
   });
 
   it("restores the domain error category from a tRPC client error", async () => {

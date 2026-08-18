@@ -6,7 +6,7 @@ import type { Authorizer } from "./authorization.js";
 import type { ExecutionCoordinator } from "./execution-coordinator.js";
 
 export class ManualControlApplication {
-  private readonly active = new Set<{ controller: AbortController; completion: Promise<ManualToolInvocationResult> }>();
+  private readonly active = new Set<{ hardwareId: string; controller: AbortController; completion: Promise<ManualToolInvocationResult> }>();
 
   constructor(
     private readonly authorizer: Authorizer,
@@ -42,7 +42,7 @@ export class ManualControlApplication {
       startedAt
     });
     const controller = new AbortController();
-    let activeCall!: { controller: AbortController; completion: Promise<ManualToolInvocationResult> };
+    let activeCall!: { hardwareId: string; controller: AbortController; completion: Promise<ManualToolInvocationResult> };
     let completion!: Promise<ManualToolInvocationResult>;
     completion = (async () => {
       try {
@@ -65,9 +65,15 @@ export class ManualControlApplication {
         lease.release();
       }
     })();
-    activeCall = { controller, completion };
+    activeCall = { hardwareId: input.hardwareId, controller, completion };
     this.active.add(activeCall);
     return await completion;
+  }
+
+  async abortHardware(hardwareId: string, message: string): Promise<void> {
+    const active = [...this.active].filter((call) => call.hardwareId === hardwareId);
+    for (const call of active) call.controller.abort(Object.assign(new Error(message), { name: "AbortError" }));
+    await Promise.allSettled(active.map((call) => call.completion));
   }
 
   async close(): Promise<void> {

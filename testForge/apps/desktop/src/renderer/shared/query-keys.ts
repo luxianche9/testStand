@@ -4,6 +4,7 @@ export const queryKeys = {
   projectDocument: ["project-document"] as const,
   recentProjects: ["recent-projects"] as const,
   wiringTasks: ["wiring-tasks"] as const,
+  occupancyRequests: ["occupancy-requests"] as const,
   runLogs: ["run-logs"] as const,
   runLogList: (projectId: string | undefined, query: unknown) => ["run-logs", projectId, query] as const,
   openCodeStatus: ["opencode-status"] as const,

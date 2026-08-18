@@ -220,6 +220,8 @@ code, pre { font-family: var(--font-mono); }
 .wiring-log-copy { min-width: 0; display: grid; }
 .wiring-log-copy strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
 .wiring-log-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg-muted); font-size: 11px; }
+.mailbox-actions { display: flex; gap: 6px; margin-top: 6px; }
+.mailbox-actions .btn { min-height: 26px; padding: 3px 9px; font-size: 11px; }
 .wiring-log-row time { color: var(--fg-muted); font-size: 10px; white-space: nowrap; }
 .wiring-log-empty { padding: 24px; text-align: center; color: var(--fg-muted); font-size: 12px; }
 

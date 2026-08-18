@@ -93,6 +93,19 @@ export class RunLifecycle {
     return this.store.getRunRecord(runId);
   }
 
+  async handleHardwareLeaseLost(hardwareId: string, message: string): Promise<void> {
+    const affected = [...this.activeRuns.entries()]
+      .filter(([, active]) => taskHardwareIds(active.task).includes(hardwareId));
+    for (const [, active] of affected) {
+      active.actor.send({ type: "CANCEL" });
+      this.applyMachineState(active);
+      active.controller.abort(abortError(message));
+      for (const waiter of active.decisions.values()) waiter.reject(abortError(message));
+      active.decisions.clear();
+    }
+    await Promise.allSettled(affected.flatMap(([, active]) => active.completion ? [active.completion] : []));
+  }
+
   listOperatorDecisions(): OperatorDecision[] { return this.store.listOperatorDecisions(); }
 
   async respondOperatorDecision(nodeRunId: string, selectedValue: string): Promise<TestNodeRun> {

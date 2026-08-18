@@ -109,7 +109,7 @@ export class McpHttpTransport implements DeviceTransport {
 
   listTools(): ToolCatalogItem[] {
     return [...this.sessions.values()].flatMap((session) => session.tools)
-      .filter((tool) => tool.remoteName !== "testforge_prepare_shutdown");
+      .filter((tool) => tool.kind !== "internal");
   }
 
   findTool(externalName: string): { session: Session; tool: ToolCatalogItem } {
@@ -127,6 +127,11 @@ export class McpHttpTransport implements DeviceTransport {
   async call(externalName: string, args: Record<string, unknown>, options?: DeviceCallOptions): Promise<unknown> {
     const { session, tool } = this.findTool(externalName);
     return await this.callRemote(session.server.serverId, tool.remoteName, args, options);
+  }
+
+  async callInternal(server: McpServerConfig, name: string, args: Record<string, unknown>, options?: DeviceCallOptions): Promise<unknown> {
+    const session = await this.ensure(server);
+    return await this.callRemote(session.server.serverId, name, args, options);
   }
 
   async callRemote(serverId: string, name: string, args: Record<string, unknown>, options?: DeviceCallOptions): Promise<unknown> {

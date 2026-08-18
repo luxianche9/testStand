@@ -4,10 +4,11 @@ import os
 import sys
 from pathlib import Path
 from typing import Any
+from mcp.server.fastmcp import Context
 
 from testforge_sim_hardware.config import load_config
 from testforge_sim_hardware.drivers import AnalogInputDriver, AnalogOutputDriver, SerialDriver, create_driver
-from testforge_sim_hardware.runtime import TestForgeSimRuntime
+from testforge_sim_hardware.runtime import TestForgeSimRuntime, occupancy_lease_id
 
 HARDWARE_META = {"testforge": {"kind": "hardware"}}
 
@@ -19,30 +20,30 @@ def build_runtime(config_path: str | None = None) -> TestForgeSimRuntime:
 
     if isinstance(driver, AnalogInputDriver):
         @runtime.mcp.tool(annotations=runtime.hardware_read, meta=HARDWARE_META)
-        def read_analog_input(hardwareId: str, channel: int) -> dict[str, Any]:
-            return runtime.invoke(hardwareId, lambda: driver.read(channel))
+        def read_analog_input(hardwareId: str, channel: int, ctx: Context) -> dict[str, Any]:
+            return runtime.invoke(hardwareId, occupancy_lease_id(ctx), lambda: driver.read(channel))
 
         @runtime.mcp.tool(annotations=runtime.hardware_read, meta=HARDWARE_META)
-        def read_all_analog_inputs(hardwareId: str) -> dict[str, Any]:
-            return runtime.invoke(hardwareId, driver.read_all)
+        def read_all_analog_inputs(hardwareId: str, ctx: Context) -> dict[str, Any]:
+            return runtime.invoke(hardwareId, occupancy_lease_id(ctx), driver.read_all)
 
     elif isinstance(driver, AnalogOutputDriver):
         @runtime.mcp.tool(annotations=runtime.hardware_write, meta=HARDWARE_META)
-        def write_analog_output(hardwareId: str, channel: int, voltage: float) -> dict[str, Any]:
-            return runtime.invoke(hardwareId, lambda: driver.write(channel, voltage))
+        def write_analog_output(hardwareId: str, channel: int, voltage: float, ctx: Context) -> dict[str, Any]:
+            return runtime.invoke(hardwareId, occupancy_lease_id(ctx), lambda: driver.write(channel, voltage))
 
         @runtime.mcp.tool(annotations=runtime.hardware_write, meta=HARDWARE_META)
-        def write_all_analog_outputs(hardwareId: str, voltages: list[float]) -> dict[str, Any]:
-            return runtime.invoke(hardwareId, lambda: driver.write_all(voltages))
+        def write_all_analog_outputs(hardwareId: str, voltages: list[float], ctx: Context) -> dict[str, Any]:
+            return runtime.invoke(hardwareId, occupancy_lease_id(ctx), lambda: driver.write_all(voltages))
 
     elif isinstance(driver, SerialDriver):
         @runtime.mcp.tool(annotations=runtime.hardware_write, meta=HARDWARE_META)
-        def write_serial(hardwareId: str, port: int, data: str) -> dict[str, Any]:
-            return runtime.invoke(hardwareId, lambda: driver.write(port, data))
+        def write_serial(hardwareId: str, port: int, data: str, ctx: Context) -> dict[str, Any]:
+            return runtime.invoke(hardwareId, occupancy_lease_id(ctx), lambda: driver.write(port, data))
 
         @runtime.mcp.tool(annotations=runtime.hardware_read, meta=HARDWARE_META)
-        def read_serial(hardwareId: str, port: int) -> dict[str, Any]:
-            return runtime.invoke(hardwareId, lambda: driver.read(port))
+        def read_serial(hardwareId: str, port: int, ctx: Context) -> dict[str, Any]:
+            return runtime.invoke(hardwareId, occupancy_lease_id(ctx), lambda: driver.read(port))
 
     return runtime
 

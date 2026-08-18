@@ -4,6 +4,7 @@ export interface DeviceCallMetadata {
   hardwareId: string;
   attempt?: number;
   idempotencyKey?: string;
+  occupancyLeaseId?: string;
 }
 
 export interface DeviceCallOptions {
@@ -22,6 +23,7 @@ export interface DeviceTransport {
   listTools(): ToolCatalogItem[];
   hasTool(externalName: string): boolean;
   call(externalName: string, args: Record<string, unknown>, options?: DeviceCallOptions): Promise<unknown>;
+  callInternal(server: McpServerConfig, name: string, args: Record<string, unknown>, options?: DeviceCallOptions): Promise<unknown>;
   describeHardware(server: McpServerConfig): Promise<ManagedHardware>;
   prepareShutdown(serverId: string): Promise<unknown>;
 }
@@ -60,6 +62,13 @@ export class DeviceTransportRegistry {
     const transport = [...this.byKind.values()].find((candidate) => candidate.hasTool(externalName));
     if (!transport) throw new Error(`Unknown aggregated tool: ${externalName}`);
     return await transport.call(externalName, args, options);
+  }
+
+  async callInternal(server: McpServerConfig, name: string, args: Record<string, unknown>, options?: DeviceCallOptions): Promise<unknown> {
+    const transport = this.requireTransport(server.transport);
+    await transport.connect(server);
+    this.serverKinds.set(server.serverId, server.transport);
+    return await transport.callInternal(server, name, args, options);
   }
 
   async listHardware(servers: McpServerConfig[]): Promise<ManagedHardware[]> {

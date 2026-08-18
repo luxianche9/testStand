@@ -108,6 +108,7 @@ function fixture(options: {
   logs?: MemoryRunLogs;
   execution?: MemoryExecution;
   canvas?: boolean;
+  occupied?: boolean;
   safety?: OrchestrationSafetyOptions;
 } = {}) {
   let task = options.task ?? testTask();
@@ -122,6 +123,7 @@ function fixture(options: {
   };
   const tools = {
     listTools: () => [tool],
+    isHardwareOccupied: () => options.occupied !== false,
     callTool: options.callTool ?? (async () => ({ value: 3.3 }))
   };
   const catalog = { getHardware: () => ({ formatVersion: 2, hardwareId: "HW1", label: "HW1", kind: "managed", serverId: "SERVER1", computerId: "PC1", ports: [] }) };
@@ -268,6 +270,15 @@ describe("TaskOrchestrationService Run logs", () => {
 });
 
 describe("TaskOrchestrationService execution activity", () => {
+  it("blocks Run preflight when referenced hardware is not occupied", async () => {
+    const { service } = fixture({ occupied: false });
+    await service.initialize();
+    const blocked = await service.startRun();
+    expect(blocked.run.status).toBe("blocked");
+    expect(JSON.stringify(blocked.events)).toContain("hardware_not_occupied");
+    await service.close();
+  });
+
   it("records a blocked preflight without attempting a hardware lease", async () => {
     const execution = new MemoryExecution();
     const manualLease = execution.acquire({ state: "manual", hardwareId: "HW1", toolName: "write", startedAt: new Date().toISOString() });

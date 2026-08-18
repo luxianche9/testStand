@@ -116,7 +116,7 @@ test.describe.serial("TestForge folder project desktop", () => {
 
     await page.getByRole("tab", { name: "工位接线", exact: true }).click();
     await expect(page.getByText("硬件库")).toBeVisible();
-    await expect(page.getByRole("button", { name: "接线调用历史" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "信箱" })).toBeVisible();
     await page.screenshot({ path: resolve(artifactDir, "project-wiring.png") });
 
     await page.getByRole("tab", { name: "编排测试", exact: true }).click();

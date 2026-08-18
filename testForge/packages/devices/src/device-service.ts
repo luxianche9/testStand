@@ -6,9 +6,11 @@ import type { DeviceStore } from "./device-store.js";
 import type { DeviceCallOptions, DeviceTransportRegistry } from "./device-transport.js";
 import { remoteShellFor } from "./remote-shell.js";
 import { SshManager, type SshCredential, type SshResult } from "./ssh.js";
+import { HardwareOccupancyManager } from "./hardware-occupancy.js";
 
 export class DeviceService {
   readonly ssh: SshManager;
+  readonly occupancy: HardwareOccupancyManager;
   private readonly statuses = new Map<string, ComputerStatus>();
   private readonly serverStatuses = new Map<string, ServerStatus>();
   private hardware: ManagedHardware[] = [];
@@ -16,6 +18,7 @@ export class DeviceService {
 
   constructor(readonly store: DeviceStore, readonly secrets: SecretStore, readonly transports: DeviceTransportRegistry) {
     this.ssh = new SshManager(secrets);
+    this.occupancy = new HardwareOccupancyManager(store, transports);
   }
 
   listComputers(): RemoteComputer[] { return this.store.listComputers(); }
@@ -25,6 +28,7 @@ export class DeviceService {
   listHardware(): ManagedHardware[] { return this.hardware; }
   listAvailability(): HardwareAvailability[] { return [...this.availability.values()]; }
   listTools() { return this.transports.listTools(); }
+  isHardwareOccupied(hardwareId: string): boolean { return this.occupancy.isHeld(hardwareId); }
   async callTool(name: string, args: Record<string, unknown>, options?: DeviceCallOptions): Promise<unknown> {
     return await this.callAggregatedTool(name, args, options);
   }
@@ -117,6 +121,7 @@ export class DeviceService {
       status.transport = { state: "online", checkedAt: new Date().toISOString() };
       status.service = { state: "unknown", checkedAt: new Date().toISOString(), serviceState: "unknown", message: "Not queried: device transport is available" };
       this.availability.set(hardware?.hardwareId ?? server.hardwareId, { hardwareId: hardware?.hardwareId ?? server.hardwareId, state: hardware?.state === "faulted" ? "faulted" : "available", checkedAt: new Date().toISOString(), ...(hardware?.lastError?.message ? { message: hardware.lastError.message } : {}) });
+      await this.occupancy.refresh(hardware?.hardwareId ?? server.hardwareId);
     } catch (error) {
       status.transport = { state: "offline", checkedAt: new Date().toISOString(), message: String(error) };
       try {
@@ -176,12 +181,13 @@ export class DeviceService {
     const tool = this.listTools().find((item) => item.externalName === externalName);
     if (!tool) throw new Error(`Unknown aggregated tool: ${externalName}`);
     const server = this.requireServer(tool.serverId);
+    const occupancyLeaseId = tool.kind === "hardware" ? this.occupancy.requireLease(server.hardwareId) : undefined;
     return await this.transports.callTool(externalName, args, {
       ...options,
-      metadata: { ...options?.metadata, hardwareId: server.hardwareId }
+      metadata: { ...options?.metadata, hardwareId: server.hardwareId, ...(occupancyLeaseId ? { occupancyLeaseId } : {}) }
     });
   }
-  async close(): Promise<void> { await this.ssh.close(); }
+  async close(): Promise<void> { await this.occupancy.close(); await this.ssh.close(); }
 }
 
 function normalizeServiceState(value: string | undefined): NonNullable<ServerStatus["service"]["serviceState"]> {

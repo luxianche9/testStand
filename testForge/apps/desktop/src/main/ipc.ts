@@ -18,6 +18,11 @@ import {
 } from "@testforge/contracts/devices";
 import { toWireError } from "@testforge/contracts/errors";
 import { manualToolInvocationInputSchema } from "@testforge/contracts/execution";
+import {
+  occupancyHardwareIdInputSchema,
+  occupancyRequestIdInputSchema,
+  occupancyRequestListQuerySchema
+} from "@testforge/contracts/occupancy";
 import { runIdInputSchema, testRunListQuerySchema, testTaskSchema } from "@testforge/contracts/orchestration";
 import { projectRootPathInputSchema, type ProjectDocument } from "@testforge/contracts/projects";
 import { llmSettingsInputSchema, projectViewSchema, themeChoiceSchema, welcomeLayoutSchema } from "@testforge/contracts/storage";
@@ -40,10 +45,10 @@ interface DesktopDialogsPort {
   chooseProjectFolder(): Promise<string | null>;
 }
 
-type DesktopEventName = "availability" | "execution" | "run" | "nodeRun" | "wiringTask" | "operator" | "project" | "opencode" | "window-state";
+type DesktopEventName = "availability" | "execution" | "occupancy" | "occupancyRequest" | "run" | "nodeRun" | "wiringTask" | "operator" | "project" | "opencode" | "window-state";
 
 interface DesktopWindowPort {
-  publish(event: "project", payload: unknown): void;
+  publish(event: DesktopEventName, payload: unknown): void;
   subscribe(event: DesktopEventName, listener: DesktopEventListener): () => void;
   minimize(): void;
   toggleMaximize(): void;
@@ -77,7 +82,7 @@ const trpc = initTRPC.create({
 });
 
 const emptyInput = z.void().optional();
-const eventNameSchema = z.enum(["availability", "execution", "run", "nodeRun", "wiringTask", "operator", "project", "opencode", "window-state"]);
+const eventNameSchema = z.enum(["availability", "execution", "occupancy", "occupancyRequest", "run", "nodeRun", "wiringTask", "operator", "project", "opencode", "window-state"]);
 
 export function createDesktopRouter(dependencies: DesktopIpcDependencies) {
   const { application, agents, settings, dialogs, windows } = dependencies;
@@ -220,6 +225,23 @@ export function createDesktopRouter(dependencies: DesktopIpcDependencies) {
     }),
     manual: trpc.router({
       invokeTool: trpc.procedure.input(manualToolInvocationInputSchema).mutation(({ input }) => application.manual.invokeTool(HUMAN_REQUEST_CONTEXT, input))
+    }),
+    occupancy: trpc.router({
+      list: trpc.procedure.input(emptyInput).query(() => application.occupancy.list(HUMAN_REQUEST_CONTEXT)),
+      acquire: trpc.procedure.input(occupancyHardwareIdInputSchema).mutation(({ input }) => application.occupancy.acquire(HUMAN_REQUEST_CONTEXT, input.hardwareId)),
+      release: trpc.procedure.input(occupancyHardwareIdInputSchema).mutation(({ input }) => application.occupancy.release(HUMAN_REQUEST_CONTEXT, input.hardwareId)),
+      listRequests: trpc.procedure.input(occupancyRequestListQuerySchema.optional()).query(({ input }) => application.occupancy.listRequests(
+        HUMAN_REQUEST_CONTEXT,
+        input === undefined ? undefined : {
+          limit: input.limit,
+          ...(input.status === undefined ? {} : { status: input.status })
+        }
+      )),
+      acquireRequest: trpc.procedure.input(occupancyRequestIdInputSchema).mutation(({ input }) => application.occupancy.acquireRequest(HUMAN_REQUEST_CONTEXT, input.id)),
+      rejectRequest: trpc.procedure.input(z.object({ id: z.string().min(1), message: z.string().optional() }).strict())
+        .mutation(({ input }) => application.occupancy.rejectRequest(HUMAN_REQUEST_CONTEXT, input.id, input.message)),
+      cancelRequest: trpc.procedure.input(z.object({ id: z.string().min(1), message: z.string().optional() }).strict())
+        .mutation(({ input }) => application.occupancy.cancelRequest(HUMAN_REQUEST_CONTEXT, input.id, input.message))
     }),
     agents: trpc.router({
       rotateGatewayToken: trpc.procedure.input(emptyInput).mutation(() => agents.rotateGatewayToken()),

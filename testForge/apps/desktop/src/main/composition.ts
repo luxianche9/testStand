@@ -83,6 +83,20 @@ export async function createDesktopComposition(windows: DesktopWindows): Promise
     system: { gatewayStatus: () => gateway.status() }
   });
   gateway = new LocalMcpGateway(application, secrets, Number(process.env.TESTFORGE_GATEWAY_PORT ?? 8000));
+  application.occupancy.setNotifier((request) => {
+    windows.publish("occupancyRequest", request);
+    if (request.status === "pending") windows.flashFrame(true);
+  });
+  devices.occupancy.setNotifier((statuses) => {
+    application.occupancy.reconcile(statuses);
+    windows.publish("occupancy", statuses);
+  });
+  devices.occupancy.setLostNotifier((hardwareId, message) => {
+    void Promise.allSettled([
+      application.manual.abortHardware(hardwareId, message),
+      taskOrchestration.handleHardwareLeaseLost(hardwareId, message)
+    ]);
+  });
   const gatewayTestToken = process.env.TESTFORGE_GATEWAY_TEST_TOKEN?.trim();
   if (integrationTestMode && gatewayTestToken) await gateway.replaceToken(gatewayTestToken);
   await gateway.start();
@@ -168,6 +182,7 @@ export async function createDesktopComposition(windows: DesktopWindows): Promise
     workspaceChanged: async () => { await reconcileOpenCodeWorkspace(openCodeRuntime, Boolean(projects.current()), llmApiKey()); },
     probeAvailability: async () => {
       const results = await Promise.allSettled(devices.listServers().map((server) => application.devices.refreshServer(AGENT_REQUEST_CONTEXT, server.serverId)));
+      await devices.occupancy.refreshAll();
       return { availability: devices.listAvailability(), servers: results.flatMap((result) => result.status === "fulfilled" ? [result.value] : []) };
     },
     autoStartAgentRuntime: async () => { await autoStartOpenCode(openCodeRuntime, llmApiKey(), Boolean(projects.current())); },
@@ -175,7 +190,9 @@ export async function createDesktopComposition(windows: DesktopWindows): Promise
       await openCodeRuntime.stop().catch(() => undefined);
       await application.manual.close();
       await application.projects.close();
-      await Promise.allSettled([gateway.stop(), transports.close(), devices.close()]);
+      await devices.close();
+      await gateway.stop();
+      await transports.close();
       await secrets.flush();
     })()
   };

@@ -1,6 +1,7 @@
 import type { AgentIntegrationPreview, AgentIntegrationStatus, AgentKind, AgentToolInfo, McpGatewayStatus, OpenCodeRuntimeStatus } from "./agents.js";
 import type { ComputerStatus, DeviceBundleApplyInput, DeviceBundleExport, DeviceBundleImport, DeviceBundleKind, DeviceBundlePreview, Hardware, HardwareAvailability, HardwareImageTarget, ManagedHardware, McpServerConfig, RemoteComputer, RemoteServiceLog, ServerStatus, ToolCatalogItem } from "./devices.js";
 import type { ExecutionActivity, ManualToolInvocationInput, ManualToolInvocationResult } from "./execution.js";
+import type { HardwareOccupancyRequest, HardwareOccupancyRequestStatus, HardwareOccupancyStatus } from "./occupancy.js";
 import type { LlmSettings, LlmSettingsInput, ProjectView, ThemeChoice, WelcomeLayout } from "./storage.js";
 import type { OperatorDecision, TaskValidationResult, TestNodeRun, TestRun, TestRunDetail, TestRunListQuery, TestRunListResult, TestRunLogArchive, TestTask } from "./orchestration.js";
 import type { ProjectDocument, ProjectFolderSelection, RecentProjectSummary } from "./projects.js";
@@ -15,6 +16,7 @@ export interface DashboardSnapshot {
   tools: ToolCatalogItem[];
   gateway: McpGatewayStatus;
   execution: ExecutionActivity;
+  occupancy: HardwareOccupancyStatus[];
   availability?: HardwareAvailability[];
 }
 
@@ -50,6 +52,11 @@ export const TESTFORGE_IPC = {
   manual: {
     invokeTool: "testforge:manual:invoke-tool"
   },
+  occupancy: {
+    list: "testforge:occupancy:list", acquire: "testforge:occupancy:acquire", release: "testforge:occupancy:release",
+    listRequests: "testforge:occupancy:list-requests", acquireRequest: "testforge:occupancy:acquire-request",
+    rejectRequest: "testforge:occupancy:reject-request", cancelRequest: "testforge:occupancy:cancel-request"
+  },
   agents: {
     rotateGatewayToken: "testforge:agents:rotate-gateway-token", status: "testforge:agents:status",
     preview: "testforge:agents:preview", install: "testforge:agents:install", remove: "testforge:agents:remove", test: "testforge:agents:test", listTools: "testforge:agents:list-tools",
@@ -65,7 +72,7 @@ export const TESTFORGE_IPC = {
   }
 } as const;
 
-export type TestForgeEventName = "availability" | "execution" | "run" | "nodeRun" | "wiringTask" | "operator" | "project" | "opencode" | "window-state";
+export type TestForgeEventName = "availability" | "execution" | "occupancy" | "occupancyRequest" | "run" | "nodeRun" | "wiringTask" | "operator" | "project" | "opencode" | "window-state";
 
 export interface TestForgeSystemApi {
   dashboard(): Promise<DashboardSnapshot>;
@@ -134,6 +141,16 @@ export interface TestForgeManualApi {
   invokeTool(input: ManualToolInvocationInput): Promise<ManualToolInvocationResult>;
 }
 
+export interface TestForgeOccupancyApi {
+  list(): Promise<HardwareOccupancyStatus[]>;
+  acquire(hardwareId: string): Promise<HardwareOccupancyStatus>;
+  release(hardwareId: string): Promise<HardwareOccupancyStatus>;
+  listRequests(input?: { status?: HardwareOccupancyRequestStatus; limit?: number }): Promise<HardwareOccupancyRequest[]>;
+  acquireRequest(occupancyRequestId: string): Promise<HardwareOccupancyRequest>;
+  rejectRequest(occupancyRequestId: string, message?: string): Promise<HardwareOccupancyRequest>;
+  cancelRequest(occupancyRequestId: string, message?: string): Promise<HardwareOccupancyRequest>;
+}
+
 export interface TestForgeAgentsApi {
   rotateGatewayToken(): Promise<AgentIntegrationStatus>;
   status(agent: AgentKind): Promise<AgentIntegrationStatus>;
@@ -176,6 +193,7 @@ export interface TestForgeApi {
   wiring: TestForgeWiringApi;
   orchestration: TestForgeOrchestrationApi;
   manual: TestForgeManualApi;
+  occupancy: TestForgeOccupancyApi;
   agents: TestForgeAgentsApi;
   settings: TestForgeSettingsApi;
   window: TestForgeWindowApi;

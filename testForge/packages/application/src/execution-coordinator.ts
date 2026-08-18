@@ -1,4 +1,4 @@
-import { executionHardwareIds, type ActiveExecutionActivity, type ExecutionActivity } from "@testforge/contracts/execution";
+import { executionHardwareIds, isHardwareExecuting, type ActiveExecutionActivity, type ExecutionActivity } from "@testforge/contracts/execution";
 import { appError } from "@testforge/contracts/errors";
 
 export interface ExecutionLease { release(): void }
@@ -27,6 +27,8 @@ export class ExecutionCoordinator {
   }
 
   setNotifier(notifier: (activity: ExecutionActivity) => void): void { this.notifier = notifier; }
+
+  isHardwareBusy(hardwareId: string): boolean { return isHardwareExecuting(this.current(), hardwareId); }
 
   acquire(activity: ActiveExecutionActivity): ExecutionLease {
     const normalized = normalizeActivity(activity);

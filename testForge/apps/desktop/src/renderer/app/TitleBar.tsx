@@ -66,9 +66,9 @@ export function TitleBar({ page, projectView, project, assistantOpen, busy, pend
       {inProject ? <ViewSlider value={isProjectViewPage(page) ? page : projectView} onChange={onNavigate} /> : <span className="titlebar-drag" />}
 
       <span className="titlebar-drag" />
-      {inProject && <button className={`titlebar-btn wiring-tasks${wiringLogOpen ? " active" : ""}`} title="接线调用历史" aria-label="接线调用历史" aria-pressed={wiringLogOpen} onClick={onToggleWiringLog}>
-        <InboxIcon size={16} /><span>接线任务</span>{pendingTaskCount > 0 && <span className="titlebar-dot" aria-hidden="true" />}
-      </button>}
+      <button className={`titlebar-btn wiring-tasks${wiringLogOpen ? " active" : ""}`} title="信箱" aria-label="信箱" aria-pressed={wiringLogOpen} onClick={onToggleWiringLog}>
+        <InboxIcon size={16} /><span>信箱</span>{pendingTaskCount > 0 && <span className="titlebar-dot" aria-hidden="true" />}
+      </button>
       {inProject && <button className={`titlebar-btn assistant${assistantOpen ? " active" : ""}`} title={assistantOpen ? "关闭 AI 侧栏" : "打开 AI 侧栏"} aria-label={assistantOpen ? "关闭 AI 侧栏" : "打开 AI 侧栏"} aria-pressed={assistantOpen} onClick={onToggleAssistant}><BotIcon size={16} /><span>AI助手</span></button>}
       <button className="titlebar-btn win" title="最小化" aria-label="最小化" onClick={() => void window.testforge.window.minimize()}><MinusIcon size={15} /></button>
       <button className="titlebar-btn win" title={maximized ? "还原" : "最大化"} aria-label={maximized ? "还原" : "最大化"} onClick={() => void window.testforge.window.toggleMaximize()}>{maximized ? <IconRestore size={14} /> : <IconMaximize size={14} />}</button>

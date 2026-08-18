@@ -6,6 +6,7 @@ import { DefaultAuthorizer, type Authorizer } from "./authorization.js";
 import { DevicesApplication } from "./devices-application.js";
 import { ExecutionCoordinator } from "./execution-coordinator.js";
 import { ManualControlApplication } from "./manual-control-application.js";
+import { HardwareOccupancyApplication } from "./hardware-occupancy-application.js";
 import { OrchestrationApplication } from "./orchestration-application.js";
 import { ProjectsApplication } from "./projects-application.js";
 import { SystemApplication, type ApplicationSystemPort } from "./system-application.js";
@@ -28,6 +29,7 @@ export class TestForgeApplication {
   readonly wiring: WiringApplication;
   readonly orchestration: OrchestrationApplication;
   readonly manual: ManualControlApplication;
+  readonly occupancy: HardwareOccupancyApplication;
   readonly system: SystemApplication;
   readonly authorizer: Authorizer;
 
@@ -39,6 +41,7 @@ export class TestForgeApplication {
     this.wiring = new WiringApplication(this.authorizer, dependencies.projects, dependencies.wiring);
     this.orchestration = new OrchestrationApplication(this.authorizer, dependencies.orchestration);
     this.manual = new ManualControlApplication(this.authorizer, dependencies.devices, dependencies.catalog, execution);
+    this.occupancy = new HardwareOccupancyApplication(this.authorizer, dependencies.devices, execution);
     this.system = new SystemApplication(this.authorizer, dependencies.devices, dependencies.system, execution);
   }
 }

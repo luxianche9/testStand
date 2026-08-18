@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     "./devices": "./src/devices.ts",
+    "./occupancy": "./src/occupancy.ts",
     "./errors": "./src/errors.ts",
     "./storage": "./src/storage.ts",
     "./agents": "./src/agents.ts",

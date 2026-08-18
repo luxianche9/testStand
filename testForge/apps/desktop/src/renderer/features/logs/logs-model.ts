@@ -74,7 +74,7 @@ export function nextSort(currentBy: TestRunListSortBy, currentDir: RunListSortDi
   return { sortBy: clicked, sortDir: currentDir === "asc" ? "desc" : "asc" };
 }
 
-export function localDayBoundary(value: string, end: boolean): string {
+function localDayBoundary(value: string, end: boolean): string {
   return new Date(`${value}T${end ? "23:59:59.999" : "00:00:00.000"}`).toISOString();
 }
 

@@ -18,6 +18,7 @@ export async function startHardwareMcpFixture(): Promise<HardwareMcpFixture> {
   const token = `fixture-${randomUUID()}`;
   const calls: HardwareFixtureCall[] = [];
   const sessions = new Map<string, FixtureSession>();
+  let occupancy: { holderId: string; holderLabel: string; leaseId: string; acquiredAt: string; expiresAt: string } | undefined;
 
   const createSession = async (): Promise<FixtureSession> => {
     const protocol = new Server({ name: "testforge-e2e-hardware", version: "1.0.0" }, { capabilities: { tools: {} } });
@@ -29,14 +30,32 @@ export async function startHardwareMcpFixture(): Promise<HardwareMcpFixture> {
         hardwareId: "E2E_CARD", capabilities: ["analog-output"], state: "open", health: "ok", lastError: null
       }]);
       if (request.params.name === "testforge_prepare_shutdown") return success({ safe: true });
-      if (request.params.name === "write_voltage") return success({
+      if (request.params.name === "testforge_hardware_occupancy") {
+        const action = args.action;
+        if (occupancy && Date.parse(occupancy.expiresAt) <= Date.now()) occupancy = undefined;
+        if (action === "acquire") {
+          if (occupancy && (occupancy.holderId !== args.holderId || occupancy.leaseId !== args.leaseId)) return failure("conflict", "Fixture hardware is already occupied");
+          const now = new Date().toISOString();
+          occupancy = { holderId: String(args.holderId), holderLabel: String(args.holderLabel), leaseId: String(args.leaseId), acquiredAt: occupancy?.acquiredAt ?? now, expiresAt: new Date(Date.now() + 15_000).toISOString() };
+        } else if (action === "heartbeat" && occupancy?.holderId === args.holderId && occupancy.leaseId === args.leaseId) {
+          occupancy.expiresAt = new Date(Date.now() + 15_000).toISOString();
+        } else if (action === "release" && occupancy?.holderId === args.holderId && occupancy.leaseId === args.leaseId) {
+          occupancy = undefined;
+        }
+        return success(occupancy ? { state: "occupied", ...occupancy } : { state: "unoccupied" });
+      }
+      if (request.params.name === "write_voltage") {
+        const meta = request.params._meta as { testforge?: { occupancyLeaseId?: string } } | undefined;
+        if (!occupancy || meta?.testforge?.occupancyLeaseId !== occupancy.leaseId) return failure("occupancy_required", "Fixture hardware requires occupancy");
+        return success({
         accepted: true,
         hardwareId: args.hardwareId,
         voltage: args.voltage,
         mode: args.mode,
         options: args.options,
         tags: args.tags
-      });
+        });
+      }
       return failure("unknown_tool", `Unknown fixture tool: ${request.params.name}`);
     });
     let session!: FixtureSession;
@@ -125,6 +144,19 @@ function fixtureTools() {
         required: ["hardwareId", "voltage", "mode", "options", "tags"]
       },
       _meta: { testforge: { kind: "hardware" } }
+    },
+    {
+      name: "testforge_hardware_occupancy",
+      description: "Fixture occupancy lease",
+      inputSchema: {
+        type: "object", additionalProperties: false,
+        properties: {
+          hardwareId: { type: "string" }, action: { type: "string", enum: ["acquire", "heartbeat", "release", "status"] },
+          holderId: { type: "string" }, holderLabel: { type: "string" }, leaseId: { type: "string" }
+        },
+        required: ["hardwareId", "action"]
+      },
+      _meta: { testforge: { kind: "internal" } }
     },
     {
       name: "testforge_prepare_shutdown",

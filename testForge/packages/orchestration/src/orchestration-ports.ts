@@ -19,6 +19,7 @@ export interface OrchestrationProjectPort {
 
 export interface OrchestrationToolPort {
   listTools(): ToolCatalogItem[];
+  isHardwareOccupied(hardwareId: string): boolean;
   callTool(name: string, args: Record<string, unknown>, options?: {
     timeoutMs?: number;
     signal?: AbortSignal;

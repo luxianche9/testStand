@@ -60,6 +60,10 @@ export function RemoteComputerTree({ data, selected, isOpen, onSelect, onToggle,
             const serverKey = `s:${server.serverId}`;
             const serverOpen = isOpen(serverKey);
             const serverStatus = data.serverStatuses.find((item) => item.serverId === server.serverId);
+            const occupancy = data.occupancy.find((item) => item.hardwareId === server.hardwareId);
+            const executing = data.execution.state !== "idle" && (
+              data.execution.state === "manual" ? data.execution.hardwareId === server.hardwareId : data.execution.hardwareIds.includes(server.hardwareId)
+            );
             const tools = data.tools.filter((tool) => tool.serverId === server.serverId);
             return <div className="tree-node" key={serverKey}>
               <TreeRow
@@ -68,12 +72,12 @@ export function RemoteComputerTree({ data, selected, isOpen, onSelect, onToggle,
                 icon={<IconServer size={15} />}
                 label={server.label}
                 title={`${server.serverId} · ${server.hardwareId} · ${server.url}`}
-                statuses={mcpRowStatuses(serverStatus)}
+                statuses={[...mcpRowStatuses(serverStatus), occupancyRowStatus(occupancy)]}
                 hasChildren
                 open={serverOpen}
                 selected={selected === serverKey}
                 onClick={() => { onSelect(serverKey); onToggle(serverKey); }}
-                actions={<ServerActions server={server} status={serverStatus} sshOnline={sshOnline} onEdit={() => onEditServer(server)} onChanged={onChanged} />}
+                actions={<ServerActions server={server} status={serverStatus} occupancy={occupancy} hardwareExecuting={executing} sshOnline={sshOnline} onEdit={() => onEditServer(server)} onChanged={onChanged} />}
               />
               {serverOpen && tools.map((tool) => {
                 const toolKey = `t:${tool.externalName}`;
@@ -91,6 +95,13 @@ export function RemoteComputerTree({ data, selected, isOpen, onSelect, onToggle,
       {rootOpen && data.computers.length === 0 && <InlineDetail depth={1}><p className="muted-copy">还没有远程电脑。点右侧“+”添加仪器控制电脑。</p></InlineDetail>}
     </div>
   </div>;
+}
+
+function occupancyRowStatus(status: DashboardSnapshot["occupancy"][number] | undefined) {
+  if (status?.state === "occupied_by_self") return { dot: "ok", label: "已占用", title: "由当前 TestForge 客户端占用" };
+  if (status?.state === "occupied_elsewhere") return { dot: "warn", label: "他人占用", title: status.holderLabel ?? "由其他 TestForge 客户端占用" };
+  if (status?.state === "unoccupied") return { dot: "muted", label: "未占用", title: "点击锁按钮占用后才可操作硬件" };
+  return { dot: "muted", label: "占用未知", title: status?.message ?? "尚未读取硬件占用状态" };
 }
 
 function ToolInline({ tool }: { tool: ToolCatalogItem }) {

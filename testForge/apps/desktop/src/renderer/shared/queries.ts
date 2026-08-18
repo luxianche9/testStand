@@ -36,3 +36,8 @@ export function useRecentProjects() {
 export function useWiringTasks() {
   return useQuery({ queryKey: queryKeys.wiringTasks, queryFn: () => window.testforge.wiring.listTasks({ limit: 200 }) });
 }
+
+/** Session-scoped AI requests for a human to occupy one or more hardware devices. */
+export function useOccupancyRequests() {
+  return useQuery({ queryKey: queryKeys.occupancyRequests, queryFn: () => window.testforge.occupancy.listRequests({ limit: 200 }) });
+}

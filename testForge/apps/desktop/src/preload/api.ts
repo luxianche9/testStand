@@ -78,6 +78,15 @@ export function createTestForgeApi(client: DesktopTrpcClient): TestForgeApi {
     manual: {
       invokeTool: (input) => call(client.manual.invokeTool.mutate(input))
     },
+    occupancy: {
+      list: () => call(client.occupancy.list.query()),
+      acquire: (hardwareId) => call(client.occupancy.acquire.mutate({ hardwareId })),
+      release: (hardwareId) => call(client.occupancy.release.mutate({ hardwareId })),
+      listRequests: (input) => call(client.occupancy.listRequests.query(input)),
+      acquireRequest: (id) => call(client.occupancy.acquireRequest.mutate({ id })),
+      rejectRequest: (id, message) => call(client.occupancy.rejectRequest.mutate({ id, message })),
+      cancelRequest: (id, message) => call(client.occupancy.cancelRequest.mutate({ id, message }))
+    },
     agents: {
       rotateGatewayToken: () => call(client.agents.rotateGatewayToken.mutate()),
       status: (agent) => call(client.agents.status.query({ agent })),
@@ -118,7 +127,7 @@ export function createTestForgeApi(client: DesktopTrpcClient): TestForgeApi {
 const errorCategories = new Set<ErrorCategory>([
   "permission_denied", "invalid_argument", "unavailable", "conflict", "not_found", "validation_failed",
   "requires_project", "safe_stop_failed", "invalid_response", "loop_limit", "assertion_failed", "project_exists",
-  "invalid_project", "project_uninitialized", "invalid_project_folder", "cancelled", "error"
+  "invalid_project", "project_uninitialized", "invalid_project_folder", "occupancy_required", "cancelled", "error"
 ]);
 
 function isErrorCategory(value: unknown): value is ErrorCategory {
