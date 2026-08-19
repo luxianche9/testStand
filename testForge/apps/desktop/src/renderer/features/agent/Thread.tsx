@@ -31,8 +31,8 @@ import { MarkdownText } from "./MarkdownText";
 import { Reasoning, ReasoningContent, ReasoningRoot, ReasoningText, ReasoningTrigger } from "./Reasoning";
 import { ToolFallback } from "./ToolFallback";
 import { ToolGroupContent, ToolGroupRoot, ToolGroupTrigger } from "./ToolGroup";
-import { Button, TooltipIconButton } from "./ui";
-import { cn } from "./utils";
+import { Button, TooltipIconButton } from "../../shared/ui/index.js";
+import { cn } from "../../shared/ui/index.js";
 
 type ThreadGroupPart = MessagePrimitive.GroupedParts.GroupPart;
 export type ThreadComponents = {
@@ -210,7 +210,7 @@ function AssistantActionBar() {
       <ActionBarPrimitive.Reload asChild><TooltipIconButton tooltip="重新生成"><RefreshCwIcon /></TooltipIconButton></ActionBarPrimitive.Reload>
       <ActionBarMorePrimitive.Root>
         <ActionBarMorePrimitive.Trigger asChild><TooltipIconButton tooltip="更多" className="data-[state=open]:bg-accent"><MoreHorizontalIcon /></TooltipIconButton></ActionBarMorePrimitive.Trigger>
-        <ActionBarMorePrimitive.Content side="bottom" align="start" sideOffset={6} className="tf-agent-theme z-[100] min-w-36 overflow-hidden rounded-xl border bg-popover/95 p-1.5 text-popover-foreground shadow-lg backdrop-blur-sm">
+        <ActionBarMorePrimitive.Content side="bottom" align="start" sideOffset={6} className="z-[100] min-w-36 overflow-hidden rounded-xl border bg-popover/95 p-1.5 text-popover-foreground shadow-lg backdrop-blur-sm">
           <ActionBarPrimitive.ExportMarkdown asChild>
             <ActionBarMorePrimitive.Item className="flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm outline-none hover:bg-accent focus:bg-accent"><DownloadIcon className="size-4" />导出 Markdown</ActionBarMorePrimitive.Item>
           </ActionBarPrimitive.ExportMarkdown>

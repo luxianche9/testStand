@@ -17,8 +17,11 @@ import "@xyflow/react/dist/style.css";
 import type { Hardware } from "@testforge/contracts/devices";
 import type { PinPair, PortPosition, PortSide, ProjectWiring } from "@testforge/contracts/wiring";
 import { errorMessage } from "../../shared/errors.js";
-import { IconAlert, IconChip } from "../../shared/icons.js";
-import { Btn, Modal, Spinner } from "../../shared/ui.js";
+import { CableIcon, TriangleAlertIcon } from "lucide-react";
+import { cn } from "../../shared/ui/cn";
+import { Button } from "../../shared/ui/button";
+import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader } from "../../shared/ui/dialog";
+import { Spinner } from "../../shared/ui/skeleton";
 import { useDeviceCatalog, useWiringTasks } from "../../shared/queries.js";
 import { invalidateWiringData } from "../../shared/mutations.js";
 import { queryKeys } from "../../shared/query-keys.js";
@@ -306,16 +309,16 @@ function WiringWorkbench() {
 
   const refreshAll = useCallback(async () => invalidateWiringData(client), [client]);
 
-  if (wiringDoc.isLoading || catalog.isLoading || !wiring) return <main className="wiring-page wiring-loading"><Spinner label="正在加载接线画布" /></main>;
-  if (wiringDoc.isError) return <main className="wiring-page wiring-loading"><div className="alert"><IconAlert size={16} />{errorMessage(wiringDoc.error)}</div></main>;
+  if (wiringDoc.isLoading || catalog.isLoading || !wiring) return <main className="flex h-full min-h-0 min-w-0 items-center justify-center overflow-hidden bg-background"><Spinner label="正在加载接线画布" /></main>;
+  if (wiringDoc.isError) return <main className="grid h-full min-h-0 min-w-0 place-items-center overflow-hidden bg-background"><div className="flex max-w-[560px] items-start gap-2.5 rounded-md border border-destructive/35 bg-destructive/6 px-3.5 py-2.5 text-xs break-words whitespace-pre-wrap text-destructive [&_svg]:mt-0.5 [&_svg]:flex-none"><TriangleAlertIcon className="size-4" />{errorMessage(wiringDoc.error)}</div></main>;
 
   const selectedConnection = connections.find((item) => item.connectionId === selectedConnectionId);
   const editingConnection = connections.find((item) => item.connectionId === editingConnectionId);
   const activeTask = taskList.find((task) => task.status === "in_progress") ?? taskList.find((task) => task.status === "pending");
 
   return (
-    <main className="wiring-page">
-      <section className="wiring-workbench flow-layout" style={{ gridTemplateColumns: `${library.width}px 5px minmax(0, 1fr)` }}>
+    <main className="h-full min-h-0 min-w-0 overflow-hidden bg-background">
+      <section className="grid h-full" style={{ gridTemplateColumns: `${library.width}px 4px minmax(0, 1fr)` }}>
         <HardwareLibrary
           hardware={hardware}
           assetUrls={assetUrls}
@@ -323,10 +326,10 @@ function WiringWorkbench() {
           onAdd={addNode}
           onRefresh={() => void refreshAll()}
         />
-        <div className="col-resize-handle" role="separator" aria-orientation="vertical" aria-label="调整硬件库宽度" title="拖拽调整宽度" {...library.handleProps} />
-        <section className="flow-main">
-          {save.isError && <div className="flow-inline-error alert"><IconAlert size={15} />{errorMessage(save.error)}</div>}
-          <div className={view === "canvas" ? "react-flow-wrap" : "wiring-list-wrap"} onDrop={view === "canvas" ? onDrop : undefined} onDragOver={view === "canvas" ? (event) => { event.preventDefault(); event.dataTransfer.dropEffect = "move"; } : undefined}>
+        <div className="w-1 cursor-col-resize bg-transparent transition-colors hover:bg-ring/30" role="separator" aria-orientation="vertical" aria-label="调整硬件库宽度" title="拖拽调整宽度" {...library.handleProps} />
+        <section className="grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)]">
+          {save.isError && <div className="absolute top-2.5 right-3 left-3 z-20 flex items-start gap-2.5 rounded-md border border-destructive/35 bg-popover px-3.5 py-2.5 text-xs break-words whitespace-pre-wrap text-destructive shadow-md [&_svg]:mt-0.5 [&_svg]:flex-none"><TriangleAlertIcon className="size-4" />{errorMessage(save.error)}</div>}
+          <div className={cn("relative flex h-full min-h-0 flex-col", view === "list" && "bg-secondary/40")} onDrop={view === "canvas" ? onDrop : undefined} onDragOver={view === "canvas" ? (event) => { event.preventDefault(); event.dataTransfer.dropEffect = "move"; } : undefined}>
             <WiringViewSwitch view={view} onChange={setView} />
             {view === "canvas" ? (
               <>
@@ -355,22 +358,28 @@ function WiringWorkbench() {
                   deleteKeyCode={null}
                   proOptions={{ hideAttribution: true }}
                 >
-                  <Background variant={BackgroundVariant.Lines} gap={24} size={1} color="var(--canvas-grid)" bgColor="var(--canvas-bg)" />
+                  <Background variant={BackgroundVariant.Lines} gap={24} size={1} color="var(--tf-canvas-grid)" bgColor="var(--tf-canvas)" />
                   <Controls position="bottom-right" showInteractive={false} />
-                  {!nodes.length && <div className="flow-empty"><IconChip size={28} /><strong>从左侧硬件库拖入设备</strong><span>画布是工程文档，加入节点不会调用远端硬件。</span></div>}
+                  {!nodes.length && <div className="pointer-events-none absolute inset-0 z-[1] grid place-content-center justify-items-center gap-2 text-center text-muted-foreground"><CableIcon className="size-7" /><strong className="text-sm text-foreground">从左侧硬件库拖入设备</strong><span className="max-w-[300px] text-xs">画布是工程文档，加入节点不会调用远端硬件。</span></div>}
                 </ReactFlow>
                 {selectedConnection && <ConnectionDrawer connection={selectedConnection} hardware={hardware} onClose={() => setSelectedConnectionId(undefined)} onEdit={() => setEditingConnectionId(selectedConnection.connectionId)} onRemove={removeConnection} removing={save.isPending} />}
                 {nodeMenu && (() => {
                   const menuNode = wiring.nodes.find((item) => item.hardwareId === nodeMenu.hardwareId);
                   const showingImage = menuNode?.showImage !== false;
-                  return <div className="wiring-node-menu" role="menu" aria-label="硬件操作" style={{ left: nodeMenu.x, top: nodeMenu.y }}>
-                    <button type="button" role="menuitem" onClick={() => { setEditingPortHardwareId(nodeMenu.hardwareId); setNodeMenu(undefined); }}>改变端口位置</button>
-                    <button type="button" role="menuitem" onClick={() => {
+                  const itemClass = "flex min-h-8 w-full items-center rounded-sm px-2.5 text-left text-xs whitespace-nowrap transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:outline-none active:translate-y-px disabled:pointer-events-none disabled:opacity-50";
+                  return <div
+                    className="wiring-node-menu fixed z-30 grid w-[168px] gap-0.5 rounded-md border bg-popover p-1 text-popover-foreground shadow-lg animate-fade-in"
+                    role="menu"
+                    aria-label="硬件操作"
+                    style={{ left: nodeMenu.x, top: nodeMenu.y }}
+                  >
+                    <button type="button" role="menuitem" className={itemClass} onClick={() => { setEditingPortHardwareId(nodeMenu.hardwareId); setNodeMenu(undefined); }}>改变端口位置</button>
+                    <button type="button" role="menuitem" className={itemClass} onClick={() => {
                       const hardwareId = nodeMenu.hardwareId;
                       setNodeMenu(undefined);
                       toggleNodeImage(hardwareId);
                     }}>{showingImage ? "隐藏图片" : "显示图片"}</button>
-                    <button type="button" role="menuitem" className="danger" onClick={() => {
+                    <button type="button" role="menuitem" className={cn(itemClass, "text-destructive hover:bg-destructive/10 hover:text-destructive")} onClick={() => {
                       const hardwareId = nodeMenu.hardwareId;
                       setNodeMenu(undefined);
                       setEditingPortHardwareId((current) => current === hardwareId ? undefined : current);
@@ -405,17 +414,18 @@ function WiringWorkbench() {
         onClose={() => setEditingConnectionId(undefined)}
         onSave={(connectionId, pins) => { updateConnectionPins(connectionId, pins); setEditingConnectionId(undefined); }}
       />
-      <Modal
-        open={Boolean(pendingRemoveHardwareId)}
-        onClose={() => setPendingRemoveHardwareId(undefined)}
-        title="移除画布节点"
-        footer={<>
-          <Btn onClick={() => setPendingRemoveHardwareId(undefined)}>取消</Btn>
-          <Btn variant="danger" onClick={() => { if (pendingRemoveHardwareId) commitRemoveNode(pendingRemoveHardwareId); }}>移除并删除接线</Btn>
-        </>}
-      >
-        <p>{hardware.find((item) => item.hardwareId === pendingRemoveHardwareId)?.label ?? pendingRemoveHardwareId} 上还有已确认的接线。移除画布节点会同时删除这些接线记录。</p>
-      </Modal>
+      <Dialog open={Boolean(pendingRemoveHardwareId)} onOpenChange={(open) => { if (!open) setPendingRemoveHardwareId(undefined); }}>
+        <DialogContent size="sm">
+          <DialogHeader title="移除画布节点" onClose={() => setPendingRemoveHardwareId(undefined)} />
+          <DialogBody>
+            <p className="m-0 text-sm">{hardware.find((item) => item.hardwareId === pendingRemoveHardwareId)?.label ?? pendingRemoveHardwareId} 上还有已确认的接线。移除画布节点会同时删除这些接线记录。</p>
+          </DialogBody>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingRemoveHardwareId(undefined)}>取消</Button>
+            <Button variant="destructive" onClick={() => { if (pendingRemoveHardwareId) commitRemoveNode(pendingRemoveHardwareId); }}>移除并删除接线</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

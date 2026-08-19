@@ -1,6 +1,6 @@
 import type { ToolCallMessagePartComponent } from "@assistant-ui/react";
 import { memo, useMemo } from "react";
-import { cn } from "../utils";
+import { cn } from "../../../shared/ui/index.js";
 import { ToolStatusIcon, basename, isCancelledToolStatus, str, truncate, type ToolCallStatusLike } from "./shared";
 
 function shortenPath(path: string, depth = 2) {

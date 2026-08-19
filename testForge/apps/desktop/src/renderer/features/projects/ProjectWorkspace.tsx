@@ -1,6 +1,6 @@
 import { lazy, Suspense } from "react";
 import type { ProjectView } from "@testforge/contracts/storage";
-import { Spinner } from "../../shared/ui.js";
+import { Spinner, Centered } from "../../shared/ui/index.js";
 import { ErrorBoundary } from "../../shared/ErrorBoundary.js";
 
 const WiringPage = lazy(() => import("../wiring/index.js").then((module) => ({ default: module.WiringPage })));
@@ -10,9 +10,9 @@ const LogsPage = lazy(() => import("../logs/index.js").then((module) => ({ defau
 
 export function ProjectWorkspace({ view }: { view: ProjectView }) {
   return (
-    <div className="project-workspace">
+    <div className="grid h-full min-h-0 min-w-0 flex-1 bg-background">
       <ErrorBoundary key={view}>
-        <Suspense fallback={<div className="centered"><Spinner label="正在加载项目功能…" /></div>}>
+        <Suspense fallback={<Centered><Spinner label="正在加载项目功能…" /></Centered>}>
           {view === "orchestration" ? <OrchestrationPage />
             : view === "wiring" ? <WiringPage />
               : view === "manual" ? <DevicesPage />

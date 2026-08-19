@@ -39,8 +39,8 @@ import {
   type ReactNode
 } from "react";
 import { ComposerAttachments } from "./Attachment";
-import { Button, Input, TooltipIconButton } from "./ui";
-import { cn } from "./utils";
+import { Button, Input, TooltipIconButton } from "../../shared/ui/index.js";
+import { cn } from "../../shared/ui/index.js";
 
 type OpenCodeModelOption = {
   providerID: string;
@@ -478,7 +478,7 @@ function AgentPicker({ catalog, selection, onSelectionChange }: { catalog: OpenC
 }
 
 function PickerContent({ className, ...props }: ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>) {
-  return <PopoverPrimitive.Portal><PopoverPrimitive.Content sideOffset={8} collisionPadding={12} className={cn("tf-agent-theme z-[100] overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-xl outline-none", className)} {...props} /></PopoverPrimitive.Portal>;
+  return <PopoverPrimitive.Portal><PopoverPrimitive.Content sideOffset={8} collisionPadding={12} className={cn("z-[100] overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-xl outline-none", className)} {...props} /></PopoverPrimitive.Portal>;
 }
 
 function PickerLabel({ children }: { children: ReactNode }) {

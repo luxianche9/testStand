@@ -1,9 +1,14 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type { Hardware, HardwarePort } from "@testforge/contracts/devices";
-import { IconAlert, IconChevron, IconImage, IconPlus, IconTrash } from "../../shared/icons.js";
-import { Badge, Btn, Modal, Spinner } from "../../shared/ui.js";
+import { ChevronRightIcon, CircleAlertIcon, ImageIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { queryKeys } from "../../shared/query-keys.js";
+import { cn } from "../../shared/ui/cn";
+import { Badge } from "../../shared/ui/badge";
+import { Button } from "../../shared/ui/button";
+import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader } from "../../shared/ui/dialog";
+import { Input } from "../../shared/ui/input";
+import { Spinner } from "../../shared/ui/skeleton";
 
 /**
  * Two-level editor for a device's ports and their pins.
@@ -51,83 +56,84 @@ export function PortEditor({ hardwareId, ports, saved, onChange, onImageChanged 
   };
 
   return (
-    <div className="port-editor">
-      <div className="port-editor-head">
-        <strong>端口与针脚</strong>
-        <span className="muted-copy">{ports.length} 个端口 · {ports.reduce((total, port) => total + port.pins.length, 0)} 个针脚</span>
-        <Btn icon={<IconPlus size={14} />} onClick={addPort}>添加端口</Btn>
+    <div className="grid gap-2.5">
+      <div className="flex items-center gap-2.5">
+        <strong className="text-xs font-semibold">端口与针脚</strong>
+        <span className="text-xs text-muted-foreground">{ports.length} 个端口 · {ports.reduce((total, port) => total + port.pins.length, 0)} 个针脚</span>
+        <Button variant="outline" size="xs" className="ml-auto" onClick={addPort}><PlusIcon />添加端口</Button>
       </div>
-      {!saved && <p className="form-note">先保存设备，再上传外观图和端口图。</p>}
-      {error && <div className="alert"><IconAlert size={15} /><span>{error}</span></div>}
+      {!saved && <p className="m-0 text-xs leading-relaxed text-muted-foreground">先保存设备，再上传外观图和端口图。</p>}
+      {error && <div className="flex items-start gap-2.5 rounded-md border border-destructive/35 bg-destructive/6 px-3.5 py-2.5 text-xs break-words whitespace-pre-wrap text-destructive [&_svg]:mt-0.5 [&_svg]:flex-none"><CircleAlertIcon className="size-4" /><span>{error}</span></div>}
 
-      <div className="port-list">
+      <div className="grid max-h-[340px] content-start gap-1.5 overflow-y-auto pr-1">
         {ports.map((port) => {
           const open = expanded[port.portId] ?? false;
           return (
-            <article className={`port-item${open ? " open" : ""}`} key={port.portId}>
-              <div className="port-row">
+            <article className={cn("rounded-md border bg-background", open && "border-foreground/20")} key={port.portId}>
+              <div className="flex flex-wrap items-center gap-2 px-2 py-1.5">
                 <button
                   type="button"
-                  className={`twisty${open ? " open" : ""}`}
+                  className="grid flex-none cursor-pointer place-items-center border-0 bg-none p-0 text-muted-foreground/60"
                   aria-label={open ? `收起 ${port.name}` : `展开 ${port.name}`}
                   aria-expanded={open}
                   onClick={() => setExpanded((current) => ({ ...current, [port.portId]: !open }))}
                 >
-                  <IconChevron size={13} />
+                  <ChevronRightIcon className={cn("size-3.5 transition-transform", open && "rotate-90")} />
                 </button>
-                <input
-                  className="input port-id-input"
+                <Input
+                  className="h-7 w-24 flex-none px-2 text-xs"
                   value={port.portId}
                   aria-label="端口 ID"
                   onChange={(event) => renamePort(port, event.target.value)}
                 />
-                <input
-                  className="input port-name-input"
+                <Input
+                  className="h-7 min-w-[100px] flex-1 basis-[120px] px-2 text-xs"
                   value={port.name}
                   aria-label="端口名称"
                   placeholder="端口名称"
                   onChange={(event) => update(port.portId, (item) => ({ ...item, name: event.target.value }))}
                 />
-                <Badge tone={port.pins.length ? "muted" : "accent"}>{port.pins.length ? `${port.pins.length} 针` : "无针脚"}</Badge>
-                <span className="port-image-actions">
+                <Badge variant={port.pins.length ? "secondary" : "default"}>{port.pins.length ? `${port.pins.length} 针` : "无针脚"}</Badge>
+                <span className="ml-auto flex items-center gap-1">
                   {saved && port.imageAssetId && (
-                    <Btn variant="subtle" onClick={() => setPreview({ title: `${port.name} 端口图`, assetId: port.imageAssetId! })}>预览</Btn>
+                    <Button variant="ghost" size="xs" onClick={() => setPreview({ title: `${port.name} 端口图`, assetId: port.imageAssetId! })}>预览</Button>
                   )}
-                  <Btn
-                    variant="subtle"
-                    icon={<IconImage size={14} />}
+                  <Button
+                    variant="ghost"
+                    size="xs"
                     disabled={!saved || image.isPending}
                     title={saved ? "上传或更换该端口的照片" : "保存设备后可上传端口图"}
                     onClick={() => image.mutate({ action: "import", portId: port.portId })}
-                  >{port.imageAssetId ? "更换" : "端口图"}</Btn>
+                  ><ImageIcon />{port.imageAssetId ? "更换" : "端口图"}</Button>
                   {port.imageAssetId && (
-                    <Btn
-                      variant="subtle"
+                    <Button
+                      variant="ghost"
+                      size="xs"
                       disabled={image.isPending}
                       onClick={() => {
                         if (saved) image.mutate({ action: "remove", portId: port.portId });
                         else update(port.portId, (item) => { const { imageAssetId: _removed, ...rest } = item; return rest; });
                       }}
-                    >移除图</Btn>
+                    >移除图</Button>
                   )}
                 </span>
                 <button
                   type="button"
-                  className="row-action"
+                  className="grid size-6 flex-none place-items-center rounded-md text-muted-foreground transition-colors hover:bg-foreground/8 hover:text-foreground"
                   title={`删除端口 ${port.name}`}
                   aria-label={`删除端口 ${port.name}`}
                   onClick={() => onChange(ports.filter((item) => item.portId !== port.portId))}
                 >
-                  <IconTrash size={14} />
+                  <Trash2Icon className="size-3.5" />
                 </button>
               </div>
               {open && (
-                <div className="pin-list">
+                <div className="grid gap-1 border-t pt-1 pr-2 pb-2 pl-[30px]">
                   {port.pins.map((pin) => (
-                    <div className="pin-row" key={pin.pinId}>
-                      <span className="pin-position">{pin.position}</span>
-                      <input
-                        className="input pin-id-input"
+                    <div className="grid grid-cols-[24px_96px_minmax(0,1fr)_28px] items-center gap-2" key={pin.pinId}>
+                      <span className="text-right text-[11px] text-muted-foreground/70">{pin.position}</span>
+                      <Input
+                        className="h-7 px-2 text-xs"
                         value={pin.pinId}
                         aria-label="针脚 ID"
                         onChange={(event) => update(port.portId, (item) => ({
@@ -135,8 +141,8 @@ export function PortEditor({ hardwareId, ports, saved, onChange, onImageChanged 
                           pins: item.pins.map((entry) => entry.pinId === pin.pinId ? { ...entry, pinId: event.target.value } : entry)
                         }))}
                       />
-                      <input
-                        className="input pin-label-input"
+                      <Input
+                        className="h-7 px-2 text-xs"
                         value={pin.label}
                         aria-label="针脚信号"
                         placeholder="信号名称，可留空"
@@ -147,32 +153,32 @@ export function PortEditor({ hardwareId, ports, saved, onChange, onImageChanged 
                       />
                       <button
                         type="button"
-                        className="row-action"
+                        className="grid size-6 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-foreground/8 hover:text-foreground"
                         title={`删除针脚 ${pin.pinId}`}
                         aria-label={`删除针脚 ${pin.pinId}`}
                         onClick={() => update(port.portId, (item) => ({ ...item, pins: renumber(item.pins.filter((entry) => entry.pinId !== pin.pinId)) }))}
                       >
-                        <IconTrash size={13} />
+                        <Trash2Icon className="size-3.5" />
                       </button>
                     </div>
                   ))}
-                  <div className="pin-row pin-add">
-                    <Btn
-                      variant="subtle"
-                      icon={<IconPlus size={13} />}
+                  <div className="flex items-center gap-2 pt-1">
+                    <Button
+                      variant="ghost"
+                      size="xs"
                       onClick={() => update(port.portId, (item) => ({
                         ...item,
                         pins: [...item.pins, { pinId: uniqueId("", new Set(item.pins.map((entry) => entry.pinId))), position: item.pins.length + 1, label: "" }]
                       }))}
-                    >添加针脚</Btn>
-                    {port.pins.length === 0 && <span className="muted-copy">没有针脚也可以保存，接线时按整个端口连接。</span>}
+                    ><PlusIcon />添加针脚</Button>
+                    {port.pins.length === 0 && <span className="text-xs text-muted-foreground">没有针脚也可以保存，接线时按整个端口连接。</span>}
                   </div>
                 </div>
               )}
             </article>
           );
         })}
-        {!ports.length && <div className="list-empty">还没有端口。点「添加端口」登记这台设备的接口。</div>}
+        {!ports.length && <div className="px-2 py-4 text-center text-xs text-muted-foreground">还没有端口。点「添加端口」登记这台设备的接口。</div>}
       </div>
 
       <PortImageModal
@@ -202,15 +208,15 @@ export function AppearanceImage({ hardwareId, assetId, saved, onChanged }: {
     onError: (value) => setError(String(value))
   });
   return (
-    <div className="image-action-row">
-      <span className="image-action-label">外观图</span>
-      <span className="image-action-status">{assetId ? "已上传" : "未上传"}</span>
-      {assetId && <Btn variant="subtle" onClick={() => setPreview(true)}>预览</Btn>}
-      <Btn variant="subtle" icon={<IconImage size={14} />} disabled={!saved || image.isPending} onClick={() => image.mutate("import")}>
-        {assetId ? "更换" : "上传"}
-      </Btn>
-      {assetId && <Btn variant="subtle" disabled={image.isPending} onClick={() => image.mutate("remove")}>移除</Btn>}
-      {error && <div className="alert"><IconAlert size={15} /><span>{error}</span></div>}
+    <div className="flex min-h-8 flex-wrap items-center gap-2">
+      <span className="w-12 flex-none text-xs font-semibold text-muted-foreground">外观图</span>
+      <span className="min-w-11 flex-none text-xs text-muted-foreground/70">{assetId ? "已上传" : "未上传"}</span>
+      {assetId && <Button variant="ghost" size="xs" onClick={() => setPreview(true)}>预览</Button>}
+      <Button variant="ghost" size="xs" disabled={!saved || image.isPending} onClick={() => image.mutate("import")}>
+        <ImageIcon />{assetId ? "更换" : "上传"}
+      </Button>
+      {assetId && <Button variant="ghost" size="xs" disabled={image.isPending} onClick={() => image.mutate("remove")}>移除</Button>}
+      {error && <div className="flex w-full items-start gap-2.5 rounded-md border border-destructive/35 bg-destructive/6 px-3.5 py-2.5 text-xs break-words whitespace-pre-wrap text-destructive [&_svg]:mt-0.5 [&_svg]:flex-none"><CircleAlertIcon className="size-4" /><span>{error}</span></div>}
       <PortImageModal open={preview} title="外观图" hardwareId={hardwareId} assetId={assetId} onClose={() => setPreview(false)} />
     </div>
   );
@@ -224,11 +230,19 @@ function PortImageModal({ open, title, hardwareId, assetId, onClose }: {
   onClose: () => void;
 }) {
   return (
-    <Modal open={open} onClose={onClose} title={title} width={720} footer={<Btn variant="primary" onClick={onClose}>关闭</Btn>}>
-      <div className="image-preview lightbox">
-        {assetId ? <HardwareImage hardwareId={hardwareId} assetId={assetId} /> : <span className="muted-copy">无图片</span>}
-      </div>
-    </Modal>
+    <Dialog open={open} onOpenChange={(value) => { if (!value) onClose(); }}>
+      <DialogContent size="lg">
+        <DialogHeader title={title} onClose={onClose} />
+        <DialogBody>
+          <div className="grid max-h-[60vh] min-h-[280px] place-items-center overflow-hidden rounded-md bg-secondary/50 [&_img]:block [&_img]:max-h-[56vh] [&_img]:max-w-full [&_img]:object-contain">
+            {assetId ? <HardwareImage hardwareId={hardwareId} assetId={assetId} /> : <span className="text-xs text-muted-foreground">无图片</span>}
+          </div>
+        </DialogBody>
+        <DialogFooter>
+          <Button onClick={onClose}>关闭</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

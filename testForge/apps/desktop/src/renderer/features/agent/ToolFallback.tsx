@@ -9,8 +9,13 @@ import {
 } from "@assistant-ui/react";
 import { AlertCircleIcon, CheckIcon, ChevronDownIcon, LoaderIcon, XCircleIcon } from "lucide-react";
 import { memo, useCallback, useRef, useState } from "react";
-import { Button, Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui";
-import { cn, formatUnknown } from "./utils";
+import { Collapsible as CollapsiblePrimitive } from "radix-ui";
+import { Button } from "../../shared/ui/index.js";
+const Collapsible = CollapsiblePrimitive.Root;
+const CollapsibleTrigger = CollapsiblePrimitive.Trigger;
+const CollapsibleContent = CollapsiblePrimitive.Content;
+import { cn } from "../../shared/ui/index.js";
+import { formatUnknown } from "./utils";
 
 const ANIMATION_DURATION = 160;
 const APPROVED_RESULT = "Approved by user";

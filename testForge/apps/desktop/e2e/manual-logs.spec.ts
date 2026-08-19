@@ -58,13 +58,14 @@ test.describe.serial("manual control and persisted Run logs", () => {
     await page.getByRole("button", { name: "占用硬件" }).click();
     await expect(page.getByRole("button", { name: "释放硬件" })).toBeVisible();
     await page.getByRole("button", { name: /write_voltage/ }).click();
-    await expect(page.locator(".schema-fields").getByText("Hardware ID", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("Hardware ID", { exact: true })).toHaveCount(0);
     await page.getByLabel("Voltage").fill("4.2");
     await page.getByLabel("Mode").selectOption("pulse");
     await page.getByRole("button", { name: "执行一次" }).click();
     await expect(page.getByText("调用成功", { exact: true })).toBeVisible();
-    await expect(page.locator(".manual-result pre")).toContainText('"hardwareId": "E2E_CARD"');
-    await expect(page.locator(".manual-result pre")).toContainText('"voltage": 4.2');
+    const resultPre = page.getByText("调用成功", { exact: true }).locator("xpath=ancestor::section//pre");
+    await expect(resultPre).toContainText('"hardwareId": "E2E_CARD"');
+    await expect(resultPre).toContainText('"voltage": 4.2');
 
     const write = fixture.calls.filter((call) => call.name === "write_voltage").at(-1);
     expect(write?.arguments).toMatchObject({ hardwareId: "E2E_CARD", voltage: 4.2, mode: "pulse", options: { enabled: true }, tags: ["smoke"] });

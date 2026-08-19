@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { CircleAlertIcon, PlayIcon } from "lucide-react";
 import type { OperatorDecision, WorkflowVariableDefinition } from "@testforge/contracts/orchestration";
 import { errorMessage } from "../../shared/errors.js";
-import { IconAlert, IconPlay } from "../../shared/icons.js";
-import { Badge, Btn, Modal } from "../../shared/ui.js";
+import { Badge } from "../../shared/ui/badge";
+import { Button } from "../../shared/ui/button";
+import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader } from "../../shared/ui/dialog";
+import { Input } from "../../shared/ui/input";
 import { JSON_ERROR, literalText, matchesType, parseLiteral, tryJson } from "./workflow-model.js";
 
 export function RunInputsModal({ open, inputs, pending, onClose, onRun }: {
@@ -27,25 +30,25 @@ export function RunInputsModal({ open, inputs, pending, onClose, onRun }: {
     }
     return { values, errors };
   }, [inputs, text]);
-  return <Modal
-    open={open}
-    onClose={onClose}
-    title="运行输入"
-    width={620}
-    footer={<>
-      <Btn onClick={onClose}>取消</Btn>
-      <Btn variant="primary" icon={<IconPlay size={13} />} disabled={pending || parsed.errors.length > 0} onClick={() => onRun(parsed.values)}>开始运行</Btn>
-    </>}
-  >
-    <div className="form-grid">
-      {inputs.map((input) => <label className="field span-2" key={input.name}>
-        <span className="field-label">{input.name}<i>{input.type}</i></span>
-        <input className="input" value={text[input.name] ?? ""} onChange={(event) => setText((current) => ({ ...current, [input.name]: event.target.value }))} placeholder={input.type === "object" || input.type === "array" ? "JSON" : input.type} />
-        {input.description && <small className="muted-copy">{input.description}</small>}
-      </label>)}
-      {parsed.errors.length > 0 && <div className="alert span-2"><IconAlert size={15} /><span>{parsed.errors.join("；")}</span></div>}
-    </div>
-  </Modal>;
+  return <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
+    <DialogContent className="w-[620px]">
+      <DialogHeader title="运行输入" onClose={onClose} />
+      <DialogBody>
+        <div className="grid grid-cols-2 gap-x-3.5 gap-y-3">
+          {inputs.map((input) => <label className="col-span-2 grid content-start gap-1.5" key={input.name}>
+            <span className="text-xs text-muted-foreground">{input.name}<i className="ml-0.5 text-destructive not-italic">{input.type}</i></span>
+            <Input value={text[input.name] ?? ""} onChange={(event) => setText((current) => ({ ...current, [input.name]: event.target.value }))} placeholder={input.type === "object" || input.type === "array" ? "JSON" : input.type} />
+            {input.description && <small className="text-xs text-muted-foreground">{input.description}</small>}
+          </label>)}
+          {parsed.errors.length > 0 && <div className="col-span-2 flex items-center gap-1.5 rounded-md border border-destructive/60 bg-destructive/10 px-3 py-2 text-xs text-destructive"><CircleAlertIcon className="size-4 shrink-0" /><span>{parsed.errors.join("；")}</span></div>}
+        </div>
+      </DialogBody>
+      <DialogFooter>
+        <Button variant="outline" onClick={onClose}>取消</Button>
+        <Button disabled={pending || parsed.errors.length > 0} onClick={() => onRun(parsed.values)}><PlayIcon className="size-3.5" />开始运行</Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>;
 }
 
 export function OperatorDecisionModal({ decision, onResponded }: { decision?: OperatorDecision | undefined; onResponded: () => void }) {
@@ -54,13 +57,18 @@ export function OperatorDecisionModal({ decision, onResponded }: { decision?: Op
     onSuccess: onResponded
   });
   if (!decision) return null;
-  return <Modal open title="测试运行等待操作员判断" width={660}>
-    <div className="operator-decision">
-      <Badge tone="warn">阻塞执行</Badge>
-      <h3>{decision.prompt}</h3>
-      <div>{decision.options.map((option) => <Btn key={String(option.value)} variant="primary" disabled={respond.isPending} onClick={() => respond.mutate(String(option.value))}>{option.label}</Btn>)}</div>
-      {respond.isError && <div className="alert"><IconAlert size={15} /><span>{errorMessage(respond.error)}</span></div>}
-      <small className="muted-copy">该确认只属于当前 Run；应用关闭后 Run 会被标记为 interrupted。</small>
-    </div>
-  </Modal>;
+  return <Dialog open onOpenChange={() => undefined}>
+    <DialogContent className="w-[660px]">
+      <DialogHeader title="测试运行等待操作员判断" />
+      <DialogBody>
+        <div className="flex flex-col items-start gap-3.5">
+          <Badge variant="warning">阻塞执行</Badge>
+          <h3 className="m-0 text-base font-semibold">{decision.prompt}</h3>
+          <div className="flex flex-wrap gap-2">{decision.options.map((option) => <Button key={String(option.value)} disabled={respond.isPending} onClick={() => respond.mutate(String(option.value))}>{option.label}</Button>)}</div>
+          {respond.isError && <div className="flex items-center gap-1.5 rounded-md border border-destructive/60 bg-destructive/10 px-3 py-2 text-xs text-destructive"><CircleAlertIcon className="size-4 shrink-0" /><span>{errorMessage(respond.error)}</span></div>}
+          <small className="text-xs text-muted-foreground">该确认只属于当前 Run；应用关闭后 Run 会被标记为 interrupted。</small>
+        </div>
+      </DialogBody>
+    </DialogContent>
+  </Dialog>;
 }

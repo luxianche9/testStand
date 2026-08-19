@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { TriangleAlertIcon, PlayIcon, RefreshCwIcon, XIcon } from "lucide-react";
 import { activeExecutionActivities, executionHardwareIds } from "@testforge/contracts/execution";
 import type { TaskValidationResult, TestStep, TestTask } from "@testforge/contracts/orchestration";
 import type { ProjectDocument } from "@testforge/contracts/projects";
 import { errorMessage } from "../../shared/errors.js";
-import { IconAlert, IconPlay, IconRefresh } from "../../shared/icons.js";
-import { Badge, Btn, Modal, Spinner } from "../../shared/ui.js";
+import { Badge } from "../../shared/ui/badge";
+import { Button } from "../../shared/ui/button";
+import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader } from "../../shared/ui/dialog";
+import { Centered } from "../../shared/ui/empty-state";
+import { Spinner } from "../../shared/ui/skeleton";
 import { useDashboard, useProjectDocument } from "../../shared/queries.js";
 import { queryKeys } from "../../shared/query-keys.js";
 import { useResizableWidth } from "../../shared/resizable.js";
@@ -40,11 +44,11 @@ export function OrchestrationPage() {
 
   useEffect(() => { setSelectedRunId(undefined); }, [project.data?.path, project.data?.file.task.taskId]);
 
-  if (project.isLoading) return <div className="centered"><Spinner label="正在加载测试编排…" /></div>;
-  if (project.isError || !project.data) return <div className="centered alert"><IconAlert size={15} /><span>{errorMessage(project.error ?? "未打开工程")}</span></div>;
+  if (project.isLoading) return <Centered><Spinner label="正在加载测试编排…" /></Centered>;
+  if (project.isError || !project.data) return <Centered><div className="flex items-center gap-2 rounded-md border border-destructive/60 bg-destructive/10 px-3 py-2 text-sm text-destructive"><TriangleAlertIcon className="size-4 shrink-0" /><span>{errorMessage(project.error ?? "未打开工程")}</span></div></Centered>;
 
-  return <main className="orchestration-page">
-    <div className="orchestration-shell single-task">
+  return <main className="flex min-h-0 min-w-0 flex-1 flex-col bg-background">
+    <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)]">
       <TaskWorkspace
         key={`${project.data.file.projectId}:${project.data.path ?? "untitled"}`}
         project={project.data}
@@ -128,28 +132,34 @@ function TaskWorkspace({ project, selectedRunId, onRunSelected }: {
   const editing = findStep(task, editingStepId);
   const error = apply.error ?? validate.error ?? start.error;
 
-  return <section className="suite-workspace">
-    <div className="suite-toolbar">
-      <Btn variant="subtle" icon={<IconRefresh size={14} />} onClick={() => { void client.invalidateQueries({ queryKey: queryKeys.projectDocument }); }}>刷新</Btn>
-      <Btn variant="subtle" disabled={apply.isPending} onClick={() => apply.mutate(task)}>应用</Btn>
-      <Btn variant="subtle" disabled={validate.isPending} onClick={() => validate.mutate(task)}>校验</Btn>
-      <Btn
-        variant="primary"
-        icon={<IconPlay size={13} />}
+  return <section className="relative flex min-h-0 min-w-0 flex-col">
+    <div className="flex items-center justify-end gap-2 border-b bg-card px-3 py-2">
+      <Button variant="ghost" size="sm" onClick={() => { void client.invalidateQueries({ queryKey: queryKeys.projectDocument }); }}><RefreshCwIcon className="size-3.5" />刷新</Button>
+      <Button variant="ghost" size="sm" disabled={apply.isPending} onClick={() => apply.mutate(task)}>应用</Button>
+      <Button variant="ghost" size="sm" disabled={validate.isPending} onClick={() => validate.mutate(task)}>校验</Button>
+      <Button
+        size="sm"
         disabled={start.isPending || manualBusy}
         title={manualBusy ? `手动调用正在使用：${manualBusyHardwareIds.join(", ")}` : undefined}
         onClick={() => { if (task.inputs.length > 0) setRunInputsOpen(true); else start.mutate({}); }}
-      >运行</Btn>
+      ><PlayIcon className="size-3.5" />运行</Button>
     </div>
 
-    {(error || notice || manualBusy) && <div className={error ? "orchestration-error" : "orchestration-notice"}>{error ? <><IconAlert size={15} />{errorMessage(error)}</> : manualBusy ? `手动调用正在使用 Run 所需硬件（${manualBusyHardwareIds.join(", ")}），完成后才能启动。` : notice}</div>}
+    {(error || notice || manualBusy) && <div className={`mx-4 mt-2 flex items-center gap-2 rounded-md border px-3 py-2 text-xs ${error ? "border-destructive/60 bg-destructive/10 text-destructive" : "border-success/40 bg-success/10 text-success"}`}>
+      {error && <TriangleAlertIcon className="size-4 shrink-0" />}
+      <span>{error ? errorMessage(error) : manualBusy ? `手动调用正在使用 Run 所需硬件（${manualBusyHardwareIds.join(", ")}），完成后才能启动。` : notice}</span>
+    </div>}
 
-    <div className="suite-editor-grid" style={{ gridTemplateColumns: `150px minmax(0, 1fr)${editing ? ` 5px ${inspector.width}px` : ""}` }}>
+    <div className="grid min-h-0 flex-1" style={{ gridTemplateColumns: `150px minmax(0, 1fr)${editing ? ` 5px ${inspector.width}px` : ""}` }}>
       <StepPalette onAdd={addStep} />
-      <div className="task-outline-pane">
+      <div className="flex min-w-0 flex-col gap-3 overflow-auto p-3.5">
         <VariableEditor task={task} onChange={update} />
-        {SECTIONS.map((name) => <div className={`sequence-section${section === name ? " active" : ""}`} key={name} onClick={() => setSection(name)}>
-          <h3>{SECTION_LABELS[name]} <Badge>{task[name].length}</Badge></h3>
+        {SECTIONS.map((name) => <section
+          className={`rounded-md border p-2.5 ${section === name ? "border-ring" : ""}`}
+          key={name}
+          onClick={() => setSection(name)}
+        >
+          <h3 className="mb-2 flex items-center gap-2 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">{SECTION_LABELS[name]} <Badge variant="secondary">{task[name].length}</Badge></h3>
           <StepOutline
             steps={task[name]}
             selected={selectedStepId}
@@ -157,18 +167,25 @@ function TaskWorkspace({ project, selectedRunId, onRunSelected }: {
             onEdit={setEditingStepId}
             onMove={(sourceId, targetId) => update(moveTaskStep(task, sourceId, targetId))}
           />
-          {task[name].length === 0 && <div className="ide-empty">从左侧添加步骤</div>}
-        </div>)}
+          {task[name].length === 0 && <div className="p-4 text-center text-xs text-muted-foreground/60">从左侧添加步骤</div>}
+        </section>)}
         {validation && <ValidationPanel validation={validation} onSelect={setSelectedStepId} />}
       </div>
       {editing && <>
-        <div className="col-resize-handle" role="separator" aria-orientation="vertical" aria-label="调整步骤属性面板宽度" title="拖拽调整宽度" {...inspector.handleProps} />
-        <aside className="step-inspector" aria-label="步骤属性">
-          <header className="step-inspector-head">
-            <strong>步骤属性 · {stepTypeLabel(editing.type)}</strong>
-            <Btn variant="subtle" aria-label="关闭步骤属性" onClick={() => setEditingStepId(undefined)}>×</Btn>
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="调整步骤属性面板宽度"
+          title="拖拽调整宽度"
+          className="cursor-col-resize bg-transparent transition-colors hover:bg-ring/30"
+          {...inspector.handleProps}
+        />
+        <aside className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] border-l bg-secondary/50" aria-label="步骤属性">
+          <header className="flex items-center justify-between gap-2 border-b px-3 py-2.5 text-xs">
+            <strong className="truncate text-sm font-semibold">步骤属性 · {stepTypeLabel(editing.type)}</strong>
+            <Button variant="ghost" size="icon-xs" aria-label="关闭步骤属性" onClick={() => setEditingStepId(undefined)}><XIcon className="size-3.5" /></Button>
           </header>
-          <div className="step-inspector-body">
+          <div className="min-h-0 overflow-y-auto p-3.5">
             <StepProperties
               step={editing}
               task={task}
@@ -181,14 +198,15 @@ function TaskWorkspace({ project, selectedRunId, onRunSelected }: {
         </aside>
       </>}
     </div>
-    <Modal
-      open={Boolean(selectedRunId)}
-      onClose={() => onRunSelected(undefined)}
-      title="运行结果"
-      width={760}
-    >
-      {selectedRunId && <RunDetail key={selectedRunId} runId={selectedRunId} />}
-    </Modal>
+
+    <Dialog open={Boolean(selectedRunId)} onOpenChange={(open) => { if (!open) onRunSelected(undefined); }}>
+      <DialogContent size="xl" className="w-[760px]">
+        <DialogHeader title="运行结果" onClose={() => onRunSelected(undefined)} />
+        <DialogBody>
+          {selectedRunId && <RunDetail key={selectedRunId} runId={selectedRunId} />}
+        </DialogBody>
+      </DialogContent>
+    </Dialog>
 
     <RunInputsModal
       open={runInputsOpen}
@@ -197,15 +215,18 @@ function TaskWorkspace({ project, selectedRunId, onRunSelected }: {
       onClose={() => setRunInputsOpen(false)}
       onRun={(values) => start.mutate(values)}
     />
-    <Modal
-      open={Boolean(draftState.pendingExternal)}
-      title="工程中的编排已在外部更新"
-      footer={<>
-        <Btn onClick={() => setDraftState((current) => resolveExternalTask(current, "adopt-external"))}>采用外部版本</Btn>
-        <Btn variant="primary" onClick={() => setDraftState((current) => resolveExternalTask(current, "keep-local"))}>保留我的编辑</Btn>
-      </>}
-    >
-      <p>检测到工程文件中的任务已变化，同时当前页面还有未应用的编辑。请选择要继续使用的版本；此操作不会写入磁盘。</p>
-    </Modal>
+
+    <Dialog open={Boolean(draftState.pendingExternal)} onOpenChange={() => undefined}>
+      <DialogContent>
+        <DialogHeader title="工程中的编排已在外部更新" />
+        <DialogBody>
+          <p className="m-0 text-sm">检测到工程文件中的任务已变化，同时当前页面还有未应用的编辑。请选择要继续使用的版本；此操作不会写入磁盘。</p>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setDraftState((current) => resolveExternalTask(current, "adopt-external"))}>采用外部版本</Button>
+          <Button onClick={() => setDraftState((current) => resolveExternalTask(current, "keep-local"))}>保留我的编辑</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </section>;
 }

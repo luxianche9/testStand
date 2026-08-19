@@ -27,8 +27,8 @@ import {
   type ComponentPropsWithoutRef,
   type FC
 } from "react";
-import { Button, buttonVariants, Input, Skeleton } from "./ui";
-import { cn } from "./utils";
+import { Button, buttonVariants, Input, Skeleton } from "../../shared/ui/index.js";
+import { cn } from "../../shared/ui/index.js";
 
 const CloseDrawerContext = createContext<() => void>(() => undefined);
 
@@ -284,7 +284,7 @@ function ThreadListItemMore({ onRename }: { onRename: () => void }) {
         side="right"
         align="start"
         sideOffset={6}
-        className="tf-agent-theme z-[100] min-w-32 overflow-hidden rounded-xl border bg-popover/95 p-1.5 text-popover-foreground shadow-lg backdrop-blur-sm"
+        className="z-[100] min-w-32 overflow-hidden rounded-xl border bg-popover/95 p-1.5 text-popover-foreground shadow-lg backdrop-blur-sm"
       >
         <ThreadListItemMorePrimitive.Item className="flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm outline-none hover:bg-accent focus:bg-accent" onSelect={onRename}>
           <PencilIcon className="size-4" />重命名

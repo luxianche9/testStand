@@ -2,8 +2,11 @@ import { useScrollLock } from "@assistant-ui/react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { ChevronDownIcon, LoaderIcon } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui";
-import { cn } from "./utils";
+import { Collapsible as CollapsiblePrimitive } from "radix-ui";
+const Collapsible = CollapsiblePrimitive.Root;
+const CollapsibleTrigger = CollapsiblePrimitive.Trigger;
+const CollapsibleContent = CollapsiblePrimitive.Content;
+import { cn } from "../../shared/ui/index.js";
 
 const ANIMATION_DURATION = 160;
 const variants = cva("group/tool-group-root w-full", {

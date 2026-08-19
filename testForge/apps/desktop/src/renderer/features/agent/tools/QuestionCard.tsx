@@ -5,8 +5,8 @@ import {
 } from "@assistant-ui/react-opencode";
 import { AlertCircleIcon, CheckCircle2Icon, CircleHelpIcon, LoaderIcon, XCircleIcon } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Badge, Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, Checkbox, Label, Textarea } from "../ui";
-import { cn } from "../utils";
+import { Badge, Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, Checkbox, Label, Textarea } from "../../../shared/ui/index.js";
+import { cn } from "../../../shared/ui/index.js";
 
 type PendingQuestionState = { selectedLabels: string[]; customAnswer: string };
 const emptyState = (request: OpenCodeQuestionRequest): PendingQuestionState[] => request.questions.map(() => ({ selectedLabels: [], customAnswer: "" }));

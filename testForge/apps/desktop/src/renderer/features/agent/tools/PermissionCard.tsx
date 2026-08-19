@@ -5,7 +5,7 @@ import {
 } from "@assistant-ui/react-opencode";
 import { CheckCircle2Icon, LoaderIcon, ShieldAlertIcon, XCircleIcon } from "lucide-react";
 import { useState } from "react";
-import { Badge, Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui";
+import { Badge, Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../../../shared/ui/index.js";
 
 function replyLabel(reply: OpenCodePermissionResponse) {
   if (reply === "always") return "已始终允许";

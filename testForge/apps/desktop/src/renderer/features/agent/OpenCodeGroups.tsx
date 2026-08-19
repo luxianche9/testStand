@@ -1,7 +1,7 @@
 import { useAuiState } from "@assistant-ui/react";
 import { BrainIcon } from "lucide-react";
 import { memo, type FC, type PropsWithChildren } from "react";
-import { cn } from "./utils";
+import { cn } from "../../shared/ui/index.js";
 
 type Group = { indices: readonly number[] };
 

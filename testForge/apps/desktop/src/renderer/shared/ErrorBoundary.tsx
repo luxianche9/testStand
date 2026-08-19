@@ -1,5 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
-import { Btn } from "./ui.js";
+import { Button } from "./ui/button";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -34,12 +34,12 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   render(): ReactNode {
     if (this.state.failed) {
       return this.props.fallback ?? (
-        <section className="feature-error" role="alert">
-          <strong>此功能暂时无法显示</strong>
-          <span>页面资源可能已更新，或该功能发生了临时错误。</span>
-          <div className="feature-error-actions">
-            <Btn onClick={this.retry}>重试</Btn>
-            <Btn variant="primary" onClick={this.reload}>重新加载应用</Btn>
+        <section role="alert" className="grid min-h-0 flex-1 place-content-center justify-items-center gap-2 p-8 text-center text-muted-foreground">
+          <strong className="text-base text-foreground">此功能暂时无法显示</strong>
+          <span className="text-sm">页面资源可能已更新，或该功能发生了临时错误。</span>
+          <div className="mt-2 flex gap-2">
+            <Button variant="outline" onClick={this.retry}>重试</Button>
+            <Button onClick={this.reload}>重新加载应用</Button>
           </div>
         </section>
       );

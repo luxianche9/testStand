@@ -2,8 +2,11 @@ import type { ToolCallMessagePartComponent } from "@assistant-ui/react";
 import { PatchDiff } from "@pierre/diffs/react";
 import { CheckIcon, ChevronRightIcon } from "lucide-react";
 import { memo, useMemo, useState } from "react";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui";
-import { cn } from "../utils";
+import { Collapsible as CollapsiblePrimitive } from "radix-ui";
+const Collapsible = CollapsiblePrimitive.Root;
+const CollapsibleTrigger = CollapsiblePrimitive.Trigger;
+const CollapsibleContent = CollapsiblePrimitive.Content;
+import { cn } from "../../../shared/ui/index.js";
 import { ToolStatusIcon, getPatchInfo, isCancelledToolStatus, str } from "./shared";
 
 type PatchBlock = { type: string; path: string; body: string };

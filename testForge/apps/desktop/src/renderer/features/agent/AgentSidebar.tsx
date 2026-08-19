@@ -48,7 +48,7 @@ import { OpenCodeReasoningGroup, OpenCodeToolGroup } from "./OpenCodeGroups";
 import { usePersistedThreadDrawer } from "./drawer";
 import { Thread } from "./Thread";
 import { ThreadList } from "./ThreadList";
-import { Button, TooltipIconButton } from "./ui";
+import { Button, TooltipIconButton } from "../../shared/ui/index.js";
 import { FallbackTool } from "./tools/OpenCodeTools";
 import { OpenCodeToolUIs } from "./tools/toolkit";
 import {
@@ -147,7 +147,7 @@ export function AssistantSidebar({ gatewayRunning, onClose, onOpenSettings }: { 
   };
 
   return (
-    <aside ref={rootRef} className="tf-agent-sidebar tf-agent-theme" aria-label="OpenCode AI 助手">
+    <aside ref={rootRef} className="tf-agent-sidebar" aria-label="OpenCode AI 助手">
       <div
         className="tf-agent-resize-handle"
         role="separator"
@@ -497,15 +497,15 @@ function RunningShell({
           }} />
           {workspace && (
             <DialogPrimitive.Portal container={workspace}>
-              <div className="tf-agent-theme">
+              <div>
                 <DialogPrimitive.Overlay className="absolute inset-0 z-50 bg-black/25 backdrop-blur-[1px]" />
-                <DialogPrimitive.Content className="absolute inset-y-0 start-0 z-[51] flex w-64 max-w-[85%] flex-col border-e bg-sidebar text-sidebar-foreground shadow-xl outline-none">
-                  <header className="flex h-12 shrink-0 items-center justify-between border-b border-sidebar-border px-3">
+                <DialogPrimitive.Content className="absolute inset-y-0 start-0 z-[51] flex w-64 max-w-[85%] flex-col border-e bg-card text-card-foreground shadow-xl outline-none">
+                  <header className="flex h-12 shrink-0 items-center justify-between border-b px-3">
                     <div><DialogPrimitive.Title className="text-sm font-semibold">会话历史</DialogPrimitive.Title><DialogPrimitive.Description className="text-[10px] text-muted-foreground">搜索、切换或管理 OpenCode 会话</DialogPrimitive.Description></div>
                     <DialogPrimitive.Close asChild><TooltipIconButton tooltip="关闭会话抽屉" aria-label="关闭会话抽屉"><XIcon className="size-4" /></TooltipIconButton></DialogPrimitive.Close>
                   </header>
                   <div className="min-h-0 flex-1 overflow-y-auto p-2"><ThreadList onThreadSelected={() => onDrawerOpenChange(false)} /></div>
-                  <p className="border-t border-sidebar-border px-3 py-2 text-[10px] text-muted-foreground">Ctrl/Cmd+B 切换，Esc 关闭</p>
+                  <p className="border-t px-3 py-2 text-[10px] text-muted-foreground">Ctrl/Cmd+B 切换，Esc 关闭</p>
                 </DialogPrimitive.Content>
               </div>
             </DialogPrimitive.Portal>

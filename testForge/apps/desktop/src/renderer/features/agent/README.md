@@ -9,8 +9,8 @@ This module is adapted from the official `assistant-ui` OpenCode example and UI 
 Upstream is MIT licensed. TestForge adaptations keep the existing Electron/OpenCode runtime and IPC,
 translate product copy to Chinese, enable OpenCode-compatible text/image/PDF attachments, add model and Agent
 selection, `/` commands and `@` project-file context, replace the persistent thread sidebar with a 16rem overlay
-drawer, scope the Tailwind theme to `.tf-agent-theme`, and mount local dialogs/menus/tooltips with that theme
-class. Voice and remote-image generation remain intentionally out of scope because the current sidecar does not
+drawer, and consume the app-wide Tailwind design tokens and shared component library in
+`src/renderer/shared/ui` (the former `.tf-agent-theme` scope was removed when the design system went global). Voice and remote-image generation remain intentionally out of scope because the current sidecar does not
 provide those adapters. The pinned OpenCode adapter leaves a newly selected thread as a disabled local placeholder
 until its remote session is initialized, so all New actions await the assistant-ui thread-list runtime's
 `initialize()` operation before continuing.

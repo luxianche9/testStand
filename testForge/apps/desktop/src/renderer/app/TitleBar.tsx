@@ -6,16 +6,18 @@ import {
   ClipboardClockIcon,
   FolderIcon,
   InboxIcon,
+  Maximize2Icon,
   MinusIcon,
+  Minimize2Icon,
   Repeat2Icon,
   ServerIcon,
   SettingsIcon,
-  SquareIcon,
   XIcon
 } from "lucide-react";
 import type { ProjectDocument } from "@testforge/contracts/projects";
 import type { ProjectView } from "@testforge/contracts/storage";
-import { IconMaximize, IconRestore } from "../shared/icons.js";
+import { cn } from "../shared/ui/cn";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../shared/ui/dropdown-menu";
 import type { AppPage } from "./app-navigation.js";
 
 export function TitleBar({ page, projectView, project, assistantOpen, busy, pendingTaskCount, wiringLogOpen, onToggleWiringLog, onNavigate, onProjectAction, onToggleAssistant }: {
@@ -32,60 +34,142 @@ export function TitleBar({ page, projectView, project, assistantOpen, busy, pend
   onToggleAssistant: () => void;
 }) {
   const [maximized, setMaximized] = useState(false);
-  const [projectMenuOpen, setProjectMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
   const inProject = page !== "welcome" && Boolean(project);
 
   useEffect(() => window.testforge.events.subscribe("window-state", (payload) => {
     const state = payload as { maximized?: boolean };
     if (typeof state.maximized === "boolean") setMaximized(state.maximized);
   }), []);
-  useEffect(() => {
-    if (!projectMenuOpen) return;
-    const close = (event: MouseEvent) => { if (!menuRef.current?.contains(event.target as Node)) setProjectMenuOpen(false); };
-    window.addEventListener("mousedown", close);
-    return () => window.removeEventListener("mousedown", close);
-  }, [projectMenuOpen]);
 
   const projectLabel = inProject && project ? project.file.name : "项目";
   return (
-    <header className="titlebar">
-      <span className="brand-button">TestForge</span>
-      <div className="top-project-menu" ref={menuRef}>
-        <button className={`top-nav-item project${projectMenuOpen ? " active" : ""}`} aria-label="项目文件夹菜单" aria-haspopup="menu" aria-expanded={projectMenuOpen} onClick={() => setProjectMenuOpen((open) => !open)}>
-          <FolderIcon size={15} /><span>{projectLabel}{inProject && project?.dirty ? " *" : ""}</span><ChevronDownIcon size={12} />
-        </button>
-        {projectMenuOpen && <div className="file-menu-panel top-menu-panel" role="menu">
-          <button role="menuitem" disabled={busy} onClick={() => { setProjectMenuOpen(false); onProjectAction("open"); }}>打开</button>
-          {inProject && <button role="menuitem" disabled={busy} onClick={() => { setProjectMenuOpen(false); onProjectAction("save"); }}>保存<span>Ctrl+S</span></button>}
-          {inProject && <button role="menuitem" disabled={busy} onClick={() => { setProjectMenuOpen(false); onProjectAction("welcome"); }}>退出</button>}
-        </div>}
-      </div>
-      <NavButton active={page === "settings"} label="设置" icon={<SettingsIcon size={15} />} onClick={() => onNavigate("settings")} />
+    <header className="relative flex h-[42px] flex-none items-center gap-0.5 border-b bg-secondary/60 [-webkit-app-region:drag] select-none">
+      <span className="flex items-center self-stretch px-3.5 text-[13px] font-bold tracking-tight">TestForge</span>
 
-      {inProject ? <ViewSlider value={isProjectViewPage(page) ? page : projectView} onChange={onNavigate} /> : <span className="titlebar-drag" />}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            aria-label="项目文件夹菜单"
+            className="inline-flex h-[30px] max-w-[220px] items-center gap-1.5 rounded-md px-2.5 text-xs text-muted-foreground transition-colors [-webkit-app-region:no-drag] hover:bg-accent hover:text-foreground data-[state=open]:bg-accent data-[state=open]:text-foreground"
+          >
+            <FolderIcon className="size-[15px]" />
+            <span className="truncate">{projectLabel}{inProject && project?.dirty ? " *" : ""}</span>
+            <ChevronDownIcon className="size-3" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start">
+          <DropdownMenuItem disabled={busy} onSelect={() => onProjectAction("open")}>打开</DropdownMenuItem>
+          {inProject && (
+            <DropdownMenuItem disabled={busy} onSelect={() => onProjectAction("save")}>
+              保存<span className="text-xs text-muted-foreground">Ctrl+S</span>
+            </DropdownMenuItem>
+          )}
+          {inProject && <DropdownMenuItem disabled={busy} onSelect={() => onProjectAction("welcome")}>退出</DropdownMenuItem>}
+        </DropdownMenuContent>
+      </DropdownMenu>
 
-      <span className="titlebar-drag" />
-      <button className={`titlebar-btn wiring-tasks${wiringLogOpen ? " active" : ""}`} title="信箱" aria-label="信箱" aria-pressed={wiringLogOpen} onClick={onToggleWiringLog}>
-        <InboxIcon size={16} /><span>信箱</span>{pendingTaskCount > 0 && <span className="titlebar-dot" aria-hidden="true" />}
+      <NavButton active={page === "settings"} label="设置" icon={<SettingsIcon className="size-[15px]" />} onClick={() => onNavigate("settings")} />
+
+      {inProject ? <ViewSlider value={isProjectViewPage(page) ? page : projectView} onChange={onNavigate} /> : <span className="flex-1 self-stretch" />}
+
+      <span className="flex-1 self-stretch" />
+
+      <TitleBarAction
+        label="信箱"
+        active={wiringLogOpen}
+        pressed={wiringLogOpen}
+        onClick={onToggleWiringLog}
+        icon={<InboxIcon className="size-4" />}
+        dot={pendingTaskCount > 0}
+      />
+      {inProject && (
+        <TitleBarAction
+          label="AI助手"
+          ariaLabel={assistantOpen ? "关闭 AI 侧栏" : "打开 AI 侧栏"}
+          active={assistantOpen}
+          pressed={assistantOpen}
+          onClick={onToggleAssistant}
+          icon={<BotIcon className="size-4" />}
+        />
+      )}
+      <button
+        title="最小化"
+        aria-label="最小化"
+        className={winButtonClass}
+        onClick={() => void window.testforge.window.minimize()}
+      >
+        <MinusIcon className="size-[15px]" />
       </button>
-      {inProject && <button className={`titlebar-btn assistant${assistantOpen ? " active" : ""}`} title={assistantOpen ? "关闭 AI 侧栏" : "打开 AI 侧栏"} aria-label={assistantOpen ? "关闭 AI 侧栏" : "打开 AI 侧栏"} aria-pressed={assistantOpen} onClick={onToggleAssistant}><BotIcon size={16} /><span>AI助手</span></button>}
-      <button className="titlebar-btn win" title="最小化" aria-label="最小化" onClick={() => void window.testforge.window.minimize()}><MinusIcon size={15} /></button>
-      <button className="titlebar-btn win" title={maximized ? "还原" : "最大化"} aria-label={maximized ? "还原" : "最大化"} onClick={() => void window.testforge.window.toggleMaximize()}>{maximized ? <IconRestore size={14} /> : <IconMaximize size={14} />}</button>
-      <button className="titlebar-btn win close" title="关闭" aria-label="关闭" onClick={() => void window.testforge.window.close()}><XIcon size={15} /></button>
+      <button
+        title={maximized ? "还原" : "最大化"}
+        aria-label={maximized ? "还原" : "最大化"}
+        className={winButtonClass}
+        onClick={() => void window.testforge.window.toggleMaximize()}
+      >
+        {maximized ? <Minimize2Icon className="size-3.5" /> : <Maximize2Icon className="size-3.5" />}
+      </button>
+      <button
+        title="关闭"
+        aria-label="关闭"
+        className={cn(winButtonClass, "hover:bg-[#e81123] hover:text-white")}
+        onClick={() => void window.testforge.window.close()}
+      >
+        <XIcon className="size-[15px]" />
+      </button>
     </header>
   );
 }
 
+const winButtonClass =
+  "grid h-[42px] w-10 place-items-center text-muted-foreground transition-colors [-webkit-app-region:no-drag] hover:bg-accent hover:text-foreground";
+
 function NavButton({ active, label, icon, onClick }: { active: boolean; label: string; icon: ReactNode; onClick: () => void }) {
-  return <button className={`top-nav-item${active ? " active" : ""}`} onClick={onClick}>{icon}<span>{label}</span></button>;
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "inline-flex h-[30px] items-center gap-1.5 rounded-md px-2.5 text-xs text-muted-foreground transition-colors [-webkit-app-region:no-drag] hover:bg-accent hover:text-foreground",
+        active && "bg-accent text-foreground"
+      )}
+    >
+      {icon}
+      <span className="max-[1100px]:hidden">{label}</span>
+    </button>
+  );
+}
+
+function TitleBarAction({ label, ariaLabel, icon, active, pressed, dot, onClick }: {
+  label: string;
+  ariaLabel?: string;
+  icon: ReactNode;
+  active?: boolean;
+  pressed?: boolean;
+  dot?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      title={ariaLabel ?? label}
+      aria-label={ariaLabel ?? label}
+      aria-pressed={pressed}
+      onClick={onClick}
+      className={cn(
+        "relative mx-0.5 inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs text-muted-foreground transition-colors [-webkit-app-region:no-drag] hover:bg-accent hover:text-foreground",
+        active && "bg-accent text-foreground"
+      )}
+    >
+      {icon}
+      <span className="max-[1100px]:hidden">{label}</span>
+      {dot && <span className="absolute top-1 right-1 size-[7px] rounded-full bg-destructive" aria-hidden="true" />}
+    </button>
+  );
 }
 
 const PROJECT_VIEWS: { view: ProjectView; label: string; icon: ReactNode }[] = [
-  { view: "manual", label: "设备管理", icon: <ServerIcon size={15} /> },
-  { view: "wiring", label: "工位接线", icon: <CableIcon size={15} /> },
-  { view: "orchestration", label: "编排测试", icon: <Repeat2Icon size={15} /> },
-  { view: "logs", label: "运行日志", icon: <ClipboardClockIcon size={15} /> }
+  { view: "manual", label: "设备管理", icon: <ServerIcon className="size-[15px]" /> },
+  { view: "wiring", label: "工位接线", icon: <CableIcon className="size-[15px]" /> },
+  { view: "orchestration", label: "编排测试", icon: <Repeat2Icon className="size-[15px]" /> },
+  { view: "logs", label: "运行日志", icon: <ClipboardClockIcon className="size-[15px]" /> }
 ];
 
 function isProjectViewPage(page: AppPage): page is ProjectView {
@@ -111,18 +195,33 @@ function ViewSlider({ value, onChange }: { value: ProjectView; onChange: (page: 
   }, [activeIndex]);
 
   return (
-    <div className="view-slider" role="tablist" aria-label="项目子页面" ref={railRef}>
-      {thumb && <span className="view-slider-thumb" style={{ left: thumb.left, width: thumb.width }} aria-hidden="true" />}
+    <div
+      role="tablist"
+      aria-label="项目子页面"
+      ref={railRef}
+      className="absolute top-1/2 left-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-0.5 rounded-lg border bg-foreground/[0.04] p-0.5 [-webkit-app-region:no-drag]"
+    >
+      {thumb && (
+        <span
+          aria-hidden="true"
+          className="absolute top-0.5 bottom-0.5 rounded-md bg-background shadow-sm ring-1 ring-border transition-[left,width] duration-200 ease-out"
+          style={{ left: thumb.left, width: thumb.width }}
+        />
+      )}
       {PROJECT_VIEWS.map((item, index) => (
         <button
           key={item.view}
           role="tab"
           aria-selected={index === activeIndex}
-          className={`view-slider-item${index === activeIndex ? " active" : ""}`}
           ref={(node) => { itemRefs.current[index] = node; }}
           onClick={() => onChange(item.view)}
+          className={cn(
+            "relative z-[1] inline-flex h-[26px] items-center gap-1.5 rounded-md px-2.5 text-xs whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground",
+            index === activeIndex && "text-foreground"
+          )}
         >
-          {item.icon}<span>{item.label}</span>
+          {item.icon}
+          <span className="max-[1100px]:hidden">{item.label}</span>
         </button>
       ))}
     </div>

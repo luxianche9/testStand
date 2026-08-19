@@ -56,12 +56,15 @@ test("renders the saved wiring canvas as a recent-project React Flow preview", a
       return document.file;
     }, projectRoot);
     await writeFile(join(projectRoot, ".testforge", "project.json"), `${JSON.stringify(file, null, 2)}\n`, "utf8");
-    await page.reload();
+    // reload 可能触发 beforeunload(dirty guard);Playwright 对 Electron 的自动 dialog dismiss 存在竞态,显式接管
+    page.on("dialog", (dialog) => void dialog.accept().catch(() => undefined));
+    await page.reload({ waitUntil: "domcontentloaded" });
     const preview = page.getByRole("img", { name: "project-preview 工位接线缩略图" });
     await expect(preview.locator(".react-flow__node")).toHaveCount(2);
     await expect(preview.locator(".react-flow__edge")).toHaveCount(1);
     const edgePath = preview.locator(".react-flow__edge.wiring-flow-edge .react-flow__edge-path");
-    await expect(edgePath).toHaveCSS("stroke", "rgb(0, 110, 255)");
+    // 接线边颜色来自设计 token --tf-wiring-edge;Chromium 对 SVG stroke 返回未解析的 oklch() 字符串,断言其等于 token 值而非具体 rgb
+    await expect(edgePath).toHaveCSS("stroke", "oklch(0.588 0.21 260.7)");
     await expect(edgePath).toHaveCSS("stroke-width", "3.5px");
     await expect(preview.locator('[data-hardware-id="DUT_A"]')).toHaveAttribute("data-show-image", "true");
     await expect(preview.locator('[data-hardware-id="DUT_A"] img')).toHaveCount(1);

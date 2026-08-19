@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import type { DeviceBundleKind } from "@testforge/contracts/devices";
+import { CircleAlertIcon, CopyIcon, DownloadIcon } from "lucide-react";
 import { errorMessage } from "../../../shared/errors.js";
-import { IconAlert, IconCopy, IconDownload } from "../../../shared/icons.js";
-import { Btn } from "../../../shared/ui.js";
+import { Button } from "../../../shared/ui/button";
 
 /** Import/export controls for the canonical hardware `.tfhw` bundle. */
 export function BundleActions({ kind, id, saved, onChanged }: {
@@ -33,16 +33,16 @@ export function BundleActions({ kind, id, saved, onChanged }: {
     }
   });
 
-  return <div className="bundle-actions">
-    <Btn variant="subtle" icon={<IconDownload size={14} />} disabled={act.isPending} onClick={() => act.mutate("import")}>导入</Btn>
-    <Btn
-      variant="subtle"
-      icon={<IconCopy size={14} />}
+  return <div className="mr-auto flex flex-wrap items-center gap-2">
+    <Button variant="ghost" size="sm" disabled={act.isPending} onClick={() => act.mutate("import")}><DownloadIcon />导入</Button>
+    <Button
+      variant="ghost"
+      size="sm"
       disabled={!saved || act.isPending}
       title={saved ? "导出为单个 .tfhw 文件" : "保存后才能导出"}
       onClick={() => act.mutate("export")}
-    >导出</Btn>
-    {notice && <span className="library-notice" role="status">{notice}</span>}
-    {error && <span className="library-notice error" role="alert" title={error}><IconAlert size={14} />{error}</span>}
+    ><CopyIcon />导出</Button>
+    {notice && <span className="inline-flex max-w-80 items-center gap-1.5 text-xs leading-normal text-muted-foreground" role="status">{notice}</span>}
+    {error && <span className="inline-flex max-w-80 items-center gap-1.5 text-xs leading-normal text-destructive" role="alert" title={error}><CircleAlertIcon className="size-3.5" />{error}</span>}
   </div>;
 }

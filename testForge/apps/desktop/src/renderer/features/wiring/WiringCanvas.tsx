@@ -2,8 +2,10 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerE
 import { Handle, NodeResizer, useUpdateNodeInternals, type NodeProps } from "@xyflow/react";
 import type { Hardware } from "@testforge/contracts/devices";
 import type { PortPosition, PortSide } from "@testforge/contracts/wiring";
-import { IconChip, IconRefresh } from "../../shared/icons.js";
-import { Badge, Btn } from "../../shared/ui.js";
+import { CableIcon, CpuIcon, RefreshCwIcon } from "lucide-react";
+import { cn } from "../../shared/ui/cn";
+import { Badge, badgeVariantFromTone } from "../../shared/ui/badge";
+import { Button } from "../../shared/ui/button";
 import { useDashboard } from "../../shared/queries.js";
 import {
   MAX_CARD_HEIGHT,
@@ -38,30 +40,41 @@ export function HardwareLibrary({ hardware, assetUrls, placed, onAdd, onRefresh 
     setChecking(false);
   };
 
-  return <aside className="hardware-library">
-    <header>
-      <strong>硬件库</strong>
-      <Btn variant="subtle" icon={<IconRefresh size={14} className={checking ? "spin" : undefined} />} disabled={checking} onClick={() => void check()}>刷新</Btn>
+  return <aside className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] border-r bg-secondary/40">
+    <header className="flex items-center justify-between gap-2 border-b px-3 py-2.5">
+      <strong className="truncate text-sm font-semibold">硬件库</strong>
+      <Button variant="ghost" size="sm" disabled={checking} onClick={() => void check()}>
+        <RefreshCwIcon className={cn("size-3.5", checking && "animate-spin")} />刷新
+      </Button>
     </header>
-    <div className="library-scroll">
+    <div className="min-h-0 overflow-auto p-2.5">
       {hardware.map((item) => {
         const onCanvas = placed.has(item.hardwareId);
         const url = item.appearanceAssetId ? assetUrls[assetKey(item.hardwareId, item.appearanceAssetId)] : undefined;
         const state = item.kind === "managed" ? availability.get(item.hardwareId)?.state ?? "checking" : undefined;
         return <article
-          className={`library-item${onCanvas ? " on-canvas" : ""}`}
+          className={cn(
+            "mb-2 overflow-hidden rounded-md border bg-card transition-[border-color,transform] active:scale-[0.99]",
+            onCanvas ? "border-ring/60" : "border-border"
+          )}
           key={item.hardwareId}
           draggable={!onCanvas}
           onDragStart={(event) => { event.dataTransfer.setData("application/testforge-hardware", item.hardwareId); event.dataTransfer.effectAllowed = "move"; }}
         >
-          <button className="library-item-main" onClick={() => onAdd(item.hardwareId)} disabled={onCanvas}>
-            <span className="library-thumb">{url ? <img src={url} alt="" /> : <IconChip size={20} />}</span>
-            <span className="library-copy"><strong>{item.label}</strong></span>
-            <Badge tone={onlineTone(item, state)}>{onlineText(item, state)}</Badge>
+          <button
+            className="flex h-10 w-full items-center gap-2 px-2 py-1 text-left transition-colors enabled:hover:bg-accent disabled:cursor-default"
+            onClick={() => onAdd(item.hardwareId)}
+            disabled={onCanvas}
+          >
+            <span className="grid size-[30px] flex-none place-items-center overflow-hidden rounded border bg-secondary text-muted-foreground [&_img]:size-full [&_img]:object-contain">
+              {url ? <img src={url} alt="" /> : <CpuIcon className="size-5" />}
+            </span>
+            <span className="min-w-0 flex-1"><strong className="block truncate text-xs">{item.label}</strong></span>
+            <Badge variant={badgeVariantFromTone(onlineTone(item, state))} className="ml-auto flex-none">{onlineText(item, state)}</Badge>
           </button>
         </article>;
       })}
-      {!hardware.length && <div className="library-empty">还没有登记设备。请到「设备管理」页登记硬件及其端口。</div>}
+      {!hardware.length && <div className="p-4 text-xs leading-normal text-muted-foreground">还没有登记设备。请到「设备管理」页登记硬件及其端口。</div>}
     </div>
   </aside>;
 }
@@ -108,7 +121,7 @@ function HardwareNode({ id, data, selected, width, height }: NodeProps<HardwareF
     <div className="flow-node-body">
       {showImage && (
         <div className="flow-node-image">
-          {data.imageUrl ? <img src={data.imageUrl} alt={data.hardware.label} /> : <IconChip size={38} />}
+          {data.imageUrl ? <img src={data.imageUrl} alt={data.hardware.label} /> : <CableIcon className="size-9" />}
         </div>
       )}
       <div className="flow-node-caption">{data.hardware.label}</div>

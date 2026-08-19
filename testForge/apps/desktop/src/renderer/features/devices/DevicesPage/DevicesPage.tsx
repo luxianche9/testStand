@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Hardware, ManagedHardware, McpServerConfig, RemoteComputer, ToolCatalogItem } from "@testforge/contracts/devices";
-import { IconRefresh } from "../../../shared/icons.js";
+import { RefreshCwIcon } from "lucide-react";
 import { QueryGate } from "../../../shared/layout.js";
 import { invalidateDeviceData } from "../../../shared/mutations.js";
 import { useDashboard, useDeviceCatalog } from "../../../shared/queries.js";
-import { Btn } from "../../../shared/ui.js";
+import { cn } from "../../../shared/ui/cn";
+import { Button } from "../../../shared/ui/button";
 import { ManualInvokePanel } from "../../manual/index.js";
 import { HardwareListTree } from "./HardwareListTree.js";
 import { RemoteComputerTree } from "./RemoteComputerTree.js";
@@ -64,14 +65,16 @@ export function DevicesPage() {
   const effectiveSelected = selected ?? (data?.computers[0] ? `c:${data.computers[0].id}` : null);
   const invokeTarget = useMemo(() => resolveInvokeTarget(effectiveSelected, data?.servers ?? [], data?.tools ?? [], data?.hardware ?? []), [data, effectiveSelected]);
 
-  return <main className="devices-workspace">
-    <div className="devices-toolbar">
-      <h1>设备管理</h1>
-      <Btn icon={<IconRefresh size={14} className={probeStatuses.isPending ? "spin" : undefined} />} onClick={() => probeStatuses.mutate()} disabled={probeStatuses.isPending || !data}>状态检测</Btn>
+  return <main className="flex min-h-0 flex-1 flex-col bg-background">
+    <div className="flex flex-none items-center gap-2 border-b bg-card px-3.5 py-2.5">
+      <h1 className="m-0 text-base font-semibold">设备管理</h1>
+      <Button variant="outline" size="sm" onClick={() => probeStatuses.mutate()} disabled={probeStatuses.isPending || !data}>
+        <RefreshCwIcon className={cn(probeStatuses.isPending && "animate-spin")} />状态检测
+      </Button>
     </div>
-    <div className="devices-body">
-      <div className="devices-tree-column">
-        <QueryGate query={query}>{(snapshot) => <div className="device-trees">
+    <div className="grid min-h-0 flex-1 grid-cols-[minmax(280px,360px)_minmax(0,1fr)]">
+      <div className="min-h-0 overflow-auto border-r bg-card p-2.5">
+        <QueryGate query={query}>{(snapshot) => <div className="grid content-start gap-3">
           <RemoteComputerTree
             data={snapshot}
             selected={effectiveSelected}
@@ -96,7 +99,7 @@ export function DevicesPage() {
           />
         </div>}</QueryGate>
       </div>
-      <section className="devices-invoke-column" aria-label="手动调用">
+      <section className="flex min-h-0 min-w-0 flex-col" aria-label="手动调用">
         <ManualInvokePanel hardwareId={invokeTarget.hardwareId} preferredToolName={invokeTarget.toolName} />
       </section>
     </div>

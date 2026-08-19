@@ -4,9 +4,11 @@ import { useMutation } from "@tanstack/react-query";
 import type { RemoteComputer } from "@testforge/contracts/devices";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { CircleAlertIcon } from "lucide-react";
 import { errorMessage } from "../../../../shared/errors.js";
-import { IconAlert } from "../../../../shared/icons.js";
-import { Btn, Modal } from "../../../../shared/ui.js";
+import { Button } from "../../../../shared/ui/button";
+import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader } from "../../../../shared/ui/dialog";
+import { Input, Select } from "../../../../shared/ui/input";
 import { EditorField } from "./EditorField.js";
 
 const computerEditorSchema = z.object({
@@ -75,28 +77,28 @@ export function ComputerEditor({ open, computer, onClose, onChanged }: {
   });
   const submit = handleSubmit(async (values) => { await save.mutateAsync(values); });
 
-  return <Modal
-    open={open}
-    onClose={onClose}
-    title={computer ? "编辑远程电脑" : "添加远程电脑"}
-    width={640}
-    footer={<>
-      <Btn onClick={onClose}>取消</Btn>
-      <Btn type="submit" form="computer-editor-form" variant="primary" disabled={save.isPending || !isValid}>
-        {save.isPending ? "保存中…" : "保存"}
-      </Btn>
-    </>}
-  >
-    <form id="computer-editor-form" className="form-grid" onSubmit={(event) => { void submit(event); }}>
-      <EditorField label="电脑 ID" required error={errors.id?.message}><input className="input" {...register("id")} disabled={Boolean(computer)} /></EditorField>
-      <EditorField label="显示名称" required error={errors.label?.message}><input className="input" {...register("label")} /></EditorField>
-      <EditorField label="IP 地址 / 主机名" required error={errors.address?.message}><input className="input" {...register("address")} placeholder="192.168.3.51" /></EditorField>
-      <EditorField label="SSH 端口" required error={errors.sshPort?.message}><input className="input" inputMode="numeric" {...register("sshPort")} /></EditorField>
-      <EditorField label="SSH 用户名" required error={errors.username?.message}><input className="input" {...register("username")} /></EditorField>
-      <EditorField label="远程 Shell" required error={errors.shell?.message}><select className="input" {...register("shell")}><option value="powershell">PowerShell</option><option value="posix">POSIX sh</option></select></EditorField>
-      <EditorField label={computer ? "SSH 密码（留空保持不变）" : "SSH 密码"} error={errors.sshSecret?.message}><input className="input" type="password" {...register("sshSecret")} /></EditorField>
-      <div className="span-2 form-note">MCP Server 在电脑保存后逐个添加，每个硬件对应一个独立 Server。</div>
-      {save.isError && <div className="alert span-2"><IconAlert size={15} /><span>{errorMessage(save.error)}</span></div>}
-    </form>
-  </Modal>;
+  return <Dialog open={open} onOpenChange={(value) => { if (!value) onClose(); }}>
+    <DialogContent size="default" className="w-[640px]">
+      <DialogHeader title={computer ? "编辑远程电脑" : "添加远程电脑"} onClose={onClose} />
+      <DialogBody>
+        <form id="computer-editor-form" className="grid grid-cols-2 gap-x-3.5 gap-y-3" onSubmit={(event) => { void submit(event); }}>
+          <EditorField label="电脑 ID" required error={errors.id?.message}><Input {...register("id")} disabled={Boolean(computer)} /></EditorField>
+          <EditorField label="显示名称" required error={errors.label?.message}><Input {...register("label")} /></EditorField>
+          <EditorField label="IP 地址 / 主机名" required error={errors.address?.message}><Input {...register("address")} placeholder="192.168.3.51" /></EditorField>
+          <EditorField label="SSH 端口" required error={errors.sshPort?.message}><Input inputMode="numeric" {...register("sshPort")} /></EditorField>
+          <EditorField label="SSH 用户名" required error={errors.username?.message}><Input {...register("username")} /></EditorField>
+          <EditorField label="远程 Shell" required error={errors.shell?.message}><Select {...register("shell")}><option value="powershell">PowerShell</option><option value="posix">POSIX sh</option></Select></EditorField>
+          <EditorField label={computer ? "SSH 密码（留空保持不变）" : "SSH 密码"} error={errors.sshSecret?.message}><Input type="password" {...register("sshSecret")} /></EditorField>
+          <div className="col-span-2 text-xs leading-relaxed text-muted-foreground">MCP Server 在电脑保存后逐个添加，每个硬件对应一个独立 Server。</div>
+          {save.isError && <div className="col-span-2 flex items-start gap-2.5 rounded-md border border-destructive/35 bg-destructive/6 px-3.5 py-2.5 text-xs break-words whitespace-pre-wrap text-destructive [&_svg]:mt-0.5 [&_svg]:flex-none"><CircleAlertIcon className="size-4" /><span>{errorMessage(save.error)}</span></div>}
+        </form>
+      </DialogBody>
+      <DialogFooter>
+        <Button variant="outline" onClick={onClose}>取消</Button>
+        <Button type="submit" form="computer-editor-form" disabled={save.isPending || !isValid}>
+          {save.isPending ? "保存中…" : "保存"}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>;
 }

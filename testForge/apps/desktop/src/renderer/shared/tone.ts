@@ -1,4 +1,4 @@
-import type { BadgeTone } from "./ui.js";
+import type { BadgeTone } from "./tone.types.js";
 
 export function runStatusTone(status: string): BadgeTone {
   return status === "passed"

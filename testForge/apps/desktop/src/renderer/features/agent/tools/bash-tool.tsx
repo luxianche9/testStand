@@ -1,8 +1,11 @@
 import type { ToolCallMessagePartComponent } from "@assistant-ui/react";
 import { ChevronRightIcon, DollarSignIcon, XCircleIcon } from "lucide-react";
 import { memo, useState } from "react";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui";
-import { cn } from "../utils";
+import { Collapsible as CollapsiblePrimitive } from "radix-ui";
+const Collapsible = CollapsiblePrimitive.Root;
+const CollapsibleTrigger = CollapsiblePrimitive.Trigger;
+const CollapsibleContent = CollapsiblePrimitive.Content;
+import { cn } from "../../../shared/ui/index.js";
 import { ToolStatusIcon, isCancelledToolStatus, truncate } from "./shared";
 
 function parseResult(result: unknown): Record<string, unknown> {

@@ -2,10 +2,11 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import type { Hardware, McpServerConfig, RemoteComputer, ServerStatus } from "@testforge/contracts/devices";
 import type { HardwareOccupancyStatus } from "@testforge/contracts/occupancy";
-import { LockKeyholeIcon, LockOpenIcon } from "lucide-react";
+import { CircleAlertIcon, LockKeyholeIcon, LockOpenIcon, PencilIcon, PlayIcon, PlusIcon, SquareIcon, Trash2Icon } from "lucide-react";
 import { errorMessage } from "../../../shared/errors.js";
-import { IconAlert, IconEdit, IconPlay, IconPlus, IconStop, IconTrash } from "../../../shared/icons.js";
-import { Btn, Modal } from "../../../shared/ui.js";
+import { Button } from "../../../shared/ui/button";
+import { TooltipIconButton } from "../../../shared/ui/checkbox";
+import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader } from "../../../shared/ui/dialog";
 
 export function ComputerActions({ computer, onEdit, onAddServer, onChanged }: {
   computer: RemoteComputer;
@@ -21,18 +22,22 @@ export function ComputerActions({ computer, onEdit, onAddServer, onChanged }: {
   });
   const open = (handler: () => void) => (event: React.MouseEvent) => { event.stopPropagation(); handler(); };
   return <>
-    <span className="row-actions" onClick={(event) => event.stopPropagation()}>
-      <button type="button" className="row-action" title="编辑 SSH 信息" aria-label="编辑 SSH 信息" onClick={open(onEdit)}><IconEdit size={14} /></button>
-      <button type="button" className="row-action accent" title="添加 MCP 服务器" aria-label="添加 MCP 服务器" onClick={open(onAddServer)}><IconPlus size={14} /></button>
-      <button type="button" className="row-action" title="删除远程电脑及其全部 MCP Server（远程文件不会被删除）" aria-label="删除远程电脑" onClick={open(() => setConfirmOpen(true))} disabled={remove.isPending}><IconTrash size={14} /></button>
-      {remove.isError && <span className="row-error" title={errorMessage(remove.error)}><IconAlert size={14} /></span>}
+    <span className="flex flex-none items-center gap-0.5" onClick={(event) => event.stopPropagation()}>
+      <TooltipIconButton tooltip="编辑 SSH 信息" aria-label="编辑 SSH 信息" onClick={open(onEdit)}><PencilIcon /></TooltipIconButton>
+      <TooltipIconButton tooltip="添加 MCP 服务器" aria-label="添加 MCP 服务器" className="text-primary" onClick={open(onAddServer)}><PlusIcon /></TooltipIconButton>
+      <TooltipIconButton tooltip="删除远程电脑及其全部 MCP Server（远程文件不会被删除）" aria-label="删除远程电脑" onClick={open(() => setConfirmOpen(true))} disabled={remove.isPending}><Trash2Icon /></TooltipIconButton>
+      {remove.isError && <span className="grid w-5 place-items-center text-destructive" title={errorMessage(remove.error)}><CircleAlertIcon className="size-3.5" /></span>}
     </span>
-    <Modal
-      open={confirmOpen}
-      onClose={() => setConfirmOpen(false)}
-      title="删除远程电脑"
-      footer={<><Btn onClick={() => setConfirmOpen(false)}>取消</Btn><Btn variant="danger" disabled={remove.isPending} onClick={() => remove.mutate()}>删除</Btn></>}
-    ><p>删除 {computer.label}？其下所有 MCP Server 配置会一并删除，远程文件不受影响。</p></Modal>
+    <Dialog open={confirmOpen} onOpenChange={(value) => { if (!value) setConfirmOpen(false); }}>
+      <DialogContent size="sm">
+        <DialogHeader title="删除远程电脑" onClose={() => setConfirmOpen(false)} />
+        <DialogBody><p className="m-0 text-sm">删除 {computer.label}？其下所有 MCP Server 配置会一并删除，远程文件不受影响。</p></DialogBody>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setConfirmOpen(false)}>取消</Button>
+          <Button variant="destructive" disabled={remove.isPending} onClick={() => remove.mutate()}>删除</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </>;
 }
 
@@ -77,22 +82,26 @@ export function ServerActions({ server, status, occupancy, hardwareExecuting, ss
         : occupancy?.state === "unknown" || !occupancy ? "占用状态未知，请先刷新状态"
           : held ? "释放硬件并进入安全态" : "人工占用硬件";
   return <>
-    <span className="row-actions" onClick={(event) => event.stopPropagation()}>
-      <button type="button" className={`row-action${held ? " accent" : ""}`} title={occupancyTitle} aria-label={held ? "释放硬件" : "占用硬件"} onClick={(event) => { event.stopPropagation(); occupancyAction.mutate(); }} disabled={occupancyDisabled}>{held ? <LockOpenIcon size={13} /> : <LockKeyholeIcon size={13} />}</button>
-      <button type="button" className="row-action accent" title={gateTitle("启动 MCP 服务")} aria-label="启动 MCP 服务" onClick={fire("start")} disabled={!sshOnline || action.isPending || status?.service.serviceState === "running"}><IconPlay size={13} /></button>
-      <button type="button" className="row-action" title={gateTitle("终止 MCP 服务")} aria-label="终止 MCP 服务" onClick={fire("stop")} disabled={!sshOnline || action.isPending || status?.service.serviceState === "stopped"}><IconStop size={13} /></button>
-      {stopFailed && <button type="button" className="row-action danger" title="安全停止失败，强制结束进程" aria-label="强制终止 MCP 服务" onClick={fire("force-stop")} disabled={action.isPending}><IconAlert size={14} /></button>}
-      <button type="button" className="row-action" title="编辑信息" aria-label="编辑信息" onClick={open(onEdit)}><IconEdit size={14} /></button>
-      <button type="button" className="row-action" title="删除该 MCP Server（不会删除远程文件）" aria-label="删除 MCP Server" onClick={open(() => setConfirmOpen(true))} disabled={action.isPending}><IconTrash size={14} /></button>
-      {action.isError && <span className="row-error" title={errorMessage(action.error)}><IconAlert size={14} /></span>}
-      {occupancyAction.isError && <span className="row-error" title={errorMessage(occupancyAction.error)}><IconAlert size={14} /></span>}
+    <span className="flex flex-none items-center gap-0.5" onClick={(event) => event.stopPropagation()}>
+      <TooltipIconButton tooltip={occupancyTitle} aria-label={held ? "释放硬件" : "占用硬件"} className={held ? "text-primary" : undefined} onClick={(event) => { event.stopPropagation(); occupancyAction.mutate(); }} disabled={occupancyDisabled}>{held ? <LockOpenIcon /> : <LockKeyholeIcon />}</TooltipIconButton>
+      <TooltipIconButton tooltip={gateTitle("启动 MCP 服务")} aria-label="启动 MCP 服务" className="text-primary" onClick={fire("start")} disabled={!sshOnline || action.isPending || status?.service.serviceState === "running"}><PlayIcon /></TooltipIconButton>
+      <TooltipIconButton tooltip={gateTitle("终止 MCP 服务")} aria-label="终止 MCP 服务" onClick={fire("stop")} disabled={!sshOnline || action.isPending || status?.service.serviceState === "stopped"}><SquareIcon /></TooltipIconButton>
+      {stopFailed && <TooltipIconButton tooltip="安全停止失败，强制结束进程" aria-label="强制终止 MCP 服务" className="text-destructive" onClick={fire("force-stop")} disabled={action.isPending}><CircleAlertIcon /></TooltipIconButton>}
+      <TooltipIconButton tooltip="编辑信息" aria-label="编辑信息" onClick={open(onEdit)}><PencilIcon /></TooltipIconButton>
+      <TooltipIconButton tooltip="删除该 MCP Server（不会删除远程文件）" aria-label="删除 MCP Server" onClick={open(() => setConfirmOpen(true))} disabled={action.isPending}><Trash2Icon /></TooltipIconButton>
+      {action.isError && <span className="grid w-5 place-items-center text-destructive" title={errorMessage(action.error)}><CircleAlertIcon className="size-3.5" /></span>}
+      {occupancyAction.isError && <span className="grid w-5 place-items-center text-destructive" title={errorMessage(occupancyAction.error)}><CircleAlertIcon className="size-3.5" /></span>}
     </span>
-    <Modal
-      open={confirmOpen}
-      onClose={() => setConfirmOpen(false)}
-      title="删除 MCP Server"
-      footer={<><Btn onClick={() => setConfirmOpen(false)}>取消</Btn><Btn variant="danger" disabled={action.isPending} onClick={() => action.mutate("remove")}>删除</Btn></>}
-    ><p>删除 {server.serverId}？远程文件不会被删除。</p></Modal>
+    <Dialog open={confirmOpen} onOpenChange={(value) => { if (!value) setConfirmOpen(false); }}>
+      <DialogContent size="sm">
+        <DialogHeader title="删除 MCP Server" onClose={() => setConfirmOpen(false)} />
+        <DialogBody><p className="m-0 text-sm">删除 {server.serverId}？远程文件不会被删除。</p></DialogBody>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setConfirmOpen(false)}>取消</Button>
+          <Button variant="destructive" disabled={action.isPending} onClick={() => action.mutate("remove")}>删除</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </>;
 }
 
@@ -108,16 +117,20 @@ export function HardwareActions({ hardware, onEdit, onChanged }: {
     onSettled: () => void onChanged()
   });
   return <>
-    <span className="row-actions" onClick={(event) => event.stopPropagation()}>
-      <button type="button" className="row-action" title="编辑" aria-label="编辑" onClick={(event) => { event.stopPropagation(); onEdit(hardware); }}><IconEdit size={14} /></button>
-      <button type="button" className="row-action" title="移除该硬件" aria-label="移除硬件" onClick={(event) => { event.stopPropagation(); setConfirmOpen(true); }} disabled={remove.isPending}><IconTrash size={14} /></button>
-      {remove.isError && <span className="row-error" title={errorMessage(remove.error)}><IconAlert size={14} /></span>}
+    <span className="flex flex-none items-center gap-0.5" onClick={(event) => event.stopPropagation()}>
+      <TooltipIconButton tooltip="编辑" aria-label="编辑" onClick={(event) => { event.stopPropagation(); onEdit(hardware); }}><PencilIcon /></TooltipIconButton>
+      <TooltipIconButton tooltip="移除该硬件" aria-label="移除硬件" onClick={(event) => { event.stopPropagation(); setConfirmOpen(true); }} disabled={remove.isPending}><Trash2Icon /></TooltipIconButton>
+      {remove.isError && <span className="grid w-5 place-items-center text-destructive" title={errorMessage(remove.error)}><CircleAlertIcon className="size-3.5" /></span>}
     </span>
-    <Modal
-      open={confirmOpen}
-      onClose={() => setConfirmOpen(false)}
-      title="移除硬件"
-      footer={<><Btn onClick={() => setConfirmOpen(false)}>取消</Btn><Btn variant="danger" disabled={remove.isPending} onClick={() => remove.mutate()}>移除</Btn></>}
-    ><p>移除 {hardware.label}？端口、针脚和照片会一并删除，画布上引用它的节点会显示为未解析。</p></Modal>
+    <Dialog open={confirmOpen} onOpenChange={(value) => { if (!value) setConfirmOpen(false); }}>
+      <DialogContent size="sm">
+        <DialogHeader title="移除硬件" onClose={() => setConfirmOpen(false)} />
+        <DialogBody><p className="m-0 text-sm">移除 {hardware.label}？端口、针脚和照片会一并删除，画布上引用它的节点会显示为未解析。</p></DialogBody>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setConfirmOpen(false)}>取消</Button>
+          <Button variant="destructive" disabled={remove.isPending} onClick={() => remove.mutate()}>移除</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </>;
 }

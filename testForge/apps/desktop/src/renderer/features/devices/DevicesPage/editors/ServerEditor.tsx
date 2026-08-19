@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import type { DeviceBundlePreview, Hardware, HardwarePort, McpServerConfig, RemoteComputer } from "@testforge/contracts/devices";
+import { CircleAlertIcon, CopyIcon, DownloadIcon } from "lucide-react";
 import { errorMessage } from "../../../../shared/errors.js";
 import { hardwareForServer } from "../../../../shared/hardware.js";
-import { IconAlert, IconCopy, IconDownload } from "../../../../shared/icons.js";
-import { Btn, Modal } from "../../../../shared/ui.js";
+import { Button } from "../../../../shared/ui/button";
+import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader } from "../../../../shared/ui/dialog";
+import { Input, Select, Textarea } from "../../../../shared/ui/input";
 import { AppearanceImage, PortEditor } from "../../PortEditor.js";
 import { EditorField } from "./EditorField.js";
 
@@ -133,49 +135,49 @@ export function ServerEditor({ open, server, computerId, computers, hardware, on
     }
   });
 
-  return <Modal
-    open={open}
-    onClose={onClose}
-    title={server ? "编辑 MCP Server" : "添加 MCP Server"}
-    width={760}
-    footer={<>
-      <div className="bundle-actions">
-        <Btn variant="subtle" icon={<IconDownload size={14} />} disabled={save.isPending || importBundle.isPending || exportBundle.isPending} onClick={() => importBundle.mutate()}>导入</Btn>
-        <Btn variant="subtle" icon={<IconCopy size={14} />} disabled={!selectedHardware || save.isPending || importBundle.isPending || exportBundle.isPending} title={selectedHardware ? "导出这台 MCP Server 的硬件定义" : "保存 Server 后才能导出"} onClick={() => exportBundle.mutate()}>导出</Btn>
-        {bundleNotice && <span className="library-notice" role="status">{bundleNotice}</span>}
-        {(importBundle.isError || exportBundle.isError) && <span className="library-notice error" role="alert" title={errorMessage(importBundle.error ?? exportBundle.error)}><IconAlert size={14} />{errorMessage(importBundle.error ?? exportBundle.error)}</span>}
-      </div>
-      <Btn onClick={onClose}>取消</Btn>
-      <Btn variant="primary" onClick={() => save.mutate()} disabled={save.isPending || !form.serverId || !form.computerId || !form.hardwareId}>{save.isPending ? "保存中…" : "保存"}</Btn>
-    </>}
-  >
-    <div className="form-grid">
-      <EditorField label="Server ID" required><input className="input" value={form.serverId} disabled={Boolean(server)} onChange={(event) => { const serverId = event.target.value; setForm((current) => ({ ...current, serverId, ...(pathsTouched ? {} : serverDefaults(serverId)) })); }} placeholder="PCI1710L_MCP" /></EditorField>
-      <EditorField label="所属电脑" required><select className="input" {...field("computerId")} disabled={Boolean(server)}>{computers.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></EditorField>
-      <EditorField label="显示名称"><input className="input" {...field("label")} placeholder="PCI-1710L 多功能采集卡" /></EditorField>
-      <EditorField label="唯一 Hardware ID" required>
-        <input className="input" list="testforge-hardware-ids" value={form.hardwareId} disabled={Boolean(server)} placeholder="PC1_MCP.PCI1710L_CARD_0" onChange={(event) => {
-          const hardwareId = event.target.value;
-          const selected = hardware.find((item) => item.hardwareId === hardwareId);
-          setForm((current) => ({ ...current, hardwareId }));
-          setBundlePreview(undefined);
-          setBundleNotice(undefined);
-          if (selected) setPorts(structuredClone(selected.ports));
-        }} />
-        <datalist id="testforge-hardware-ids">{hardware.filter((item) => item.kind === "passive" || item.serverId === server?.serverId).map((item) => <option key={item.hardwareId} value={item.hardwareId}>{item.label}</option>)}</datalist>
-      </EditorField>
-      <EditorField label="MCP 地址"><input className="input" {...field("url")} placeholder="http://192.168.3.51:8011/mcp" /></EditorField>
-      <EditorField label={server ? "MCP Token（留空保持不变）" : "MCP Token"}><input className="input" type="password" {...field("mcpToken")} /></EditorField>
-      <div className="span-2 form-note">可直接在这里导入 `.tfhw`；TestForge 会在保存 Server 时绑定硬件，并验证 list_hardware 恰好返回这一块硬件。端口和针脚不再向远端索取。</div>
-      <EditorField label="状态查询命令" required span><textarea className="input" {...pathField("statusCommand")} /></EditorField>
-      <EditorField label="启动命令" required span><textarea className="input" {...pathField("startCommand")} /></EditorField>
-      <EditorField label="停止命令" required span><textarea className="input" {...pathField("stopCommand")} /></EditorField>
-      <EditorField label="日志目录" required span><input className="input" {...pathField("logPath")} /></EditorField>
-      <div className="span-2 editor-assets">
-        <AppearanceImage hardwareId={form.hardwareId} assetId={selectedHardware?.appearanceAssetId} saved={Boolean(selectedHardware)} onChanged={(item) => setPorts(structuredClone(item.ports))} />
-        <PortEditor hardwareId={form.hardwareId} ports={ports} saved={Boolean(selectedHardware)} onChange={setPorts} onImageChanged={(item) => setPorts(structuredClone(item.ports))} />
-      </div>
-      {save.isError && <div className="alert span-2"><IconAlert size={15} /><span>{errorMessage(save.error)}</span></div>}
-    </div>
-  </Modal>;
+  return <Dialog open={open} onOpenChange={(value) => { if (!value) onClose(); }}>
+    <DialogContent size="lg" className="w-[760px]">
+      <DialogHeader title={server ? "编辑 MCP Server" : "添加 MCP Server"} onClose={onClose} />
+      <DialogBody>
+        <div className="grid grid-cols-2 gap-x-3.5 gap-y-3">
+          <EditorField label="Server ID" required><Input value={form.serverId} disabled={Boolean(server)} onChange={(event) => { const serverId = event.target.value; setForm((current) => ({ ...current, serverId, ...(pathsTouched ? {} : serverDefaults(serverId)) })); }} placeholder="PCI1710L_MCP" /></EditorField>
+          <EditorField label="所属电脑" required><Select {...field("computerId")} disabled={Boolean(server)}>{computers.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</Select></EditorField>
+          <EditorField label="显示名称"><Input {...field("label")} placeholder="PCI-1710L 多功能采集卡" /></EditorField>
+          <EditorField label="唯一 Hardware ID" required>
+            <Input list="testforge-hardware-ids" value={form.hardwareId} disabled={Boolean(server)} placeholder="PC1_MCP.PCI1710L_CARD_0" onChange={(event) => {
+              const hardwareId = event.target.value;
+              const selected = hardware.find((item) => item.hardwareId === hardwareId);
+              setForm((current) => ({ ...current, hardwareId }));
+              setBundlePreview(undefined);
+              setBundleNotice(undefined);
+              if (selected) setPorts(structuredClone(selected.ports));
+            }} />
+            <datalist id="testforge-hardware-ids">{hardware.filter((item) => item.kind === "passive" || item.serverId === server?.serverId).map((item) => <option key={item.hardwareId} value={item.hardwareId}>{item.label}</option>)}</datalist>
+          </EditorField>
+          <EditorField label="MCP 地址"><Input {...field("url")} placeholder="http://192.168.3.51:8011/mcp" /></EditorField>
+          <EditorField label={server ? "MCP Token（留空保持不变）" : "MCP Token"}><Input type="password" {...field("mcpToken")} /></EditorField>
+          <div className="col-span-2 text-xs leading-relaxed text-muted-foreground">可直接在这里导入 `.tfhw`；TestForge 会在保存 Server 时绑定硬件，并验证 list_hardware 恰好返回这一块硬件。端口和针脚不再向远端索取。</div>
+          <EditorField label="状态查询命令" required span><Textarea className="min-h-[54px] font-mono text-xs" {...pathField("statusCommand")} /></EditorField>
+          <EditorField label="启动命令" required span><Textarea className="min-h-[54px] font-mono text-xs" {...pathField("startCommand")} /></EditorField>
+          <EditorField label="停止命令" required span><Textarea className="min-h-[54px] font-mono text-xs" {...pathField("stopCommand")} /></EditorField>
+          <EditorField label="日志目录" required span><Input className="font-mono text-xs" {...pathField("logPath")} /></EditorField>
+          <div className="col-span-2 flex flex-col gap-2.5 rounded-md border bg-secondary/50 p-3">
+            <AppearanceImage hardwareId={form.hardwareId} assetId={selectedHardware?.appearanceAssetId} saved={Boolean(selectedHardware)} onChanged={(item) => setPorts(structuredClone(item.ports))} />
+            <PortEditor hardwareId={form.hardwareId} ports={ports} saved={Boolean(selectedHardware)} onChange={setPorts} onImageChanged={(item) => setPorts(structuredClone(item.ports))} />
+          </div>
+          {save.isError && <div className="col-span-2 flex items-start gap-2.5 rounded-md border border-destructive/35 bg-destructive/6 px-3.5 py-2.5 text-xs break-words whitespace-pre-wrap text-destructive [&_svg]:mt-0.5 [&_svg]:flex-none"><CircleAlertIcon className="size-4" /><span>{errorMessage(save.error)}</span></div>}
+        </div>
+      </DialogBody>
+      <DialogFooter>
+        <div className="mr-auto flex flex-wrap items-center gap-2">
+          <Button variant="ghost" size="sm" disabled={save.isPending || importBundle.isPending || exportBundle.isPending} onClick={() => importBundle.mutate()}><DownloadIcon />导入</Button>
+          <Button variant="ghost" size="sm" disabled={!selectedHardware || save.isPending || importBundle.isPending || exportBundle.isPending} title={selectedHardware ? "导出这台 MCP Server 的硬件定义" : "保存 Server 后才能导出"} onClick={() => exportBundle.mutate()}><CopyIcon />导出</Button>
+          {bundleNotice && <span className="inline-flex max-w-80 items-center gap-1.5 text-xs leading-normal text-muted-foreground" role="status">{bundleNotice}</span>}
+          {(importBundle.isError || exportBundle.isError) && <span className="inline-flex max-w-80 items-center gap-1.5 text-xs leading-normal text-destructive" role="alert" title={errorMessage(importBundle.error ?? exportBundle.error)}><CircleAlertIcon className="size-3.5" />{errorMessage(importBundle.error ?? exportBundle.error)}</span>}
+        </div>
+        <Button variant="outline" onClick={onClose}>取消</Button>
+        <Button onClick={() => save.mutate()} disabled={save.isPending || !form.serverId || !form.computerId || !form.hardwareId}>{save.isPending ? "保存中…" : "保存"}</Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>;
 }

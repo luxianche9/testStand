@@ -48,7 +48,7 @@ export function TopologyPreview({ project, hardware, compact }: { project: Recen
           disableKeyboardA11y
           proOptions={{ hideAttribution: true }}
         >
-          <Background variant={BackgroundVariant.Lines} gap={24} size={1} color="var(--canvas-grid)" bgColor="var(--canvas-bg)" />
+          <Background variant={BackgroundVariant.Lines} gap={24} size={1} color="var(--tf-canvas-grid)" bgColor="var(--tf-canvas)" />
         </ReactFlow>
       ) : <span className="topology-empty">暂无接线数据</span>}
     </div>

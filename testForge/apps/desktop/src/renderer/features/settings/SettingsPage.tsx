@@ -3,7 +3,10 @@ import { useMutation, useQuery, type UseQueryResult } from "@tanstack/react-quer
 import type { OpenCodeRuntimeStatus } from "@testforge/contracts/agents";
 import type { DashboardSnapshot } from "@testforge/contracts/desktop";
 import { ArrowLeftIcon, BotIcon, EyeIcon, EyeOffIcon, PaletteIcon, PlugZapIcon, RefreshCwIcon, Settings2Icon, SquareIcon } from "lucide-react";
-import { Btn, Badge } from "../../shared/ui.js";
+import { Badge, badgeVariantFromTone } from "../../shared/ui/badge";
+import { Button } from "../../shared/ui/button";
+import { Field, Input } from "../../shared/ui/input";
+import { cn } from "../../shared/ui/cn";
 import { QueryGate } from "../../shared/layout.js";
 import { errorMessage } from "../../shared/errors.js";
 import { queryKeys } from "../../shared/query-keys.js";
@@ -20,15 +23,15 @@ export function SettingsPage({ dashboard, theme, onThemeChange, onBack }: {
 }) {
   const [section, setSection] = useState<SettingsSection>("appearance");
   return (
-    <main className="settings-page">
-      <aside className="settings-nav" aria-label="设置分类">
-        <button className="settings-back" onClick={onBack}><ArrowLeftIcon size={15} /><span>返回</span></button>
-        <div className="settings-nav-title"><Settings2Icon size={16} /><strong>设置</strong></div>
+    <main className="grid min-h-0 flex-1 grid-cols-[210px_minmax(0,1fr)] bg-background">
+      <aside className="min-h-0 border-r bg-secondary/50 px-2.5 py-3.5" aria-label="设置分类">
+        <button className="mb-1.5 flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground" onClick={onBack}><ArrowLeftIcon size={15} /><span>返回</span></button>
+        <div className="flex h-8 items-center gap-2 px-2 pb-2 text-muted-foreground"><Settings2Icon size={16} /><strong className="text-sm font-semibold text-foreground">设置</strong></div>
         <SettingsNavButton active={section === "appearance"} icon={<PaletteIcon size={15} />} label="外观" onClick={() => setSection("appearance")} />
         <SettingsNavButton active={section === "model"} icon={<BotIcon size={15} />} label="AI 模型" onClick={() => setSection("model")} />
         <SettingsNavButton active={section === "agents"} icon={<PlugZapIcon size={15} />} label="Agent 接入" onClick={() => setSection("agents")} />
       </aside>
-      <div className="settings-content">
+      <div className="min-h-0 overflow-y-auto px-6 pt-7 pb-18 md:px-10">
         {section === "appearance" && <AppearanceSettings value={theme} onChange={onThemeChange} />}
         {section === "model" && <ModelSettings />}
         {section === "agents" && <QueryGate query={dashboard}>{(data) => <AgentIntegrationPage query={dashboard} gateway={data.gateway} embedded />}</QueryGate>}
@@ -38,16 +41,49 @@ export function SettingsPage({ dashboard, theme, onThemeChange, onBack }: {
 }
 
 function SettingsNavButton({ active, icon, label, onClick }: { active: boolean; icon: ReactNode; label: string; onClick: () => void }) {
-  return <button className={active ? "active" : ""} onClick={onClick}>{icon}<span>{label}</span></button>;
+  return (
+    <button
+      className={cn(
+        "flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+        active && "bg-accent font-medium text-primary hover:text-primary"
+      )}
+      onClick={onClick}
+    >{icon}<span>{label}</span></button>
+  );
 }
 
 function AppearanceSettings({ value, onChange }: { value: ThemeChoice; onChange: (theme: ThemeChoice) => Promise<void> }) {
-  const choices: Array<{ value: ThemeChoice; title: string; body: string }> = [
-    { value: "system", title: "跟随系统", body: "随操作系统自动切换浅色或深色。" },
-    { value: "light", title: "浅色", body: "始终使用浅色界面。" },
-    { value: "dark", title: "深色", body: "始终使用深色界面。" }
+  const choices: Array<{ value: ThemeChoice; title: string; body: string; swatch: string }> = [
+    { value: "system", title: "跟随系统", body: "随操作系统自动切换浅色或深色。", swatch: "linear-gradient(90deg,#e9edf2 0 50%,#202833 50%),linear-gradient(90deg,#d8dee6 0 50%,#0d1117 50%),linear-gradient(90deg,#fff 0 50%,#161c26 50%)" },
+    { value: "light", title: "浅色", body: "始终使用浅色界面。", swatch: "#e9edf2,#d8dee6,#fff" },
+    { value: "dark", title: "深色", body: "始终使用深色界面。", swatch: "#202833,#0d1117,#161c26" }
   ];
-  return <SettingsSection title="外观" description="选择 TestForge 的界面主题。"><div className="theme-choice-grid">{choices.map((choice) => <button key={choice.value} className={value === choice.value ? "active" : ""} aria-pressed={value === choice.value} onClick={() => void onChange(choice.value)}><span className={`theme-swatch ${choice.value}`}><i /><i /><i /></span><strong>{choice.title}</strong><small>{choice.body}</small></button>)}</div></SettingsSection>;
+  return (
+    <SettingsSection title="外观" description="选择 TestForge 的界面主题。">
+      <div className="grid grid-cols-3 gap-3">
+        {choices.map((choice) => (
+          <button
+            key={choice.value}
+            className={cn(
+              "grid gap-2 rounded-lg border p-3 text-left hover:border-primary/70",
+              value === choice.value && "border-primary ring-2 ring-primary/15"
+            )}
+            aria-pressed={value === choice.value}
+            onClick={() => void onChange(choice.value)}
+          >
+            {/* 主题预览色块刻意使用真实预览色,不经设计 token。 */}
+            <span className="grid h-[74px] grid-cols-[24%_1fr] grid-rows-[22px_1fr] overflow-hidden rounded-md border">
+              {choice.swatch.split(",").map((background, index) => (
+                <i key={index} className={index === 0 ? "col-span-2" : undefined} style={{ background }} />
+              ))}
+            </span>
+            <strong className="text-sm font-medium">{choice.title}</strong>
+            <small className="text-xs leading-snug text-muted-foreground">{choice.body}</small>
+          </button>
+        ))}
+      </div>
+    </SettingsSection>
+  );
 }
 
 function ModelSettings() {
@@ -83,29 +119,42 @@ function ModelSettings() {
   const busy = save.isPending || runtimeAction.isPending || status?.state === "starting" || status?.state === "stopping";
 
   return <SettingsSection title="AI 模型" description="配置 OpenAI 兼容模型，并管理当前项目的内嵌 OpenCode。">
-    {(error || settings.isError || runtime.isError) && <div className="alert">{error ?? errorMessage(settings.error ?? runtime.error)}</div>}
-    {notice && <div className="agent-notice success">{notice}</div>}
-    <form className="settings-form" onSubmit={submit}>
-      <label className="field"><span className="field-label">Base URL</span><input className="input" type="url" value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} required /></label>
-      <label className="field"><span className="field-label">模型 ID</span><input className="input" value={model} onChange={(event) => setModel(event.target.value)} required /></label>
-      <label className="field"><span className="field-label">API Key</span><span className="secret-input"><input className="input" type={showKey ? "text" : "password"} value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder={settings.data?.apiKeyConfigured ? "已配置，留空则保持不变" : "输入 API Key"} /><button type="button" aria-label={showKey ? "隐藏密钥" : "显示密钥"} onClick={() => setShowKey((show) => !show)}>{showKey ? <EyeOffIcon size={15} /> : <EyeIcon size={15} />}</button></span></label>
-      <div className="settings-form-actions">{settings.data?.apiKeyConfigured && <Btn type="button" variant="danger" disabled={busy} onClick={() => save.mutate(true)}>清除密钥</Btn>}<Btn type="submit" variant="primary" disabled={busy || !baseUrl.trim() || !model.trim()}>保存配置</Btn></div>
+    {(error || settings.isError || runtime.isError) && <div className="mb-4 flex items-start gap-2.5 rounded-md border border-destructive/35 bg-destructive/10 px-3.5 py-2.5 text-xs whitespace-pre-wrap break-anywhere text-destructive">{error ?? errorMessage(settings.error ?? runtime.error)}</div>}
+    {notice && <div className="mb-4 rounded-md border border-success/35 bg-success/10 px-3.5 py-2.5 text-xs text-success">{notice}</div>}
+    <form className="grid gap-3.5 rounded-lg border p-4" onSubmit={submit}>
+      <Field label="Base URL"><Input type="url" value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} required /></Field>
+      <Field label="模型 ID"><Input value={model} onChange={(event) => setModel(event.target.value)} required /></Field>
+      <Field label="API Key">
+        <span className="relative block">
+          <Input className="pr-10" type={showKey ? "text" : "password"} value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder={settings.data?.apiKeyConfigured ? "已配置，留空则保持不变" : "输入 API Key"} />
+          <button className="absolute top-0 right-0 grid h-9 w-9 place-items-center text-muted-foreground hover:text-foreground" type="button" aria-label={showKey ? "隐藏密钥" : "显示密钥"} onClick={() => setShowKey((show) => !show)}>{showKey ? <EyeOffIcon size={15} /> : <EyeIcon size={15} />}</button>
+        </span>
+      </Field>
+      <div className="flex justify-end gap-2">{settings.data?.apiKeyConfigured && <Button type="button" variant="destructive" disabled={busy} onClick={() => save.mutate(true)}>清除密钥</Button>}<Button type="submit" disabled={busy || !baseUrl.trim() || !model.trim()}>保存配置</Button></div>
     </form>
 
-    <section className="runtime-panel">
-      <header><div><strong>OpenCode</strong><span>{status?.version ? `版本 ${status.version}` : "内嵌运行时"}</span></div><Badge tone={runtimeTone(status)}>{runtimeLabel(status)}</Badge></header>
-      <dl><div><dt>工作区</dt><dd>{status?.workspace ?? "需要先打开项目"}</dd></div><div><dt>状态</dt><dd>{status?.message ?? (status?.workspaceState === "requires_project" ? "无活动项目时保持停止" : "就绪")}</dd></div></dl>
-      <footer>
-        {(status?.state === "stopped" || status?.state === "error") && <Btn icon={<BotIcon size={14} />} disabled={busy || status.workspaceState === "requires_project" || !settings.data?.apiKeyConfigured} onClick={() => runtimeAction.mutate("start")}>启动</Btn>}
-        {status?.state === "running" && <Btn icon={<RefreshCwIcon size={14} />} disabled={busy} onClick={() => runtimeAction.mutate("restart")}>重启</Btn>}
-        {(status?.state === "running" || status?.state === "starting" || status?.state === "error") && <Btn icon={<SquareIcon size={13} />} disabled={runtimeAction.isPending} onClick={() => runtimeAction.mutate("stop")}>停止</Btn>}
+    <section className="mt-4 overflow-hidden rounded-lg border">
+      <header className="flex items-center justify-between bg-secondary/50 px-4 py-3"><div className="grid gap-0.5"><strong className="text-sm font-semibold">OpenCode</strong><span className="text-[11px] text-muted-foreground">{status?.version ? `版本 ${status.version}` : "内嵌运行时"}</span></div><Badge variant={badgeVariantFromTone(runtimeTone(status))}>{runtimeLabel(status)}</Badge></header>
+      <dl className="m-0 text-sm"><div className="grid grid-cols-[120px_minmax(0,1fr)] gap-3 border-t px-4 py-2.5"><dt className="text-muted-foreground">工作区</dt><dd className="m-0 break-anywhere">{status?.workspace ?? "需要先打开项目"}</dd></div><div className="grid grid-cols-[120px_minmax(0,1fr)] gap-3 border-t px-4 py-2.5"><dt className="text-muted-foreground">状态</dt><dd className="m-0 break-anywhere">{status?.message ?? (status?.workspaceState === "requires_project" ? "无活动项目时保持停止" : "就绪")}</dd></div></dl>
+      <footer className="flex gap-2 border-t px-4 py-3">
+        {(status?.state === "stopped" || status?.state === "error") && <Button variant="outline" size="sm" disabled={busy || status.workspaceState === "requires_project" || !settings.data?.apiKeyConfigured} onClick={() => runtimeAction.mutate("start")}><BotIcon size={14} />启动</Button>}
+        {status?.state === "running" && <Button variant="outline" size="sm" disabled={busy} onClick={() => runtimeAction.mutate("restart")}><RefreshCwIcon size={14} />重启</Button>}
+        {(status?.state === "running" || status?.state === "starting" || status?.state === "error") && <Button variant="outline" size="sm" disabled={runtimeAction.isPending} onClick={() => runtimeAction.mutate("stop")}><SquareIcon size={13} />停止</Button>}
       </footer>
     </section>
   </SettingsSection>;
 }
 
 function SettingsSection({ title, description, children }: { title: string; description: string; children: ReactNode }) {
-  return <section className="settings-section"><header><h1>{title}</h1><p>{description}</p></header>{children}</section>;
+  return (
+    <section className="mx-auto max-w-[880px]">
+      <header className="mb-5 border-b pb-4">
+        <h1 className="m-0 text-xl font-semibold tracking-tight">{title}</h1>
+        <p className="mt-1.5 mb-0 text-sm text-muted-foreground">{description}</p>
+      </header>
+      {children}
+    </section>
+  );
 }
 
 function runtimeTone(status?: OpenCodeRuntimeStatus): "muted" | "ok" | "warn" | "bad" {

@@ -7,8 +7,8 @@ import {
 } from "@assistant-ui/react";
 import { AlertCircleIcon, FileTextIcon, Loader2Icon, XIcon } from "lucide-react";
 import { useEffect, useState, type FC } from "react";
-import { TooltipIconButton } from "./ui";
-import { cn } from "./utils";
+import { TooltipIconButton } from "../../shared/ui/index.js";
+import { cn } from "../../shared/ui/index.js";
 
 function useAttachmentPreview() {
   const type = useAuiState((state) => state.attachment.type);

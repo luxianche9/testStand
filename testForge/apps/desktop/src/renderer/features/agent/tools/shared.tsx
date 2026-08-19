@@ -1,6 +1,6 @@
 import { AlertCircleIcon, CheckIcon, LoaderIcon, XCircleIcon } from "lucide-react";
 import type { ReactNode } from "react";
-import { cn } from "../utils";
+import { cn } from "../../../shared/ui/index.js";
 
 export type ToolCallStatusLike = { type: string; reason?: string } | undefined;
 export const truncate = (value: string, max = 80) => value.length > max ? `${value.slice(0, max - 3)}...` : value;
