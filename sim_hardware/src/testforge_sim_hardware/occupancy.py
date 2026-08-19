@@ -112,3 +112,4 @@ def occupancy_error(category: str, message: str) -> Exception:
     error = RuntimeError(message)
     setattr(error, "category", category)
     return error
+

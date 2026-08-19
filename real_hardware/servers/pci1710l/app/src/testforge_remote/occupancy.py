@@ -96,3 +96,4 @@ class OccupancyRegistry:
     def _renew(self, lease: Lease) -> None:
         lease.expires_at = datetime.now(UTC) + timedelta(seconds=self.ttl_seconds)
         lease.deadline = time.monotonic() + self.ttl_seconds
+

@@ -22,13 +22,6 @@ mcp-server/
 run/
 sim_hardware/servers/*/server.json
 
-# Real hardware source mirrors keep live credentials and deployment state remote.
-real_hardware/.staging/
-real_hardware/servers/*/server.json
-real_hardware/servers/*/deploy-staging-*/
-real_hardware/servers/*/source-backup-*/
-real_hardware/servers/*/backup-*/
-
 playwright-report/
 test-results/
 
