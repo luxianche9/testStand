@@ -39,7 +39,10 @@ export function defineTool<T>(options: ToolOptions<T>): GatewayToolDefinition {
 }
 
 function schemaFromZod(schema: ZodType<unknown>): Tool["inputSchema"] {
-  const json = zodToJsonSchema(schema, { target: "openApi3", $refStrategy: "none" });
+  // Call through a widened signature: zodToJsonSchema's conditional return type
+  // exceeds the instantiation depth limit under Node module resolution (dist build).
+  const toJsonSchema = zodToJsonSchema as unknown as (schema: ZodType<unknown>, options?: unknown) => Record<string, unknown>;
+  const json = toJsonSchema(schema, { target: "openApi3", $refStrategy: "none" });
   const { $schema: _schema, definitions: _definitions, ...inputSchema } = json;
   return inputSchema as Tool["inputSchema"];
 }

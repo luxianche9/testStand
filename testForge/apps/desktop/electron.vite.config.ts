@@ -1,9 +1,12 @@
 import { defineConfig, externalizeDepsPlugin } from "electron-vite";
+import { defaultClientConditions, defaultServerConditions } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
   main: {
+    resolve: { conditions: ["testforge-source", ...defaultServerConditions] },
+    ssr: { resolve: { conditions: ["testforge-source", ...defaultServerConditions], externalConditions: ["testforge-source", ...defaultServerConditions] } },
     plugins: [externalizeDepsPlugin({ exclude: [
       "@testforge/application",
       "@testforge/contracts",
@@ -24,6 +27,8 @@ export default defineConfig({
     }
   },
   preload: {
+    resolve: { conditions: ["testforge-source", ...defaultServerConditions] },
+    ssr: { resolve: { conditions: ["testforge-source", ...defaultServerConditions], externalConditions: ["testforge-source", ...defaultServerConditions] } },
     plugins: [externalizeDepsPlugin({ exclude: ["@testforge/contracts", "@trpc/client", "@trpc/server", "electron-trpc"] })],
     build: {
       rollupOptions: {
@@ -34,5 +39,8 @@ export default defineConfig({
       }
     }
   },
-  renderer: { plugins: [react(), tailwindcss()] }
+  renderer: {
+    resolve: { conditions: ["testforge-source", ...defaultClientConditions] },
+    plugins: [react(), tailwindcss()]
+  }
 });

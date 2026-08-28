@@ -32,11 +32,3 @@ pnpm dev
 pnpm verify       # 类型、lint、测试、边界检查和生产构建
 pnpm verify:full  # verify + Electron E2E
 ```
-
-## 文档
-
-- [当前架构与包职责](docs/architecture.md)
-- [开发、构建与验证](docs/development.md)
-- [安全部署与授权模型](docs/security.md)
-- [架构决策记录](docs/adr/)
-- [硬件手册索引](docs/hardware-manuals/README.md)

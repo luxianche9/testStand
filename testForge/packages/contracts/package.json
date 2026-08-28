@@ -4,16 +4,30 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./devices": "./src/devices.ts",
-    "./occupancy": "./src/occupancy.ts",
-    "./errors": "./src/errors.ts",
-    "./storage": "./src/storage.ts",
-    "./agents": "./src/agents.ts",
-    "./execution": "./src/execution.ts",
-    "./wiring": "./src/wiring.ts",
-    "./orchestration": "./src/orchestration.ts",
-    "./projects": "./src/projects.ts",
-    "./desktop": "./src/desktop.ts"
+    "./devices": { "testforge-source": "./src/devices.ts", "types": "./dist/devices.d.ts", "default": "./dist/devices.js" },
+    "./occupancy": { "testforge-source": "./src/occupancy.ts", "types": "./dist/occupancy.d.ts", "default": "./dist/occupancy.js" },
+    "./errors": { "testforge-source": "./src/errors.ts", "types": "./dist/errors.d.ts", "default": "./dist/errors.js" },
+    "./storage": { "testforge-source": "./src/storage.ts", "types": "./dist/storage.d.ts", "default": "./dist/storage.js" },
+    "./agents": { "testforge-source": "./src/agents.ts", "types": "./dist/agents.d.ts", "default": "./dist/agents.js" },
+    "./execution": { "testforge-source": "./src/execution.ts", "types": "./dist/execution.d.ts", "default": "./dist/execution.js" },
+    "./wiring": { "testforge-source": "./src/wiring.ts", "types": "./dist/wiring.d.ts", "default": "./dist/wiring.js" },
+    "./orchestration": { "testforge-source": "./src/orchestration.ts", "types": "./dist/orchestration.d.ts", "default": "./dist/orchestration.js" },
+    "./projects": { "testforge-source": "./src/projects.ts", "types": "./dist/projects.d.ts", "default": "./dist/projects.js" },
+    "./desktop": { "testforge-source": "./src/desktop.ts", "types": "./dist/desktop.d.ts", "default": "./dist/desktop.js" }
+  },
+  "typesVersions": {
+    "*": {
+      "devices": ["./dist/devices.d.ts"],
+      "occupancy": ["./dist/occupancy.d.ts"],
+      "errors": ["./dist/errors.d.ts"],
+      "storage": ["./dist/storage.d.ts"],
+      "agents": ["./dist/agents.d.ts"],
+      "execution": ["./dist/execution.d.ts"],
+      "wiring": ["./dist/wiring.d.ts"],
+      "orchestration": ["./dist/orchestration.d.ts"],
+      "projects": ["./dist/projects.d.ts"],
+      "desktop": ["./dist/desktop.d.ts"]
+    }
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",

@@ -1,0 +1,13 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/contracts/tsconfig.build.json" },
+    { "path": "packages/storage/tsconfig.build.json" },
+    { "path": "packages/devices/tsconfig.build.json" },
+    { "path": "packages/projects/tsconfig.build.json" },
+    { "path": "packages/wiring/tsconfig.build.json" },
+    { "path": "packages/orchestration/tsconfig.build.json" },
+    { "path": "packages/application/tsconfig.build.json" },
+    { "path": "packages/mcp-gateway/tsconfig.build.json" }
+  ]
+}

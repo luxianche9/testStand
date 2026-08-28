@@ -8,6 +8,7 @@
     "dev": "pnpm --filter @testforge/desktop dev",
     "clean": "node scripts/clean.mjs",
     "build": "node scripts/verify-production-build.mjs",
+    "build:packages": "tsc -b tsconfig.packages.json && node scripts/write-dist-package-manifests.mjs",
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint packages apps --ext .ts,.tsx",
     "test": "pnpm -r test",

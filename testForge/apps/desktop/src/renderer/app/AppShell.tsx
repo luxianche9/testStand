@@ -127,7 +127,7 @@ function AppShell() {
     setAssistantOpen(readAssistantOpen());
     setError(undefined);
     void rootPath;
-  }, [syncProject]);
+  }, [syncProject, setError]);
 
   const goWelcome = useCallback(async () => {
     await window.testforge.projects.leave();
