@@ -63,7 +63,7 @@ export const ApplyPatchDiff: ToolCallMessagePartComponent = memo(({ toolName, ar
       </CollapsibleTrigger>
       {hasDiff && (
         <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
-          <div className="mt-1 ml-5 overflow-hidden rounded-md border text-xs">
+          <div className="mt-1 ml-5 overflow-hidden rounded-xl bg-card text-xs shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]">
             <PatchDiff patch={unified} options={{ theme: { dark: "pierre-dark", light: "pierre-light" }, diffStyle: "unified", overflow: "wrap" }} />
           </div>
         </CollapsibleContent>

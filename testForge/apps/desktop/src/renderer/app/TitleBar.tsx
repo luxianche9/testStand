@@ -43,14 +43,14 @@ export function TitleBar({ page, projectView, project, assistantOpen, busy, pend
 
   const projectLabel = inProject && project ? project.file.name : "项目";
   return (
-    <header className="relative flex h-[42px] flex-none items-center gap-0.5 border-b bg-secondary/60 [-webkit-app-region:drag] select-none">
-      <span className="flex items-center self-stretch px-3.5 text-[13px] font-bold tracking-tight">TestForge</span>
+    <header className="relative flex h-11 flex-none items-center gap-0.5 bg-secondary/45 backdrop-blur-md [-webkit-app-region:drag] select-none">
+      <span className="flex items-center self-stretch px-3.5 text-[13px] font-semibold tracking-[-0.03em]">TestForge</span>
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
             aria-label="项目文件夹菜单"
-            className="inline-flex h-[30px] max-w-[220px] items-center gap-1.5 rounded-md px-2.5 text-xs text-muted-foreground transition-colors [-webkit-app-region:no-drag] hover:bg-accent hover:text-foreground data-[state=open]:bg-accent data-[state=open]:text-foreground"
+            className="inline-flex h-[30px] max-w-[220px] items-center gap-1.5 rounded-[var(--tf-radius-control)] px-2.5 text-xs text-muted-foreground transition-[color,background-color,transform] duration-200 ease-[var(--tf-ease-out)] [-webkit-app-region:no-drag] hover:bg-accent hover:text-foreground data-[state=open]:bg-accent data-[state=open]:text-foreground"
           >
             <FolderIcon className="size-[15px]" />
             <span className="truncate">{projectLabel}{inProject && project?.dirty ? " *" : ""}</span>
@@ -80,7 +80,7 @@ export function TitleBar({ page, projectView, project, assistantOpen, busy, pend
         pressed={wiringLogOpen}
         onClick={onToggleWiringLog}
         icon={<InboxIcon className="size-4" />}
-        dot={pendingTaskCount > 0}
+        badge={pendingTaskCount > 0 ? pendingTaskCount : undefined}
       />
       {inProject && (
         <TitleBarAction
@@ -121,15 +121,15 @@ export function TitleBar({ page, projectView, project, assistantOpen, busy, pend
 }
 
 const winButtonClass =
-  "grid h-[42px] w-10 place-items-center text-muted-foreground transition-colors [-webkit-app-region:no-drag] hover:bg-accent hover:text-foreground";
+  "grid h-11 w-10 place-items-center text-muted-foreground transition-[color,background-color] duration-200 ease-[var(--tf-ease-out)] [-webkit-app-region:no-drag] hover:bg-accent hover:text-foreground";
 
 function NavButton({ active, label, icon, onClick }: { active: boolean; label: string; icon: ReactNode; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
       className={cn(
-        "inline-flex h-[30px] items-center gap-1.5 rounded-md px-2.5 text-xs text-muted-foreground transition-colors [-webkit-app-region:no-drag] hover:bg-accent hover:text-foreground",
-        active && "bg-accent text-foreground"
+        "inline-flex h-[30px] items-center gap-1.5 rounded-[var(--tf-radius-control)] px-2.5 text-xs text-muted-foreground transition-[color,background-color] duration-200 ease-[var(--tf-ease-out)] [-webkit-app-region:no-drag] hover:bg-accent hover:text-foreground",
+        active && "bg-accent font-medium text-foreground"
       )}
     >
       {icon}
@@ -138,13 +138,13 @@ function NavButton({ active, label, icon, onClick }: { active: boolean; label: s
   );
 }
 
-function TitleBarAction({ label, ariaLabel, icon, active, pressed, dot, onClick }: {
+function TitleBarAction({ label, ariaLabel, icon, active, pressed, badge, onClick }: {
   label: string;
-  ariaLabel?: string;
+  ariaLabel?: string | undefined;
   icon: ReactNode;
-  active?: boolean;
-  pressed?: boolean;
-  dot?: boolean;
+  active?: boolean | undefined;
+  pressed?: boolean | undefined;
+  badge?: number | undefined;
   onClick: () => void;
 }) {
   return (
@@ -154,13 +154,17 @@ function TitleBarAction({ label, ariaLabel, icon, active, pressed, dot, onClick 
       aria-pressed={pressed}
       onClick={onClick}
       className={cn(
-        "relative mx-0.5 inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs text-muted-foreground transition-colors [-webkit-app-region:no-drag] hover:bg-accent hover:text-foreground",
-        active && "bg-accent text-foreground"
+        "relative mx-0.5 inline-flex h-7 items-center gap-1.5 rounded-[var(--tf-radius-control)] px-2.5 text-xs text-muted-foreground transition-[color,background-color] duration-200 ease-[var(--tf-ease-out)] [-webkit-app-region:no-drag] hover:bg-accent hover:text-foreground",
+        active && "bg-accent font-medium text-foreground"
       )}
     >
       {icon}
       <span className="max-[1100px]:hidden">{label}</span>
-      {dot && <span className="absolute top-1 right-1 size-[7px] rounded-full bg-destructive" aria-hidden="true" />}
+      {badge != null && badge > 0 && (
+        <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold tabular-nums text-destructive-foreground" aria-label={`${badge} 条待处理`}>
+          {badge > 99 ? "99+" : badge}
+        </span>
+      )}
     </button>
   );
 }
@@ -199,12 +203,12 @@ function ViewSlider({ value, onChange }: { value: ProjectView; onChange: (page: 
       role="tablist"
       aria-label="项目子页面"
       ref={railRef}
-      className="absolute top-1/2 left-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-0.5 rounded-lg border bg-foreground/[0.04] p-0.5 [-webkit-app-region:no-drag]"
+      className="absolute top-1/2 left-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-0.5 rounded-xl bg-foreground/[0.04] p-0.5 shadow-[var(--tf-shadow-sm)] ring-1 ring-black/[0.04] dark:ring-white/[0.06] [-webkit-app-region:no-drag]"
     >
       {thumb && (
         <span
           aria-hidden="true"
-          className="absolute top-0.5 bottom-0.5 rounded-md bg-background shadow-sm ring-1 ring-border transition-[left,width] duration-200 ease-out"
+          className="absolute top-0.5 bottom-0.5 rounded-lg bg-background shadow-[var(--tf-shadow-sm)] ring-1 ring-border/50 transition-[left,width] duration-250 ease-[var(--tf-ease-out)]"
           style={{ left: thumb.left, width: thumb.width }}
         />
       )}
@@ -216,8 +220,8 @@ function ViewSlider({ value, onChange }: { value: ProjectView; onChange: (page: 
           ref={(node) => { itemRefs.current[index] = node; }}
           onClick={() => onChange(item.view)}
           className={cn(
-            "relative z-[1] inline-flex h-[26px] items-center gap-1.5 rounded-md px-2.5 text-xs whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground",
-            index === activeIndex && "text-foreground"
+            "relative z-[1] inline-flex h-[26px] items-center gap-1.5 rounded-lg px-2.5 text-xs whitespace-nowrap text-muted-foreground transition-colors duration-200 ease-[var(--tf-ease-out)] hover:text-foreground",
+            index === activeIndex && "font-medium text-foreground"
           )}
         >
           {item.icon}

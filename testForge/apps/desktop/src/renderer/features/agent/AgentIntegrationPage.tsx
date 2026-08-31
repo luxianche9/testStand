@@ -71,12 +71,12 @@ function AgentConfig({ gateway, showHeader = false }: { gateway: DashboardSnapsh
   return (
     <section className="mx-auto max-w-[880px]">
       {showHeader && (
-        <header className="mb-5 border-b pb-4">
+        <header className="mb-5 pb-4">
           <h1 className="m-0 text-xl font-semibold tracking-tight">Agent 接入</h1>
           <p className="mt-1.5 mb-0 text-sm text-muted-foreground">管理 Gateway、Codex 一键接入、访问令牌、手动接入方式和 MCP 工具清单。</p>
         </header>
       )}
-      <div className={cn("flex items-center gap-3 rounded-lg border px-4 py-3", gateway.running ? "border-success/35 bg-success/8" : "border-border bg-secondary/40")}>
+      <div className={cn("flex items-center gap-3 rounded-xl px-4 py-3 shadow-sm ring-1", gateway.running ? "bg-success/8 ring-success/35" : "bg-secondary/40 ring-black/[0.04] dark:ring-white/[0.06]")}>
         <Dot state={gateway.running ? "ok" : "bad"} />
         <span className="grid min-w-0 flex-1 gap-0.5">
           <strong className="text-sm font-semibold">MCP Gateway {gateway.running ? "正在运行" : "未运行"}</strong>
@@ -98,7 +98,7 @@ function AgentConfig({ gateway, showHeader = false }: { gateway: DashboardSnapsh
         </div>
       )}
 
-      <section className="mt-4 overflow-hidden rounded-lg border">
+      <section className="mt-4 overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]">
         <header className="flex items-center justify-between bg-secondary/50 px-4 py-3">
           <div className="grid gap-0.5">
             <strong className="text-sm font-semibold">Codex</strong>
@@ -112,7 +112,7 @@ function AgentConfig({ gateway, showHeader = false }: { gateway: DashboardSnapsh
           <AgentStatusRow label="MCP 配置" ok={current?.configuration.state === "configured"} value={integrationPartLabel(current?.configuration.state)} detail={current?.configuration.endpoint} />
           <AgentStatusRow label="最近连接" ok={Boolean(current?.lastClient)} value={current?.lastClient ? `${current.lastClient.name}${current.lastClient.version ? ` ${current.lastClient.version}` : ""}` : "等待 Codex 连接"} detail={current?.lastClient ? new Date(current.lastClient.connectedAt).toLocaleString() : undefined} neutral={!current?.lastClient} />
         </div>
-        <footer className="flex flex-wrap gap-2 border-t px-4 py-3">
+        <footer className="flex flex-wrap gap-2 bg-secondary/30 px-4 py-3">
           <Button
             disabled={busy || !gateway.running || current?.state === "unavailable" || status.isLoading}
             onClick={async () => {
@@ -128,23 +128,23 @@ function AgentConfig({ gateway, showHeader = false }: { gateway: DashboardSnapsh
         </footer>
       </section>
 
-      <details className="mt-4 overflow-hidden rounded-lg border">
+      <details className="mt-4 overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]">
         <summary className="cursor-pointer px-4 py-3 text-sm font-medium select-none hover:bg-accent">高级设置</summary>
-        <div className="border-t">
+        <div className="bg-secondary/20">
           <PropRow label="Gateway 地址"><code>{gateway.endpoint}</code></PropRow>
           <PropRow label="环境变量"><code>TESTFORGE_MCP_TOKEN</code></PropRow>
           <PropRow label="Codex CLI"><code>{current?.cli.path ?? "未发现"}</code></PropRow>
           <PropRow label="手动命令"><code>codex mcp add testforge --url {gateway.endpoint} --bearer-token-env-var TESTFORGE_MCP_TOKEN</code></PropRow>
-          <div className="flex items-center justify-between gap-4 border-t px-4 py-3">
+          <div className="flex items-center justify-between gap-4 px-4 py-3">
             <span className="text-xs text-muted-foreground">Gateway 令牌仅保存在主进程和受管环境变量中，不下发到渲染进程。</span>
             <Button variant="destructive" size="sm" disabled={busy} onClick={() => setRotateOpen(true)}>轮换令牌</Button>
           </div>
         </div>
       </details>
 
-      <details className="mt-4 overflow-hidden rounded-lg border">
+      <details className="mt-4 overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]">
         <summary className="cursor-pointer px-4 py-3 text-sm font-medium select-none hover:bg-accent">其他 Agent 手动接入</summary>
-        <div className="grid gap-4 border-t px-4 py-4 sm:grid-cols-2">
+        <div className="grid gap-4 bg-secondary/20 px-4 py-4 sm:grid-cols-2">
           <div><strong className="text-sm font-medium">Claude Code</strong><p className="mt-1 mb-0 text-xs text-muted-foreground">在 Claude Code 的 MCP 设置中添加 HTTP Server，并配置 Authorization 标头。</p></div>
           <div><strong className="text-sm font-medium">OpenCode（外部）</strong><p className="mt-1 mb-0 text-xs text-muted-foreground">外部 OpenCode 也可手动添加相同端点与 Bearer；内嵌 OpenCode 已自动配置，无需手动接入。</p></div>
           <pre className="col-span-full m-0 overflow-auto rounded-md bg-secondary/60 px-3.5 py-3 text-xs">{`${gateway.endpoint}\nAuthorization: Bearer <从受保护环境变量读取>`}</pre>
@@ -202,7 +202,7 @@ function AgentConfig({ gateway, showHeader = false }: { gateway: DashboardSnapsh
 
 function PropRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="grid min-h-7 grid-cols-[140px_minmax(0,1fr)] items-center gap-3 border-t px-4 py-1.5 first:border-t-0">
+    <div className="grid min-h-7 grid-cols-[140px_minmax(0,1fr)] items-center gap-3 px-4 py-1.5 odd:bg-secondary/20">
       <span className="text-xs text-muted-foreground">{label}</span>
       <span className="min-w-0 wrap-anywhere text-sm [&_code]:font-mono [&_code]:text-xs">{children}</span>
     </div>
@@ -211,7 +211,7 @@ function PropRow({ label, children }: { label: string; children: React.ReactNode
 
 function AgentStatusRow({ label, ok, value, detail, neutral = false }: { label: string; ok: boolean; value: string; detail?: string | undefined; neutral?: boolean }) {
   return (
-    <div className="flex items-center gap-3 border-t px-4 py-2.5 text-sm first:border-t-0">
+    <div className="flex items-center gap-3 px-4 py-2.5 text-sm odd:bg-secondary/20">
       <Dot state={neutral ? "muted" : ok ? "ok" : "bad"} />
       <span className="grid min-w-0 flex-1 gap-0.5">
         <strong className="font-medium">{label}</strong>
@@ -233,9 +233,9 @@ function AgentToolsSection() {
   });
   const items = tools.data ?? [];
   return (
-    <details className="mt-4 overflow-hidden rounded-lg border">
+    <details className="mt-4 overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]">
       <summary className="flex cursor-pointer items-center gap-2 px-4 py-3 text-sm font-medium select-none hover:bg-accent">可调用的工具 <Badge variant="secondary">{items.length}</Badge></summary>
-      <div className="border-t px-4 py-3">
+      <div className="bg-secondary/20 px-4 py-3">
         <div className="mb-3 flex items-center gap-3">
           <Button variant="ghost" size="sm" disabled={!items.length || exportTools.isPending} onClick={() => exportTools.mutate()}><DownloadIcon size={14} />导出工具清单</Button>
           {notice && <span className="text-xs text-muted-foreground">{notice}</span>}
@@ -252,7 +252,7 @@ function AgentToolsSection() {
 function AgentToolRow({ tool }: { tool: AgentToolInfo }) {
   const [open, setOpen] = useState(false);
   return (
-    <article className="overflow-hidden rounded-md border">
+    <article className="overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]">
       <button className="flex w-full items-center justify-between gap-3 px-3.5 py-2.5 text-left hover:bg-accent" onClick={() => setOpen((value) => !value)}>
         <span className="grid min-w-0 gap-0.5">
           <strong className="text-sm font-medium">{tool.name}</strong>
@@ -263,7 +263,7 @@ function AgentToolRow({ tool }: { tool: AgentToolInfo }) {
           <span className="text-xs text-muted-foreground">{open ? "收起" : "展开"}</span>
         </span>
       </button>
-      {open && <pre className="m-0 max-h-64 overflow-auto border-t bg-secondary/60 px-3.5 py-3 font-mono text-xs">{JSON.stringify(tool.inputSchema, null, 2)}</pre>}
+      {open && <pre className="m-0 max-h-64 overflow-auto bg-secondary/60 px-3.5 py-3 font-mono text-xs">{JSON.stringify(tool.inputSchema, null, 2)}</pre>}
     </article>
   );
 }

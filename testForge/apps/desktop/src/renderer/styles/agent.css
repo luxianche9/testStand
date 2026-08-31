@@ -1,0 +1,67 @@
+@layer components {
+  .tf-agent-sidebar {
+    --tf-agent-sidebar-width: 420px;
+    position: relative;
+    flex: none;
+    width: var(--tf-agent-sidebar-width);
+    min-width: 300px;
+    max-width: min(720px, calc(100vw - 468px));
+    overflow: visible;
+    color: var(--tf-foreground);
+    background: var(--tf-card);
+    box-shadow: -8px 0 24px rgb(var(--tf-shadow-color) / 0.05);
+    container-type: inline-size;
+  }
+
+  .tf-agent-resize-handle {
+    position: absolute;
+    z-index: 70;
+    inset: 0 auto 0 -5px;
+    width: 10px;
+    cursor: col-resize;
+    touch-action: none;
+  }
+
+  .tf-agent-resize-handle::after {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 4px;
+    width: 2px;
+    background: transparent;
+    transition: background-color 120ms ease;
+  }
+
+  .tf-agent-resize-handle:hover::after,
+  .tf-agent-resize-handle:focus-visible::after,
+  .tf-agent-resize-handle[data-dragging="true"]::after {
+    background: var(--tf-ring);
+  }
+
+  body.is-resizing-agent-sidebar {
+    cursor: col-resize;
+    user-select: none;
+  }
+
+  .shimmer {
+    color: transparent;
+    background: linear-gradient(90deg, transparent 0%, var(--tf-foreground) 45%, transparent 90%);
+    background-clip: text;
+    background-size: 220% 100%;
+    animation: tf-shimmer 1.5s linear infinite;
+  }
+
+  .tf-agent-readonly-status { flex: none; color: var(--tf-muted-foreground); font-size: 11px; }
+
+  .aui-md > :first-child { margin-top: 0; }
+  .aui-md > :last-child { margin-bottom: 0; }
+  .aui-md a { overflow-wrap: anywhere; }
+  .aui-md pre code { font-family: var(--tf-font-mono); }
+  [data-slot="aui_thread-viewport"] { scrollbar-gutter: stable; }
+
+  @container (max-width: 360px) {
+    .tf-agent-status-label { display: none; }
+    [data-slot="aui_message-group"] { row-gap: 1.25rem; }
+    [data-slot="aui_user-message-root"] { grid-template-columns: minmax(32px, 1fr) auto; }
+    [data-slot="aui_assistant-message-content"] { padding-inline: 0.25rem; }
+  }
+}

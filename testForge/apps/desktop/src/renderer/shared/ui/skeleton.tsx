@@ -4,10 +4,11 @@ export function Skeleton({ className, ...props }: React.ComponentPropsWithoutRef
   return <div className={cn("animate-pulse rounded-md bg-muted", className)} {...props} />;
 }
 
-export function Spinner({ label, className }: { label?: string; className?: string }) {
+export function Spinner({ label, size = "default", className }: { label?: string | undefined; size?: "sm" | "default" | "lg" | undefined; className?: string | undefined }) {
+  const sizeClass = size === "sm" ? "size-3 border-[1.5px]" : size === "lg" ? "size-6 border-[2.5px]" : "size-4 border-2";
   return (
     <span className={cn("inline-flex items-center gap-2.5 text-muted-foreground", className)}>
-      <span className="size-4 animate-spin rounded-full border-2 border-foreground/15 border-t-ring" aria-hidden="true" />
+      <span className={cn("animate-spin rounded-full border-foreground/15 border-t-ring", sizeClass)} aria-hidden="true" />
       {label && <span className="text-sm">{label}</span>}
     </span>
   );

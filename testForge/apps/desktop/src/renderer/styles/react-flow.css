@@ -1,0 +1,214 @@
+/* React Flow third-party overrides — colors reference --tf-* tokens exclusively. */
+
+.topology-preview { position: relative; display: block; width: 100%; height: 132px; overflow: hidden; background: var(--tf-canvas); pointer-events: none; }
+.topology-preview.compact { height: 74px; }
+.topology-preview .react-flow { background: var(--tf-canvas); }
+.topology-preview .react-flow__edge-path { stroke: var(--tf-wiring-edge); stroke-width: 2; opacity: .78; }
+.topology-preview .react-flow__node { cursor: default; }
+.topology-preview .flow-hardware-node { transition: none; }
+.topology-preview .flow-connector-label { display: none; }
+.topology-empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--tf-muted-foreground); font-size: 11px; }
+
+.react-flow { background: var(--tf-canvas); }
+.react-flow__controls { overflow: hidden; border: 0; border-radius: 10px; background: var(--tf-popover); box-shadow: var(--tf-shadow-md); outline: 1px solid color-mix(in srgb, var(--tf-foreground) 6%, transparent); }
+.react-flow__controls-button { border-bottom-color: color-mix(in srgb, var(--tf-foreground) 6%, transparent); background: var(--tf-popover); fill: var(--tf-foreground); }
+.react-flow__controls-button:hover { background: var(--tf-accent); }
+.react-flow__edge-text { fill: var(--tf-foreground); font-family: var(--tf-font-mono); font-size: 10px; }
+.react-flow__edge-textbg { fill: var(--tf-popover); stroke: var(--tf-border); stroke-width: 1; }
+.react-flow__edge.wiring-flow-edge .react-flow__edge-path {
+  stroke: var(--tf-wiring-edge);
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  opacity: 1;
+  filter: drop-shadow(0 0 2px color-mix(in srgb, var(--tf-wiring-edge) 55%, transparent));
+}
+.react-flow__edge.wiring-flow-edge.selected .react-flow__edge-path {
+  stroke: var(--tf-wiring-edge-strong);
+  stroke-width: 4.5;
+}
+.react-flow__connection-path {
+  stroke: var(--tf-wiring-edge);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+.react-flow__resize-control.handle {
+  width: 8px !important;
+  height: 8px !important;
+  border: 1px solid var(--tf-wiring-edge) !important;
+  border-radius: 2px;
+  background: var(--tf-card) !important;
+}
+.react-flow__resize-control.line {
+  border-color: color-mix(in srgb, var(--tf-wiring-edge) 45%, transparent) !important;
+}
+
+/* Hardware node card */
+.flow-hardware-node {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  border: 1px solid color-mix(in srgb, var(--tf-foreground) 8%, transparent);
+  border-radius: 12px;
+  background: var(--tf-card);
+  box-shadow: var(--tf-shadow-md);
+  transition: border-color .12s ease, box-shadow .12s ease;
+}
+.flow-node-body {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 11px;
+  background: var(--tf-card);
+}
+.flow-node-image {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-bottom: 0;
+  background: var(--tf-secondary);
+  color: var(--tf-muted-foreground);
+}
+.flow-node-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+.flow-node-caption {
+  flex: 0 0 auto;
+  min-width: 0;
+  width: 100%;
+  min-height: 28px;
+  max-height: 40px;
+  display: block;
+  padding: 5px 8px;
+  overflow: hidden;
+  color: var(--tf-foreground);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.6;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+  background: var(--tf-card);
+}
+.flow-hardware-node.image-hidden .flow-node-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.flow-hardware-node.image-hidden .flow-node-caption {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+  padding: 4px 8px;
+  font-size: 12px;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+.flow-hardware-node.selected {
+  border-color: var(--tf-wiring-edge);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--tf-wiring-edge) 22%, transparent), 0 8px 24px color-mix(in srgb, #000 12%, transparent);
+}
+.flow-hardware-node.connector-editing {
+  outline: 1px dashed var(--tf-wiring-edge);
+  outline-offset: 4px;
+}
+.flow-hardware-node.unresolved { border-color: var(--tf-warning); }
+
+/* Port connectors */
+.flow-connector {
+  --connector-offset: 50%;
+  position: absolute;
+  z-index: 4;
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+}
+.flow-connector[data-side="top"] { top: 0; left: var(--connector-offset); transform: translate(-50%, -50%); }
+.flow-connector[data-side="right"] { top: var(--connector-offset); right: 0; transform: translate(50%, -50%); }
+.flow-connector[data-side="bottom"] { bottom: 0; left: var(--connector-offset); transform: translate(-50%, 50%); }
+.flow-connector[data-side="left"] { top: var(--connector-offset); left: 0; transform: translate(-50%, -50%); }
+.flow-connector-hit {
+  position: absolute;
+  inset: -4px;
+  z-index: 2;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+  pointer-events: none;
+}
+.flow-hardware-node.connector-editing .flow-connector-hit {
+  pointer-events: auto;
+  cursor: grab;
+}
+.flow-hardware-node.connector-editing .flow-connector-hit:active { cursor: grabbing; }
+.flow-connector-label {
+  position: absolute;
+  z-index: 5;
+  max-width: 120px;
+  padding: 2px 7px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 6px;
+  background: var(--tf-popover);
+  box-shadow: var(--tf-shadow-sm);
+  outline: 1px solid color-mix(in srgb, var(--tf-foreground) 8%, transparent);
+  color: var(--tf-popover-foreground);
+  font-family: var(--tf-font-mono);
+  font-size: 10px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .1s ease;
+}
+.flow-connector[data-side="top"] .flow-connector-label { bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); }
+.flow-connector[data-side="right"] .flow-connector-label { left: calc(100% + 6px); top: 50%; transform: translateY(-50%); }
+.flow-connector[data-side="bottom"] .flow-connector-label { top: calc(100% + 6px); left: 50%; transform: translateX(-50%); }
+.flow-connector[data-side="left"] .flow-connector-label { right: calc(100% + 6px); top: 50%; transform: translateY(-50%); }
+.flow-connector:hover .flow-connector-label,
+.flow-connector:focus-within .flow-connector-label,
+.flow-connector-hit:hover .flow-connector-label,
+.flow-connector-hit:focus-visible .flow-connector-label {
+  opacity: 1;
+}
+.flow-connector-handle {
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  right: auto !important;
+  bottom: auto !important;
+  z-index: 1;
+  width: 10px !important;
+  height: 10px !important;
+  min-width: 10px;
+  min-height: 10px;
+  transform: translate(-50%, -50%) !important;
+  border: 2px solid var(--tf-card) !important;
+  border-radius: 999px;
+  background: var(--tf-wiring-edge) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flow-hardware-node { transition: none; }
+}

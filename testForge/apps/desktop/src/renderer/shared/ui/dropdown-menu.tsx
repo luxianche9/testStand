@@ -12,7 +12,7 @@ export function DropdownMenuContent({ className, sideOffset = 5, align = "start"
         sideOffset={sideOffset}
         align={align}
         className={cn(
-          "z-[110] min-w-36 animate-fade-in rounded-md border bg-popover p-1 text-popover-foreground shadow-lg",
+          "z-[110] min-w-36 animate-fade-in rounded-xl bg-popover p-1 text-popover-foreground shadow-[var(--tf-shadow-md)] ring-1 ring-black/[0.05] dark:ring-white/[0.08]",
           className
         )}
         {...props}

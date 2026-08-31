@@ -53,11 +53,10 @@ test.describe.serial("manual control and persisted Run logs", () => {
     await page.getByRole("tab", { name: "设备管理" }).click();
 
     await expect(page.getByRole("heading", { name: "设备管理" })).toBeVisible();
-    await page.getByRole("treeitem", { name: /E2E fixture MCP/ }).click();
     await expect(page.getByRole("button", { name: "占用硬件" })).toBeEnabled();
     await page.getByRole("button", { name: "占用硬件" }).click();
     await expect(page.getByRole("button", { name: "释放硬件" })).toBeVisible();
-    await page.getByRole("button", { name: /write_voltage/ }).click();
+    await page.getByRole("treeitem", { name: /write_voltage/ }).click();
     await expect(page.getByText("Hardware ID", { exact: true })).toHaveCount(0);
     await page.getByLabel("Voltage").fill("4.2");
     await page.getByLabel("Mode").selectOption("pulse");
@@ -101,16 +100,16 @@ test.describe.serial("manual control and persisted Run logs", () => {
     await page.getByLabel("搜索运行日志").fill("Persisted fixture");
     const runRow = page.getByRole("row", { name: /Persisted fixture Run passed/ });
     await expect(runRow).toBeVisible();
-    await runRow.click();
-    await expect(page.getByRole("complementary", { name: "运行检查器" })).toContainText("Write fixture voltage");
-    await page.getByRole("button", { name: "打开完整详情" }).click();
-    await expect(page.getByRole("dialog", { name: "运行详情" }).getByText("run.passed", { exact: true })).toBeVisible();
-    await page.getByRole("dialog", { name: "运行详情" }).getByRole("button", { name: "关闭" }).click();
+    await expect(page.getByRole("complementary", { name: "运行检查器" })).toHaveCount(0);
+    await runRow.dblclick();
+    const detail = page.getByRole("dialog", { name: "运行详情" });
+    await expect(detail.getByText("Write fixture voltage")).toBeVisible();
+    await expect(detail.getByText("run.passed", { exact: true })).toBeVisible();
 
     const exported = await page.evaluate((id) => window.testforge.orchestration.exportRun(id), runId);
     expect(exported).toMatchObject({ formatVersion: 1, run: { runId, taskName: "Persisted fixture Run", status: "passed" }, nodeRuns: [{ nodeLabel: "Write fixture voltage", status: "passed" }] });
 
-    await page.getByRole("button", { name: "删除", exact: true }).click();
+    await detail.getByRole("button", { name: "删除" }).click();
     const dialog = page.getByRole("dialog", { name: "删除运行日志" });
     await dialog.getByRole("button", { name: "确认删除" }).click();
     await expect(page.getByText("没有符合条件的运行记录。")).toBeVisible();

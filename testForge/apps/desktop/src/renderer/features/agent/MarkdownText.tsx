@@ -26,7 +26,7 @@ export const MarkdownText = memo(MarkdownTextImpl);
 const CodeHeader: FC<CodeHeaderProps> = ({ language, code }) => {
   const { isCopied, copyToClipboard } = useCopyToClipboard();
   return (
-    <div className="aui-code-header-root mt-3 flex items-center justify-between rounded-t-xl border border-b-0 border-border/60 bg-muted/50 px-3.5 py-1.5 text-xs">
+    <div className="aui-code-header-root mt-3 flex items-center justify-between rounded-t-xl border border-b-0 border-black/[0.04] bg-muted/50 px-3.5 py-1.5 text-xs dark:border-white/[0.06]">
       <span className="text-muted-foreground font-medium lowercase">{language || "代码"}</span>
       <TooltipIconButton tooltip={isCopied ? "已复制" : "复制代码"} onClick={() => code && !isCopied && copyToClipboard(code)}>
         {isCopied ? <CheckIcon className="size-3.5" /> : <CopyIcon className="size-3.5" />}
@@ -67,13 +67,13 @@ const defaultComponents = memoizeMarkdownComponents({
   li: ({ className, ...props }) => <li className={cn("leading-relaxed", className)} {...props} />,
   strong: ({ className, ...props }) => <strong className={cn("font-semibold", className)} {...props} />,
   sup: ({ className, ...props }) => <sup className={cn("[&>a]:text-xs [&>a]:no-underline", className)} {...props} />,
-  pre: ({ className, ...props }) => <pre className={cn("overflow-x-auto rounded-t-none rounded-b-xl border border-t-0 border-border/60 bg-muted/30 p-3.5 font-mono text-[12px] leading-relaxed", className)} {...props} />,
+  pre: ({ className, ...props }) => <pre className={cn("overflow-x-auto rounded-t-none rounded-b-xl border border-t-0 border-black/[0.04] bg-muted/30 p-3.5 font-mono text-[12px] leading-relaxed dark:border-white/[0.06]", className)} {...props} />,
   code: function Code({ className, ...props }) {
     const isCodeBlock = useIsMarkdownCodeBlock();
     return <code className={cn(!isCodeBlock && "rounded-md bg-muted px-1.5 py-0.5 font-mono text-[0.85em]", className)} {...props} />;
   },
   img: ({ alt }) => (
-    <span className="my-2 inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/30 px-2 py-1 text-xs text-muted-foreground">
+    <span className="my-2 inline-flex items-center gap-1.5 rounded-xl bg-muted/30 px-2 py-1 text-xs text-muted-foreground shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]">
       <ImageOffIcon className="size-3.5" />
       远程图片未启用{alt ? `：${alt}` : ""}
     </span>

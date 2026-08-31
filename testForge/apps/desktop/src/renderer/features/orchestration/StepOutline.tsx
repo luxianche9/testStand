@@ -13,14 +13,14 @@ const STEP_TYPE_ICONS: Partial<Record<TestStep["type"], LucideIcon>> = {
 };
 
 export function StepPalette({ onAdd }: { onAdd: (type: TestStep["type"]) => void }) {
-  return <aside className="flex flex-col gap-1.5 overflow-auto border-r bg-card px-2 py-2.5">
+  return <aside className="flex flex-col gap-1.5 overflow-auto bg-card px-2 py-2.5">
     <strong className="px-1.5 pt-1 pb-2 text-xs font-medium text-muted-foreground">步骤</strong>
     {STEP_TYPES.map((type) => {
       const Icon = STEP_TYPE_ICONS[type] ?? PlusIcon;
       return <button
         key={type}
         onClick={() => onAdd(type)}
-        className="flex items-center gap-1.5 rounded-md border bg-background px-2 py-1.5 text-left text-sm transition-colors hover:border-ring hover:text-foreground/80"
+        className="flex items-center gap-1.5 rounded-xl bg-background px-2 py-1.5 text-left text-sm shadow-sm ring-1 ring-black/[0.04] transition-[box-shadow,ring-color] hover:ring-ring hover:text-foreground/80 dark:ring-white/[0.06]"
       ><Icon className="size-3.5" />{stepTypeLabel(type)}</button>;
     })}
   </aside>;

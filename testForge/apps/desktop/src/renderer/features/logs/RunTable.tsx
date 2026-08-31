@@ -23,6 +23,7 @@ export function RunTable({
   sortBy,
   sortDir,
   onSelect,
+  onOpenDetail,
   onSort
 }: {
   items: TestRun[];
@@ -34,6 +35,7 @@ export function RunTable({
   sortBy: TestRunListSortBy;
   sortDir: RunListSortDir;
   onSelect: (runId: string) => void;
+  onOpenDetail: (runId: string) => void;
   onSort: (column: TestRunListSortBy) => void;
 }) {
   return <div className="flex min-h-0 flex-1 flex-col">
@@ -54,10 +56,10 @@ export function RunTable({
       {!loading && !error && <table className="w-full border-collapse">
         <thead>
           <tr>
-            <th className="sticky top-0 z-10 w-5 border-b bg-secondary px-2 py-2 text-left text-[11px] font-semibold text-muted-foreground" aria-label="活动" />
+            <th className="sticky top-0 z-10 w-5 bg-secondary px-2 py-2 text-left text-[11px] font-semibold text-muted-foreground shadow-sm" aria-label="活动" />
             {COLUMNS.map((column) => <th
               key={column.id}
-              className="sticky top-0 z-10 border-b bg-secondary px-2.5 py-2 text-left text-[11px] font-semibold text-muted-foreground"
+              className="sticky top-0 z-10 bg-secondary px-2.5 py-2 text-left text-[11px] font-semibold text-muted-foreground shadow-sm"
               aria-sort={sortBy === column.id ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
             >
               <button type="button" className="inline-flex items-center gap-1" onClick={() => onSort(column.id)}>
@@ -65,22 +67,24 @@ export function RunTable({
                 {sortBy === column.id ? <span aria-hidden="true">{sortDir === "asc" ? "▴" : "▾"}</span> : null}
               </button>
             </th>)}
-            <th className="sticky top-0 z-10 border-b bg-secondary px-2.5 py-2 text-left text-[11px] font-semibold text-muted-foreground">摘要</th>
+            <th className="sticky top-0 z-10 bg-secondary px-2.5 py-2 text-left text-[11px] font-semibold text-muted-foreground shadow-sm">摘要</th>
           </tr>
         </thead>
         <tbody>
           {items.map((run) => <tr
             key={run.runId}
-            className={cn("cursor-pointer hover:bg-accent/50", selectedRunId === run.runId && "bg-accent")}
+            className={cn("cursor-pointer odd:bg-secondary/20 hover:bg-accent/50", selectedRunId === run.runId && "bg-accent")}
+            title="双击查看详情"
             onClick={() => onSelect(run.runId)}
+            onDoubleClick={() => onOpenDetail(run.runId)}
           >
-            <td className="w-5 border-b px-2 py-2 align-middle text-xs">{isActiveRun(run) ? <span className="inline-block size-2 rounded-full bg-primary ring-[3px] ring-primary/20" title="正在运行" /> : null}</td>
-            <td className="border-b px-2.5 py-2 align-middle text-xs">{run.taskName}</td>
-            <td className="border-b px-2.5 py-2 align-middle text-xs"><Badge variant={badgeVariantFromTone(runStatusTone(run.status))}>{run.status}</Badge></td>
-            <td className="border-b px-2.5 py-2 align-middle text-xs text-muted-foreground">{formatRunTime(run.startedAt ?? run.createdAt)}</td>
-            <td className="border-b px-2.5 py-2 align-middle text-xs">{runDurationText(run)}</td>
-            <td className="border-b px-2.5 py-2 align-middle text-xs">{nodeCounts(run)}</td>
-            <td className="border-b px-2.5 py-2 align-middle text-xs text-muted-foreground">{summaryText(run)}</td>
+            <td className="w-5 px-2 py-2 align-middle text-xs">{isActiveRun(run) ? <span className="inline-block size-2 rounded-full bg-primary ring-[3px] ring-primary/20" title="正在运行" /> : null}</td>
+            <td className="px-2.5 py-2 align-middle text-xs">{run.taskName}</td>
+            <td className="px-2.5 py-2 align-middle text-xs"><Badge variant={badgeVariantFromTone(runStatusTone(run.status))}>{run.status}</Badge></td>
+            <td className="px-2.5 py-2 align-middle text-xs text-muted-foreground">{formatRunTime(run.startedAt ?? run.createdAt)}</td>
+            <td className="px-2.5 py-2 align-middle text-xs">{runDurationText(run)}</td>
+            <td className="px-2.5 py-2 align-middle text-xs">{nodeCounts(run)}</td>
+            <td className="px-2.5 py-2 align-middle text-xs text-muted-foreground">{summaryText(run)}</td>
           </tr>)}
         </tbody>
       </table>}

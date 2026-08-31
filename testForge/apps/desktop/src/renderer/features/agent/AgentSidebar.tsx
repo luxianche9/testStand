@@ -203,7 +203,7 @@ type HeaderProps = {
 
 function AgentHeader({ drawerEnabled, drawerTrigger, newThreadTrigger, ...props }: HeaderProps & { drawerEnabled: boolean; drawerTrigger?: ReactNode; newThreadTrigger?: ReactNode }) {
   return (
-    <header className="flex h-12 shrink-0 items-center gap-1 border-b px-2">
+    <header className="flex h-12 shrink-0 items-center gap-1 bg-card/90 px-2">
       {drawerTrigger ?? <TooltipIconButton tooltip="会话历史（Ctrl/Cmd+B）" disabled={!drawerEnabled} aria-label="打开会话抽屉"><PanelLeftIcon className="size-4" /></TooltipIconButton>}
       <div className="min-w-0 flex-1 px-1">
         <div className="flex items-center gap-1.5 text-sm font-medium"><BotIcon className="size-3.5 shrink-0" /><span>OpenCode</span></div>
@@ -499,13 +499,13 @@ function RunningShell({
             <DialogPrimitive.Portal container={workspace}>
               <div>
                 <DialogPrimitive.Overlay className="absolute inset-0 z-50 bg-black/25 backdrop-blur-[1px]" />
-                <DialogPrimitive.Content className="absolute inset-y-0 start-0 z-[51] flex w-64 max-w-[85%] flex-col border-e bg-card text-card-foreground shadow-xl outline-none">
-                  <header className="flex h-12 shrink-0 items-center justify-between border-b px-3">
+                <DialogPrimitive.Content className="absolute inset-y-0 start-0 z-[51] flex w-64 max-w-[85%] flex-col bg-card text-card-foreground shadow-xl outline-none ring-1 ring-black/[0.04] dark:ring-white/[0.06]">
+                  <header className="flex h-12 shrink-0 items-center justify-between bg-card/90 px-3">
                     <div><DialogPrimitive.Title className="text-sm font-semibold">会话历史</DialogPrimitive.Title><DialogPrimitive.Description className="text-[10px] text-muted-foreground">搜索、切换或管理 OpenCode 会话</DialogPrimitive.Description></div>
                     <DialogPrimitive.Close asChild><TooltipIconButton tooltip="关闭会话抽屉" aria-label="关闭会话抽屉"><XIcon className="size-4" /></TooltipIconButton></DialogPrimitive.Close>
                   </header>
                   <div className="min-h-0 flex-1 overflow-y-auto p-2"><ThreadList onThreadSelected={() => onDrawerOpenChange(false)} /></div>
-                  <p className="border-t px-3 py-2 text-[10px] text-muted-foreground">Ctrl/Cmd+B 切换，Esc 关闭</p>
+                  <p className="bg-secondary/40 px-3 py-2 text-[10px] text-muted-foreground">Ctrl/Cmd+B 切换，Esc 关闭</p>
                 </DialogPrimitive.Content>
               </div>
             </DialogPrimitive.Portal>

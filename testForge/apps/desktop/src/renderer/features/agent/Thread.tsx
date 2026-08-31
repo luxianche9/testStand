@@ -111,7 +111,7 @@ function ThreadScrollToBottom() {
 function Composer() {
   return (
     <ComposerPrimitive.Root className="relative flex w-full flex-col">
-      <div className="flex w-full flex-col gap-2 rounded-(--composer-radius) border border-border/70 bg-(--composer-bg) p-2 shadow-[0_4px_16px_-8px_rgba(0,0,0,0.12),0_1px_2px_rgba(0,0,0,0.05)] transition-[border-color,box-shadow] focus-within:border-ring focus-within:shadow-[0_6px_24px_-8px_rgba(0,0,0,0.16)] dark:shadow-none">
+      <div className="flex w-full flex-col gap-2 rounded-(--composer-radius) bg-(--composer-bg) p-2 shadow-[0_4px_16px_-8px_rgba(0,0,0,0.12),0_1px_2px_rgba(0,0,0,0.05)] ring-1 ring-black/[0.04] transition-[box-shadow,ring-color] focus-within:ring-ring focus-within:shadow-[0_6px_24px_-8px_rgba(0,0,0,0.16)] dark:shadow-none dark:ring-white/[0.06]">
         <ComposerPrimitive.Input
           placeholder="输入消息…"
           className="max-h-32 min-h-10 w-full resize-none bg-transparent px-2.5 py-1 text-sm text-foreground outline-none placeholder:text-muted-foreground/80"
@@ -210,7 +210,7 @@ function AssistantActionBar() {
       <ActionBarPrimitive.Reload asChild><TooltipIconButton tooltip="重新生成"><RefreshCwIcon /></TooltipIconButton></ActionBarPrimitive.Reload>
       <ActionBarMorePrimitive.Root>
         <ActionBarMorePrimitive.Trigger asChild><TooltipIconButton tooltip="更多" className="data-[state=open]:bg-accent"><MoreHorizontalIcon /></TooltipIconButton></ActionBarMorePrimitive.Trigger>
-        <ActionBarMorePrimitive.Content side="bottom" align="start" sideOffset={6} className="z-[100] min-w-36 overflow-hidden rounded-xl border bg-popover/95 p-1.5 text-popover-foreground shadow-lg backdrop-blur-sm">
+        <ActionBarMorePrimitive.Content side="bottom" align="start" sideOffset={6} className="z-[100] min-w-36 overflow-hidden rounded-xl bg-popover/95 p-1.5 text-popover-foreground shadow-lg ring-1 ring-black/[0.04] backdrop-blur-sm dark:ring-white/[0.06]">
           <ActionBarPrimitive.ExportMarkdown asChild>
             <ActionBarMorePrimitive.Item className="flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm outline-none hover:bg-accent focus:bg-accent"><DownloadIcon className="size-4" />导出 Markdown</ActionBarMorePrimitive.Item>
           </ActionBarPrimitive.ExportMarkdown>
@@ -240,7 +240,7 @@ function UserActionBar() {
 function EditComposer() {
   return (
     <MessagePrimitive.Root className="flex flex-col px-2">
-      <ComposerPrimitive.Root className="ms-auto flex w-full max-w-[88%] flex-col rounded-(--composer-radius) border border-border/70 bg-(--composer-bg)">
+      <ComposerPrimitive.Root className="ms-auto flex w-full max-w-[88%] flex-col rounded-(--composer-radius) bg-(--composer-bg) shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]">
         <ComposerPrimitive.Input className="min-h-14 w-full resize-none bg-transparent px-4 pt-3 pb-1 text-sm text-foreground outline-none" autoFocus />
         <div className="mx-2.5 mb-2.5 flex items-center gap-1.5 self-end">
           <ComposerPrimitive.Cancel asChild><Button variant="ghost" size="sm" className="rounded-full">取消</Button></ComposerPrimitive.Cancel>

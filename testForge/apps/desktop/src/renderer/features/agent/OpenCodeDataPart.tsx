@@ -12,5 +12,5 @@ function summary(name: string, data: unknown) {
 
 export function OpenCodeDataPart({ name, data }: { name: string; data: unknown }) {
   if (["opencode-step-start", "opencode-step-finish", "opencode-patch"].includes(name)) return null;
-  return <div className="my-3 flex w-min items-center gap-2 text-nowrap rounded-full border bg-muted/30 px-2 py-1 text-xs text-muted-foreground"><WrenchIcon className="size-3" />{summary(name, data)}</div>;
+  return <div className="my-3 flex w-min items-center gap-2 text-nowrap rounded-full bg-muted/30 px-2 py-1 text-xs text-muted-foreground shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]"><WrenchIcon className="size-3" />{summary(name, data)}</div>;
 }

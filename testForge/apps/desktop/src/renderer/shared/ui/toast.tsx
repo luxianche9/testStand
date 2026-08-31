@@ -1,10 +1,10 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { CircleCheckIcon, CircleAlertIcon, InfoIcon, XIcon } from "lucide-react";
+import { CircleCheckIcon, CircleAlertIcon, CopyIcon, InfoIcon, XIcon } from "lucide-react";
 import { cn } from "./cn";
 
 export type ToastKind = "success" | "error" | "info";
-type ToastItem = { id: number; kind: ToastKind; message: string };
+type ToastItem = { id: number; kind: ToastKind; message: string; duration: number };
 
 type ToastContextValue = {
   toast: (kind: ToastKind, message: string) => void;
@@ -31,8 +31,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   const toast = useCallback((kind: ToastKind, message: string) => {
     const id = nextId.current++;
-    setItems((current) => [...current.slice(-3), { id, kind, message }]);
-    window.setTimeout(() => dismiss(id), kind === "error" ? 6000 : 4000);
+    const duration = kind === "error" ? 6000 : 4000;
+    setItems((current) => [...current.slice(-3), { id, kind, message, duration }]);
+    window.setTimeout(() => dismiss(id), duration);
   }, [dismiss]);
 
   const value = useMemo<ToastContextValue>(() => ({
@@ -52,19 +53,32 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               key={item.id}
               role="alert"
               className={cn(
-                "pointer-events-auto flex w-auto max-w-full animate-toast-in items-center gap-2.5 rounded-lg border bg-popover px-3.5 py-2.5 text-sm text-popover-foreground shadow-xl",
-                item.kind === "error" && "border-destructive/40"
+                "pointer-events-auto relative flex w-auto max-w-full animate-toast-in items-center gap-2.5 overflow-hidden rounded-xl bg-popover px-3.5 py-2.5 text-sm text-popover-foreground shadow-[var(--tf-shadow-lg)] ring-1 ring-black/[0.05] dark:ring-white/[0.08]",
+                item.kind === "error" && "ring-destructive/30"
               )}
             >
               {icons[item.kind]}
               <span className="min-w-0 break-words">{item.message}</span>
+              {item.kind === "error" && (
+                <button
+                  aria-label="复制错误"
+                  className="ml-0.5 grid size-5 flex-none place-items-center rounded text-muted-foreground hover:text-foreground"
+                  onClick={() => void navigator.clipboard.writeText(item.message)}
+                >
+                  <CopyIcon className="size-3" />
+                </button>
+              )}
               <button
                 aria-label="关闭"
-                className="ml-1 grid size-5 flex-none place-items-center rounded text-muted-foreground hover:text-foreground"
+                className="ml-0.5 grid size-5 flex-none place-items-center rounded text-muted-foreground hover:text-foreground"
                 onClick={() => dismiss(item.id)}
               >
                 <XIcon className="size-3.5" />
               </button>
+              <span
+                className="absolute bottom-0 left-0 h-[2px] bg-current opacity-15"
+                style={{ animation: `tf-toast-progress ${item.duration}ms linear forwards` }}
+              />
             </div>
           ))}
         </div>,

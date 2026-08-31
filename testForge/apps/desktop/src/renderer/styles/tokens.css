@@ -1,0 +1,114 @@
+@theme inline {
+  --color-background: var(--tf-background);
+  --color-foreground: var(--tf-foreground);
+  --color-card: var(--tf-card);
+  --color-card-foreground: var(--tf-card-foreground);
+  --color-popover: var(--tf-popover);
+  --color-popover-foreground: var(--tf-popover-foreground);
+  --color-primary: var(--tf-primary);
+  --color-primary-foreground: var(--tf-primary-foreground);
+  --color-secondary: var(--tf-secondary);
+  --color-secondary-foreground: var(--tf-secondary-foreground);
+  --color-muted: var(--tf-muted);
+  --color-muted-foreground: var(--tf-muted-foreground);
+  --color-accent: var(--tf-accent);
+  --color-accent-foreground: var(--tf-accent-foreground);
+  --color-destructive: var(--tf-destructive);
+  --color-destructive-foreground: var(--tf-destructive-foreground);
+  --color-border: var(--tf-border);
+  --color-input: var(--tf-input);
+  --color-ring: var(--tf-ring);
+  --color-success: var(--tf-success);
+  --color-warning: var(--tf-warning);
+  --color-canvas: var(--tf-canvas);
+  --color-canvas-grid: var(--tf-canvas-grid);
+  --color-wiring-edge: var(--tf-wiring-edge);
+  --color-wiring-edge-strong: var(--tf-wiring-edge-strong);
+  --font-sans: var(--tf-font-sans);
+  --font-mono: var(--tf-font-mono);
+  --radius-sm: calc(var(--tf-radius-control) - 2px);
+  --radius-md: var(--tf-radius-control);
+  --radius-lg: var(--tf-radius);
+  --radius-xl: calc(var(--tf-radius) + 4px);
+  --animate-collapsible-down: tf-collapsible-down 160ms ease-out;
+  --animate-collapsible-up: tf-collapsible-up 140ms ease-in;
+  --animate-toast-in: tf-toast-in 180ms ease-out;
+  --animate-fade-in: tf-fade-in 150ms ease-out;
+  --animate-dialog-in: tf-dialog-in 160ms ease-out;
+  --animate-spin: tf-spin 0.7s linear infinite;
+  --animate-page-in: tf-page-in 180ms ease-out;
+  --animate-slide-in-right: tf-slide-in-right 200ms ease-out;
+}
+
+:root {
+  --tf-radius: 1rem;
+  --tf-radius-control: 0.625rem;
+  --tf-font-sans: "Geist Variable", "Segoe UI Variable", "Microsoft YaHei UI", "PingFang SC", system-ui, sans-serif;
+  --tf-font-mono: "Geist Mono Variable", "Cascadia Code", Consolas, monospace;
+  --tf-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --tf-shadow-color: 0 0 0;
+  --tf-shadow-sm: 0 1px 2px rgb(var(--tf-shadow-color) / 0.04), 0 1px 3px rgb(var(--tf-shadow-color) / 0.05);
+  --tf-shadow-md: 0 6px 16px rgb(var(--tf-shadow-color) / 0.07), 0 2px 5px rgb(var(--tf-shadow-color) / 0.04);
+  --tf-shadow-lg: 0 16px 40px rgb(var(--tf-shadow-color) / 0.1), 0 4px 12px rgb(var(--tf-shadow-color) / 0.05);
+}
+
+:root,
+:root[data-theme="light"] {
+  color-scheme: light;
+  --tf-shadow-color: 30 41 59;
+  --tf-background: oklch(0.962 0.008 265);
+  --tf-foreground: oklch(0.24 0.02 265);
+  --tf-card: oklch(0.995 0.003 265);
+  --tf-card-foreground: oklch(0.24 0.02 265);
+  --tf-popover: oklch(0.995 0.003 265);
+  --tf-popover-foreground: oklch(0.24 0.02 265);
+  --tf-primary: oklch(0.38 0.07 255);
+  --tf-primary-foreground: oklch(0.985 0 0);
+  --tf-secondary: oklch(0.942 0.01 265);
+  --tf-secondary-foreground: oklch(0.3 0.025 265);
+  --tf-muted: oklch(0.942 0.01 265);
+  --tf-muted-foreground: oklch(0.5 0.025 265);
+  --tf-accent: oklch(0.945 0.018 255);
+  --tf-accent-foreground: oklch(0.3 0.05 255);
+  --tf-destructive: oklch(0.55 0.2 27);
+  --tf-destructive-foreground: oklch(0.985 0 0);
+  --tf-border: oklch(0.86 0.012 265 / 0.42);
+  --tf-input: oklch(0.86 0.012 265 / 0.65);
+  --tf-ring: oklch(0.58 0.11 255);
+  --tf-success: oklch(0.58 0.15 155);
+  --tf-warning: oklch(0.68 0.14 75);
+  --tf-canvas: oklch(0.952 0.01 255);
+  --tf-canvas-grid: oklch(0.88 0.014 255);
+  --tf-wiring-edge: oklch(0.52 0.16 255);
+  --tf-wiring-edge-strong: oklch(0.45 0.18 255);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --tf-shadow-color: 0 0 0;
+  --tf-background: oklch(0.17 0.015 265);
+  --tf-foreground: oklch(0.96 0.006 265);
+  --tf-card: oklch(0.225 0.016 265);
+  --tf-card-foreground: oklch(0.96 0.006 265);
+  --tf-popover: oklch(0.245 0.016 265);
+  --tf-popover-foreground: oklch(0.96 0.006 265);
+  --tf-primary: oklch(0.78 0.07 255);
+  --tf-primary-foreground: oklch(0.22 0.04 255);
+  --tf-secondary: oklch(0.27 0.016 265);
+  --tf-secondary-foreground: oklch(0.96 0.006 265);
+  --tf-muted: oklch(0.27 0.016 265);
+  --tf-muted-foreground: oklch(0.7 0.02 265);
+  --tf-accent: oklch(0.29 0.03 255);
+  --tf-accent-foreground: oklch(0.96 0.006 265);
+  --tf-destructive: oklch(0.68 0.17 22);
+  --tf-destructive-foreground: oklch(0.985 0 0);
+  --tf-border: oklch(1 0 0 / 7%);
+  --tf-input: oklch(1 0 0 / 11%);
+  --tf-ring: oklch(0.68 0.09 255);
+  --tf-success: oklch(0.72 0.14 155);
+  --tf-warning: oklch(0.78 0.13 80);
+  --tf-canvas: oklch(0.185 0.014 255);
+  --tf-canvas-grid: oklch(0.3 0.018 255);
+  --tf-wiring-edge: oklch(0.72 0.12 250);
+  --tf-wiring-edge-strong: oklch(0.8 0.1 245);
+}

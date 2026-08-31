@@ -89,22 +89,24 @@ afterEach(() => {
 });
 
 describe("LogsPage ledger", () => {
-  it("renders a sortable table and inspector summary for the selected run", async () => {
+  it("renders a sortable table without a side inspector", async () => {
     render(<LogsPage />, { wrapper: Wrapper });
     expect(await screen.findByRole("heading", { name: "运行日志" })).toBeTruthy();
     expect(await screen.findByRole("button", { name: /任务/ })).toBeTruthy();
     expect(await screen.findByRole("cell", { name: "Persisted fixture Run" })).toBeTruthy();
     expect(screen.getByRole("cell", { name: "通信握手测试" })).toBeTruthy();
-    expect(await screen.findByRole("heading", { name: "通信握手测试" })).toBeTruthy();
-    expect(await screen.findAllByText("断言 ACK == 0x06")).not.toHaveLength(0);
+    expect(screen.queryByRole("complementary", { name: "运行检查器" })).toBeNull();
   });
 
-  it("opens the full Run detail from the inspector", async () => {
+  it("opens the full Run detail on double-click", async () => {
+    const user = userEvent.setup();
     render(<LogsPage />, { wrapper: Wrapper });
-    await screen.findByRole("heading", { name: "通信握手测试" });
-    await userEvent.click(screen.getByRole("button", { name: "打开完整详情" }));
+    const cell = await screen.findByRole("cell", { name: "通信握手测试" });
+    await user.dblClick(cell);
     const dialog = await screen.findByRole("dialog", { name: "运行详情" });
     expect(await within(dialog).findByText("事件时间线")).toBeTruthy();
+    expect(within(dialog).getByRole("button", { name: "导出" })).toBeTruthy();
+    expect(within(dialog).getByRole("button", { name: "删除" })).toBeTruthy();
   });
 
   it("filters by task name through listRuns", async () => {

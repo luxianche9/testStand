@@ -14,7 +14,7 @@ const RETRY_CATEGORIES: ErrorCategory[] = ["unavailable", "conflict", "error"];
 const fieldClass = "grid content-start gap-1.5";
 const fieldLabelClass = "text-xs text-muted-foreground";
 const variableRowClass = "grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-end gap-1.5";
-const nestedBoxClass = "flex flex-col gap-1.5 rounded-md border border-input/60 p-2";
+const nestedBoxClass = "flex flex-col gap-1.5 rounded-xl bg-secondary/40 p-2 shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]";
 const expressionBoxClass = nestedBoxClass;
 const mutedCopyClass = "text-xs text-muted-foreground";
 
@@ -23,9 +23,9 @@ export function VariableEditor({ task, onChange }: { task: TestTask; onChange: (
   const values = task[tab];
   const update = (index: number, value: WorkflowVariableDefinition) =>
     onChange({ ...task, [tab]: values.map((item, itemIndex) => itemIndex === index ? value : item) });
-  return <div className="flex flex-col gap-1.5 rounded-md border p-2.5">
+  return <div className="flex flex-col gap-1.5 rounded-xl bg-card p-2.5 shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]">
     <div className="flex items-center justify-between gap-2">
-      <div className="flex rounded-md border bg-secondary/50 p-0.5" role="group" aria-label="变量类别">
+      <div className="flex rounded-lg bg-secondary/50 p-0.5 shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]" role="group" aria-label="变量类别">
         {(["inputs", "variables"] as const).map((name) => <button
           key={name}
           onClick={() => setTab(name)}
@@ -152,7 +152,7 @@ export function StepProperties({ step, task, tools, onChange, onDelete, onDuplic
     <label className={fieldClass}><span className={fieldLabelClass}>名称</span><Input value={step.label} onChange={(event) => onChange({ ...step, label: event.target.value })} /></label>
     <label className="flex items-center gap-2 text-sm"><Checkbox checked={step.enabled} onCheckedChange={(checked) => onChange({ ...step, enabled: checked === true })} /><span>启用该步骤</span></label>
     {fields}
-    <footer className="mt-1 flex gap-2 border-t pt-3">
+    <footer className="mt-1 flex gap-2 pt-3">
       <Button variant="outline" size="sm" onClick={onDuplicate}><CopyIcon className="size-3.5" />复制</Button>
       <Button variant="destructive" size="sm" onClick={onDelete}><Trash2Icon className="size-3.5" />删除</Button>
     </footer>

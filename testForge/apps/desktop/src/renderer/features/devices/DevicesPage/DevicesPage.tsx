@@ -5,8 +5,10 @@ import { RefreshCwIcon } from "lucide-react";
 import { QueryGate } from "../../../shared/layout.js";
 import { invalidateDeviceData } from "../../../shared/mutations.js";
 import { useDashboard, useDeviceCatalog } from "../../../shared/queries.js";
+import { useResizableWidth } from "../../../shared/resizable.js";
 import { cn } from "../../../shared/ui/cn";
 import { Button } from "../../../shared/ui/button";
+import { FeatureLayout, FeatureHeader } from "../../../shared/FeatureLayout.js";
 import { ManualInvokePanel } from "../../manual/index.js";
 import { HardwareListTree } from "./HardwareListTree.js";
 import { RemoteComputerTree } from "./RemoteComputerTree.js";
@@ -23,6 +25,7 @@ export function DevicesPage() {
   const [serverEditor, setServerEditor] = useState<{ open: boolean; server?: McpServerConfig; computerId?: string }>({ open: false });
   const [hardwareEditor, setHardwareEditor] = useState<{ open: boolean; hardware?: Hardware }>({ open: false });
   const catalog = useDeviceCatalog();
+  const sidebar = useResizableWidth({ defaultWidth: 320, min: 240, max: 560, direction: "right" });
 
   const refreshAll = async () => invalidateDeviceData(client);
   const refreshHardware = useMutation({
@@ -65,16 +68,17 @@ export function DevicesPage() {
   const effectiveSelected = selected ?? (data?.computers[0] ? `c:${data.computers[0].id}` : null);
   const invokeTarget = useMemo(() => resolveInvokeTarget(effectiveSelected, data?.servers ?? [], data?.tools ?? [], data?.hardware ?? []), [data, effectiveSelected]);
 
-  return <main className="flex min-h-0 flex-1 flex-col bg-background">
-    <div className="flex flex-none items-center gap-2 border-b bg-card px-3.5 py-2.5">
-      <h1 className="m-0 text-base font-semibold">设备管理</h1>
-      <Button variant="outline" size="sm" onClick={() => probeStatuses.mutate()} disabled={probeStatuses.isPending || !data}>
-        <RefreshCwIcon className={cn(probeStatuses.isPending && "animate-spin")} />状态检测
-      </Button>
-    </div>
-    <div className="grid min-h-0 flex-1 grid-cols-[minmax(280px,360px)_minmax(0,1fr)]">
-      <div className="min-h-0 overflow-auto border-r bg-card p-2.5">
-        <QueryGate query={query}>{(snapshot) => <div className="grid content-start gap-3">
+  return <FeatureLayout
+    header={
+      <FeatureHeader title="设备管理">
+        <Button variant="outline" size="sm" onClick={() => probeStatuses.mutate()} disabled={probeStatuses.isPending || !data}>
+          <RefreshCwIcon className={cn(probeStatuses.isPending && "animate-spin")} />状态检测
+        </Button>
+      </FeatureHeader>
+    }
+    sidebar={{
+      content: (
+        <QueryGate query={query}>{(snapshot) => <div className="grid content-start gap-3.5">
           <RemoteComputerTree
             data={snapshot}
             selected={effectiveSelected}
@@ -98,15 +102,16 @@ export function DevicesPage() {
             onChanged={refreshAll}
           />
         </div>}</QueryGate>
-      </div>
-      <section className="flex min-h-0 min-w-0 flex-col" aria-label="手动调用">
-        <ManualInvokePanel hardwareId={invokeTarget.hardwareId} preferredToolName={invokeTarget.toolName} />
-      </section>
-    </div>
+      ),
+      width: sidebar,
+      position: "left"
+    }}
+  >
+    <ManualInvokePanel hardwareId={invokeTarget.hardwareId} preferredToolName={invokeTarget.toolName} />
     <ComputerEditor open={computerEditor.open} computer={computerEditor.computer} onClose={() => setComputerEditor({ open: false })} onChanged={refreshAll} />
     <ServerEditor open={serverEditor.open} server={serverEditor.server} computerId={serverEditor.computerId} computers={data?.computers ?? []} hardware={hardware} onClose={() => setServerEditor({ open: false })} onChanged={refreshAll} />
     <HardwareEditor open={hardwareEditor.open} hardware={hardwareEditor.hardware} onClose={() => setHardwareEditor({ open: false })} onChanged={refreshAll} />
-  </main>;
+  </FeatureLayout>;
 }
 
 export function resolveInvokeTarget(

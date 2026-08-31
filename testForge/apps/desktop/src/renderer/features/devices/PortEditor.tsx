@@ -69,7 +69,7 @@ export function PortEditor({ hardwareId, ports, saved, onChange, onImageChanged 
         {ports.map((port) => {
           const open = expanded[port.portId] ?? false;
           return (
-            <article className={cn("rounded-md border bg-background", open && "border-foreground/20")} key={port.portId}>
+            <article className={cn("rounded-xl bg-card shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]", open && "ring-foreground/20")} key={port.portId}>
               <div className="flex flex-wrap items-center gap-2 px-2 py-1.5">
                 <button
                   type="button"
@@ -128,7 +128,7 @@ export function PortEditor({ hardwareId, ports, saved, onChange, onImageChanged 
                 </button>
               </div>
               {open && (
-                <div className="grid gap-1 border-t pt-1 pr-2 pb-2 pl-[30px]">
+                <div className="grid gap-1 bg-secondary/30 pt-1 pr-2 pb-2 pl-[30px]">
                   {port.pins.map((pin) => (
                     <div className="grid grid-cols-[24px_96px_minmax(0,1fr)_28px] items-center gap-2" key={pin.pinId}>
                       <span className="text-right text-[11px] text-muted-foreground/70">{pin.position}</span>

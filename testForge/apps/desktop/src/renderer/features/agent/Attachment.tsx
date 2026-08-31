@@ -45,9 +45,9 @@ const AttachmentTile: FC = () => {
   return (
     <AttachmentPrimitive.Root
       className={cn(
-        "group/attachment relative flex min-w-0 items-center gap-2 rounded-md border border-border/70 bg-background px-2 py-1.5 text-xs shadow-xs",
+        "group/attachment relative flex min-w-0 items-center gap-2 rounded-xl bg-background px-2 py-1.5 text-xs shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]",
         composer ? "max-w-48" : "max-w-56",
-        failed && "border-destructive/50"
+        failed && "ring-destructive/50"
       )}
     >
       <div className="relative grid size-8 shrink-0 place-items-center overflow-hidden rounded bg-muted text-muted-foreground">

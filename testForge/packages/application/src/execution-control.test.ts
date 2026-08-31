@@ -108,7 +108,6 @@ describe("ManualControlApplication", () => {
   it.each([
     ["passive hardware", { hardware: { ...managedHardware, kind: "passive", serverId: undefined, computerId: undefined } }, "invalid_argument"],
     ["unknown tool", { tools: [] }, "unavailable"],
-    ["non-hardware tool", { tools: [{ ...hardwareTool, kind: "management" }] }, "invalid_argument"],
     ["tool from another Server", { tools: [{ ...hardwareTool, serverId: "SERVER2" }] }, "invalid_argument"],
     ["missing availability", { availability: [] }, "unavailable"],
     ["offline hardware", { availability: [{ hardwareId: "HW1", state: "unavailable", checkedAt: new Date().toISOString() }] }, "unavailable"]
@@ -118,6 +117,25 @@ describe("ManualControlApplication", () => {
       hardwareId: "HW1", toolName: hardwareTool.externalName, arguments: { value: 1 }
     })).rejects.toMatchObject({ category });
     expect(callTool).not.toHaveBeenCalled();
+  });
+
+  it("allows non-hardware MCP tools without requiring hardware availability", async () => {
+    const managementTool = { ...hardwareTool, externalName: "SERVER1__list_hardware", remoteName: "list_hardware", kind: "management" };
+    const { manual, callTool } = fixture({
+      tools: [managementTool],
+      availability: [{ hardwareId: "HW1", state: "unavailable", checkedAt: new Date().toISOString() }]
+    });
+    const result = await manual.invokeTool(HUMAN_REQUEST_CONTEXT, {
+      hardwareId: "HW1",
+      toolName: managementTool.externalName,
+      arguments: {}
+    });
+    expect(callTool).toHaveBeenCalledWith(
+      managementTool.externalName,
+      {},
+      { timeoutMs: 30_000, signal: expect.any(AbortSignal), metadata: { hardwareId: "HW1" } }
+    );
+    expect(result).toMatchObject({ hardwareId: "HW1", toolName: managementTool.externalName });
   });
 
   it("releases its hardware lease after a remote error", async () => {

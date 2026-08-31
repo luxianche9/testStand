@@ -12,9 +12,9 @@ const ANIMATION_DURATION = 160;
 const variants = cva("group/tool-group-root w-full", {
   variants: {
     variant: {
-      outline: "rounded-lg border py-3",
+      outline: "rounded-xl bg-card py-3 shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]",
       ghost: "",
-      muted: "rounded-lg border border-muted-foreground/30 bg-muted/30 py-3"
+      muted: "rounded-xl bg-muted/30 py-3 shadow-sm ring-1 ring-muted-foreground/20"
     }
   },
   defaultVariants: { variant: "outline" }
@@ -84,7 +84,7 @@ export function ToolGroupContent({ className, children, ...props }: React.Compon
       className={cn("overflow-hidden text-sm outline-none data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down motion-reduce:animate-none", className)}
       {...props}
     >
-      <div className="mt-1 flex flex-col gap-1 group-data-[variant=outline]/tool-group-root:mt-3 group-data-[variant=outline]/tool-group-root:border-t group-data-[variant=outline]/tool-group-root:px-4 group-data-[variant=outline]/tool-group-root:pt-3">
+      <div className="mt-1 flex flex-col gap-1 group-data-[variant=outline]/tool-group-root:mt-3 group-data-[variant=outline]/tool-group-root:bg-secondary/20 group-data-[variant=outline]/tool-group-root:px-4 group-data-[variant=outline]/tool-group-root:pt-3">
         {children}
       </div>
     </CollapsibleContent>

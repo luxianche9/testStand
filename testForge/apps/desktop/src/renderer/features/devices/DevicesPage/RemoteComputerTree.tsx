@@ -1,7 +1,6 @@
 import type { DashboardSnapshot } from "@testforge/contracts/desktop";
-import type { McpServerConfig, RemoteComputer, ToolCatalogItem } from "@testforge/contracts/devices";
+import type { McpServerConfig, RemoteComputer } from "@testforge/contracts/devices";
 import { MonitorIcon, PlusIcon, ServerIcon, WrenchIcon } from "lucide-react";
-import { PropRow } from "../../../shared/layout.js";
 import { TooltipIconButton } from "../../../shared/ui/checkbox";
 import { ComputerActions, ServerActions } from "./DeviceActions.js";
 import { connectionDot, mcpRowStatuses, stateLabel } from "./device-labels.js";
@@ -21,7 +20,7 @@ export function RemoteComputerTree({ data, selected, isOpen, onSelect, onToggle,
   onChanged: () => Promise<void>;
 }) {
   const rootOpen = isOpen("remotes");
-  return <div className="min-w-0 overflow-hidden rounded-md border bg-background" role="tree" aria-label="远程电脑列表">
+  return <div className="min-w-0 overflow-hidden rounded-[var(--tf-radius)] bg-card shadow-[var(--tf-shadow-sm)] ring-1 ring-black/[0.04] dark:ring-white/[0.06]" role="tree" aria-label="远程电脑列表">
     <div>
       <TreeRow
         className="h-9 bg-secondary/60 font-semibold"
@@ -80,10 +79,15 @@ export function RemoteComputerTree({ data, selected, isOpen, onSelect, onToggle,
               />
               {serverOpen && tools.map((tool) => {
                 const toolKey = `t:${tool.externalName}`;
-                return <div key={toolKey}>
-                  <TreeRow depth={3} icon={<WrenchIcon className="size-3.5" />} label={tool.externalName} title={tool.description} hasChildren open={isOpen(toolKey)} selected={selected === toolKey} onClick={() => { onSelect(toolKey); onToggle(toolKey); }} />
-                  {isOpen(toolKey) && <InlineDetail depth={3}><ToolInline tool={tool} /></InlineDetail>}
-                </div>;
+                return <TreeRow
+                  key={toolKey}
+                  depth={3}
+                  icon={<WrenchIcon className="size-3.5" />}
+                  label={tool.externalName}
+                  title={tool.description}
+                  selected={selected === toolKey}
+                  onClick={() => onSelect(toolKey)}
+                />;
               })}
               {serverOpen && tools.length === 0 && <InlineDetail depth={3}><p className="m-0 text-xs text-muted-foreground">MCP 在线后会列出该 Server 暴露的工具。</p></InlineDetail>}
             </div>;
@@ -101,16 +105,4 @@ function occupancyRowStatus(status: DashboardSnapshot["occupancy"][number] | und
   if (status?.state === "occupied_elsewhere") return { dot: "warn", label: "他人占用", title: status.holderLabel ?? "由其他 TestForge 客户端占用" };
   if (status?.state === "unoccupied") return { dot: "muted", label: "未占用", title: "点击锁按钮占用后才可操作硬件" };
   return { dot: "muted", label: "占用未知", title: status?.message ?? "尚未读取硬件占用状态" };
-}
-
-function ToolInline({ tool }: { tool: ToolCatalogItem }) {
-  return <>
-    <div className="mb-3 overflow-hidden rounded-md border bg-background">
-      <PropRow label="远程名称"><code>{tool.remoteName}</code></PropRow>
-      <PropRow label="来源"><code>{tool.serverId}</code></PropRow>
-      <PropRow label="类型">{tool.kind}</PropRow>
-      {tool.description && <PropRow label="描述">{tool.description}</PropRow>}
-    </div>
-    <pre className="m-0 max-h-80 overflow-auto rounded-md border bg-secondary/50 px-4 py-3.5 font-mono text-xs leading-relaxed break-words whitespace-pre-wrap">{JSON.stringify(tool.inputSchema, null, 2)}</pre>
-  </>;
 }

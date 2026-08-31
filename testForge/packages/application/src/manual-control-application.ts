@@ -24,13 +24,15 @@ export class ManualControlApplication {
     }
     const tool = this.devices.listTools().find((item) => item.externalName === input.toolName);
     if (!tool) throw appError("unavailable", `MCP tool is unavailable: ${input.toolName}`);
-    if (tool.kind !== "hardware") throw appError("invalid_argument", `Tool ${input.toolName} is not hardware-scoped`);
     if (tool.serverId !== hardware.serverId) {
       throw appError("invalid_argument", `Tool ${input.toolName} belongs to ${tool.serverId}, not hardware server ${hardware.serverId}`);
     }
-    const availability = this.devices.listAvailability().find((item) => item.hardwareId === input.hardwareId);
-    if (!availability || availability.state !== "available") {
-      throw appError("unavailable", availability?.message ?? `Hardware ${input.hardwareId} is ${availability?.state ?? "not yet checked"}`);
+    // Hardware-scoped tools need a live device; management tools may still be useful while offline.
+    if (tool.kind === "hardware") {
+      const availability = this.devices.listAvailability().find((item) => item.hardwareId === input.hardwareId);
+      if (!availability || availability.state !== "available") {
+        throw appError("unavailable", availability?.message ?? `Hardware ${input.hardwareId} is ${availability?.state ?? "not yet checked"}`);
+      }
     }
 
     const startedAt = new Date().toISOString();

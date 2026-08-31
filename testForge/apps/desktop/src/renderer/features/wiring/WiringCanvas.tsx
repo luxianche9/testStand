@@ -40,8 +40,8 @@ export function HardwareLibrary({ hardware, assetUrls, placed, onAdd, onRefresh 
     setChecking(false);
   };
 
-  return <aside className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] border-r bg-secondary/40">
-    <header className="flex items-center justify-between gap-2 border-b px-3 py-2.5">
+  return <aside className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] bg-secondary/40">
+    <header className="flex items-center justify-between gap-2 bg-card/90 px-3 py-2.5">
       <strong className="truncate text-sm font-semibold">硬件库</strong>
       <Button variant="ghost" size="sm" disabled={checking} onClick={() => void check()}>
         <RefreshCwIcon className={cn("size-3.5", checking && "animate-spin")} />刷新
@@ -54,8 +54,8 @@ export function HardwareLibrary({ hardware, assetUrls, placed, onAdd, onRefresh 
         const state = item.kind === "managed" ? availability.get(item.hardwareId)?.state ?? "checking" : undefined;
         return <article
           className={cn(
-            "mb-2 overflow-hidden rounded-md border bg-card transition-[border-color,transform] active:scale-[0.99]",
-            onCanvas ? "border-ring/60" : "border-border"
+            "mb-2 overflow-hidden rounded-xl bg-card shadow-sm ring-1 transition-[box-shadow,ring-color,transform] active:scale-[0.99]",
+            onCanvas ? "ring-ring/60" : "ring-black/[0.04] dark:ring-white/[0.06]"
           )}
           key={item.hardwareId}
           draggable={!onCanvas}
@@ -66,7 +66,7 @@ export function HardwareLibrary({ hardware, assetUrls, placed, onAdd, onRefresh 
             onClick={() => onAdd(item.hardwareId)}
             disabled={onCanvas}
           >
-            <span className="grid size-[30px] flex-none place-items-center overflow-hidden rounded border bg-secondary text-muted-foreground [&_img]:size-full [&_img]:object-contain">
+            <span className="grid size-[30px] flex-none place-items-center overflow-hidden rounded-md bg-secondary text-muted-foreground shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06] [&_img]:size-full [&_img]:object-contain">
               {url ? <img src={url} alt="" /> : <CpuIcon className="size-5" />}
             </span>
             <span className="min-w-0 flex-1"><strong className="block truncate text-xs">{item.label}</strong></span>

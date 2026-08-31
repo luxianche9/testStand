@@ -85,7 +85,7 @@ export function OpenCodeQuestionCard({
                         const checked = current.selectedLabels.includes(option.label);
                         const id = `${request.id}-${index}-${optionIndex}`;
                         return (
-                          <div key={option.label} className="flex items-start gap-3 rounded-lg border p-3 text-sm">
+                          <div key={option.label} className="flex items-start gap-3 rounded-xl bg-secondary/40 p-3 text-sm shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]">
                             <Checkbox id={id} checked={checked} onCheckedChange={(next) => update(index, (item) => ({ ...item, selectedLabels: next === true ? [...item.selectedLabels, option.label] : item.selectedLabels.filter((label) => label !== option.label) }))} />
                             <div className="space-y-1"><Label htmlFor={id}>{option.label}</Label><p className="text-xs text-muted-foreground">{option.description}</p></div>
                           </div>

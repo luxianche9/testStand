@@ -16,7 +16,7 @@ function ConnectionHead({ a, b, refA, refB }: {
   a: ResolvedRef; b: ResolvedRef; refA?: string | undefined; refB?: string | undefined;
 }) {
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_28px_minmax(0,1fr)] items-center gap-2.5 border-b pb-2.5">
+    <div className="grid grid-cols-[minmax(0,1fr)_28px_minmax(0,1fr)] items-center gap-2.5 pb-2.5">
       <span className="grid min-w-0">
         <strong className="truncate">{a?.hardware?.label ?? refA}</strong>
         <small className="truncate text-xs text-muted-foreground">{a?.port?.name ?? ""}</small>
@@ -200,7 +200,7 @@ export function ListCreateConnectionModal({ open, hardware, existing, onClose, o
       <DialogContent size="lg">
         <DialogHeader title="新建接线" onClose={onClose} />
         <DialogBody>
-          <div className="grid grid-cols-[minmax(0,1fr)_28px_minmax(0,1fr)] items-end gap-2.5 border-b pb-2.5">
+          <div className="grid grid-cols-[minmax(0,1fr)_28px_minmax(0,1fr)] items-end gap-2.5 pb-2.5">
             <PortPicker label="起点端口" value={portA} hardware={hardware} exclude={portB} onChange={pick("a")} />
             <i className="grid place-items-center self-center not-italic text-ring">↔</i>
             <PortPicker label="终点端口" value={portB} hardware={hardware} exclude={portA} onChange={pick("b")} />

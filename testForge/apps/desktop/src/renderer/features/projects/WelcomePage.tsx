@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import "@xyflow/react/dist/style.css";
 import type { Hardware } from "@testforge/contracts/devices";
 import type { ProjectFolderSelection, RecentProjectSummary } from "@testforge/contracts/projects";
-import { FolderOpenIcon, Grid2X2Icon, ListIcon, Trash2Icon } from "lucide-react";
+import { CableIcon, FolderOpenIcon, Grid2X2Icon, ListIcon, ServerIcon, Trash2Icon } from "lucide-react";
 import { Button, Dialog, DialogContent, DialogHeader, DialogBody, DialogFooter, Spinner, cn } from "../../shared/ui/index.js";
 import { errorMessage } from "../../shared/errors.js";
 import { useDeviceCatalog, useRecentProjects } from "../../shared/queries.js";
@@ -66,19 +66,31 @@ export function WelcomePage({ onOpened }: { onOpened: (rootPath: string) => Prom
     void window.testforge.settings.setWelcomeLayout(next);
   };
   const busy = choose.isPending || initialize.isPending || openRecent.isPending;
+  const hasProjects = (recent.data?.length ?? 0) > 0;
 
   return (
-    <main className="min-h-0 flex-1 overflow-auto bg-background px-[clamp(28px,5vw,76px)] pt-8 pb-16">
-      <section className="mx-auto max-w-[1180px]" aria-labelledby="recent-projects-title">
-        <header className="mb-3 flex items-center justify-between gap-4">
-          <div className="flex items-baseline gap-2.5">
-            <h2 id="recent-projects-title" className="m-0 text-sm font-semibold">最近项目</h2>
-            <span className="text-xs text-muted-foreground">{recent.data?.length ?? 0} 个项目</span>
+    <main className="min-h-0 flex-1 overflow-auto bg-background px-[clamp(32px,5vw,80px)] pt-10 pb-18">
+      <section className="mx-auto max-w-[1180px] animate-page-in" aria-labelledby="recent-projects-title">
+        <div className="mb-8 flex items-start justify-between gap-6">
+          <div>
+            <h1 className="m-0 text-[22px] font-bold tracking-tight">欢迎使用 TestForge</h1>
+            <p className="mt-1.5 mb-0 text-sm text-muted-foreground">硬件测试编排平台 — 选择一个项目开始工作</p>
           </div>
-          <div className="flex rounded-md border bg-secondary/50 p-0.5" role="group" aria-label="最近项目布局">
+          <Button variant="default" className="mt-0.5 shrink-0" disabled={busy} onClick={() => choose.mutate()}>
+            <FolderOpenIcon size={15} />
+            打开项目文件夹
+          </Button>
+        </div>
+
+        <header className="mb-4 flex items-end justify-between gap-4 border-b border-border/40 pb-3">
+          <div className="flex items-baseline gap-2.5">
+            <h2 id="recent-projects-title" className="m-0 text-[15px] font-semibold tracking-tight">最近项目</h2>
+            <span className="text-[12px] tabular-nums text-muted-foreground">{recent.data?.length ?? 0} 个项目</span>
+          </div>
+          <div className="flex rounded-[var(--tf-radius-control)] bg-secondary/50 p-0.5 shadow-[var(--tf-shadow-sm)] ring-1 ring-black/[0.04] dark:ring-white/[0.06]" role="group" aria-label="最近项目布局">
             <button
               type="button"
-              className={cn("grid h-6.5 w-7 place-items-center rounded-sm text-muted-foreground transition-colors", layout === "grid" && "bg-background text-primary shadow-sm")}
+              className={cn("grid h-7 w-7.5 place-items-center rounded-md text-muted-foreground transition-[color,background-color,box-shadow] duration-200 ease-[var(--tf-ease-out)]", layout === "grid" && "bg-background text-primary shadow-[var(--tf-shadow-sm)]")}
               aria-label="卡片布局"
               aria-pressed={layout === "grid"}
               onClick={() => changeLayout("grid")}
@@ -87,7 +99,7 @@ export function WelcomePage({ onOpened }: { onOpened: (rootPath: string) => Prom
             </button>
             <button
               type="button"
-              className={cn("grid h-6.5 w-7 place-items-center rounded-sm text-muted-foreground transition-colors", layout === "list" && "bg-background text-primary shadow-sm")}
+              className={cn("grid h-7 w-7.5 place-items-center rounded-md text-muted-foreground transition-[color,background-color,box-shadow] duration-200 ease-[var(--tf-ease-out)]", layout === "list" && "bg-background text-primary shadow-[var(--tf-shadow-sm)]")}
               aria-label="列表布局"
               aria-pressed={layout === "list"}
               onClick={() => changeLayout("list")}
@@ -104,8 +116,24 @@ export function WelcomePage({ onOpened }: { onOpened: (rootPath: string) => Prom
         )}
         {recent.isLoading ? (
           <div className="grid min-h-[220px] place-items-center"><Spinner label="正在读取最近项目…" /></div>
+        ) : !hasProjects ? (
+          <div className="grid min-h-[260px] place-items-center rounded-[var(--tf-radius)] border border-dashed border-border/60 bg-secondary/20">
+            <div className="grid justify-items-center gap-3 text-center">
+              <span className="grid size-14 place-items-center rounded-2xl bg-secondary/80 text-muted-foreground">
+                <ServerIcon size={24} strokeWidth={1.5} />
+              </span>
+              <div>
+                <p className="m-0 text-sm font-medium text-foreground">还没有项目</p>
+                <p className="mt-1 mb-0 text-xs text-muted-foreground">打开一个包含硬件测试用例的文件夹以开始使用</p>
+              </div>
+              <Button variant="outline" size="sm" className="mt-1" disabled={busy} onClick={() => choose.mutate()}>
+                <FolderOpenIcon size={14} />
+                选择文件夹
+              </Button>
+            </div>
+          </div>
         ) : (
-          <div className={layout === "grid" ? "grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-3.5" : "grid gap-2"}>
+          <div className={layout === "grid" ? "grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-4" : "grid divide-y divide-border/30"}>
             {(recent.data ?? []).map((item) => (
               <RecentProject
                 key={item.rootPath}
@@ -117,18 +145,17 @@ export function WelcomePage({ onOpened }: { onOpened: (rootPath: string) => Prom
                 onForget={() => forget.mutate(item.rootPath)}
               />
             ))}
-            <button
-              type="button"
-              className={cn(
-                "grid place-content-center justify-items-center gap-2 rounded-md border border-dashed text-muted-foreground transition-colors hover:border-primary hover:bg-accent hover:text-primary",
-                layout === "grid" ? "min-h-[190px]" : "min-h-[68px] grid-flow-col items-center"
-              )}
-              onClick={() => choose.mutate()}
-              disabled={busy}
-            >
-              <FolderOpenIcon size={22} />
-              <span>打开项目文件夹</span>
-            </button>
+            {layout === "grid" && (
+              <button
+                type="button"
+                className="grid min-h-[196px] place-content-center justify-items-center gap-2 rounded-[var(--tf-radius)] border border-dashed border-border/80 text-muted-foreground transition-[color,background-color,border-color] duration-200 ease-[var(--tf-ease-out)] hover:border-primary/50 hover:bg-accent/70 hover:text-primary"
+                onClick={() => choose.mutate()}
+                disabled={busy}
+              >
+                <FolderOpenIcon size={22} />
+                <span>打开项目文件夹</span>
+              </button>
+            )}
           </div>
         )}
       </section>
@@ -164,8 +191,9 @@ function RecentProject({ project, hardware, layout, disabled, onOpen, onForget }
   const unavailable = project.status !== "available";
   return (
     <article className={cn(
-      "relative min-w-0 overflow-hidden rounded-md border bg-card transition-colors hover:border-ring/50",
-      unavailable && "opacity-75",
+      "relative min-w-0 overflow-hidden rounded-[var(--tf-radius)] bg-card shadow-[var(--tf-shadow-sm)] ring-1 ring-black/[0.04] transition-[box-shadow,ring-color,transform] duration-200 ease-[var(--tf-ease-out)] dark:ring-white/[0.06]",
+      !unavailable && "hover:-translate-y-0.5 hover:scale-[1.008] hover:shadow-[var(--tf-shadow-md)] hover:ring-ring/40",
+      unavailable && "opacity-60",
       !isGrid && "min-h-[76px]"
     )}>
       <button

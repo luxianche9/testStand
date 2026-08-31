@@ -284,7 +284,7 @@ function ThreadListItemMore({ onRename }: { onRename: () => void }) {
         side="right"
         align="start"
         sideOffset={6}
-        className="z-[100] min-w-32 overflow-hidden rounded-xl border bg-popover/95 p-1.5 text-popover-foreground shadow-lg backdrop-blur-sm"
+        className="z-[100] min-w-32 overflow-hidden rounded-xl bg-popover/95 p-1.5 text-popover-foreground shadow-lg ring-1 ring-black/[0.04] backdrop-blur-sm dark:ring-white/[0.06]"
       >
         <ThreadListItemMorePrimitive.Item className="flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm outline-none hover:bg-accent focus:bg-accent" onSelect={onRename}>
           <PencilIcon className="size-4" />重命名
