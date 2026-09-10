@@ -1,0 +1,123 @@
+131 INFO: PyInstaller: 6.22.2, contrib hooks: 2026.7
+131 INFO: Python: 3.11.15
+143 INFO: Platform: Windows-10-10.0.26200-SP0
+143 INFO: Python environment: E:\Project\hardwareHarness\testForge\python\.venv
+1247 INFO: Module search paths (PYTHONPATH):
+['E:\\Project\\hardwareHarness\\testForge\\python',
+ 'D:\\uv\\python\\cpython-3.11.15-windows-x86_64-none\\python311.zip',
+ 'D:\\uv\\python\\cpython-3.11.15-windows-x86_64-none\\DLLs',
+ 'D:\\uv\\python\\cpython-3.11.15-windows-x86_64-none\\Lib',
+ 'D:\\uv\\python\\cpython-3.11.15-windows-x86_64-none',
+ 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv',
+ 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages',
+ 'E:\\Project\\hardwareHarness\\testForge\\python\\src',
+ 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\win32',
+ 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\win32\\lib',
+ 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\pythonwin',
+ 'E:\\Project\\hardwareHarness\\testForge\\python\\scripts',
+ 'E:\\Project\\hardwareHarness\\testForge\\python\\src']
+1509 INFO: Appending 'binaries' from .spec
+1509 INFO: Appending 'datas' from .spec
+1509 INFO: checking Analysis
+1545 INFO: Building because hiddenimports changed
+1545 INFO: Looking for Python shared library...
+1545 INFO: Using Python shared library: D:\uv\python\cpython-3.11.15-windows-x86_64-none\python311.dll
+1545 INFO: Running Analysis Analysis-00.toc
+1545 INFO: Target bytecode optimization level: 0
+1545 INFO: Initializing module dependency graph...
+1545 INFO: Initializing module graph hook caches...
+1574 INFO: Analyzing modules for base_library.zip ...
+2457 INFO: Processing standard module hook 'hook-heapq.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+2536 INFO: Processing standard module hook 'hook-encodings.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+3862 INFO: Processing standard module hook 'hook-math.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+3960 INFO: Processing standard module hook 'hook-pickle.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+5503 INFO: Caching module dependency graph...
+5537 INFO: Analyzing E:\Project\hardwareHarness\testForge\python\scripts\frozen_entry.py
+5649 INFO: Processing standard module hook 'hook-multiprocessing.util.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+5806 INFO: Processing standard module hook 'hook-xml.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+6105 INFO: Processing standard module hook 'hook-_ctypes.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+6494 INFO: Processing standard module hook 'hook-platform.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+6925 INFO: Processing standard module hook 'hook-cryptography.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+8133 INFO: hook-cryptography: cryptography does not seem to be using dynamically linked OpenSSL.
+9380 INFO: Processing standard module hook 'hook-difflib.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+9810 INFO: Processing standard module hook 'hook-bcrypt.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+10213 INFO: Processing standard module hook 'hook-nacl.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+11727 INFO: Processing standard module hook 'hook-certifi.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+11848 INFO: Processing standard module hook 'hook-anyio.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+12193 INFO: Processing pre-safe-import-module hook 'hook-typing_extensions.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+12193 INFO: SetuptoolsInfo: initializing cached setuptools info...
+13524 INFO: Processing standard module hook 'hook-webbrowser.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+13573 INFO: Processing standard module hook 'hook-pygments.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+14878 INFO: Processing standard module hook 'hook-jsonschema.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+15527 INFO: Processing standard module hook 'hook-jsonschema_specifications.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+15558 INFO: Processing pre-safe-import-module hook 'hook-importlib_resources.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+15671 INFO: Processing standard module hook 'hook-pydantic.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+16421 INFO: Processing standard module hook 'hook-zoneinfo.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+16447 INFO: Processing standard module hook 'hook-sysconfig.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+17399 INFO: Processing standard module hook 'hook-pywintypes.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+17858 INFO: Processing pre-safe-import-module hook 'hook-tomli.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+17858 INFO: Setuptools: 'tomli' appears to be a setuptools-vendored copy - creating alias to 'setuptools._vendor.tomli'!
+17891 INFO: Processing standard module hook 'hook-setuptools.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+17950 INFO: Processing pre-safe-import-module hook 'hook-distutils.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+17950 INFO: Processing pre-find-module-path hook 'hook-distutils.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_find_module_path'
+18249 INFO: Processing standard module hook 'hook-distutils.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+18272 INFO: Processing standard module hook 'hook-distutils.util.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+18343 INFO: Processing standard module hook 'hook-_osx_support.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+18382 INFO: Processing pre-safe-import-module hook 'hook-packaging.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+18626 INFO: Processing pre-safe-import-module hook 'hook-jaraco.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+18626 INFO: Setuptools: 'jaraco' appears to be a full setuptools-vendored copy - creating alias to 'setuptools._vendor.jaraco'!
+18646 INFO: Processing standard module hook 'hook-setuptools._vendor.jaraco.text.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+18666 INFO: Processing pre-safe-import-module hook 'hook-backports.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+18666 INFO: Setuptools: 'backports' appears to be a full setuptools-vendored copy - creating alias to 'setuptools._vendor.backports'!
+18840 INFO: Processing pre-safe-import-module hook 'hook-more_itertools.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+18840 INFO: Setuptools: 'more_itertools' appears to be a setuptools-vendored copy - creating alias to 'setuptools._vendor.more_itertools'!
+20657 INFO: Processing pre-safe-import-module hook 'hook-wheel.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+20659 INFO: Setuptools: 'wheel' appears to be a setuptools-vendored copy - creating alias to 'setuptools._vendor.wheel'!
+21282 INFO: Processing standard module hook 'hook-uvicorn.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+22274 INFO: Processing standard module hook 'hook-sqlite3.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+22564 INFO: Analyzing hidden import 'anyio._backends._asyncio'
+22724 INFO: Analyzing hidden import 'uvicorn.loops.asyncio'
+22741 INFO: Analyzing hidden import 'uvicorn.lifespan.on'
+22761 INFO: Analyzing hidden import '_cffi_backend'
+22763 INFO: Analyzing hidden import 'testforge_backend.contracts.desktop'
+22765 INFO: Processing module hooks (post-graph stage)...
+27275 WARNING: Hidden import "tzdata" not found!
+36689 INFO: Performing binary vs. data reclassification (57 entries)
+36955 INFO: Looking for ctypes DLLs
+37006 INFO: Analyzing run-time hooks ...
+37011 INFO: Including run-time hook 'pyi_rth_inspect.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+37027 INFO: Including run-time hook 'pyi_rth_pkgutil.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+37052 INFO: Including run-time hook 'pyi_rth_multiprocessing.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+37069 INFO: Including run-time hook 'pyi_rth_setuptools.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+37080 INFO: Including run-time hook 'pyi_rth_pywintypes.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\rthooks'
+37103 INFO: Including run-time hook 'pyi_rth_cryptography_openssl.py' from 'E:\\Project\\hardwareHarness\\testForge\\python\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\rthooks'
+37131 INFO: Creating base_library.zip...
+37152 INFO: Looking for dynamic libraries
+38177 INFO: Extra DLL search directories (AddDllDirectory): []
+38177 INFO: Extra DLL search directories (PATH): []
+41544 INFO: Warnings written to E:\Project\hardwareHarness\testForge\python\build\backend\warn-backend.txt
+41669 INFO: Graph cross-reference written to E:\Project\hardwareHarness\testForge\python\build\backend\xref-backend.html
+41761 INFO: checking PYZ
+41771 INFO: Building because toc changed
+41771 INFO: Building PYZ (ZlibArchive) E:\Project\hardwareHarness\testForge\python\build\backend\PYZ-00.pyz
+42832 INFO: Building PYZ (ZlibArchive) E:\Project\hardwareHarness\testForge\python\build\backend\PYZ-00.pyz completed successfully.
+42853 INFO: checking PKG
+42870 INFO: Building because E:\Project\hardwareHarness\testForge\python\build\backend\PYZ-00.pyz changed
+42870 INFO: Building PKG (CArchive) testforge-backend.pkg
+42921 INFO: Building PKG (CArchive) testforge-backend.pkg completed successfully.
+42921 INFO: Bootloader E:\Project\hardwareHarness\testForge\python\.venv\Lib\site-packages\PyInstaller\bootloader\Windows-64bit-intel\run.exe
+42921 INFO: checking EXE
+42942 INFO: Rebuilding EXE-00.toc because pkg is more recent
+42945 INFO: Building EXE from EXE-00.toc
+42945 INFO: Copying bootloader EXE to E:\Project\hardwareHarness\testForge\python\build\backend\testforge-backend.exe
+43084 INFO: Copying icon to EXE
+43149 INFO: Copying 0 resources to EXE
+43149 INFO: Embedding manifest in EXE
+43207 INFO: Appending PKG archive to EXE
+43307 INFO: Fixing EXE headers
+43659 INFO: Building EXE from EXE-00.toc completed successfully.
+43662 INFO: checking COLLECT
+43682 INFO: Removing dir E:\Project\hardwareHarness\testForge\python\dist\testforge-backend
+43712 INFO: Building COLLECT COLLECT-00.toc
+44389 INFO: Building COLLECT COLLECT-00.toc completed successfully.
+44393 INFO: Build complete! The results are available in: E:\Project\hardwareHarness\testForge\python\dist

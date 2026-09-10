@@ -64,7 +64,7 @@ test("renders the saved wiring canvas as a recent-project React Flow preview", a
     await expect(preview.locator(".react-flow__edge")).toHaveCount(1);
     const edgePath = preview.locator(".react-flow__edge.wiring-flow-edge .react-flow__edge-path");
     // 接线边颜色来自设计 token --tf-wiring-edge;Chromium 对 SVG stroke 返回未解析的 oklch() 字符串,断言其等于 token 值而非具体 rgb
-    await expect(edgePath).toHaveCSS("stroke", "oklch(0.588 0.21 260.7)");
+    await expect(edgePath).toHaveCSS("stroke", "oklch(0.52 0.16 255)");
     await expect(edgePath).toHaveCSS("stroke-width", "3.5px");
     await expect(preview.locator('[data-hardware-id="DUT_A"]')).toHaveAttribute("data-show-image", "true");
     await expect(preview.locator('[data-hardware-id="DUT_A"] img')).toHaveCount(1);

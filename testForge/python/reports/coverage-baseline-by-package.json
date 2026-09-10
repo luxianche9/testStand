@@ -1,0 +1,146 @@
+{
+  "application": {
+    "lines": [
+      449,
+      669
+    ],
+    "branches": [
+      117,
+      136
+    ],
+    "functions": [
+      48,
+      104
+    ],
+    "statements": [
+      449,
+      669
+    ]
+  },
+  "contracts": {
+    "lines": [
+      516,
+      574
+    ],
+    "branches": [
+      34,
+      42
+    ],
+    "functions": [
+      5,
+      7
+    ],
+    "statements": [
+      516,
+      574
+    ]
+  },
+  "devices": {
+    "lines": [
+      755,
+      1184
+    ],
+    "branches": [
+      283,
+      393
+    ],
+    "functions": [
+      87,
+      152
+    ],
+    "statements": [
+      755,
+      1184
+    ]
+  },
+  "mcp-gateway": {
+    "lines": [
+      596,
+      644
+    ],
+    "branches": [
+      114,
+      145
+    ],
+    "functions": [
+      56,
+      83
+    ],
+    "statements": [
+      596,
+      644
+    ]
+  },
+  "orchestration": {
+    "lines": [
+      1278,
+      1500
+    ],
+    "branches": [
+      494,
+      641
+    ],
+    "functions": [
+      137,
+      178
+    ],
+    "statements": [
+      1278,
+      1500
+    ]
+  },
+  "projects": {
+    "lines": [
+      222,
+      240
+    ],
+    "branches": [
+      47,
+      66
+    ],
+    "functions": [
+      26,
+      29
+    ],
+    "statements": [
+      222,
+      240
+    ]
+  },
+  "storage": {
+    "lines": [
+      339,
+      364
+    ],
+    "branches": [
+      112,
+      135
+    ],
+    "functions": [
+      41,
+      44
+    ],
+    "statements": [
+      339,
+      364
+    ]
+  },
+  "wiring": {
+    "lines": [
+      155,
+      201
+    ],
+    "branches": [
+      40,
+      61
+    ],
+    "functions": [
+      17,
+      25
+    ],
+    "statements": [
+      155,
+      201
+    ]
+  }
+}

@@ -56,8 +56,7 @@ export function LogsPage() {
     if (detailRunId && !items.some((run) => run.runId === detailRunId)) setDetailRunId(undefined);
   }, [detailRunId, runs.data?.items, selectedRunId]);
 
-  const taskNames = runs.data?.taskNames ?? [];
-  const taskNameOptions = useMemo(() => taskNames.map((name) => <option key={name} value={name}>{name}</option>), [taskNames]);
+  const taskNameOptions = useMemo(() => (runs.data?.taskNames ?? []).map((name) => <option key={name} value={name}>{name}</option>), [runs.data?.taskNames]);
   const statusOptions = useMemo(() => RUN_STATUSES.map((item) => <option key={item} value={item}>{item}</option>), []);
   const detailRun = runs.data?.items.find((run) => run.runId === detailRunId);
   const resetPaging = () => setOffset(0);

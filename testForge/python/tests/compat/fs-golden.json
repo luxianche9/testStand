@@ -1,0 +1,88 @@
+[
+  {
+    "name": "stat-missing",
+    "message": "ENOENT: no such file or directory, stat '<ROOT>\\missing'",
+    "code": "ENOENT",
+    "syscall": "stat"
+  },
+  {
+    "name": "read-missing",
+    "message": "ENOENT: no such file or directory, open '<ROOT>\\missing'",
+    "code": "ENOENT",
+    "syscall": "open"
+  },
+  {
+    "name": "read-directory",
+    "message": "EISDIR: illegal operation on a directory, read",
+    "code": "EISDIR",
+    "syscall": "read"
+  },
+  {
+    "name": "read-parent-file",
+    "message": "ENOENT: no such file or directory, open '<ROOT>\\file\\child'",
+    "code": "ENOENT",
+    "syscall": "open"
+  },
+  {
+    "name": "stat-parent-file",
+    "message": "ENOENT: no such file or directory, stat '<ROOT>\\file\\child'",
+    "code": "ENOENT",
+    "syscall": "stat"
+  },
+  {
+    "name": "mkdir-parent-file",
+    "message": "ENOTDIR: not a directory, mkdir '<ROOT>\\file'",
+    "code": "ENOTDIR",
+    "syscall": "mkdir"
+  },
+  {
+    "name": "mkdir-existing-file",
+    "message": "EEXIST: file already exists, mkdir '<ROOT>\\file'",
+    "code": "EEXIST",
+    "syscall": "mkdir"
+  },
+  {
+    "name": "scandir-file",
+    "message": "ENOTDIR: not a directory, scandir '<ROOT>\\file'",
+    "code": "ENOTDIR",
+    "syscall": "scandir"
+  },
+  {
+    "name": "rename-missing",
+    "message": "ENOENT: no such file or directory, rename '<ROOT>\\missing' -> '<ROOT>\\target'",
+    "code": "ENOENT",
+    "syscall": "rename"
+  },
+  {
+    "name": "rename-to-directory",
+    "message": "EPERM: operation not permitted, rename '<ROOT>\\file' -> '<ROOT>\\directory'",
+    "code": "EPERM",
+    "syscall": "rename"
+  },
+  {
+    "name": "open-existing",
+    "message": "EEXIST: file already exists, open '<ROOT>\\file'",
+    "code": "EEXIST",
+    "syscall": "open"
+  },
+  {
+    "name": "unlink-directory",
+    "message": "EPERM: operation not permitted, unlink '<ROOT>\\directory'",
+    "code": "EPERM",
+    "syscall": "unlink"
+  },
+  {
+    "name": "rm-directory",
+    "message": "Path is a directory: rm returned EISDIR (is a directory) <ROOT>\\directory",
+    "code": "ERR_FS_EISDIR",
+    "syscall": "rm"
+  },
+  {
+    "name": "rm-readonly",
+    "result": "success"
+  },
+  {
+    "name": "rm-missing",
+    "result": "success"
+  }
+]

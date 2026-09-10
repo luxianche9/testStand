@@ -33,7 +33,7 @@ import {
   wiringTaskIdInputSchema,
   wiringTaskListQuerySchema
 } from "@testforge/contracts/wiring";
-import { HUMAN_REQUEST_CONTEXT, type TestForgeApplication } from "@testforge/application";
+import { DESKTOP_HUMAN_CONTEXT as HUMAN_REQUEST_CONTEXT, type PythonApplication } from "./python-application.js";
 import { testForgeTransformer } from "../shared/trpc-transformer.js";
 import type { DesktopEventListener } from "./desktop-events.js";
 
@@ -57,7 +57,7 @@ interface DesktopWindowPort {
 }
 
 export interface DesktopIpcDependencies {
-  application: TestForgeApplication;
+  application: PythonApplication;
   agents: TestForgeAgentsApi;
   settings: TestForgeSettingsApi;
   dialogs: DesktopDialogsPort;
@@ -185,7 +185,7 @@ export function createDesktopRouter(dependencies: DesktopIpcDependencies) {
       })
     }),
     wiring: trpc.router({
-      update: trpc.procedure.input(projectWiringSchema).mutation(({ input }) => notifyProject(application.wiring.updateDocument(HUMAN_REQUEST_CONTEXT, input), false)),
+      update: trpc.procedure.input(projectWiringSchema).mutation(async ({ input }) => notifyProject(await application.wiring.updateDocument(HUMAN_REQUEST_CONTEXT, input), false)),
       requestTask: trpc.procedure.input(requestWiringTaskInputSchema).mutation(({ input }) => application.wiring.requestTask(HUMAN_REQUEST_CONTEXT, input)),
       startTask: trpc.procedure.input(z.object({ id: z.string().min(1), operatorName: z.string().min(1).optional() }).strict())
         .mutation(({ input }) => application.wiring.startTask(HUMAN_REQUEST_CONTEXT, input.id, input.operatorName)),
@@ -203,7 +203,7 @@ export function createDesktopRouter(dependencies: DesktopIpcDependencies) {
       ))
     }),
     orchestration: trpc.router({
-      updateTask: trpc.procedure.input(testTaskSchema).mutation(({ input }) => notifyProject(application.orchestration.updateTask(HUMAN_REQUEST_CONTEXT, input).document, false)),
+      updateTask: trpc.procedure.input(testTaskSchema).mutation(async ({ input }) => notifyProject((await application.orchestration.updateTask(HUMAN_REQUEST_CONTEXT, input)).document, false)),
       validateTask: trpc.procedure.input(testTaskSchema).query(({ input }) => application.orchestration.validateTask(HUMAN_REQUEST_CONTEXT, input)),
       startRun: trpc.procedure.input(z.object({ inputs: z.record(z.unknown()).optional() }).strict().optional())
         .mutation(({ input }) => application.orchestration.startRun(

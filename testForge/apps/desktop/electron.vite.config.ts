@@ -41,6 +41,8 @@ export default defineConfig({
   },
   renderer: {
     resolve: { conditions: ["testforge-source", ...defaultClientConditions] },
-    plugins: [react(), tailwindcss()]
+    plugins: [react(), tailwindcss()],
+    esbuild: { minifyIdentifiers: false },
+    build: { minify: "esbuild" }
   }
 });

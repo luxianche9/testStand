@@ -17,6 +17,10 @@ const config: Configuration = {
   files: ["out/**/*", "package.json"],
   extraResources: [
     {
+      from: resolve(desktopDir, "../../python/dist/testforge-backend"),
+      to: "backend"
+    },
+    {
       from: require.resolve("opencode-windows-x64-baseline/bin/opencode.exe"),
       to: "opencode/opencode.exe"
     },

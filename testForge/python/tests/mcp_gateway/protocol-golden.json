@@ -1,0 +1,410 @@
+[
+  {
+    "name": "accept",
+    "headers": {
+      "accept": "application/json"
+    },
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "method": "initialize",
+      "params": {
+        "protocolVersion": "2025-03-26",
+        "capabilities": {},
+        "clientInfo": {
+          "name": "oracle",
+          "version": "1"
+        }
+      }
+    },
+    "expected": {
+      "status": 406,
+      "body": {
+        "jsonrpc": "2.0",
+        "error": {
+          "code": -32000,
+          "message": "Not Acceptable: Client must accept both application/json and text/event-stream"
+        },
+        "id": null
+      }
+    }
+  },
+  {
+    "name": "contentType",
+    "headers": {
+      "content-type": "text/plain"
+    },
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "method": "initialize",
+      "params": {
+        "protocolVersion": "2025-03-26",
+        "capabilities": {},
+        "clientInfo": {
+          "name": "oracle",
+          "version": "1"
+        }
+      }
+    },
+    "expected": {
+      "status": 415,
+      "body": {
+        "jsonrpc": "2.0",
+        "error": {
+          "code": -32000,
+          "message": "Unsupported Media Type: Content-Type must be application/json"
+        },
+        "id": null
+      }
+    }
+  },
+  {
+    "name": "invalidJsonrpc",
+    "body": {
+      "jsonrpc": "1.0",
+      "id": 1,
+      "method": "initialize",
+      "params": {
+        "protocolVersion": "2025-03-26",
+        "capabilities": {},
+        "clientInfo": {
+          "name": "oracle",
+          "version": "1"
+        }
+      }
+    },
+    "expected": {
+      "status": 400,
+      "body": {
+        "jsonrpc": "2.0",
+        "error": {
+          "code": -32700,
+          "message": "Parse error: Invalid JSON-RPC message"
+        },
+        "id": null
+      }
+    }
+  },
+  {
+    "name": "invalidId",
+    "body": {
+      "jsonrpc": "2.0",
+      "id": null,
+      "method": "initialize",
+      "params": {
+        "protocolVersion": "2025-03-26",
+        "capabilities": {},
+        "clientInfo": {
+          "name": "oracle",
+          "version": "1"
+        }
+      }
+    },
+    "expected": {
+      "status": 400,
+      "body": {
+        "jsonrpc": "2.0",
+        "error": {
+          "code": -32700,
+          "message": "Parse error: Invalid JSON-RPC message"
+        },
+        "id": null
+      }
+    }
+  },
+  {
+    "name": "extraEnvelopeField",
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "method": "initialize",
+      "params": {
+        "protocolVersion": "2025-03-26",
+        "capabilities": {},
+        "clientInfo": {
+          "name": "oracle",
+          "version": "1"
+        }
+      },
+      "extra": true
+    },
+    "expected": {
+      "status": 400,
+      "body": {
+        "jsonrpc": "2.0",
+        "error": {
+          "code": -32700,
+          "message": "Parse error: Invalid JSON-RPC message"
+        },
+        "id": null
+      }
+    }
+  },
+  {
+    "name": "batch",
+    "body": [
+      {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "initialize",
+        "params": {
+          "protocolVersion": "2025-03-26",
+          "capabilities": {},
+          "clientInfo": {
+            "name": "oracle",
+            "version": "1"
+          }
+        }
+      }
+    ],
+    "expected": {
+      "status": 400,
+      "body": {
+        "error": "missing MCP session"
+      }
+    }
+  },
+  {
+    "name": "toolsList",
+    "session": true,
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "method": "tools/list"
+    },
+    "expected": {
+      "status": 200,
+      "body": {
+        "result": {
+          "tools": [
+            "list_remote_computers",
+            "get_remote_computer_status",
+            "list_mcp_servers",
+            "get_remote_mcp_service",
+            "start_remote_mcp_service",
+            "stop_remote_mcp_service",
+            "restart_remote_mcp_service",
+            "read_remote_mcp_logs",
+            "list_managed_hardware",
+            "list_hardware_catalog",
+            "get_hardware_definition",
+            "save_hardware_definition",
+            "remove_hardware_definition",
+            "set_hardware_image",
+            "remove_hardware_image",
+            "request_hardware_occupancy",
+            "cancel_hardware_occupancy_request",
+            "get_hardware_occupancy_request",
+            "list_hardware_occupancy_requests",
+            "add_managed_hardware_to_canvas",
+            "request_wiring_task",
+            "cancel_wiring_task",
+            "get_wiring_task",
+            "list_wiring_tasks",
+            "get_test_task",
+            "update_test_task",
+            "start_test_run",
+            "cancel_test_run",
+            "get_test_run"
+          ]
+        },
+        "jsonrpc": "2.0",
+        "id": 2
+      }
+    }
+  },
+  {
+    "name": "ping",
+    "session": true,
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "method": "ping"
+    },
+    "expected": {
+      "status": 200,
+      "body": {
+        "result": {},
+        "jsonrpc": "2.0",
+        "id": 2
+      }
+    }
+  },
+  {
+    "name": "unknownMethod",
+    "session": true,
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "method": "unknown"
+    },
+    "expected": {
+      "status": 200,
+      "body": {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "error": {
+          "code": -32601,
+          "message": "Method not found"
+        }
+      }
+    }
+  },
+  {
+    "name": "repeatInitialize",
+    "session": true,
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "method": "initialize",
+      "params": {
+        "protocolVersion": "2025-03-26",
+        "capabilities": {},
+        "clientInfo": {
+          "name": "oracle",
+          "version": "1"
+        }
+      }
+    },
+    "expected": {
+      "status": 400,
+      "body": {
+        "jsonrpc": "2.0",
+        "error": {
+          "code": -32600,
+          "message": "Invalid Request: Server already initialized"
+        },
+        "id": null
+      }
+    }
+  },
+  {
+    "name": "protocolVersion",
+    "session": true,
+    "headers": {
+      "mcp-protocol-version": "wrong"
+    },
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "method": "ping"
+    },
+    "expected": {
+      "status": 400,
+      "body": {
+        "jsonrpc": "2.0",
+        "error": {
+          "code": -32000,
+          "message": "Bad Request: Unsupported protocol version: wrong (supported versions: 2025-11-25, 2025-06-18, 2025-03-26, 2024-11-05, 2024-10-07)"
+        },
+        "id": null
+      }
+    }
+  },
+  {
+    "name": "getAccept",
+    "session": true,
+    "method": "GET",
+    "headers": {
+      "accept": "application/json"
+    },
+    "expected": {
+      "status": 406,
+      "body": {
+        "jsonrpc": "2.0",
+        "error": {
+          "code": -32000,
+          "message": "Not Acceptable: Client must accept text/event-stream"
+        },
+        "id": null
+      }
+    }
+  },
+  {
+    "name": "batchRequests",
+    "session": true,
+    "body": [
+      {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "ping"
+      },
+      {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "method": "unknown"
+      }
+    ],
+    "expected": {
+      "status": 200,
+      "body": [
+        {
+          "jsonrpc": "2.0",
+          "id": 3,
+          "error": {
+            "code": -32601,
+            "message": "Method not found"
+          }
+        },
+        {
+          "result": {},
+          "jsonrpc": "2.0",
+          "id": 2
+        }
+      ]
+    }
+  },
+  {
+    "name": "batchNotifications",
+    "session": true,
+    "body": [
+      {
+        "jsonrpc": "2.0",
+        "method": "notifications/initialized"
+      }
+    ],
+    "expected": {
+      "status": 202,
+      "body": null
+    }
+  },
+  {
+    "name": "emptyBatch",
+    "session": true,
+    "body": [],
+    "expected": {
+      "status": 202,
+      "body": null
+    }
+  },
+  {
+    "name": "delete",
+    "session": true,
+    "method": "DELETE",
+    "expected": {
+      "status": 200,
+      "body": null
+    }
+  },
+  {
+    "name": "oldVersion",
+    "session": true,
+    "headers": {
+      "mcp-protocol-version": "2024-10-07"
+    },
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "method": "ping"
+    },
+    "expected": {
+      "status": 200,
+      "body": {
+        "result": {},
+        "jsonrpc": "2.0",
+        "id": 2
+      }
+    }
+  }
+]

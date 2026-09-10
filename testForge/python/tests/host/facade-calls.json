@@ -1,0 +1,497 @@
+[
+  {
+    "path": "system.dashboard",
+    "method": "application.system.dashboard",
+    "args": []
+  },
+  {
+    "path": "devices.saveComputer",
+    "method": "application.devices.saveComputer",
+    "args": [
+      {
+        "id": "ID",
+        "label": "PC",
+        "address": "127.0.0.1",
+        "ssh": {
+          "username": "u",
+          "port": 22,
+          "shell": "powershell"
+        }
+      },
+      {
+        "ssh": "test-password"
+      }
+    ]
+  },
+  {
+    "path": "devices.removeComputer",
+    "method": "application.devices.removeComputer",
+    "args": [
+      "ID"
+    ]
+  },
+  {
+    "path": "devices.refreshComputer",
+    "method": "application.devices.getComputerStatus",
+    "args": [
+      "ID"
+    ]
+  },
+  {
+    "path": "devices.saveServer",
+    "method": "application.devices.saveServer",
+    "args": [
+      {
+        "transport": "mcp-http",
+        "serverId": "ID",
+        "computerId": "PC",
+        "hardwareId": "H",
+        "label": "S",
+        "url": "http://127.0.0.1/mcp",
+        "enabled": true,
+        "lifecycle": {
+          "statusCommand": "s",
+          "startCommand": "a",
+          "stopCommand": "b",
+          "logPath": "log"
+        }
+      },
+      {
+        "__undefined__": true
+      }
+    ]
+  },
+  {
+    "path": "devices.removeServer",
+    "method": "application.devices.removeServer",
+    "args": [
+      "ID"
+    ]
+  },
+  {
+    "path": "devices.refreshServer",
+    "method": "application.devices.refreshServer",
+    "args": [
+      "ID"
+    ]
+  },
+  {
+    "path": "devices.serverAction",
+    "method": "application.devices.serverAction",
+    "args": [
+      "ID",
+      "restart"
+    ]
+  },
+  {
+    "path": "devices.readServerLogs",
+    "method": "application.devices.readServerLogs",
+    "args": [
+      "ID",
+      {
+        "__undefined__": true
+      }
+    ]
+  },
+  {
+    "path": "devices.executeSsh",
+    "method": "application.devices.executeSsh",
+    "args": [
+      "ID",
+      "echo ok",
+      {
+        "__undefined__": true
+      }
+    ]
+  },
+  {
+    "path": "devices.refreshManagedHardware",
+    "method": "application.devices.listManagedHardware",
+    "args": []
+  },
+  {
+    "path": "devices.listHardware",
+    "method": "application.devices.listHardware",
+    "args": []
+  },
+  {
+    "path": "devices.saveHardware",
+    "method": "application.devices.saveHardware",
+    "args": [
+      {
+        "formatVersion": 2,
+        "hardwareId": "ID",
+        "label": "卡",
+        "kind": "passive",
+        "ports": []
+      }
+    ]
+  },
+  {
+    "path": "devices.removeHardware",
+    "method": "application.devices.removeHardware",
+    "args": [
+      "ID"
+    ]
+  },
+  {
+    "path": "devices.importHardwareImage",
+    "method": "application.devices.setHardwareImageFromPath",
+    "args": [
+      "ID",
+      {
+        "__undefined__": true
+      },
+      "中文 image.png"
+    ]
+  },
+  {
+    "path": "devices.removeHardwareImage",
+    "method": "application.devices.removeHardwareImage",
+    "args": [
+      "ID",
+      {
+        "__undefined__": true
+      }
+    ]
+  },
+  {
+    "path": "devices.exportBundle",
+    "method": "application.devices.exportBundle",
+    "args": [
+      "ID"
+    ]
+  },
+  {
+    "path": "devices.importBundle",
+    "method": "application.devices.importBundle",
+    "args": [
+      {
+        "__bytes__": [
+          0,
+          255,
+          128
+        ]
+      }
+    ]
+  },
+  {
+    "path": "devices.previewBundle",
+    "method": "application.devices.inspectBundle",
+    "args": [
+      {
+        "__bytes__": [
+          0,
+          255,
+          128
+        ]
+      }
+    ]
+  },
+  {
+    "path": "devices.applyBundle",
+    "method": "application.devices.importBundleForServer",
+    "args": [
+      {
+        "__bytes__": [
+          0,
+          255,
+          128
+        ]
+      },
+      "ID",
+      "S"
+    ]
+  },
+  {
+    "path": "projects.current",
+    "method": "application.projects.document",
+    "args": []
+  },
+  {
+    "path": "projects.chooseFolder",
+    "method": "application.projects.inspectFolder",
+    "args": [
+      "中文 project"
+    ]
+  },
+  {
+    "path": "projects.openFolder",
+    "method": "application.projects.openFolder",
+    "args": [
+      "ID"
+    ]
+  },
+  {
+    "path": "projects.initializeFolder",
+    "method": "application.projects.initializeFolder",
+    "args": [
+      "ID"
+    ]
+  },
+  {
+    "path": "projects.save",
+    "method": "application.projects.saveProject",
+    "args": []
+  },
+  {
+    "path": "projects.leave",
+    "method": "application.projects.leaveProject",
+    "args": []
+  },
+  {
+    "path": "projects.listRecent",
+    "method": "application.projects.listRecent",
+    "args": []
+  },
+  {
+    "path": "projects.forgetRecent",
+    "method": "application.projects.forgetRecent",
+    "args": [
+      "ID"
+    ]
+  },
+  {
+    "path": "wiring.update",
+    "method": "application.wiring.updateDocument",
+    "args": [
+      {
+        "nodes": [],
+        "connections": []
+      }
+    ]
+  },
+  {
+    "path": "wiring.requestTask",
+    "method": "application.wiring.requestTask",
+    "args": [
+      {
+        "portA": "A.J1",
+        "portB": "B.J1",
+        "action": "connect"
+      }
+    ]
+  },
+  {
+    "path": "wiring.startTask",
+    "method": "application.wiring.startTask",
+    "args": [
+      "ID",
+      {
+        "__undefined__": true
+      }
+    ]
+  },
+  {
+    "path": "wiring.completeTask",
+    "method": "application.wiring.completeTask",
+    "args": [
+      "ID",
+      "confirmed",
+      {
+        "__undefined__": true
+      }
+    ]
+  },
+  {
+    "path": "wiring.cancelTask",
+    "method": "application.wiring.cancelTask",
+    "args": [
+      "ID",
+      {
+        "__undefined__": true
+      }
+    ]
+  },
+  {
+    "path": "wiring.getTask",
+    "method": "application.wiring.getTask",
+    "args": [
+      "ID"
+    ]
+  },
+  {
+    "path": "wiring.listTasks",
+    "method": "application.wiring.listTasks",
+    "args": [
+      {
+        "status": "pending"
+      }
+    ]
+  },
+  {
+    "path": "orchestration.updateTask",
+    "method": "application.orchestration.updateTask",
+    "args": [
+      {
+        "formatVersion": 2,
+        "taskId": "ID",
+        "name": "Task",
+        "inputs": [],
+        "variables": [],
+        "setup": [],
+        "steps": [],
+        "cleanup": []
+      }
+    ]
+  },
+  {
+    "path": "orchestration.validateTask",
+    "method": "application.orchestration.validateTask",
+    "args": [
+      {
+        "formatVersion": 2,
+        "taskId": "ID",
+        "name": "Task",
+        "inputs": [],
+        "variables": [],
+        "setup": [],
+        "steps": [],
+        "cleanup": []
+      }
+    ]
+  },
+  {
+    "path": "orchestration.startRun",
+    "method": "application.orchestration.startRun",
+    "args": [
+      {
+        "inputs": {
+          "channel": 1
+        }
+      }
+    ]
+  },
+  {
+    "path": "orchestration.cancelRun",
+    "method": "application.orchestration.cancelRun",
+    "args": [
+      "ID"
+    ]
+  },
+  {
+    "path": "orchestration.getRun",
+    "method": "application.orchestration.getRun",
+    "args": [
+      "ID",
+      0,
+      0,
+      200
+    ]
+  },
+  {
+    "path": "orchestration.listRuns",
+    "method": "application.orchestration.listRuns",
+    "args": [
+      {
+        "statuses": [
+          "failed"
+        ],
+        "sortBy": "createdAt",
+        "sortDir": "desc",
+        "offset": 0,
+        "limit": 50
+      }
+    ]
+  },
+  {
+    "path": "orchestration.exportRun",
+    "method": "application.orchestration.exportRun",
+    "args": [
+      "ID"
+    ]
+  },
+  {
+    "path": "orchestration.deleteRun",
+    "method": "application.orchestration.deleteRun",
+    "args": [
+      "ID"
+    ]
+  },
+  {
+    "path": "orchestration.clearCompletedRuns",
+    "method": "application.orchestration.clearCompletedRuns",
+    "args": []
+  },
+  {
+    "path": "orchestration.listOperatorDecisions",
+    "method": "application.orchestration.listOperatorDecisions",
+    "args": []
+  },
+  {
+    "path": "orchestration.respondOperatorDecision",
+    "method": "application.orchestration.respondOperatorDecision",
+    "args": [
+      "ID",
+      "yes"
+    ]
+  },
+  {
+    "path": "manual.invokeTool",
+    "method": "application.manual.invokeTool",
+    "args": [
+      {
+        "hardwareId": "ID",
+        "toolName": "S__read",
+        "arguments": {},
+        "timeoutMs": 30000
+      }
+    ]
+  },
+  {
+    "path": "occupancy.list",
+    "method": "application.occupancy.list",
+    "args": []
+  },
+  {
+    "path": "occupancy.acquire",
+    "method": "application.occupancy.acquire",
+    "args": [
+      "ID"
+    ]
+  },
+  {
+    "path": "occupancy.release",
+    "method": "application.occupancy.release",
+    "args": [
+      "ID"
+    ]
+  },
+  {
+    "path": "occupancy.listRequests",
+    "method": "application.occupancy.listRequests",
+    "args": [
+      {
+        "status": "pending",
+        "limit": 200
+      }
+    ]
+  },
+  {
+    "path": "occupancy.acquireRequest",
+    "method": "application.occupancy.acquireRequest",
+    "args": [
+      "ID"
+    ]
+  },
+  {
+    "path": "occupancy.rejectRequest",
+    "method": "application.occupancy.rejectRequest",
+    "args": [
+      "ID",
+      {
+        "__undefined__": true
+      }
+    ]
+  },
+  {
+    "path": "occupancy.cancelRequest",
+    "method": "application.occupancy.cancelRequest",
+    "args": [
+      "ID",
+      {
+        "__undefined__": true
+      }
+    ]
+  }
+]

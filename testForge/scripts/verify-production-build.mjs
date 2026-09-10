@@ -77,6 +77,11 @@ async function verifySourceFirstBundles() {
   if (leaked.length) {
     throw new Error(`Source-first workspace imports were externalized from Electron bundles:\n${leaked.join("\n")}`);
   }
+  const mainCode = await readFile(artifacts[0], "utf8");
+  const businessImplementations = ["class DeviceStore", "class DeviceService", "class ProjectService", "class ProjectWiringService", "class TaskOrchestrationService", "class TestForgeApplication", "class LocalMcpGateway", "class SettingsStore", "class SecretStore", "class ProjectRunLogStore"];
+  const businessLeaks = businessImplementations.filter((name) => mainCode.includes(name));
+  if (businessLeaks.length) throw new Error(`Python-owned business implementation leaked into Main: ${businessLeaks.join(", ")}`);
+  if (!mainCode.includes("backend.initialize") || !mainCode.includes("testforge-backend.exe")) throw new Error("Main does not contain the Python child-process integration");
   console.log("Electron Main and Preload contain no externalized workspace package imports.");
 }
 

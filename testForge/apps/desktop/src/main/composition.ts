@@ -1,32 +1,25 @@
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
-import { app, safeStorage } from "electron";
-import { AGENT_REQUEST_CONTEXT, ExecutionCoordinator, TestForgeApplication } from "@testforge/application";
+import { app } from "electron";
 import type { AgentToolInfo } from "@testforge/contracts/agents";
 import type { TestForgeAgentsApi, TestForgeSettingsApi } from "@testforge/contracts/desktop";
-import { DeviceCatalogService, DeviceService, DeviceStore, DeviceTransportRegistry, McpHttpTransport } from "@testforge/devices";
-import { LocalMcpGateway } from "@testforge/mcp-gateway";
-import { TaskOrchestrationService } from "@testforge/orchestration";
-import { ProjectService } from "@testforge/projects";
-import { ProjectRunLogStore, SecretStore, SettingsStore, type SecretProtector } from "@testforge/storage";
-import { ProjectWiringService } from "@testforge/wiring";
+import { appError } from "@testforge/contracts/errors";
 import { CodexAgentIntegrationService, MemoryCodexCommandRunner, MemoryUserEnvironmentStore } from "./agent-integration.js";
 import { autoStartOpenCode, reconcileOpenCodeSettings, reconcileOpenCodeWorkspace } from "./opencode-lifecycle.js";
 import { OpenCodeRuntimeService } from "./opencode-runtime.js";
-import { migrateGlobalStorage } from "./migrations.js";
 import { logger, registerLogSecrets } from "./logger.js";
-import { orchestrationSafetyFromEnv } from "./orchestration-safety.js";
+import { createPythonApplication, type PythonApplication } from "./python-application.js";
+import { startPythonBackend } from "./python-runtime.js";
 import type { DesktopWindows } from "./windows.js";
 
 const require = createRequire(import.meta.url);
-const LLM_API_KEY_SECRET = "opencode.llm.api-key";
 
 export interface DesktopComposition {
-  application: TestForgeApplication;
+  application: PythonApplication;
   agents: TestForgeAgentsApi;
   settings: TestForgeSettingsApi;
   theme(): "system" | "light" | "dark";
-  resolveImagePath(hardwareId: string, assetId: string): string;
+  resolveImagePath(hardwareId: string, assetId: string): Promise<string>;
   connectionInfo(): { url: string; password: string } | undefined;
   workspaceChanged(): Promise<void>;
   probeAvailability(): Promise<{ availability: unknown[]; servers: unknown[] }>;
@@ -37,172 +30,74 @@ export interface DesktopComposition {
 export async function createDesktopComposition(windows: DesktopWindows): Promise<DesktopComposition> {
   const userData = app.getPath("userData");
   const integrationTestMode = process.env.TESTFORGE_AGENT_INTEGRATION_TEST_MODE === "1";
-  const protector = createProtector();
-  await migrateGlobalStorage(userData, protector);
-  const settings = new SettingsStore(join(userData, "settings.json"));
-  await settings.initialize();
-  const secrets = new SecretStore(join(userData, "secrets.json"), protector);
-  await secrets.initialize();
-  const transports = new DeviceTransportRegistry([new McpHttpTransport(secrets)]);
-  const deviceStore = new DeviceStore(join(userData, "devices"));
-  await deviceStore.initialize();
-  const devices = new DeviceService(deviceStore, secrets, transports);
-  const projects = new ProjectService(settings);
-  await projects.initialize();
-  const catalog = new DeviceCatalogService(deviceStore);
-  const projectWiring = new ProjectWiringService(projects, catalog);
-  await projectWiring.initialize();
-  const execution = new ExecutionCoordinator();
-  const runLogs = new ProjectRunLogStore();
-  const taskOrchestration = new TaskOrchestrationService(
-    projects,
-    devices,
-    catalog,
-    execution,
-    runLogs,
-    orchestrationSafetyFromEnv(process.env)
-  );
-  await taskOrchestration.initialize();
-
-  projectWiring.setNotifier((task) => {
-    windows.publish("wiringTask", task);
-    if (task.status === "pending") windows.flashFrame(true);
+  const backend = await startPythonBackend((event, payload) => {
+    windows.publish(event, payload);
+    if ((event === "wiringTask" || event === "occupancyRequest") && (payload as { status?: string })?.status === "pending") windows.flashFrame(true);
   });
-  projectWiring.setProjectNotifier(() => windows.publish("project", projects.current()));
-  taskOrchestration.setNotifier((event, payload) => windows.publish(event, payload));
-  execution.setNotifier((activity) => windows.publish("execution", activity));
-
-  let gateway!: LocalMcpGateway;
-  const application = new TestForgeApplication({
-    devices,
-    catalog,
-    projects,
-    wiring: projectWiring,
-    orchestration: taskOrchestration,
-    execution,
-    system: { gatewayStatus: () => gateway.status() }
-  });
-  gateway = new LocalMcpGateway(application, secrets, Number(process.env.TESTFORGE_GATEWAY_PORT ?? 8000));
-  application.occupancy.setNotifier((request) => {
-    windows.publish("occupancyRequest", request);
-    if (request.status === "pending") windows.flashFrame(true);
-  });
-  devices.occupancy.setNotifier((statuses) => {
-    application.occupancy.reconcile(statuses);
-    windows.publish("occupancy", statuses);
-  });
-  devices.occupancy.setLostNotifier((hardwareId, message) => {
-    void Promise.allSettled([
-      application.manual.abortHardware(hardwareId, message),
-      taskOrchestration.handleHardwareLeaseLost(hardwareId, message)
-    ]);
-  });
-  const gatewayTestToken = process.env.TESTFORGE_GATEWAY_TEST_TOKEN?.trim();
-  if (integrationTestMode && gatewayTestToken) await gateway.replaceToken(gatewayTestToken);
-  await gateway.start();
-
-  const llmApiKey = () => secrets.has(LLM_API_KEY_SECRET) ? secrets.get<{ apiKey: string }>(LLM_API_KEY_SECRET).apiKey : undefined;
+  const application = createPythonApplication(backend);
+  const gateway = {
+    status: () => backend.state.gateway,
+    token: () => backend.state.gatewayToken,
+    rotateToken: () => backend.call<string>("gateway.rotateToken"),
+    replaceToken: (token: string) => backend.call<void>("gateway.replaceToken", { token })
+  };
+  const llmApiKey = (): string | undefined => {
+    const error = backend.state.llmApiKeyError;
+    if (error) throw appError(error.category, error.message, error.details);
+    return backend.state.llmApiKey;
+  };
   const openCodeRuntime = new OpenCodeRuntimeService({
-    binaryPath: resolveOpenCodeBinary(),
-    userDataPath: userData,
-    gateway,
-    projectPath: () => projects.current()?.rootPath,
-    llmSettings: () => settings.get().llm,
-    apiKey: llmApiKey,
+    binaryPath: resolveOpenCodeBinary(), userDataPath: userData, gateway,
+    projectPath: () => backend.state.project?.rootPath,
+    llmSettings: () => backend.state.settings.llm, apiKey: llmApiKey,
     corsOrigins: rendererCorsOrigins()
   });
   registerLogSecrets(() => [gateway.token(), llmApiKey(), openCodeRuntime.connectionInfo()?.password]);
   openCodeRuntime.setNotifier((status) => windows.publish("opencode", status));
-
   const agentIntegration = new CodexAgentIntegrationService(
-    gateway,
-    join(userData, "agent-config-backups"),
+    gateway, join(userData, "agent-config-backups"),
     integrationTestMode ? new MemoryCodexCommandRunner() : undefined,
     integrationTestMode ? new MemoryUserEnvironmentStore() : undefined,
     integrationTestMode ? { platform: "win32", codexCliPath: "test-codex.exe", codexHome: join(userData, "codex-test-home") } : undefined
   );
-
   const agents: TestForgeAgentsApi = {
     rotateGatewayToken: () => agentIntegration.rotateToken("codex"),
-    status: (agent) => agentIntegration.status(agent),
-    preview: (agent) => agentIntegration.preview(agent),
-    install: (agent) => agentIntegration.install(agent),
-    remove: (agent) => agentIntegration.remove(agent),
+    status: (agent) => agentIntegration.status(agent), preview: (agent) => agentIntegration.preview(agent),
+    install: (agent) => agentIntegration.install(agent), remove: (agent) => agentIntegration.remove(agent),
     test: (agent) => agentIntegration.test(agent),
-    listTools: async (): Promise<AgentToolInfo[]> => [
-      ...gateway.listBuiltinTools().map((tool) => ({
-        name: tool.name,
-        kind: "builtin" as const,
-        ...(tool.description ? { description: tool.description } : {}),
-        inputSchema: tool.inputSchema as Record<string, unknown>
-      })),
-      ...application.devices.listTools(AGENT_REQUEST_CONTEXT).map((tool) => ({
-        name: tool.externalName,
-        kind: "remote" as const,
-        ...(tool.description ? { description: tool.description } : {}),
-        inputSchema: tool.inputSchema,
-        serverId: tool.serverId,
-        remoteName: tool.remoteName
-      }))
-    ],
-    openCodeStatus: async () => openCodeRuntime.status(),
-    startOpenCode: () => openCodeRuntime.start(),
+    listTools: () => backend.call<AgentToolInfo[]>("agents.listTools"),
+    openCodeStatus: async () => openCodeRuntime.status(), startOpenCode: () => openCodeRuntime.start(),
     stopOpenCode: async () => { await openCodeRuntime.stop(); return openCodeRuntime.status(); },
     restartOpenCode: () => openCodeRuntime.restart()
   };
-
   const settingsApi: TestForgeSettingsApi = {
-    setTheme: async (theme) => { await settings.update({ theme }); },
-    getTheme: async () => settings.get().theme,
-    setProjectView: async (projectView) => { await settings.update({ projectView }); },
-    getProjectView: async () => settings.get().projectView,
-    setWelcomeLayout: async (welcomeLayout) => { await settings.update({ welcomeLayout }); },
-    getWelcomeLayout: async () => settings.get().welcomeLayout,
-    getLlm: async () => ({ ...settings.get().llm, apiKeyConfigured: secrets.has(LLM_API_KEY_SECRET) }),
+    setTheme: async (theme) => { await backend.call("settings.update", { theme }); },
+    getTheme: async () => backend.state.settings.theme,
+    setProjectView: async (projectView) => { await backend.call("settings.update", { projectView }); },
+    getProjectView: async () => backend.state.settings.projectView,
+    setWelcomeLayout: async (welcomeLayout) => { await backend.call("settings.update", { welcomeLayout }); },
+    getWelcomeLayout: async () => backend.state.settings.welcomeLayout,
+    getLlm: async () => ({ ...backend.state.settings.llm, apiKeyConfigured: backend.state.llmApiKeyConfigured }),
     saveLlm: async (input) => {
-      const before = { ...settings.get().llm, apiKey: llmApiKey() };
-      await settings.update({ llm: { baseUrl: input.baseUrl, model: input.model } });
-      const apiKey = input.apiKey?.trim();
-      if (input.clearApiKey) await secrets.remove(LLM_API_KEY_SECRET);
-      else if (apiKey) await secrets.set(LLM_API_KEY_SECRET, { apiKey });
-      const after = { ...settings.get().llm, apiKey: llmApiKey() };
-      void reconcileOpenCodeSettings(openCodeRuntime, before, after, Boolean(projects.current())).catch((error) => logger.error("OpenCode settings reconciliation failed", error));
-      return { ...settings.get().llm, apiKeyConfigured: secrets.has(LLM_API_KEY_SECRET) };
+      const before = { ...backend.state.settings.llm, apiKey: llmApiKey() };
+      const result = await backend.call<Awaited<ReturnType<TestForgeSettingsApi["saveLlm"]>>>("settings.saveLlm", input);
+      const after = { ...backend.state.settings.llm, apiKey: llmApiKey() };
+      void reconcileOpenCodeSettings(openCodeRuntime, before, after, Boolean(backend.state.project)).catch((error) => logger.error("OpenCode settings reconciliation failed", error));
+      return result;
     }
   };
-
   let shutdownPromise: Promise<void> | undefined;
   return {
-    application,
-    agents,
-    settings: settingsApi,
-    theme: () => settings.get().theme,
-    resolveImagePath: (hardwareId, assetId) => deviceStore.imagePath(hardwareId, assetId),
+    application, agents, settings: settingsApi, theme: () => backend.state.settings.theme,
+    resolveImagePath: (hardwareId, assetId) => backend.call<string>("assets.resolveImagePath", { hardwareId, assetId }),
     connectionInfo: () => openCodeRuntime.connectionInfo(),
-    workspaceChanged: async () => { await reconcileOpenCodeWorkspace(openCodeRuntime, Boolean(projects.current()), llmApiKey()); },
-    probeAvailability: async () => {
-      const results = await Promise.allSettled(devices.listServers().map((server) => application.devices.refreshServer(AGENT_REQUEST_CONTEXT, server.serverId)));
-      await devices.occupancy.refreshAll();
-      return { availability: devices.listAvailability(), servers: results.flatMap((result) => result.status === "fulfilled" ? [result.value] : []) };
-    },
-    autoStartAgentRuntime: async () => { await autoStartOpenCode(openCodeRuntime, llmApiKey(), Boolean(projects.current())); },
+    workspaceChanged: async () => { await reconcileOpenCodeWorkspace(openCodeRuntime, Boolean(backend.state.project), llmApiKey()); },
+    probeAvailability: () => backend.call("backend.probeAvailability"),
+    autoStartAgentRuntime: async () => { await autoStartOpenCode(openCodeRuntime, llmApiKey(), Boolean(backend.state.project)); },
     shutdown: () => shutdownPromise ??= (async () => {
       await openCodeRuntime.stop().catch(() => undefined);
-      await application.manual.close();
-      await application.projects.close();
-      await devices.close();
-      await gateway.stop();
-      await transports.close();
-      await secrets.flush();
+      await backend.shutdown();
     })()
-  };
-}
-
-function createProtector(): SecretProtector {
-  if (!safeStorage.isEncryptionAvailable()) throw new Error("Windows credential encryption is not available");
-  return {
-    encrypt: (value) => safeStorage.encryptString(value),
-    decrypt: (value) => safeStorage.decryptString(value)
   };
 }
 
