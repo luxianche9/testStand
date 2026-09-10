@@ -23,7 +23,7 @@ export function ComputerActions({ computer, onEdit, onAddServer, onChanged }: {
   const open = (handler: () => void) => (event: React.MouseEvent) => { event.stopPropagation(); handler(); };
   return <>
     <span className="flex flex-none items-center gap-0.5" onClick={(event) => event.stopPropagation()}>
-      <TooltipIconButton tooltip="编辑 SSH 信息" aria-label="编辑 SSH 信息" onClick={open(onEdit)}><PencilIcon /></TooltipIconButton>
+      <TooltipIconButton tooltip="编辑电脑信息" aria-label="编辑电脑信息" onClick={open(onEdit)}><PencilIcon /></TooltipIconButton>
       <TooltipIconButton tooltip="添加 MCP 服务器" aria-label="添加 MCP 服务器" className="text-primary" onClick={open(onAddServer)}><PlusIcon /></TooltipIconButton>
       <TooltipIconButton tooltip="删除远程电脑及其全部 MCP Server（远程文件不会被删除）" aria-label="删除远程电脑" onClick={open(() => setConfirmOpen(true))} disabled={remove.isPending}><Trash2Icon /></TooltipIconButton>
       {remove.isError && <span className="grid w-5 place-items-center text-destructive" title={errorMessage(remove.error)}><CircleAlertIcon className="size-3.5" /></span>}
@@ -72,7 +72,7 @@ export function ServerActions({ server, status, occupancy, hardwareExecuting, ss
   });
   const fire = (kind: "start" | "stop" | "force-stop") => (event: React.MouseEvent) => { event.stopPropagation(); action.mutate(kind); };
   const open = (handler: () => void) => (event: React.MouseEvent) => { event.stopPropagation(); handler(); };
-  const gateTitle = (label: string) => (sshOnline ? label : "所属电脑 SSH 在线后才能操作");
+  const gateTitle = (label: string) => (sshOnline ? label : "所属电脑连接检查通过后才能操作");
   const occupancyOnline = status?.transport.state === "online";
   const held = occupancy?.state === "occupied_by_self";
   const occupancyDisabled = occupancyAction.isPending || !occupancyOnline || (!held && occupancy?.state !== "unoccupied") || (held && hardwareExecuting);

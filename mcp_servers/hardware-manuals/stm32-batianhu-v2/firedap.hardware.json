@@ -1,0 +1,47 @@
+{
+  "formatVersion": 2,
+  "hardwareId": "LOCAL_MCP.FIREDAP_0",
+  "kind": "managed",
+  "serverId": "FIREDAP_MCP",
+  "computerId": "LOCAL_PC",
+  "appearanceAssetId": "appearance.png",
+  "label": "野火 FireDAP · STM32 烧录器（本机）",
+  "ports": [
+    {
+      "portId": "LOCAL_MCP.FIREDAP_0.SWD",
+      "name": "SWD 5针（VREF 为参考输入）",
+      "pins": [
+        {
+          "pinId": "LOCAL_MCP.FIREDAP_0.SWD.1",
+          "position": 1,
+          "label": "VTREF"
+        },
+        {
+          "pinId": "LOCAL_MCP.FIREDAP_0.SWD.2",
+          "position": 2,
+          "label": "SWDIO"
+        },
+        {
+          "pinId": "LOCAL_MCP.FIREDAP_0.SWD.3",
+          "position": 3,
+          "label": "GND"
+        },
+        {
+          "pinId": "LOCAL_MCP.FIREDAP_0.SWD.4",
+          "position": 4,
+          "label": "SWCLK"
+        },
+        {
+          "pinId": "LOCAL_MCP.FIREDAP_0.SWD.5",
+          "position": 5,
+          "label": "NRST"
+        }
+      ]
+    },
+    {
+      "portId": "LOCAL_MCP.FIREDAP_0.USB",
+      "name": "USB Type-C 上行（整根 USB 数据线）",
+      "pins": []
+    }
+  ]
+}

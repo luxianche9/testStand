@@ -5,6 +5,7 @@ import type { SecretStore } from "@testforge/storage";
 import type { DeviceStore } from "./device-store.js";
 import type { DeviceCallOptions, DeviceTransportRegistry } from "./device-transport.js";
 import { remoteShellFor } from "./remote-shell.js";
+import { executeLocalShell } from "./local-shell.js";
 import { SshManager, type SshCredential, type SshResult } from "./ssh.js";
 import { HardwareOccupancyManager } from "./hardware-occupancy.js";
 
@@ -89,6 +90,7 @@ export class DeviceService {
 
   async execute(computerId: string, command: string, timeoutMs = 60_000): Promise<SshResult> {
     const computer = this.requireComputer(computerId);
+    if (computer.execution === "local") return await executeLocalShell(computer.ssh.shell, command, Math.min(Math.max(timeoutMs, 1_000), 300_000));
     return await this.ssh.execute(computer, remoteShellFor(computer).command(command), Math.min(Math.max(timeoutMs, 1_000), 300_000));
   }
 
@@ -110,7 +112,8 @@ export class DeviceService {
     const status: ComputerStatus = { computerId, ssh: { state: "checking" } };
     if (!this.statuses.has(computerId)) this.statuses.set(computerId, { ...status });
     try {
-      await this.ssh.execute(computer, remoteShellFor(computer).command(remoteShellFor(computer).probeCommand()), 15_000);
+      const result = await this.execute(computerId, remoteShellFor(computer).probeCommand(), 15_000);
+      if (result.exitCode !== 0) throw new Error(result.stderr || "Computer shell probe failed");
       status.ssh = { state: "online", checkedAt: new Date().toISOString(), latencyMs: Date.now() - started };
     } catch (error) {
       status.ssh = { state: "offline", checkedAt: new Date().toISOString(), message: String(error) };

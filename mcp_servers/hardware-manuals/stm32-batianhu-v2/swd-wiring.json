@@ -1,0 +1,26 @@
+{
+  "description": "Preferred straight-through FireDAP SWD to board J1; board separately powered",
+  "connections": [
+    {
+      "a": "LOCAL_MCP.FIREDAP_0.SWD.1",
+      "b": "DUT_1.J1.1"
+    },
+    {
+      "a": "LOCAL_MCP.FIREDAP_0.SWD.2",
+      "b": "DUT_1.J1.2"
+    },
+    {
+      "a": "LOCAL_MCP.FIREDAP_0.SWD.3",
+      "b": "DUT_1.J1.3"
+    },
+    {
+      "a": "LOCAL_MCP.FIREDAP_0.SWD.4",
+      "b": "DUT_1.J1.4"
+    },
+    {
+      "a": "LOCAL_MCP.FIREDAP_0.SWD.5",
+      "b": "DUT_1.J1.5"
+    }
+  ],
+  "physicalWiringConfirmed": false
+}

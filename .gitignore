@@ -21,6 +21,8 @@ tmp/
 mcp-server/
 run/
 sim_hardware/servers/*/server.json
+mcp_servers/servers/firedap/server.json
+mcp_servers/servers/firedap/firmware/
 
 playwright-report/
 test-results/

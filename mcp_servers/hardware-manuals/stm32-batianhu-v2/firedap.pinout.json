@@ -1,0 +1,64 @@
+{
+  "hardwareId": "LOCAL_MCP.FIREDAP_0",
+  "manufacturer": "Embedfire",
+  "model": "fireDAP CMSIS-DAP",
+  "connectors": [
+    {
+      "connectorId": "LOCAL_MCP.FIREDAP_0.SWD",
+      "name": "SWD 5针（VREF 为参考输入）",
+      "pinIds": [
+        "LOCAL_MCP.FIREDAP_0.SWD.1",
+        "LOCAL_MCP.FIREDAP_0.SWD.2",
+        "LOCAL_MCP.FIREDAP_0.SWD.3",
+        "LOCAL_MCP.FIREDAP_0.SWD.4",
+        "LOCAL_MCP.FIREDAP_0.SWD.5"
+      ]
+    },
+    {
+      "connectorId": "LOCAL_MCP.FIREDAP_0.USB",
+      "name": "USB Type-C 上行（整根 USB 数据线）",
+      "pinIds": []
+    }
+  ],
+  "pins": [
+    {
+      "pinId": "LOCAL_MCP.FIREDAP_0.SWD.1",
+      "position": 1,
+      "label": "VTREF",
+      "connectorId": "LOCAL_MCP.FIREDAP_0.SWD"
+    },
+    {
+      "pinId": "LOCAL_MCP.FIREDAP_0.SWD.2",
+      "position": 2,
+      "label": "SWDIO",
+      "connectorId": "LOCAL_MCP.FIREDAP_0.SWD"
+    },
+    {
+      "pinId": "LOCAL_MCP.FIREDAP_0.SWD.3",
+      "position": 3,
+      "label": "GND",
+      "connectorId": "LOCAL_MCP.FIREDAP_0.SWD"
+    },
+    {
+      "pinId": "LOCAL_MCP.FIREDAP_0.SWD.4",
+      "position": 4,
+      "label": "SWCLK",
+      "connectorId": "LOCAL_MCP.FIREDAP_0.SWD"
+    },
+    {
+      "pinId": "LOCAL_MCP.FIREDAP_0.SWD.5",
+      "position": 5,
+      "label": "NRST",
+      "connectorId": "LOCAL_MCP.FIREDAP_0.SWD"
+    }
+  ],
+  "sources": [
+    "E:\\Project\\learnSTM32\\doc\\5-配套模块资料\\野火【DAP高速款下载器】\\1-DAP高速款使用说明.pdf",
+    "E:\\Project\\learnSTM32\\doc\\2-开发板硬件资料_原理图_尺寸图_封装库_规格书\\F407_霸天虎V2\\原理图\\野火STM32F407_霸天虎V2开发板原理图2025.pdf p12"
+  ],
+  "notes": [
+    "VREF senses target voltage, not a guaranteed board power supply.",
+    "This service models the SWD and USB connections it uses; JTAG and V-UART are outside this service's scope.",
+    "Confirm probe variant against enclosure markings before wiring."
+  ]
+}

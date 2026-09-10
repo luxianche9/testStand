@@ -1,0 +1,1092 @@
+{
+  "formatVersion": 2,
+  "hardwareId": "DUT_1",
+  "label": "野火 STM32F407 霸天虎 V2（STM32F407ZGT6）",
+  "kind": "passive",
+  "appearanceAssetId": "appearance.png",
+  "ports": [
+    {
+      "portId": "DUT_1.J1",
+      "name": "J1 · SWD 下载",
+      "pins": [
+        {
+          "pinId": "DUT_1.J1.1",
+          "position": 1,
+          "label": "3V3"
+        },
+        {
+          "pinId": "DUT_1.J1.2",
+          "position": 2,
+          "label": "PA13/SWDIO"
+        },
+        {
+          "pinId": "DUT_1.J1.3",
+          "position": 3,
+          "label": "GND"
+        },
+        {
+          "pinId": "DUT_1.J1.4",
+          "position": 4,
+          "label": "PA14/SWCLK"
+        },
+        {
+          "pinId": "DUT_1.J1.5",
+          "position": 5,
+          "label": "NRST"
+        }
+      ],
+      "imageAssetId": "ports/DUT_1.J1.png"
+    },
+    {
+      "portId": "DUT_1.J45",
+      "name": "J45 · JTAG / SWD 下载",
+      "pins": [
+        {
+          "pinId": "DUT_1.J45.1",
+          "position": 1,
+          "label": "3V3/VTREF"
+        },
+        {
+          "pinId": "DUT_1.J45.2",
+          "position": 2,
+          "label": "3V3/VDD"
+        },
+        {
+          "pinId": "DUT_1.J45.3",
+          "position": 3,
+          "label": "PB4/nTRST"
+        },
+        {
+          "pinId": "DUT_1.J45.4",
+          "position": 4,
+          "label": "GND"
+        },
+        {
+          "pinId": "DUT_1.J45.5",
+          "position": 5,
+          "label": "PA15/TDI"
+        },
+        {
+          "pinId": "DUT_1.J45.6",
+          "position": 6,
+          "label": "GND"
+        },
+        {
+          "pinId": "DUT_1.J45.7",
+          "position": 7,
+          "label": "PA13/TMS_SWDIO"
+        },
+        {
+          "pinId": "DUT_1.J45.8",
+          "position": 8,
+          "label": "GND"
+        },
+        {
+          "pinId": "DUT_1.J45.9",
+          "position": 9,
+          "label": "PA14/TCK_SWCLK"
+        },
+        {
+          "pinId": "DUT_1.J45.10",
+          "position": 10,
+          "label": "GND"
+        },
+        {
+          "pinId": "DUT_1.J45.11",
+          "position": 11,
+          "label": "NC/RTCK"
+        },
+        {
+          "pinId": "DUT_1.J45.12",
+          "position": 12,
+          "label": "GND"
+        },
+        {
+          "pinId": "DUT_1.J45.13",
+          "position": 13,
+          "label": "PB3/TDO_SWO"
+        },
+        {
+          "pinId": "DUT_1.J45.14",
+          "position": 14,
+          "label": "GND"
+        },
+        {
+          "pinId": "DUT_1.J45.15",
+          "position": 15,
+          "label": "NRST"
+        },
+        {
+          "pinId": "DUT_1.J45.16",
+          "position": 16,
+          "label": "GND"
+        },
+        {
+          "pinId": "DUT_1.J45.17",
+          "position": 17,
+          "label": "NC/DBGRQ"
+        },
+        {
+          "pinId": "DUT_1.J45.18",
+          "position": 18,
+          "label": "GND"
+        },
+        {
+          "pinId": "DUT_1.J45.19",
+          "position": 19,
+          "label": "NC/DBGACK"
+        },
+        {
+          "pinId": "DUT_1.J45.20",
+          "position": 20,
+          "label": "GND"
+        }
+      ],
+      "imageAssetId": "ports/DUT_1.J45.png"
+    },
+    {
+      "portId": "DUT_1.CN2",
+      "name": "CN2 · GPIO 扩展 A",
+      "pins": [
+        {
+          "pinId": "DUT_1.CN2.1",
+          "position": 1,
+          "label": "PA15"
+        },
+        {
+          "pinId": "DUT_1.CN2.2",
+          "position": 2,
+          "label": "PA14"
+        },
+        {
+          "pinId": "DUT_1.CN2.3",
+          "position": 3,
+          "label": "PA13"
+        },
+        {
+          "pinId": "DUT_1.CN2.4",
+          "position": 4,
+          "label": "PB3"
+        },
+        {
+          "pinId": "DUT_1.CN2.5",
+          "position": 5,
+          "label": "PB4"
+        },
+        {
+          "pinId": "DUT_1.CN2.6",
+          "position": 6,
+          "label": "NRST"
+        },
+        {
+          "pinId": "DUT_1.CN2.7",
+          "position": 7,
+          "label": "PB5"
+        },
+        {
+          "pinId": "DUT_1.CN2.8",
+          "position": 8,
+          "label": "GND"
+        },
+        {
+          "pinId": "DUT_1.CN2.9",
+          "position": 9,
+          "label": "BOOT0"
+        },
+        {
+          "pinId": "DUT_1.CN2.10",
+          "position": 10,
+          "label": "PG6"
+        },
+        {
+          "pinId": "DUT_1.CN2.11",
+          "position": 11,
+          "label": "PA9"
+        },
+        {
+          "pinId": "DUT_1.CN2.12",
+          "position": 12,
+          "label": "PA3"
+        },
+        {
+          "pinId": "DUT_1.CN2.13",
+          "position": 13,
+          "label": "PA10"
+        },
+        {
+          "pinId": "DUT_1.CN2.14",
+          "position": 14,
+          "label": "PB2"
+        },
+        {
+          "pinId": "DUT_1.CN2.15",
+          "position": 15,
+          "label": "PF0"
+        },
+        {
+          "pinId": "DUT_1.CN2.16",
+          "position": 16,
+          "label": "PF1"
+        },
+        {
+          "pinId": "DUT_1.CN2.17",
+          "position": 17,
+          "label": "PF2"
+        },
+        {
+          "pinId": "DUT_1.CN2.18",
+          "position": 18,
+          "label": "PF3"
+        },
+        {
+          "pinId": "DUT_1.CN2.19",
+          "position": 19,
+          "label": "PF4"
+        },
+        {
+          "pinId": "DUT_1.CN2.20",
+          "position": 20,
+          "label": "PF5"
+        },
+        {
+          "pinId": "DUT_1.CN2.21",
+          "position": 21,
+          "label": "PF12"
+        },
+        {
+          "pinId": "DUT_1.CN2.22",
+          "position": 22,
+          "label": "PF13"
+        },
+        {
+          "pinId": "DUT_1.CN2.23",
+          "position": 23,
+          "label": "PF14"
+        },
+        {
+          "pinId": "DUT_1.CN2.24",
+          "position": 24,
+          "label": "PF15"
+        },
+        {
+          "pinId": "DUT_1.CN2.25",
+          "position": 25,
+          "label": "PG0"
+        },
+        {
+          "pinId": "DUT_1.CN2.26",
+          "position": 26,
+          "label": "PG1"
+        },
+        {
+          "pinId": "DUT_1.CN2.27",
+          "position": 27,
+          "label": "PG2"
+        },
+        {
+          "pinId": "DUT_1.CN2.28",
+          "position": 28,
+          "label": "PG3"
+        },
+        {
+          "pinId": "DUT_1.CN2.29",
+          "position": 29,
+          "label": "PG4"
+        },
+        {
+          "pinId": "DUT_1.CN2.30",
+          "position": 30,
+          "label": "PG5"
+        },
+        {
+          "pinId": "DUT_1.CN2.31",
+          "position": 31,
+          "label": "PD11"
+        },
+        {
+          "pinId": "DUT_1.CN2.32",
+          "position": 32,
+          "label": "PD12"
+        },
+        {
+          "pinId": "DUT_1.CN2.33",
+          "position": 33,
+          "label": "PD13"
+        },
+        {
+          "pinId": "DUT_1.CN2.34",
+          "position": 34,
+          "label": "PG12"
+        },
+        {
+          "pinId": "DUT_1.CN2.35",
+          "position": 35,
+          "label": "PD14"
+        },
+        {
+          "pinId": "DUT_1.CN2.36",
+          "position": 36,
+          "label": "PD15"
+        },
+        {
+          "pinId": "DUT_1.CN2.37",
+          "position": 37,
+          "label": "PD0"
+        },
+        {
+          "pinId": "DUT_1.CN2.38",
+          "position": 38,
+          "label": "PD1"
+        },
+        {
+          "pinId": "DUT_1.CN2.39",
+          "position": 39,
+          "label": "PE7"
+        },
+        {
+          "pinId": "DUT_1.CN2.40",
+          "position": 40,
+          "label": "PE8"
+        },
+        {
+          "pinId": "DUT_1.CN2.41",
+          "position": 41,
+          "label": "PE9"
+        },
+        {
+          "pinId": "DUT_1.CN2.42",
+          "position": 42,
+          "label": "PE10"
+        },
+        {
+          "pinId": "DUT_1.CN2.43",
+          "position": 43,
+          "label": "PE11"
+        },
+        {
+          "pinId": "DUT_1.CN2.44",
+          "position": 44,
+          "label": "PE12"
+        },
+        {
+          "pinId": "DUT_1.CN2.45",
+          "position": 45,
+          "label": "PE13"
+        },
+        {
+          "pinId": "DUT_1.CN2.46",
+          "position": 46,
+          "label": "PE14"
+        },
+        {
+          "pinId": "DUT_1.CN2.47",
+          "position": 47,
+          "label": "PE15"
+        },
+        {
+          "pinId": "DUT_1.CN2.48",
+          "position": 48,
+          "label": "PD8"
+        },
+        {
+          "pinId": "DUT_1.CN2.49",
+          "position": 49,
+          "label": "PD9"
+        },
+        {
+          "pinId": "DUT_1.CN2.50",
+          "position": 50,
+          "label": "PD10"
+        },
+        {
+          "pinId": "DUT_1.CN2.51",
+          "position": 51,
+          "label": "PF6"
+        },
+        {
+          "pinId": "DUT_1.CN2.52",
+          "position": 52,
+          "label": "PF7"
+        },
+        {
+          "pinId": "DUT_1.CN2.53",
+          "position": 53,
+          "label": "PF8"
+        },
+        {
+          "pinId": "DUT_1.CN2.54",
+          "position": 54,
+          "label": "PC3"
+        },
+        {
+          "pinId": "DUT_1.CN2.55",
+          "position": 55,
+          "label": "PA0"
+        },
+        {
+          "pinId": "DUT_1.CN2.56",
+          "position": 56,
+          "label": "PC13"
+        },
+        {
+          "pinId": "DUT_1.CN2.57",
+          "position": 57,
+          "label": "GND"
+        },
+        {
+          "pinId": "DUT_1.CN2.58",
+          "position": 58,
+          "label": "GND"
+        },
+        {
+          "pinId": "DUT_1.CN2.59",
+          "position": 59,
+          "label": "3V3"
+        },
+        {
+          "pinId": "DUT_1.CN2.60",
+          "position": 60,
+          "label": "3V3"
+        }
+      ],
+      "imageAssetId": "ports/DUT_1.CN2.png"
+    },
+    {
+      "portId": "DUT_1.CN3",
+      "name": "CN3 · GPIO 扩展 B",
+      "pins": [
+        {
+          "pinId": "DUT_1.CN3.1",
+          "position": 1,
+          "label": "PG11"
+        },
+        {
+          "pinId": "DUT_1.CN3.2",
+          "position": 2,
+          "label": "PC4"
+        },
+        {
+          "pinId": "DUT_1.CN3.3",
+          "position": 3,
+          "label": "PG13"
+        },
+        {
+          "pinId": "DUT_1.CN3.4",
+          "position": 4,
+          "label": "PC5"
+        },
+        {
+          "pinId": "DUT_1.CN3.5",
+          "position": 5,
+          "label": "PG14"
+        },
+        {
+          "pinId": "DUT_1.CN3.6",
+          "position": 6,
+          "label": "PA1"
+        },
+        {
+          "pinId": "DUT_1.CN3.7",
+          "position": 7,
+          "label": "PA7"
+        },
+        {
+          "pinId": "DUT_1.CN3.8",
+          "position": 8,
+          "label": "PC1"
+        },
+        {
+          "pinId": "DUT_1.CN3.9",
+          "position": 9,
+          "label": "GND"
+        },
+        {
+          "pinId": "DUT_1.CN3.10",
+          "position": 10,
+          "label": "PA2"
+        },
+        {
+          "pinId": "DUT_1.CN3.11",
+          "position": 11,
+          "label": "PB12"
+        },
+        {
+          "pinId": "DUT_1.CN3.12",
+          "position": 12,
+          "label": "PB13"
+        },
+        {
+          "pinId": "DUT_1.CN3.13",
+          "position": 13,
+          "label": "PB14"
+        },
+        {
+          "pinId": "DUT_1.CN3.14",
+          "position": 14,
+          "label": "PB15"
+        },
+        {
+          "pinId": "DUT_1.CN3.15",
+          "position": 15,
+          "label": "PC0"
+        },
+        {
+          "pinId": "DUT_1.CN3.16",
+          "position": 16,
+          "label": "PE3"
+        },
+        {
+          "pinId": "DUT_1.CN3.17",
+          "position": 17,
+          "label": "PF10"
+        },
+        {
+          "pinId": "DUT_1.CN3.18",
+          "position": 18,
+          "label": "PC6"
+        },
+        {
+          "pinId": "DUT_1.CN3.19",
+          "position": 19,
+          "label": "PA8"
+        },
+        {
+          "pinId": "DUT_1.CN3.20",
+          "position": 20,
+          "label": "PC7"
+        },
+        {
+          "pinId": "DUT_1.CN3.21",
+          "position": 21,
+          "label": "PA6"
+        },
+        {
+          "pinId": "DUT_1.CN3.22",
+          "position": 22,
+          "label": "PE4"
+        },
+        {
+          "pinId": "DUT_1.CN3.23",
+          "position": 23,
+          "label": "PB7"
+        },
+        {
+          "pinId": "DUT_1.CN3.24",
+          "position": 24,
+          "label": "PB6"
+        },
+        {
+          "pinId": "DUT_1.CN3.25",
+          "position": 25,
+          "label": "PA4"
+        },
+        {
+          "pinId": "DUT_1.CN3.26",
+          "position": 26,
+          "label": "PE5"
+        },
+        {
+          "pinId": "DUT_1.CN3.27",
+          "position": 27,
+          "label": "PB8"
+        },
+        {
+          "pinId": "DUT_1.CN3.28",
+          "position": 28,
+          "label": "PE6"
+        },
+        {
+          "pinId": "DUT_1.CN3.29",
+          "position": 29,
+          "label": "PC2"
+        },
+        {
+          "pinId": "DUT_1.CN3.30",
+          "position": 30,
+          "label": "PB9"
+        },
+        {
+          "pinId": "DUT_1.CN3.31",
+          "position": 31,
+          "label": "PG7"
+        },
+        {
+          "pinId": "DUT_1.CN3.32",
+          "position": 32,
+          "label": "PB0"
+        },
+        {
+          "pinId": "DUT_1.CN3.33",
+          "position": 33,
+          "label": "PA11"
+        },
+        {
+          "pinId": "DUT_1.CN3.34",
+          "position": 34,
+          "label": "PB1"
+        },
+        {
+          "pinId": "DUT_1.CN3.35",
+          "position": 35,
+          "label": "PB10"
+        },
+        {
+          "pinId": "DUT_1.CN3.36",
+          "position": 36,
+          "label": "PA12"
+        },
+        {
+          "pinId": "DUT_1.CN3.37",
+          "position": 37,
+          "label": "PB11"
+        },
+        {
+          "pinId": "DUT_1.CN3.38",
+          "position": 38,
+          "label": "PG15"
+        },
+        {
+          "pinId": "DUT_1.CN3.39",
+          "position": 39,
+          "label": "PE2"
+        },
+        {
+          "pinId": "DUT_1.CN3.40",
+          "position": 40,
+          "label": "PG10"
+        },
+        {
+          "pinId": "DUT_1.CN3.41",
+          "position": 41,
+          "label": "PD4"
+        },
+        {
+          "pinId": "DUT_1.CN3.42",
+          "position": 42,
+          "label": "PD5"
+        },
+        {
+          "pinId": "DUT_1.CN3.43",
+          "position": 43,
+          "label": "PE0"
+        },
+        {
+          "pinId": "DUT_1.CN3.44",
+          "position": 44,
+          "label": "PE1"
+        },
+        {
+          "pinId": "DUT_1.CN3.45",
+          "position": 45,
+          "label": "PF11"
+        },
+        {
+          "pinId": "DUT_1.CN3.46",
+          "position": 46,
+          "label": "GND"
+        },
+        {
+          "pinId": "DUT_1.CN3.47",
+          "position": 47,
+          "label": "PD6"
+        },
+        {
+          "pinId": "DUT_1.CN3.48",
+          "position": 48,
+          "label": "PG8"
+        },
+        {
+          "pinId": "DUT_1.CN3.49",
+          "position": 49,
+          "label": "PG9"
+        },
+        {
+          "pinId": "DUT_1.CN3.50",
+          "position": 50,
+          "label": "PD3"
+        },
+        {
+          "pinId": "DUT_1.CN3.51",
+          "position": 51,
+          "label": "PF9"
+        },
+        {
+          "pinId": "DUT_1.CN3.52",
+          "position": 52,
+          "label": "PD7"
+        },
+        {
+          "pinId": "DUT_1.CN3.53",
+          "position": 53,
+          "label": "PC8"
+        },
+        {
+          "pinId": "DUT_1.CN3.54",
+          "position": 54,
+          "label": "PC11"
+        },
+        {
+          "pinId": "DUT_1.CN3.55",
+          "position": 55,
+          "label": "PC9"
+        },
+        {
+          "pinId": "DUT_1.CN3.56",
+          "position": 56,
+          "label": "PD2"
+        },
+        {
+          "pinId": "DUT_1.CN3.57",
+          "position": 57,
+          "label": "PC10"
+        },
+        {
+          "pinId": "DUT_1.CN3.58",
+          "position": 58,
+          "label": "PC12"
+        },
+        {
+          "pinId": "DUT_1.CN3.59",
+          "position": 59,
+          "label": "PA5"
+        },
+        {
+          "pinId": "DUT_1.CN3.60",
+          "position": 60,
+          "label": "VBAT"
+        }
+      ],
+      "imageAssetId": "ports/DUT_1.CN3.png"
+    },
+    {
+      "portId": "DUT_1.J87",
+      "name": "J87 · 电源引出",
+      "pins": [
+        {
+          "pinId": "DUT_1.J87.1",
+          "position": 1,
+          "label": "5V"
+        },
+        {
+          "pinId": "DUT_1.J87.2",
+          "position": 2,
+          "label": "5V"
+        },
+        {
+          "pinId": "DUT_1.J87.3",
+          "position": 3,
+          "label": "3V3"
+        },
+        {
+          "pinId": "DUT_1.J87.4",
+          "position": 4,
+          "label": "3V3"
+        },
+        {
+          "pinId": "DUT_1.J87.5",
+          "position": 5,
+          "label": "3V3"
+        },
+        {
+          "pinId": "DUT_1.J87.6",
+          "position": 6,
+          "label": "3V3"
+        },
+        {
+          "pinId": "DUT_1.J87.7",
+          "position": 7,
+          "label": "GND"
+        },
+        {
+          "pinId": "DUT_1.J87.8",
+          "position": 8,
+          "label": "GND"
+        }
+      ],
+      "imageAssetId": "ports/DUT_1.J87.png"
+    },
+    {
+      "portId": "DUT_1.JACK1",
+      "name": "JACK1 · DC 输入 6–12V（中心正）",
+      "pins": [
+        {
+          "pinId": "DUT_1.JACK1.1",
+          "position": 1,
+          "label": "DC_IN_CENTER_POS"
+        },
+        {
+          "pinId": "DUT_1.JACK1.2",
+          "position": 2,
+          "label": "GND_OUTER_SLEEVE"
+        }
+      ],
+      "imageAssetId": "ports/DUT_1.JACK1.png"
+    },
+    {
+      "portId": "DUT_1.J8",
+      "name": "J8 · USB 转串口 / 5V 电源",
+      "pins": [
+        {
+          "pinId": "DUT_1.J8.1",
+          "position": 1,
+          "label": "5V_USB"
+        },
+        {
+          "pinId": "DUT_1.J8.2",
+          "position": 2,
+          "label": "CH340_UD-"
+        },
+        {
+          "pinId": "DUT_1.J8.3",
+          "position": 3,
+          "label": "CH340_UD+"
+        },
+        {
+          "pinId": "DUT_1.J8.4",
+          "position": 4,
+          "label": "NC/ID"
+        },
+        {
+          "pinId": "DUT_1.J8.5",
+          "position": 5,
+          "label": "GND"
+        }
+      ],
+      "imageAssetId": "ports/DUT_1.J8.png"
+    },
+    {
+      "portId": "DUT_1.J24",
+      "name": "J24 · USB OTG FS",
+      "pins": [
+        {
+          "pinId": "DUT_1.J24.1",
+          "position": 1,
+          "label": "5V_USB"
+        },
+        {
+          "pinId": "DUT_1.J24.2",
+          "position": 2,
+          "label": "PA11/USB_DM"
+        },
+        {
+          "pinId": "DUT_1.J24.3",
+          "position": 3,
+          "label": "PA12/USB_DP"
+        },
+        {
+          "pinId": "DUT_1.J24.4",
+          "position": 4,
+          "label": "PB1/ID"
+        },
+        {
+          "pinId": "DUT_1.J24.5",
+          "position": 5,
+          "label": "GND"
+        }
+      ],
+      "imageAssetId": "ports/DUT_1.J24.png"
+    },
+    {
+      "portId": "J1",
+      "name": "J13 · CAN2 总线（板载 120Ω）",
+      "pins": [
+        {
+          "pinId": "J1.1",
+          "position": 1,
+          "label": "CANL"
+        },
+        {
+          "pinId": "J1.2",
+          "position": 2,
+          "label": "CANH"
+        }
+      ],
+      "imageAssetId": "ports/J1.png"
+    },
+    {
+      "portId": "251574e3-45eb-4ccd-9a0d-be332ee3ac06.J1",
+      "name": "J15 · RS485 总线（板载 120Ω）",
+      "pins": [
+        {
+          "pinId": "251574e3-45eb-4ccd-9a0d-be332ee3ac06.J1.1",
+          "position": 1,
+          "label": "485A"
+        },
+        {
+          "pinId": "251574e3-45eb-4ccd-9a0d-be332ee3ac06.J1.2",
+          "position": 2,
+          "label": "485B"
+        }
+      ],
+      "imageAssetId": "ports/251574e3-45eb-4ccd-9a0d-be332ee3ac06.J1.png"
+    },
+    {
+      "portId": "DUT_1.CON1",
+      "name": "CON1 · RS232 母头 / USART3",
+      "pins": [
+        {
+          "pinId": "DUT_1.CON1.1",
+          "position": 1,
+          "label": "NC"
+        },
+        {
+          "pinId": "DUT_1.CON1.2",
+          "position": 2,
+          "label": "RXD3_232/BOARD_RX"
+        },
+        {
+          "pinId": "DUT_1.CON1.3",
+          "position": 3,
+          "label": "TXD3_232/BOARD_TX"
+        },
+        {
+          "pinId": "DUT_1.CON1.4",
+          "position": 4,
+          "label": "NC"
+        },
+        {
+          "pinId": "DUT_1.CON1.5",
+          "position": 5,
+          "label": "GND"
+        },
+        {
+          "pinId": "DUT_1.CON1.6",
+          "position": 6,
+          "label": "NC"
+        },
+        {
+          "pinId": "DUT_1.CON1.7",
+          "position": 7,
+          "label": "NC"
+        },
+        {
+          "pinId": "DUT_1.CON1.8",
+          "position": 8,
+          "label": "NC"
+        },
+        {
+          "pinId": "DUT_1.CON1.9",
+          "position": 9,
+          "label": "NC"
+        }
+      ],
+      "imageAssetId": "ports/DUT_1.CON1.png"
+    },
+    {
+      "portId": "DUT_1.CON2",
+      "name": "CON2 · RS232 公头 / USART2",
+      "pins": [
+        {
+          "pinId": "DUT_1.CON2.1",
+          "position": 1,
+          "label": "NC"
+        },
+        {
+          "pinId": "DUT_1.CON2.2",
+          "position": 2,
+          "label": "RXD2_232/BOARD_RX"
+        },
+        {
+          "pinId": "DUT_1.CON2.3",
+          "position": 3,
+          "label": "TXD2_232/BOARD_TX"
+        },
+        {
+          "pinId": "DUT_1.CON2.4",
+          "position": 4,
+          "label": "NC"
+        },
+        {
+          "pinId": "DUT_1.CON2.5",
+          "position": 5,
+          "label": "GND"
+        },
+        {
+          "pinId": "DUT_1.CON2.6",
+          "position": 6,
+          "label": "NC"
+        },
+        {
+          "pinId": "DUT_1.CON2.7",
+          "position": 7,
+          "label": "NC"
+        },
+        {
+          "pinId": "DUT_1.CON2.8",
+          "position": 8,
+          "label": "NC"
+        },
+        {
+          "pinId": "DUT_1.CON2.9",
+          "position": 9,
+          "label": "NC"
+        }
+      ],
+      "imageAssetId": "ports/DUT_1.CON2.png"
+    },
+    {
+      "portId": "DUT_1.J82",
+      "name": "J82 · EBF Module 扩展",
+      "pins": [
+        {
+          "pinId": "DUT_1.J82.1",
+          "position": 1,
+          "label": "3V3"
+        },
+        {
+          "pinId": "DUT_1.J82.2",
+          "position": 2,
+          "label": "GND"
+        },
+        {
+          "pinId": "DUT_1.J82.3",
+          "position": 3,
+          "label": "PB11"
+        },
+        {
+          "pinId": "DUT_1.J82.4",
+          "position": 4,
+          "label": "PB10"
+        },
+        {
+          "pinId": "DUT_1.J82.5",
+          "position": 5,
+          "label": "PB1"
+        },
+        {
+          "pinId": "DUT_1.J82.6",
+          "position": 6,
+          "label": "PF10"
+        }
+      ],
+      "imageAssetId": "ports/DUT_1.J82.png"
+    },
+    {
+      "portId": "DUT_1.J5",
+      "name": "J5 · DHT11 / DS18B20 插座",
+      "pins": [
+        {
+          "pinId": "DUT_1.J5.1",
+          "position": 1,
+          "label": "3V3"
+        },
+        {
+          "pinId": "DUT_1.J5.2",
+          "position": 2,
+          "label": "PE3/DATA"
+        },
+        {
+          "pinId": "DUT_1.J5.3",
+          "position": 3,
+          "label": "GND"
+        },
+        {
+          "pinId": "DUT_1.J5.4",
+          "position": 4,
+          "label": "GND"
+        }
+      ],
+      "imageAssetId": "ports/DUT_1.J5.png"
+    }
+  ]
+}

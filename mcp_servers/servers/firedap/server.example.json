@@ -1,0 +1,18 @@
+{
+  "serverId": "FIREDAP_MCP",
+  "hardwareId": "LOCAL_MCP.FIREDAP_0",
+  "computerId": "LOCAL_PC",
+  "host": "127.0.0.1",
+  "port": 8015,
+  "token": "REPLACE_WITH_RANDOM_TOKEN_AT_INSTALL",
+  "probeSerial": "REPLACE_WITH_EXACT_FIREDAP_SERIAL",
+  "frequencyHz": 1000000,
+  "operationTimeoutSeconds": 120,
+  "packPath": "E:/path/to/Keil.STM32F4xx_DFP.3.1.1.pack",
+  "firmwareRoots": [
+    "E:/Project/learnSTM32",
+    "E:\\Project\\testForgeDev\\mcp_servers\\servers\\firedap\\firmware"
+  ],
+  "jobDirectory": "E:\\Project\\testForgeDev\\mcp_servers\\servers\\firedap\\run\\jobs",
+  "pinoutPath": "E:\\Project\\testForgeDev\\mcp_servers\\hardware-manuals\\stm32-batianhu-v2\\firedap.pinout.json"
+}

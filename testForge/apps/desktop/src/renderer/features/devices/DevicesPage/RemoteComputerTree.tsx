@@ -20,13 +20,13 @@ export function RemoteComputerTree({ data, selected, isOpen, onSelect, onToggle,
   onChanged: () => Promise<void>;
 }) {
   const rootOpen = isOpen("remotes");
-  return <div className="min-w-0 overflow-hidden rounded-[var(--tf-radius)] bg-card shadow-[var(--tf-shadow-sm)] ring-1 ring-black/[0.04] dark:ring-white/[0.06]" role="tree" aria-label="远程电脑列表">
+  return <div className="min-w-0 overflow-hidden rounded-[var(--tf-radius)] bg-card shadow-[var(--tf-shadow-sm)] ring-1 ring-black/[0.04] dark:ring-white/[0.06]" role="tree" aria-label="电脑列表">
     <div>
       <TreeRow
         className="h-9 bg-secondary/60 font-semibold"
         depth={0}
         icon={<MonitorIcon className="size-4" />}
-        label="远程电脑列表"
+        label="电脑列表"
         title="仪器控制电脑及其 MCP Server"
         hasChildren
         open={rootOpen}
@@ -48,7 +48,7 @@ export function RemoteComputerTree({ data, selected, isOpen, onSelect, onToggle,
             icon={<MonitorIcon className="size-4" />}
             label={computer.label}
             title={`${computer.id} · ${computer.address}`}
-            statuses={[{ dot: connectionDot(status?.ssh.state ?? "unknown"), label: `SSH ${stateLabel(status?.ssh.state ?? "unknown")}`, title: status?.ssh.message }]}
+            statuses={[{ dot: connectionDot(status?.ssh.state ?? "unknown"), label: `${computer.execution === "local" ? "本机" : "SSH"} ${stateLabel(status?.ssh.state ?? "unknown")}`, title: status?.ssh.message }]}
             hasChildren
             open={open}
             selected={selected === key}
@@ -95,7 +95,7 @@ export function RemoteComputerTree({ data, selected, isOpen, onSelect, onToggle,
           {open && servers.length === 0 && <InlineDetail depth={2}><p className="m-0 text-xs text-muted-foreground">还没有 MCP Server。点右侧“添加 MCP Server”为每个受管硬件注册一个独立进程。</p></InlineDetail>}
         </div>;
       })}
-      {rootOpen && data.computers.length === 0 && <InlineDetail depth={1}><p className="m-0 text-xs text-muted-foreground">还没有远程电脑。点右侧“+”添加仪器控制电脑。</p></InlineDetail>}
+      {rootOpen && data.computers.length === 0 && <InlineDetail depth={1}><p className="m-0 text-xs text-muted-foreground">还没有电脑。点右侧“+”添加本机或远程仪器控制电脑。</p></InlineDetail>}
     </div>
   </div>;
 }
