@@ -127,4 +127,17 @@ describe("McpHttpTransport one-Server-one-hardware contract", () => {
     const pool = fixture([{ ...hardware, state: "vendor-specific-ready" }]);
     await expect((pool as unknown as PoolInternals).refreshSingleHardware({ server })).rejects.toThrow();
   });
+
+  it.each(["2026-09-10T07:40:00.123456+00:00", "2026-09-10T15:40:00+08:00", "2026-09-10T07:40:00Z"])("accepts a remote hardware error timestamp %s without losing the connection", async (at) => {
+    const lastError = { category: "device_error", message: "Board initialization failed", at };
+    const pool = fixture([{ ...hardware, state: "faulted", lastError }]);
+    await expect((pool as unknown as PoolInternals).refreshSingleHardware({ server })).resolves.toMatchObject({
+      hardwareId: server.hardwareId, state: "faulted", lastError
+    });
+  });
+
+  it.each(["not-a-date", "2026-09-10T07:40:00", "2026-02-30T07:40:00+00:00"])("rejects an invalid or ambiguous error timestamp %s", async (at) => {
+    const pool = fixture([{ ...hardware, lastError: { category: "device_error", message: "Failed", at } }]);
+    await expect((pool as unknown as PoolInternals).refreshSingleHardware({ server })).rejects.toThrow();
+  });
 });

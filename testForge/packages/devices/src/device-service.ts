@@ -13,6 +13,8 @@ export class DeviceService {
   readonly occupancy: HardwareOccupancyManager;
   private readonly statuses = new Map<string, ComputerStatus>();
   private readonly serverStatuses = new Map<string, ServerStatus>();
+  private readonly computerRefreshes = new Map<string, Promise<ComputerStatus>>();
+  private readonly serverRefreshes = new Map<string, Promise<ServerStatus>>();
   private hardware: ManagedHardware[] = [];
   private readonly availability = new Map<string, HardwareAvailability>();
 
@@ -91,10 +93,22 @@ export class DeviceService {
   }
 
   async refreshComputer(computerId: string): Promise<ComputerStatus> {
+    const pending = this.computerRefreshes.get(computerId);
+    if (pending) return await pending;
+    const refresh = this.probeComputer(computerId).then((status) => {
+      this.statuses.set(computerId, status);
+      return status;
+    });
+    this.computerRefreshes.set(computerId, refresh);
+    try { return await refresh; }
+    finally { this.computerRefreshes.delete(computerId); }
+  }
+
+  private async probeComputer(computerId: string): Promise<ComputerStatus> {
     const computer = this.requireComputer(computerId);
     const started = Date.now();
     const status: ComputerStatus = { computerId, ssh: { state: "checking" } };
-    this.statuses.set(computerId, status);
+    if (!this.statuses.has(computerId)) this.statuses.set(computerId, { ...status });
     try {
       await this.ssh.execute(computer, remoteShellFor(computer).command(remoteShellFor(computer).probeCommand()), 15_000);
       status.ssh = { state: "online", checkedAt: new Date().toISOString(), latencyMs: Date.now() - started };
@@ -105,8 +119,22 @@ export class DeviceService {
   }
 
   async refreshServer(serverId: string): Promise<ServerStatus> {
+    const pending = this.serverRefreshes.get(serverId);
+    if (pending) return await pending;
+    const refresh = this.probeServer(serverId).then((status) => {
+      this.serverStatuses.set(serverId, status);
+      return status;
+    });
+    this.serverRefreshes.set(serverId, refresh);
+    try { return await refresh; }
+    finally { this.serverRefreshes.delete(serverId); }
+  }
+
+  private async probeServer(serverId: string): Promise<ServerStatus> {
     const status: ServerStatus = { serverId, computerId: this.store.getServer(serverId)?.computerId ?? "", service: { state: "checking", serviceState: "unknown" }, transport: { state: "checking" } };
-    this.serverStatuses.set(serverId, status);
+    // Dashboard reads can be triggered by other devices while this probe is pending.
+    // Publish only completed results after the first probe, retaining the last known state.
+    if (!this.serverStatuses.has(serverId)) this.serverStatuses.set(serverId, { ...status });
     let server: McpServerConfig;
     try { server = this.requireServer(serverId); this.requireComputer(server.computerId); }
     catch (error) {

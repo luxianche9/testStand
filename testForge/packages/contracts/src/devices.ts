@@ -61,7 +61,8 @@ export const managedHardwareSchema = z.object({
   serverId: z.string().min(1),
   state: z.enum(["initializing", "open", "unreachable", "faulted", "closing", "closed"]),
   health: z.string(),
-  lastError: z.object({ category: z.string().min(1), message: z.string(), at: z.string().datetime().optional() }).nullable().optional()
+  // Python datetime.isoformat() reports UTC as +00:00 and may include microseconds.
+  lastError: z.object({ category: z.string().min(1), message: z.string(), at: z.string().datetime({ offset: true }).optional() }).nullable().optional()
 });
 export type ManagedHardware = z.infer<typeof managedHardwareSchema>;
 export const reportedManagedHardwareSchema = managedHardwareSchema.omit({ computerId: true, serverId: true });

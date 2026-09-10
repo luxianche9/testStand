@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { McpServerConfig } from "@testforge/contracts/devices";
 import { SecretStore } from "@testforge/storage";
 import { DeviceService } from "./device-service.js";
@@ -73,6 +73,45 @@ async function fixture(broken: string, options: {
 }
 
 describe("DeviceService server isolation", () => {
+  it("keeps the last complete server status during concurrent refreshes and reports failures and recovery", async () => {
+    const devices = await fixture("none");
+    const previous = await devices.refreshServer("PCI1762_MCP");
+    let fail!: (error: Error) => void;
+    const connect = vi.spyOn(devices.transports, "connect").mockImplementationOnce(() => new Promise((_resolve, reject) => { fail = reject; }));
+    const first = devices.refreshServer("PCI1762_MCP");
+    const second = devices.refreshServer("PCI1762_MCP");
+    expect(devices.listServerStatuses()).toEqual([previous]);
+    expect(previous.transport.state).toBe("online");
+    expect(connect).toHaveBeenCalledTimes(1);
+    fail(new Error("Connection lost"));
+    const [failed, shared] = await Promise.all([first, second]);
+    expect(shared).toEqual(failed);
+    expect(failed.transport.state).toBe("offline");
+    expect(devices.listServerStatuses()).toEqual([failed]);
+    expect(previous.transport.state).toBe("online");
+    expect((await devices.refreshServer("PCI1762_MCP")).transport.state).toBe("online");
+    expect(connect).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the last SSH status while sharing concurrent computer probes", async () => {
+    const devices = await fixture("none", { sshResult: { stdout: "ok", stderr: "", exitCode: 0, truncated: false } });
+    const previous = await devices.refreshComputer("PC1");
+    let fail!: (error: Error) => void;
+    const execute = vi.spyOn(devices.ssh, "execute").mockImplementationOnce(() => new Promise((_resolve, reject) => { fail = reject; }));
+    const first = devices.refreshComputer("PC1");
+    const second = devices.refreshComputer("PC1");
+    expect(devices.listStatuses()).toEqual([previous]);
+    expect(previous.ssh.state).toBe("online");
+    expect(execute).toHaveBeenCalledTimes(1);
+    fail(new Error("SSH connection lost"));
+    const [failed, shared] = await Promise.all([first, second]);
+    expect(shared).toEqual(failed);
+    expect(failed.ssh.state).toBe("offline");
+    expect(devices.listStatuses()).toEqual([failed]);
+    expect(previous.ssh.state).toBe("online");
+    expect((await devices.refreshComputer("PC1")).ssh.state).toBe("online");
+  });
+
   it("reports every server when one of them fails to connect", async () => {
     const devices = await fixture("PCI1762_MCP");
     const statuses = await devices.refreshAllServers();
