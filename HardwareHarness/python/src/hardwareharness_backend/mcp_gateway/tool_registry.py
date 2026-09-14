@@ -14,10 +14,10 @@ from hardwareharness_backend.contracts.occupancy import (
     occupancy_request_list_query_schema,
     request_hardware_occupancy_input_schema,
 )
-from hardwareharness_backend.contracts.orchestration import test_task_schema
 from hardwareharness_backend.contracts.validation import (
     Schema,
     array,
+    boolean,
     custom_issue,
     number,
     obj,
@@ -33,11 +33,6 @@ from hardwareharness_backend.contracts.wiring import (
 )
 
 Record = dict[str, Any]
-UPDATE_TEST_TASK_INPUT_SCHEMA: Record = json_parse(
-    files(__package__).joinpath("workflow_schema.json").read_text(encoding="utf-8")
-)
-
-
 _EMPTY = obj({}, strict=True)
 _COMPUTER_ID = obj({"computerId": string(1)}, strict=True)
 _SERVER_ID = obj({"serverId": string(1)}, strict=True)
@@ -122,16 +117,45 @@ _ARGUMENT_SCHEMAS: dict[str, Schema] = {
         },
         strict=True,
     ),
-    "get_test_task": _EMPTY,
-    "update_test_task": obj({"task": test_task_schema}, strict=True),
-    "start_test_run": obj({"inputs": record(unknown()).default({})}, strict=True),
-    "cancel_test_run": obj({"runId": string(1)}, strict=True),
-    "get_test_run": obj(
+    "list_workspace_files": obj({}, strict=True),
+    "read_workspace_file": obj({"path": string(1)}, strict=True),
+    "write_workspace_file": obj(
+        {"path": string(1), "content": string(), "expectedHash": string()}, strict=True
+    ),
+    "initialize_workspace": obj({"online": boolean().default(False)}, strict=True),
+    "list_applications": obj({}, strict=True),
+    "create_application": obj({"id": string(1), "name": string(1)}, strict=True),
+    "start_application": obj({"id": string(1)}, strict=True),
+    "stop_application": obj({"id": string(1)}, strict=True),
+    "get_application_logs": obj(
+        {"id": string(1), "after": number(0, None, integer=True).default(0)}, strict=True
+    ),
+    "validate_python_file": obj({"path": string(1)}, strict=True),
+    "start_python_run": obj(
+        {
+            "entrypoint": string(1),
+            "inputs": record(unknown()).default({}),
+            "inputSchema": record(unknown()).default({}),
+            "hardwareIds": array(string(1)).default([]),
+            "name": string(1).optional(),
+        },
+        strict=True,
+    ),
+    "cancel_python_run": obj({"runId": string(1)}, strict=True),
+    "get_python_run": obj({"runId": string(1)}, strict=True),
+    "list_python_runs": obj(
+        {
+            "limit": number(1, 10000, integer=True).default(1000),
+            "search": string().optional(),
+            "applicationId": string().optional(),
+        },
+        strict=True,
+    ),
+    "get_python_run_events": obj(
         {
             "runId": string(1),
-            "sinceEventId": number(0, integer=True).default(0),
-            "nodeOffset": number(0, integer=True).default(0),
-            "nodeLimit": number(1, 1000, integer=True).default(200),
+            "after": number(0, None, integer=True).default(0),
+            "limit": number(1, 1000, integer=True).default(500),
         },
         strict=True,
     ),
@@ -151,8 +175,6 @@ class GatewayToolDefinition:
         data = handler(*arguments)
         if inspect.isawaitable(data):
             data = await data
-        if self.tool["name"] == "update_test_task":
-            data = {"task": data["task"], "dirty": data["dirty"]}
         return {"ok": True, "data": data}
 
 
@@ -237,11 +259,11 @@ def _handler_arguments(
         return (app.projects.document if name == "get_project" else app.projects.save_project), [
             context
         ]
-    devices, wiring, occupancy, orchestration = (
+    devices, wiring, occupancy, applications = (
         app.devices,
         app.wiring,
         app.occupancy,
-        app.orchestration,
+        app.applications,
     )
     mapping: dict[str, tuple[Any, list[Any]]] = {
         "list_remote_computers": (devices.list_computers, []),
@@ -282,18 +304,23 @@ def _handler_arguments(
         ),
         "get_wiring_task": (wiring.get_task, [value.get("wiringTaskId")]),
         "list_wiring_tasks": (wiring.list_tasks, [value]),
-        "get_test_task": (orchestration.get_task, []),
-        "update_test_task": (orchestration.update_task, [value.get("task")]),
-        "start_test_run": (orchestration.start_run, [{"inputs": value.get("inputs", {})}]),
-        "cancel_test_run": (orchestration.cancel_run, [value.get("runId")]),
-        "get_test_run": (
-            orchestration.get_run,
-            [
-                value.get("runId"),
-                value.get("sinceEventId"),
-                value.get("nodeOffset"),
-                value.get("nodeLimit"),
-            ],
+        "list_workspace_files": (applications.list_files, []),
+        "read_workspace_file": (applications.read_file, [value.get("path")]),
+        "write_workspace_file": (applications.write_file, [value]),
+        "initialize_workspace": (applications.initialize_workspace, [value]),
+        "list_applications": (applications.list_apps, []),
+        "create_application": (applications.create_app, [value.get("id"), value.get("name")]),
+        "start_application": (applications.start_app, [value.get("id")]),
+        "stop_application": (applications.stop_app, [value.get("id")]),
+        "get_application_logs": (applications.app_logs, [value.get("id"), value.get("after")]),
+        "validate_python_file": (applications.diagnostics, [value.get("path")]),
+        "start_python_run": (applications.start_run, [value]),
+        "cancel_python_run": (applications.cancel_run, [value.get("runId")]),
+        "get_python_run": (applications.get_run, [value.get("runId")]),
+        "list_python_runs": (applications.list_runs, [value]),
+        "get_python_run_events": (
+            applications.run_events,
+            [value.get("runId"), value.get("after"), value.get("limit")],
         ),
     }
     if name in {

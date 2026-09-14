@@ -11,7 +11,6 @@ const computer = { id: "ID", label: "PC", address: "127.0.0.1", ssh: { username:
 const server = { transport: "mcp-http", serverId: "ID", computerId: "PC", hardwareId: "H", label: "S", url: "http://127.0.0.1/mcp", enabled: true, lifecycle: { statusCommand: "s", startCommand: "a", stopCommand: "b", logPath: "log" } };
 const wiring = { nodes: [], connections: [] };
 const request = { portA: "A.J1", portB: "B.J1", action: "connect" };
-const task = { formatVersion: 2, taskId: "ID", name: "Task", inputs: [], variables: [], setup: [], steps: [], cleanup: [] };
 const manual = { hardwareId: "ID", toolName: "S__read", arguments: {} };
 
 type Route = [path: string, input: unknown, target: string | null, args: unknown[]];
@@ -53,17 +52,30 @@ const routes: Route[] = [
   ["wiring.cancelTask", id, "application.wiring.cancelTask", ["ID", undefined]],
   ["wiring.getTask", id, "application.wiring.getTask", ["ID"]],
   ["wiring.listTasks", { status: "pending" }, "application.wiring.listTasks", [{ status: "pending" }]],
-  ["orchestration.updateTask", task, "application.orchestration.updateTask", [task]],
-  ["orchestration.validateTask", task, "application.orchestration.validateTask", [task]],
-  ["orchestration.startRun", { inputs: { channel: 1 } }, "application.orchestration.startRun", [{ inputs: { channel: 1 } }]],
-  ["orchestration.cancelRun", id, "application.orchestration.cancelRun", ["ID"]],
-  ["orchestration.getRun", id, "application.orchestration.getRun", ["ID", 0, 0, 200]],
-  ["orchestration.listRuns", { statuses: ["failed"] }, "application.orchestration.listRuns", [{ statuses: ["failed"], sortBy: "createdAt", sortDir: "desc", offset: 0, limit: 50 }]],
-  ["orchestration.exportRun", id, "application.orchestration.exportRun", ["ID"]],
-  ["orchestration.deleteRun", id, "application.orchestration.deleteRun", ["ID"]],
-  ["orchestration.clearCompletedRuns", undefined, "application.orchestration.clearCompletedRuns", []],
-  ["orchestration.listOperatorDecisions", undefined, "application.orchestration.listOperatorDecisions", []],
-  ["orchestration.respondOperatorDecision", { ...id, value: "yes" }, "application.orchestration.respondOperatorDecision", ["ID", "yes"]],
+  ["applications.listFiles", undefined, "application.applications.listFiles", []],
+  ["applications.readFile", {"path":"a.py"}, "application.applications.readFile", ["a.py"]],
+  ["applications.writeFile", {"path":"a.py","content":"x","expectedHash":"h"}, "application.applications.writeFile", [{"path":"a.py","content":"x","expectedHash":"h"}]],
+  ["applications.createFile", {"path":"a.py","kind":"file"}, "application.applications.createFile", [{"path":"a.py","kind":"file"}]],
+  ["applications.renameFile", {"path":"a.py","target":"b.py"}, "application.applications.renameFile", [{"path":"a.py","target":"b.py"}]],
+  ["applications.deleteFile", {"path":"b.py"}, "application.applications.deleteFile", ["b.py"]],
+  ["applications.search", {"query":"x"}, "application.applications.search", ["x"]],
+  ["applications.diagnostics", {"path":"a.py"}, "application.applications.diagnostics", ["a.py", undefined]],
+  ["applications.initializeWorkspace", undefined, "application.applications.initializeWorkspace", []],
+  ["applications.listApps", undefined, "application.applications.listApps", []],
+  ["applications.createApp", {"id":"demo","name":"Demo"}, "application.applications.createApp", ["demo", "Demo"]],
+  ["applications.startApp", {"id":"demo"}, "application.applications.startApp", ["demo"]],
+  ["applications.stopApp", {"id":"demo"}, "application.applications.stopApp", ["demo"]],
+  ["applications.appLogs", {"id":"demo"}, "application.applications.appLogs", ["demo", undefined]],
+  ["applications.startRun", {"entrypoint":"a.py"}, "application.applications.startRun", [{"entrypoint":"a.py","inputs":{},"hardwareIds":[]}]],
+  ["applications.cancelRun", {"id":"ID"}, "application.applications.cancelRun", ["ID"]],
+  ["applications.getRun", {"id":"ID"}, "application.applications.getRun", ["ID"]],
+  ["applications.listRuns", {"statuses":["failed"]}, "application.applications.listRuns", [{"statuses":["failed"]}]],
+  ["applications.runEvents", {"id":"ID"}, "application.applications.runEvents", ["ID", undefined, undefined]],
+  ["applications.exportRun", {"id":"ID"}, "application.applications.exportRun", ["ID"]],
+  ["applications.deleteRun", {"id":"ID"}, "application.applications.deleteRun", ["ID"]],
+  ["applications.clearCompletedRuns", undefined, "application.applications.clearCompletedRuns", []],
+  ["applications.readRunAttachment", { id: "ID", path: "a.csv" }, "application.applications.readRunAttachment", ["ID", "a.csv"]],
+  ["applications.readRunSource", {"id":"ID","path":"a.py"}, "application.applications.readRunSource", ["ID", "a.py"]],
   ["manual.invokeTool", manual, "application.manual.invokeTool", [{ ...manual, timeoutMs: 30000 }]],
   ["occupancy.list", undefined, "application.occupancy.list", []],
   ["occupancy.acquire", { hardwareId: "ID" }, "application.occupancy.acquire", ["ID"]],
@@ -120,7 +132,6 @@ describe("unchanged desktop facade over the Python bridge", () => {
     }
     if (path === "devices.exportBundle") expect(calls).toContainEqual(["dialogs.saveBundle", ["hardware", "ID", bytes]]);
     if (path === "devices.previewBundle") expect(received).toEqual({ kind: "hardware", hardware: result, data: bytes });
-    if (path === "orchestration.updateTask") expect(received).toEqual(document);
     if (path === "settings.setTheme") expect(calls).toContainEqual(["windows.applyTheme", ["dark"]]);
   });
 });

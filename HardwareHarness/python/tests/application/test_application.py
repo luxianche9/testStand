@@ -35,9 +35,9 @@ AGENT_ALLOWED = {
     "wiring.request",
     "hardware.readOccupancy",
     "hardware.requestOccupancy",
-    "orchestration.read",
-    "orchestration.manage",
-    "orchestration.run",
+    "applications.read",
+    "applications.manage",
+    "applications.run",
 }
 HARDWARE: Json = {
     "formatVersion": 2,
@@ -69,17 +69,31 @@ def make_app() -> tuple[HardwareHarnessApplication, Mock, Mock, Mock]:
         server_action=AsyncMock(),
         call_aggregated_tool=AsyncMock(return_value="ok"),
     )
+    devices.list_tools.return_value = [
+        {"externalName": "S1.measure", "serverId": "S1", "kind": "hardware"}
+    ]
+    devices.list_servers.return_value = [{"serverId": "S1", "hardwareId": "H1", "enabled": True}]
     wiring = Mock(request_task=AsyncMock(), start_task=AsyncMock())
     orchestration = Mock(
         start_run=AsyncMock(), delete_run=AsyncMock(), respond_operator_decision=AsyncMock()
     )
+    from hardwareharness_backend.application import (
+        ApplicationsApplication,
+        DefaultAuthorizer,
+        ExecutionCoordinator,
+    )
+
+    applications = ApplicationsApplication(
+        DefaultAuthorizer(), Mock(), devices, Mock(), ExecutionCoordinator()
+    )
+    applications.runner = orchestration
     app = HardwareHarnessApplication(
         {
             "devices": devices,
             "catalog": Mock(),
             "projects": Mock(),
             "wiring": wiring,
-            "orchestration": orchestration,
+            "applications": applications,
             "system": Mock(),
         }
     )
@@ -107,7 +121,7 @@ async def test_agent_allowed() -> None:
     await app.wiring.request_task(
         AGENT, {"portA": "A.J1", "portB": "B.J1", "action": "connect", "pins": []}
     )
-    await app.orchestration.start_run(AGENT, {})
+    await app.applications.start_run(AGENT, {})
     await app.devices.call_tool(AGENT, "S1.measure", {})
     assert wiring.request_task.call_args.args[0]["requestedBy"] == "agent"
     orchestration.start_run.assert_called_once()
@@ -126,18 +140,15 @@ async def test_agent_denied() -> None:
         app.devices.execute_ssh(AGENT, "PC1", "whoami"),
         app.devices.server_action(AGENT, "S1", "force-stop"),
         app.wiring.start_task(AGENT, "WT"),
-        app.orchestration.delete_run(AGENT, "R"),
+        app.applications.delete_run(AGENT, "R"),
     ]
     for operation in operations:
         with pytest.raises(Exception) as caught:
             await operation
         assert getattr(caught.value, "category", None) == "permission_denied"
-    with pytest.raises(Exception, match="not authorized"):
-        app.orchestration.respond_operator_decision(AGENT, "N", "yes")
     devices.save_computer.assert_not_called()
     devices.execute.assert_not_called()
     wiring.start_task.assert_not_called()
-    orchestration.respond_operator_decision.assert_not_called()
 
 
 @pytest.mark.ts_case(
@@ -157,10 +168,8 @@ async def test_human_allowed() -> None:
     )
     await app.devices.server_action(HUMAN, "S1", "force-stop")
     await app.wiring.start_task(HUMAN, "WT", "operator")
-    await app.orchestration.respond_operator_decision(HUMAN, "N", "yes")
     devices.save_computer.assert_called_once()
     wiring.start_task.assert_called_once_with("WT", "operator")
-    orchestration.respond_operator_decision.assert_called_once_with("N", "yes")
 
 
 @pytest.mark.ts_case(

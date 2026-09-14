@@ -1,0 +1,36 @@
+{
+  "deployed": [
+    {
+      "serverId": "PCI1710L_MCP",
+      "backup": "E:\\pci1710l_mcp_server\\source-backup-hardwareharness-20260914T033452Z",
+      "files": 25,
+      "tests": "8 tests passed",
+      "toolCount": 11,
+      "connected": true
+    },
+    {
+      "serverId": "PCI1762_MCP",
+      "backup": "E:\\pci1762_mcp_server\\source-backup-hardwareharness-20260914T033536Z",
+      "files": 25,
+      "tests": "8 tests passed",
+      "toolCount": 10,
+      "connected": true
+    },
+    {
+      "serverId": "PCI6208V_MCP",
+      "backup": "E:\\pci6208v_mcp_server\\source-backup-hardwareharness-20260914T033609Z",
+      "files": 25,
+      "tests": "8 tests passed",
+      "toolCount": 9,
+      "connected": true
+    },
+    {
+      "serverId": "CP118U_I_MCP",
+      "backup": "E:\\cp118u_i_mcp_server\\source-backup-hardwareharness-20260914T033640Z",
+      "files": 25,
+      "tests": "8 tests passed",
+      "toolCount": 13,
+      "connected": true
+    }
+  ]
+}

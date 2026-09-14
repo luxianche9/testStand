@@ -96,7 +96,7 @@ async def test_project_notifier_runs_after_session_initialization() -> None:
     events: list[tuple[Any, bool]] = []
 
     def notify(value: Any, changed: bool) -> None:
-        orchestration.initialize.assert_awaited()
+        orchestration.close.assert_awaited()
         wiring.initialize.assert_awaited()
         events.append((value, changed))
 

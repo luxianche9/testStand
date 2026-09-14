@@ -1,0 +1,153 @@
+{
+  "revision": "2ecde3ff6c610658a4ea05bb130e26c321e20b6d",
+  "cases": [
+    {
+      "typescript": "packages/contracts/src/contracts.test.ts::public contracts::upgrades project files one version at a time",
+      "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior."
+    },
+    {
+      "typescript": "packages/contracts/src/contracts.test.ts::public contracts::keeps the TestStep schema output identical to the public type",
+      "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior."
+    },
+    {
+      "typescript": "packages/storage/src/run-log-store.test.ts::ProjectRunLogStore::appends and reloads one JSONL stream per Run",
+      "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior."
+    },
+    {
+      "typescript": "packages/storage/src/run-log-store.test.ts::ProjectRunLogStore::reports corrupt records at line granularity and keeps valid Run streams",
+      "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior."
+    },
+    {
+      "typescript": "packages/storage/src/run-log-store.test.ts::ProjectRunLogStore::deduplicates retried event appends and compacts to an atomic snapshot",
+      "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior."
+    },
+    {
+      "typescript": "packages/storage/src/run-log-store.test.ts::ProjectRunLogStore::migrates legacy archives and removes one Run or a selected group",
+      "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior."
+    },
+    {
+      "typescript": "packages/storage/src/run-log-store.test.ts::ProjectRunLogStore::keeps large Run persistence linear instead of rewriting the full archive",
+      "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior."
+    },
+    {
+      "typescript": "packages/projects/src/project-service.test.ts::ProjectService folder projects::opens legacy manifests through the migration chain and persists formatVersion 3",
+      "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior."
+    },
+    {
+      "typescript": "packages/application/src/project-services.test.ts::project-oriented services::round-trips one folder project with wiring and one task",
+      "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior."
+    },
+    {
+      "typescript": "packages/application/src/project-services.test.ts::project-oriented services::rejects prototype paths and parallel shared writes",
+      "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior."
+    },
+    {
+      "typescript": "packages/application/src/project-services.test.ts::project-oriented services::keeps inputs read-only and validates statically known assignment types",
+      "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior."
+    },
+    {
+      "typescript": "packages/orchestration/src/run-machine.test.ts::orchestration state machines::keeps interruption terminal even when execution completion races afterward",
+      "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior."
+    },
+    {
+      "typescript": "packages/orchestration/src/run-machine.test.ts::orchestration state machines::restores a persisted active checkpoint",
+      "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior."
+    },
+    {
+      "typescript": "packages/orchestration/src/run-machine.test.ts::orchestration state machines::models pending, waiting, skipped and terminal node states",
+      "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior."
+    },
+    {
+      "typescript": "packages/orchestration/src/task-orchestration-service.test.ts::TaskOrchestrationService Run logs::persists completed Runs with task-name snapshots and UTF-8 bounded values, then reloads them",
+      "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior."
+    },
+    {
+      "typescript": "packages/orchestration/src/task-orchestration-service.test.ts::TaskOrchestrationService Run logs::marks a persisted active Run interrupted and appends a recovery event",
+      "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior."
+    },
+    {
+      "typescript": "packages/orchestration/src/task-orchestration-service.test.ts::TaskOrchestrationService Run logs::filters, pages, exports, deletes and clears project-isolated history",
+      "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior."
+    },
+    {
+      "typescript": "packages/orchestration/src/task-orchestration-service.test.ts::TaskOrchestrationService Run logs::waits for pending persistence before deleting so a background save cannot recreate the file",
+      "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior."
+    },
+    {
+      "typescript": "packages/orchestration/src/task-orchestration-service.test.ts::TaskOrchestrationService Run logs::uses event ids that are monotonic within each Run instead of globally",
+      "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior."
+    },
+    {
+      "typescript": "packages/orchestration/src/task-orchestration-service.test.ts::TaskOrchestrationService Run logs::requeues a failed incremental write with backoff instead of silently losing it",
+      "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior."
+    },
+    {
+      "typescript": "packages/orchestration/src/task-orchestration-service.test.ts::TaskOrchestrationService execution activity::blocks Run preflight when referenced hardware is not occupied",
+      "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior."
+    },
+    {
+      "typescript": "packages/orchestration/src/task-orchestration-service.test.ts::TaskOrchestrationService execution activity::records a blocked preflight without attempting a hardware lease",
+      "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior."
+    },
+    {
+      "typescript": "packages/orchestration/src/task-orchestration-service.test.ts::TaskOrchestrationService execution activity::rejects a valid Run when a manual call holds required hardware",
+      "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior."
+    },
+    {
+      "typescript": "packages/orchestration/src/task-orchestration-service.test.ts::TaskOrchestrationService execution activity::holds the Run lease until cancellation completes and releases it afterward",
+      "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior."
+    },
+    {
+      "typescript": "packages/orchestration/src/task-orchestration-service.test.ts::TaskOrchestrationService execution activity::marks an active Run interrupted and releases its lease during close",
+      "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior."
+    },
+    {
+      "typescript": "packages/orchestration/src/task-orchestration-service.test.ts::TaskOrchestrationService execution activity::rejects a queued start while close waits for start operations",
+      "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior."
+    },
+    {
+      "typescript": "packages/orchestration/src/task-orchestration-service.test.ts::TaskOrchestrationService physical safety::times out an operator step in cleanup instead of waiting forever",
+      "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior."
+    },
+    {
+      "typescript": "packages/orchestration/src/task-orchestration-service.test.ts::TaskOrchestrationService physical safety::returns from close within the cleanup budget even when a remote call ignores abort",
+      "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior."
+    },
+    {
+      "typescript": "packages/orchestration/src/task-orchestration-service.test.ts::TaskOrchestrationService physical safety::never retries a non-idempotent tool step",
+      "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior."
+    },
+    {
+      "typescript": "packages/orchestration/src/task-orchestration-service.test.ts::TaskOrchestrationService physical safety::retries only selected categories and sends stable idempotency metadata",
+      "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior."
+    },
+    {
+      "typescript": "packages/orchestration/src/task-orchestration-service.test.ts::TaskOrchestrationService physical safety::serializes parallel branches that target the same hardware",
+      "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior."
+    },
+    {
+      "typescript": "packages/orchestration/src/task-orchestration-service.test.ts::TaskOrchestrationService crash recovery::runs compensating cleanup after a crash leaves a non-idempotent tool uncertain",
+      "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior."
+    },
+    {
+      "typescript": "packages/orchestration/src/task-orchestration-service.test.ts::TaskOrchestrationService crash recovery::resumes an idempotent orphan from the last confirmed node with a stable key",
+      "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior."
+    },
+    {
+      "typescript": "packages/orchestration/src/task-orchestration-service.test.ts::TaskOrchestrationService crash recovery::records disabled steps as skipped nodes",
+      "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior."
+    },
+    {
+      "typescript": "packages/orchestration/src/workflow.test.ts::workflow model::evaluates safe structured expressions and value templates",
+      "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior."
+    },
+    {
+      "typescript": "packages/orchestration/src/workflow.test.ts::workflow model::uses null-prototype contexts and rejects unsafe or undeclared paths",
+      "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior."
+    },
+    {
+      "typescript": "packages/mcp-gateway/src/gateway.test.ts::MCP tool registry::keeps all recursive workflow variants bidirectionally consistent",
+      "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior."
+    }
+  ]
+}

@@ -10,7 +10,7 @@ def test_desktop_channel_names() -> None:
         "devices",
         "projects",
         "wiring",
-        "orchestration",
+        "applications",
         "manual",
         "occupancy",
         "agents",

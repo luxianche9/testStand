@@ -5,7 +5,7 @@ import { FeatureFallback } from "../../shared/FeatureFallback.js";
 import { ErrorBoundary } from "../../shared/ErrorBoundary.js";
 
 const WiringPage = lazy(() => import("../wiring/index.js").then((module) => ({ default: module.WiringPage })));
-const OrchestrationPage = lazy(() => import("../orchestration/index.js").then((module) => ({ default: module.OrchestrationPage })));
+const ApplicationsPage = lazy(() => import("../applications/index.js").then((module) => ({ default: module.ApplicationsPage })));
 const DevicesPage = lazy(() => import("../devices/index.js").then((module) => ({ default: module.DevicesPage })));
 const LogsPage = lazy(() => import("../logs/index.js").then((module) => ({ default: module.LogsPage })));
 
@@ -15,7 +15,7 @@ export function ProjectWorkspace({ view }: { view: ProjectView }) {
       <ErrorBoundary key={view}>
         <Suspense fallback={<FeatureFallback />}>
           <div className="animate-page-in contents">
-            {view === "orchestration" ? <OrchestrationPage />
+            {view === "applications" ? <ApplicationsPage />
               : view === "wiring" ? <WiringPage />
                 : view === "manual" ? <DevicesPage />
                   : <LogsPage />}

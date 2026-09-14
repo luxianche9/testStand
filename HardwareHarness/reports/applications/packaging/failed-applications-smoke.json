@@ -1,0 +1,24 @@
+{
+  "runs": [],
+  "logs": [
+    {
+      "sequence": 1,
+      "timestamp": "2026-09-14T06:07:33.206004+00:00",
+      "stream": "stderr",
+      "text": "INFO:     Started server process [28156]\r\nINFO:     Waiting for application startup.\r\n"
+    },
+    {
+      "sequence": 2,
+      "timestamp": "2026-09-14T06:07:33.206004+00:00",
+      "stream": "stderr",
+      "text": "INFO:     Application startup complete.\r\n"
+    },
+    {
+      "sequence": 3,
+      "timestamp": "2026-09-14T06:07:33.206004+00:00",
+      "stream": "stderr",
+      "text": "INFO:     Uvicorn running on http://127.0.0.1:59379 (Press CTRL+C to quit)\r\n"
+    }
+  ],
+  "preview": "就绪"
+}

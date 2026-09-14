@@ -4,14 +4,15 @@ import asyncio
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any, Protocol, TypeVar, cast
 
+from hardwareharness_backend.compat import utc_now_iso
 from hardwareharness_backend.contracts.devices import (
     parse_hardware,
     parse_mcp_server,
     parse_remote_computer,
 )
 from hardwareharness_backend.contracts.errors import app_error
-from hardwareharness_backend.orchestration import TaskOrchestrationService
 
+from .applications import ApplicationsApplication
 from .authorization import Authorizer, Json
 from .execution import ExecutionCoordinator
 
@@ -29,9 +30,16 @@ class ApplicationSystemPort(Protocol):
 
 class DevicesApplication:
     def __init__(
-        self, authorizer: Authorizer, service: DeviceService, catalog: DeviceCatalogService
+        self,
+        authorizer: Authorizer,
+        service: DeviceService,
+        catalog: DeviceCatalogService,
+        execution: ExecutionCoordinator | None = None,
     ) -> None:
         self.authorizer, self.service, self.catalog = authorizer, service, catalog
+        self.execution = execution or ExecutionCoordinator()
+        self.active: dict[asyncio.Task[Any], str] = {}
+        self._calls_closed = False
 
     def list_computers(self, context: Json) -> list[Json]:
         self.authorizer.authorize(context, "devices.read")
@@ -208,7 +216,51 @@ class DevicesApplication:
 
     async def call_tool(self, context: Json, name: str, args: Json) -> Any:
         self.authorizer.authorize(context, "hardware.executeTools")
-        return await self.service.call_aggregated_tool(name, args)
+        if self._calls_closed:
+            raise app_error("unavailable", "Hardware execution is shutting down")
+        tool = next(
+            (item for item in self.service.list_tools() if item["externalName"] == name), None
+        )
+        if tool is None or tool["kind"] == "internal":
+            raise app_error("unavailable", f"Unknown public hardware tool: {name}")
+        server = next(
+            (item for item in self.service.list_servers() if item["serverId"] == tool["serverId"]),
+            None,
+        )
+        if server is None:
+            raise app_error("unavailable", f"Unknown hardware server: {tool['serverId']}")
+        lease = self.execution.acquire(
+            {
+                "state": "manual",
+                "hardwareId": server["hardwareId"],
+                "toolName": name,
+                "startedAt": utc_now_iso(),
+            }
+        )
+        task = asyncio.create_task(self.service.call_aggregated_tool(name, args))
+        self.active[task] = server["hardwareId"]
+        try:
+            return await task
+        except asyncio.CancelledError as error:
+            raise app_error(
+                "cancelled", "Hardware call cancelled; remote result may be unknown"
+            ) from error
+        finally:
+            self.active.pop(task, None)
+            lease.release()
+
+    async def abort_hardware(self, hardware_id: str) -> None:
+        tasks = [task for task, hardware in self.active.items() if hardware == hardware_id]
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+    async def close_calls(self) -> None:
+        self._calls_closed = True
+        tasks = list(self.active)
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
 
     def list_tools(self, context: Json) -> list[Json]:
         self.authorizer.authorize(context, "hardware.executeTools")
@@ -221,14 +273,16 @@ class ProjectsApplication:
         authorizer: Authorizer,
         projects: ProjectService,
         wiring: ProjectWiringService,
-        orchestration: TaskOrchestrationService,
+        applications: ApplicationsApplication,
     ) -> None:
         self._notifier: Callable[[Json | None, bool], None] | None = None
-        self.authorizer, self.projects, self.wiring, self.orchestration = (
+        self._transition = asyncio.Lock()
+        self._closed = False
+        self.authorizer, self.projects, self.wiring, self.applications = (
             authorizer,
             projects,
             wiring,
-            orchestration,
+            applications,
         )
 
     def set_notifier(self, notifier: Callable[[Json | None, bool], None]) -> None:
@@ -270,25 +324,34 @@ class ProjectsApplication:
         await self.projects.forget_recent(root_path)
 
     async def close(self) -> None:
-        await self.orchestration.close()
-        await self.wiring.close()
-        await self.projects.close()
+        self._closed = True
+        async with self._transition:
+            await self.applications.close()
+            await self.wiring.close()
+            await self.projects.close()
 
     async def _switch(self, action: Callable[[], Awaitable[T]]) -> T:
-        await self.orchestration.close()
+        async with self._transition:
+            if self._closed:
+                raise app_error("unavailable", "Project service is shutting down")
+            return await self._switch_locked(action)
+
+    async def _switch_locked(self, action: Callable[[], Awaitable[T]]) -> T:
+        await self.applications.close()
         await self.wiring.close()
-        self.orchestration.clear_session()
         self.wiring.clear_session()
         try:
             result = await action()
             await self.wiring.initialize()
-            await self.orchestration.initialize()
+            if not self._closed:
+                self.applications.resume()
             if self._notifier:
                 self._notifier(self.projects.current(), True)
             return result
         except Exception:
             await self.wiring.initialize()
-            await self.orchestration.initialize()
+            if not self._closed:
+                self.applications.resume()
             raise
 
 
@@ -342,69 +405,6 @@ class WiringApplication:
     def list_tasks(self, context: Json, input: Json | None = None) -> list[Json]:
         self.authorizer.authorize(context, "wiring.read")
         return self.wiring.list_tasks(input)
-
-
-class OrchestrationApplication:
-    def __init__(self, authorizer: Authorizer, orchestration: TaskOrchestrationService) -> None:
-        self.authorizer, self.orchestration = authorizer, orchestration
-
-    def get_task(self, context: Json) -> Json:
-        self.authorizer.authorize(context, "orchestration.read")
-        return self.orchestration.get_task()
-
-    def update_task(self, context: Json, task: Json) -> Json:
-        self.authorizer.authorize(context, "orchestration.manage")
-        document = self.orchestration.update_task(task)
-        return {"task": document["file"]["task"], "dirty": document["dirty"], "document": document}
-
-    def validate_task(self, context: Json, task: Json) -> Json:
-        self.authorizer.authorize(context, "orchestration.read")
-        return self.orchestration.validate_task(task)
-
-    async def start_run(self, context: Json, input: Json | None = None) -> Json:
-        self.authorizer.authorize(context, "orchestration.run")
-        return await self.orchestration.start_run(input or {})
-
-    async def cancel_run(self, context: Json, run_id: str) -> Json:
-        self.authorizer.authorize(context, "orchestration.run")
-        return await self.orchestration.cancel_run(run_id)
-
-    def get_run(
-        self,
-        context: Json,
-        run_id: str,
-        since_event_id: int = 0,
-        node_offset: int = 0,
-        node_limit: int = 200,
-    ) -> Json:
-        self.authorizer.authorize(context, "orchestration.read")
-        return self.orchestration.get_run(run_id, since_event_id, node_offset, node_limit)
-
-    def list_runs(self, context: Json, input: Json | None = None) -> Json:
-        self.authorizer.authorize(context, "orchestration.read")
-        return self.orchestration.list_runs(input)
-
-    def export_run(self, context: Json, run_id: str) -> Json:
-        self.authorizer.authorize(context, "orchestration.read")
-        return self.orchestration.export_run(run_id)
-
-    async def delete_run(self, context: Json, run_id: str) -> Json:
-        self.authorizer.authorize(context, "orchestration.logs.manage")
-        return await self.orchestration.delete_run(run_id)
-
-    async def clear_completed_runs(self, context: Json) -> Json:
-        self.authorizer.authorize(context, "orchestration.logs.manage")
-        return await self.orchestration.clear_completed_runs()
-
-    def list_operator_decisions(self, context: Json) -> list[Json]:
-        self.authorizer.authorize(context, "orchestration.read")
-        return self.orchestration.list_operator_decisions()
-
-    def respond_operator_decision(
-        self, context: Json, node_run_id: str, selected_value: str
-    ) -> Awaitable[Json]:
-        self.authorizer.authorize(context, "orchestration.respondOperator")
-        return self.orchestration.respond_operator_decision(node_run_id, selected_value)
 
 
 class SystemApplication:

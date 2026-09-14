@@ -10,7 +10,12 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
-from hardwareharness_backend.application import ExecutionCoordinator, HardwareHarnessApplication
+from hardwareharness_backend.application import (
+    ApplicationsApplication,
+    DefaultAuthorizer,
+    ExecutionCoordinator,
+    HardwareHarnessApplication,
+)
 from hardwareharness_backend.compat import UNDEFINED, clone, js_trim
 from hardwareharness_backend.compat.collation import set_default_locale
 from hardwareharness_backend.contracts.errors import AppError, to_wire_error
@@ -24,9 +29,8 @@ from hardwareharness_backend.devices import (
 from hardwareharness_backend.host.migrations import migrate_global_storage
 from hardwareharness_backend.host.rpc import DesktopSecretProtector, StdioRpc
 from hardwareharness_backend.mcp_gateway import LocalMcpGateway
-from hardwareharness_backend.orchestration import TaskOrchestrationService
 from hardwareharness_backend.projects import ProjectService
-from hardwareharness_backend.storage import ProjectRunLogStore, SecretStore, SettingsStore
+from hardwareharness_backend.storage import SecretStore, SettingsStore
 from hardwareharness_backend.wiring import ProjectWiringService
 
 LLM_SECRET = "opencode.llm.api-key"
@@ -89,22 +93,32 @@ APPLICATION_METHODS = {
             "listTasks",
         ]
     ),
-    "orchestration": set(
-        [
-            "getTask",
-            "updateTask",
-            "validateTask",
-            "startRun",
-            "cancelRun",
-            "getRun",
-            "listRuns",
-            "exportRun",
-            "deleteRun",
-            "clearCompletedRuns",
-            "listOperatorDecisions",
-            "respondOperatorDecision",
-        ]
-    ),
+    "applications": {
+        "clearCompletedRuns",
+        "renameFile",
+        "search",
+        "deleteRun",
+        "listApps",
+        "startRun",
+        "createFile",
+        "initializeWorkspace",
+        "cancelRun",
+        "appLogs",
+        "listFiles",
+        "writeFile",
+        "exportRun",
+        "createApp",
+        "getRun",
+        "startApp",
+        "deleteFile",
+        "listRuns",
+        "stopApp",
+        "diagnostics",
+        "runEvents",
+        "readRunSource",
+        "readRunAttachment",
+        "readFile",
+    },
     "manual": {"invokeTool"},
     "occupancy": set(
         [
@@ -132,7 +146,7 @@ class Services:
     devices: DeviceService
     projects: ProjectService
     wiring: ProjectWiringService
-    orchestration: TaskOrchestrationService
+    applications: ApplicationsApplication
     application: HardwareHarnessApplication
     gateway: LocalMcpGateway
 
@@ -172,15 +186,14 @@ class HostRuntime:
         wiring = ProjectWiringService(projects, catalog)
         await wiring.initialize()
         execution = ExecutionCoordinator()
-        orchestration = TaskOrchestrationService(
+        applications = ApplicationsApplication(
+            DefaultAuthorizer(),
             projects,
             devices,
             catalog,
             execution,
-            ProjectRunLogStore(),
-            options.get("safety", {"cleanupBudgetMs": 15000, "cleanupOperatorTimeoutMs": 3000}),
+            self.publish,
         )
-        await orchestration.initialize()
         gateway: LocalMcpGateway
         application = HardwareHarnessApplication(
             {
@@ -188,7 +201,7 @@ class HostRuntime:
                 "catalog": catalog,
                 "projects": projects,
                 "wiring": wiring,
-                "orchestration": orchestration,
+                "applications": applications,
                 "execution": execution,
                 "system": SimpleNamespace(gateway_status=lambda: gateway.status()),
             }
@@ -197,7 +210,6 @@ class HostRuntime:
         application.projects.set_notifier(self.publish_project)
         wiring.set_notifier(lambda task: self.publish("wiringTask", task))
         wiring.set_project_notifier(lambda: self.publish("project", projects.current()))
-        orchestration.set_notifier(self.publish)
         execution.set_notifier(lambda activity: self.publish("execution", activity))
         application.occupancy.set_notifier(
             lambda request: self.publish("occupancyRequest", request)
@@ -210,8 +222,9 @@ class HostRuntime:
         def lost(hardware_id: str, message: str) -> None:
             async def abort() -> None:
                 await asyncio.gather(
+                    application.devices.abort_hardware(hardware_id),
                     application.manual.abort_hardware(hardware_id, message),
-                    orchestration.handle_hardware_lease_lost(hardware_id, message),
+                    applications.runner.abort_hardware(hardware_id, message),
                     return_exceptions=True,
                 )
 
@@ -237,7 +250,7 @@ class HostRuntime:
             devices,
             projects,
             wiring,
-            orchestration,
+            applications,
             application,
             gateway,
         )
@@ -295,6 +308,8 @@ class HostRuntime:
             await self.close()
             return UNDEFINED
         services = self.require_services()
+        if self._shutdown is not None:
+            raise AppError("unavailable", "Python backend is shutting down")
         if method.startswith("application."):
             parts = method.split(".")
             if len(parts) != 3 or parts[2] not in APPLICATION_METHODS.get(parts[1], set()):
@@ -381,10 +396,11 @@ class HostRuntime:
         if self.services is None:
             return
         services = self.services
+        await services.gateway.stop()
+        await services.application.devices.close_calls()
         await services.application.manual.close()
         await services.application.projects.close()
         await services.devices.close()
-        await services.gateway.stop()
         await services.transports.close()
         await services.secrets.flush()
 

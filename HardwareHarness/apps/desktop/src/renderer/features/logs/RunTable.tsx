@@ -1,16 +1,16 @@
-import type { TestRun, TestRunListSortBy } from "@hardwareharness/contracts/orchestration";
+import type { RunRecord } from "@hardwareharness/contracts/applications";
 import { TriangleAlertIcon } from "lucide-react";
 import { errorMessage } from "../../shared/errors.js";
 import { runStatusTone } from "../../shared/tone.js";
 import { Badge, badgeVariantFromTone, cn, Spinner } from "../../shared/ui/index.js";
-import { formatRunTime, isActiveRun, nodeCounts, runDurationText, summaryText, type RunListSortDir } from "./logs-model.js";
+import { formatRunTime, isActiveRun, eventCounts, runDurationText, summaryText, type RunListSortBy, type RunListSortDir } from "./logs-model.js";
 
-const COLUMNS: { id: TestRunListSortBy; label: string }[] = [
-  { id: "taskName", label: "任务" },
+const COLUMNS: { id: RunListSortBy; label: string }[] = [
+  { id: "name", label: "流程" },
   { id: "status", label: "状态" },
-  { id: "createdAt", label: "开始时间" },
+  { id: "startedAt", label: "开始时间" },
   { id: "duration", label: "耗时" },
-  { id: "failedNodes", label: "通过 / 失败" }
+  { id: "eventCount", label: "事件数" }
 ];
 
 export function RunTable({
@@ -26,17 +26,17 @@ export function RunTable({
   onOpenDetail,
   onSort
 }: {
-  items: TestRun[];
+  items: RunRecord[];
   total: number;
   loading: boolean;
   error: unknown;
   warnings: string[];
   selectedRunId?: string | undefined;
-  sortBy: TestRunListSortBy;
+  sortBy: RunListSortBy;
   sortDir: RunListSortDir;
   onSelect: (runId: string) => void;
   onOpenDetail: (runId: string) => void;
-  onSort: (column: TestRunListSortBy) => void;
+  onSort: (column: RunListSortBy) => void;
 }) {
   return <div className="flex min-h-0 flex-1 flex-col">
     {warnings.length > 0 && (
@@ -79,11 +79,11 @@ export function RunTable({
             onDoubleClick={() => onOpenDetail(run.runId)}
           >
             <td className="w-5 px-2 py-2 align-middle text-xs">{isActiveRun(run) ? <span className="inline-block size-2 rounded-full bg-primary ring-[3px] ring-primary/20" title="正在运行" /> : null}</td>
-            <td className="px-2.5 py-2 align-middle text-xs">{run.taskName}</td>
+            <td className="px-2.5 py-2 align-middle text-xs">{run.name}</td>
             <td className="px-2.5 py-2 align-middle text-xs"><Badge variant={badgeVariantFromTone(runStatusTone(run.status))}>{run.status}</Badge></td>
-            <td className="px-2.5 py-2 align-middle text-xs text-muted-foreground">{formatRunTime(run.startedAt ?? run.createdAt)}</td>
+            <td className="px-2.5 py-2 align-middle text-xs text-muted-foreground">{formatRunTime(run.startedAt)}</td>
             <td className="px-2.5 py-2 align-middle text-xs">{runDurationText(run)}</td>
-            <td className="px-2.5 py-2 align-middle text-xs">{nodeCounts(run)}</td>
+            <td className="px-2.5 py-2 align-middle text-xs">{eventCounts(run)}</td>
             <td className="px-2.5 py-2 align-middle text-xs text-muted-foreground">{summaryText(run)}</td>
           </tr>)}
         </tbody>

@@ -17,14 +17,13 @@ from hardwareharness_backend.application import (
     DefaultAuthorizer,
     DevicesApplication,
     ExecutionCoordinator,
-    OrchestrationApplication,
     ProjectsApplication,
     SystemApplication,
     WiringApplication,
     control,
 )
+from hardwareharness_backend.compat.cancellation import AbortError
 from hardwareharness_backend.contracts.agents import CAPABILITIES
-from hardwareharness_backend.orchestration.cancellation import AbortError
 
 from .test_application import HARDWARE, invocation, manual_fixture, occupancy_fixture
 
@@ -265,11 +264,9 @@ async def test_project_switch_reinitializes_on_success_and_failure() -> None:
     assert trace == [
         "orchestration.close",
         "wiring.close",
-        "orchestration.clear",
         "wiring.clear",
         "initializeFolder",
         "wiring.initialize",
-        "orchestration.initialize",
     ]
     await app.open_folder(HUMAN, "path")
     assert await app.save_project(HUMAN) == {"dirty": False}
@@ -283,10 +280,8 @@ async def test_project_switch_reinitializes_on_success_and_failure() -> None:
     assert trace == [
         "orchestration.close",
         "wiring.close",
-        "orchestration.clear",
         "wiring.clear",
         "wiring.initialize",
-        "orchestration.initialize",
     ]
     trace.clear()
     await app.close()
@@ -320,34 +315,6 @@ async def test_wiring_orchestration_and_dashboard_facades() -> None:
     assert (await app.complete_task(HUMAN, "W", "confirmed", "ok"))["status"] == "confirmed"
     assert (await app.cancel_task(AGENT, "W", "cancel"))["status"] == "cancelled"
     assert app.get_task(HUMAN, "W") == {"id": "W"} and app.list_tasks(HUMAN) == []
-    service = Mock(
-        get_task=Mock(return_value={"taskId": "T"}),
-        update_task=Mock(return_value={"dirty": True, "file": {"task": {"taskId": "T"}}}),
-        validate_task=Mock(return_value={"valid": True}),
-        get_run=Mock(return_value={"run": {"runId": "R"}}),
-        list_runs=Mock(return_value={"items": []}),
-        export_run=Mock(return_value={"formatVersion": 1}),
-        list_operator_decisions=Mock(return_value=[]),
-        cancel_run=AsyncMock(return_value={"status": "cancelling"}),
-        delete_run=AsyncMock(return_value={"runId": "R"}),
-        clear_completed_runs=AsyncMock(return_value={"deleted": 0}),
-    )
-    runs = OrchestrationApplication(authorizer, service)
-    assert runs.get_task(HUMAN) == {"taskId": "T"}
-    assert runs.update_task(AGENT, {}) == {
-        "task": {"taskId": "T"},
-        "dirty": True,
-        "document": {"dirty": True, "file": {"task": {"taskId": "T"}}},
-    }
-    assert runs.validate_task(AGENT, {}) == {"valid": True}
-    assert (await runs.cancel_run(AGENT, "R"))["status"] == "cancelling"
-    assert runs.get_run(AGENT, "R", 3, 2, 1) == {"run": {"runId": "R"}}
-    service.get_run.assert_called_once_with("R", 3, 2, 1)
-    assert runs.list_runs(AGENT) == {"items": []}
-    assert runs.export_run(AGENT, "R") == {"formatVersion": 1}
-    assert await runs.delete_run(HUMAN, "R") == {"runId": "R"}
-    assert await runs.clear_completed_runs(HUMAN) == {"deleted": 0}
-    assert runs.list_operator_decisions(AGENT) == []
     devices = Mock()
     for name in [
         "list_computers",

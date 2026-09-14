@@ -1,0 +1,127 @@
+All checks passed!
+127 files already formatted
+Success: no issues found in 116 source files
+============================= test session starts =============================
+platform win32 -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: E:\Project\hardwareHarness\HardwareHarness\python
+configfile: pyproject.toml
+testpaths: tests
+plugins: anyio-4.15.1, asyncio-1.4.0, cov-7.1.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 968 items
+
+tests\application\test_application.py ....................               [  2%]
+tests\application\test_applications.py ................................. [  5%]
+..                                                                       [  5%]
+tests\application\test_project_services.py ....                          [  6%]
+tests\application\test_regressions.py .........                          [  7%]
+tests\automation\test_logs.py ..............                             [  8%]
+tests\automation\test_processes.py ....                                  [  8%]
+tests\automation\test_runtime_gates.py ................................. [ 12%]
+................                                                         [ 13%]
+tests\automation\test_service.py .....                                   [ 14%]
+tests\compat\test_compat.py ..                                           [ 14%]
+tests\compat\test_filesystem.py .................                        [ 16%]
+tests\compat\test_json_parse.py ........................................ [ 20%]
+........................................................................ [ 27%]
+.................                                                        [ 29%]
+tests\contracts\test_contracts.py ......                                 [ 30%]
+tests\contracts\test_desktop.py .                                        [ 30%]
+tests\contracts\test_differential.py ................................... [ 34%]
+........................................................................ [ 41%]
+........................................................................ [ 48%]
+...........                                                              [ 50%]
+tests\devices\test_development_merge.py ..............                   [ 51%]
+tests\devices\test_device_store.py .............                         [ 52%]
+tests\devices\test_devices.py .................                          [ 54%]
+tests\devices\test_file_boundaries.py .......                            [ 55%]
+tests\devices\test_regressions.py .........                              [ 56%]
+tests\devices\test_schema_validation.py ................................ [ 59%]
+.....................                                                    [ 61%]
+tests\devices\test_sdk_envelope.py .                                     [ 61%]
+tests\devices\test_service_boundaries.py ........                        [ 62%]
+tests\devices\test_sse.py ......                                         [ 63%]
+tests\devices\test_transports.py ........                                [ 64%]
+tests\host\test_codec.py ........                                        [ 64%]
+tests\host\test_facade_routes.py ....................................... [ 69%]
+.............................                                            [ 72%]
+tests\host\test_firedap_registration.py .                                [ 72%]
+tests\host\test_migrations.py ..........................                 [ 74%]
+tests\host\test_process.py .....                                         [ 75%]
+tests\host\test_rpc.py ..                                                [ 75%]
+tests\mcp_gateway\test_agent_instructions.py .                           [ 75%]
+tests\mcp_gateway\test_application_options.py .....                      [ 76%]
+tests\mcp_gateway\test_boundaries.py ..................................  [ 79%]
+tests\mcp_gateway\test_development_projects.py .......                   [ 80%]
+tests\mcp_gateway\test_gateway.py ...........                            [ 81%]
+tests\mcp_gateway\test_protocol_golden.py .................              [ 83%]
+tests\projects\test_projects.py ..........                               [ 84%]
+tests\projects\test_v4_conversion.py ..........                          [ 85%]
+tests\sdk\test_sdk.py .....                                              [ 85%]
+tests\sdk\test_transport_worker.py ..............                        [ 87%]
+tests\storage\test_storage.py ................                           [ 88%]
+tests\test_specification_evidence.py ..................                  [ 90%]
+tests\wiring\test_wiring.py ........                                     [ 91%]
+tests\wiring\test_wiring_runtime_golden.py ..                            [ 91%]
+tests\workspace\test_apps.py ...................................         [ 95%]
+tests\workspace\test_environment.py .................                    [ 97%]
+tests\workspace\test_environment_launch_race.py .                        [ 97%]
+tests\workspace\test_workspace.py ..........................             [100%]
+
+=============================== tests coverage ================================
+______________ coverage: platform win32, python 3.11.15-final-0 _______________
+
+Name                                                            Stmts   Miss Branch BrPart  Cover   Missing
+-----------------------------------------------------------------------------------------------------------
+src\hardwareharness\_worker.py                                     78      1     18      1    98%   109
+src\hardwareharness_backend\application\execution.py               79      1     22      2    97%   116, 119->118
+src\hardwareharness_backend\application\services.py               249      2     38      2    99%   91-92, 346->348, 353->355
+src\hardwareharness_backend\automation\logs.py                    155      0     54      2    99%   44->exit, 140->148
+src\hardwareharness_backend\automation\service.py                 425      2    158     12    98%   111->113, 139->exit, 285, 289->291, 300, 318->320, 349->351, 357->exit, 459->455, 461->460, 478->477, 522->524
+src\hardwareharness_backend\compat\__init__.py                    207     29     88     14    84%   25, 28, 61-62, 103-104, 143, 147, 149, 160, 165, 171-172, 182-184, 191, 209, 215, 220-225, 249, 260, 264, 295
+src\hardwareharness_backend\compat\cancellation.py                 71     38     20      3    40%   25, 28-29, 32-33, 41-47, 51, 56, 64-66, 70-89, 93-98
+src\hardwareharness_backend\compat\collation.py                    51      6     12      3    83%   16, 36, 67, 78, 86-87
+src\hardwareharness_backend\compat\dates.py                         6      2      0      0    67%   7-8
+src\hardwareharness_backend\compat\filesystem.py                  131      6     38      5    93%   128, 130, 147, 216, 220, 231
+src\hardwareharness_backend\compat\json_syntax.py                 155      8     90      7    94%   80->82, 111, 150-151, 156->141, 163-164, 169-170, 183
+src\hardwareharness_backend\contracts\devices.py                   59      2     14      0    97%   188, 192
+src\hardwareharness_backend\contracts\errors.py                    24      1      2      0    96%   63
+src\hardwareharness_backend\contracts\execution.py                 23      8      4      0    56%   50-54, 58, 68, 79
+src\hardwareharness_backend\contracts\occupancy.py                 21      4      0      0    81%   65, 69, 77, 81
+src\hardwareharness_backend\contracts\storage.py                   15      1      0      0    93%   53
+src\hardwareharness_backend\contracts\validation.py               254      7    114      6    96%   122-123, 149, 218->227, 236, 314, 477, 491
+src\hardwareharness_backend\contracts\wiring.py                    20      2      0      0    90%   75, 79
+src\hardwareharness_backend\devices\device_catalog_service.py      63      1     18      0    99%   22
+src\hardwareharness_backend\devices\device_service.py             216      1     40      2    99%   73, 88->90
+src\hardwareharness_backend\devices\device_store.py               373     34    134     17    88%   99->98, 121, 176, 266->268, 338-339, 340->349, 396-397, 408-409, 499, 511, 524, 526, 528-536, 543-547, 555-557, 565, 568, 576, 588, 593
+src\hardwareharness_backend\devices\hardware_occupancy.py         142      4     40      6    95%   131->133, 160-161, 196->exit, 198, 246, 258->exit, 259->261
+src\hardwareharness_backend\devices\local_shell.py                 36      1     10      1    96%   25
+src\hardwareharness_backend\devices\mcp_client.py                 239      7     82     10    95%   89->99, 108-109, 156, 204, 208->212, 235, 239->242, 265->exit, 343, 399
+src\hardwareharness_backend\devices\mcp_transport.py               89      2     34      9    91%   53->55, 55->57, 58, 78->80, 83, 87->74, 88->90, 90->92, 98->87
+src\hardwareharness_backend\devices\remote_shell.py                27      2      0      0    93%   26-27
+src\hardwareharness_backend\devices\schema_validation.py          201     16    130     22    88%   84->86, 94, 109->exit, 111->exit, 119->exit, 122->120, 131, 139->132, 147, 153->152, 170->exit, 178, 182, 187, 194, 213, 240, 352, 354, 361, 379, 450-452
+src\hardwareharness_backend\devices\ssh.py                        133     20     36      9    80%   69->71, 72, 80->82, 83-85, 102-103, 109-110, 125->exit, 152-159, 179->182, 182->185, 191-194
+src\hardwareharness_backend\host\__main__.py                       19     19      2      0     0%   3-30
+src\hardwareharness_backend\host\codec.py                          65      3     54      5    93%   19, 26->28, 42, 61->65, 78
+src\hardwareharness_backend\host\migrations.py                    210     23     96     13    87%   100, 105, 122, 128, 139->141, 159-166, 192, 220, 227-228, 237, 243, 249-250, 279, 311, 314
+src\hardwareharness_backend\host\register_firedap.py               81     25     20      4    67%   28, 36, 38, 110-117, 120, 123, 127-139, 143
+src\hardwareharness_backend\host\rpc.py                           113     27     30     10    69%   52, 56, 75, 77, 84->exit, 89-91, 99, 101-103, 107, 109-110, 119-120, 125-126, 127->exit, 136, 139-142, 145-148
+src\hardwareharness_backend\host\runtime.py                       188    114     56      7    36%   164, 168-258, 261-282, 285-286, 289, 300, 306, 308-309, 312, 316, 319, 330-388, 391-393, 396-405
+src\hardwareharness_backend\mcp_gateway\gateway.py                316     17     96      7    93%   61->63, 201-202, 229, 277, 299->exit, 361-366, 487-492, 502->exit, 556
+src\hardwareharness_backend\projects\migration.py                  83      3     32      3    95%   63, 70, 75
+src\hardwareharness_backend\projects\project_service.py           150      6     24      5    94%   57, 69-70, 82, 124, 178
+src\hardwareharness_backend\storage\secrets.py                     78      0     14      1    99%   35->37
+src\hardwareharness_backend\storage\settings_store.py              37      1      6      2    93%   23->27, 25
+src\hardwareharness_backend\wiring\project_wiring_service.py      157      1     56      3    98%   91->93, 231->233, 269
+src\hardwareharness_backend\workspace\apps.py                     465     21    158     11    95%   73-77, 80-82, 248->259, 281-282, 285->287, 343, 362, 368, 405->exit, 432, 531-532, 534, 543-545, 618->628, 645-646
+src\hardwareharness_backend\workspace\environment.py              152      6     42      2    96%   82-83, 153->167, 202, 244-246
+src\hardwareharness_backend\workspace\files.py                    178      3     64      3    98%   71, 110, 260
+-----------------------------------------------------------------------------------------------------------
+TOTAL                                                            6665    477   2098    209    91%
+
+24 files skipped due to complete coverage.
+Coverage JSON written to file reports/python-coverage.json
+============================ 968 passed in 50.41s =============================
+83 retained specifications pass; 37 approved node/legacy specifications retired; fixed evidence verified
+Retained packages meet original floors; SDK, automation and workspace meet 90%
+Protected source baseline: 23 entries verified

@@ -140,7 +140,7 @@ async def test_real_child_settings_project_and_safe_storage(client: Client, tmp_
     result = await client.call(
         "application.projects.initializeFolder", {"args": [context, str(project)]}
     )
-    assert result["file"]["formatVersion"] == 3
+    assert result["file"]["formatVersion"] == 4
     assert client.state["project"]["file"]["projectId"] == result["file"]["projectId"]
     await client.call(
         "settings.saveLlm",
@@ -217,100 +217,6 @@ async def test_partial_settings_commit_is_visible_in_failed_response(client: Cli
         "model": "new-model",
     }
     assert not client.state["llmApiKeyConfigured"]
-
-
-async def test_killed_child_recovers_run_then_cancels_with_latest_cleanup_context(
-    tmp_path: Path,
-) -> None:
-    profile, project = tmp_path / "profile", tmp_path / "崩溃恢复 project"
-    project.mkdir()
-    context = {"actor": "human", "source": "desktop"}
-    async with running_client(profile) as first:
-        document = await first.call(
-            "application.projects.initializeFolder", {"args": [context, str(project)]}
-        )
-        task = document["file"]["task"]
-        task["variables"] = [{"name": "x", "type": "number", "defaultValue": 0}]
-        task["steps"] = [
-            {
-                "stepId": f"S{value}",
-                "label": "Set",
-                "type": "set_variable",
-                "enabled": True,
-                "variable": "x",
-                "value": {"kind": "literal", "value": value},
-            }
-            for value in (1, 2)
-        ] + [
-            {
-                "stepId": "WAIT",
-                "label": "Wait",
-                "type": "delay",
-                "enabled": True,
-                "durationMs": {"kind": "literal", "value": 60000},
-            }
-        ]
-        task["cleanup"] = [
-            {
-                "stepId": "CLEAN",
-                "label": "Cleanup",
-                "enabled": True,
-                "type": "assert",
-                "expression": {
-                    "kind": "binary",
-                    "operator": "eq",
-                    "left": {"kind": "variable", "path": "x"},
-                    "right": {"kind": "literal", "value": 2},
-                },
-                "message": "Checkpoint lost latest variable",
-            }
-        ]
-        await first.call("application.orchestration.updateTask", {"args": [context, task]})
-        await first.call("application.projects.saveProject", {"args": [context]})
-        detail = await first.call("application.orchestration.startRun", {"args": [context]})
-        run_id = detail["run"]["runId"]
-        async with asyncio.timeout(10):
-            while True:
-                logs = list(project.rglob("run.jsonl"))
-                records = (
-                    [json.loads(line) for line in logs[0].read_text("utf-8").splitlines()]
-                    if logs
-                    else []
-                )
-                ready = any(
-                    record.get("type") == "execution.snapshot"
-                    and record["snapshot"]["workflowContext"].get("x") == 2
-                    for record in records
-                )
-                waiting = any(
-                    record.get("type") == "nodeRun.upsert"
-                    and record["nodeRun"]["nodeId"] == "WAIT"
-                    and record["nodeRun"]["status"] == "running"
-                    for record in records
-                )
-                if ready and waiting:
-                    break
-                await asyncio.sleep(0.02)
-        first.process.kill()
-        await first.process.wait()
-    async with running_client(profile) as second:
-        await second.call("application.projects.openFolder", {"args": [context, str(project)]})
-        await second.call("application.orchestration.cancelRun", {"args": [context, run_id]})
-        async with asyncio.timeout(10):
-            while True:
-                detail = await second.call(
-                    "application.orchestration.getRun", {"args": [context, run_id]}
-                )
-                if detail["run"]["status"] == "cancelled":
-                    break
-                await asyncio.sleep(0.02)
-        assert (
-            next(node for node in detail["nodeRuns"] if node["nodeId"] == "CLEAN")["status"]
-            == "passed"
-        )
-        assert sum(node["nodeId"] == "S1" for node in detail["nodeRuns"]) == 1
-        assert sum(node["nodeId"] == "S2" for node in detail["nodeRuns"]) == 1
-        assert "run.recovery_resumed" in [event["type"] for event in detail["events"]]
 
 
 async def test_mcp_project_changes_notify_desktop_once_with_current_snapshot(

@@ -25,7 +25,9 @@ def main() -> None:
         for relative in ("bin64/icudt74.dll", "bin64/icuin74.dll", "bin64/icuuc74.dll", "LICENSE"):
             path = target / relative
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_bytes(bundle.read(relative))
+            content = bundle.read(relative)
+            if not path.exists() or path.read_bytes() != content:
+                path.write_bytes(content)
     print(f"ICU 74.2 verified: {target}")
 
 

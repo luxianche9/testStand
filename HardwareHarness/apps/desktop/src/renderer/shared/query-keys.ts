@@ -9,7 +9,6 @@ export const queryKeys = {
   runLogList: (projectId: string | undefined, query: unknown) => ["run-logs", projectId, query] as const,
   openCodeStatus: ["opencode-status"] as const,
   llmSettings: ["llm-settings"] as const,
-  operatorDecisions: ["operator-decisions"] as const,
   agentTools: ["agent-tools"] as const,
   agentIntegration: (agent: string) => ["agent-integration", agent] as const,
   hardwareImage: (hardwareId: string, assetId: string) => ["hardware-image", hardwareId, assetId] as const

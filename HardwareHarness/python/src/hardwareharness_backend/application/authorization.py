@@ -22,9 +22,9 @@ _AGENT_CAPABILITIES = {
     "projects.manage",
     "wiring.read",
     "wiring.request",
-    "orchestration.read",
-    "orchestration.manage",
-    "orchestration.run",
+    "applications.read",
+    "applications.manage",
+    "applications.run",
 }
 
 

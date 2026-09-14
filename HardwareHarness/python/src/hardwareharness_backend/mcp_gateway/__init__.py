@@ -3,9 +3,6 @@ from .tool_registry import (
     BUILTIN_TOOL_DEFINITIONS as BUILTIN_TOOL_DEFINITIONS,
 )
 from .tool_registry import (
-    UPDATE_TEST_TASK_INPUT_SCHEMA as UPDATE_TEST_TASK_INPUT_SCHEMA,
-)
-from .tool_registry import (
     GatewayToolDefinition as GatewayToolDefinition,
 )
 from .tool_registry import (

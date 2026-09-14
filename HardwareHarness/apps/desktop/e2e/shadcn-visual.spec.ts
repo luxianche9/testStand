@@ -7,7 +7,7 @@ import { _electron as electron, expect, test, type Page } from "@playwright/test
 const desktopDir = resolve(import.meta.dirname, "..");
 const workspace = resolve(desktopDir, "../..");
 const phase = process.env.HARDWAREHARNESS_VISUAL_PHASE ?? "after";
-const artifactRoot = resolve(workspace, "reports/shadcn/visual", phase);
+const artifactRoot = resolve(workspace, "reports/applications/visual", phase);
 const sizes = [{ width: 960, height: 600 }, { width: 1280, height: 800 }, { width: 1600, height: 1000 }];
 let referenceServer: Server | undefined;
 let referenceUrl: string | undefined;
@@ -36,11 +36,11 @@ test.afterAll(async () => {
   if (referenceServer) await new Promise<void>((resolveClose) => referenceServer!.close(() => resolveClose()));
 });
 
-async function navigateProject(page: Page, view: "设备管理" | "工位接线" | "编排测试" | "运行日志"): Promise<void> {
+async function navigateProject(page: Page, view: "设备管理" | "工位接线" | "应用搭建" | "运行日志"): Promise<void> {
   // The existing compact navigation hides its text below 1100px; order is unchanged.
   const tabs = page.getByRole("tablist", { name: "项目子页面" }).getByRole("tab");
   await expect(tabs).toHaveCount(4);
-  await tabs.nth(["设备管理", "工位接线", "编排测试", "运行日志"].indexOf(view)).click();
+  await tabs.nth(["设备管理", "工位接线", "应用搭建", "运行日志"].indexOf(view)).click();
 }
 
 async function capture(page: Page, group: string, name: string): Promise<void> {
@@ -109,9 +109,7 @@ for (const theme of ["light", "dark", "system"] as const) {
           const pending = await window.hardwareharness.wiring.requestTask({ portA: "DUT_A.J1", portB: "DUT_B.J1", action: "connect", pins: [{ a: "1", b: "1" }] });
           await window.hardwareharness.wiring.startTask(pending.wiringTaskId);
           await window.hardwareharness.wiring.completeTask(pending.wiringTaskId, "confirmed");
-          await window.hardwareharness.orchestration.updateTask({ formatVersion: 2, taskId: "VISUAL_TASK", name: "界面回归任务", inputs: [], variables: [], setup: [], cleanup: [], steps: [
-            { stepId: "WAIT", type: "delay", enabled: true, label: "等待设备稳定", durationMs: { kind: "literal", value: 1 } }
-          ] });
+          await window.hardwareharness.applications.createFile({ path: "workflows/visual.py", kind: "file", content: "def main(inputs):\n    return inputs\n" });
           await window.hardwareharness.projects.save();
           await window.hardwareharness.projects.leave();
         }, { theme, projectRoot });
@@ -120,15 +118,15 @@ for (const theme of ["light", "dark", "system"] as const) {
         await expect(page.getByRole("heading", { name: "最近项目" })).toBeVisible();
         await expect(page.locator("html")).toHaveAttribute("data-theme", theme === "system" ? "dark" : theme);
         await capture(page, group, "welcome");
-        await page.getByText("界面回归任务", { exact: true }).first().click();
+        await page.getByText("shadcn-fixture", { exact: true }).first().click();
         await expect(page.getByText("硬件库", { exact: true })).toBeVisible();
         await capture(page, group, "wiring");
         await navigateProject(page, "设备管理");
         await expect(page.getByRole("treeitem", { name: /DUT_A/ })).toBeVisible();
         await capture(page, group, "devices");
-        await navigateProject(page, "编排测试");
-        await expect(page.getByRole("button", { name: "应用", exact: true })).toBeVisible();
-        await capture(page, group, "orchestration");
+        await navigateProject(page, "应用搭建");
+        await expect(page.getByRole("button", { name: "新建应用", exact: true })).toBeVisible();
+        await capture(page, group, "applications");
         await navigateProject(page, "运行日志");
         await expect(page.getByRole("heading", { name: "运行日志", exact: true })).toBeVisible();
         await capture(page, group, "logs");

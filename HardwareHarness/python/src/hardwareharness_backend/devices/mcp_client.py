@@ -351,6 +351,8 @@ class McpHttpTransport:
                 remote_error.get("details"),
             )
             raise failure
+        if options.get("preserveEnvelope"):
+            return result
         if isinstance(structured, dict) and "data" in structured:
             return structured["data"]
         return result.get("structuredContent", result.get("content"))

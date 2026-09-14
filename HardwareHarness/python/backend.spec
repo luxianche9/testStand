@@ -5,7 +5,7 @@ from PyInstaller.utils.hooks import collect_data_files, collect_submodules, copy
 
 root = Path(SPECPATH)
 datas = []
-for package in ("certifi", "jsonschema_specifications", "hardwareharness_backend.mcp_gateway"):
+for package in ("certifi", "jsonschema_specifications", "hardwareharness_backend.mcp_gateway", "hardwareharness_backend.workspace"):
     datas += collect_data_files(package)
 datas += [(str(root / "vendor/icu/LICENSE"), "licenses/icu")]
 datas += copy_metadata("ada-url")

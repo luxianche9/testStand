@@ -99,6 +99,16 @@ def main() -> None:
     migrations = json.loads((root / "reports/ts-migrations-results.json").read_text("utf-8"))
     translated = json.loads((root / "reports/python-spec-results.json").read_text(encoding="utf-8"))
     verify_current_results(root, translated)
+    if (
+        hashlib.sha256((root / "reports/retired-specifications.json").read_bytes()).hexdigest()
+        != "bba4949db31d3d557d542fe54817738e63c9308244c01a9be359d9ab68635d71"
+    ):
+        raise SystemExit("Approved specification retirement manifest changed")
+    retirements = json.loads((root / "reports/retired-specifications.json").read_text("utf-8"))
+    retired = {item["typescript"]: item["reason"] for item in retirements["cases"]}
+    if any(not value for value in retired.values()):
+        raise SystemExit("Retired specifications require explicit reasons")
+    seen_retired: set[str] = set()
     inventory = json.loads((root / "reports/ts-assertion-inventory.json").read_text("utf-8"))
     inventory += json.loads(
         (root / "reports/ts-migration-assertion-inventory.json").read_text("utf-8")
@@ -135,6 +145,17 @@ def main() -> None:
                 or not source["assertions"]
             ):
                 raise SystemExit(f"Original TS assertion inventory is stale: {filename}")
+            if key in retired:
+                seen_retired.add(key)
+                output.append(
+                    {
+                        "typescript": key,
+                        "status": "retired",
+                        "reason": retired[key],
+                        "originalAssertions": source["assertions"],
+                    }
+                )
+                continue
             if not matches or not any(test["outcome"] == "passed" for test in matches):
                 missing.append(key)
             output.append(
@@ -153,9 +174,11 @@ def main() -> None:
     )
     if missing:
         raise SystemExit("Missing passing specification mappings:\n" + "\n".join(missing))
+    if seen_retired != set(retired):
+        raise SystemExit("Retirement manifest contains unknown original specifications")
     print(
-        "All 117 original package cases + 3 desktop migration cases "
-        f"({len(output)} total) have current passing Python equivalents; fixed evidence verified"
+        f"{len(output) - len(retired)} retained specifications pass; "
+        f"{len(retired)} approved node/legacy specifications retired; fixed evidence verified"
     )
 
 

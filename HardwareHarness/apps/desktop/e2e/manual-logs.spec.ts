@@ -70,27 +70,14 @@ test.describe.serial("manual control and persisted Run logs", () => {
     expect(write?.arguments).toMatchObject({ hardwareId: "E2E_CARD", voltage: 4.2, mode: "pulse", options: { enabled: true }, tags: ["smoke"] });
   });
 
-  test("persists an orchestration Run across restart, filters, exports and deletes it", async () => {
+  test("persists a Python Run across restart, filters, exports and deletes it", async () => {
     const runId = await page.evaluate(async () => {
-      const task = {
-        formatVersion: 2 as const, taskId: "E2E_TASK", name: "Persisted fixture Run", inputs: [], variables: [], setup: [], cleanup: [],
-        steps: [{
-          stepId: "WRITE", label: "Write fixture voltage", enabled: true, type: "tool" as const,
-          toolName: "E2E_MCP__write_voltage", hardwareId: "E2E_CARD",
-          arguments: {
-            voltage: { kind: "literal" as const, value: 2.5 },
-            mode: { kind: "literal" as const, value: "dc" },
-            options: { kind: "literal" as const, value: { enabled: true } },
-            tags: { kind: "literal" as const, value: ["run"] }
-          },
-          outputBindings: [], timeoutMs: 30_000, idempotent: false, retry: { maxAttempts: 1, delayMs: 0, backoff: "fixed", retryOn: ["unavailable"] }
-        }]
-      };
-      await window.hardwareharness.orchestration.updateTask(task);
-      const started = await window.hardwareharness.orchestration.startRun();
-      return started.run.runId;
+      await window.hardwareharness.applications.initializeWorkspace();
+      await window.hardwareharness.applications.createFile({ path: "workflows/persisted.py", kind: "file", content: 'from hardwareharness import call, step\n\ndef main(inputs):\n    with step("Write fixture voltage"):\n        return call("E2E_CARD", "E2E_MCP__write_voltage", {"voltage": 2.5, "mode": "dc", "options": {"enabled": True}, "tags": ["run"]})\n' });
+      const started = await window.hardwareharness.applications.startRun({ name: "Persisted fixture Run", entrypoint: "workflows/persisted.py", inputs: {}, hardwareIds: ["E2E_CARD"] });
+      return started.runId;
     });
-    await expect.poll(async () => page.evaluate(async (id) => (await window.hardwareharness.orchestration.getRun(id)).run.status, runId)).toBe("passed");
+    await expect.poll(async () => page.evaluate(async (id) => (await window.hardwareharness.applications.getRun(id)).run.status, runId)).toBe("succeeded");
 
     await application.close();
     ({ application, page } = await launch(userDataDir));
@@ -98,22 +85,23 @@ test.describe.serial("manual control and persisted Run logs", () => {
     await page.getByRole("tab", { name: "运行日志" }).click();
     await expect(page.getByRole("heading", { name: "运行日志" })).toBeVisible();
     await page.getByLabel("搜索运行日志").fill("Persisted fixture");
-    const runRow = page.getByRole("row", { name: /Persisted fixture Run passed/ });
+    const runRow = page.getByRole("row", { name: /Persisted fixture Run succeeded/ });
     await expect(runRow).toBeVisible();
     await expect(page.getByRole("complementary", { name: "运行检查器" })).toHaveCount(0);
     await runRow.dblclick();
     const detail = page.getByRole("dialog", { name: "运行详情" });
-    await expect(detail.getByText("Write fixture voltage")).toBeVisible();
-    await expect(detail.getByText("run.passed", { exact: true })).toBeVisible();
+    await expect(detail.getByText("Write fixture voltage", { exact: true })).toBeVisible();
+    await expect(detail.getByText("步骤树", { exact: true })).toBeVisible();
 
-    const exported = await page.evaluate((id) => window.hardwareharness.orchestration.exportRun(id), runId);
-    expect(exported).toMatchObject({ formatVersion: 1, run: { runId, taskName: "Persisted fixture Run", status: "passed" }, nodeRuns: [{ nodeLabel: "Write fixture voltage", status: "passed" }] });
+    const exported = await page.evaluate((id) => window.hardwareharness.applications.exportRun(id), runId);
+    expect(exported).toMatchObject({ run: { runId, name: "Persisted fixture Run", status: "succeeded" } });
+    expect(exported.events).toEqual(expect.arrayContaining([expect.objectContaining({ type: "step.started", name: "Write fixture voltage" }), expect.objectContaining({ type: "hardware.completed" })]));
 
     await detail.getByRole("button", { name: "删除" }).click();
     const dialog = page.getByRole("dialog", { name: "删除运行日志" });
     await dialog.getByRole("button", { name: "确认删除" }).click();
     await expect(page.getByText("没有符合条件的运行记录。")).toBeVisible();
-    expect(await page.evaluate((id) => window.hardwareharness.orchestration.getRun(id).then(() => false, () => true), runId)).toBe(true);
+    expect(await page.evaluate((id) => window.hardwareharness.applications.getRun(id).then(() => false, () => true), runId)).toBe(true);
   });
 
   test("delivers an AI occupancy request to the global mailbox for one human click", async () => {

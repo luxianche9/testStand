@@ -13,7 +13,12 @@ from unittest.mock import MagicMock, create_autospec
 
 import pytest
 
-from hardwareharness_backend.application import HardwareHarnessApplication
+from hardwareharness_backend.application import (
+    ApplicationsApplication,
+    DefaultAuthorizer,
+    ExecutionCoordinator,
+    HardwareHarnessApplication,
+)
 from hardwareharness_backend.compat import UNDEFINED
 from hardwareharness_backend.host.rpc import StdioRpc
 from hardwareharness_backend.host.runtime import HUMAN, HostRuntime, Services
@@ -31,7 +36,9 @@ def restore(value: Any) -> Any:
     return value
 
 
-CASES = restore(json.loads(Path(__file__).with_name("facade-calls.json").read_text("utf-8")))
+CASES = restore(
+    json.loads(Path(__file__).with_name("applications-facade-calls.json").read_text("utf-8"))
+)
 CASES.append(
     {
         "path": "internal.wiring.addManagedHardwareToCanvas",
@@ -43,10 +50,17 @@ CASES.append(
 
 @pytest.mark.parametrize("case", CASES, ids=[case["path"] for case in CASES])
 async def test_desktop_arguments_bind_to_python_controller(case: dict[str, Any]) -> None:
-    dependencies = {
+    dependencies: dict[str, Any] = {
         name: MagicMock()
-        for name in ("devices", "catalog", "projects", "wiring", "orchestration", "system")
+        for name in ("devices", "catalog", "projects", "wiring", "applications", "system")
     }
+    dependencies["applications"] = ApplicationsApplication(
+        DefaultAuthorizer(),
+        dependencies["projects"],
+        dependencies["devices"],
+        dependencies["catalog"],
+        ExecutionCoordinator(),
+    )
     application = HardwareHarnessApplication(dependencies)
     _, namespace, method = case["method"].split(".")
     name = re.sub(r"(?<!^)(?=[A-Z])", "_", method).lower()
@@ -66,8 +80,6 @@ async def test_desktop_arguments_bind_to_python_controller(case: dict[str, Any])
     if method == "setHardwareImageFromPath":
         assert bound.arguments["port_id"] is None
         assert bound.arguments["source_path"] == "中文 image.png"
-    if method == "getRun":
-        assert bound.arguments["node_limit"] == 200
     if method == "importBundleForServer":
         assert bound.arguments["data"] == bytes([0, 255, 128])
     assert args[1:] == case["args"]  # Dispatch must not mutate the decoded caller payload.

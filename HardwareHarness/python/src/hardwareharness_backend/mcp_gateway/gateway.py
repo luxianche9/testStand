@@ -30,6 +30,32 @@ from hardwareharness_backend.contracts.validation import (
 from .tool_registry import ToolRegistry
 
 Record = dict[str, Any]
+AGENT_INSTRUCTIONS = """HardwareHarness 应用搭建工作顺序：
+1. 检查设备能力与资料：读取已登记设备、资料和实际公开工具的 JSON Schema，按 schema 调用，
+不要猜测工具名称或参数，也不要绕过平台直接连接硬件 MCP 服务。
+2. 处理接线和占用：通过现有 MCP 管理工具核对接线、申请占用并处理人工确认；
+确认授权已经生效后才运行使用真实硬件的代码。
+3. 编写流程与页面：使用 initialize_workspace 初始化项目环境，先阅读
+.hardwareharness/docs/hardwareharness-sdk.md（read_workspace_file 的路径为
+docs/hardwareharness-sdk.md）。流程保存在 .hardwareharness/workflows，入口为 main(inputs)，
+支持同步或异步函数，输入与返回值使用 JSON。FastAPI + HTML/JavaScript 应用保存在
+.hardwareharness/apps/<id>，每项操作在 app.json 声明流程入口、输入 schema 和主动硬件 ID。
+4. 使用模拟硬件测试：先使用模拟设备验证参数、分支、异常与取消，检查测试结果，
+不要把运行真实硬件作为首次代码校验。
+5. 启动真实执行：先保存代码并验证，再通过平台启动流程或应用操作。每次操作创建独立 Run；
+应用服务只处理页面和请求，浏览器使用平台操作接口，不持有硬件工作进程凭据。
+6. 检查日志：使用 get_python_run、get_python_run_events 和 get_application_logs 检查结果、
+步骤、硬件调用、错误、测量及附件；分页读取完整事件，不能仅凭页面没有报错判断成功。
+
+内置 hardwareharness SDK 仅提供六个公开接口：call 同步调用主动硬件，acall 异步调用；
+step 支持装饰器和同步/异步上下文块；log 记录结构化消息，measurement 记录测量值，
+attachment 复制并登记运行附件。平台自动关联 Run 与步骤，无需业务代码传入运行身份。
+SDK 不提供业务上下文、占用、接线、人工确认、项目管理或 Run 管理接口；这些由 Agent
+与平台管理。SDK 只能在平台启动的流程中使用，拒绝被动对象、内部工具和未声明的硬件。
+缺少占用或硬件冲突会立即报错：平台不自动申请占用、不等待授权、不重放硬件调用。
+取消提供最多 10 秒协作退出时间，随后可能终止进程树；清理调用仍须有效占用。
+取消或超时可能意味着远端结果未知，不代表物理动作已经撤销，不得因此自动重试硬件动作。
+"""
 PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05", "2024-10-07"]
 # The installed TS SDK supports this historical version in both client and server roles.
 if "2024-10-07" not in SDK_PROTOCOL_VERSIONS:
@@ -392,7 +418,7 @@ class LocalMcpGateway:
             else "unknown-mcp-client"
         )
         context = {**self._request_context, "requestId": new_uuid(), "subjectId": subject}
-        protocol: Any = Server("hardwareharness", version="0.1.0")
+        protocol: Any = Server("hardwareharness", version="0.1.0", instructions=AGENT_INSTRUCTIONS)
 
         async def list_tools(_request: Any) -> Any:
             return types.ServerResult(

@@ -2,8 +2,6 @@ from hardwareharness_backend.storage.file_storage import atomic_json as atomic_j
 from hardwareharness_backend.storage.file_storage import atomic_text as atomic_text
 from hardwareharness_backend.storage.file_storage import read_json as read_json
 from hardwareharness_backend.storage.file_storage import sync_directory as sync_directory
-from hardwareharness_backend.storage.run_log_store import ProjectRunLogStore as ProjectRunLogStore
-from hardwareharness_backend.storage.run_log_store import RunLogStoreOptions as RunLogStoreOptions
 from hardwareharness_backend.storage.secrets import SecretProtector as SecretProtector
 from hardwareharness_backend.storage.secrets import SecretStore as SecretStore
 from hardwareharness_backend.storage.serialized_writer import SerializedWriter as SerializedWriter

@@ -1,0 +1,332 @@
+{
+  "executablePath": "E:\\Project\\hardwareHarness\\HardwareHarness\\dist\\安装 验收\\HardwareHarness.exe",
+  "roots": [
+    30440,
+    30616
+  ],
+  "sampleCount": 100,
+  "tracked": [
+    {
+      "pid": 30440,
+      "parent": 8668,
+      "name": "cmd.exe",
+      "executable": "C:\\WINDOWS\\system32\\cmd.exe",
+      "started": "2026-09-14T06:21:52.2924530Z",
+      "role": "other"
+    },
+    {
+      "pid": 34136,
+      "parent": 30440,
+      "name": "HardwareHarness.exe",
+      "executable": "E:\\Project\\hardwareHarness\\HardwareHarness\\dist\\安装 验收\\HardwareHarness.exe",
+      "started": "2026-09-14T06:21:52.3089990Z",
+      "role": "electron"
+    },
+    {
+      "pid": 8712,
+      "parent": 34136,
+      "name": "HardwareHarness.exe",
+      "executable": "E:\\Project\\hardwareHarness\\HardwareHarness\\dist\\安装 验收\\HardwareHarness.exe",
+      "started": "2026-09-14T06:21:52.5608280Z",
+      "role": "electron"
+    },
+    {
+      "pid": 21776,
+      "parent": 34136,
+      "name": "hardwareharness-backend.exe",
+      "executable": "E:\\Project\\hardwareHarness\\HardwareHarness\\dist\\安装 验收\\resources\\backend\\hardwareharness-backend.exe",
+      "started": "2026-09-14T06:21:52.5698410Z",
+      "role": "backend"
+    },
+    {
+      "pid": 32404,
+      "parent": 34136,
+      "name": "HardwareHarness.exe",
+      "executable": "E:\\Project\\hardwareHarness\\HardwareHarness\\dist\\安装 验收\\HardwareHarness.exe",
+      "started": "2026-09-14T06:21:52.5701510Z",
+      "role": "electron"
+    },
+    {
+      "pid": 6324,
+      "parent": 21776,
+      "name": "conhost.exe",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "started": "2026-09-14T06:21:52.5751580Z",
+      "role": "other"
+    },
+    {
+      "pid": 11708,
+      "parent": 34136,
+      "name": "HardwareHarness.exe",
+      "executable": "E:\\Project\\hardwareHarness\\HardwareHarness\\dist\\安装 验收\\HardwareHarness.exe",
+      "started": "2026-09-14T06:21:53.2807380Z",
+      "role": "electron"
+    },
+    {
+      "pid": 24600,
+      "parent": 21776,
+      "name": "uv.exe",
+      "executable": "E:\\Project\\hardwareHarness\\HardwareHarness\\dist\\安装 验收\\resources\\project-runtime\\uv.exe",
+      "started": "2026-09-14T06:21:54.5116330Z",
+      "role": "uv"
+    },
+    {
+      "pid": 7448,
+      "parent": 24600,
+      "name": "conhost.exe",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "started": "2026-09-14T06:21:54.5218440Z",
+      "role": "other"
+    },
+    {
+      "pid": 9532,
+      "parent": 24600,
+      "name": "python.exe",
+      "executable": "E:\\Project\\hardwareHarness\\HardwareHarness\\dist\\安装 验收\\resources\\project-runtime\\python\\python.exe",
+      "started": "2026-09-14T06:21:54.6328040Z",
+      "role": "python"
+    },
+    {
+      "pid": 34956,
+      "parent": 21776,
+      "name": "uv.exe",
+      "executable": "E:\\Project\\hardwareHarness\\HardwareHarness\\dist\\安装 验收\\resources\\project-runtime\\uv.exe",
+      "started": "2026-09-14T06:21:55.6401550Z",
+      "role": "uv"
+    },
+    {
+      "pid": 25112,
+      "parent": 34956,
+      "name": "conhost.exe",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "started": "2026-09-14T06:21:55.6450590Z",
+      "role": "other"
+    },
+    {
+      "pid": 30036,
+      "parent": 34956,
+      "name": "python.exe",
+      "executable": null,
+      "started": "2026-09-14T06:21:55.8513090Z",
+      "role": "python"
+    },
+    {
+      "pid": 27464,
+      "parent": 30036,
+      "name": "python.exe",
+      "executable": null,
+      "started": "2026-09-14T06:21:55.8685010Z",
+      "role": "python"
+    },
+    {
+      "pid": 29928,
+      "parent": 27464,
+      "name": "cmd.exe",
+      "executable": null,
+      "started": "2026-09-14T06:21:56.0105700Z",
+      "role": "other"
+    },
+    {
+      "pid": 36676,
+      "parent": 34136,
+      "name": "opencode.exe",
+      "executable": "E:\\Project\\hardwareHarness\\HardwareHarness\\dist\\安装 验收\\resources\\opencode\\opencode.exe",
+      "started": "2026-09-14T06:21:58.2150390Z",
+      "role": "opencode"
+    },
+    {
+      "pid": 6872,
+      "parent": 36676,
+      "name": "conhost.exe",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "started": "2026-09-14T06:21:58.3462940Z",
+      "role": "other"
+    },
+    {
+      "pid": 10212,
+      "parent": 34136,
+      "name": "opencode.exe",
+      "executable": "E:\\Project\\hardwareHarness\\HardwareHarness\\dist\\安装 验收\\resources\\opencode\\opencode.exe",
+      "started": "2026-09-14T06:22:01.5189350Z",
+      "role": "opencode"
+    },
+    {
+      "pid": 17604,
+      "parent": 10212,
+      "name": "conhost.exe",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "started": "2026-09-14T06:22:01.5221950Z",
+      "role": "other"
+    },
+    {
+      "pid": 12624,
+      "parent": 21776,
+      "name": "python.exe",
+      "executable": "D:\\Temp\\hardwareharness-packaged-smoke-BrmLYW\\packaged-smoke 中文 项目\\.hardwareharness\\.venv\\Scripts\\python.exe",
+      "started": "2026-09-14T06:22:05.5050600Z",
+      "role": "application-service"
+    },
+    {
+      "pid": 35392,
+      "parent": 12624,
+      "name": "conhost.exe",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "started": "2026-09-14T06:22:05.5114390Z",
+      "role": "other"
+    },
+    {
+      "pid": 17868,
+      "parent": 12624,
+      "name": "python.exe",
+      "executable": "E:\\Project\\hardwareHarness\\HardwareHarness\\dist\\安装 验收\\resources\\project-runtime\\python\\python.exe",
+      "started": "2026-09-14T06:22:05.5284060Z",
+      "role": "application-service"
+    },
+    {
+      "pid": 18264,
+      "parent": 34136,
+      "name": "HardwareHarness.exe",
+      "executable": "E:\\Project\\hardwareHarness\\HardwareHarness\\dist\\安装 验收\\HardwareHarness.exe",
+      "started": "2026-09-14T06:22:08.7953080Z",
+      "role": "electron"
+    },
+    {
+      "pid": 29552,
+      "parent": 21776,
+      "name": "python.exe",
+      "executable": "D:\\Temp\\hardwareharness-packaged-smoke-BrmLYW\\packaged-smoke 中文 项目\\.hardwareharness\\.venv\\Scripts\\python.exe",
+      "started": "2026-09-14T06:22:09.8174420Z",
+      "role": "worker"
+    },
+    {
+      "pid": 2132,
+      "parent": 29552,
+      "name": "conhost.exe",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "started": "2026-09-14T06:22:09.8230070Z",
+      "role": "other"
+    },
+    {
+      "pid": 7728,
+      "parent": 29552,
+      "name": "python.exe",
+      "executable": "E:\\Project\\hardwareHarness\\HardwareHarness\\dist\\安装 验收\\resources\\project-runtime\\python\\python.exe",
+      "started": "2026-09-14T06:22:09.8368740Z",
+      "role": "worker"
+    },
+    {
+      "pid": 20336,
+      "parent": 21776,
+      "name": "python.exe",
+      "executable": "D:\\Temp\\hardwareharness-packaged-smoke-BrmLYW\\packaged-smoke 中文 项目\\.hardwareharness\\.venv\\Scripts\\python.exe",
+      "started": "2026-09-14T06:22:10.7176090Z",
+      "role": "worker"
+    },
+    {
+      "pid": 35376,
+      "parent": 20336,
+      "name": "conhost.exe",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "started": "2026-09-14T06:22:10.7215970Z",
+      "role": "other"
+    },
+    {
+      "pid": 28456,
+      "parent": 20336,
+      "name": "python.exe",
+      "executable": "E:\\Project\\hardwareHarness\\HardwareHarness\\dist\\安装 验收\\resources\\project-runtime\\python\\python.exe",
+      "started": "2026-09-14T06:22:10.7385090Z",
+      "role": "worker"
+    },
+    {
+      "pid": 35484,
+      "parent": 21776,
+      "name": "taskkill.exe",
+      "executable": "C:\\WINDOWS\\SYSTEM32\\taskkill.exe",
+      "started": "2026-09-14T06:22:13.7346390Z",
+      "role": "other"
+    },
+    {
+      "pid": 29144,
+      "parent": 35484,
+      "name": "conhost.exe",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "started": "2026-09-14T06:22:13.7475740Z",
+      "role": "other"
+    },
+    {
+      "pid": 30616,
+      "parent": 8668,
+      "name": "cmd.exe",
+      "executable": "C:\\WINDOWS\\system32\\cmd.exe",
+      "started": "2026-09-14T06:22:16.1313910Z",
+      "role": "other"
+    },
+    {
+      "pid": 34080,
+      "parent": 30616,
+      "name": "HardwareHarness.exe",
+      "executable": "E:\\Project\\hardwareHarness\\HardwareHarness\\dist\\安装 验收\\HardwareHarness.exe",
+      "started": "2026-09-14T06:22:16.1428370Z",
+      "role": "electron"
+    },
+    {
+      "pid": 29316,
+      "parent": 34080,
+      "name": "HardwareHarness.exe",
+      "executable": "E:\\Project\\hardwareHarness\\HardwareHarness\\dist\\安装 验收\\HardwareHarness.exe",
+      "started": "2026-09-14T06:22:16.3913420Z",
+      "role": "electron"
+    },
+    {
+      "pid": 15528,
+      "parent": 34080,
+      "name": "HardwareHarness.exe",
+      "executable": "E:\\Project\\hardwareHarness\\HardwareHarness\\dist\\安装 验收\\HardwareHarness.exe",
+      "started": "2026-09-14T06:22:16.3986030Z",
+      "role": "electron"
+    },
+    {
+      "pid": 22392,
+      "parent": 34080,
+      "name": "hardwareharness-backend.exe",
+      "executable": "E:\\Project\\hardwareHarness\\HardwareHarness\\dist\\安装 验收\\resources\\backend\\hardwareharness-backend.exe",
+      "started": "2026-09-14T06:22:16.3992900Z",
+      "role": "backend"
+    },
+    {
+      "pid": 35352,
+      "parent": 22392,
+      "name": "conhost.exe",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "started": "2026-09-14T06:22:16.4049620Z",
+      "role": "other"
+    },
+    {
+      "pid": 36008,
+      "parent": 34080,
+      "name": "HardwareHarness.exe",
+      "executable": "E:\\Project\\hardwareHarness\\HardwareHarness\\dist\\安装 验收\\HardwareHarness.exe",
+      "started": "2026-09-14T06:22:17.1036340Z",
+      "role": "electron"
+    },
+    {
+      "pid": 31860,
+      "parent": 34080,
+      "name": "opencode.exe",
+      "executable": null,
+      "started": "2026-09-14T06:22:21.3452270Z",
+      "role": "opencode"
+    },
+    {
+      "pid": 34844,
+      "parent": 31860,
+      "name": "conhost.exe",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "started": "2026-09-14T06:22:21.4792420Z",
+      "role": "other"
+    }
+  ],
+  "remaining": [],
+  "allObservedDescendantsExited": true
+}

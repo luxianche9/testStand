@@ -1,0 +1,21 @@
+E501 Line too long (104 > 100)
+   --> HardwareHarness\python\tests\projects\test_v4_conversion.py:139:101
+    |
+139 | def test_backup_rejects_symlink_before_writing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    |                                                                                                     ^^^^
+140 |     path = legacy(tmp_path)
+141 |     original = path.read_bytes()
+    |
+
+E501 Line too long (115 > 100)
+   --> HardwareHarness\python\tests\projects\test_v4_conversion.py:143:101
+    |
+141 |     original = path.read_bytes()
+142 |     original_is_symlink = Path.is_symlink
+143 |     monkeypatch.setattr(Path, "is_symlink", lambda target: target.name == "backups" or original_is_symlink(target))
+    |                                                                                                     ^^^^^^^^^^^^^^^
+144 |     (path.parent / "backups").mkdir()
+145 |     with pytest.raises(ValueError, match="cannot be links"):
+    |
+
+Found 2 errors.

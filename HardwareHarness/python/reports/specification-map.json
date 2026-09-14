@@ -14,7 +14,7 @@
     "pythonAssertions": {
       "tests/contracts/test_contracts.py::test_passive_references": [
         {
-          "line": 21,
+          "line": 18,
           "source": "pytest.raises(ValidationError)"
         }
       ]
@@ -39,11 +39,11 @@
     "pythonAssertions": {
       "tests/contracts/test_contracts.py::test_defaults": [
         {
-          "line": 40,
+          "line": 37,
           "source": "assert computer[\"ssh\"] == {\"port\": 22, \"username\": \"user\", \"shell\": \"powershell\"}"
         },
         {
-          "line": 41,
+          "line": 38,
           "source": "assert (\n        parse_mcp_server(\n            {\n                \"serverId\": \"S1\",\n                \"computerId\": \"PC1\",\n                \"label\": \"S\",\n                \"hardwareId\": \"H1\",\n                \"url\": \"http://127.0.0.1/mcp\",\n                \"lifecycle\": {\n                    \"statusCommand\": \"s\",\n                    \"startCommand\": \"a\",\n                    \"stopCommand\": \"x\",\n                    \"logPath\": \"l\",\n                },\n            }\n        )[\"transport\"]\n        == \"mcp-http\"\n    )"
         }
       ]
@@ -64,7 +64,7 @@
     "pythonAssertions": {
       "tests/contracts/test_contracts.py::test_managed_state": [
         {
-          "line": 63,
+          "line": 60,
           "source": "pytest.raises(ValidationError)"
         }
       ]
@@ -85,7 +85,7 @@
     "pythonAssertions": {
       "tests/contracts/test_contracts.py::test_incomplete_project": [
         {
-          "line": 77,
+          "line": 74,
           "source": "pytest.raises(ValidationError)"
         }
       ]
@@ -93,10 +93,8 @@
   },
   {
     "typescript": "packages/contracts/src/contracts.test.ts::public contracts::upgrades project files one version at a time",
-    "python": [
-      "tests/contracts/test_contracts.py::test_upgrade_chain"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior.",
     "originalAssertions": [
       {
         "line": 39,
@@ -106,48 +104,18 @@
         "line": 43,
         "source": "expect(projectFileSchema.parse({\n      ...version1,\n      formatVersion: 2,\n      task: { formatVersion: 2, taskId: \"TASK\", name: \"Existing\", inputs: [], variables: [], setup: [], steps: [], cleanup: [] }\n    })).toMatchObject({ formatVersion: 3, task: { taskId: \"TASK\", name: \"Existing\" } });"
       }
-    ],
-    "pythonAssertions": {
-      "tests/contracts/test_contracts.py::test_upgrade_chain": [
-        {
-          "line": 92,
-          "source": "assert upgraded[\"formatVersion\"] == 3"
-        },
-        {
-          "line": 93,
-          "source": "assert upgraded[\"task\"] == {\n        \"formatVersion\": 2,\n        \"taskId\": \"PROJECT-task\",\n        \"name\": \"Bench\",\n        \"inputs\": [],\n        \"variables\": [],\n        \"setup\": [],\n        \"steps\": [],\n        \"cleanup\": [],\n    }"
-        },
-        {
-          "line": 104,
-          "source": "assert parse_project_file({**old, \"formatVersion\": 2, \"task\": task})[\"task\"] == task"
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "packages/contracts/src/contracts.test.ts::public contracts::keeps the TestStep schema output identical to the public type",
-    "python": [
-      "tests/contracts/test_contracts.py::test_step_output_type"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior.",
     "originalAssertions": [
       {
         "line": 51,
         "source": "expectTypeOf<z.infer<typeof testStepSchema>>().toEqualTypeOf<TestStep>();"
       }
-    ],
-    "pythonAssertions": {
-      "tests/contracts/test_contracts.py::test_step_output_type": [
-        {
-          "line": 118,
-          "source": "assert step == {\n        \"stepId\": \"D\",\n        \"label\": \"Delay\",\n        \"enabled\": True,\n        \"type\": \"delay\",\n        \"durationMs\": {\"kind\": \"literal\", \"value\": 0},\n    }"
-        },
-        {
-          "line": 117,
-          "source": "assert_type(step, TestStep)"
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "packages/contracts/src/contracts.test.ts::public contracts::uses strict named id inputs for IPC procedures",
@@ -172,15 +140,15 @@
     "pythonAssertions": {
       "tests/contracts/test_contracts.py::test_named_ids": [
         {
-          "line": 146,
+          "line": 97,
           "source": "assert parse_agent_kind_input({\"id\": \"codex\"}) == {\"id\": \"codex\"}"
         },
         {
-          "line": 141,
+          "line": 92,
           "source": "assert parse_id_input({\"id\": \"ID\"}) == {\"id\": \"ID\"}, name"
         },
         {
-          "line": 142,
+          "line": 93,
           "source": "pytest.raises(ValidationError)"
         }
       ]
@@ -205,11 +173,11 @@
     "pythonAssertions": {
       "tests/contracts/test_contracts.py::test_errors": [
         {
-          "line": 151,
+          "line": 102,
           "source": "assert to_wire_error(app_error(\"conflict\", \"busy\", {\"holder\": \"run\"})) == {\n        \"category\": \"conflict\",\n        \"message\": \"busy\",\n        \"details\": {\"holder\": \"run\"},\n    }"
         },
         {
-          "line": 156,
+          "line": 107,
           "source": "assert to_wire_error(RuntimeError(\"boom\")) == {\"category\": \"error\", \"message\": \"boom\"}"
         }
       ]
@@ -217,10 +185,8 @@
   },
   {
     "typescript": "packages/storage/src/run-log-store.test.ts::ProjectRunLogStore::appends and reloads one JSONL stream per Run",
-    "python": [
-      "tests/storage/test_run_log_store.py::test_streams"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior.",
     "originalAssertions": [
       {
         "line": 66,
@@ -234,30 +200,12 @@
         "line": 70,
         "source": "expect(lines.map((line) => line.type)).toEqual([\"run.upsert\", \"nodeRun.upsert\", \"events.append\"]);"
       }
-    ],
-    "pythonAssertions": {
-      "tests/storage/test_run_log_store.py::test_streams": [
-        {
-          "line": 63,
-          "source": "assert result[\"warnings\"] == []"
-        },
-        {
-          "line": 64,
-          "source": "assert sorted(item[\"run\"][\"runId\"] for item in result[\"archives\"]) == [\"RUN-B\", \"RUN/A\"]"
-        },
-        {
-          "line": 68,
-          "source": "assert [json.loads(line)[\"type\"] for line in lines] == [\n        \"run.upsert\",\n        \"nodeRun.upsert\",\n        \"events.append\",\n    ]"
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "packages/storage/src/run-log-store.test.ts::ProjectRunLogStore::reports corrupt records at line granularity and keeps valid Run streams",
-    "python": [
-      "tests/storage/test_run_log_store.py::test_corrupt_lines"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior.",
     "originalAssertions": [
       {
         "line": 89,
@@ -279,30 +227,12 @@
         "line": 93,
         "source": "expect(loaded.warnings.join(\" \")).toMatch(/mismatch\\/run\\.jsonl:2/);"
       }
-    ],
-    "pythonAssertions": {
-      "tests/storage/test_run_log_store.py::test_corrupt_lines": [
-        {
-          "line": 109,
-          "source": "assert sorted(item[\"run\"][\"runId\"] for item in result[\"archives\"]) == [\"GOOD\", \"MISMATCH\"]"
-        },
-        {
-          "line": 110,
-          "source": "assert len(result[\"warnings\"]) == 4"
-        },
-        {
-          "line": 111,
-          "source": "assert all(\n        text in \" \".join(result[\"warnings\"])\n        for text in (\"broken/run.jsonl:1\", \"future/run.jsonl:1\", \"mismatch/run.jsonl:2\")\n    )"
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "packages/storage/src/run-log-store.test.ts::ProjectRunLogStore::deduplicates retried event appends and compacts to an atomic snapshot",
-    "python": [
-      "tests/storage/test_run_log_store.py::test_compaction"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior.",
     "originalAssertions": [
       {
         "line": 108,
@@ -328,34 +258,12 @@
         "line": 114,
         "source": "expect((await stat(join(directory, \"run.jsonl\"))).size).toBe(0);"
       }
-    ],
-    "pythonAssertions": {
-      "tests/storage/test_run_log_store.py::test_compaction": [
-        {
-          "line": 147,
-          "source": "assert result == {\"archives\": [value], \"snapshots\": [snapshot], \"warnings\": []}"
-        },
-        {
-          "line": 148,
-          "source": "assert any(write[\"kind\"] == \"snapshot\" for write in writes)"
-        },
-        {
-          "line": 149,
-          "source": "assert (tmp_path / \".hardwareharness/logs/runs/RUN1/run.jsonl\").stat().st_size == 0"
-        },
-        {
-          "line": 150,
-          "source": "assert (\n        '\"runId\": \"RUN1\"'\n        in (tmp_path / \".hardwareharness/logs/runs/RUN1/snapshot.json\").read_text()\n    )"
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "packages/storage/src/run-log-store.test.ts::ProjectRunLogStore::migrates legacy archives and removes one Run or a selected group",
-    "python": [
-      "tests/storage/test_run_log_store.py::test_legacy_and_remove"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior.",
     "originalAssertions": [
       {
         "line": 126,
@@ -373,34 +281,12 @@
         "line": 131,
         "source": "expect((await store.load(projectRoot)).archives.map((item) => item.run.runId)).toEqual([\"RUN3\"]);"
       }
-    ],
-    "pythonAssertions": {
-      "tests/storage/test_run_log_store.py::test_legacy_and_remove": [
-        {
-          "line": 165,
-          "source": "assert sorted(item[\"run\"][\"runId\"] for item in (await store.load(tmp_path))[\"archives\"]) == [\n        \"RUN1\",\n        \"RUN2\",\n        \"RUN3\",\n    ]"
-        },
-        {
-          "line": 170,
-          "source": "assert '\"runId\": \"RUN1\"' in (directory / \"RUN1/snapshot.json\").read_text()"
-        },
-        {
-          "line": 171,
-          "source": "assert not (directory / \"RUN1.json\").exists()"
-        },
-        {
-          "line": 174,
-          "source": "assert [item[\"run\"][\"runId\"] for item in (await store.load(tmp_path))[\"archives\"]] == [\"RUN3\"]"
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "packages/storage/src/run-log-store.test.ts::ProjectRunLogStore::keeps large Run persistence linear instead of rewriting the full archive",
-    "python": [
-      "tests/storage/test_run_log_store.py::test_linear_bytes"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior.",
     "originalAssertions": [
       {
         "line": 154,
@@ -414,23 +300,7 @@
         "line": 156,
         "source": "expect(elapsedMs).toBeLessThan(10_000);"
       }
-    ],
-    "pythonAssertions": {
-      "tests/storage/test_run_log_store.py::test_linear_bytes": [
-        {
-          "line": 200,
-          "source": "assert time.monotonic() - start < 10"
-        },
-        {
-          "line": 201,
-          "source": "assert len((await store.load(tmp_path))[\"archives\"][0][\"events\"]) == 1000"
-        },
-        {
-          "line": 210,
-          "source": "assert sum(write[\"bytes\"] for write in writes if write[\"kind\"] == \"append\") * 50 < rewrite_bytes"
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "packages/storage/src/storage.test.ts::file storage::atomically writes text and JSON and handles missing files",
@@ -736,10 +606,8 @@
   },
   {
     "typescript": "packages/projects/src/project-service.test.ts::ProjectService folder projects::opens legacy manifests through the migration chain and persists formatVersion 3",
-    "python": [
-      "tests/projects/test_projects.py::test_legacy"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior.",
     "originalAssertions": [
       {
         "line": 72,
@@ -753,31 +621,7 @@
         "line": 79,
         "source": "expect(JSON.parse(await readFile(projectPath(folder), \"utf8\"))).toMatchObject({ formatVersion: 3, projectId: \"LEGACY\" });"
       }
-    ],
-    "pythonAssertions": {
-      "tests/projects/test_projects.py::test_legacy": [
-        {
-          "line": 102,
-          "source": "assert (await service.inspect_folder(folder))[\"state\"] == \"ready\""
-        },
-        {
-          "line": 103,
-          "source": "assert path.read_bytes() == before"
-        },
-        {
-          "line": 105,
-          "source": "assert opened[\"file\"][\"formatVersion\"] == 3"
-        },
-        {
-          "line": 106,
-          "source": "assert opened[\"file\"][\"task\"][\"taskId\"] == \"LEGACY-task\""
-        },
-        {
-          "line": 107,
-          "source": "assert json_parse(path.read_text())[\"formatVersion\"] == 3"
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "packages/projects/src/project-service.test.ts::ProjectService folder projects::rejects future manifest versions without modifying them",
@@ -802,19 +646,19 @@
     "pythonAssertions": {
       "tests/projects/test_projects.py::test_future": [
         {
-          "line": 119,
+          "line": 88,
           "source": "assert (await service.inspect_folder(folder))[\"state\"] == \"invalid\""
         },
         {
-          "line": 122,
+          "line": 91,
           "source": "assert error.value.category == \"invalid_project\""
         },
         {
-          "line": 123,
+          "line": 92,
           "source": "assert path.read_text() == raw"
         },
         {
-          "line": 120,
+          "line": 89,
           "source": "pytest.raises(AppError)"
         }
       ]
@@ -867,27 +711,27 @@
     "pythonAssertions": {
       "tests/projects/test_projects.py::test_recent": [
         {
-          "line": 175,
+          "line": 144,
           "source": "assert [item[\"rootPath\"] for item in settings.get()[\"recentProjects\"]] == [\n        str(first),\n        str(second),\n    ]"
         },
         {
-          "line": 181,
+          "line": 150,
           "source": "assert recent[0][\"status\"] == \"available\""
         },
         {
-          "line": 182,
+          "line": 151,
           "source": "assert recent[0][\"preview\"][\"nodes\"] == nodes"
         },
         {
-          "line": 183,
+          "line": 152,
           "source": "assert recent[0][\"preview\"][\"connections\"] == [\n        {\"connectionId\": \"C\", \"portA\": \"A.J1\", \"portB\": \"B.J1\"}\n    ]"
         },
         {
-          "line": 186,
+          "line": 155,
           "source": "assert recent[1][\"status\"] == \"invalid\""
         },
         {
-          "line": 188,
+          "line": 157,
           "source": "assert [item[\"rootPath\"] for item in await service.list_recent()] == [str(first)]"
         }
       ]
@@ -1948,11 +1792,11 @@
     "pythonAssertions": {
       "tests/application/test_application.py::test_capability_matrix": [
         {
-          "line": 95,
+          "line": 109,
           "source": "assert {cap: authorizer.is_allowed(AGENT, cap) for cap in CAPABILITIES} == {\n        cap: cap in AGENT_ALLOWED for cap in CAPABILITIES\n    }"
         },
         {
-          "line": 98,
+          "line": 112,
           "source": "assert authorizer.allowed_capabilities(HUMAN) == list(CAPABILITIES)"
         }
       ]
@@ -1981,7 +1825,7 @@
     "pythonAssertions": {
       "tests/application/test_application.py::test_agent_allowed": [
         {
-          "line": 112,
+          "line": 126,
           "source": "assert wiring.request_task.call_args.args[0][\"requestedBy\"] == \"agent\""
         }
       ]
@@ -2042,15 +1886,11 @@
     "pythonAssertions": {
       "tests/application/test_application.py::test_agent_denied": [
         {
-          "line": 134,
+          "line": 148,
           "source": "assert getattr(caught.value, \"category\", None) == \"permission_denied\""
         },
         {
-          "line": 135,
-          "source": "pytest.raises(Exception, match=\"not authorized\")"
-        },
-        {
-          "line": 132,
+          "line": 146,
           "source": "pytest.raises(Exception)"
         }
       ]
@@ -2103,19 +1943,19 @@
     "pythonAssertions": {
       "tests/application/test_application.py::test_disjoint_leases": [
         {
-          "line": 191,
+          "line": 200,
           "source": "assert (\n        current[\"state\"] == \"run\"\n        and current[\"runId\"] == \"RUN1\"\n        and current[\"hardwareIds\"] == [\"HW1\"]\n    )"
         },
         {
-          "line": 196,
+          "line": 205,
           "source": "assert [\n        (item[\"state\"], item.get(\"hardwareId\"), item.get(\"hardwareIds\"))\n        for item in current[\"activities\"]\n    ] == [(\"manual\", \"HW2\", None), (\"run\", None, [\"HW1\"])]"
         },
         {
-          "line": 203,
+          "line": 212,
           "source": "assert execution.current() == {\"state\": \"idle\"}"
         },
         {
-          "line": 204,
+          "line": 213,
           "source": "assert states == [\"manual\", \"run\", \"manual\", \"idle\"]"
         }
       ]
@@ -2140,19 +1980,19 @@
     "pythonAssertions": {
       "tests/application/test_application.py::test_atomic_lease": [
         {
-          "line": 229,
+          "line": 238,
           "source": "assert getattr(caught.value, \"category\", None) == \"conflict\""
         },
         {
-          "line": 230,
+          "line": 239,
           "source": "assert getattr(caught.value, \"details\", {})[\"hardwareIds\"] == [\"HW2\"]"
         },
         {
-          "line": 241,
+          "line": 250,
           "source": "assert execution.current() == {\"state\": \"idle\"}"
         },
         {
-          "line": 220,
+          "line": 229,
           "source": "pytest.raises(Exception)"
         }
       ]
@@ -2177,11 +2017,11 @@
     "pythonAssertions": {
       "tests/application/test_application.py::test_stale_release": [
         {
-          "line": 268,
+          "line": 277,
           "source": "assert execution.current()[\"state\"] == \"manual\" and execution.current()[\"hardwareId\"] == \"HW1\""
         },
         {
-          "line": 270,
+          "line": 279,
           "source": "assert execution.current() == {\"state\": \"idle\"}"
         }
       ]
@@ -2214,23 +2054,23 @@
     "pythonAssertions": {
       "tests/application/test_application.py::test_manual_metadata": [
         {
-          "line": 321,
+          "line": 330,
           "source": "assert name == TOOL[\"externalName\"] and args == {\"hardwareId\": \"spoofed\", \"value\": 3.5}"
         },
         {
-          "line": 322,
+          "line": 331,
           "source": "assert options[\"timeoutMs\"] == 30000 and options[\"metadata\"] == {\"hardwareId\": \"HW1\"}"
         },
         {
-          "line": 323,
+          "line": 332,
           "source": "assert hasattr(options[\"signal\"], \"aborted\")"
         },
         {
-          "line": 324,
+          "line": 333,
           "source": "assert (\n        result[\"hardwareId\"] == \"HW1\"\n        and result[\"toolName\"] == TOOL[\"externalName\"]\n        and result[\"output\"] == {\"accepted\": True}\n    )"
         },
         {
-          "line": 329,
+          "line": 338,
           "source": "assert result[\"durationMs\"] >= 0 and result[\"completedAt\"] >= result[\"startedAt\"]"
         }
       ]
@@ -2255,11 +2095,11 @@
     "pythonAssertions": {
       "tests/application/test_application.py::test_manual_invalid[overrides0-invalid_argument]": [
         {
-          "line": 385,
+          "line": 394,
           "source": "assert getattr(caught.value, \"category\", None) == category"
         },
         {
-          "line": 383,
+          "line": 392,
           "source": "pytest.raises(Exception)"
         }
       ]
@@ -2284,11 +2124,11 @@
     "pythonAssertions": {
       "tests/application/test_application.py::test_manual_invalid[overrides1-unavailable]": [
         {
-          "line": 385,
+          "line": 394,
           "source": "assert getattr(caught.value, \"category\", None) == category"
         },
         {
-          "line": 383,
+          "line": 392,
           "source": "pytest.raises(Exception)"
         }
       ]
@@ -2313,11 +2153,11 @@
     "pythonAssertions": {
       "tests/application/test_application.py::test_manual_invalid[overrides2-invalid_argument]": [
         {
-          "line": 385,
+          "line": 394,
           "source": "assert getattr(caught.value, \"category\", None) == category"
         },
         {
-          "line": 383,
+          "line": 392,
           "source": "pytest.raises(Exception)"
         }
       ]
@@ -2342,11 +2182,11 @@
     "pythonAssertions": {
       "tests/application/test_application.py::test_manual_invalid[overrides3-unavailable]": [
         {
-          "line": 385,
+          "line": 394,
           "source": "assert getattr(caught.value, \"category\", None) == category"
         },
         {
-          "line": 383,
+          "line": 392,
           "source": "pytest.raises(Exception)"
         }
       ]
@@ -2371,11 +2211,11 @@
     "pythonAssertions": {
       "tests/application/test_application.py::test_manual_invalid[overrides4-unavailable]": [
         {
-          "line": 385,
+          "line": 394,
           "source": "assert getattr(caught.value, \"category\", None) == category"
         },
         {
-          "line": 383,
+          "line": 392,
           "source": "pytest.raises(Exception)"
         }
       ]
@@ -2400,15 +2240,15 @@
     "pythonAssertions": {
       "tests/application/test_application.py::test_management_tool_offline": [
         {
-          "line": 406,
+          "line": 415,
           "source": "assert call.call_args.args[0] == tool[\"externalName\"] and call.call_args.args[1] == {}"
         },
         {
-          "line": 407,
+          "line": 416,
           "source": "assert call.call_args.args[2][\"timeoutMs\"] == 30000 and call.call_args.args[2][\"metadata\"] == {\n        \"hardwareId\": \"HW1\"\n    }"
         },
         {
-          "line": 410,
+          "line": 419,
           "source": "assert result[\"hardwareId\"] == \"HW1\" and result[\"toolName\"] == tool[\"externalName\"]"
         }
       ]
@@ -2433,11 +2273,11 @@
     "pythonAssertions": {
       "tests/application/test_application.py::test_manual_remote_error": [
         {
-          "line": 422,
+          "line": 431,
           "source": "assert caught.value is error and execution.current() == {\"state\": \"idle\"}"
         },
         {
-          "line": 420,
+          "line": 429,
           "source": "pytest.raises(Exception)"
         }
       ]
@@ -2470,27 +2310,27 @@
     "pythonAssertions": {
       "tests/application/test_application.py::test_manual_shutdown": [
         {
-          "line": 437,
+          "line": 446,
           "source": "assert execution.current()[\"state\"] == \"manual\""
         },
         {
-          "line": 455,
+          "line": 464,
           "source": "assert getattr(caught.value, \"category\", None) == \"conflict\""
         },
         {
-          "line": 460,
+          "line": 469,
           "source": "assert getattr(aborted.value, \"name\", None) == \"AbortError\""
         },
         {
-          "line": 461,
+          "line": 470,
           "source": "assert execution.current() == {\"state\": \"idle\"}"
         },
         {
-          "line": 446,
+          "line": 455,
           "source": "pytest.raises(Exception)"
         },
         {
-          "line": 458,
+          "line": 467,
           "source": "pytest.raises(Exception)"
         }
       ]
@@ -2515,11 +2355,11 @@
     "pythonAssertions": {
       "tests/application/test_application.py::test_run_blocks_manual": [
         {
-          "line": 480,
+          "line": 489,
           "source": "assert getattr(caught.value, \"category\", None) == \"conflict\""
         },
         {
-          "line": 478,
+          "line": 487,
           "source": "pytest.raises(Exception)"
         }
       ]
@@ -2548,15 +2388,15 @@
     "pythonAssertions": {
       "tests/application/test_application.py::test_agent_occupancy_request_only": [
         {
-          "line": 526,
+          "line": 535,
           "source": "assert request[\"hardwareIds\"] == [\"H1\", \"H2\"]"
         },
         {
-          "line": 530,
+          "line": 539,
           "source": "assert getattr(caught.value, \"category\", None) == \"permission_denied\""
         },
         {
-          "line": 528,
+          "line": 537,
           "source": "pytest.raises(Exception)"
         }
       ]
@@ -2593,19 +2433,19 @@
     "pythonAssertions": {
       "tests/application/test_application.py::test_batch_rollback": [
         {
-          "line": 542,
+          "line": 551,
           "source": "assert getattr(caught.value, \"category\", None) == \"conflict\""
         },
         {
-          "line": 543,
+          "line": 552,
           "source": "assert acquired == [\"H2\"] and released == [\"H2\"] and \"H1\" in held"
         },
         {
-          "line": 545,
+          "line": 554,
           "source": "assert current[\"status\"] == \"pending\" and \"remote conflict\" in current[\"message\"]"
         },
         {
-          "line": 540,
+          "line": 549,
           "source": "pytest.raises(Exception)"
         }
       ]
@@ -2630,15 +2470,15 @@
     "pythonAssertions": {
       "tests/application/test_application.py::test_batch_confirmation_busy": [
         {
-          "line": 555,
+          "line": 564,
           "source": "assert (await application.acquire_request(HUMAN, request[\"occupancyRequestId\"]))[\n        \"status\"\n    ] == \"confirmed\""
         },
         {
-          "line": 560,
+          "line": 569,
           "source": "assert getattr(caught.value, \"category\", None) == \"conflict\""
         },
         {
-          "line": 558,
+          "line": 567,
           "source": "pytest.raises(Exception)"
         }
       ]
@@ -2684,23 +2524,23 @@
     "pythonAssertions": {
       "tests/application/test_project_services.py::test_documentary_canvas": [
         {
-          "line": 71,
+          "line": 70,
           "source": "assert task[\"status\"] == \"pending\" and len(task[\"warnings\"]) > 0"
         },
         {
-          "line": 72,
+          "line": 71,
           "source": "assert (await wiring.start_task(task[\"wiringTaskId\"], \"tester\"))[\"status\"] == \"in_progress\""
         },
         {
-          "line": 73,
+          "line": 72,
           "source": "assert (await wiring.complete_task(task[\"wiringTaskId\"], \"confirmed\"))[\"status\"] == \"confirmed\""
         },
         {
-          "line": 74,
+          "line": 73,
           "source": "assert (\n        len(projects.wiring()[\"connections\"]) == 1\n        and projects.wiring()[\"connections\"][0][\"pins\"] == pins\n    )"
         },
         {
-          "line": 78,
+          "line": 77,
           "source": "assert projects.document()[\"dirty\"] is True"
         }
       ],
@@ -2752,7 +2592,7 @@
     "pythonAssertions": {
       "tests/application/test_project_services.py::test_pinless": [
         {
-          "line": 93,
+          "line": 92,
           "source": "assert (\n        len(projects.wiring()[\"connections\"]) == 1\n        and projects.wiring()[\"connections\"][0][\"pins\"] == []\n    )"
         }
       ],
@@ -2792,11 +2632,11 @@
     "pythonAssertions": {
       "tests/application/test_project_services.py::test_swapped_ports": [
         {
-          "line": 114,
+          "line": 113,
           "source": "assert first[\"portA\"] == \"DUT_A.J1\" and first[\"pins\"] == [{\"a\": \"2\", \"b\": \"1\"}]"
         },
         {
-          "line": 115,
+          "line": 114,
           "source": "pytest.raises(Exception, match=\"already exists\")"
         }
       ],
@@ -2832,7 +2672,7 @@
     "pythonAssertions": {
       "tests/application/test_project_services.py::test_invalid_pin": [
         {
-          "line": 126,
+          "line": 125,
           "source": "pytest.raises(Exception, match=\"has no pin 9\")"
         }
       ],
@@ -2846,11 +2686,8 @@
   },
   {
     "typescript": "packages/application/src/project-services.test.ts::project-oriented services::round-trips one folder project with wiring and one task",
-    "python": [
-      "tests/application/test_project_services.py::test_project_roundtrip",
-      "tests/projects/test_projects.py::test_roundtrip_task_and_wiring"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior.",
     "originalAssertions": [
       {
         "line": 104,
@@ -2868,48 +2705,12 @@
         "line": 111,
         "source": "expect(projects.task().taskId).toBe(\"TASK_A\");"
       }
-    ],
-    "pythonAssertions": {
-      "tests/application/test_project_services.py::test_project_roundtrip": [
-        {
-          "line": 165,
-          "source": "assert projects.document()[\"dirty\"] is False"
-        },
-        {
-          "line": 169,
-          "source": "assert projects.wiring()[\"nodes\"] == []"
-        },
-        {
-          "line": 171,
-          "source": "assert (\n        projects.wiring()[\"nodes\"][0][\"hardwareId\"] == \"DUT_A\"\n        and projects.task()[\"taskId\"] == \"TASK_A\"\n    )"
-        }
-      ],
-      "tests/projects/test_projects.py::test_roundtrip_task_and_wiring": [
-        {
-          "line": 216,
-          "source": "assert service.document()[\"dirty\"] is False"
-        },
-        {
-          "line": 218,
-          "source": "assert service.wiring()[\"nodes\"] == []"
-        },
-        {
-          "line": 220,
-          "source": "assert service.wiring()[\"nodes\"][0][\"hardwareId\"] == \"DUT_A\""
-        },
-        {
-          "line": 221,
-          "source": "assert service.task()[\"taskId\"] == \"TASK_A\""
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "packages/application/src/project-services.test.ts::project-oriented services::rejects prototype paths and parallel shared writes",
-    "python": [
-      "tests/application/test_project_services.py::test_prototype_and_parallel_writes"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior.",
     "originalAssertions": [
       {
         "line": 116,
@@ -2935,38 +2736,12 @@
         "line": 130,
         "source": "expect(validateTestTask(task).issues.some((item) => item.code === \"parallel_shared_write\")).toBe(true);"
       }
-    ],
-    "pythonAssertions": {
-      "tests/application/test_project_services.py::test_prototype_and_parallel_writes": [
-        {
-          "line": 191,
-          "source": "assert context[\"declared\"] == 1 and \"polluted\" not in {}"
-        },
-        {
-          "line": 226,
-          "source": "assert any(\n        issue[\"code\"] == \"parallel_shared_write\" for issue in validate_test_task(task)[\"issues\"]\n    )"
-        },
-        {
-          "line": 183,
-          "source": "pytest.raises(Exception, match=\"Unsafe\")"
-        },
-        {
-          "line": 186,
-          "source": "pytest.raises(Exception, match=\"top-level\")"
-        },
-        {
-          "line": 188,
-          "source": "pytest.raises(Exception, match=\"Unknown\")"
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "packages/application/src/project-services.test.ts::project-oriented services::keeps inputs read-only and validates statically known assignment types",
-    "python": [
-      "tests/application/test_project_services.py::test_readonly_inputs_types"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior.",
     "originalAssertions": [
       {
         "line": 142,
@@ -2976,26 +2751,12 @@
         "line": 143,
         "source": "expect(issues.some((item) => item.nodeId === \"BAD_TYPE\" && item.code === \"variable_type\")).toBe(true);"
       }
-    ],
-    "pythonAssertions": {
-      "tests/application/test_project_services.py::test_readonly_inputs_types": [
-        {
-          "line": 264,
-          "source": "assert any(\n        issue.get(\"nodeId\") == \"INPUT_WRITE\" and issue[\"code\"] == \"undeclared_variable\"\n        for issue in issues\n    )"
-        },
-        {
-          "line": 268,
-          "source": "assert any(\n        issue.get(\"nodeId\") == \"BAD_TYPE\" and issue[\"code\"] == \"variable_type\" for issue in issues\n    )"
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "packages/orchestration/src/run-machine.test.ts::orchestration state machines::keeps interruption terminal even when execution completion races afterward",
-    "python": [
-      "tests/orchestration/test_workflow.py::test_interruption_terminal"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior.",
     "originalAssertions": [
       {
         "line": 11,
@@ -3005,59 +2766,23 @@
         "line": 12,
         "source": "expect(actor.getSnapshot().context.message).toBe(\"Application shutdown\");"
       }
-    ],
-    "pythonAssertions": {
-      "tests/orchestration/test_workflow.py::test_interruption_terminal": [
-        {
-          "line": 94,
-          "source": "assert actor.value == \"interrupted\""
-        },
-        {
-          "line": 95,
-          "source": "assert actor.context[\"message\"] == \"Application shutdown\""
-        },
-        {
-          "line": 97,
-          "source": "assert actor.value == \"interrupted\""
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "packages/orchestration/src/run-machine.test.ts::orchestration state machines::restores a persisted active checkpoint",
-    "python": [
-      "tests/orchestration/test_workflow.py::test_restore_machine"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior.",
     "originalAssertions": [
       {
         "line": 21,
         "source": "expect(restored.getSnapshot()).toMatchObject({ value: \"running\", context: { phase: \"cleanup\", workflowContext: { value: 2 } } });"
       }
-    ],
-    "pythonAssertions": {
-      "tests/orchestration/test_workflow.py::test_restore_machine": [
-        {
-          "line": 107,
-          "source": "assert restored.value == \"running\""
-        },
-        {
-          "line": 108,
-          "source": "assert restored.context[\"phase\"] == \"cleanup\""
-        },
-        {
-          "line": 109,
-          "source": "assert restored.context[\"workflowContext\"] == {\"value\": 2}"
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "packages/orchestration/src/run-machine.test.ts::orchestration state machines::models pending, waiting, skipped and terminal node states",
-    "python": [
-      "tests/orchestration/test_workflow.py::test_node_states"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior.",
     "originalAssertions": [
       {
         "line": 27,
@@ -3075,34 +2800,12 @@
         "line": 37,
         "source": "expect(operator.getSnapshot().value).toBe(\"passed\");"
       }
-    ],
-    "pythonAssertions": {
-      "tests/orchestration/test_workflow.py::test_node_states": [
-        {
-          "line": 118,
-          "source": "assert skipped.value == \"pending\""
-        },
-        {
-          "line": 120,
-          "source": "assert skipped.value == \"skipped\""
-        },
-        {
-          "line": 124,
-          "source": "assert operator.value == \"waiting_operator\""
-        },
-        {
-          "line": 126,
-          "source": "assert operator.value == \"passed\""
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "packages/orchestration/src/task-orchestration-service.test.ts::TaskOrchestrationService Run logs::persists completed Runs with task-name snapshots and UTF-8 bounded values, then reloads them",
-    "python": [
-      "tests/orchestration/test_service.py::test_persistence_bounds_reload"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior.",
     "originalAssertions": [
       {
         "line": 153,
@@ -3132,54 +2835,12 @@
         "line": 166,
         "source": "expect(second.service.exportRun(started.run.runId)).toEqual(saved);"
       }
-    ],
-    "pythonAssertions": {
-      "tests/orchestration/test_service.py::test_persistence_bounds_reload": [
-        {
-          "line": 261,
-          "source": "assert saved[\"run\"][\"taskName\"] == \"Voltage test\""
-        },
-        {
-          "line": 266,
-          "source": "assert saved[\"run\"][\"inputs\"][\"bytes\"] > 100000"
-        },
-        {
-          "line": 269,
-          "source": "assert second.list_runs()[\"items\"][0][\"taskName\"] == \"Voltage test\""
-        },
-        {
-          "line": 270,
-          "source": "assert second.list_runs()[\"items\"][0][\"runId\"] == run_id"
-        },
-        {
-          "line": 271,
-          "source": "assert second.list_runs()[\"items\"][0][\"status\"] == \"passed\""
-        },
-        {
-          "line": 272,
-          "source": "assert second.export_run(run_id) == saved"
-        },
-        {
-          "line": 263,
-          "source": "assert bounded[\"truncated\"] is True"
-        },
-        {
-          "line": 264,
-          "source": "assert isinstance(bounded[\"bytes\"], int)"
-        },
-        {
-          "line": 265,
-          "source": "assert isinstance(bounded[\"preview\"], str)"
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "packages/orchestration/src/task-orchestration-service.test.ts::TaskOrchestrationService Run logs::marks a persisted active Run interrupted and appends a recovery event",
-    "python": [
-      "tests/orchestration/test_service.py::test_recovery_without_snapshot"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior.",
     "originalAssertions": [
       {
         "line": 176,
@@ -3197,38 +2858,12 @@
         "line": 179,
         "source": "expect(logs.archives.get(\"RUN9\")?.run.status).toBe(\"interrupted\");"
       }
-    ],
-    "pythonAssertions": {
-      "tests/orchestration/test_service.py::test_recovery_without_snapshot": [
-        {
-          "line": 286,
-          "source": "assert detail[\"run\"][\"status\"] == \"interrupted\""
-        },
-        {
-          "line": 287,
-          "source": "assert \"completedAt\" in detail[\"run\"]"
-        },
-        {
-          "line": 288,
-          "source": "assert detail[\"events\"][-1][\"type\"] == \"run.interrupted\""
-        },
-        {
-          "line": 289,
-          "source": "assert detail[\"events\"][-1][\"data\"][\"reason\"] == \"application_restart\""
-        },
-        {
-          "line": 290,
-          "source": "assert logs.archives[\"RUN9\"][\"run\"][\"status\"] == \"interrupted\""
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "packages/orchestration/src/task-orchestration-service.test.ts::TaskOrchestrationService Run logs::filters, pages, exports, deletes and clears project-isolated history",
-    "python": [
-      "tests/orchestration/test_service.py::test_history_query"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior.",
     "originalAssertions": [
       {
         "line": 193,
@@ -3286,78 +2921,12 @@
         "line": 208,
         "source": "expect(service.listRuns().total).toBe(0);"
       }
-    ],
-    "pythonAssertions": {
-      "tests/orchestration/test_service.py::test_history_query": [
-        {
-          "line": 311,
-          "source": "assert service.list_runs({\"search\": \"alpha\"})[\"total\"] == 2"
-        },
-        {
-          "line": 312,
-          "source": "assert [r[\"runId\"] for r in service.list_runs({\"statuses\": [\"failed\"]})[\"items\"]] == [\"RUN2\"]"
-        },
-        {
-          "line": 313,
-          "source": "assert (\n        service.list_runs({\"from\": \"2026-08-12T00:00:00.000Z\", \"to\": \"2026-08-13T23:59:59.999Z\"})[\n            \"total\"\n        ]\n        == 2\n    )"
-        },
-        {
-          "line": 319,
-          "source": "assert service.list_runs({\"offset\": 1, \"limit\": 1})[\"items\"][0][\"runId\"] == \"RUN2\""
-        },
-        {
-          "line": 320,
-          "source": "assert [r[\"runId\"] for r in service.list_runs({\"taskName\": \"Alpha\"})[\"items\"]] == [\"RUN1\"]"
-        },
-        {
-          "line": 321,
-          "source": "assert service.list_runs()[\"taskNames\"] == [\"Alpha\", \"Alpha retry\", \"Beta\"]"
-        },
-        {
-          "line": 322,
-          "source": "assert [\n        r[\"taskName\"] for r in service.list_runs({\"sortBy\": \"taskName\", \"sortDir\": \"asc\"})[\"items\"]\n    ] == [\"Alpha\", \"Alpha retry\", \"Beta\"]"
-        },
-        {
-          "line": 325,
-          "source": "assert [\n        r[\"status\"] for r in service.list_runs({\"sortBy\": \"status\", \"sortDir\": \"asc\"})[\"items\"]\n    ] == [\"blocked\", \"failed\", \"passed\"]"
-        },
-        {
-          "line": 328,
-          "source": "assert \"broken.json: invalid JSON\" in service.list_runs()[\"warnings\"]"
-        },
-        {
-          "line": 329,
-          "source": "assert any(\"projectId\" in warning for warning in service.list_runs()[\"warnings\"])"
-        },
-        {
-          "line": 330,
-          "source": "assert service.export_run(\"RUN1\")[\"run\"][\"taskName\"] == \"Alpha\""
-        },
-        {
-          "line": 332,
-          "source": "assert logs.removed == [(\"C:\\\\project\", \"RUN1\")]"
-        },
-        {
-          "line": 335,
-          "source": "assert await service.clear_completed_runs() == {\"deleted\": 2}"
-        },
-        {
-          "line": 336,
-          "source": "assert service.list_runs()[\"total\"] == 0"
-        },
-        {
-          "line": 333,
-          "source": "pytest.raises(Exception, match=\"Unknown runId\")"
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "packages/orchestration/src/task-orchestration-service.test.ts::TaskOrchestrationService Run logs::waits for pending persistence before deleting so a background save cannot recreate the file",
-    "python": [
-      "tests/orchestration/test_service.py::test_delete_flushes"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior.",
     "originalAssertions": [
       {
         "line": 226,
@@ -3375,30 +2944,12 @@
         "line": 233,
         "source": "expect(logs.archives.has(blocked.run.runId)).toBe(false);"
       }
-    ],
-    "pythonAssertions": {
-      "tests/orchestration/test_service.py::test_delete_flushes": [
-        {
-          "line": 360,
-          "source": "assert logs.removed == []"
-        },
-        {
-          "line": 363,
-          "source": "assert len(logs.removed) == 1"
-        },
-        {
-          "line": 364,
-          "source": "assert started[\"run\"][\"runId\"] not in logs.archives"
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "packages/orchestration/src/task-orchestration-service.test.ts::TaskOrchestrationService Run logs::uses event ids that are monotonic within each Run instead of globally",
-    "python": [
-      "tests/orchestration/test_service.py::test_per_run_event_ids"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior.",
     "originalAssertions": [
       {
         "line": 245,
@@ -3416,26 +2967,12 @@
         "line": 248,
         "source": "expect(logs.archives.get(second.run.runId)?.events.map((event) => event.eventId)).toEqual([1]);"
       }
-    ],
-    "pythonAssertions": {
-      "tests/orchestration/test_service.py::test_per_run_event_ids": [
-        {
-          "line": 379,
-          "source": "assert [event[\"eventId\"] for event in detail[\"events\"]] == [1]"
-        },
-        {
-          "line": 380,
-          "source": "assert [event[\"eventId\"] for event in logs.archives[detail[\"run\"][\"runId\"]][\"events\"]] == [\n            1\n        ]"
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "packages/orchestration/src/task-orchestration-service.test.ts::TaskOrchestrationService Run logs::requeues a failed incremental write with backoff instead of silently losing it",
-    "python": [
-      "tests/orchestration/test_service.py::test_retry_persistence"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior.",
     "originalAssertions": [
       {
         "line": 266,
@@ -3449,30 +2986,12 @@
         "line": 268,
         "source": "expect(service.listRuns().warnings).toEqual(expect.arrayContaining([expect.stringContaining(\"retrying\") ]));"
       }
-    ],
-    "pythonAssertions": {
-      "tests/orchestration/test_service.py::test_retry_persistence": [
-        {
-          "line": 406,
-          "source": "assert calls == 2"
-        },
-        {
-          "line": 407,
-          "source": "assert logs.archives[detail[\"run\"][\"runId\"]] == service.export_run(detail[\"run\"][\"runId\"])"
-        },
-        {
-          "line": 408,
-          "source": "assert any(\"retrying\" in warning for warning in service.list_runs()[\"warnings\"])"
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "packages/orchestration/src/task-orchestration-service.test.ts::TaskOrchestrationService execution activity::blocks Run preflight when referenced hardware is not occupied",
-    "python": [
-      "tests/orchestration/test_service.py::test_preflight_occupancy"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior.",
     "originalAssertions": [
       {
         "line": 277,
@@ -3482,26 +3001,12 @@
         "line": 278,
         "source": "expect(JSON.stringify(blocked.events)).toContain(\"hardware_not_occupied\");"
       }
-    ],
-    "pythonAssertions": {
-      "tests/orchestration/test_service.py::test_preflight_occupancy": [
-        {
-          "line": 419,
-          "source": "assert detail[\"run\"][\"status\"] == \"blocked\""
-        },
-        {
-          "line": 420,
-          "source": "assert \"hardware_not_occupied\" in str(detail[\"events\"])"
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "packages/orchestration/src/task-orchestration-service.test.ts::TaskOrchestrationService execution activity::records a blocked preflight without attempting a hardware lease",
-    "python": [
-      "tests/orchestration/test_service.py::test_blocked_without_lease"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior.",
     "originalAssertions": [
       {
         "line": 288,
@@ -3515,30 +3020,12 @@
         "line": 290,
         "source": "expect(logs.archives.size).toBe(1);"
       }
-    ],
-    "pythonAssertions": {
-      "tests/orchestration/test_service.py::test_blocked_without_lease": [
-        {
-          "line": 440,
-          "source": "assert detail[\"run\"][\"status\"] == \"blocked\""
-        },
-        {
-          "line": 441,
-          "source": "assert execution.current()[\"state\"] == \"manual\""
-        },
-        {
-          "line": 442,
-          "source": "assert len(logs.archives) == 1"
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "packages/orchestration/src/task-orchestration-service.test.ts::TaskOrchestrationService execution activity::rejects a valid Run when a manual call holds required hardware",
-    "python": [
-      "tests/orchestration/test_service.py::test_manual_blocks_valid_run"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior.",
     "originalAssertions": [
       {
         "line": 300,
@@ -3548,30 +3035,12 @@
         "line": 301,
         "source": "expect(logs.archives.size).toBe(0);"
       }
-    ],
-    "pythonAssertions": {
-      "tests/orchestration/test_service.py::test_manual_blocks_valid_run": [
-        {
-          "line": 464,
-          "source": "assert getattr(caught.value, \"category\", None) == \"conflict\""
-        },
-        {
-          "line": 465,
-          "source": "assert not logs.archives"
-        },
-        {
-          "line": 462,
-          "source": "pytest.raises(Exception)"
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "packages/orchestration/src/task-orchestration-service.test.ts::TaskOrchestrationService execution activity::holds the Run lease until cancellation completes and releases it afterward",
-    "python": [
-      "tests/orchestration/test_service.py::test_cancel_releases_lease"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior.",
     "originalAssertions": [
       {
         "line": 313,
@@ -3593,38 +3062,12 @@
         "line": 318,
         "source": "expect(execution.releases).toBe(1);"
       }
-    ],
-    "pythonAssertions": {
-      "tests/orchestration/test_service.py::test_cancel_releases_lease": [
-        {
-          "line": 478,
-          "source": "assert execution.current()[\"state\"] == \"run\""
-        },
-        {
-          "line": 481,
-          "source": "assert getattr(caught.value, \"category\", None) == \"conflict\""
-        },
-        {
-          "line": 486,
-          "source": "assert execution.current()[\"state\"] == \"idle\""
-        },
-        {
-          "line": 487,
-          "source": "assert getattr(execution, \"releases\", None) == 1"
-        },
-        {
-          "line": 479,
-          "source": "pytest.raises(Exception)"
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "packages/orchestration/src/task-orchestration-service.test.ts::TaskOrchestrationService execution activity::marks an active Run interrupted and releases its lease during close",
-    "python": [
-      "tests/orchestration/test_service.py::test_close_interrupts"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior.",
     "originalAssertions": [
       {
         "line": 330,
@@ -3638,30 +3081,12 @@
         "line": 332,
         "source": "expect(execution.releases).toBe(1);"
       }
-    ],
-    "pythonAssertions": {
-      "tests/orchestration/test_service.py::test_close_interrupts": [
-        {
-          "line": 500,
-          "source": "assert service.get_run(detail[\"run\"][\"runId\"])[\"run\"][\"status\"] == \"interrupted\""
-        },
-        {
-          "line": 501,
-          "source": "assert execution.current()[\"state\"] == \"idle\""
-        },
-        {
-          "line": 502,
-          "source": "assert getattr(execution, \"releases\", None) == 1"
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "packages/orchestration/src/task-orchestration-service.test.ts::TaskOrchestrationService execution activity::rejects a queued start while close waits for start operations",
-    "python": [
-      "tests/orchestration/test_service.py::test_queued_start_during_close"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior.",
     "originalAssertions": [
       {
         "line": 346,
@@ -3679,38 +3104,12 @@
         "line": 350,
         "source": "expect(execution.activity).toBe(\"idle\");"
       }
-    ],
-    "pythonAssertions": {
-      "tests/orchestration/test_service.py::test_queued_start_during_close": [
-        {
-          "line": 517,
-          "source": "assert getattr(caught.value, \"category\", None) == \"conflict\""
-        },
-        {
-          "line": 519,
-          "source": "assert service.get_run(detail[\"run\"][\"runId\"])[\"run\"][\"status\"] == \"interrupted\""
-        },
-        {
-          "line": 520,
-          "source": "assert len(service.list_runs()[\"items\"]) == 1"
-        },
-        {
-          "line": 521,
-          "source": "assert execution.current()[\"state\"] == \"idle\""
-        },
-        {
-          "line": 515,
-          "source": "pytest.raises(Exception)"
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "packages/orchestration/src/task-orchestration-service.test.ts::TaskOrchestrationService physical safety::times out an operator step in cleanup instead of waiting forever",
-    "python": [
-      "tests/orchestration/test_service.py::test_cleanup_operator_timeout"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior.",
     "originalAssertions": [
       {
         "line": 364,
@@ -3724,26 +3123,12 @@
         "line": 366,
         "source": "expect(service.listOperatorDecisions()).toEqual([]);"
       }
-    ],
-    "pythonAssertions": {
-      "tests/orchestration/test_service.py::test_cleanup_operator_timeout": [
-        {
-          "line": 548,
-          "source": "assert (node[\"nodeId\"], node[\"status\"], node[\"error\"][\"category\"]) == (\n        \"CLEANUP-OP\",\n        \"failed\",\n        \"unavailable\",\n    )"
-        },
-        {
-          "line": 553,
-          "source": "assert service.list_operator_decisions() == []"
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "packages/orchestration/src/task-orchestration-service.test.ts::TaskOrchestrationService physical safety::returns from close within the cleanup budget even when a remote call ignores abort",
-    "python": [
-      "tests/orchestration/test_service.py::test_cleanup_budget"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior.",
     "originalAssertions": [
       {
         "line": 377,
@@ -3765,30 +3150,12 @@
         "line": 384,
         "source": "expect(execution.activity).toBe(\"idle\");"
       }
-    ],
-    "pythonAssertions": {
-      "tests/orchestration/test_service.py::test_cleanup_budget": [
-        {
-          "line": 572,
-          "source": "assert call.call_count == 2"
-        },
-        {
-          "line": 573,
-          "source": "assert service.get_run(detail[\"run\"][\"runId\"])[\"run\"][\"status\"] == \"interrupted\""
-        },
-        {
-          "line": 574,
-          "source": "assert execution.current()[\"state\"] == \"idle\""
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "packages/orchestration/src/task-orchestration-service.test.ts::TaskOrchestrationService physical safety::never retries a non-idempotent tool step",
-    "python": [
-      "tests/orchestration/test_service.py::test_non_idempotent_no_retry"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior.",
     "originalAssertions": [
       {
         "line": 396,
@@ -3802,26 +3169,12 @@
         "line": 398,
         "source": "expect(service.getRun(started.run.runId).nodeRuns[0]?.attemptErrors).toHaveLength(1);"
       }
-    ],
-    "pythonAssertions": {
-      "tests/orchestration/test_service.py::test_non_idempotent_no_retry": [
-        {
-          "line": 589,
-          "source": "assert call.call_count == 1"
-        },
-        {
-          "line": 590,
-          "source": "assert len(service.get_run(detail[\"run\"][\"runId\"])[\"nodeRuns\"][0][\"attemptErrors\"]) == 1"
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "packages/orchestration/src/task-orchestration-service.test.ts::TaskOrchestrationService physical safety::retries only selected categories and sends stable idempotency metadata",
-    "python": [
-      "tests/orchestration/test_service.py::test_idempotent_retry"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior.",
     "originalAssertions": [
       {
         "line": 414,
@@ -3847,50 +3200,12 @@
         "line": 421,
         "source": "expect(service.getRun(started.run.runId).nodeRuns[0]?.attemptErrors).toEqual([expect.objectContaining({ attempt: 1, category: \"unavailable\", message: \"warming up\" })]);"
       }
-    ],
-    "pythonAssertions": {
-      "tests/orchestration/test_service.py::test_idempotent_retry": [
-        {
-          "line": 614,
-          "source": "assert call.call_count == 2"
-        },
-        {
-          "line": 616,
-          "source": "assert first[1] == {\"value\": 3.3}"
-        },
-        {
-          "line": 617,
-          "source": "assert first[2][\"metadata\"][\"hardwareId\"] == \"HW1\""
-        },
-        {
-          "line": 618,
-          "source": "assert first[2][\"metadata\"][\"attempt\"] == 1"
-        },
-        {
-          "line": 619,
-          "source": "assert isinstance(first[2][\"metadata\"][\"idempotencyKey\"], str)"
-        },
-        {
-          "line": 620,
-          "source": "assert second[2][\"metadata\"] == {**first[2][\"metadata\"], \"attempt\": 2}"
-        },
-        {
-          "line": 622,
-          "source": "assert len(errors) == 1"
-        },
-        {
-          "line": 623,
-          "source": "assert {key: errors[0][key] for key in [\"attempt\", \"category\", \"message\"]} == {\n        \"attempt\": 1,\n        \"category\": \"unavailable\",\n        \"message\": \"warming up\",\n    }"
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "packages/orchestration/src/task-orchestration-service.test.ts::TaskOrchestrationService physical safety::serializes parallel branches that target the same hardware",
-    "python": [
-      "tests/orchestration/test_service.py::test_parallel_serializes_hardware"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior.",
     "originalAssertions": [
       {
         "line": 450,
@@ -3904,26 +3219,12 @@
         "line": 452,
         "source": "expect(maxActiveCalls).toBe(1);"
       }
-    ],
-    "pythonAssertions": {
-      "tests/orchestration/test_service.py::test_parallel_serializes_hardware": [
-        {
-          "line": 669,
-          "source": "assert call.call_count == 2"
-        },
-        {
-          "line": 670,
-          "source": "assert maximum == 1"
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "packages/orchestration/src/task-orchestration-service.test.ts::TaskOrchestrationService crash recovery::runs compensating cleanup after a crash leaves a non-idempotent tool uncertain",
-    "python": [
-      "tests/orchestration/test_service.py::test_non_idempotent_recovery"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior.",
     "originalAssertions": [
       {
         "line": 475,
@@ -3953,38 +3254,12 @@
         "line": 490,
         "source": "expect(detail.events.map((event) => event.type)).toEqual(expect.arrayContaining([\"run.recovery_cleanup_started\", \"run.interrupted\"]));"
       }
-    ],
-    "pythonAssertions": {
-      "tests/orchestration/test_service.py::test_non_idempotent_recovery": [
-        {
-          "line": 699,
-          "source": "assert [entry.args[1][\"value\"] for entry in call.call_args_list] == [1]"
-        },
-        {
-          "line": 700,
-          "source": "assert [entry.args[1][\"value\"] for entry in recovered.call_args_list] == [0]"
-        },
-        {
-          "line": 702,
-          "source": "assert any(node[\"nodeId\"] == \"STEP1\" and node[\"status\"] == \"cancelled\" for node in nodes)"
-        },
-        {
-          "line": 703,
-          "source": "assert any(node[\"nodeId\"] == \"CLEAN\" and node[\"status\"] == \"passed\" for node in nodes)"
-        },
-        {
-          "line": 705,
-          "source": "assert \"run.recovery_cleanup_started\" in events and \"run.interrupted\" in events"
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "packages/orchestration/src/task-orchestration-service.test.ts::TaskOrchestrationService crash recovery::resumes an idempotent orphan from the last confirmed node with a stable key",
-    "python": [
-      "tests/orchestration/test_service.py::test_idempotent_recovery"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior.",
     "originalAssertions": [
       {
         "line": 514,
@@ -4010,34 +3285,12 @@
         "line": 532,
         "source": "expect(detail.events.map((event) => event.type)).toContain(\"run.recovery_resumed\");"
       }
-    ],
-    "pythonAssertions": {
-      "tests/orchestration/test_service.py::test_idempotent_recovery": [
-        {
-          "line": 748,
-          "source": "assert [entry.args[1][\"value\"] for entry in call.call_args_list] == [1, 2]"
-        },
-        {
-          "line": 749,
-          "source": "assert [entry.args[1][\"value\"] for entry in recovered.call_args_list] == [2]"
-        },
-        {
-          "line": 750,
-          "source": "assert (\n        recovered.call_args.args[2][\"metadata\"][\"idempotencyKey\"]\n        == call.call_args.args[2][\"metadata\"][\"idempotencyKey\"]\n    )"
-        },
-        {
-          "line": 754,
-          "source": "assert \"run.recovery_resumed\" in [event[\"type\"] for event in second.get_run(run_id)[\"events\"]]"
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "packages/orchestration/src/task-orchestration-service.test.ts::TaskOrchestrationService crash recovery::records disabled steps as skipped nodes",
-    "python": [
-      "tests/orchestration/test_service.py::test_disabled_skipped"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior.",
     "originalAssertions": [
       {
         "line": 542,
@@ -4047,22 +3300,12 @@
         "line": 543,
         "source": "expect(service.getRun(started.run.runId).nodeRuns).toEqual(expect.arrayContaining([\n      expect.objectContaining({ nodeId: \"DISABLED\", status: \"skipped\" })\n    ]));"
       }
-    ],
-    "pythonAssertions": {
-      "tests/orchestration/test_service.py::test_disabled_skipped": [
-        {
-          "line": 779,
-          "source": "assert any(\n        node[\"nodeId\"] == \"DISABLED\" and node[\"status\"] == \"skipped\"\n        for node in service.get_run(detail[\"run\"][\"runId\"])[\"nodeRuns\"]\n    )"
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "packages/orchestration/src/workflow.test.ts::workflow model::evaluates safe structured expressions and value templates",
-    "python": [
-      "tests/orchestration/test_workflow.py::test_expressions_and_templates"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior.",
     "originalAssertions": [
       {
         "line": 8,
@@ -4072,26 +3315,12 @@
         "line": 14,
         "source": "expect(resolveWorkflowValue({ kind: \"object\", entries: { measured: { kind: \"variable\", path: \"voltage\" } } }, context)).toEqual({ measured: 28.4 });"
       }
-    ],
-    "pythonAssertions": {
-      "tests/orchestration/test_workflow.py::test_expressions_and_templates": [
-        {
-          "line": 23,
-          "source": "assert (\n        evaluate_workflow_expression(\n            {\n                \"kind\": \"logical\",\n                \"operator\": \"and\",\n                \"operands\": [\n                    {\n                        \"kind\": \"binary\",\n                        \"operator\": \"gt\",\n                        \"left\": {\"kind\": \"variable\", \"path\": \"voltage\"},\n                        \"right\": {\"kind\": \"variable\", \"path\": \"limits.low\"},\n                    },\n                    {\n                        \"kind\": \"unary\",\n                        \"operator\": \"not\",\n                        \"operand\": {\"kind\": \"literal\", \"value\": False},\n                    },\n                ],\n            },\n            context,\n        )\n        is True\n    )"
-        },
-        {
-          "line": 46,
-          "source": "assert resolve_workflow_value(\n        {\"kind\": \"object\", \"entries\": {\"measured\": {\"kind\": \"variable\", \"path\": \"voltage\"}}},\n        context,\n    ) == {\"measured\": 28.4}"
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "packages/orchestration/src/workflow.test.ts::workflow model::uses null-prototype contexts and rejects unsafe or undeclared paths",
-    "python": [
-      "tests/orchestration/test_workflow.py::test_safe_context"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior.",
     "originalAssertions": [
       {
         "line": 20,
@@ -4109,27 +3338,7 @@
         "line": 23,
         "source": "expect(validateTestTask(task).issues.some((item) => item.code === \"undeclared_variable\")).toBe(true);"
       }
-    ],
-    "pythonAssertions": {
-      "tests/orchestration/test_workflow.py::test_safe_context": [
-        {
-          "line": 77,
-          "source": "assert type(context) is dict"
-        },
-        {
-          "line": 78,
-          "source": "assert get_workflow_path(context, \"input.value\") == 1"
-        },
-        {
-          "line": 81,
-          "source": "assert any(\n        issue[\"code\"] == \"undeclared_variable\" for issue in validate_test_task(task)[\"issues\"]\n    )"
-        },
-        {
-          "line": 79,
-          "source": "pytest.raises(Exception, match=\"Unsafe\")"
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "packages/mcp-gateway/src/gateway.test.ts::LocalMcpGateway transport::binds loopback and requires its bearer token",
@@ -4150,15 +3359,15 @@
     "pythonAssertions": {
       "tests/mcp_gateway/test_gateway.py::test_token": [
         {
-          "line": 107,
+          "line": 114,
           "source": "assert gateway.status()[\"running\"] is True"
         },
         {
-          "line": 108,
+          "line": 115,
           "source": "assert gateway.status()[\"endpoint\"].startswith(\"http://127.0.0.1:\")"
         },
         {
-          "line": 109,
+          "line": 116,
           "source": "assert (await request(gateway)).status_code == 401"
         }
       ]
@@ -4183,7 +3392,7 @@
     "pythonAssertions": {
       "tests/mcp_gateway/test_gateway.py::test_origin": [
         {
-          "line": 116,
+          "line": 123,
           "source": "assert response.status_code == 403"
         }
       ]
@@ -4212,11 +3421,11 @@
     "pythonAssertions": {
       "tests/mcp_gateway/test_gateway.py::test_rotate": [
         {
-          "line": 123,
+          "line": 130,
           "source": "assert (await request(gateway, {\"authorization\": \"Bearer test-token\"})).status_code == 401"
         },
         {
-          "line": 124,
+          "line": 131,
           "source": "assert (await request(gateway, {\"authorization\": \"Bearer \" + token})).status_code != 401"
         }
       ]
@@ -4237,7 +3446,7 @@
     "pythonAssertions": {
       "tests/mcp_gateway/test_gateway.py::test_body_limit": [
         {
-          "line": 134,
+          "line": 141,
           "source": "assert response.status_code == 413"
         }
       ]
@@ -4266,15 +3475,15 @@
     "pythonAssertions": {
       "tests/mcp_gateway/test_gateway.py::test_port_fallback": [
         {
-          "line": 147,
+          "line": 154,
           "source": "assert status[\"running\"] is True"
         },
         {
-          "line": 148,
+          "line": 155,
           "source": "assert httpx.URL(status[\"endpoint\"]).port != port"
         },
         {
-          "line": 149,
+          "line": 156,
           "source": "assert \"port was occupied\" in status[\"lastError\"].lower()"
         }
       ]
@@ -4339,43 +3548,43 @@
     "pythonAssertions": {
       "tests/mcp_gateway/test_gateway.py::test_stateful_session": [
         {
-          "line": 184,
+          "line": 191,
           "source": "assert response.status_code == 200"
         },
         {
-          "line": 186,
+          "line": 193,
           "source": "assert session_id"
         },
         {
-          "line": 205,
+          "line": 212,
           "source": "assert gateway.status()[\"lastClient\"][\"name\"] == \"codex\""
         },
         {
-          "line": 206,
+          "line": 213,
           "source": "assert gateway.status()[\"lastClient\"][\"version\"] == \"1.0\""
         },
         {
-          "line": 224,
+          "line": 231,
           "source": "assert contexts"
         },
         {
-          "line": 225,
+          "line": 232,
           "source": "assert {key: contexts[0][key] for key in [\"actor\", \"source\", \"subjectId\"]} == {\n            \"actor\": \"agent\",\n            \"source\": \"mcp\",\n            \"subjectId\": \"codex@1.0\",\n        }"
         },
         {
-          "line": 230,
+          "line": 237,
           "source": "assert isinstance(contexts[0][\"requestId\"], str)"
         },
         {
-          "line": 231,
+          "line": 238,
           "source": "assert (await request(gateway, headers, method=\"DELETE\")).status_code == 200"
         },
         {
-          "line": 197,
+          "line": 204,
           "source": "assert name in tools.text"
         },
         {
-          "line": 204,
+          "line": 211,
           "source": "assert name not in tools.text"
         }
       ]
@@ -4416,15 +3625,15 @@
     "pythonAssertions": {
       "tests/mcp_gateway/test_gateway.py::test_unsupported_tools": [
         {
-          "line": 246,
+          "line": 253,
           "source": "assert name not in names"
         },
         {
-          "line": 250,
+          "line": 257,
           "source": "assert getattr(failure.value, \"category\", None) == \"not_found\""
         },
         {
-          "line": 248,
+          "line": 255,
           "source": "pytest.raises(Exception)"
         }
       ]
@@ -4453,7 +3662,7 @@
     "pythonAssertions": {
       "tests/mcp_gateway/test_gateway.py::test_tool_routes": [
         {
-          "line": 269,
+          "line": 276,
           "source": "assert wiring.request_task.call_args.args[0][\"requestedBy\"] == \"agent\""
         }
       ]
@@ -4478,11 +3687,11 @@
     "pythonAssertions": {
       "tests/mcp_gateway/test_gateway.py::test_tool_schemas": [
         {
-          "line": 289,
+          "line": 298,
           "source": "assert len({tool[\"name\"] for tool in tools}) == len(tools)"
         },
         {
-          "line": 290,
+          "line": 299,
           "source": "assert all(tool[\"inputSchema\"][\"type\"] == \"object\" for tool in tools)"
         }
       ]
@@ -4503,7 +3712,7 @@
     "pythonAssertions": {
       "tests/mcp_gateway/test_gateway.py::test_duplicate_tool": [
         {
-          "line": 305,
+          "line": 314,
           "source": "pytest.raises(Exception, match=\"Duplicate MCP tool name\")"
         }
       ]
@@ -4511,10 +3720,8 @@
   },
   {
     "typescript": "packages/mcp-gateway/src/gateway.test.ts::MCP tool registry::keeps all recursive workflow variants bidirectionally consistent",
-    "python": [
-      "tests/mcp_gateway/test_gateway.py::test_workflow_schema"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "Approved replacement removes node task/old Run formats; see Python SDK, automation, workspace and v4 conversion tests for successor behavior.",
     "originalAssertions": [
       {
         "line": 220,
@@ -4536,19 +3743,7 @@
         "line": 228,
         "source": "expect(validate({ task: invalid }), `${step.type} json schema rejects extras`).toBe(false);"
       }
-    ],
-    "pythonAssertions": {
-      "tests/mcp_gateway/test_gateway.py::test_workflow_schema": [
-        {
-          "line": 373,
-          "source": "assert not validator.is_valid({\"task\": invalid})"
-        },
-        {
-          "line": 371,
-          "source": "pytest.raises(ValidationError)"
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "apps/desktop/src/main/migrations.test.ts::global file storage::atomically persists settings and encrypted deterministic secrets",
@@ -4586,7 +3781,7 @@
         },
         {
           "line": 52,
-          "source": "assert actual[\"projectView\"] == \"orchestration\""
+          "source": "assert actual[\"projectView\"] == \"applications\""
         },
         {
           "line": 56,

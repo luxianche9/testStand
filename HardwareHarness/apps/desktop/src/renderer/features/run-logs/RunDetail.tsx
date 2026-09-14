@@ -1,276 +1,113 @@
 import { useEffect, useRef, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import type { TestRunDetail } from "@hardwareharness/contracts/orchestration";
-import { RefreshCwIcon, SquareIcon, TriangleAlertIcon } from "lucide-react";
-import { errorCategoryMessage, errorMessage } from "../../shared/errors.js";
-import { nodeStatusTone, runStatusTone } from "../../shared/tone.js";
-import { Badge, badgeVariantFromTone, Button, cn, Spinner } from "../../shared/ui/index.js";
+import type { RunDetail as Detail, RunEvent } from "@hardwareharness/contracts/applications";
+import { errorMessage } from "../../shared/errors.js";
+import { runStatusTone } from "../../shared/tone.js";
+import { Badge, badgeVariantFromTone, Button, Dialog, DialogBody, DialogContent, DialogHeader, Spinner } from "../../shared/ui/index.js";
+import { CodeEditor } from "../../shared/CodeEditor.js";
 
-const NODE_PAGE_SIZE = 200;
-const EVENT_WINDOW_SIZE = 500;
-
-/** Shared live Run detail used by both the orchestration result modal and the history page. */
-export function RunDetail({ runId }: { runId: string }) {
-  const [detail, setDetail] = useState<TestRunDetail>();
-  const [error, setError] = useState<string>();
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [loadingAllEvents, setLoadingAllEvents] = useState(false);
-  const [eventsLimited, setEventsLimited] = useState(false);
-  const detailRef = useRef<TestRunDetail | undefined>(undefined);
-  const retainAllEventsRef = useRef(false);
+export function RunDetail({ runId, onSource }: { runId: string; onSource?: ((path: string, line: number) => void) | undefined }) {
+  const [detail, setDetail] = useState<Detail>();
+  const [error, setError] = useState("");
+  const [source, setSource] = useState<{ path: string; content: string; line: number }>();
+  const [busy, setBusy] = useState(false);
+  const detailRef = useRef<Detail | undefined>(undefined);
 
   useEffect(() => {
-    detailRef.current = undefined;
-    retainAllEventsRef.current = false;
-    setDetail(undefined);
-    setError(undefined);
-    setEventsLimited(false);
-    let cancelled = false;
+    let stopped = false;
     let pulling = false;
-    let pullQueued = false;
-
+    detailRef.current = undefined; setDetail(undefined); setError("");
     const pull = async () => {
-      if (pulling) {
-        pullQueued = true;
-        return;
-      }
+      if (pulling) return;
       pulling = true;
-      do {
-        pullQueued = false;
-        try {
-          const current = detailRef.current;
-          const since = current?.run.runId === runId ? current.events.at(-1)?.eventId ?? 0 : 0;
-          const nodeLimit = Math.max(NODE_PAGE_SIZE, current?.nodeRuns.length ?? 0);
-          const delta = await window.hardwareharness.orchestration.getRun(runId, since, 0, nodeLimit);
-          if (cancelled) return;
-          const mergedEvents = current?.run.runId === runId ? [...current.events, ...delta.events] : delta.events;
-          const limited = !retainAllEventsRef.current && mergedEvents.length > EVENT_WINDOW_SIZE;
-          const next = {
-            ...delta,
-            events: limited ? mergedEvents.slice(-EVENT_WINDOW_SIZE) : mergedEvents
-          };
-          detailRef.current = next;
-          setDetail(next);
-          setEventsLimited((value) => value || limited);
-          setError(undefined);
-        } catch (value) {
-          if (!cancelled) setError(errorMessage(value));
-        }
-      } while (pullQueued && !cancelled);
-      pulling = false;
+      try {
+        const current = detailRef.current;
+        const incoming = await window.hardwareharness.applications.getRun(runId);
+        const events = current ? await window.hardwareharness.applications.runEvents(runId, current.events.at(-1)?.sequence ?? 0, 500) : incoming.events;
+        const combined = current ? [...current.events, ...events] : events;
+        const next = { ...incoming, events: [...new Map(combined.map((event) => [event.sequence, event])).values()], hasMore: incoming.run.eventCount > combined.length };
+        if (!stopped) { detailRef.current = next; setDetail(next); setError(""); }
+      } catch (value) { if (!stopped) setError(errorMessage(value)); }
+      finally { pulling = false; }
     };
-
     void pull();
     const stopRun = window.hardwareharness.events.subscribe("run", () => { void pull(); });
-    const stopNode = window.hardwareharness.events.subscribe("nodeRun", () => { void pull(); });
-    const fallback = window.setInterval(() => { void pull(); }, 10_000);
-    return () => {
-      cancelled = true;
-      stopRun();
-      stopNode();
-      window.clearInterval(fallback);
-    };
+    const stopEvent = window.hardwareharness.events.subscribe("runEvent", () => { void pull(); });
+    const timer = window.setInterval(() => { void pull(); }, 2000);
+    return () => { stopped = true; stopRun(); stopEvent(); window.clearInterval(timer); };
   }, [runId]);
 
-  const cancel = useMutation({ mutationFn: () => window.hardwareharness.orchestration.cancelRun(runId) });
-
-  const loadMore = async () => {
-    const current = detailRef.current;
-    if (!current || current.nodeRuns.length >= current.nodeTotal) return;
-    setLoadingMore(true);
-    try {
-      const page = await window.hardwareharness.orchestration.getRun(runId, Number.MAX_SAFE_INTEGER, current.nodeRuns.length, NODE_PAGE_SIZE);
-      const next = { ...current, run: page.run, nodeRuns: [...current.nodeRuns, ...page.nodeRuns], nodeTotal: page.nodeTotal };
-      detailRef.current = next;
-      setDetail(next);
-    } catch (value) {
-      setError(errorMessage(value));
-    } finally {
-      setLoadingMore(false);
-    }
+  const operation = async (action: () => Promise<unknown>) => {
+    setBusy(true);
+    try { await action(); } catch (value) { setError(errorMessage(value)); } finally { setBusy(false); }
   };
-
-  const loadAllEvents = async () => {
+  const loadMore = () => operation(async () => {
     const current = detailRef.current;
     if (!current) return;
-    setLoadingAllEvents(true);
-    try {
-      const complete = await window.hardwareharness.orchestration.getRun(runId, 0, 0, Math.max(NODE_PAGE_SIZE, current.nodeRuns.length));
-      retainAllEventsRef.current = true;
-      detailRef.current = complete;
-      setDetail(complete);
-      setEventsLimited(false);
-      setError(undefined);
-    } catch (value) {
-      setError(errorMessage(value));
-    } finally {
-      setLoadingAllEvents(false);
-    }
+    const events = await window.hardwareharness.applications.runEvents(runId, current.events.at(-1)?.sequence ?? 0, 1000);
+    const next = { ...current, events: [...new Map([...current.events, ...events].map((event) => [event.sequence, event])).values()], hasMore: events.length === 1000 };
+    detailRef.current = next; setDetail(next);
+  });
+  const openSource = (path: string, line: number) => {
+    if (onSource) { onSource(path, line); return; }
+    void operation(async () => { const file = await window.hardwareharness.applications.readRunSource(runId, path); setSource({ path, content: file.content, line }); });
   };
-
-  if (error && !detail) return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-start gap-2.5 rounded-md border border-destructive/35 bg-destructive/5 px-3.5 py-2.5 text-xs whitespace-pre-wrap wrap-anywhere text-destructive">
-        <TriangleAlertIcon className="mt-px size-3.5 flex-none" />
-        <span className="min-w-0">{error}</span>
-      </div>
-    </div>
-  );
-  if (!detail) return <div className="flex flex-col gap-3 p-2"><Spinner label="正在加载运行记录…" /></div>;
-
-  const counts = {
-    passed: detail.nodeRuns.filter((item) => item.status === "passed").length,
-    failed: detail.nodeRuns.filter((item) => item.status === "failed").length,
-    cancelled: detail.nodeRuns.filter((item) => item.status === "cancelled").length
-  };
-  const active = detail.run.status === "running" || detail.run.status === "cancelling";
+  if (!detail) return error ? <p role="alert" className="text-xs text-destructive">{error}</p> : <Spinner label="正在加载运行记录…" />;
+  const steps = detail.events.filter((event) => event.type === "step.started");
   return <div className="flex flex-col gap-3">
-    <header className="flex items-center justify-between gap-3">
-      <span className="min-w-0">
-        <strong className="block text-base font-semibold">{detail.run.taskName}</strong>
-        <small className="mt-0.5 block font-mono text-[11px] text-muted-foreground">Run {detail.run.runId}</small>
-      </span>
-      <Badge variant={badgeVariantFromTone(runStatusTone(detail.run.status))}>{detail.run.status}</Badge>
-    </header>
-    <div className="grid grid-cols-3 gap-1.5">
-      <span className="rounded-xl bg-secondary/40 px-2 py-1.5 text-xs text-muted-foreground shadow-sm ring-1 ring-border">开始时间<strong className="mt-0.5 block text-xs font-medium text-foreground">{formatTime(detail.run.createdAt)}</strong></span>
-      <span className="rounded-xl bg-secondary/40 px-2 py-1.5 text-xs text-muted-foreground shadow-sm ring-1 ring-border">完成时间<strong className="mt-0.5 block text-xs font-medium text-foreground">{detail.run.completedAt ? formatTime(detail.run.completedAt) : "—"}</strong></span>
-      <span className="rounded-xl bg-secondary/40 px-2 py-1.5 text-xs text-muted-foreground shadow-sm ring-1 ring-border">耗时<strong className="mt-0.5 block text-xs font-medium text-foreground">{durationText(detail.run.startedAt ?? detail.run.createdAt, detail.run.completedAt)}</strong></span>
-    </div>
-    {active && <Button variant="destructive" size="sm" className="self-start" disabled={cancel.isPending} onClick={() => cancel.mutate()}><SquareIcon />取消运行</Button>}
-    {cancel.isError && (
-      <div className="flex items-start gap-2.5 rounded-md border border-destructive/35 bg-destructive/5 px-3.5 py-2.5 text-xs whitespace-pre-wrap wrap-anywhere text-destructive">
-        <TriangleAlertIcon className="mt-px size-3.5 flex-none" />
-        <span className="min-w-0">{errorMessage(cancel.error)}</span>
-      </div>
-    )}
-    {error && (
-      <div className="flex items-start gap-2.5 rounded-md border border-destructive/35 bg-destructive/5 px-3.5 py-2.5 text-xs whitespace-pre-wrap wrap-anywhere text-destructive">
-        <RefreshCwIcon className="mt-px size-3.5 flex-none" />
-        <span className="min-w-0">{error}</span>
-      </div>
-    )}
-    {detail.run.summary?.message && <p className="m-0 text-xs text-muted-foreground">{detail.run.summary.message}</p>}
-    <div className="grid grid-cols-3 gap-1.5">
-      <span className="rounded-xl bg-secondary/40 px-2 py-1.5 text-xs text-muted-foreground shadow-sm ring-1 ring-border">通过 <strong className="mt-0.5 block text-lg font-semibold text-foreground">{detail.run.summary?.passedNodes ?? counts.passed}</strong></span>
-      <span className="rounded-xl bg-secondary/40 px-2 py-1.5 text-xs text-muted-foreground shadow-sm ring-1 ring-border">失败 <strong className="mt-0.5 block text-lg font-semibold text-foreground">{detail.run.summary?.failedNodes ?? counts.failed}</strong></span>
-      <span className="rounded-xl bg-secondary/40 px-2 py-1.5 text-xs text-muted-foreground shadow-sm ring-1 ring-border">取消 <strong className="mt-0.5 block text-lg font-semibold text-foreground">{detail.run.summary?.cancelledNodes ?? counts.cancelled}</strong></span>
-    </div>
+    <header className="flex items-start justify-between gap-3"><div><strong className="text-sm">{detail.run.name}</strong><p className="my-1 font-mono text-[11px] text-muted-foreground">{runId} · {detail.run.entrypoint}</p></div><Badge variant={badgeVariantFromTone(runStatusTone(detail.run.status))}>{detail.run.status}</Badge></header>
+    <div className="flex flex-wrap gap-3 text-xs text-muted-foreground"><span>开始 {new Date(detail.run.startedAt).toLocaleString()}</span><span>{detail.run.durationMs === undefined ? "运行中" : detail.run.durationMs + " ms"}</span><span>{detail.run.eventCount} 条事件</span></div>
+    {(detail.run.status === "running" || detail.run.status === "cancelling") && <Button size="sm" variant="destructive" className="self-start" disabled={busy} onClick={() => void operation(() => window.hardwareharness.applications.cancelRun(runId))}>取消运行</Button>}
+    {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
+    {detail.run.error && <div role="alert" className="rounded border border-destructive/30 p-2 text-xs text-destructive"><strong>{detail.run.error.category}</strong><p className="whitespace-pre-wrap">{detail.run.error.message}</p><JsonSection title="异常堆栈与详情" value={detail.run.error.details} /></div>}
     <JsonSection title="运行输入" value={detail.run.inputs} />
-    {detail.run.validationIssues?.length ? <div className="flex flex-col gap-1.5 rounded-md border border-destructive p-2.5">
-      <strong className="text-sm">预检未通过</strong>
-      {detail.run.validationIssues.map((issue, index) => <div className="grid grid-cols-[auto_1fr] gap-1.5 text-xs" key={index}><code className="font-mono text-destructive">{issue.code}</code><span>{issue.message}</span></div>)}
-    </div> : null}
-    <section className="flex flex-col gap-2">
-      <header className="flex items-center justify-between pb-1.5">
-        <strong className="text-sm font-semibold">节点记录</strong>
-        <span className="text-xs text-muted-foreground">{detail.nodeRuns.length} / {detail.nodeTotal}</span>
-      </header>
-      <VirtualNodeList nodes={detail.nodeRuns} />
-      {detail.nodeRuns.length < detail.nodeTotal && <Button variant="outline" size="sm" className="self-start" disabled={loadingMore} onClick={() => void loadMore()}>{loadingMore ? "正在加载…" : "加载更多节点"}</Button>}
-    </section>
-    <section className="flex flex-col gap-2">
-      <header className="flex items-center justify-between pb-1.5">
-        <strong className="text-sm font-semibold">事件时间线</strong>
-        <span className="text-xs text-muted-foreground">{detail.events.length} 条{eventsLimited ? `（最近 ${EVENT_WINDOW_SIZE} 条）` : ""}</span>
-      </header>
-      {eventsLimited && <Button variant="outline" size="sm" className="self-start" disabled={loadingAllEvents} onClick={() => void loadAllEvents()}>{loadingAllEvents ? "正在加载…" : "展开全部事件"}</Button>}
-      <VirtualEventList events={detail.events} />
-    </section>
+    {detail.run.result !== undefined && <JsonSection title="返回结果" value={detail.run.result} />}
+    <section><h3 className="my-2 text-xs font-semibold">步骤树</h3>{!steps.length && <p className="text-xs text-muted-foreground">尚无显式步骤。</p>}{steps.map((event) => {
+      const completed = detail.events.find((item) => item.type === "step.completed" && item.spanId === event.spanId);
+      let depth = 0; let parent = event.parentSpanId;
+      const visited = new Set<string>();
+      while (parent && !visited.has(parent) && depth < 30) { visited.add(parent); depth++; parent = steps.find((item) => item.spanId === parent)?.parentSpanId; }
+      return <div key={event.sequence} className="border-b border-border py-2 text-xs" style={{ paddingLeft: depth * 14 }}><strong>{event.name ?? "步骤"}</strong><span className="ml-2 text-muted-foreground">{String(completed?.data.status ?? "running")}{completed?.data.durationMs !== undefined ? " · " + String(completed.data.durationMs) + " ms" : ""}</span><SourceLink event={event} onSource={openSource} />{completed?.data.error !== undefined && <JsonSection title="步骤错误" value={completed.data.error} />}</div>;
+    })}</section>
+    <section><h3 className="my-2 text-xs font-semibold">事件时间线 · 输出 · 测量 · 附件</h3><EventList events={detail.events} onSource={openSource} />{detail.hasMore && <Button size="sm" variant="outline" disabled={busy} onClick={() => void loadMore()}>加载更多事件</Button>}</section>
+    <Dialog open={Boolean(source)} onOpenChange={(open) => { if (!open) setSource(undefined); }}><DialogContent size="lg" aria-label="运行源码快照"><DialogHeader title={source?.path ?? "源码快照"} onClose={() => setSource(undefined)} /><DialogBody><div className="h-96">{source && <CodeEditor path={source.path} value={source.content} line={source.line} readOnly onChange={() => undefined} onSave={() => undefined} />}</div></DialogBody></DialogContent></Dialog>
   </div>;
 }
 
-function VirtualNodeList({ nodes }: { nodes: TestRunDetail["nodeRuns"] }) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const virtualizer = useVirtualizer({
-    count: nodes.length,
-    getScrollElement: () => scrollRef.current,
-    estimateSize: () => 132,
-    getItemKey: (index) => nodes[index]?.nodeRunId ?? index,
-    overscan: 12
-  });
-
-  if (!nodes.length) return <small className="text-xs text-muted-foreground">尚无节点记录</small>;
-  return <div ref={scrollRef} className="relative max-h-90 overflow-auto">
-    <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
-      {virtualizer.getVirtualItems().map((item) => {
-        const node = nodes[item.index];
-        if (!node) return null;
-        return <article
-          key={node.nodeRunId}
-          ref={virtualizer.measureElement}
-          data-index={item.index}
-          className="absolute inset-x-0 top-0 grid w-full grid-cols-[auto_minmax(0,1fr)] items-start gap-2 border-b border-border py-2"
-          style={{ transform: `translateY(${item.start}px)` }}
-        >
-          <Badge variant={badgeVariantFromTone(nodeStatusTone(node.status))}>{node.status}</Badge>
-          <span className="flex flex-col gap-0.5">
-            <strong className="text-sm font-semibold">{node.nodeLabel}</strong>
-            <small className="text-xs text-muted-foreground">{node.nodeType} · {node.branchPath}{node.iterationPath.length ? ` · 迭代 ${node.iterationPath.join("/")}` : ""}{node.attempt > 1 ? ` · 第 ${node.attempt} 次尝试` : ""}</small>
-            <small className="text-xs text-muted-foreground">{formatTime(node.startedAt)} · {durationText(node.startedAt, node.completedAt)}</small>
-            {node.error && <em className="text-xs not-italic text-destructive">{errorCategoryMessage(node.error.category) ?? node.error.category}：{node.error.message}</em>}
-            {node.error?.truncation && <small className="text-xs text-muted-foreground">错误内容已截断（原始大小 {node.error.truncation.bytes.toLocaleString()} bytes）</small>}
-            {node.input !== undefined && <JsonSection title="输入" value={node.input} compact />}
-            {node.output !== undefined && <JsonSection title="输出" value={node.output} compact />}
-          </span>
-        </article>;
-      })}
-    </div>
-  </div>;
+function SourceLink({ event, onSource }: { event: RunEvent; onSource: (path: string, line: number) => void }) {
+  const source = event.data.source as { path?: unknown; line?: unknown } | undefined;
+  return typeof source?.path === "string" && typeof source.line === "number" ? <button className="ml-2 text-xs text-muted-foreground underline" onClick={() => onSource(source.path as string, source.line as number)}>{source.path}:{source.line}</button> : null;
 }
 
-function VirtualEventList({ events }: { events: TestRunDetail["events"] }) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const virtualizer = useVirtualizer({
-    count: events.length,
-    getScrollElement: () => scrollRef.current,
-    estimateSize: () => 58,
-    getItemKey: (index) => events[index]?.eventId ?? index,
-    overscan: 16
-  });
-
-  if (!events.length) return <small className="text-xs text-muted-foreground">尚无事件</small>;
-  return <div ref={scrollRef} className="relative max-h-90 overflow-auto">
-    <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
-      {virtualizer.getVirtualItems().map((item) => {
-        const event = events[item.index];
-        if (!event) return null;
-        return <article
-          key={event.eventId}
-          ref={virtualizer.measureElement}
-          data-index={item.index}
-          className="absolute inset-x-0 top-0 grid w-full grid-cols-[150px_minmax(0,1fr)] gap-2.5 border-b border-border py-2"
-          style={{ transform: `translateY(${item.start}px)` }}
-        >
-          <time className="text-xs text-muted-foreground">{formatTime(event.timestamp)}</time>
-          <span className="min-w-0"><strong className="font-mono text-xs">{event.type}</strong>{event.data !== undefined && <JsonSection title="数据" value={event.data} compact />}</span>
-        </article>;
-      })}
-    </div>
-  </div>;
+function EventList({ events, onSource }: { events: RunEvent[]; onSource: (path: string, line: number) => void }) {
+  const scroll = useRef<HTMLDivElement>(null);
+  const virtual = useVirtualizer({ count: events.length, getScrollElement: () => scroll.current, estimateSize: () => 64, getItemKey: (index) => events[index]?.sequence ?? index, overscan: 12 });
+  return <div ref={scroll} className="relative max-h-80 overflow-auto"><div className="relative w-full" style={{ height: virtual.getTotalSize() }}>{virtual.getVirtualItems().map((item) => {
+    const event = events[item.index]; if (!event) return null;
+    return <article key={event.sequence} ref={virtual.measureElement} data-index={item.index} className="absolute inset-x-0 top-0 border-b border-border py-2 text-xs" style={{ transform: "translateY(" + item.start + "px)" }}><time className="mr-2 text-muted-foreground">#{event.sequence} {new Date(event.timestamp).toLocaleTimeString()}</time><strong>{event.type} {event.name}</strong><SourceLink event={event} onSource={onSource} />{event.data.text !== undefined && <pre className="my-1 font-mono whitespace-pre-wrap">{String(event.data.text)}</pre>}{event.data.message !== undefined && <p className="my-1 whitespace-pre-wrap">{String(event.data.message)}</p>}<AttachmentLink event={event} /><JsonSection title="事件数据" value={event.data} /></article>;
+  })}</div></div>;
 }
 
-function JsonSection({ title, value, compact = false }: { title: string; value: unknown; compact?: boolean }) {
+function AttachmentLink({ event }: { event: RunEvent }) {
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const raw = event.type === "attachment" ? event.data : (event.data.output as { attachment?: unknown } | undefined)?.attachment;
+  if (!raw || typeof raw !== "object" || !("path" in raw) || typeof raw.path !== "string") return null;
+  const path = raw.path;
+  const download = async () => {
+    setBusy(true); setError("");
+    try {
+      const file = await window.hardwareharness.applications.readRunAttachment(event.runId, path);
+      const url = URL.createObjectURL(new Blob([new Uint8Array(file.content)], { type: file.mediaType }));
+      const link = document.createElement("a"); link.href = url; link.download = file.name; link.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (value) { setError(errorMessage(value)); }
+    finally { setBusy(false); }
+  };
+  return <span className="ml-2"><Button size="sm" variant="outline" disabled={busy} onClick={() => void download()}>下载附件</Button>{error && <span role="alert" className="text-destructive">{error}</span>}</span>;
+}
+
+function JsonSection({ title, value }: { title: string; value: unknown }) {
   const [open, setOpen] = useState(false);
-  return <details className={cn("overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-border", compact && "mt-1.5")} onToggle={(event) => setOpen(event.currentTarget.open)}>
-    <summary className="cursor-pointer bg-secondary/60 px-2.5 py-1.5 text-xs text-muted-foreground">{title}</summary>
-    {open && <pre className="m-0 max-h-75 overflow-auto p-2.5 font-mono text-xs whitespace-pre-wrap">{pretty(value)}</pre>}
-  </details>;
-}
-
-function pretty(value: unknown): string {
-  try {
-    return JSON.stringify(value, null, 2);
-  } catch {
-    return String(value);
-  }
-}
-
-function formatTime(value: string): string { return new Date(value).toLocaleString(); }
-function durationText(start: string, end?: string): string {
-  const duration = Math.max(0, Date.parse(end ?? new Date().toISOString()) - Date.parse(start));
-  if (duration < 1_000) return `${duration} ms`;
-  if (duration < 60_000) return `${(duration / 1_000).toFixed(2)} s`;
-  return `${Math.floor(duration / 60_000)}m ${Math.floor((duration % 60_000) / 1_000)}s`;
+  return <details className="mt-1 rounded border border-border" onToggle={(event) => setOpen(event.currentTarget.open)}><summary className="cursor-pointer bg-muted/30 px-2 py-1 text-xs text-muted-foreground">{title}</summary>{open && <pre className="m-0 max-h-64 overflow-auto p-2 font-mono text-xs whitespace-pre-wrap">{JSON.stringify(value, null, 2)}</pre>}</details>;
 }

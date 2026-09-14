@@ -3,7 +3,7 @@ import type { ComputerStatus, DeviceBundleApplyInput, DeviceBundleExport, Device
 import type { ExecutionActivity, ManualToolInvocationInput, ManualToolInvocationResult } from "./execution.js";
 import type { HardwareOccupancyRequest, HardwareOccupancyRequestStatus, HardwareOccupancyStatus } from "./occupancy.js";
 import type { LlmSettings, LlmSettingsInput, ProjectView, ThemeChoice, WelcomeLayout } from "./storage.js";
-import type { OperatorDecision, TaskValidationResult, TestNodeRun, TestRun, TestRunDetail, TestRunListQuery, TestRunListResult, TestRunLogArchive, TestTask } from "./orchestration.js";
+import type { HardwareHarnessApplicationsApi } from "./applications.js";
 import type { ProjectDocument, ProjectFolderSelection, RecentProjectSummary } from "./projects.js";
 import type { ProjectWiring, RequestWiringTaskInput, WiringOutcome, WiringTask, WiringTaskStatus } from "./wiring.js";
 
@@ -43,11 +43,31 @@ export const HARDWAREHARNESS_IPC = {
     update: "hardwareharness:wiring:update", requestTask: "hardwareharness:wiring:request-task", startTask: "hardwareharness:wiring:start-task",
     completeTask: "hardwareharness:wiring:complete-task", cancelTask: "hardwareharness:wiring:cancel-task", getTask: "hardwareharness:wiring:get-task", listTasks: "hardwareharness:wiring:list-tasks"
   },
-  orchestration: {
-    updateTask: "hardwareharness:orchestration:update-task", validateTask: "hardwareharness:orchestration:validate-task", startRun: "hardwareharness:orchestration:start-run",
-    cancelRun: "hardwareharness:orchestration:cancel-run", getRun: "hardwareharness:orchestration:get-run", listOperatorDecisions: "hardwareharness:orchestration:list-operator-decisions",
-    respondOperatorDecision: "hardwareharness:orchestration:respond-operator-decision", listRuns: "hardwareharness:orchestration:list-runs",
-    exportRun: "hardwareharness:orchestration:export-run", deleteRun: "hardwareharness:orchestration:delete-run", clearCompletedRuns: "hardwareharness:orchestration:clear-completed-runs"
+  applications: {
+    listFiles: "hardwareharness:applications:listFiles",
+    readFile: "hardwareharness:applications:readFile",
+    writeFile: "hardwareharness:applications:writeFile",
+    createFile: "hardwareharness:applications:createFile",
+    renameFile: "hardwareharness:applications:renameFile",
+    deleteFile: "hardwareharness:applications:deleteFile",
+    search: "hardwareharness:applications:search",
+    diagnostics: "hardwareharness:applications:diagnostics",
+    initializeWorkspace: "hardwareharness:applications:initializeWorkspace",
+    listApps: "hardwareharness:applications:listApps",
+    createApp: "hardwareharness:applications:createApp",
+    startApp: "hardwareharness:applications:startApp",
+    stopApp: "hardwareharness:applications:stopApp",
+    appLogs: "hardwareharness:applications:appLogs",
+    startRun: "hardwareharness:applications:startRun",
+    cancelRun: "hardwareharness:applications:cancelRun",
+    getRun: "hardwareharness:applications:getRun",
+    listRuns: "hardwareharness:applications:listRuns",
+    runEvents: "hardwareharness:applications:runEvents",
+    exportRun: "hardwareharness:applications:exportRun",
+    deleteRun: "hardwareharness:applications:deleteRun",
+    clearCompletedRuns: "hardwareharness:applications:clearCompletedRuns",
+    readRunAttachment: "hardwareharness:applications:readRunAttachment",
+    readRunSource: "hardwareharness:applications:readRunSource",
   },
   manual: {
     invokeTool: "hardwareharness:manual:invoke-tool"
@@ -72,7 +92,7 @@ export const HARDWAREHARNESS_IPC = {
   }
 } as const;
 
-export type HardwareHarnessEventName = "availability" | "execution" | "occupancy" | "occupancyRequest" | "run" | "nodeRun" | "wiringTask" | "operator" | "project" | "opencode" | "window-state";
+export type HardwareHarnessEventName = "availability" | "execution" | "occupancy" | "occupancyRequest" | "run" | "runEvent" | "wiringTask" | "workspace" | "application" | "project" | "opencode" | "window-state";
 
 export interface HardwareHarnessSystemApi {
   dashboard(): Promise<DashboardSnapshot>;
@@ -121,20 +141,6 @@ export interface HardwareHarnessWiringApi {
   cancelTask(wiringTaskId: string, message?: string): Promise<WiringTask>;
   getTask(wiringTaskId: string): Promise<WiringTask>;
   listTasks(input?: { status?: WiringTaskStatus; limit?: number }): Promise<WiringTask[]>;
-}
-
-export interface HardwareHarnessOrchestrationApi {
-  updateTask(task: TestTask): Promise<ProjectDocument>;
-  validateTask(task: TestTask): Promise<TaskValidationResult>;
-  startRun(input?: { inputs?: Record<string, unknown> }): Promise<TestRunDetail>;
-  cancelRun(runId: string): Promise<TestRun>;
-  getRun(runId: string, sinceEventId?: number, nodeOffset?: number, nodeLimit?: number): Promise<TestRunDetail>;
-  listRuns(input?: TestRunListQuery): Promise<TestRunListResult>;
-  exportRun(runId: string): Promise<TestRunLogArchive>;
-  deleteRun(runId: string): Promise<{ runId: string }>;
-  clearCompletedRuns(): Promise<{ deleted: number }>;
-  listOperatorDecisions(): Promise<OperatorDecision[]>;
-  respondOperatorDecision(nodeRunId: string, selectedValue: string): Promise<TestNodeRun>;
 }
 
 export interface HardwareHarnessManualApi {
@@ -191,7 +197,7 @@ export interface HardwareHarnessApi {
   devices: HardwareHarnessDevicesApi;
   projects: HardwareHarnessProjectsApi;
   wiring: HardwareHarnessWiringApi;
-  orchestration: HardwareHarnessOrchestrationApi;
+  applications: HardwareHarnessApplicationsApi;
   manual: HardwareHarnessManualApi;
   occupancy: HardwareHarnessOccupancyApi;
   agents: HardwareHarnessAgentsApi;

@@ -9,12 +9,9 @@ from unittest.mock import AsyncMock, Mock
 
 import httpx
 import pytest
-from jsonschema import Draft202012Validator
 
 from hardwareharness_backend.application import HardwareHarnessApplication
-from hardwareharness_backend.contracts.orchestration import parse_test_task
-from hardwareharness_backend.contracts.validation import ValidationError
-from hardwareharness_backend.mcp_gateway import UPDATE_TEST_TASK_INPUT_SCHEMA, LocalMcpGateway
+from hardwareharness_backend.mcp_gateway import LocalMcpGateway
 
 PREFIX = "packages/mcp-gateway/src/gateway.test.ts::"
 
@@ -28,7 +25,7 @@ def application(overrides: dict[str, Any] | None = None) -> tuple[Any, Any, Any,
         ),
         list_computers=Mock(return_value=[]),
         list_statuses=Mock(return_value=[]),
-        list_servers=Mock(return_value=[]),
+        list_servers=Mock(return_value=[{"serverId": "S1", "hardwareId": "HW1", "enabled": True}]),
         list_server_statuses=Mock(return_value=[]),
         list_hardware=Mock(return_value=[]),
         list_availability=Mock(return_value=[]),
@@ -61,15 +58,25 @@ def application(overrides: dict[str, Any] | None = None) -> tuple[Any, Any, Any,
         get_task=Mock(return_value={"taskId": "TASK"}),
         start_run=AsyncMock(return_value={"run": {"runId": "RUN"}, "nodeRuns": [], "events": []}),
         cancel_run=AsyncMock(),
-        get_run=Mock(return_value={}),
+        get_run=AsyncMock(return_value={}),
     )
+    from hardwareharness_backend.application import (
+        ApplicationsApplication,
+        DefaultAuthorizer,
+        ExecutionCoordinator,
+    )
+
+    applications = ApplicationsApplication(
+        DefaultAuthorizer(), Mock(), devices, Mock(), ExecutionCoordinator()
+    )
+    applications.runner = orchestration
     app = HardwareHarnessApplication(
         {
             "devices": devices,
             "catalog": catalog,
             "projects": projects,
             "wiring": wiring,
-            "orchestration": orchestration,
+            "applications": applications,
             "system": {"gateway_status": lambda: {"running": False}},
         }
     )
@@ -193,7 +200,7 @@ async def test_stateful_session() -> None:
             headers,
             json.dumps({"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}),
         )
-        for name in ["request_wiring_task", "start_test_run", "save_hardware_definition"]:
+        for name in ["request_wiring_task", "start_python_run", "save_hardware_definition"]:
             assert name in tools.text
         for name in [
             "save_remote_computer",
@@ -212,14 +219,14 @@ async def test_stateful_session() -> None:
                     "jsonrpc": "2.0",
                     "id": 3,
                     "method": "tools/call",
-                    "params": {"name": "get_test_task", "arguments": {}},
+                    "params": {"name": "get_python_run", "arguments": {"runId": "R"}},
                 }
             ),
         )
         contexts = [
             call.args[0]
             for call in app.authorizer.authorize.call_args_list
-            if call.args[1] == "orchestration.read"
+            if call.args[1] == "applications.read"
         ]
         assert contexts
         assert {key: contexts[0][key] for key in ["actor", "source", "subjectId"]} == {
@@ -264,10 +271,12 @@ async def test_tool_routes() -> None:
     await gateway.invoke_tool(
         "request_wiring_task", {"portA": "A.J1", "portB": "B.J1", "action": "connect"}
     )
-    await gateway.invoke_tool("start_test_run", {})
+    await gateway.invoke_tool("start_python_run", {"entrypoint": "workflows/main.py"})
     await gateway.invoke_tool("S1.measure", {"voltage": 5})
     assert wiring.request_task.call_args.args[0]["requestedBy"] == "agent"
-    orchestration.start_run.assert_awaited_once_with({"inputs": {}})
+    orchestration.start_run.assert_awaited_once_with(
+        {"entrypoint": "workflows/main.py", "inputs": {}, "inputSchema": {}, "hardwareIds": []}
+    )
     devices.call_aggregated_tool.assert_awaited_once_with("S1.measure", {"voltage": 5})
 
 
@@ -293,7 +302,7 @@ def test_tool_schemas() -> None:
 @pytest.mark.ts_case(PREFIX + "rejects a remote tool name that collides with a builtin")
 def test_duplicate_tool() -> None:
     remote = {
-        "externalName": "get_test_task",
+        "externalName": "get_python_run",
         "remoteName": "duplicate",
         "serverId": "S1",
         "inputSchema": {"type": "object"},
@@ -304,73 +313,6 @@ def test_duplicate_tool() -> None:
     )
     with pytest.raises(Exception, match="Duplicate MCP tool name"):
         gateway.list_tools()
-
-
-@pytest.mark.ts_case(PREFIX + "keeps all recursive workflow variants bidirectionally consistent")
-def test_workflow_schema() -> None:
-    literal = {"kind": "literal", "value": 1}
-    steps: list[dict[str, Any]] = [
-        {
-            "type": "tool",
-            "toolName": "S1.measure",
-            "hardwareId": "HW1",
-            "arguments": {"voltage": {"kind": "literal", "value": 5}},
-            "outputBindings": [{"variable": "result", "pointer": ""}],
-            "timeoutMs": 1000,
-            "idempotent": False,
-            "retry": {
-                "maxAttempts": 1,
-                "delayMs": 0,
-                "backoff": "fixed",
-                "retryOn": ["unavailable"],
-            },
-        },
-        {"type": "delay", "durationMs": literal},
-        {"type": "set_variable", "variable": "result", "value": literal},
-        {"type": "assert", "expression": {"kind": "literal", "value": True}, "message": "failed"},
-        {"type": "if", "condition": {"kind": "literal", "value": True}, "then": [], "else": []},
-        {
-            "type": "loop",
-            "mode": "count",
-            "count": {"kind": "literal", "value": 2},
-            "maxIterations": 10,
-            "indexVariable": "i",
-            "body": [],
-        },
-        {
-            "type": "parallel",
-            "branches": [
-                {"branchId": "a", "name": "A", "steps": []},
-                {"branchId": "b", "name": "B", "steps": []},
-            ],
-        },
-        {
-            "type": "operator",
-            "prompt": "Continue?",
-            "options": [{"label": "Yes", "value": "yes"}],
-            "resultVariable": "result",
-        },
-    ]
-    validator = Draft202012Validator(UPDATE_TEST_TASK_INPUT_SCHEMA)
-    for raw in steps:
-        step = {"stepId": raw["type"], "label": raw["type"], "enabled": True, **raw}
-        task = {
-            "formatVersion": 2,
-            "taskId": "TASK-" + str(raw["type"]),
-            "name": "Fixture",
-            "inputs": [],
-            "variables": [],
-            "setup": [],
-            "steps": [step],
-            "cleanup": [],
-        }
-        parsed = parse_test_task(task)
-        validator.validate({"task": task})
-        validator.validate({"task": parsed})
-        invalid = {**task, "steps": [{**step, "unexpected": True}]}
-        with pytest.raises(ValidationError):
-            parse_test_task(invalid)
-        assert not validator.is_valid({"task": invalid})
 
 
 async def test_body_errors_and_shutdown(gateway: LocalMcpGateway) -> None:

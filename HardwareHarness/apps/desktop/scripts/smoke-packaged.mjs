@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { execFile } from "node:child_process";
-import { access, mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
+import { execFile, spawn } from "node:child_process";
+import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -11,24 +11,32 @@ import { _electron as electron } from "@playwright/test";
 const execFileAsync = promisify(execFile);
 const desktopDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const workspaceDir = resolve(desktopDir, "../..");
-const executablePath = resolve(workspaceDir, "dist/win-unpacked/HardwareHarness.exe");
-const bundledOpenCode = resolve(workspaceDir, "dist/win-unpacked/resources/opencode/opencode.exe");
-const packagedResources = resolve(workspaceDir, "dist/win-unpacked/resources/third-party");
+const executablePath = resolve(process.env.HARDWAREHARNESS_SMOKE_EXECUTABLE ?? resolve(workspaceDir, "dist/win-unpacked/HardwareHarness.exe"));
+const resourcesRoot = resolve(dirname(executablePath), "resources");
+const bundledOpenCode = resolve(resourcesRoot, "opencode/opencode.exe");
+const packagedResources = resolve(resourcesRoot, "third-party");
 
 const userDataDir = await mkdtemp(join(tmpdir(), "hardwareharness-packaged-smoke-"));
-const projectRoot = join(userDataDir, "packaged-smoke");
+const projectName = "packaged-smoke 中文 项目";
+const projectRoot = join(userDataDir, projectName);
 const gatewayPort = await availablePort();
 const environment = {
   ...process.env,
   HARDWAREHARNESS_USER_DATA_DIR: userDataDir,
   HARDWAREHARNESS_GATEWAY_PORT: String(gatewayPort),
-  HARDWAREHARNESS_AGENT_INTEGRATION_TEST_MODE: "1"
+  HARDWAREHARNESS_AGENT_INTEGRATION_TEST_MODE: "1",
+  UV_OFFLINE: "1",
+  UV_CACHE_DIR: join(userDataDir, "empty-cache"),
+  PATH: join(process.env.SYSTEMROOT ?? "C:\\Windows", "System32")
 };
 delete environment.ELECTRON_RUN_AS_NODE;
+delete environment.HARDWAREHARNESS_PROJECT_RUNTIME;
 
 let application;
 const launchedSidecarPids = new Set();
+const processAudit = startProcessAudit();
 try {
+  await processAudit.ready;
   await verifyThirdPartyResources();
   const baselinePids = new Set(
     (await openCodeProcesses())
@@ -43,6 +51,10 @@ try {
   await page.getByRole("heading", { name: "最近项目" }).waitFor();
   await mkdir(projectRoot);
   await page.evaluate((rootPath) => window.hardwareharness.projects.initializeFolder(rootPath), projectRoot);
+  await page.evaluate(async () => {
+    await window.hardwareharness.applications.createApp("sample", "Packaged sample");
+    await window.hardwareharness.applications.initializeWorkspace();
+  });
   await page.evaluate(() => window.hardwareharness.settings.saveLlm({
     baseUrl: "https://api.openai.com/v1",
     model: "gpt-4.1",
@@ -51,7 +63,8 @@ try {
   await poll(async () => (await page.evaluate(() => window.hardwareharness.agents.openCodeStatus())).state === "running", 30_000);
   await page.evaluate(() => localStorage.setItem("hardwareharness.assistant-open", "true"));
   await page.reload();
-  await page.getByText("packaged-smoke", { exact: true }).first().click();
+  await page.getByText(projectName, { exact: true }).first().click();
+  await verifyApplications(page);
   await verifyAgentUi(page);
   assert.deepEqual(rendererErrors, [], `Renderer errors during first launch:\n${rendererErrors.join("\n")}`);
   const firstSidecarPid = await waitForSidecar(baselinePids);
@@ -59,6 +72,7 @@ try {
 
   await application.close();
   application = undefined;
+  await processAudit.assertExited();
   await poll(async () => !(await openCodeProcesses()).some((item) => item.ProcessId === firstSidecarPid), 15_000);
 
   application = await launchPackaged();
@@ -66,7 +80,7 @@ try {
   page.setDefaultTimeout(60_000);
   rendererErrors = collectRendererErrors(page);
   await page.getByRole("heading", { name: "最近项目" }).waitFor();
-  await page.getByText("packaged-smoke", { exact: true }).first().click();
+  await page.getByText(projectName, { exact: true }).first().click();
   await poll(async () => (await page.evaluate(() => window.hardwareharness.agents.openCodeStatus())).state === "running", 30_000);
   await verifyAgentUi(page);
   assert.deepEqual(rendererErrors, [], `Renderer errors during automatic restart launch:\n${rendererErrors.join("\n")}`);
@@ -76,10 +90,13 @@ try {
 
   await application.close();
   application = undefined;
+  await processAudit.assertExited();
   await poll(async () => !(await openCodeProcesses()).some((item) => item.ProcessId === secondSidecarPid), 15_000);
+  await processAudit.writeReport();
   console.log(`Packaged smoke passed (OpenCode PIDs ${firstSidecarPid} and ${secondSidecarPid} stopped with HardwareHarness).`);
 } finally {
   await application?.close().catch(() => undefined);
+  processAudit.stop();
   const remaining = await openCodeProcesses().catch(() => []);
   for (const sidecarPid of launchedSidecarPids) {
     if (remaining.some((item) => item.ProcessId === sidecarPid && samePath(item.ExecutablePath, bundledOpenCode))) {
@@ -90,7 +107,58 @@ try {
 }
 
 async function launchPackaged() {
-  return await electron.launch({ executablePath, env: environment, timeout: 90_000 });
+  const instance = await electron.launch({ executablePath, env: environment, timeout: 90_000,
+    args: ["--disable-renderer-backgrounding", "--disable-background-timer-throttling", "--disable-backgrounding-occluded-windows"] });
+  processAudit.addRoot(instance.process().pid);
+  await instance.evaluate(({ BrowserWindow, app }) => {
+    const hide = (window) => { window.webContents.setBackgroundThrottling(false); window.hide(); window.on("show", () => window.hide()); };
+    for (const window of BrowserWindow.getAllWindows()) hide(window);
+    app.on("browser-window-created", (_event, window) => hide(window));
+  });
+  return instance;
+}
+
+async function verifyApplications(page) {
+  await page.getByRole("tab", { name: "应用搭建", exact: true }).click();
+  await page.getByLabel("选择应用").selectOption("sample");
+  await page.getByRole("button", { name: "启动应用", exact: true }).click();
+  const preview = page.frameLocator('iframe[title="应用 Web 预览"]');
+  await preview.getByRole("heading", { name: "HardwareHarness 应用" }).waitFor();
+  const capabilities = await preview.locator("body").evaluate(() => ({
+    bridge: typeof window.hardwareharness, node: typeof window.require
+  }));
+  assert.deepEqual(capabilities, { bridge: "undefined", node: "undefined" });
+  for (let index = 0; index < 2; index++) {
+    await preview.getByLabel("采样次数").fill("1");
+    // Hidden Electron frames do not reliably receive synthesized pointer input. This invokes
+    // the actual HTML form's validation and submit handler; visible pointer input is covered by E2E.
+    await preview.locator("form").evaluate((form) => form.requestSubmit());
+    await poll(async () => (await preview.getByRole("status").innerText()) === "succeeded", 30_000).catch(async (error) => {
+      const diagnostic = await page.evaluate(async () => {
+        const runs = await window.hardwareharness.applications.listRuns();
+        return { runs: await Promise.all(runs.map((run) => window.hardwareharness.applications.getRun(run.runId))),
+          logs: await window.hardwareharness.applications.appLogs("sample") };
+      });
+      diagnostic.preview = await preview.getByRole("status").innerText();
+      const report = resolve(workspaceDir, "reports/applications/packaging/failed-applications-smoke.json");
+      await mkdir(dirname(report), { recursive: true });
+      await writeFile(report, JSON.stringify(diagnostic, null, 2) + "\n");
+      throw new Error(`${error.message}; preview status: ${diagnostic.preview}; diagnostics: ${report}`);
+    });
+    assert.match(await preview.getByLabel("运行日志").innerText(), /measurement/);
+  }
+  const runs = await page.evaluate(() => window.hardwareharness.applications.listRuns());
+  assert.equal(runs.length, 2);
+  assert.equal(new Set(runs.map((run) => run.runId)).size, 2);
+  assert.ok(runs.every((run) => run.status === "succeeded" && run.applicationId === "sample"));
+  await page.getByRole("button", { name: "停止应用", exact: true }).click();
+  await poll(async () => (await page.evaluate(() => window.hardwareharness.applications.listApps()))[0]?.status === "stopped", 15_000);
+  const reportDir = resolve(workspaceDir, "reports/applications/packaging");
+  await mkdir(reportDir, { recursive: true });
+  await writeFile(join(reportDir, "packaged-applications.json"), JSON.stringify({
+    executablePath, runs, capabilities, applicationStopped: true,
+    submittedThroughNativeForm: true, hiddenWindow: true
+  }, null, 2) + "\n");
 }
 
 function collectRendererErrors(page) {
@@ -101,14 +169,99 @@ function collectRendererErrors(page) {
 }
 
 async function verifyAgentUi(page) {
+  const openSidebar = page.getByRole("button", { name: "打开 AI 侧栏", exact: true });
+  if (await openSidebar.count()) await openSidebar.evaluate((button) => button.click());
   const sidebar = page.locator(".tf-agent-sidebar");
   await sidebar.waitFor();
   await sidebar.locator(".tf-agent-thread").waitFor();
   await sidebar.getByRole("textbox", { name: "消息" }).waitFor();
   assert.equal(await page.locator(".opencode-host, .assistant-sidebar").count(), 0, "Legacy OpenCode DOM is still present");
-  await sidebar.getByRole("button", { name: "打开会话抽屉" }).click();
+  await sidebar.getByRole("button", { name: "打开会话抽屉" }).evaluate((button) => button.click());
   await page.getByRole("dialog", { name: "会话历史" }).waitFor();
-  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "关闭会话抽屉", exact: true }).evaluate((button) => button.click());
+  await page.getByRole("dialog", { name: "会话历史" }).waitFor({ state: "hidden" });
+}
+
+function startProcessAudit() {
+  const roots = new Set();
+  const tracked = new Map();
+  let latest = [];
+  let sampleCount = 0;
+  let pending = "";
+  let stderr = "";
+  let resolveReady;
+  let rejectReady;
+  const ready = new Promise((resolve, reject) => { resolveReady = resolve; rejectReady = reject; });
+  const script = `
+$ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+while ($true) {
+  $items = @(Get-CimInstance Win32_Process | ForEach-Object {
+    $role = 'other'
+    if ($_.Name -eq 'HardwareHarness.exe') { $role = 'electron' }
+    elseif ($_.Name -eq 'hardwareharness-backend.exe') { $role = 'backend' }
+    elseif ($_.Name -eq 'opencode.exe') { $role = 'opencode' }
+    elseif ($_.Name -eq 'uv.exe') { $role = 'uv' }
+    elseif ($_.CommandLine -like '*hardwareharness._worker*') { $role = 'worker' }
+    elseif ($_.CommandLine -like '*-m uvicorn*') { $role = 'application-service' }
+    elseif ($_.Name -eq 'python.exe') { $role = 'python' }
+    [pscustomobject]@{ pid = $_.ProcessId; parent = $_.ParentProcessId; name = $_.Name;
+      executable = $_.ExecutablePath; started = $_.CreationDate.ToUniversalTime().ToString('o'); role = $role }
+  })
+  ConvertTo-Json -InputObject $items -Compress
+  Start-Sleep -Milliseconds 100
+}`;
+  const monitor = spawn("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", script], {
+    windowsHide: true, stdio: ["ignore", "pipe", "pipe"]
+  });
+  function capture() {
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const item of latest) {
+        const key = `${item.pid}:${item.started}`;
+        if (tracked.has(key)) continue;
+        if (roots.has(item.pid) || [...tracked.values()].some((parent) =>
+          parent.pid === item.parent && parent.started <= item.started)) {
+          tracked.set(key, item);
+          changed = true;
+        }
+      }
+    }
+  }
+  monitor.stdout.setEncoding("utf8");
+  monitor.stdout.on("data", (data) => {
+    pending += data;
+    let end;
+    while ((end = pending.indexOf("\n")) >= 0) {
+      const line = pending.slice(0, end).trim();
+      pending = pending.slice(end + 1);
+      if (!line) continue;
+      try { latest = JSON.parse(line); sampleCount += 1; capture(); resolveReady(); }
+      catch (error) { rejectReady(error); }
+    }
+  });
+  monitor.stderr.on("data", (data) => { stderr += data; });
+  monitor.on("error", rejectReady);
+  monitor.on("exit", (code) => { if (sampleCount === 0) rejectReady(new Error(`Process monitor exited ${code}: ${stderr}`)); });
+  return {
+    ready,
+    addRoot(pid) { assert.ok(pid); roots.add(pid); capture(); },
+    async assertExited() {
+      await poll(async () => [...tracked.values()].every((item) => !latest.some((live) =>
+        live.pid === item.pid && live.started === item.started)), 20_000);
+    },
+    async writeReport() {
+      for (const role of ["electron", "backend", "uv", "worker", "application-service", "opencode"]) {
+        assert.ok([...tracked.values()].some((item) => item.role === role), `Missing process audit role: ${role}`);
+      }
+      const report = resolve(workspaceDir, "reports/applications/packaging/process-cleanup.json");
+      await mkdir(dirname(report), { recursive: true });
+      await writeFile(report, JSON.stringify({ executablePath, roots: [...roots], sampleCount,
+        tracked: [...tracked.values()], remaining: [], allObservedDescendantsExited: true }, null, 2) + "\n");
+    },
+    stop() { monitor.kill(); }
+  };
 }
 
 async function verifyThirdPartyResources() {
@@ -152,7 +305,7 @@ async function openCodeProcesses() {
   const { stdout } = await execFileAsync("powershell.exe", [
     "-NoProfile",
     "-Command",
-    "Get-CimInstance Win32_Process -Filter \"Name = 'opencode.exe'\" | Select-Object ProcessId,ExecutablePath | ConvertTo-Json -Compress"
+    "[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); Get-CimInstance Win32_Process -Filter \"Name = 'opencode.exe'\" | Select-Object ProcessId,ExecutablePath | ConvertTo-Json -Compress"
   ], { windowsHide: true });
   const text = stdout.trim();
   if (!text) return [];

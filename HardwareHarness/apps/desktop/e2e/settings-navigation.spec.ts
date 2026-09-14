@@ -27,9 +27,9 @@ test("settings returns to the page that opened it", async () => {
     await expect(page.getByText("硬件库", { exact: true })).toBeVisible();
     await openSettingsAndReturn(page, () => expect(page.getByText("硬件库", { exact: true })).toBeVisible());
 
-    await page.getByRole("tab", { name: "编排测试" }).click();
-    await expect(page.getByRole("button", { name: "应用" })).toBeVisible();
-    await openSettingsAndReturn(page, () => expect(page.getByRole("button", { name: "应用" })).toBeVisible());
+    await page.getByRole("tab", { name: "应用搭建" }).click();
+    await expect(page.getByRole("button", { name: "新建应用", exact: true })).toBeVisible();
+    await openSettingsAndReturn(page, () => expect(page.getByRole("button", { name: "新建应用", exact: true })).toBeVisible());
 
     await page.getByRole("tab", { name: "设备管理" }).click();
     await expect(page.getByRole("heading", { name: "设备管理" })).toBeVisible();

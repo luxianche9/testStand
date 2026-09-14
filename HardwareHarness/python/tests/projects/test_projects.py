@@ -76,37 +76,6 @@ async def test_save_damage(tmp_path: Path) -> None:
     assert Path(project_path(folder)).read_text() == "{ broken"
 
 
-@pytest.mark.ts_case(
-    PREFIX + "opens legacy manifests through the migration chain and persists formatVersion 3"
-)
-@pytest.mark.asyncio
-async def test_legacy(tmp_path: Path) -> None:
-    service, _ = await fixture(tmp_path)
-    folder = tmp_path / "legacy"
-    path = Path(project_path(folder))
-    path.parent.mkdir(parents=True)
-    stamp = "2025-01-02T03:04:05.000Z"
-    path.write_text(
-        json_stringify(
-            {
-                "formatVersion": 1,
-                "projectId": "LEGACY",
-                "name": "Legacy bench",
-                "wiring": {"nodes": [], "connections": []},
-                "createdAt": stamp,
-                "updatedAt": stamp,
-            }
-        )
-    )
-    before = path.read_bytes()
-    assert (await service.inspect_folder(folder))["state"] == "ready"
-    assert path.read_bytes() == before
-    opened = await service.open_folder(folder)
-    assert opened["file"]["formatVersion"] == 3
-    assert opened["file"]["task"]["taskId"] == "LEGACY-task"
-    assert json_parse(path.read_text())["formatVersion"] == 3
-
-
 @pytest.mark.ts_case(PREFIX + "rejects future manifest versions without modifying them")
 @pytest.mark.asyncio
 async def test_future(tmp_path: Path) -> None:
@@ -188,45 +157,11 @@ async def test_recent(tmp_path: Path) -> None:
     assert [item["rootPath"] for item in await service.list_recent()] == [str(first)]
 
 
-@pytest.mark.ts_case(
-    "packages/application/src/project-services.test.ts::project-oriented services::"
-    "round-trips one folder project with wiring and one task"
-)
-@pytest.mark.asyncio
-async def test_roundtrip_task_and_wiring(tmp_path: Path) -> None:
-    service, _ = await fixture(tmp_path)
-    folder, other = tmp_path / "project", tmp_path / "other"
-    folder.mkdir()
-    other.mkdir()
-    await service.initialize_folder(folder)
-    service.update_wiring({"nodes": [{"hardwareId": "DUT_A", "x": 1, "y": 2}], "connections": []})
-    service.update_task(
-        {
-            "formatVersion": 2,
-            "taskId": "TASK_A",
-            "name": "Voltage",
-            "inputs": [],
-            "variables": [],
-            "setup": [],
-            "steps": [],
-            "cleanup": [],
-        }
-    )
-    await service.save()
-    assert service.document()["dirty"] is False
-    await service.initialize_folder(other)
-    assert service.wiring()["nodes"] == []
-    await service.open_folder(folder)
-    assert service.wiring()["nodes"][0]["hardwareId"] == "DUT_A"
-    assert service.task()["taskId"] == "TASK_A"
-    await service.close()
-
-
 @pytest.mark.asyncio
 async def test_open_current_bytes_and_explicit_save(tmp_path: Path) -> None:
     service, _ = await fixture(tmp_path)
     created = await service.initialize_folder(tmp_path)
-    assert created["file"]["task"]["name"] == "Untitled task"
+    assert created["file"]["formatVersion"] == 4 and "task" not in created["file"]
     path = Path(created["path"])
     raw = json_stringify({**created["file"], "ignored": True})
     path.write_text(raw, encoding="utf-8")

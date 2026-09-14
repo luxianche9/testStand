@@ -10,6 +10,7 @@ import pytest
 
 from hardwareharness_backend.contracts.validation import ValidationError
 from hardwareharness_backend.mcp_gateway import LocalMcpGateway
+from hardwareharness_backend.mcp_gateway.gateway import AGENT_INSTRUCTIONS
 from hardwareharness_backend.mcp_gateway.tool_registry import BUILTIN_TOOL_DEFINITIONS, ToolRegistry
 
 
@@ -106,11 +107,16 @@ _CASES: list[tuple[str, dict[str, Any], str, str, list[Any]]] = [
     ("cancel_wiring_task", {"wiringTaskId": "W"}, "wiring", "cancel_task", ["W", None]),
     ("get_wiring_task", {"wiringTaskId": "W"}, "wiring", "get_task", ["W"]),
     ("list_wiring_tasks", {}, "wiring", "list_tasks", [{"limit": 100}]),
-    ("get_test_task", {}, "orchestration", "get_task", []),
-    ("update_test_task", {"task": _TASK}, "orchestration", "update_task", [_TASK]),
-    ("start_test_run", {}, "orchestration", "start_run", [{"inputs": {}}]),
-    ("cancel_test_run", {"runId": "R"}, "orchestration", "cancel_run", ["R"]),
-    ("get_test_run", {"runId": "R"}, "orchestration", "get_run", ["R", 0, 0, 200]),
+    ("list_workspace_files", {}, "applications", "list_files", []),
+    (
+        "start_python_run",
+        {"entrypoint": "workflows/main.py"},
+        "applications",
+        "start_run",
+        [{"entrypoint": "workflows/main.py", "inputs": {}, "inputSchema": {}, "hardwareIds": []}],
+    ),
+    ("cancel_python_run", {"runId": "R"}, "applications", "cancel_run", ["R"]),
+    ("get_python_run", {"runId": "R"}, "applications", "get_run", ["R"]),
 ]
 
 
@@ -222,7 +228,7 @@ def result_body(response: httpx.Response) -> Any:
 
 async def test_http_routes_and_tool_errors() -> None:
     gateway, app = make_gateway()
-    app.orchestration.get_task.return_value = _TASK
+    app.applications.get_run.return_value = _TASK
     await gateway.start()
     try:
         async with httpx.AsyncClient(headers=_HEADERS) as client:
@@ -232,7 +238,11 @@ async def test_http_routes_and_tool_errors() -> None:
                 assert response.status_code == 405
                 assert response.headers["allow"] == "GET, POST, DELETE"
             initialized = await client.post(url, json=_INITIALIZE)
-            assert result_body(initialized) == {
+            initialization = result_body(initialized)
+            # Application building adds only Agent guidance; retain every historical
+            # protocol-version, capability and server-info assertion below unchanged.
+            assert initialization.pop("instructions") == AGENT_INSTRUCTIONS
+            assert initialization == {
                 "protocolVersion": "2025-03-26",
                 "capabilities": {"tools": {}},
                 "serverInfo": {"name": "hardwareharness", "version": "0.1.0"},
@@ -245,7 +255,7 @@ async def test_http_routes_and_tool_errors() -> None:
                     "jsonrpc": "2.0",
                     "id": 4,
                     "method": "tools/call",
-                    "params": {"name": "get_test_task", "arguments": {}},
+                    "params": {"name": "get_python_run", "arguments": {"runId": "R"}},
                 },
             )
             assert result_body(success) == {
@@ -265,7 +275,7 @@ async def test_http_routes_and_tool_errors() -> None:
                     "jsonrpc": "2.0",
                     "id": 2,
                     "method": "tools/call",
-                    "params": {"name": "get_test_run", "arguments": {}},
+                    "params": {"name": "get_python_run", "arguments": {}},
                 },
             )
             result = result_body(response)
@@ -330,7 +340,7 @@ async def test_mcp_cancellation_keeps_application_operation_running() -> None:
         completed.set()
         return {"runId": "R"}
 
-    app.orchestration.start_run = run
+    app.applications.start_run = run
     await gateway.start()
     try:
         async with httpx.AsyncClient(headers=_HEADERS) as client:
@@ -345,7 +355,10 @@ async def test_mcp_cancellation_keeps_application_operation_running() -> None:
                         "jsonrpc": "2.0",
                         "id": 2,
                         "method": "tools/call",
-                        "params": {"name": "start_test_run", "arguments": {}},
+                        "params": {
+                            "name": "start_python_run",
+                            "arguments": {"entrypoint": "workflows/main.py"},
+                        },
                     },
                 )
             )

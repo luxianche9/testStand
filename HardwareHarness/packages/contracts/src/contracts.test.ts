@@ -1,10 +1,9 @@
-import { describe, expect, expectTypeOf, it } from "vitest";
-import { z } from "zod";
+import { describe, expect, it } from "vitest";
 import { agentKindInputSchema } from "./agents.js";
 import { appError, toWireError } from "./errors.js";
 import { assetIdInputSchema, computerIdInputSchema, deviceBundleIdInputSchema, hardwareIdInputSchema, hardwareSchema, managedHardwareSchema, mcpServerSchema, remoteComputerSchema, serverIdInputSchema } from "./devices.js";
-import { nodeRunIdInputSchema, runIdInputSchema, taskIdInputSchema, testStepSchema, type TestStep } from "./orchestration.js";
-import { projectFileSchema, projectRootPathInputSchema, upgradeProjectFile } from "./projects.js";
+import { runIdInputSchema, runStartSchema } from "./applications.js";
+import { projectFileSchema, projectRootPathInputSchema } from "./projects.js";
 import { wiringTaskIdInputSchema } from "./wiring.js";
 
 describe("public contracts", () => {
@@ -25,34 +24,21 @@ describe("public contracts", () => {
     expect(() => projectFileSchema.parse({ formatVersion: 2 })).toThrow();
   });
 
-  it("upgrades project files one version at a time", () => {
+  it("accepts current project metadata without node tasks", () => {
     const timestamp = "2026-08-15T00:00:00.000Z";
-    const version1 = {
-      formatVersion: 1 as const,
-      projectId: "PROJECT",
-      name: "Bench",
-      wiring: { nodes: [], connections: [] },
-      createdAt: timestamp,
-      updatedAt: timestamp
-    };
-
-    expect(upgradeProjectFile(version1)).toMatchObject({
-      formatVersion: 3,
-      task: { formatVersion: 2, taskId: "PROJECT-task", name: "Bench" }
-    });
-    expect(projectFileSchema.parse({
-      ...version1,
-      formatVersion: 2,
-      task: { formatVersion: 2, taskId: "TASK", name: "Existing", inputs: [], variables: [], setup: [], steps: [], cleanup: [] }
-    })).toMatchObject({ formatVersion: 3, task: { taskId: "TASK", name: "Existing" } });
+    const project = { formatVersion: 4, projectId: "PROJECT", name: "Bench", wiring: { nodes: [], connections: [] }, createdAt: timestamp, updatedAt: timestamp };
+    expect(projectFileSchema.parse(project)).toEqual(project);
+    expect(projectFileSchema.parse({ ...project, task: {}, ignored: true })).toEqual(project);
+    expect(projectFileSchema.safeParse({ ...project, formatVersion: 3 }).success).toBe(false);
   });
 
-  it("keeps the TestStep schema output identical to the public type", () => {
-    expectTypeOf<z.infer<typeof testStepSchema>>().toEqualTypeOf<TestStep>();
+  it("validates Python launches without exposing occupancy or context", () => {
+    expect(runStartSchema.parse({ entrypoint: "workflows/main.py" })).toEqual({ entrypoint: "workflows/main.py", inputs: {}, hardwareIds: [] });
+    expect(runStartSchema.safeParse({ entrypoint: "main.py", occupancy: true }).success).toBe(false);
   });
 
   it("uses strict named id inputs for IPC procedures", () => {
-    const schemas = [computerIdInputSchema, serverIdInputSchema, hardwareIdInputSchema, assetIdInputSchema, deviceBundleIdInputSchema, projectRootPathInputSchema, wiringTaskIdInputSchema, runIdInputSchema, nodeRunIdInputSchema, taskIdInputSchema];
+    const schemas = [computerIdInputSchema, serverIdInputSchema, hardwareIdInputSchema, assetIdInputSchema, deviceBundleIdInputSchema, projectRootPathInputSchema, wiringTaskIdInputSchema, runIdInputSchema];
     for (const schema of schemas) {
       expect(schema.parse({ id: "ID" })).toEqual({ id: "ID" });
       expect(schema.safeParse({ id: "ID", extra: true }).success).toBe(false);

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { TestRun, TestRunListSortBy, TestRunStatus } from "@hardwareharness/contracts/orchestration";
+import type { RunRecord, RunStatus } from "@hardwareharness/contracts/applications";
 import { DownloadIcon, RefreshCwIcon, Trash2Icon, TriangleAlertIcon } from "lucide-react";
 import { errorMessage } from "../../shared/errors.js";
 import { queryKeys } from "../../shared/query-keys.js";
@@ -8,7 +8,7 @@ import { useProjectDocument } from "../../shared/queries.js";
 import { Button, Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, Input, Select } from "../../shared/ui/index.js";
 import { FeatureLayout, FeatureHeader } from "../../shared/FeatureLayout.js";
 import { RunDetail } from "../run-logs/index.js";
-import { dateRangeBounds, isActiveRun, nextSort, RUN_STATUSES, safeFilename, type DateRangePreset, type RunListSortDir } from "./logs-model.js";
+import { dateRangeBounds, isActiveRun, nextSort, readRunHistory, RUN_STATUSES, safeFilename, type DateRangePreset, type RunListSortBy, type RunListSortDir } from "./logs-model.js";
 import { RunTable } from "./RunTable.js";
 
 const PAGE_SIZE = 50;
@@ -17,35 +17,36 @@ export function LogsPage() {
   const client = useQueryClient();
   const project = useProjectDocument();
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<TestRunStatus | "all">("all");
-  const [taskName, setTaskName] = useState("all");
+  const [status, setStatus] = useState<RunStatus | "all">("all");
+  const [name, setTaskName] = useState("all");
   const [range, setRange] = useState<DateRangePreset>("all");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
-  const [sortBy, setSortBy] = useState<TestRunListSortBy>("createdAt");
+  const [sortBy, setSortBy] = useState<RunListSortBy>("startedAt");
   const [sortDir, setSortDir] = useState<RunListSortDir>("desc");
   const [offset, setOffset] = useState(0);
   const [selectedRunId, setSelectedRunId] = useState<string>();
   const [detailRunId, setDetailRunId] = useState<string>();
-  const [confirm, setConfirm] = useState<{ kind: "delete"; run: TestRun } | { kind: "clear" }>();
+  const [confirm, setConfirm] = useState<{ kind: "delete"; run: RunRecord } | { kind: "clear" }>();
 
   const bounds = useMemo(() => dateRangeBounds(range, from, to), [from, range, to]);
-  const queryInput = useMemo(() => ({
-    ...(status === "all" ? {} : { statuses: [status] }),
-    ...(search.trim() ? { search: search.trim() } : {}),
-    ...(taskName === "all" ? {} : { taskName }),
-    ...bounds,
-    sortBy,
-    sortDir,
-    offset,
-    limit: PAGE_SIZE
-  }), [bounds, offset, search, sortBy, sortDir, status, taskName]);
-  const runs = useQuery({ queryKey: queryKeys.runLogList(project.data?.file.projectId, queryInput), queryFn: () => window.hardwareharness.orchestration.listRuns(queryInput) });
+  const records = useQuery({ queryKey: queryKeys.runLogList(project.data?.file.projectId, {}), queryFn: () => readRunHistory((input) => window.hardwareharness.applications.listRuns(input)) });
+  const filtered = useMemo(() => (records.data ?? []).filter((run) =>
+    (status === "all" || run.status === status) && (name === "all" || run.name === name) &&
+    (!search.trim() || [run.name, run.runId, run.entrypoint].some((value) => value.toLowerCase().includes(search.trim().toLowerCase()))) &&
+    (!bounds.from || run.startedAt >= bounds.from) && (!bounds.to || run.startedAt <= bounds.to)
+  ).sort((left, right) => {
+    const a = sortBy === "duration" ? left.durationMs ?? 0 : left[sortBy];
+    const b = sortBy === "duration" ? right.durationMs ?? 0 : right[sortBy];
+    const compared = typeof a === "number" && typeof b === "number" ? a - b : String(a).localeCompare(String(b));
+    return sortDir === "asc" ? compared : -compared;
+  }), [bounds, name, records.data, search, sortBy, sortDir, status]);
+  const runs = { ...records, data: records.data ? { items: filtered.slice(offset, offset + PAGE_SIZE), total: filtered.length, names: [...new Set(records.data.map((run) => run.name))], warnings: [] } : undefined };
 
   useEffect(() => {
     const refresh = () => { void client.invalidateQueries({ queryKey: queryKeys.runLogs }); };
     const stopRun = window.hardwareharness.events.subscribe("run", refresh);
-    const stopNode = window.hardwareharness.events.subscribe("nodeRun", refresh);
+    const stopNode = window.hardwareharness.events.subscribe("runEvent", refresh);
     const fallback = window.setInterval(refresh, 10_000);
     return () => { stopRun(); stopNode(); window.clearInterval(fallback); };
   }, [client]);
@@ -56,12 +57,12 @@ export function LogsPage() {
     if (detailRunId && !items.some((run) => run.runId === detailRunId)) setDetailRunId(undefined);
   }, [detailRunId, runs.data?.items, selectedRunId]);
 
-  const taskNameOptions = useMemo(() => (runs.data?.taskNames ?? []).map((name) => <option key={name} value={name}>{name}</option>), [runs.data?.taskNames]);
+  const nameOptions = useMemo(() => (runs.data?.names ?? []).map((name) => <option key={name} value={name}>{name}</option>), [runs.data?.names]);
   const statusOptions = useMemo(() => RUN_STATUSES.map((item) => <option key={item} value={item}>{item}</option>), []);
   const detailRun = runs.data?.items.find((run) => run.runId === detailRunId);
   const resetPaging = () => setOffset(0);
   const remove = useMutation({
-    mutationFn: (runId: string) => window.hardwareharness.orchestration.deleteRun(runId),
+    mutationFn: (runId: string) => window.hardwareharness.applications.deleteRun(runId),
     onSuccess: async () => {
       setConfirm(undefined);
       setSelectedRunId(undefined);
@@ -70,7 +71,7 @@ export function LogsPage() {
     }
   });
   const clear = useMutation({
-    mutationFn: () => window.hardwareharness.orchestration.clearCompletedRuns(),
+    mutationFn: () => window.hardwareharness.applications.clearCompletedRuns(),
     onSuccess: async () => {
       setConfirm(undefined);
       setSelectedRunId(undefined);
@@ -79,20 +80,19 @@ export function LogsPage() {
     }
   });
   const exportRun = useMutation({
-    mutationFn: async (run: TestRun) => {
-      const archive = await window.hardwareharness.orchestration.exportRun(run.runId);
+    mutationFn: async (run: RunRecord) => {
+      const archive = await window.hardwareharness.applications.exportRun(run.runId);
       return await window.hardwareharness.system.exportText(
-        `${safeFilename(run.taskName)}-${run.runId.slice(0, 8)}.json`,
+        `${safeFilename(run.name)}-${run.runId.slice(0, 8)}.json`,
         `${JSON.stringify(archive, null, 2)}\n`
       );
     }
   });
   const exportFiltered = useMutation({
     mutationFn: async () => {
-      const result = await window.hardwareharness.orchestration.listRuns({ ...queryInput, offset: 0, limit: 200 });
       return await window.hardwareharness.system.exportText(
         `runs-filtered.json`,
-        `${JSON.stringify(result.items, null, 2)}\n`
+        `${JSON.stringify(filtered, null, 2)}\n`
       );
     }
   });
@@ -114,12 +114,12 @@ export function LogsPage() {
           </>
         }
       >
-        <Input className="w-56" value={search} placeholder="搜索任务 / Run ID" aria-label="搜索运行日志" onChange={(event) => { setSearch(event.target.value); resetPaging(); }} />
-        <Select className="w-auto" aria-label="按任务筛选" value={taskName} onChange={(event) => { setTaskName(event.target.value); resetPaging(); }}>
-          <option value="all">全部任务</option>
-          {taskNameOptions}
+        <Input className="w-56" value={search} placeholder="搜索流程 / Run ID" aria-label="搜索运行日志" onChange={(event) => { setSearch(event.target.value); resetPaging(); }} />
+        <Select className="w-auto" aria-label="按流程筛选" value={name} onChange={(event) => { setTaskName(event.target.value); resetPaging(); }}>
+          <option value="all">全部流程</option>
+          {nameOptions}
         </Select>
-        <Select className="w-auto" aria-label="按状态筛选" value={status} onChange={(event) => { setStatus(event.target.value as TestRunStatus | "all"); resetPaging(); }}>
+        <Select className="w-auto" aria-label="按状态筛选" value={status} onChange={(event) => { setStatus(event.target.value as RunStatus | "all"); resetPaging(); }}>
           <option value="all">全部状态</option>
           {statusOptions}
         </Select>
@@ -182,7 +182,7 @@ export function LogsPage() {
       <DialogContent size="sm" aria-label={confirm?.kind === "delete" ? "删除运行日志" : "清空已结束日志"}>
         <DialogHeader title={confirm?.kind === "delete" ? "删除运行日志" : "清空已结束日志"} onClose={() => setConfirm(undefined)} />
         <DialogBody>
-          <p className="m-0 text-sm">{confirm?.kind === "delete" ? `将永久删除 Run ${confirm.run.runId} 的项目日志。` : "将永久删除当前工程内全部已结束、已阻塞、已取消和已中断的 Run 日志；活动 Run 不受影响。"}</p>
+          <p className="m-0 text-sm">{confirm?.kind === "delete" ? `将永久删除 Run ${confirm.run.runId} 的项目日志。` : "将永久删除当前工程内全部已结束、已取消和已中断的 Run 日志；活动 Run 不受影响。"}</p>
         </DialogBody>
         <DialogFooter>
           <Button variant="outline" onClick={() => setConfirm(undefined)}>取消</Button>

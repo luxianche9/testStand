@@ -4,7 +4,6 @@ import { app, safeStorage } from "electron";
 import type { HardwareHarnessEventName } from "@hardwareharness/contracts/desktop";
 import { PythonBridge } from "./python-bridge.js";
 import { logger } from "./logger.js";
-import { orchestrationSafetyFromEnv } from "./orchestration-safety.js";
 
 export async function startPythonBackend(event: (name: HardwareHarnessEventName, payload: unknown, workspaceChanged?: boolean) => void): Promise<PythonBridge> {
   if (!safeStorage.isEncryptionAvailable()) throw new Error("Windows credential encryption is not available");
@@ -36,7 +35,6 @@ export async function startPythonBackend(event: (name: HardwareHarnessEventName,
       gatewayPort: Number(process.env.HARDWAREHARNESS_GATEWAY_PORT ?? 8000),
       integrationTestMode: process.env.HARDWAREHARNESS_AGENT_INTEGRATION_TEST_MODE === "1",
       gatewayTestToken: process.env.HARDWAREHARNESS_GATEWAY_TEST_TOKEN,
-      safety: orchestrationSafetyFromEnv(process.env),
       locale: new Intl.Collator().resolvedOptions().locale
     });
     if (ready.protocolVersion !== 1) throw new Error("Unsupported Python backend protocol version");

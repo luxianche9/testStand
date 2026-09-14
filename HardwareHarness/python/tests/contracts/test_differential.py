@@ -29,7 +29,13 @@ def decode(value: Any) -> Any:
 
 
 @pytest.mark.parametrize(
-    "fixture", json_parse(FIXTURES.read_text(encoding="utf-8")), ids=lambda value: value["id"]
+    "fixture",
+    [
+        item
+        for item in json_parse(FIXTURES.read_text(encoding="utf-8"))
+        if not item["schema"].startswith(("orchestration.", "projects."))
+    ],
+    ids=lambda value: value["id"],
 )
 def test_original_zod_golden(fixture: dict[str, Any]) -> None:
     domain, export = fixture["schema"].split(".")

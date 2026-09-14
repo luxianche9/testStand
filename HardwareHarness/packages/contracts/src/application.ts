@@ -3,7 +3,7 @@ import type { DashboardSnapshot } from "./desktop.js";
 import type { ConnectionStatus, Hardware, ManagedHardware, McpServerConfig, RemoteComputer, RemoteServiceLog, ServerStatus, StoredHardwareDefinition, ToolCatalogItem } from "./devices.js";
 import type { ManualToolInvocationInput, ManualToolInvocationResult } from "./execution.js";
 import type { HardwareOccupancyRequest, HardwareOccupancyRequestStatus, HardwareOccupancyStatus, RequestHardwareOccupancyInput } from "./occupancy.js";
-import type { OperatorDecision, TaskValidationResult, TestNodeRun, TestRun, TestRunDetail, TestRunListQuery, TestRunListResult, TestRunLogArchive, TestTask } from "./orchestration.js";
+import type { HardwareHarnessApplicationsApi } from "./applications.js";
 import type { ProjectDocument, ProjectFolderSelection, RecentProjectSummary } from "./projects.js";
 import type { ProjectCanvasNode, ProjectWiring, RequestWiringTaskInput, WiringTask, WiringTaskStatus } from "./wiring.js";
 
@@ -75,19 +75,8 @@ export interface BackendApplication {
     getTask(context: RequestContext, wiringTaskId: string): WiringTask;
     listTasks(context: RequestContext, input?: { status?: WiringTaskStatus; limit?: number }): WiringTask[];
   };
-  readonly orchestration: {
-    getTask(context: RequestContext): TestTask;
-    updateTask(context: RequestContext, task: TestTask): { task: TestTask; dirty: boolean; document: ProjectDocument };
-    validateTask(context: RequestContext, task: TestTask): TaskValidationResult;
-    startRun(context: RequestContext, input?: { inputs?: Record<string, unknown> }): Promise<TestRunDetail>;
-    cancelRun(context: RequestContext, runId: string): Promise<TestRun>;
-    getRun(context: RequestContext, runId: string, sinceEventId?: number, nodeOffset?: number, nodeLimit?: number): TestRunDetail;
-    listRuns(context: RequestContext, input?: TestRunListQuery): TestRunListResult;
-    exportRun(context: RequestContext, runId: string): TestRunLogArchive;
-    deleteRun(context: RequestContext, runId: string): Promise<{ runId: string }>;
-    clearCompletedRuns(context: RequestContext): Promise<{ deleted: number }>;
-    listOperatorDecisions(context: RequestContext): OperatorDecision[];
-    respondOperatorDecision(context: RequestContext, nodeRunId: string, selectedValue: string): Promise<TestNodeRun>;
+  readonly applications: {
+    [K in keyof HardwareHarnessApplicationsApi]: HardwareHarnessApplicationsApi[K] extends (...args: infer A) => infer R ? (context: RequestContext, ...args: A) => R : never;
   };
   readonly manual: {
     invokeTool(context: RequestContext, raw: ManualToolInvocationInput): Promise<ManualToolInvocationResult>;

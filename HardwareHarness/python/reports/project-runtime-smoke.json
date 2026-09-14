@@ -1,0 +1,14 @@
+{
+  "status": "passed",
+  "runtime": "E:\\Project\\hardwareHarness\\HardwareHarness\\python\\dist\\project-runtime-v1",
+  "projectPathContainsChineseAndSpaces": true,
+  "systemPythonAndUvRemovedFromPath": true,
+  "uvOffline": true,
+  "freshCache": true,
+  "previewHttpStatus": 200,
+  "runStatus": "succeeded",
+  "events": 11,
+  "independentCleanWindowsVerified": false,
+  "physicalNetworkDisconnected": false,
+  "processCleanupVerified": true
+}

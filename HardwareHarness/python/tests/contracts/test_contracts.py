@@ -1,5 +1,3 @@
-from typing import assert_type
-
 import pytest
 
 from hardwareharness_backend.contracts.devices import (
@@ -9,8 +7,7 @@ from hardwareharness_backend.contracts.devices import (
     parse_remote_computer,
 )
 from hardwareharness_backend.contracts.errors import app_error, to_wire_error
-from hardwareharness_backend.contracts.orchestration import TestStep, parse_test_step
-from hardwareharness_backend.contracts.projects import parse_project_file, upgrade_project_file
+from hardwareharness_backend.contracts.projects import parse_project_file
 from hardwareharness_backend.contracts.validation import ValidationError, parse_id_input
 
 PREFIX = "packages/contracts/src/contracts.test.ts::public contracts::"
@@ -76,52 +73,6 @@ def test_managed_state() -> None:
 def test_incomplete_project() -> None:
     with pytest.raises(ValidationError):
         parse_project_file({"formatVersion": 2})
-
-
-@pytest.mark.ts_case(PREFIX + "upgrades project files one version at a time")
-def test_upgrade_chain() -> None:
-    old = {
-        "formatVersion": 1,
-        "projectId": "PROJECT",
-        "name": "Bench",
-        "wiring": {"nodes": [], "connections": []},
-        "createdAt": "2026-08-15T00:00:00.000Z",
-        "updatedAt": "2026-08-15T00:00:00.000Z",
-    }
-    upgraded = upgrade_project_file(old)
-    assert upgraded["formatVersion"] == 3
-    assert upgraded["task"] == {
-        "formatVersion": 2,
-        "taskId": "PROJECT-task",
-        "name": "Bench",
-        "inputs": [],
-        "variables": [],
-        "setup": [],
-        "steps": [],
-        "cleanup": [],
-    }
-    task = {**upgraded["task"], "taskId": "TASK", "name": "Existing"}
-    assert parse_project_file({**old, "formatVersion": 2, "task": task})["task"] == task
-
-
-@pytest.mark.ts_case(PREFIX + "keeps the TestStep schema output identical to the public type")
-def test_step_output_type() -> None:
-    step = parse_test_step(
-        {
-            "stepId": "D",
-            "label": "Delay",
-            "type": "delay",
-            "durationMs": {"kind": "literal", "value": 0},
-        }
-    )
-    assert_type(step, TestStep)
-    assert step == {
-        "stepId": "D",
-        "label": "Delay",
-        "enabled": True,
-        "type": "delay",
-        "durationMs": {"kind": "literal", "value": 0},
-    }
 
 
 @pytest.mark.ts_case(PREFIX + "uses strict named id inputs for IPC procedures")

@@ -1,0 +1,76 @@
+{
+  "executablePath": "E:\\Project\\hardwareHarness\\HardwareHarness\\dist\\win-unpacked\\HardwareHarness.exe",
+  "runs": [
+    {
+      "runId": "run_edc34769aa274841a8573753300cebbc",
+      "name": "Run sample",
+      "entrypoint": "workflows/sample.py",
+      "inputs": {
+        "samples": 1
+      },
+      "hardwareIds": [],
+      "status": "succeeded",
+      "startedAt": "2026-09-14T06:19:06.768Z",
+      "eventCount": 8,
+      "applicationId": "sample",
+      "actionId": "sample",
+      "sourcePath": ".hardwareharness/logs/application-runs/run_edc34769aa274841a8573753300cebbc/source",
+      "sourceHashes": {
+        "project.json": "512e838aabfdc610be011ebc977268175f98aff3aab9c445d6dd451df756785e",
+        "pyproject.toml": "fa0bc98d5fdb1c0f4632be0fccaa795eb7209a37327bd826703abfc478471569",
+        "uv.lock": "5bac95b58459cdd6adfc8c72c25746cddbdc78cb095b4eafc5d89d918b36b401",
+        "apps/sample/app.json": "413c2531f5250590f63be1047bebd0210b8684a6bff57dc8bfa46695ca5e1332",
+        "apps/sample/server.py": "84bdd62cb750a14d6b3efc363cabe16c556bac25547e86a785f2221c7fa9ab57",
+        "apps/sample/web/index.html": "c956fedc06b044165823d7bd0ba604bb7061aaa3d5acb7d13e897d6c5baf3cdf",
+        "docs/hardwareharness-sdk.md": "da50f388f6c78ec85ca2e5264efbbe43e78c933cdd74450422dbdda489d12e2b",
+        "workflows/sample.py": "790062821d6f92d53b6af513424e2eed6dd70ac8906b64530e4cd02a340ad7b4"
+      },
+      "pythonVersion": "3.11",
+      "sdkVersion": "0.1.0",
+      "result": {
+        "samples": 1
+      },
+      "completedAt": "2026-09-14T06:19:07.132Z",
+      "durationMs": 359
+    },
+    {
+      "runId": "run_3a07313e3b114198b77a59f97e347f9f",
+      "name": "Run sample",
+      "entrypoint": "workflows/sample.py",
+      "inputs": {
+        "samples": 1
+      },
+      "hardwareIds": [],
+      "status": "succeeded",
+      "startedAt": "2026-09-14T06:19:06.203Z",
+      "eventCount": 8,
+      "applicationId": "sample",
+      "actionId": "sample",
+      "sourcePath": ".hardwareharness/logs/application-runs/run_3a07313e3b114198b77a59f97e347f9f/source",
+      "sourceHashes": {
+        "project.json": "512e838aabfdc610be011ebc977268175f98aff3aab9c445d6dd451df756785e",
+        "pyproject.toml": "fa0bc98d5fdb1c0f4632be0fccaa795eb7209a37327bd826703abfc478471569",
+        "uv.lock": "5bac95b58459cdd6adfc8c72c25746cddbdc78cb095b4eafc5d89d918b36b401",
+        "apps/sample/app.json": "413c2531f5250590f63be1047bebd0210b8684a6bff57dc8bfa46695ca5e1332",
+        "apps/sample/server.py": "84bdd62cb750a14d6b3efc363cabe16c556bac25547e86a785f2221c7fa9ab57",
+        "apps/sample/web/index.html": "c956fedc06b044165823d7bd0ba604bb7061aaa3d5acb7d13e897d6c5baf3cdf",
+        "docs/hardwareharness-sdk.md": "da50f388f6c78ec85ca2e5264efbbe43e78c933cdd74450422dbdda489d12e2b",
+        "workflows/sample.py": "790062821d6f92d53b6af513424e2eed6dd70ac8906b64530e4cd02a340ad7b4"
+      },
+      "pythonVersion": "3.11",
+      "sdkVersion": "0.1.0",
+      "result": {
+        "samples": 1
+      },
+      "completedAt": "2026-09-14T06:19:06.589Z",
+      "durationMs": 391
+    }
+  ],
+  "capabilities": {
+    "bridge": "undefined",
+    "node": "undefined"
+  },
+  "applicationStopped": true,
+  "submittedThroughNativeForm": true,
+  "hiddenWindow": true
+}

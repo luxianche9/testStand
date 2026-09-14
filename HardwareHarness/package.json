@@ -20,9 +20,10 @@
     "verify:full": "pnpm verify && pnpm verify:python && pnpm test:e2e",
     "python:setup": "uv sync --project python --frozen && uv run --project python python python/scripts/prepare_icu.py",
     "verify:python": "uv run --project python python python/scripts/verify.py",
-    "build:python": "pnpm python:setup && uv run --project python python python/scripts/build.py",
+    "build:python": "pnpm python:setup && uv run --project python python python/scripts/build.py && pnpm build:project-runtime",
     "package:win": "pnpm build:python && pnpm build && pnpm --filter @hardwareharness/desktop package:win",
-    "check:branding": "node scripts/check-branding.mjs"
+    "check:branding": "node scripts/check-branding.mjs",
+    "build:project-runtime": "uv run --project python python python/scripts/build_project_runtime.py"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",

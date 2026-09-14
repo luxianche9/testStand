@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from .applications import ApplicationsApplication as ApplicationsApplication
 from .authorization import (
     AGENT_REQUEST_CONTEXT as AGENT_REQUEST_CONTEXT,
 )
@@ -32,9 +33,6 @@ from .services import (
     DevicesApplication as DevicesApplication,
 )
 from .services import (
-    OrchestrationApplication as OrchestrationApplication,
-)
-from .services import (
     ProjectsApplication as ProjectsApplication,
 )
 from .services import (
@@ -52,19 +50,17 @@ class HardwareHarnessApplication:
         execution = dependencies.get("execution") or ExecutionCoordinator()
         self.authorizer: Authorizer = dependencies.get("authorizer") or DefaultAuthorizer()
         self.devices = DevicesApplication(
-            self.authorizer, dependencies["devices"], dependencies["catalog"]
+            self.authorizer, dependencies["devices"], dependencies["catalog"], execution
         )
+        self.applications = dependencies["applications"]
         self.projects = ProjectsApplication(
             self.authorizer,
             dependencies["projects"],
             dependencies["wiring"],
-            dependencies["orchestration"],
+            self.applications,
         )
         self.wiring = WiringApplication(
             self.authorizer, dependencies["projects"], dependencies["wiring"]
-        )
-        self.orchestration = OrchestrationApplication(
-            self.authorizer, dependencies["orchestration"]
         )
         self.manual = ManualControlApplication(
             self.authorizer, dependencies["devices"], dependencies["catalog"], execution

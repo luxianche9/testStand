@@ -1,0 +1,508 @@
+{
+  "ok": true,
+  "verifiedAt": "2026-09-14T03:45:51.336Z",
+  "servers": [
+    {
+      "serverId": "PCI1710L_MCP",
+      "status": {
+        "serverId": "PCI1710L_MCP",
+        "computerId": "REMOTE_PC_1",
+        "service": {
+          "state": "unknown",
+          "checkedAt": "2026-09-14T03:45:43.311Z",
+          "serviceState": "unknown",
+          "message": "Not queried: device transport is available"
+        },
+        "transport": {
+          "state": "online",
+          "checkedAt": "2026-09-14T03:45:43.311Z"
+        }
+      }
+    },
+    {
+      "serverId": "PCI1762_MCP",
+      "status": {
+        "serverId": "PCI1762_MCP",
+        "computerId": "REMOTE_PC_1",
+        "service": {
+          "state": "unknown",
+          "checkedAt": "2026-09-14T03:45:43.408Z",
+          "serviceState": "unknown",
+          "message": "Not queried: device transport is available"
+        },
+        "transport": {
+          "state": "online",
+          "checkedAt": "2026-09-14T03:45:43.408Z"
+        }
+      }
+    },
+    {
+      "serverId": "PCI6208V_MCP",
+      "status": {
+        "serverId": "PCI6208V_MCP",
+        "computerId": "REMOTE_PC_1",
+        "service": {
+          "state": "unknown",
+          "checkedAt": "2026-09-14T03:45:43.504Z",
+          "serviceState": "unknown",
+          "message": "Not queried: device transport is available"
+        },
+        "transport": {
+          "state": "online",
+          "checkedAt": "2026-09-14T03:45:43.504Z"
+        }
+      }
+    },
+    {
+      "serverId": "CP118U_I_MCP",
+      "status": {
+        "serverId": "CP118U_I_MCP",
+        "computerId": "REMOTE_PC_1",
+        "service": {
+          "state": "unknown",
+          "checkedAt": "2026-09-14T03:45:43.600Z",
+          "serviceState": "unknown",
+          "message": "Not queried: device transport is available"
+        },
+        "transport": {
+          "state": "online",
+          "checkedAt": "2026-09-14T03:45:43.600Z"
+        }
+      }
+    },
+    {
+      "serverId": "FIREDAP_MCP",
+      "status": {
+        "serverId": "FIREDAP_MCP",
+        "computerId": "LOCAL_PC",
+        "service": {
+          "state": "unknown",
+          "checkedAt": "2026-09-14T03:45:43.250Z",
+          "serviceState": "unknown",
+          "message": "Not queried: device transport is available"
+        },
+        "transport": {
+          "state": "online",
+          "checkedAt": "2026-09-14T03:45:43.250Z"
+        }
+      }
+    }
+  ],
+  "computers": [
+    {
+      "computerId": "LOCAL_PC",
+      "status": {
+        "computerId": "LOCAL_PC",
+        "ssh": {
+          "state": "online",
+          "checkedAt": "2026-09-14T03:45:48.263Z",
+          "latencyMs": 2256
+        },
+        "servers": [
+          {
+            "serverId": "FIREDAP_MCP",
+            "computerId": "LOCAL_PC",
+            "service": {
+              "state": "unknown",
+              "checkedAt": "2026-09-14T03:45:48.268Z",
+              "serviceState": "unknown",
+              "message": "Not queried: device transport is available"
+            },
+            "transport": {
+              "state": "online",
+              "checkedAt": "2026-09-14T03:45:48.268Z"
+            }
+          }
+        ]
+      },
+      "attempts": [
+        {
+          "state": "online",
+          "checkedAt": "2026-09-14T03:45:48.263Z",
+          "latencyMs": 2256
+        }
+      ]
+    },
+    {
+      "computerId": "REMOTE_PC_1",
+      "status": {
+        "computerId": "REMOTE_PC_1",
+        "ssh": {
+          "state": "online",
+          "checkedAt": "2026-09-14T03:45:51.150Z",
+          "latencyMs": 2306
+        },
+        "servers": [
+          {
+            "serverId": "CP118U_I_MCP",
+            "computerId": "REMOTE_PC_1",
+            "service": {
+              "state": "unknown",
+              "checkedAt": "2026-09-14T03:45:51.155Z",
+              "serviceState": "unknown",
+              "message": "Not queried: device transport is available"
+            },
+            "transport": {
+              "state": "online",
+              "checkedAt": "2026-09-14T03:45:51.155Z"
+            }
+          },
+          {
+            "serverId": "PCI1710L_MCP",
+            "computerId": "REMOTE_PC_1",
+            "service": {
+              "state": "unknown",
+              "checkedAt": "2026-09-14T03:45:51.158Z",
+              "serviceState": "unknown",
+              "message": "Not queried: device transport is available"
+            },
+            "transport": {
+              "state": "online",
+              "checkedAt": "2026-09-14T03:45:51.158Z"
+            }
+          },
+          {
+            "serverId": "PCI1762_MCP",
+            "computerId": "REMOTE_PC_1",
+            "service": {
+              "state": "unknown",
+              "checkedAt": "2026-09-14T03:45:51.167Z",
+              "serviceState": "unknown",
+              "message": "Not queried: device transport is available"
+            },
+            "transport": {
+              "state": "online",
+              "checkedAt": "2026-09-14T03:45:51.167Z"
+            }
+          },
+          {
+            "serverId": "PCI6208V_MCP",
+            "computerId": "REMOTE_PC_1",
+            "service": {
+              "state": "unknown",
+              "checkedAt": "2026-09-14T03:45:51.171Z",
+              "serviceState": "unknown",
+              "message": "Not queried: device transport is available"
+            },
+            "transport": {
+              "state": "online",
+              "checkedAt": "2026-09-14T03:45:51.171Z"
+            }
+          }
+        ]
+      },
+      "attempts": [
+        {
+          "state": "online",
+          "checkedAt": "2026-09-14T03:45:51.150Z",
+          "latencyMs": 2306
+        }
+      ]
+    }
+  ],
+  "hardware": [
+    {
+      "hardwareId": "DUT_1",
+      "label": "野火 STM32F407 霸天虎 V2（STM32F407ZGT6）",
+      "kind": "passive",
+      "ports": 14,
+      "pins": 197,
+      "images": 15
+    },
+    {
+      "hardwareId": "LOCAL_MCP.FIREDAP_0",
+      "label": "FireDAP STM32 烧录服务（本机）",
+      "kind": "managed",
+      "ports": 3,
+      "pins": 25,
+      "images": 2
+    },
+    {
+      "hardwareId": "Oscilloscope1",
+      "label": "示波器",
+      "kind": "passive",
+      "ports": 2,
+      "pins": 4,
+      "images": 1
+    },
+    {
+      "hardwareId": "PC1_MCP.CP118U_I_CARD_0",
+      "label": "CP-118U-I 多串口卡",
+      "kind": "managed",
+      "ports": 8,
+      "pins": 72,
+      "images": 9
+    },
+    {
+      "hardwareId": "PC1_MCP.PCI1710L_CARD_0",
+      "label": "PCI-1710L 多功能采集卡",
+      "kind": "managed",
+      "ports": 1,
+      "pins": 68,
+      "images": 2
+    },
+    {
+      "hardwareId": "PC1_MCP.PCI1762_CARD_0",
+      "label": "PCI-1762 继电器输出卡",
+      "kind": "managed",
+      "ports": 1,
+      "pins": 62,
+      "images": 2
+    },
+    {
+      "hardwareId": "PC1_MCP.PCI6208V_CARD_0",
+      "label": "PCI-6208V 模拟量输出卡",
+      "kind": "managed",
+      "ports": 1,
+      "pins": 37,
+      "images": 2
+    }
+  ],
+  "tools": [
+    {
+      "serverId": "FIREDAP_MCP",
+      "name": "FIREDAP_MCP__get_server_info",
+      "kind": "management"
+    },
+    {
+      "serverId": "FIREDAP_MCP",
+      "name": "FIREDAP_MCP__list_hardware",
+      "kind": "management"
+    },
+    {
+      "serverId": "FIREDAP_MCP",
+      "name": "FIREDAP_MCP__get_hardware_info",
+      "kind": "management"
+    },
+    {
+      "serverId": "FIREDAP_MCP",
+      "name": "FIREDAP_MCP__get_pinout",
+      "kind": "management"
+    },
+    {
+      "serverId": "FIREDAP_MCP",
+      "name": "FIREDAP_MCP__firedap_list_probes",
+      "kind": "management"
+    },
+    {
+      "serverId": "FIREDAP_MCP",
+      "name": "FIREDAP_MCP__firedap_get_board_reference",
+      "kind": "management"
+    },
+    {
+      "serverId": "FIREDAP_MCP",
+      "name": "FIREDAP_MCP__firedap_inspect_firmware",
+      "kind": "management"
+    },
+    {
+      "serverId": "FIREDAP_MCP",
+      "name": "FIREDAP_MCP__firedap_flash",
+      "kind": "hardware"
+    },
+    {
+      "serverId": "FIREDAP_MCP",
+      "name": "FIREDAP_MCP__firedap_verify",
+      "kind": "hardware"
+    },
+    {
+      "serverId": "FIREDAP_MCP",
+      "name": "FIREDAP_MCP__firedap_target_info",
+      "kind": "hardware"
+    },
+    {
+      "serverId": "FIREDAP_MCP",
+      "name": "FIREDAP_MCP__firedap_reset",
+      "kind": "hardware"
+    },
+    {
+      "serverId": "FIREDAP_MCP",
+      "name": "FIREDAP_MCP__firedap_read_sram",
+      "kind": "hardware"
+    },
+    {
+      "serverId": "FIREDAP_MCP",
+      "name": "FIREDAP_MCP__firedap_wait_job",
+      "kind": "hardware"
+    },
+    {
+      "serverId": "FIREDAP_MCP",
+      "name": "FIREDAP_MCP__firedap_get_job",
+      "kind": "management"
+    },
+    {
+      "serverId": "PCI6208V_MCP",
+      "name": "PCI6208V_MCP__get_server_info",
+      "kind": "management"
+    },
+    {
+      "serverId": "PCI6208V_MCP",
+      "name": "PCI6208V_MCP__list_hardware",
+      "kind": "management"
+    },
+    {
+      "serverId": "PCI6208V_MCP",
+      "name": "PCI6208V_MCP__get_hardware_info",
+      "kind": "management"
+    },
+    {
+      "serverId": "PCI6208V_MCP",
+      "name": "PCI6208V_MCP__get_pinout",
+      "kind": "management"
+    },
+    {
+      "serverId": "PCI6208V_MCP",
+      "name": "PCI6208V_MCP__pci6208v_set_voltage",
+      "kind": "hardware"
+    },
+    {
+      "serverId": "PCI6208V_MCP",
+      "name": "PCI6208V_MCP__pci6208v_read_last",
+      "kind": "hardware"
+    },
+    {
+      "serverId": "PCI6208V_MCP",
+      "name": "PCI6208V_MCP__pci6208v_safe_state",
+      "kind": "hardware"
+    },
+    {
+      "serverId": "PCI1762_MCP",
+      "name": "PCI1762_MCP__get_server_info",
+      "kind": "management"
+    },
+    {
+      "serverId": "PCI1762_MCP",
+      "name": "PCI1762_MCP__list_hardware",
+      "kind": "management"
+    },
+    {
+      "serverId": "PCI1762_MCP",
+      "name": "PCI1762_MCP__get_hardware_info",
+      "kind": "management"
+    },
+    {
+      "serverId": "PCI1762_MCP",
+      "name": "PCI1762_MCP__get_pinout",
+      "kind": "management"
+    },
+    {
+      "serverId": "PCI1762_MCP",
+      "name": "PCI1762_MCP__pci1762_set_relay",
+      "kind": "hardware"
+    },
+    {
+      "serverId": "PCI1762_MCP",
+      "name": "PCI1762_MCP__pci1762_set_bank",
+      "kind": "hardware"
+    },
+    {
+      "serverId": "PCI1762_MCP",
+      "name": "PCI1762_MCP__pci1762_read_bit",
+      "kind": "hardware"
+    },
+    {
+      "serverId": "PCI1762_MCP",
+      "name": "PCI1762_MCP__pci1762_safe_state",
+      "kind": "hardware"
+    },
+    {
+      "serverId": "PCI1710L_MCP",
+      "name": "PCI1710L_MCP__get_server_info",
+      "kind": "management"
+    },
+    {
+      "serverId": "PCI1710L_MCP",
+      "name": "PCI1710L_MCP__list_hardware",
+      "kind": "management"
+    },
+    {
+      "serverId": "PCI1710L_MCP",
+      "name": "PCI1710L_MCP__get_hardware_info",
+      "kind": "management"
+    },
+    {
+      "serverId": "PCI1710L_MCP",
+      "name": "PCI1710L_MCP__get_pinout",
+      "kind": "management"
+    },
+    {
+      "serverId": "PCI1710L_MCP",
+      "name": "PCI1710L_MCP__pci1710l_configure_ai",
+      "kind": "hardware"
+    },
+    {
+      "serverId": "PCI1710L_MCP",
+      "name": "PCI1710L_MCP__pci1710l_read_voltage",
+      "kind": "hardware"
+    },
+    {
+      "serverId": "PCI1710L_MCP",
+      "name": "PCI1710L_MCP__pci1710l_read_bit",
+      "kind": "hardware"
+    },
+    {
+      "serverId": "PCI1710L_MCP",
+      "name": "PCI1710L_MCP__pci1710l_set_level",
+      "kind": "hardware"
+    },
+    {
+      "serverId": "PCI1710L_MCP",
+      "name": "PCI1710L_MCP__pci1710l_safe_state",
+      "kind": "hardware"
+    },
+    {
+      "serverId": "CP118U_I_MCP",
+      "name": "CP118U_I_MCP__get_server_info",
+      "kind": "management"
+    },
+    {
+      "serverId": "CP118U_I_MCP",
+      "name": "CP118U_I_MCP__list_hardware",
+      "kind": "management"
+    },
+    {
+      "serverId": "CP118U_I_MCP",
+      "name": "CP118U_I_MCP__get_hardware_info",
+      "kind": "management"
+    },
+    {
+      "serverId": "CP118U_I_MCP",
+      "name": "CP118U_I_MCP__get_pinout",
+      "kind": "management"
+    },
+    {
+      "serverId": "CP118U_I_MCP",
+      "name": "CP118U_I_MCP__cp118u_configure_port",
+      "kind": "hardware"
+    },
+    {
+      "serverId": "CP118U_I_MCP",
+      "name": "CP118U_I_MCP__cp118u_write_text",
+      "kind": "hardware"
+    },
+    {
+      "serverId": "CP118U_I_MCP",
+      "name": "CP118U_I_MCP__cp118u_write_hex",
+      "kind": "hardware"
+    },
+    {
+      "serverId": "CP118U_I_MCP",
+      "name": "CP118U_I_MCP__cp118u_read_rx",
+      "kind": "hardware"
+    },
+    {
+      "serverId": "CP118U_I_MCP",
+      "name": "CP118U_I_MCP__cp118u_clear_rx",
+      "kind": "hardware"
+    },
+    {
+      "serverId": "CP118U_I_MCP",
+      "name": "CP118U_I_MCP__cp118u_flush",
+      "kind": "hardware"
+    },
+    {
+      "serverId": "CP118U_I_MCP",
+      "name": "CP118U_I_MCP__cp118u_get_line_status",
+      "kind": "hardware"
+    }
+  ]
+}

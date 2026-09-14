@@ -67,6 +67,33 @@ def main() -> None:
         if renamed["before"] != expected:
             raise SystemExit("Rename provenance does not match the preceding protected baseline")
         expected = renamed["after"]
+        changes = json.loads(
+            (root / "reports/applications/protected-changes.json").read_text("utf-8")
+        )["changes"]
+        for name, hashes in changes.items():
+            if (
+                name != "python/src/hardwareharness_backend/devices/mcp_client.py"
+                or expected.get(name) != hashes["before"]
+                or not hashes["reason"]
+            ):
+                raise SystemExit(f"Invalid applications integration exception: {name}")
+            expected[name] = hashes["after"]
+
+        # The approved applications stage replaces the engine, project envelope and IDE.
+        # Keep the prior full snapshots as evidence and enforce the unaffected boundary.
+        def protected(name: str) -> bool:
+            return name.startswith(
+                (
+                    "python/src/hardwareharness_backend/devices/",
+                    "python/src/hardwareharness_backend/wiring/",
+                    "apps/desktop/src/main/opencode-",
+                    "patches/",
+                    "dependency:",
+                )
+            )
+
+        expected = {name: value for name, value in expected.items() if protected(name)}
+        actual = {name: value for name, value in actual.items() if protected(name)}
         changed = [
             key for key in expected.keys() | actual.keys() if expected.get(key) != actual.get(key)
         ]

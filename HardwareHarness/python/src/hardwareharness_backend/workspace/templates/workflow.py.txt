@@ -1,0 +1,11 @@
+from hardwareharness import log, measurement, step
+
+
+def main(inputs: dict[str, object]) -> dict[str, object]:
+    samples = int(str(inputs.get("samples", 3)))
+    with step("Sample workflow"):
+        for index in range(samples):
+            with step("Collect sample"):
+                measurement("sample", index, unit="count")
+        log("Sample completed", fields={"samples": samples})
+    return {"samples": samples}

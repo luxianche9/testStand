@@ -21,6 +21,8 @@ class SettingsStore:
         async def operation() -> None:
             stored = await read_json(self.path)
             if stored is not UNDEFINED:
+                if stored.get("projectView") == "orchestration":
+                    stored = {**stored, "projectView": "applications"}
                 self._value = parse_user_settings(stored)
             await self._write_json(self.path, self._value)
 
@@ -31,7 +33,11 @@ class SettingsStore:
 
     async def update(self, patch: Record) -> Record:
         async def operation() -> Record:
-            next_value = parse_user_settings({**self._value, **patch, "formatVersion": 1})
+            if patch.get("projectView") == "orchestration":
+                patch_value = {**patch, "projectView": "applications"}
+            else:
+                patch_value = patch
+            next_value = parse_user_settings({**self._value, **patch_value, "formatVersion": 1})
             await self._write_json(self.path, next_value)
             self._value = next_value
             return self.get()

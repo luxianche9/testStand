@@ -1,28 +1,33 @@
 import { describe, expect, it } from "vitest";
-import type { TestRun } from "@hardwareharness/contracts/orchestration";
-import { dateRangeBounds, formatRunTime, nextSort, runDurationText, summaryText } from "./logs-model.js";
+import type { RunRecord } from "@hardwareharness/contracts/applications";
+import { dateRangeBounds, formatRunTime, nextSort, readRunHistory, runDurationText, summaryText } from "./logs-model.js";
 
-function run(overrides: Partial<TestRun> = {}): TestRun {
+function run(overrides: Partial<RunRecord> = {}): RunRecord {
   return {
     runId: "RUN1",
-    taskId: "TASK1",
-    taskName: "通信握手测试",
-    projectId: "P1",
-    status: "passed",
+    name: "通信握手测试",
+    entrypoint: "workflows/main.py", hardwareIds: [], eventCount: 0, sourcePath: "snapshot",
+    status: "succeeded",
     inputs: {},
-    createdAt: "2026-08-18T05:51:08.000Z",
+    startedAt: "2026-08-18T05:51:08.000Z",
     ...overrides
   };
 }
 
 describe("logs-model", () => {
+  it("reads history across backend pages without discarding older runs", async () => {
+    const records = Array.from({ length: 1001 }, (_, index) => run({ runId: `R${index}` }));
+    const result = await readRunHistory(async (input) => records.slice(input?.offset ?? 0, (input?.offset ?? 0) + (input?.limit ?? 1000)));
+    expect(result).toHaveLength(1001);
+    expect(result.at(-1)?.runId).toBe("R1000");
+  });
   it("formats duration for completed and live runs", () => {
     expect(runDurationText(run({
-      status: "passed",
+      status: "succeeded",
       startedAt: "2026-08-18T05:51:08.000Z",
       completedAt: "2026-08-18T05:51:12.210Z"
     }))).toBe("4.21 s");
-    expect(runDurationText(run({ status: "blocked" }))).toBe("—");
+    expect(runDurationText(run({ startedAt: "invalid" }))).toBe("—");
     expect(runDurationText(run({
       status: "running",
       startedAt: "2026-08-18T05:51:08.000Z"
@@ -30,10 +35,10 @@ describe("logs-model", () => {
   });
 
   it("prefers summary message and falls back by status", () => {
-    expect(summaryText(run({ summary: { passedNodes: 5, failedNodes: 1, cancelledNodes: 0, message: "断言失败" } }))).toBe("断言失败");
-    expect(summaryText(run({ status: "passed", summary: { passedNodes: 3, failedNodes: 0, cancelledNodes: 0 } }))).toBe("全部节点通过");
+    expect(summaryText(run({ error: { category: "error", message: "断言失败" } }))).toBe("断言失败");
+    expect(summaryText(run({ status: "succeeded" }))).toBe("流程执行成功");
     expect(summaryText(run({ status: "running" }))).toBe("正在运行");
-    expect(summaryText(run({ status: "failed", summary: { passedNodes: 5, failedNodes: 1, cancelledNodes: 0 } }))).toBe("失败 1 个节点");
+    expect(summaryText(run({ status: "failed" }))).toBe("运行失败");
   });
 
   it("shortens timestamps on the same local day", () => {
@@ -59,8 +64,8 @@ describe("logs-model", () => {
   });
 
   it("toggles sort direction on the same column", () => {
-    expect(nextSort("createdAt", "desc", "taskName")).toEqual({ sortBy: "taskName", sortDir: "asc" });
-    expect(nextSort("taskName", "asc", "taskName")).toEqual({ sortBy: "taskName", sortDir: "desc" });
-    expect(nextSort("createdAt", "desc", "createdAt")).toEqual({ sortBy: "createdAt", sortDir: "asc" });
+    expect(nextSort("startedAt", "desc", "name")).toEqual({ sortBy: "name", sortDir: "asc" });
+    expect(nextSort("name", "asc", "name")).toEqual({ sortBy: "name", sortDir: "desc" });
+    expect(nextSort("startedAt", "desc", "startedAt")).toEqual({ sortBy: "startedAt", sortDir: "asc" });
   });
 });

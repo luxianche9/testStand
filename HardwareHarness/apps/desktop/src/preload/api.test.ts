@@ -11,7 +11,6 @@ describe("preload API", () => {
     const computer = { id: "PC", label: "PC", address: "127.0.0.1", ssh: { port: 22, username: "u", shell: "powershell" as const } };
     const server = { transport: "mcp-http" as const, serverId: "S", computerId: "PC", label: "S", hardwareId: "H", url: "http://127.0.0.1:1/mcp", enabled: true, lifecycle: { statusCommand: "s", startCommand: "a", stopCommand: "x", logPath: "l" } };
     const hardware = { formatVersion: 2 as const, hardwareId: "H", label: "H", kind: "passive" as const, ports: [] };
-    const task = { formatVersion: 2 as const, taskId: "T", name: "T", inputs: [], variables: [], setup: [], steps: [], cleanup: [] };
 
     void api.system.dashboard(); void api.system.exportText("x.txt", "x");
     void api.devices.saveComputer(computer); void api.devices.removeComputer("PC"); void api.devices.refreshComputer("PC");
@@ -24,9 +23,12 @@ describe("preload API", () => {
     void api.projects.save(); void api.projects.leave(); void api.projects.listRecent(); void api.projects.forgetRecent("C:\\project");
     void api.wiring.update({ nodes: [], connections: [] }); void api.wiring.requestTask({ portA: "A.P", portB: "B.P", action: "connect" });
     void api.wiring.startTask("W"); void api.wiring.completeTask("W", "confirmed"); void api.wiring.cancelTask("W"); void api.wiring.getTask("W"); void api.wiring.listTasks();
-    void api.orchestration.updateTask(task); void api.orchestration.validateTask(task); void api.orchestration.startRun(); void api.orchestration.cancelRun("R");
-    void api.orchestration.getRun("R"); void api.orchestration.listRuns(); void api.orchestration.exportRun("R"); void api.orchestration.deleteRun("R");
-    void api.orchestration.clearCompletedRuns(); void api.orchestration.listOperatorDecisions(); void api.orchestration.respondOperatorDecision("N", "yes");
+    void api.applications.listFiles(); void api.applications.readFile("a.py"); void api.applications.writeFile({ path: "a.py", content: "", expectedHash: "h" });
+    void api.applications.createFile({ path: "a.py", kind: "file" }); void api.applications.renameFile({ path: "a.py", target: "b.py" }); void api.applications.deleteFile("b.py");
+    void api.applications.search("x"); void api.applications.diagnostics("a.py"); void api.applications.initializeWorkspace();
+    void api.applications.listApps(); void api.applications.createApp("demo", "Demo"); void api.applications.startApp("demo"); void api.applications.stopApp("demo"); void api.applications.appLogs("demo");
+    void api.applications.startRun({ entrypoint: "a.py" }); void api.applications.cancelRun("R"); void api.applications.getRun("R"); void api.applications.listRuns();
+    void api.applications.runEvents("R"); void api.applications.exportRun("R"); void api.applications.deleteRun("R"); void api.applications.clearCompletedRuns(); void api.applications.readRunSource("R", "a.py"); void api.applications.readRunAttachment("R", "a.csv");
     void api.manual.invokeTool({ hardwareId: "H", toolName: "S__write", arguments: { value: 1 } });
     void api.occupancy.list(); void api.occupancy.acquire("H"); void api.occupancy.release("H"); void api.occupancy.listRequests();
     void api.occupancy.acquireRequest("O"); void api.occupancy.rejectRequest("O"); void api.occupancy.cancelRequest("O");
@@ -42,7 +44,7 @@ describe("preload API", () => {
     expect(new Set(calls.map((call) => call.replace(/\.(query|mutate|subscribe)$/, ""))))
       .toEqual(new Set([...flattenProcedurePaths(HARDWAREHARNESS_IPC), "events.subscribe"]));
     expect(unsubscribe).toHaveBeenCalledOnce();
-    expect(Object.keys(api)).toEqual(["system", "devices", "projects", "wiring", "orchestration", "manual", "occupancy", "agents", "settings", "window", "events"]);
+    expect(Object.keys(api)).toEqual(["system", "devices", "projects", "wiring", "applications", "manual", "occupancy", "agents", "settings", "window", "events"]);
   });
 
   it("restores the domain error category from a tRPC client error", async () => {
@@ -52,6 +54,15 @@ describe("preload API", () => {
     const api = createHardwareHarnessApi(client);
 
     await expect(api.system.dashboard()).rejects.toMatchObject({ name: "AppError", category: "requires_project", message: "Project required" });
+  });
+
+  it("preserves explicit network permission when preparing the Python environment", async () => {
+    const mutate = vi.fn(async () => ({ status: "ready" }));
+    const client = { applications: { initializeWorkspace: { mutate } } } as unknown as DesktopTrpcClient;
+    const api = createHardwareHarnessApi(client);
+    await api.applications.initializeWorkspace();
+    await api.applications.initializeWorkspace({ online: true });
+    expect(mutate.mock.calls).toEqual([[undefined], [{ online: true }]]);
   });
 });
 

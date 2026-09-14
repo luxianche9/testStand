@@ -1,0 +1,12 @@
+E501 Line too long (108 > 100)
+   --> HardwareHarness\python\src\hardwareharness_backend\application\services.py:245:101
+    |
+243 |             return await task
+244 |         except asyncio.CancelledError as error:
+245 |             raise app_error("cancelled", "Hardware call cancelled; remote result may be unknown") from error
+    |                                                                                                     ^^^^^^^^
+246 |         finally:
+247 |             self.active.pop(task, None)
+    |
+
+Found 1 error.

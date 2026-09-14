@@ -1,0 +1,18 @@
+
+ RUN  v3.2.7 E:/Project/hardwareHarness/HardwareHarness/apps/desktop
+
+ ✓ src/preload/api.test.ts (3 tests) 10ms
+ ✓ src/main/ipc.test.ts (4 tests) 42ms
+ ✓ src/renderer/features/applications/ApplicationsPage.test.tsx (8 tests) 5143ms
+   ✓ Python application workspace > prepares the default environment without enabling network access  407ms
+   ✓ Python application workspace > does not install dependencies while any editor has unsaved changes  453ms
+   ✓ Python application workspace > saves the edited file with its original disk hash and restores tabs  404ms
+   ✓ Python application workspace > recovers unsaved documents after leaving and reopening the workspace  393ms
+   ✓ Python application workspace > preserves dirty edits on external changes and requires an explicit resolution  2236ms
+   ✓ Python application workspace > submits new files with Enter and isolates the embedded preview  701ms
+
+ Test Files  3 passed (3)
+      Tests  15 passed (15)
+   Start at  13:42:21
+   Duration  8.50s (transform 484ms, setup 0ms, collect 2.06s, tests 5.19s, environment 1.19s, prepare 797ms)
+

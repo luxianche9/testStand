@@ -1,0 +1,156 @@
+[
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": "button",
+    "name": "项目文件夹菜单",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "设置",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": "tab",
+    "type": null,
+    "name": "设备管理",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": "tab",
+    "type": null,
+    "name": "工位接线",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": "tab",
+    "type": null,
+    "name": "应用搭建",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": "tab",
+    "type": null,
+    "name": "运行日志",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "信箱",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "打开 AI 侧栏",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "最小化",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "最大化",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "关闭",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": "button",
+    "name": "状态检测",
+    "disabled": false
+  },
+  {
+    "tag": "DIV",
+    "role": "treeitem",
+    "type": null,
+    "name": "仪器控制电脑及其 MCP Server",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": "button",
+    "name": "添加电脑",
+    "disabled": false
+  },
+  {
+    "tag": "DIV",
+    "role": "treeitem",
+    "type": null,
+    "name": "被测对象、夹具等不由 MCP Server 控制的硬件",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": "button",
+    "name": "添加被动硬件",
+    "disabled": false
+  },
+  {
+    "tag": "DIV",
+    "role": "treeitem",
+    "type": null,
+    "name": "DUT_A",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": "button",
+    "name": "编辑",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": "button",
+    "name": "移除硬件",
+    "disabled": false
+  },
+  {
+    "tag": "DIV",
+    "role": "treeitem",
+    "type": null,
+    "name": "DUT_B",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": "button",
+    "name": "编辑",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": "button",
+    "name": "移除硬件",
+    "disabled": false
+  }
+]

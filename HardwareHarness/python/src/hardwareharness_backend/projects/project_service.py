@@ -2,13 +2,14 @@ import asyncio
 import os
 from pathlib import Path
 
-from hardwareharness_backend.compat import UNDEFINED, Record, clone, js_trim, new_uuid, utc_now_iso
+from hardwareharness_backend.compat import UNDEFINED, Record, clone, new_uuid, utc_now_iso
 from hardwareharness_backend.compat.filesystem import stat
 from hardwareharness_backend.contracts.errors import app_error
-from hardwareharness_backend.contracts.orchestration import parse_test_task
-from hardwareharness_backend.contracts.projects import parse_project_file
+from hardwareharness_backend.contracts.projects import inspect_project_file, parse_project_file
 from hardwareharness_backend.contracts.wiring import parse_project_wiring
 from hardwareharness_backend.storage import SettingsStore, atomic_json, read_json
+
+from .migration import convert_project
 
 
 class ProjectService:
@@ -47,10 +48,6 @@ class ProjectService:
         result: Record = clone(self._require_file()["wiring"])
         return result
 
-    def task(self) -> Record:
-        result: Record = clone(self._require_file()["task"])
-        return result
-
     async def inspect_folder(self, root_path: str | Path) -> Record:
         root = await _canonical_directory(root_path)
         name = os.path.basename(root) or root
@@ -58,7 +55,7 @@ class ProjectService:
             raw = await read_json(project_path(root))
             if raw is UNDEFINED:
                 return {"rootPath": root, "state": "uninitialized", "name": name}
-            file = parse_project_file(raw)
+            file = inspect_project_file(raw)
             return {"rootPath": root, "state": "ready", "name": file["name"]}
         except Exception as error:
             return {"rootPath": root, "state": "invalid", "name": name, "message": str(error)}
@@ -86,10 +83,7 @@ class ProjectService:
         if selection["state"] == "invalid":
             raise app_error("invalid_project", selection.get("message", "invalid_project"))
         path = project_path(selection["rootPath"])
-        raw = await read_json(path)
-        file = parse_project_file(raw)
-        if raw.get("formatVersion") != file["formatVersion"]:
-            await atomic_json(path, file)
+        file = await convert_project(Path(path))
         self._root_path = selection["rootPath"]
         self._path = path
         self._file = file
@@ -128,7 +122,7 @@ class ProjectService:
                 raw = await read_json(project_path(root))
                 if raw is UNDEFINED:
                     return {**fallback, "status": "invalid", "message": "project_manifest_missing"}
-                file = parse_project_file(raw)
+                file = inspect_project_file(raw)
                 return {
                     "rootPath": root,
                     "name": file["name"],
@@ -167,17 +161,6 @@ class ProjectService:
     def update_wiring(self, wiring: Record) -> Record:
         file = self._require_file()
         self._file = {**file, "wiring": parse_project_wiring(wiring), "updatedAt": utc_now_iso()}
-        self._dirty = True
-        return self._require_document()
-
-    def update_task(self, task: Record) -> Record:
-        file = self._require_file()
-        self._file = {
-            **file,
-            "task": parse_test_task(task),
-            "name": js_trim(task["name"]) or file["name"],
-            "updatedAt": utc_now_iso(),
-        }
         self._dirty = True
         return self._require_document()
 
@@ -228,20 +211,10 @@ def empty_project_file(name: str = "Untitled project") -> Record:
     now = utc_now_iso()
     return parse_project_file(
         {
-            "formatVersion": 3,
+            "formatVersion": 4,
             "projectId": new_uuid(),
             "name": name,
             "wiring": {"nodes": [], "connections": []},
-            "task": {
-                "formatVersion": 2,
-                "taskId": new_uuid(),
-                "name": "Untitled task",
-                "inputs": [],
-                "variables": [],
-                "setup": [],
-                "steps": [],
-                "cleanup": [],
-            },
             "createdAt": now,
             "updatedAt": now,
         }

@@ -11,11 +11,11 @@ import pytest
 import uvicorn
 from starlette.types import Receive, Scope, Send
 
+from hardwareharness_backend.compat.cancellation import AbortController
 from hardwareharness_backend.devices import DeviceTransportRegistry, McpHttpTransport, SshManager
 from hardwareharness_backend.devices.mcp_client import McpCompatibilityError
 from hardwareharness_backend.devices.mcp_transport import CompatibleHttpTransport
 from hardwareharness_backend.devices.ssh import _execute, _HostKeyPolicy, fingerprint
-from hardwareharness_backend.orchestration.cancellation import AbortController
 
 
 class Remote:
@@ -26,6 +26,7 @@ class Remote:
         self.result: dict[str, Any] | None = None
         self.missing_list = False
         self.delay = 0.0
+        self.cancellation_received = asyncio.Event()
         self.hardware: Any = [{"hardwareId": "H", "state": "open", "health": "ok"}]
         self.url = ""
 
@@ -48,6 +49,8 @@ class Remote:
             request = json.loads(data)
             self.requests.append(request)
             method = request["method"]
+            if method == "notifications/cancelled":
+                self.cancellation_received.set()
             if method == "initialize":
                 result = {
                     "protocolVersion": "2025-03-26",
@@ -242,7 +245,7 @@ async def test_mcp_timeout_emits_cancellation_and_connection_remains_usable(remo
             await pool.call(
                 "S__measure", {"channel": 1}, {"timeoutMs": 10, "metadata": {"hardwareId": "H"}}
             )
-        await asyncio.sleep(0.02)
+        await asyncio.wait_for(remote.cancellation_received.wait(), timeout=2)
         cancellations = [r for r in remote.requests if r["method"] == "notifications/cancelled"]
         assert len(cancellations) == 1
         call = next(

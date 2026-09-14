@@ -48,7 +48,40 @@ async def test_unmodified_ts_gateway_protocol_golden(case: dict[str, Any]) -> No
                     "open_project",
                     "save_project",
                 ]
-                body["result"]["tools"] = names[4:]
+                from hardwareharness_backend.mcp_gateway.tool_registry import (
+                    BUILTIN_TOOL_DEFINITIONS,
+                )
+
+                replacement = {
+                    item.tool["name"]
+                    for item in BUILTIN_TOOL_DEFINITIONS
+                    if item.capability.startswith("applications.")
+                }
+                assert replacement.issubset(names)
+                assert not {
+                    "get_test_task",
+                    "update_test_task",
+                    "start_test_run",
+                    "cancel_test_run",
+                    "get_test_run",
+                }.intersection(names)
+                # Compare retained tools and the unchanged protocol envelope to the fixed golden.
+                body["result"]["tools"] = [name for name in names[4:] if name not in replacement]
+                expected = json.loads(json.dumps(case["expected"]))
+                expected["body"]["result"]["tools"] = [
+                    name
+                    for name in expected["body"]["result"]["tools"]
+                    if name
+                    not in {
+                        "get_test_task",
+                        "update_test_task",
+                        "start_test_run",
+                        "cancel_test_run",
+                        "get_test_run",
+                    }
+                ]
+                assert {"status": response.status_code, "body": body} == expected
+                return
             assert {"status": response.status_code, "body": body} == case["expected"]
     finally:
         await gateway.stop()

@@ -23,7 +23,7 @@ import {
   occupancyRequestIdInputSchema,
   occupancyRequestListQuerySchema
 } from "@hardwareharness/contracts/occupancy";
-import { runIdInputSchema, testRunListQuerySchema, testTaskSchema } from "@hardwareharness/contracts/orchestration";
+import { runIdInputSchema, runListQuerySchema, runStartSchema, fileWriteSchema, fileCreateSchema, fileRenameSchema } from "@hardwareharness/contracts/applications";
 import { projectRootPathInputSchema, type ProjectDocument } from "@hardwareharness/contracts/projects";
 import { llmSettingsInputSchema, projectViewSchema, themeChoiceSchema, welcomeLayoutSchema } from "@hardwareharness/contracts/storage";
 import {
@@ -45,7 +45,7 @@ interface DesktopDialogsPort {
   chooseProjectFolder(): Promise<string | null>;
 }
 
-type DesktopEventName = "availability" | "execution" | "occupancy" | "occupancyRequest" | "run" | "nodeRun" | "wiringTask" | "operator" | "project" | "opencode" | "window-state";
+type DesktopEventName = "availability" | "execution" | "occupancy" | "occupancyRequest" | "run" | "runEvent" | "wiringTask" | "workspace" | "application" | "project" | "opencode" | "window-state";
 
 interface DesktopWindowPort {
   publish(event: DesktopEventName, payload: unknown): void;
@@ -82,7 +82,7 @@ const trpc = initTRPC.create({
 });
 
 const emptyInput = z.void().optional();
-const eventNameSchema = z.enum(["availability", "execution", "occupancy", "occupancyRequest", "run", "nodeRun", "wiringTask", "operator", "project", "opencode", "window-state"]);
+const eventNameSchema = z.enum(["availability", "execution", "occupancy", "occupancyRequest", "run", "runEvent", "wiringTask", "workspace", "application", "project", "opencode", "window-state"]);
 
 export function createDesktopRouter(dependencies: DesktopIpcDependencies) {
   const { application, agents, settings, dialogs, windows } = dependencies;
@@ -200,26 +200,33 @@ export function createDesktopRouter(dependencies: DesktopIpcDependencies) {
         }
       ))
     }),
-    orchestration: trpc.router({
-      updateTask: trpc.procedure.input(testTaskSchema).mutation(async ({ input }) => notifyProject((await application.orchestration.updateTask(HUMAN_REQUEST_CONTEXT, input)).document, false)),
-      validateTask: trpc.procedure.input(testTaskSchema).query(({ input }) => application.orchestration.validateTask(HUMAN_REQUEST_CONTEXT, input)),
-      startRun: trpc.procedure.input(z.object({ inputs: z.record(z.unknown()).optional() }).strict().optional())
-        .mutation(({ input }) => application.orchestration.startRun(
-          HUMAN_REQUEST_CONTEXT,
-          input?.inputs === undefined ? undefined : { inputs: input.inputs }
-        )),
-      cancelRun: trpc.procedure.input(runIdInputSchema).mutation(({ input }) => application.orchestration.cancelRun(HUMAN_REQUEST_CONTEXT, input.id)),
-      getRun: trpc.procedure.input(z.object({
-        id: z.string().min(1), sinceEventId: z.number().int().min(0).default(0), nodeOffset: z.number().int().min(0).default(0),
-        nodeLimit: z.number().int().min(1).max(1000).default(200)
-      }).strict()).query(({ input }) => application.orchestration.getRun(HUMAN_REQUEST_CONTEXT, input.id, input.sinceEventId, input.nodeOffset, input.nodeLimit)),
-      listRuns: trpc.procedure.input(testRunListQuerySchema.optional()).query(({ input }) => application.orchestration.listRuns(HUMAN_REQUEST_CONTEXT, input)),
-      exportRun: trpc.procedure.input(runIdInputSchema).query(({ input }) => application.orchestration.exportRun(HUMAN_REQUEST_CONTEXT, input.id)),
-      deleteRun: trpc.procedure.input(runIdInputSchema).mutation(({ input }) => application.orchestration.deleteRun(HUMAN_REQUEST_CONTEXT, input.id)),
-      clearCompletedRuns: trpc.procedure.input(emptyInput).mutation(() => application.orchestration.clearCompletedRuns(HUMAN_REQUEST_CONTEXT)),
-      listOperatorDecisions: trpc.procedure.input(emptyInput).query(() => application.orchestration.listOperatorDecisions(HUMAN_REQUEST_CONTEXT)),
-      respondOperatorDecision: trpc.procedure.input(z.object({ id: z.string().min(1), value: z.string() }).strict())
-        .mutation(({ input }) => application.orchestration.respondOperatorDecision(HUMAN_REQUEST_CONTEXT, input.id, input.value))
+    applications: trpc.router({
+      listFiles: trpc.procedure.input(emptyInput).query(() => application.applications.listFiles(HUMAN_REQUEST_CONTEXT)),
+      readFile: trpc.procedure.input(z.object({ path: z.string().min(1) }).strict()).query(({ input }) => application.applications.readFile(HUMAN_REQUEST_CONTEXT, input.path)),
+      writeFile: trpc.procedure.input(fileWriteSchema).mutation(({ input }) => application.applications.writeFile(HUMAN_REQUEST_CONTEXT, input)),
+      createFile: trpc.procedure.input(fileCreateSchema).mutation(({ input }) => application.applications.createFile(HUMAN_REQUEST_CONTEXT, input)),
+      renameFile: trpc.procedure.input(fileRenameSchema).mutation(({ input }) => application.applications.renameFile(HUMAN_REQUEST_CONTEXT, input)),
+      deleteFile: trpc.procedure.input(z.object({ path: z.string().min(1) }).strict()).mutation(({ input }) => application.applications.deleteFile(HUMAN_REQUEST_CONTEXT, input.path)),
+      search: trpc.procedure.input(z.object({ query: z.string() }).strict()).query(({ input }) => application.applications.search(HUMAN_REQUEST_CONTEXT, input.query)),
+      diagnostics: trpc.procedure.input(z.object({ path: z.string().min(1), content: z.string().optional() }).strict()).query(({ input }) => application.applications.diagnostics(HUMAN_REQUEST_CONTEXT, input.path, input.content)),
+      initializeWorkspace: trpc.procedure.input(z.object({ online: z.boolean().optional() }).strict().optional()).mutation(({ input }) => input === undefined
+        ? application.applications.initializeWorkspace(HUMAN_REQUEST_CONTEXT)
+        : application.applications.initializeWorkspace(HUMAN_REQUEST_CONTEXT, input.online === undefined ? {} : { online: input.online })),
+      listApps: trpc.procedure.input(emptyInput).query(() => application.applications.listApps(HUMAN_REQUEST_CONTEXT)),
+      createApp: trpc.procedure.input(z.object({ id: z.string().min(1), name: z.string().min(1) }).strict()).mutation(({ input }) => application.applications.createApp(HUMAN_REQUEST_CONTEXT, input.id, input.name)),
+      startApp: trpc.procedure.input(runIdInputSchema).mutation(({ input }) => application.applications.startApp(HUMAN_REQUEST_CONTEXT, input.id)),
+      stopApp: trpc.procedure.input(runIdInputSchema).mutation(({ input }) => application.applications.stopApp(HUMAN_REQUEST_CONTEXT, input.id)),
+      appLogs: trpc.procedure.input(z.object({ id: z.string().min(1), after: z.number().int().min(0).optional() }).strict()).query(({ input }) => application.applications.appLogs(HUMAN_REQUEST_CONTEXT, input.id, input.after)),
+      startRun: trpc.procedure.input(runStartSchema).mutation(({ input }) => application.applications.startRun(HUMAN_REQUEST_CONTEXT, input)),
+      cancelRun: trpc.procedure.input(runIdInputSchema).mutation(({ input }) => application.applications.cancelRun(HUMAN_REQUEST_CONTEXT, input.id)),
+      getRun: trpc.procedure.input(runIdInputSchema).query(({ input }) => application.applications.getRun(HUMAN_REQUEST_CONTEXT, input.id)),
+      listRuns: trpc.procedure.input(runListQuerySchema.optional()).query(({ input }) => application.applications.listRuns(HUMAN_REQUEST_CONTEXT, input)),
+      runEvents: trpc.procedure.input(z.object({ id: z.string().min(1), after: z.number().int().min(0).optional(), limit: z.number().int().min(1).max(1000).optional() }).strict()).query(({ input }) => application.applications.runEvents(HUMAN_REQUEST_CONTEXT, input.id, input.after, input.limit)),
+      exportRun: trpc.procedure.input(runIdInputSchema).query(({ input }) => application.applications.exportRun(HUMAN_REQUEST_CONTEXT, input.id)),
+      deleteRun: trpc.procedure.input(runIdInputSchema).mutation(({ input }) => application.applications.deleteRun(HUMAN_REQUEST_CONTEXT, input.id)),
+      clearCompletedRuns: trpc.procedure.input(emptyInput).mutation(() => application.applications.clearCompletedRuns(HUMAN_REQUEST_CONTEXT)),
+      readRunAttachment: trpc.procedure.input(z.object({ id: z.string().min(1), path: z.string().min(1) }).strict()).query(({ input }) => application.applications.readRunAttachment(HUMAN_REQUEST_CONTEXT, input.id, input.path)),
+      readRunSource: trpc.procedure.input(z.object({ id: z.string().min(1), path: z.string().min(1) }).strict()).query(({ input }) => application.applications.readRunSource(HUMAN_REQUEST_CONTEXT, input.id, input.path))
     }),
     manual: trpc.router({
       invokeTool: trpc.procedure.input(manualToolInvocationInputSchema).mutation(({ input }) => application.manual.invokeTool(HUMAN_REQUEST_CONTEXT, input))

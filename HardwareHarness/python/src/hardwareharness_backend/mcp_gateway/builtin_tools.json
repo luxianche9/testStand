@@ -703,801 +703,247 @@
   },
   {
     "tool": {
-      "name": "get_test_task",
-      "description": "Get the structured test task in the open project.",
+      "name": "list_workspace_files",
+      "description": "list workspace files. Workspace paths are relative to .hardwareharness. Hardware operations require existing occupancy; handle wiring and human approval before starting. No automatic replay.",
       "inputSchema": {
         "type": "object",
         "properties": {},
+        "required": [],
         "additionalProperties": false
-      },
-      "annotations": {
-        "readOnlyHint": true
       }
     },
-    "capability": "orchestration.read"
+    "capability": "applications.read"
   },
   {
     "tool": {
-      "name": "update_test_task",
-      "description": "Validate and replace the open project's structured test task.",
+      "name": "read_workspace_file",
+      "description": "read workspace file. Workspace paths are relative to .hardwareharness. Hardware operations require existing occupancy; handle wiring and human approval before starting. No automatic replay.",
       "inputSchema": {
         "type": "object",
         "properties": {
-          "task": {
-            "$ref": "#/$defs/testTask"
+          "path": {
+            "type": "string",
+            "minLength": 1
           }
         },
         "required": [
-          "task"
+          "path"
         ],
-        "additionalProperties": false,
-        "$defs": {
-          "variableDefinition": {
-            "type": "object",
-            "properties": {
-              "name": {
-                "type": "string",
-                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
-              },
-              "type": {
-                "type": "string",
-                "enum": [
-                  "string",
-                  "number",
-                  "boolean",
-                  "object",
-                  "array",
-                  "unknown"
-                ]
-              },
-              "defaultValue": {},
-              "description": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "name",
-              "type"
-            ],
-            "additionalProperties": false
-          },
-          "valueTemplate": {
-            "oneOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "kind": {
-                    "const": "literal"
-                  },
-                  "value": {}
-                },
-                "required": [
-                  "kind",
-                  "value"
-                ],
-                "additionalProperties": false
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "kind": {
-                    "const": "variable"
-                  },
-                  "path": {
-                    "type": "string",
-                    "minLength": 1
-                  }
-                },
-                "required": [
-                  "kind",
-                  "path"
-                ],
-                "additionalProperties": false
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "kind": {
-                    "const": "object"
-                  },
-                  "entries": {
-                    "type": "object",
-                    "additionalProperties": {
-                      "$ref": "#/$defs/valueTemplate"
-                    }
-                  }
-                },
-                "required": [
-                  "kind",
-                  "entries"
-                ],
-                "additionalProperties": false
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "kind": {
-                    "const": "array"
-                  },
-                  "items": {
-                    "type": "array",
-                    "items": {
-                      "$ref": "#/$defs/valueTemplate"
-                    }
-                  }
-                },
-                "required": [
-                  "kind",
-                  "items"
-                ],
-                "additionalProperties": false
-              }
-            ]
-          },
-          "expression": {
-            "oneOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "kind": {
-                    "const": "literal"
-                  },
-                  "value": {}
-                },
-                "required": [
-                  "kind",
-                  "value"
-                ],
-                "additionalProperties": false
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "kind": {
-                    "const": "variable"
-                  },
-                  "path": {
-                    "type": "string",
-                    "minLength": 1
-                  }
-                },
-                "required": [
-                  "kind",
-                  "path"
-                ],
-                "additionalProperties": false
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "kind": {
-                    "const": "unary"
-                  },
-                  "operator": {
-                    "type": "string",
-                    "enum": [
-                      "not",
-                      "negate"
-                    ]
-                  },
-                  "operand": {
-                    "$ref": "#/$defs/expression"
-                  }
-                },
-                "required": [
-                  "kind",
-                  "operator",
-                  "operand"
-                ],
-                "additionalProperties": false
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "kind": {
-                    "const": "binary"
-                  },
-                  "operator": {
-                    "type": "string",
-                    "enum": [
-                      "add",
-                      "subtract",
-                      "multiply",
-                      "divide",
-                      "modulo",
-                      "eq",
-                      "neq",
-                      "gt",
-                      "gte",
-                      "lt",
-                      "lte"
-                    ]
-                  },
-                  "left": {
-                    "$ref": "#/$defs/expression"
-                  },
-                  "right": {
-                    "$ref": "#/$defs/expression"
-                  }
-                },
-                "required": [
-                  "kind",
-                  "operator",
-                  "left",
-                  "right"
-                ],
-                "additionalProperties": false
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "kind": {
-                    "const": "logical"
-                  },
-                  "operator": {
-                    "type": "string",
-                    "enum": [
-                      "and",
-                      "or"
-                    ]
-                  },
-                  "operands": {
-                    "type": "array",
-                    "minItems": 1,
-                    "items": {
-                      "$ref": "#/$defs/expression"
-                    }
-                  }
-                },
-                "required": [
-                  "kind",
-                  "operator",
-                  "operands"
-                ],
-                "additionalProperties": false
-              }
-            ]
-          },
-          "outputBinding": {
-            "type": "object",
-            "properties": {
-              "variable": {
-                "type": "string",
-                "minLength": 1
-              },
-              "pointer": {
-                "type": "string",
-                "default": ""
-              }
-            },
-            "required": [
-              "variable"
-            ],
-            "additionalProperties": false
-          },
-          "retry": {
-            "type": "object",
-            "properties": {
-              "maxAttempts": {
-                "type": "integer",
-                "minimum": 1,
-                "maximum": 10
-              },
-              "delayMs": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 300000
-              },
-              "backoff": {
-                "type": "string",
-                "enum": [
-                  "fixed",
-                  "exponential"
-                ],
-                "default": "fixed"
-              },
-              "retryOn": {
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "enum": [
-                    "permission_denied",
-                    "invalid_argument",
-                    "unavailable",
-                    "conflict",
-                    "not_found",
-                    "validation_failed",
-                    "requires_project",
-                    "safe_stop_failed",
-                    "invalid_response",
-                    "loop_limit",
-                    "assertion_failed",
-                    "project_exists",
-                    "invalid_project",
-                    "project_uninitialized",
-                    "invalid_project_folder",
-                    "cancelled",
-                    "error"
-                  ]
-                },
-                "default": [
-                  "unavailable"
-                ]
-              }
-            },
-            "required": [
-              "maxAttempts",
-              "delayMs"
-            ],
-            "additionalProperties": false
-          },
-          "step": {
-            "oneOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "stepId": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "label": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "enabled": {
-                    "type": "boolean",
-                    "default": true
-                  },
-                  "type": {
-                    "const": "tool"
-                  },
-                  "toolName": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "hardwareId": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "arguments": {
-                    "type": "object",
-                    "additionalProperties": {
-                      "$ref": "#/$defs/valueTemplate"
-                    }
-                  },
-                  "outputBindings": {
-                    "type": "array",
-                    "items": {
-                      "$ref": "#/$defs/outputBinding"
-                    }
-                  },
-                  "timeoutMs": {
-                    "type": "integer",
-                    "minimum": 100,
-                    "maximum": 1800000
-                  },
-                  "idempotent": {
-                    "type": "boolean",
-                    "default": false
-                  },
-                  "retry": {
-                    "$ref": "#/$defs/retry"
-                  }
-                },
-                "required": [
-                  "stepId",
-                  "label",
-                  "type",
-                  "toolName",
-                  "hardwareId",
-                  "arguments",
-                  "outputBindings",
-                  "timeoutMs",
-                  "retry"
-                ],
-                "additionalProperties": false
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "stepId": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "label": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "enabled": {
-                    "type": "boolean",
-                    "default": true
-                  },
-                  "type": {
-                    "const": "delay"
-                  },
-                  "durationMs": {
-                    "$ref": "#/$defs/valueTemplate"
-                  }
-                },
-                "required": [
-                  "stepId",
-                  "label",
-                  "type",
-                  "durationMs"
-                ],
-                "additionalProperties": false
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "stepId": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "label": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "enabled": {
-                    "type": "boolean",
-                    "default": true
-                  },
-                  "type": {
-                    "const": "set_variable"
-                  },
-                  "variable": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "value": {
-                    "$ref": "#/$defs/valueTemplate"
-                  }
-                },
-                "required": [
-                  "stepId",
-                  "label",
-                  "type",
-                  "variable",
-                  "value"
-                ],
-                "additionalProperties": false
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "stepId": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "label": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "enabled": {
-                    "type": "boolean",
-                    "default": true
-                  },
-                  "type": {
-                    "const": "assert"
-                  },
-                  "expression": {
-                    "$ref": "#/$defs/expression"
-                  },
-                  "message": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "stepId",
-                  "label",
-                  "type",
-                  "expression",
-                  "message"
-                ],
-                "additionalProperties": false
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "stepId": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "label": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "enabled": {
-                    "type": "boolean",
-                    "default": true
-                  },
-                  "type": {
-                    "const": "if"
-                  },
-                  "condition": {
-                    "$ref": "#/$defs/expression"
-                  },
-                  "then": {
-                    "type": "array",
-                    "items": {
-                      "$ref": "#/$defs/step"
-                    }
-                  },
-                  "else": {
-                    "type": "array",
-                    "items": {
-                      "$ref": "#/$defs/step"
-                    }
-                  }
-                },
-                "required": [
-                  "stepId",
-                  "label",
-                  "type",
-                  "condition",
-                  "then",
-                  "else"
-                ],
-                "additionalProperties": false
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "stepId": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "label": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "enabled": {
-                    "type": "boolean",
-                    "default": true
-                  },
-                  "type": {
-                    "const": "loop"
-                  },
-                  "mode": {
-                    "type": "string",
-                    "enum": [
-                      "count",
-                      "while"
-                    ]
-                  },
-                  "count": {
-                    "$ref": "#/$defs/valueTemplate"
-                  },
-                  "condition": {
-                    "$ref": "#/$defs/expression"
-                  },
-                  "maxIterations": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "maximum": 10000
-                  },
-                  "indexVariable": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "body": {
-                    "type": "array",
-                    "items": {
-                      "$ref": "#/$defs/step"
-                    }
-                  }
-                },
-                "required": [
-                  "stepId",
-                  "label",
-                  "type",
-                  "mode",
-                  "maxIterations",
-                  "indexVariable",
-                  "body"
-                ],
-                "additionalProperties": false
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "stepId": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "label": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "enabled": {
-                    "type": "boolean",
-                    "default": true
-                  },
-                  "type": {
-                    "const": "parallel"
-                  },
-                  "branches": {
-                    "type": "array",
-                    "minItems": 2,
-                    "items": {
-                      "type": "object",
-                      "properties": {
-                        "branchId": {
-                          "type": "string",
-                          "minLength": 1
-                        },
-                        "name": {
-                          "type": "string",
-                          "minLength": 1
-                        },
-                        "steps": {
-                          "type": "array",
-                          "items": {
-                            "$ref": "#/$defs/step"
-                          }
-                        }
-                      },
-                      "required": [
-                        "branchId",
-                        "name",
-                        "steps"
-                      ],
-                      "additionalProperties": false
-                    }
-                  }
-                },
-                "required": [
-                  "stepId",
-                  "label",
-                  "type",
-                  "branches"
-                ],
-                "additionalProperties": false
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "stepId": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "label": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "enabled": {
-                    "type": "boolean",
-                    "default": true
-                  },
-                  "type": {
-                    "const": "operator"
-                  },
-                  "prompt": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "options": {
-                    "type": "array",
-                    "minItems": 1,
-                    "items": {
-                      "type": "object",
-                      "properties": {
-                        "label": {
-                          "type": "string",
-                          "minLength": 1
-                        },
-                        "value": {}
-                      },
-                      "required": [
-                        "label",
-                        "value"
-                      ],
-                      "additionalProperties": false
-                    }
-                  },
-                  "resultVariable": {
-                    "type": "string",
-                    "minLength": 1
-                  }
-                },
-                "required": [
-                  "stepId",
-                  "label",
-                  "type",
-                  "prompt",
-                  "options"
-                ],
-                "additionalProperties": false
-              }
-            ]
-          },
-          "testTask": {
-            "type": "object",
-            "properties": {
-              "formatVersion": {
-                "const": 2
-              },
-              "taskId": {
-                "type": "string",
-                "minLength": 1
-              },
-              "name": {
-                "type": "string",
-                "minLength": 1
-              },
-              "inputs": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/$defs/variableDefinition"
-                }
-              },
-              "variables": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/$defs/variableDefinition"
-                }
-              },
-              "setup": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/$defs/step"
-                }
-              },
-              "steps": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/$defs/step"
-                }
-              },
-              "cleanup": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/$defs/step"
-                }
-              }
-            },
-            "required": [
-              "formatVersion",
-              "taskId",
-              "name",
-              "inputs",
-              "variables",
-              "setup",
-              "steps",
-              "cleanup"
-            ],
-            "additionalProperties": false
-          }
-        }
+        "additionalProperties": false
       }
     },
-    "capability": "orchestration.manage"
+    "capability": "applications.read"
   },
   {
     "tool": {
-      "name": "start_test_run",
-      "description": "Start the open project's test task.",
+      "name": "write_workspace_file",
+      "description": "write workspace file. Workspace paths are relative to .hardwareharness. Hardware operations require existing occupancy; handle wiring and human approval before starting. No automatic replay.",
       "inputSchema": {
         "type": "object",
         "properties": {
-          "inputs": {
-            "type": "object",
-            "additionalProperties": {},
-            "default": {}
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "content": {
+            "type": "string"
+          },
+          "expectedHash": {
+            "type": "string"
           }
         },
+        "required": [
+          "path",
+          "content",
+          "expectedHash"
+        ],
         "additionalProperties": false
-      },
-      "annotations": {
-        "destructiveHint": true
       }
     },
-    "capability": "orchestration.run"
+    "capability": "applications.manage"
   },
   {
     "tool": {
-      "name": "cancel_test_run",
-      "description": "Cancel a running test.",
+      "name": "initialize_workspace",
+      "description": "Prepare the shared project uv environment after saving dependency changes and stopping all applications and runs. Packaged defaults install from bundled offline wheels. Set online=true only when intentionally installing additional dependencies from package indexes. Read .hardwareharness/docs/hardwareharness-sdk.md before writing workflows. Hardware occupancy and wiring remain Agent responsibilities; no automatic replay.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "online": { "type": "boolean", "default": false }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    "capability": "applications.manage"
+  },
+  {
+    "tool": {
+      "name": "list_applications",
+      "description": "list applications. Workspace paths are relative to .hardwareharness. Hardware operations require existing occupancy; handle wiring and human approval before starting. No automatic replay.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    "capability": "applications.read"
+  },
+  {
+    "tool": {
+      "name": "create_application",
+      "description": "create application. Workspace paths are relative to .hardwareharness. Hardware operations require existing occupancy; handle wiring and human approval before starting. No automatic replay.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "capability": "applications.manage"
+  },
+  {
+    "tool": {
+      "name": "start_application",
+      "description": "start application. Workspace paths are relative to .hardwareharness. Hardware operations require existing occupancy; handle wiring and human approval before starting. No automatic replay.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "capability": "applications.run"
+  },
+  {
+    "tool": {
+      "name": "stop_application",
+      "description": "stop application. Workspace paths are relative to .hardwareharness. Hardware operations require existing occupancy; handle wiring and human approval before starting. No automatic replay.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "capability": "applications.run"
+  },
+  {
+    "tool": {
+      "name": "get_application_logs",
+      "description": "get application logs. Workspace paths are relative to .hardwareharness. Hardware operations require existing occupancy; handle wiring and human approval before starting. No automatic replay.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "after": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 0
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "capability": "applications.read"
+  },
+  {
+    "tool": {
+      "name": "validate_python_file",
+      "description": "validate python file. Workspace paths are relative to .hardwareharness. Hardware operations require existing occupancy; handle wiring and human approval before starting. No automatic replay.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "capability": "applications.read"
+  },
+  {
+    "tool": {
+      "name": "start_python_run",
+      "description": "start python run. Workspace paths are relative to .hardwareharness. Hardware operations require existing occupancy; handle wiring and human approval before starting. No automatic replay.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "entrypoint": {
+            "type": "string",
+            "minLength": 1
+          },
+          "inputs": {
+            "type": "object",
+            "default": {}
+          },
+          "inputSchema": {
+            "type": "object",
+            "default": {}
+          },
+          "hardwareIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "default": []
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "entrypoint"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "capability": "applications.run"
+  },
+  {
+    "tool": {
+      "name": "cancel_python_run",
+      "description": "cancel python run. Workspace paths are relative to .hardwareharness. Hardware operations require existing occupancy; handle wiring and human approval before starting. No automatic replay.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -1510,17 +956,60 @@
           "runId"
         ],
         "additionalProperties": false
-      },
-      "annotations": {
-        "destructiveHint": true
       }
     },
-    "capability": "orchestration.run"
+    "capability": "applications.run"
   },
   {
     "tool": {
-      "name": "get_test_run",
-      "description": "Get a test run with paged node results and incremental events.",
+      "name": "get_python_run",
+      "description": "get python run. Workspace paths are relative to .hardwareharness. Hardware operations require existing occupancy; handle wiring and human approval before starting. No automatic replay.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "runId": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "runId"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "capability": "applications.read"
+  },
+  {
+    "tool": {
+      "name": "list_python_runs",
+      "description": "list python runs. Workspace paths are relative to .hardwareharness. Hardware operations require existing occupancy; handle wiring and human approval before starting. No automatic replay.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10000,
+            "default": 1000
+          },
+          "search": {
+            "type": "string"
+          },
+          "applicationId": {
+            "type": "string"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    "capability": "applications.read"
+  },
+  {
+    "tool": {
+      "name": "get_python_run_events",
+      "description": "get python run events. Workspace paths are relative to .hardwareharness. Hardware operations require existing occupancy; handle wiring and human approval before starting. No automatic replay.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -1528,32 +1017,24 @@
             "type": "string",
             "minLength": 1
           },
-          "sinceEventId": {
+          "after": {
             "type": "integer",
             "minimum": 0,
             "default": 0
           },
-          "nodeOffset": {
-            "type": "integer",
-            "minimum": 0,
-            "default": 0
-          },
-          "nodeLimit": {
+          "limit": {
             "type": "integer",
             "minimum": 1,
             "maximum": 1000,
-            "default": 200
+            "default": 500
           }
         },
         "required": [
           "runId"
         ],
         "additionalProperties": false
-      },
-      "annotations": {
-        "readOnlyHint": true
       }
     },
-    "capability": "orchestration.read"
+    "capability": "applications.read"
   }
 ]

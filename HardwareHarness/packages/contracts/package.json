@@ -4,31 +4,97 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./application": { "hardwareharness-source": "./src/application.ts", "types": "./dist/application.d.ts", "default": "./dist/application.js" },
-    "./devices": { "hardwareharness-source": "./src/devices.ts", "types": "./dist/devices.d.ts", "default": "./dist/devices.js" },
-    "./occupancy": { "hardwareharness-source": "./src/occupancy.ts", "types": "./dist/occupancy.d.ts", "default": "./dist/occupancy.js" },
-    "./errors": { "hardwareharness-source": "./src/errors.ts", "types": "./dist/errors.d.ts", "default": "./dist/errors.js" },
-    "./storage": { "hardwareharness-source": "./src/storage.ts", "types": "./dist/storage.d.ts", "default": "./dist/storage.js" },
-    "./agents": { "hardwareharness-source": "./src/agents.ts", "types": "./dist/agents.d.ts", "default": "./dist/agents.js" },
-    "./execution": { "hardwareharness-source": "./src/execution.ts", "types": "./dist/execution.d.ts", "default": "./dist/execution.js" },
-    "./wiring": { "hardwareharness-source": "./src/wiring.ts", "types": "./dist/wiring.d.ts", "default": "./dist/wiring.js" },
-    "./orchestration": { "hardwareharness-source": "./src/orchestration.ts", "types": "./dist/orchestration.d.ts", "default": "./dist/orchestration.js" },
-    "./projects": { "hardwareharness-source": "./src/projects.ts", "types": "./dist/projects.d.ts", "default": "./dist/projects.js" },
-    "./desktop": { "hardwareharness-source": "./src/desktop.ts", "types": "./dist/desktop.d.ts", "default": "./dist/desktop.js" }
+    "./application": {
+      "hardwareharness-source": "./src/application.ts",
+      "types": "./dist/application.d.ts",
+      "default": "./dist/application.js"
+    },
+    "./devices": {
+      "hardwareharness-source": "./src/devices.ts",
+      "types": "./dist/devices.d.ts",
+      "default": "./dist/devices.js"
+    },
+    "./occupancy": {
+      "hardwareharness-source": "./src/occupancy.ts",
+      "types": "./dist/occupancy.d.ts",
+      "default": "./dist/occupancy.js"
+    },
+    "./errors": {
+      "hardwareharness-source": "./src/errors.ts",
+      "types": "./dist/errors.d.ts",
+      "default": "./dist/errors.js"
+    },
+    "./storage": {
+      "hardwareharness-source": "./src/storage.ts",
+      "types": "./dist/storage.d.ts",
+      "default": "./dist/storage.js"
+    },
+    "./agents": {
+      "hardwareharness-source": "./src/agents.ts",
+      "types": "./dist/agents.d.ts",
+      "default": "./dist/agents.js"
+    },
+    "./execution": {
+      "hardwareharness-source": "./src/execution.ts",
+      "types": "./dist/execution.d.ts",
+      "default": "./dist/execution.js"
+    },
+    "./wiring": {
+      "hardwareharness-source": "./src/wiring.ts",
+      "types": "./dist/wiring.d.ts",
+      "default": "./dist/wiring.js"
+    },
+    "./projects": {
+      "hardwareharness-source": "./src/projects.ts",
+      "types": "./dist/projects.d.ts",
+      "default": "./dist/projects.js"
+    },
+    "./desktop": {
+      "hardwareharness-source": "./src/desktop.ts",
+      "types": "./dist/desktop.d.ts",
+      "default": "./dist/desktop.js"
+    },
+    "./applications": {
+      "hardwareharness-source": "./src/applications.ts",
+      "types": "./dist/applications.d.ts",
+      "default": "./dist/applications.js"
+    }
   },
   "typesVersions": {
     "*": {
-      "application": ["./dist/application.d.ts"],
-      "devices": ["./dist/devices.d.ts"],
-      "occupancy": ["./dist/occupancy.d.ts"],
-      "errors": ["./dist/errors.d.ts"],
-      "storage": ["./dist/storage.d.ts"],
-      "agents": ["./dist/agents.d.ts"],
-      "execution": ["./dist/execution.d.ts"],
-      "wiring": ["./dist/wiring.d.ts"],
-      "orchestration": ["./dist/orchestration.d.ts"],
-      "projects": ["./dist/projects.d.ts"],
-      "desktop": ["./dist/desktop.d.ts"]
+      "application": [
+        "./dist/application.d.ts"
+      ],
+      "devices": [
+        "./dist/devices.d.ts"
+      ],
+      "occupancy": [
+        "./dist/occupancy.d.ts"
+      ],
+      "errors": [
+        "./dist/errors.d.ts"
+      ],
+      "storage": [
+        "./dist/storage.d.ts"
+      ],
+      "agents": [
+        "./dist/agents.d.ts"
+      ],
+      "execution": [
+        "./dist/execution.d.ts"
+      ],
+      "wiring": [
+        "./dist/wiring.d.ts"
+      ],
+      "projects": [
+        "./dist/projects.d.ts"
+      ],
+      "desktop": [
+        "./dist/desktop.d.ts"
+      ],
+      "applications": [
+        "./dist/applications.d.ts"
+      ]
     }
   },
   "scripts": {

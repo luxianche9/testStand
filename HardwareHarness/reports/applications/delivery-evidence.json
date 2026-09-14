@@ -1,0 +1,69 @@
+{
+  "referenceRevision": "2ecde3ff6c610658a4ea05bb130e26c321e20b6d",
+  "recordedAt": "2026-09-14T06:26:40.617751+00:00",
+  "pythonTests": 968,
+  "typescriptTests": 237,
+  "electronE2eTests": 28,
+  "retainedSpecifications": 83,
+  "retiredSpecifications": 37,
+  "independentCleanWindowsVerified": false,
+  "physicalNetworkDisconnected": false,
+  "files": {
+    "reports/applications/python-verify.txt": {
+      "sha256": "dbe3b2ba3daa20026b4df2cf8fdd023cd26e1814f3302acbb84df7dc1615075d",
+      "bytes": 12334
+    },
+    "reports/applications/pnpm-verify.txt": {
+      "sha256": "61bbe2f69e4267b8ade2eb274e3aa4da47bd50ca2e51935bba88cea421dd07ab",
+      "bytes": 50955
+    },
+    "reports/applications/ts-coverage.txt": {
+      "sha256": "8f95fa7f6e4f453949c3e1cdb0950b1c2d9991d3770d694ccd380726cd195d94",
+      "bytes": 21327
+    },
+    "reports/applications/electron-e2e.txt": {
+      "sha256": "5252b063956b4bc9c025da61f82cf50c0f90b1dd68d07b60d85c9bd2e04ee050",
+      "bytes": 4208
+    },
+    "python/reports/python-spec-results.json": {
+      "sha256": "a6d8ccb334dcb30535f9667e6e5053fffeaedd6660efc78dcd6acf7095eba3b6",
+      "bytes": 208479
+    },
+    "python/reports/coverage-comparison.json": {
+      "sha256": "cb0a9d5ec3e5085e815753f204194698f5febc4f2969a28f2205a7e4a6a29969",
+      "bytes": 3821
+    },
+    "reports/applications/implementation.md": {
+      "sha256": "e2e0b12f2d7273e956caee0c3ce5e559ee3b48fe1a3ac564a2b0e118275f6b5e",
+      "bytes": 7395
+    },
+    "reports/applications/acceptance-map.md": {
+      "sha256": "cd32adb5bac1eb5576d6ff76132e07ec14efa0dd35ebb8a4e2d824ba1d3d5c8d",
+      "bytes": 5569
+    },
+    "reports/applications/migration-report.md": {
+      "sha256": "31b6901586924a8b0e8ada7de957bbb716529cc55ef9712df87c20b3b2431a7d",
+      "bytes": 2176
+    },
+    "reports/applications/packaging/installation-result.json": {
+      "sha256": "4bbee77e694b8cbfdf03da0565887d40d66635938434de0bbd5e9201986a6782",
+      "bytes": 2579
+    },
+    "reports/applications/packaging/process-cleanup.json": {
+      "sha256": "a1509704cf1ca44b0b97ed2deeb0c209d635e4b74dcdf2890049a1ad9041efd8",
+      "bytes": 10311
+    },
+    "reports/applications/packaging/backend-payload.json": {
+      "sha256": "42244dd287044193f742ccd194bdf6b230d711af95839742fb833e8b919dbf8e",
+      "bytes": 32063
+    },
+    "reports/applications/packaging/acceptance.md": {
+      "sha256": "cf5abfeccbe94ba2435188afa0fe0b6e96fabc5aab98f0bef57699b781995036",
+      "bytes": 3276
+    },
+    "dist/HardwareHarness-0.1.0-windows-x64.exe": {
+      "sha256": "fd97338fe9b064745431ec8afb993a3f72bd84385eadc141162d1d4f2dc87899",
+      "bytes": 280625529
+    }
+  }
+}

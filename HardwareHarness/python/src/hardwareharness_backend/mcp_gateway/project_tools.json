@@ -2,7 +2,7 @@
   {
     "tool": {
       "name": "get_project",
-      "description": "Read the current project, root path, wiring, task and unsaved state.",
+      "description": "Read the current project, root path, wiring, application workspace and unsaved state.",
       "inputSchema": {
         "type": "object",
         "properties": {},
@@ -57,7 +57,7 @@
   {
     "tool": {
       "name": "save_project",
-      "description": "Save the current project's task and canvas through the normal project service.",
+      "description": "Save the current project's application workspace and canvas through the normal project service.",
       "inputSchema": {
         "type": "object",
         "properties": {},

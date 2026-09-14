@@ -1,0 +1,22 @@
+SIM112 Use capitalized environment variable `SYSTEMROOT` instead of `SystemRoot`
+  --> scripts\smoke_project_runtime.py:33:42
+   |
+31 |         old_env = os.environ.copy()
+32 |         os.environ.update(
+33 |             PATH=str(Path(os.environ.get("SystemRoot", "C:/Windows")) / "System32"),
+   |                                          ^^^^^^^^^^^^
+34 |             UV_OFFLINE="1",
+35 |             UV_CACHE_DIR=str(project / "empty-cache"),
+   |
+help: Replace `SystemRoot` with `SYSTEMROOT`
+
+E501 Line too long (106 > 100)
+  --> tests\host\test_facade_routes.py:39:101
+   |
+39 | CASES = restore(json.loads(Path(__file__).with_name("applications-facade-calls.json").read_text("utf-8")))
+   |                                                                                                     ^^^^^^
+40 | CASES.append(
+41 |     {
+   |
+
+Found 2 errors.
