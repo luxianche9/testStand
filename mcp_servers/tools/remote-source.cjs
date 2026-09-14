@@ -6,10 +6,10 @@ const { pathToFileURL } = require("node:url");
 
 const realHardwareRoot = resolve(__dirname, "..");
 const workspaceRoot = resolve(realHardwareRoot, "..");
-const testForgeUserData = process.env.TESTFORGE_USER_DATA
-  || join(process.env.APPDATA, "@testforge", "desktop");
-app.setPath("userData", testForgeUserData);
-const { Client } = require(join(workspaceRoot, "testForge", "apps", "desktop", "node_modules", "ssh2"));
+const hardwareHarnessUserData = process.env.HARDWAREHARNESS_USER_DATA
+  || join(process.env.APPDATA, "@hardwareharness", "desktop");
+app.setPath("userData", hardwareHarnessUserData);
+const { Client } = require(join(workspaceRoot, "hardwareHarness", "apps", "desktop", "node_modules", "ssh2"));
 const config = JSON.parse(readFileSync(join(realHardwareRoot, "servers.json"), "utf8"));
 
 const sourceExtensions = new Set([
@@ -100,7 +100,7 @@ function sha256(content) {
 }
 
 function secretFromSafeStorage(key) {
-  const secretsPath = process.env.TESTFORGE_SECRETS_PATH || join(testForgeUserData, "secrets.json");
+  const secretsPath = process.env.HARDWAREHARNESS_SECRETS_PATH || join(hardwareHarnessUserData, "secrets.json");
   const document = JSON.parse(readFileSync(secretsPath, "utf8"));
   const encrypted = document.entries?.[key];
   if (!encrypted) throw new Error(`Credential ${key} was not found in ${secretsPath}`);
@@ -109,7 +109,7 @@ function secretFromSafeStorage(key) {
 }
 
 function credentialFromSafeStorage() {
-  const password = process.env.TESTFORGE_REMOTE_PASSWORD;
+  const password = process.env.HARDWAREHARNESS_REMOTE_PASSWORD;
   if (password) return { kind: "password", password };
   return secretFromSafeStorage(config.computer.credentialKey);
 }
@@ -117,7 +117,7 @@ function credentialFromSafeStorage() {
 async function readOccupancy(server) {
   const { token } = secretFromSafeStorage(server.mcpCredentialKey);
   if (!token) throw new Error(`MCP token is missing for ${server.label}`);
-  const sdkRoot = join(workspaceRoot, "testForge", "apps", "desktop", "node_modules", "@modelcontextprotocol", "sdk", "dist", "esm", "client");
+  const sdkRoot = join(workspaceRoot, "hardwareHarness", "apps", "desktop", "node_modules", "@modelcontextprotocol", "sdk", "dist", "esm", "client");
   const [{ Client: McpClient }, { StreamableHTTPClientTransport }] = await Promise.all([
     import(pathToFileURL(join(sdkRoot, "index.js")).href),
     import(pathToFileURL(join(sdkRoot, "streamableHttp.js")).href)
@@ -125,11 +125,11 @@ async function readOccupancy(server) {
   const transport = new StreamableHTTPClientTransport(new URL(server.mcpUrl), {
     requestInit: { headers: { Authorization: `Bearer ${token}` } }
   });
-  const client = new McpClient({ name: "testforge-source-deployer", version: "1.0.0" });
+  const client = new McpClient({ name: "hardwareharness-source-deployer", version: "1.0.0" });
   try {
     await client.connect(transport);
     const result = await client.callTool({
-      name: "testforge_hardware_occupancy",
+      name: "hardwareharness_hardware_occupancy",
       arguments: { hardwareId: server.hardwareId, action: "status" }
     });
     const structured = result.structuredContent;
@@ -348,7 +348,7 @@ $python = @(
 ) | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
 if (-not $python) { throw "Python virtual environment not found under $root" }
 $env:PYTHONPATH = Join-Path $root 'app\\src'
-$env:TESTFORGE_SERVER_CONFIG = Join-Path $root 'server.json'
+$env:HARDWAREHARNESS_SERVER_CONFIG = Join-Path $root 'server.json'
 & $python -m unittest discover -s (Join-Path $root 'app\\tests') -p 'test_*.py'
 if ($LASTEXITCODE -ne 0) { throw "Unit tests failed with exit code $LASTEXITCODE" }`, 300_000);
       }

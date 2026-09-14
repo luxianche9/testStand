@@ -1,0 +1,22 @@
+  • electron-builder  version=26.15.3 os=10.0.26200
+  • loaded configuration  file=E:\Project\hardwareHarness\HardwareHarness\apps\desktop\electron-builder.config.ts
+  • description is missed in the package.json  appPackageFile=E:\Project\hardwareHarness\HardwareHarness\apps\desktop\package.json
+  • author is missed in the package.json  appPackageFile=E:\Project\hardwareHarness\HardwareHarness\apps\desktop\package.json
+  • packageManager not detected by file, falling back to environment detection  resolvedPackageManager=pnpm detected=E:\Project\hardwareHarness\HardwareHarness\apps\desktop
+  • executing @electron/rebuild  electronVersion=36.9.5 arch=x64 buildFromSource=false workspaceRoot=E:\Project\hardwareHarness\HardwareHarness\apps\desktop projectDir=./ appDir=./
+  • installing native dependencies  arch=x64
+  • completed installing native dependencies
+  • packaging       platform=win32 arch=x64 electron=36.9.5 appOutDir=E:\Project\hardwareHarness\HardwareHarness\dist\win-unpacked
+  • using custom unpacked Electron distribution  electronDist=E:\Project\hardwareHarness\HardwareHarness\node_modules\.pnpm\electron@36.9.5\node_modules\electron\dist
+  • copying unpacked Electron  source=E:\Project\hardwareHarness\HardwareHarness\node_modules\.pnpm\electron@36.9.5\node_modules\electron\dist destination=E:\Project\hardwareHarness\HardwareHarness\dist\win-unpacked
+  • searching for node modules  pm=pnpm searchDir=E:\Project\hardwareHarness\HardwareHarness\apps\desktop
+  • updating asar integrity executable resource  executablePath=E:\Project\hardwareHarness\HardwareHarness\dist\win-unpacked\HardwareHarness.exe
+  • signing with signtool.exe  path=E:\Project\hardwareHarness\HardwareHarness\dist\win-unpacked\resources\backend\hardwareharness-backend.exe
+  • default Electron icon is used  reason=application icon is not set
+  • signing with signtool.exe  path=E:\Project\hardwareHarness\HardwareHarness\dist\win-unpacked\HardwareHarness.exe
+  • signing with signtool.exe  path=E:\Project\hardwareHarness\HardwareHarness\dist\win-unpacked\resources\app.asar.unpacked\node_modules\opencode-windows-x64-baseline\bin\opencode.exe
+  • building        target=nsis file=E:\Project\hardwareHarness\HardwareHarness\dist\HardwareHarness-0.1.0-windows-x64.exe archs=x64 oneClick=true perMachine=false
+  • signing with signtool.exe  path=E:\Project\hardwareHarness\HardwareHarness\dist\win-unpacked\resources\elevate.exe
+  • signing with signtool.exe  path=E:\Project\hardwareHarness\HardwareHarness\dist\HardwareHarness-0.1.0-windows-x64.__uninstaller.exe
+  • signing with signtool.exe  path=E:\Project\hardwareHarness\HardwareHarness\dist\HardwareHarness-0.1.0-windows-x64.exe
+  • building block map  blockMapFile=E:\Project\hardwareHarness\HardwareHarness\dist\HardwareHarness-0.1.0-windows-x64.exe.blockmap

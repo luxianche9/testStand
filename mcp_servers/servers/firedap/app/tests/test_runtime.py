@@ -4,9 +4,9 @@ import time
 
 import pytest
 
-from testforge_firedap.firmware import FLASH_START, OperationError
-from testforge_firedap.runtime import Runtime
-from testforge_firedap.worker import verify_bytes
+from hardwareharness_firedap.firmware import FLASH_START, OperationError
+from hardwareharness_firedap.runtime import Runtime
+from hardwareharness_firedap.worker import verify_bytes
 
 
 def config(tmp_path):

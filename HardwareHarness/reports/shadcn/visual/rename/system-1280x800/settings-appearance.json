@@ -1,0 +1,128 @@
+[
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": "button",
+    "name": "项目文件夹菜单",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "设置",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": "tab",
+    "type": null,
+    "name": "设备管理",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": "tab",
+    "type": null,
+    "name": "工位接线",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": "tab",
+    "type": null,
+    "name": "编排测试",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": "tab",
+    "type": null,
+    "name": "运行日志",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "信箱",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "打开 AI 侧栏",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "最小化",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "最大化",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "关闭",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "返回",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "外观",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "AI 模型",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "Agent 接入",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "跟随系统随操作系统自动切换浅色或深色。",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "浅色始终使用浅色界面。",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "深色始终使用深色界面。",
+    "disabled": false
+  }
+]

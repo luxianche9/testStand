@@ -29,7 +29,7 @@ async def run(target_info: bool):
                 report['toolCount']=len(tools)
                 assert all(t.outputSchema is not None for t in tools)
                 for tool in tools:
-                    if (tool.meta or {}).get('testforge',{}).get('kind')=='hardware':
+                    if (tool.meta or {}).get('hardwareharness',{}).get('kind')=='hardware':
                         assert 'hardwareId' in tool.inputSchema['required']
                 async def call(name,args=None,meta=None):
                     result=await session.call_tool(name,args or {},meta=meta)
@@ -48,22 +48,22 @@ async def run(target_info: bool):
                 if target_info:
                     holder,lease=str(uuid4()),str(uuid4())
                     base={'hardwareId':config['hardwareId'],'holderId':holder,'leaseId':lease}
-                    acquired=await call('testforge_hardware_occupancy',{**base,'action':'acquire','holderLabel':'FireDAP connection smoke test'})
+                    acquired=await call('hardwareharness_hardware_occupancy',{**base,'action':'acquire','holderLabel':'FireDAP connection smoke test'})
                     assert acquired['ok'],acquired
                     try:
                         started=await call('firedap_target_info',{'hardwareId':config['hardwareId']},
-                                           {'testforge':{'occupancyLeaseId':lease}})
+                                           {'hardwareharness':{'occupancyLeaseId':lease}})
                         assert started['ok'],started
                         job=started['data']
                         for _ in range(130):
                             await asyncio.sleep(1)
-                            await call('testforge_hardware_occupancy',{**base,'action':'heartbeat'})
+                            await call('hardwareharness_hardware_occupancy',{**base,'action':'heartbeat'})
                             job=(await call('firedap_get_job',{'job_id':job['jobId']}))['data']
                             if job['state']!='running':break
                         report['targetInfo']=job
                         assert job['state']!='running','Target job exceeded its deadline'
                     finally:
-                        released=await call('testforge_hardware_occupancy',{**base,'action':'release'})
+                        released=await call('hardwareharness_hardware_occupancy',{**base,'action':'release'})
                         report['leaseReleased']=released['ok']
     destination=Path(__file__).parent/'run/smoke-test.json'
     destination.parent.mkdir(exist_ok=True)

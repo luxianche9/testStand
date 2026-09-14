@@ -1,0 +1,133 @@
+
+> hardwareharness@0.1.0 build:python E:\Project\hardwareHarness\HardwareHarness
+> pnpm python:setup && uv run --project python python python/scripts/build.py
+
+
+> hardwareharness@0.1.0 python:setup E:\Project\hardwareHarness\HardwareHarness
+> uv sync --project python --frozen && uv run --project python python python/scripts/prepare_icu.py
+
+Checked 59 packages in 5ms
+ICU 74.2 verified: E:\Project\hardwareHarness\HardwareHarness\python\vendor\icu
+710 INFO: PyInstaller: 6.22.2, contrib hooks: 2026.7
+710 INFO: Python: 3.11.15
+722 INFO: Platform: Windows-10-10.0.26200-SP0
+722 INFO: Python environment: E:\Project\hardwareHarness\HardwareHarness\python\.venv
+1996 INFO: Module search paths (PYTHONPATH):
+['E:\\Project\\hardwareHarness\\HardwareHarness\\python',
+ 'D:\\uv\\python\\cpython-3.11.15-windows-x86_64-none\\python311.zip',
+ 'D:\\uv\\python\\cpython-3.11.15-windows-x86_64-none\\DLLs',
+ 'D:\\uv\\python\\cpython-3.11.15-windows-x86_64-none\\Lib',
+ 'D:\\uv\\python\\cpython-3.11.15-windows-x86_64-none',
+ 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv',
+ 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages',
+ 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\src',
+ 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\win32',
+ 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\win32\\lib',
+ 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\pythonwin',
+ 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\scripts',
+ 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\src']
+2242 INFO: Appending 'binaries' from .spec
+2242 INFO: Appending 'datas' from .spec
+2253 INFO: checking Analysis
+2279 INFO: Building because inputs changed
+2279 INFO: Looking for Python shared library...
+2279 INFO: Using Python shared library: D:\uv\python\cpython-3.11.15-windows-x86_64-none\python311.dll
+2279 INFO: Running Analysis Analysis-00.toc
+2279 INFO: Target bytecode optimization level: 0
+2279 INFO: Initializing module dependency graph...
+2282 INFO: Initializing module graph hook caches...
+2314 INFO: Analyzing modules for base_library.zip ...
+3237 INFO: Processing standard module hook 'hook-heapq.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+3344 INFO: Processing standard module hook 'hook-encodings.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+4278 INFO: Processing standard module hook 'hook-math.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+4651 INFO: Processing standard module hook 'hook-pickle.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+5897 INFO: Caching module dependency graph...
+5938 INFO: Analyzing E:\Project\hardwareHarness\HardwareHarness\python\scripts\frozen_entry.py
+6041 INFO: Processing standard module hook 'hook-multiprocessing.util.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+6191 INFO: Processing standard module hook 'hook-xml.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+6549 INFO: Processing standard module hook 'hook-_ctypes.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+6962 INFO: Processing standard module hook 'hook-platform.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+7338 INFO: Processing standard module hook 'hook-cryptography.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+8446 INFO: hook-cryptography: cryptography does not seem to be using dynamically linked OpenSSL.
+8939 INFO: Processing standard module hook 'hook-difflib.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+9207 INFO: Processing standard module hook 'hook-bcrypt.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+9384 INFO: Processing standard module hook 'hook-nacl.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+10205 INFO: Processing standard module hook 'hook-certifi.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+10357 INFO: Processing standard module hook 'hook-anyio.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+10718 INFO: Processing pre-safe-import-module hook 'hook-typing_extensions.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+10736 INFO: SetuptoolsInfo: initializing cached setuptools info...
+13163 INFO: Processing standard module hook 'hook-webbrowser.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+13206 INFO: Processing standard module hook 'hook-pygments.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+14404 INFO: Processing standard module hook 'hook-jsonschema.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+14636 INFO: Processing standard module hook 'hook-jsonschema_specifications.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+14671 INFO: Processing pre-safe-import-module hook 'hook-importlib_resources.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+14745 INFO: Processing standard module hook 'hook-pydantic.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+15538 INFO: Processing standard module hook 'hook-zoneinfo.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+15565 INFO: Processing standard module hook 'hook-sysconfig.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+16534 INFO: Processing standard module hook 'hook-pywintypes.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+16963 INFO: Processing pre-safe-import-module hook 'hook-tomli.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+16966 INFO: Setuptools: 'tomli' appears to be a setuptools-vendored copy - creating alias to 'setuptools._vendor.tomli'!
+16971 INFO: Processing standard module hook 'hook-setuptools.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+17001 INFO: Processing pre-safe-import-module hook 'hook-distutils.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+17017 INFO: Processing pre-find-module-path hook 'hook-distutils.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_find_module_path'
+17358 INFO: Processing standard module hook 'hook-distutils.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+17386 INFO: Processing standard module hook 'hook-distutils.util.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+17466 INFO: Processing standard module hook 'hook-_osx_support.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+17507 INFO: Processing pre-safe-import-module hook 'hook-packaging.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+17722 INFO: Processing pre-safe-import-module hook 'hook-jaraco.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+17731 INFO: Setuptools: 'jaraco' appears to be a full setuptools-vendored copy - creating alias to 'setuptools._vendor.jaraco'!
+17743 INFO: Processing standard module hook 'hook-setuptools._vendor.jaraco.text.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+17768 INFO: Processing pre-safe-import-module hook 'hook-backports.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+17770 INFO: Setuptools: 'backports' appears to be a full setuptools-vendored copy - creating alias to 'setuptools._vendor.backports'!
+17883 INFO: Processing pre-safe-import-module hook 'hook-more_itertools.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+17886 INFO: Setuptools: 'more_itertools' appears to be a setuptools-vendored copy - creating alias to 'setuptools._vendor.more_itertools'!
+19368 INFO: Processing pre-safe-import-module hook 'hook-wheel.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+19376 INFO: Setuptools: 'wheel' appears to be a setuptools-vendored copy - creating alias to 'setuptools._vendor.wheel'!
+20019 INFO: Processing standard module hook 'hook-uvicorn.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+21237 INFO: Processing standard module hook 'hook-sqlite3.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+21594 INFO: Analyzing hidden import 'anyio._backends._asyncio'
+21760 INFO: Analyzing hidden import 'uvicorn.loops.asyncio'
+21778 INFO: Analyzing hidden import 'uvicorn.lifespan.on'
+21808 INFO: Analyzing hidden import '_cffi_backend'
+21809 INFO: Analyzing hidden import 'hardwareharness_backend.contracts.desktop'
+21811 INFO: Analyzing hidden import 'hardwareharness_backend.host.register_firedap'
+21812 INFO: Processing module hooks (post-graph stage)...
+27030 WARNING: Hidden import "tzdata" not found!
+36035 INFO: Performing binary vs. data reclassification (58 entries)
+36458 INFO: Looking for ctypes DLLs
+36532 INFO: Analyzing run-time hooks ...
+36540 INFO: Including run-time hook 'pyi_rth_inspect.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+36565 INFO: Including run-time hook 'pyi_rth_pkgutil.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+36586 INFO: Including run-time hook 'pyi_rth_multiprocessing.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+36603 INFO: Including run-time hook 'pyi_rth_setuptools.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+36616 INFO: Including run-time hook 'pyi_rth_pywintypes.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\rthooks'
+36632 INFO: Including run-time hook 'pyi_rth_cryptography_openssl.py' from 'E:\\Project\\hardwareHarness\\HardwareHarness\\python\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\rthooks'
+36676 INFO: Creating base_library.zip...
+36701 INFO: Looking for dynamic libraries
+38174 INFO: Extra DLL search directories (AddDllDirectory): []
+38174 INFO: Extra DLL search directories (PATH): []
+42415 INFO: Warnings written to E:\Project\hardwareHarness\HardwareHarness\python\build\backend\warn-backend.txt
+42594 INFO: Graph cross-reference written to E:\Project\hardwareHarness\HardwareHarness\python\build\backend\xref-backend.html
+42686 INFO: checking PYZ
+42711 INFO: Building because name changed
+42711 INFO: Building PYZ (ZlibArchive) E:\Project\hardwareHarness\HardwareHarness\python\build\backend\PYZ-00.pyz
+43883 INFO: Building PYZ (ZlibArchive) E:\Project\hardwareHarness\HardwareHarness\python\build\backend\PYZ-00.pyz completed successfully.
+43917 INFO: checking PKG
+43940 INFO: Building because name changed
+43940 INFO: Building PKG (CArchive) hardwareharness-backend.pkg
+44005 INFO: Building PKG (CArchive) hardwareharness-backend.pkg completed successfully.
+44011 INFO: Bootloader E:\Project\hardwareHarness\HardwareHarness\python\.venv\Lib\site-packages\PyInstaller\bootloader\Windows-64bit-intel\run.exe
+44011 INFO: checking EXE
+44031 INFO: Rebuilding EXE-00.toc because hardwareharness-backend.exe missing
+44031 INFO: Building EXE from EXE-00.toc
+44031 INFO: Copying bootloader EXE to E:\Project\hardwareHarness\HardwareHarness\python\build\backend\hardwareharness-backend.exe
+44193 INFO: Copying icon to EXE
+44290 INFO: Copying 0 resources to EXE
+44290 INFO: Embedding manifest in EXE
+44359 INFO: Appending PKG archive to EXE
+44497 INFO: Fixing EXE headers
+45027 INFO: Building EXE from EXE-00.toc completed successfully.
+45031 INFO: checking COLLECT
+45061 INFO: Building COLLECT COLLECT-00.toc
+45789 INFO: Building COLLECT COLLECT-00.toc completed successfully.
+45789 INFO: Build complete! The results are available in: E:\Project\hardwareHarness\HardwareHarness\python\dist

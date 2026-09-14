@@ -11,8 +11,8 @@
   "packPath": "E:/path/to/Keil.STM32F4xx_DFP.3.1.1.pack",
   "firmwareRoots": [
     "E:/Project/learnSTM32",
-    "E:\\Project\\testForgeDev\\mcp_servers\\servers\\firedap\\firmware"
+    "E:\\Project\\hardwareHarness\\mcp_servers\\servers\\firedap\\firmware"
   ],
-  "jobDirectory": "E:\\Project\\testForgeDev\\mcp_servers\\servers\\firedap\\run\\jobs",
-  "pinoutPath": "E:\\Project\\testForgeDev\\mcp_servers\\hardware-manuals\\stm32-batianhu-v2\\firedap.pinout.json"
+  "jobDirectory": "E:\\Project\\hardwareHarness\\mcp_servers\\servers\\firedap\\run\\jobs",
+  "pinoutPath": "E:\\Project\\hardwareHarness\\mcp_servers\\hardware-manuals\\stm32-batianhu-v2\\firedap.pinout.json"
 }

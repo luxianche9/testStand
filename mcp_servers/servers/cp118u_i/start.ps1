@@ -18,7 +18,7 @@ $configPath = Join-Path $root 'server.json'
 $pythonPath = Join-Path $root 'venv\Scripts\python.exe'
 $stdoutPath = Join-Path $root 'logs\server.out.log'
 $stderrPath = Join-Path $root 'logs\server.err.log'
-$commandLine = "cmd.exe /d /s /c `"set TESTFORGE_SERVER_CONFIG=$configPath&& `"$pythonPath`" -m testforge_remote 1>>`"$stdoutPath`" 2>>`"$stderrPath`"`""
+$commandLine = "cmd.exe /d /s /c `"set HARDWAREHARNESS_SERVER_CONFIG=$configPath&& `"$pythonPath`" -m hardwareharness_remote 1>>`"$stdoutPath`" 2>>`"$stderrPath`"`""
 $created = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = $commandLine }
 if ($created.ReturnValue -ne 0) { throw "Win32_Process.Create failed: $($created.ReturnValue)" }
 Set-Content -LiteralPath $pidFile -Value $created.ProcessId -Encoding ascii -NoNewline

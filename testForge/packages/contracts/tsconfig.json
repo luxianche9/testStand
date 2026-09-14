@@ -1,5 +1,0 @@
-{
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": { "noEmit": true, "customConditions": ["testforge-source"] },
-  "include": ["src", "vitest.config.ts"]
-}

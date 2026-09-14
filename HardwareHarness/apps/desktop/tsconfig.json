@@ -1,0 +1,5 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "jsx": "react-jsx", "types": ["node", "vite/client"], "customConditions": ["hardwareharness-source"], "paths": { "@renderer/*": ["./src/renderer/*"] } },
+  "include": ["src", "electron.vite.config.ts", "vitest.config.ts"]
+}

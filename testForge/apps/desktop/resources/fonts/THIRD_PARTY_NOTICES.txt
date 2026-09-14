@@ -1,6 +1,0 @@
-TestForge self-hosts Geist Variable and Geist Mono Variable through the
-@fontsource-variable packages.
-
-Geist: https://github.com/vercel/geist-font
-Copyright 2024 The Geist Project Authors
-License: SIL Open Font License 1.1 (see adjacent OFL-1.1.txt)

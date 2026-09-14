@@ -1,0 +1,5 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "noEmit": true, "customConditions": ["hardwareharness-source"] },
+  "include": ["src", "vitest.config.ts"]
+}

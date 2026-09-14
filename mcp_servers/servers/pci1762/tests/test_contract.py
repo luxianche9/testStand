@@ -1,7 +1,7 @@
 import unittest
 
-from testforge_server.config import ServerConfig
-from testforge_server.pinout import build_pinout
+from hardwareharness_server.config import ServerConfig
+from hardwareharness_server.pinout import build_pinout
 
 
 class ContractTests(unittest.TestCase):

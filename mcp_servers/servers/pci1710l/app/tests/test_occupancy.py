@@ -4,7 +4,7 @@ import asyncio
 import unittest
 from types import SimpleNamespace
 
-from testforge_remote.occupancy import OccupancyRegistry
+from hardwareharness_remote.occupancy import OccupancyRegistry
 
 
 class FakeAdapter:

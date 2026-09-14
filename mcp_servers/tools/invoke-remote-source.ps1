@@ -6,11 +6,11 @@ param(
 $ErrorActionPreference = "Stop"
 $realHardwareRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $workspaceRoot = Split-Path -Parent $realHardwareRoot
-$electron = Join-Path $workspaceRoot "testForge\apps\desktop\node_modules\electron\dist\electron.exe"
+$electron = Join-Path $workspaceRoot "hardwareHarness\apps\desktop\node_modules\electron\dist\electron.exe"
 $entrypoint = Join-Path $realHardwareRoot "tools\remote-source.cjs"
 
 if (-not (Test-Path -LiteralPath $electron)) {
-    throw "Electron runtime not found at $electron. Run pnpm install in testForge first."
+    throw "Electron runtime not found at $electron. Run pnpm install in hardwareHarness first."
 }
 
 $previousRunAsNode = $env:ELECTRON_RUN_AS_NODE

@@ -1,0 +1,369 @@
+from __future__ import annotations
+
+import asyncio
+import json
+from typing import Any
+from unittest.mock import AsyncMock, Mock, patch
+
+import httpx
+import pytest
+
+from hardwareharness_backend.contracts.validation import ValidationError
+from hardwareharness_backend.mcp_gateway import LocalMcpGateway
+from hardwareharness_backend.mcp_gateway.tool_registry import BUILTIN_TOOL_DEFINITIONS, ToolRegistry
+
+
+def make_gateway() -> tuple[LocalMcpGateway, Any]:
+    app = Mock(authorizer=Mock(is_allowed=Mock(return_value=True)))
+    app.devices.list_tools.return_value = []
+    gateway = LocalMcpGateway(
+        app, Mock(ensure_token=AsyncMock(return_value="secret"), set=AsyncMock()), 0
+    )
+    return gateway, app
+
+
+_HARDWARE = {"hardwareId": "H", "label": "Hardware", "kind": "passive"}
+_TASK = {
+    "formatVersion": 2,
+    "taskId": "T",
+    "name": "Task",
+    "inputs": [],
+    "variables": [],
+    "setup": [],
+    "steps": [],
+    "cleanup": [],
+}
+_CASES: list[tuple[str, dict[str, Any], str, str, list[Any]]] = [
+    ("list_remote_computers", {}, "devices", "list_computers", []),
+    ("get_remote_computer_status", {"computerId": "C"}, "devices", "get_computer_status", ["C"]),
+    ("list_mcp_servers", {}, "devices", "list_servers_with_status", []),
+    ("get_remote_mcp_service", {"serverId": "S"}, "devices", "refresh_server", ["S"]),
+    ("start_remote_mcp_service", {"serverId": "S"}, "devices", "server_action", ["S", "start"]),
+    ("stop_remote_mcp_service", {"serverId": "S"}, "devices", "server_action", ["S", "stop"]),
+    ("restart_remote_mcp_service", {"serverId": "S"}, "devices", "server_action", ["S", "restart"]),
+    ("read_remote_mcp_logs", {"serverId": "S"}, "devices", "read_server_logs", ["S", 200]),
+    ("list_managed_hardware", {}, "devices", "list_managed_hardware", []),
+    ("list_hardware_catalog", {}, "devices", "list_hardware", []),
+    ("get_hardware_definition", {"hardwareId": "H"}, "devices", "get_hardware", ["H"]),
+    (
+        "save_hardware_definition",
+        {"hardware": _HARDWARE},
+        "devices",
+        "save_hardware",
+        [{"formatVersion": 2, **_HARDWARE, "ports": []}],
+    ),
+    ("remove_hardware_definition", {"hardwareId": "H"}, "devices", "remove_hardware", ["H"]),
+    (
+        "set_hardware_image",
+        {"hardwareId": "H", "imageBase64": "data:image/png;base64,aGk"},
+        "devices",
+        "set_hardware_image_bytes",
+        ["H", None, b"hi", ""],
+    ),
+    (
+        "remove_hardware_image",
+        {"hardwareId": "H", "portId": "P"},
+        "devices",
+        "remove_hardware_image",
+        ["H", "P"],
+    ),
+    (
+        "request_hardware_occupancy",
+        {"hardwareIds": ["H"]},
+        "occupancy",
+        "request",
+        [{"hardwareIds": ["H"], "timeoutMs": 1800000}],
+    ),
+    (
+        "cancel_hardware_occupancy_request",
+        {"occupancyRequestId": "O"},
+        "occupancy",
+        "cancel_request",
+        ["O", None],
+    ),
+    (
+        "get_hardware_occupancy_request",
+        {"occupancyRequestId": "O"},
+        "occupancy",
+        "get_request",
+        ["O"],
+    ),
+    ("list_hardware_occupancy_requests", {}, "occupancy", "list_requests", [{"limit": 200}]),
+    (
+        "add_managed_hardware_to_canvas",
+        {"hardwareId": "H"},
+        "wiring",
+        "add_managed_hardware_to_canvas",
+        ["H"],
+    ),
+    (
+        "request_wiring_task",
+        {"portA": "A.J", "portB": "B.J", "action": "connect"},
+        "wiring",
+        "request_task",
+        [{"portA": "A.J", "portB": "B.J", "pins": [], "action": "connect", "timeoutMs": 1800000}],
+    ),
+    ("cancel_wiring_task", {"wiringTaskId": "W"}, "wiring", "cancel_task", ["W", None]),
+    ("get_wiring_task", {"wiringTaskId": "W"}, "wiring", "get_task", ["W"]),
+    ("list_wiring_tasks", {}, "wiring", "list_tasks", [{"limit": 100}]),
+    ("get_test_task", {}, "orchestration", "get_task", []),
+    ("update_test_task", {"task": _TASK}, "orchestration", "update_task", [_TASK]),
+    ("start_test_run", {}, "orchestration", "start_run", [{"inputs": {}}]),
+    ("cancel_test_run", {"runId": "R"}, "orchestration", "cancel_run", ["R"]),
+    ("get_test_run", {"runId": "R"}, "orchestration", "get_run", ["R", 0, 0, 200]),
+]
+
+
+@pytest.mark.parametrize("name,args,group,method,expected", _CASES, ids=[row[0] for row in _CASES])
+async def test_all_builtin_routes_and_defaults(
+    name: str, args: dict[str, Any], group: str, method: str, expected: list[Any]
+) -> None:
+    gateway, app = make_gateway()
+    result = {"task": _TASK, "dirty": True, "extra": "omit"} if name == "update_test_task" else []
+    handler = AsyncMock(return_value=result)
+    getattr(app, group).__dict__[method] = handler
+    output = await gateway.invoke_tool(name, args)
+    assert output == {
+        "ok": True,
+        "data": {"task": _TASK, "dirty": True} if name == "update_test_task" else result,
+    }
+    handler.assert_awaited_once_with({"actor": "agent", "source": "mcp"}, *expected)
+
+
+async def test_zod_argument_errors_and_nested_stripping() -> None:
+    gateway, app = make_gateway()
+    app.wiring.request_task.return_value = {}
+    await gateway.invoke_tool(
+        "request_wiring_task",
+        {
+            "portA": "A.J",
+            "portB": "B.J",
+            "action": "connect",
+            "pins": [{"a": "1", "b": "2", "extra": "stripped"}],
+        },
+    )
+    assert app.wiring.request_task.call_args.args[1]["pins"] == [{"a": "1", "b": "2"}]
+    with pytest.raises(ValidationError) as caught:
+        await gateway.invoke_tool("read_remote_mcp_logs", {"lines": 1.5, "extra": True})
+    assert [(issue["code"], issue["path"]) for issue in caught.value.issues] == [
+        ("invalid_type", ["serverId"]),
+        ("invalid_type", ["lines"]),
+        ("unrecognized_keys", []),
+    ]
+    for value, message in [(" ", "is required"), ("!!", "not valid base64")]:
+        with pytest.raises(Exception, match=message):
+            await gateway.invoke_tool(
+                "set_hardware_image", {"hardwareId": "H", "imageBase64": value}
+            )
+
+
+def test_permissions_duplicate_builtin_and_snapshot_copy() -> None:
+    gateway, app = make_gateway()
+    with pytest.raises(RuntimeError, match="Duplicate builtin"):
+        ToolRegistry(app, [BUILTIN_TOOL_DEFINITIONS[0], BUILTIN_TOOL_DEFINITIONS[0]])
+    app.authorizer.is_allowed.return_value = False
+    assert gateway.list_tools() == []
+    app.devices.list_tools.assert_not_called()
+    app.authorizer.is_allowed.return_value = True
+    listing = gateway.list_builtin_tools()
+    listing[0]["inputSchema"]["properties"]["extra"] = {}
+    assert "extra" not in gateway.list_builtin_tools()[0]["inputSchema"]["properties"]
+
+
+async def test_gateway_lifecycle_durable_token_and_bind_error() -> None:
+    gateway, _ = make_gateway()
+    notified = Mock()
+    gateway.set_change_notifier(notified)
+    with pytest.raises(RuntimeError, match="not been initialized"):
+        gateway.token()
+    with patch("hardwareharness_backend.mcp_gateway.gateway.socket.socket") as factory:
+        factory.return_value.bind.side_effect = OSError("binding failed")
+        await gateway.start()
+    assert gateway.status()["lastError"] == "binding failed"
+    assert gateway.status()["running"] is False
+    await gateway.start()
+    try:
+        await gateway.start()
+        gateway.secrets.ensure_token.assert_awaited_once()
+        assert "lastError" not in gateway.status()
+        gateway.secrets.set.side_effect = OSError("write failed")
+        with pytest.raises(OSError, match="write failed"):
+            await gateway.replace_token("new")
+        assert gateway.token() == "secret"
+    finally:
+        await gateway.stop()
+        await gateway.stop()
+    assert notified.call_count >= 4
+
+
+_HEADERS = {
+    "authorization": "Bearer secret",
+    "content-type": "application/json",
+    "accept": "application/json, text/event-stream",
+}
+_INITIALIZE: dict[str, Any] = {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "initialize",
+    "params": {
+        "protocolVersion": "2025-03-26",
+        "capabilities": {},
+        "clientInfo": {"name": "boundary", "version": "1"},
+    },
+}
+
+
+def result_body(response: httpx.Response) -> Any:
+    for line in response.text.splitlines():
+        if line.startswith("data: "):
+            return json.loads(line[6:])["result"]
+    raise AssertionError(response.text)
+
+
+async def test_http_routes_and_tool_errors() -> None:
+    gateway, app = make_gateway()
+    app.orchestration.get_task.return_value = _TASK
+    await gateway.start()
+    try:
+        async with httpx.AsyncClient(headers=_HEADERS) as client:
+            url = gateway.status()["endpoint"]
+            for method, suffix in [("PUT", ""), ("GET", "?extra=1"), ("POST", "/extra")]:
+                response = await client.request(method, url + suffix)
+                assert response.status_code == 405
+                assert response.headers["allow"] == "GET, POST, DELETE"
+            initialized = await client.post(url, json=_INITIALIZE)
+            assert result_body(initialized) == {
+                "protocolVersion": "2025-03-26",
+                "capabilities": {"tools": {}},
+                "serverInfo": {"name": "hardwareharness", "version": "0.1.0"},
+            }
+            client.headers["mcp-session-id"] = initialized.headers["mcp-session-id"]
+            await client.post(url, json={"jsonrpc": "2.0", "method": "notifications/initialized"})
+            success = await client.post(
+                url,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": 4,
+                    "method": "tools/call",
+                    "params": {"name": "get_test_task", "arguments": {}},
+                },
+            )
+            assert result_body(success) == {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": json.dumps(
+                            {"ok": True, "data": _TASK}, ensure_ascii=False, separators=(",", ":")
+                        ),
+                    }
+                ],
+                "structuredContent": {"ok": True, "data": _TASK},
+            }
+            response = await client.post(
+                url,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "method": "tools/call",
+                    "params": {"name": "get_test_run", "arguments": {}},
+                },
+            )
+            result = result_body(response)
+            assert result["isError"] is True
+            error = result["structuredContent"]["error"]
+            assert error["category"] == "error"
+            assert error["validationIssues"][0]["path"] == ["runId"]
+            assert json.loads(result["content"][0]["text"]) == result["structuredContent"]
+            response = await client.post(
+                url,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": 3,
+                    "method": "tools/call",
+                    "params": {"name": "missing"},
+                },
+            )
+            assert result_body(response)["structuredContent"]["error"] == {
+                "category": "not_found",
+                "message": "Unknown MCP tool: missing",
+            }
+    finally:
+        await gateway.stop()
+
+
+async def test_initialize_validation_and_failed_transport_do_not_leak_sessions() -> None:
+    gateway, _ = make_gateway()
+    await gateway.start()
+    try:
+        async with httpx.AsyncClient(headers=_HEADERS) as client:
+            url = gateway.status()["endpoint"]
+            for body in [[], {"method": "initialize"}, {**_INITIALIZE, "params": None}]:
+                response = await client.post(url, json=body)
+                assert response.status_code == 400
+                assert response.json() == {"error": "missing MCP session"}
+            assert gateway._sessions == {}
+            response = await client.post(url, json=_INITIALIZE, headers={"accept": "text/plain"})
+            assert response.status_code == 406
+            await asyncio.sleep(0)
+            assert gateway._sessions == {}
+            assert gateway.status()["lastClient"]["name"] == "boundary"
+            integration = {
+                **_INITIALIZE,
+                "params": {
+                    **_INITIALIZE["params"],
+                    "clientInfo": {"name": "hardwareharness-integration-check", "version": "1"},
+                },
+            }
+            await client.post(url, json=integration, headers={"accept": "text/plain"})
+            assert gateway.status()["lastClient"]["name"] == "boundary"
+    finally:
+        await gateway.stop()
+
+
+async def test_mcp_cancellation_keeps_application_operation_running() -> None:
+    gateway, app = make_gateway()
+    started, finish, completed = asyncio.Event(), asyncio.Event(), asyncio.Event()
+
+    async def run(*_args: Any) -> dict[str, Any]:
+        started.set()
+        await finish.wait()
+        completed.set()
+        return {"runId": "R"}
+
+    app.orchestration.start_run = run
+    await gateway.start()
+    try:
+        async with httpx.AsyncClient(headers=_HEADERS) as client:
+            url = gateway.status()["endpoint"]
+            initialized = await client.post(url, json=_INITIALIZE)
+            client.headers["mcp-session-id"] = initialized.headers["mcp-session-id"]
+            await client.post(url, json={"jsonrpc": "2.0", "method": "notifications/initialized"})
+            calling = asyncio.create_task(
+                client.post(
+                    url,
+                    json={
+                        "jsonrpc": "2.0",
+                        "id": 2,
+                        "method": "tools/call",
+                        "params": {"name": "start_test_run", "arguments": {}},
+                    },
+                )
+            )
+            try:
+                await asyncio.wait_for(started.wait(), 1)
+                await client.post(
+                    url,
+                    json={
+                        "jsonrpc": "2.0",
+                        "method": "notifications/cancelled",
+                        "params": {"requestId": 2, "reason": "client moved on"},
+                    },
+                )
+                finish.set()
+                await asyncio.wait_for(completed.wait(), 1)
+            finally:
+                finish.set()
+                calling.cancel()
+                await asyncio.gather(calling, return_exceptions=True)
+    finally:
+        await gateway.stop()

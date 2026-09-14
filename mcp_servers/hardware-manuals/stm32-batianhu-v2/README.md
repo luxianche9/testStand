@@ -27,9 +27,9 @@ DC 座按两个外部电气触点表示，原理图的两个接地焊脚合并�
 
 ## 文件
 
-- `hardware.json`：TestForge v2 接口、引脚和图片索引。
-- `stm32-batianhu-v2.tfhw`：可导入硬件包，包含清单、硬件定义、外观和接口图片。
-- `model.json`：板载常用资源、供电、MCU 引脚复用、跳帽配置、信号共用限制和来源。TestForge v2 原生定义只保存端口/针脚/图片，扩展内容通过 FireDAP 的 `firedap_get_board_reference` 工具读取，也随注册复制到库目录旁。
+- `hardware.json`：HardwareHarness v2 接口、引脚和图片索引。
+- `stm32-batianhu-v2.hhhw`：可导入硬件包，包含清单、硬件定义、外观和接口图片。
+- `model.json`：板载常用资源、供电、MCU 引脚复用、跳帽配置、信号共用限制和来源。HardwareHarness v2 原生定义只保存端口/针脚/图片，扩展内容通过 FireDAP 的 `firedap_get_board_reference` 工具读取，也随注册复制到库目录旁。
 - `images/`：从本地 PDF 提取的真实资料图和接口原理图局部。
 - `swd-wiring.json`：FireDAP 与板卡 J1 的接线建议，未自动宣称物理接线已确认。
 - `firedap.hardware.json`、`firedap.pinout.json`：烧录器的 SWD/USB 模型。

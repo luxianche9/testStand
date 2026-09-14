@@ -2,8 +2,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from testforge_firedap import worker
-from testforge_firedap.firmware import FLASH_START, OperationError, encode_segments
+from hardwareharness_firedap import worker
+from hardwareharness_firedap.firmware import FLASH_START, OperationError, encode_segments
 
 
 def setup_target(monkeypatch, *, device_id=0x413, flash_kib=1024, corrupt=False):

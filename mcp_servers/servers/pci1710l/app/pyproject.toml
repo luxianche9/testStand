@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "testforge-remote"
+name = "hardwareharness-remote"
 version = "0.1.0"
-description = "Unified TestForge remote MCP server for the first hardware bench"
+description = "Unified HardwareHarness remote MCP server for the first hardware bench"
 requires-python = ">=3.10"
 dependencies = [
     "mcp>=1.26,<2",
@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [project.scripts]
-testforge-remote = "testforge_remote.server:main"
+hardwareharness-remote = "hardwareharness_remote.server:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

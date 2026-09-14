@@ -3,7 +3,7 @@ requires = ["setuptools>=69"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "testforge-firedap"
+name = "hardwareharness-firedap"
 version = "0.1.0"
 description = "Local FireDAP CMSIS-DAP programmer for the Embedfire STM32F407ZG board"
 requires-python = ">=3.11"
@@ -13,7 +13,7 @@ dependencies = ["mcp[cli]>=1.30,<2", "pyocd>=0.45,<0.46", "intelhex>=2.3", "pyel
 test = ["pytest>=8", "httpx>=0.28"]
 
 [project.scripts]
-testforge-firedap = "testforge_firedap.server:main"
+hardwareharness-firedap = "hardwareharness_firedap.server:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -33,7 +33,7 @@ def test_swd_can_rs485_and_header_ground_positions_from_schematic():
 
 
 def test_bundle_manifest_and_images_are_self_contained():
-    with zipfile.ZipFile(ROOT/'stm32-batianhu-v2.tfhw') as archive:
+    with zipfile.ZipFile(ROOT/'stm32-batianhu-v2.hhhw') as archive:
         manifest=json.loads(archive.read('bundle.json'))
         hardware=json.loads(archive.read('hardware.json'))
         assert manifest=={'formatVersion':2,'kind':'hardware','id':hardware['hardwareId']}

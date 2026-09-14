@@ -1,4 +1,4 @@
-"""Rebuild the TestForge catalog, detailed model and source crops from the user's PDFs.
+"""Rebuild the HardwareHarness catalog, detailed model and source crops from the user's PDFs.
 
 Run with a Python containing pymupdf and openpyxl; --docs selects the document root.
 Connector pin numbers are schematic/contact numbers, never an inferred viewing order.
@@ -216,10 +216,10 @@ def build(docs: Path):
              "Latest supplied schematic history adds SIT CAN/485/232 replacement parts (2024-08-26). Header title remains V2.0; several drawing dates are January 2026 despite 2025 filename. Sources identified by SHA-256.",
              "STM32F407 has no dedicated CTSU; capacitive key uses external RC and GPIO/timer.",
              "Schematic p4 U19A symbol prints PC1 at package pin27 and PC0 at pin26, but net labels PC0/PC1 and the vendor IO sheet match ST package pins27=PC0,26=PC1. Model follows net labels and package datasheet.",
-             "Existing TestForge CAN portId J1 is retained for compatibility; physical SWD J1 uses portId DUT_1.J1. Existing RS485 IDs retained, labels corrected to physical 1=A,2=B.",
+             "Existing HardwareHarness CAN portId J1 is retained for compatibility; physical SWD J1 uses portId DUT_1.J1. Existing RS485 IDs retained, labels corrected to physical 1=A,2=B.",
              "RJ45 pins use cable contact J1..J8, not the magnetics' PCB pad numbers. Audio jacks use original schematic solder-pad numbers; those are not TRS contact positions.",
          ]})
-    with zipfile.ZipFile(OUT / "stm32-batianhu-v2.tfhw", "w",zipfile.ZIP_DEFLATED) as archive:
+    with zipfile.ZipFile(OUT / "stm32-batianhu-v2.hhhw", "w",zipfile.ZIP_DEFLATED) as archive:
         archive.writestr("bundle.json",json.dumps({"formatVersion":2,"kind":"hardware","id":HID}))
         archive.writestr("hardware.json",json.dumps({k:v for k,v in hardware.items() if k!='kind'},ensure_ascii=False))
         archive.write(images / "appearance.png","appearance.png")

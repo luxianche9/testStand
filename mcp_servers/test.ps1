@@ -24,7 +24,7 @@ try {
     foreach ($serverId in $serverIds) {
         $serverRoot = Join-Path $root "servers\$serverId"
         $env:PYTHONPATH = Join-Path $serverRoot "app\src"
-        $env:TESTFORGE_SERVER_CONFIG = Join-Path $serverRoot "server.example.json"
+        $env:HARDWAREHARNESS_SERVER_CONFIG = Join-Path $serverRoot "server.example.json"
         Write-Host "[test] $serverId"
         & $python -m unittest discover -s (Join-Path $serverRoot "app\tests") -p "test_*.py"
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -32,5 +32,5 @@ try {
 }
 finally {
     Remove-Item Env:PYTHONPATH -ErrorAction SilentlyContinue
-    Remove-Item Env:TESTFORGE_SERVER_CONFIG -ErrorAction SilentlyContinue
+    Remove-Item Env:HARDWAREHARNESS_SERVER_CONFIG -ErrorAction SilentlyContinue
 }

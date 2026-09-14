@@ -1,0 +1,1182 @@
+{
+  "sourceRevision": "1aaa0a1",
+  "preservedFiles": 196,
+  "files": [
+    {
+      "before": "mcp_servers/.gitignore",
+      "after": "mcp_servers/.gitignore",
+      "sourceSha256": "6e146455396484bcf3849599d90b1a369f2218b9ec2380400a77881ae5448d13",
+      "currentSha256": "6e146455396484bcf3849599d90b1a369f2218b9ec2380400a77881ae5448d13"
+    },
+    {
+      "before": "mcp_servers/README.md",
+      "after": "mcp_servers/README.md",
+      "sourceSha256": "eb2d009e681db0312fa04ae39df63663673209d20aa9fd4b21e6a35060623b3a",
+      "currentSha256": "7626d1438fa6956d8b9006b74a4b78b367a1a3ec965bca84971f623baeb051d8"
+    },
+    {
+      "before": "mcp_servers/deploy.ps1",
+      "after": "mcp_servers/deploy.ps1",
+      "sourceSha256": "340bbbc99567f59e69183e9a626194d8246004840dd49efa0c689b987c677ca5",
+      "currentSha256": "340bbbc99567f59e69183e9a626194d8246004840dd49efa0c689b987c677ca5"
+    },
+    {
+      "before": "mcp_servers/hardware-manuals/ADLINK_PCI-cPCI-6208-6216-GL_User_Manual_Rev_4.02.pdf",
+      "after": "mcp_servers/hardware-manuals/ADLINK_PCI-cPCI-6208-6216-GL_User_Manual_Rev_4.02.pdf",
+      "sourceSha256": "4122290d0cb675003483a97e8f516015341bf006d5b74a504fc275f9e3861ffb",
+      "currentSha256": "4122290d0cb675003483a97e8f516015341bf006d5b74a504fc275f9e3861ffb"
+    },
+    {
+      "before": "mcp_servers/hardware-manuals/Advantech_PCI-1710_Series_User_Manual.pdf",
+      "after": "mcp_servers/hardware-manuals/Advantech_PCI-1710_Series_User_Manual.pdf",
+      "sourceSha256": "f11bd3ad183e9ad2c9224d84663ea236bdbacd78b2beb860c82eea329b5427e5",
+      "currentSha256": "f11bd3ad183e9ad2c9224d84663ea236bdbacd78b2beb860c82eea329b5427e5"
+    },
+    {
+      "before": "mcp_servers/hardware-manuals/Advantech_PCI-1762_User_Manual_Edition_1.pdf",
+      "after": "mcp_servers/hardware-manuals/Advantech_PCI-1762_User_Manual_Edition_1.pdf",
+      "sourceSha256": "f3f80df2002c50561a4f03fd3481f945449285e2f0c8c159443e18fc156ec277",
+      "currentSha256": "f3f80df2002c50561a4f03fd3481f945449285e2f0c8c159443e18fc156ec277"
+    },
+    {
+      "before": "mcp_servers/hardware-manuals/Moxa_CP-118U-138U_QIG_v6.pdf",
+      "after": "mcp_servers/hardware-manuals/Moxa_CP-118U-138U_QIG_v6.pdf",
+      "sourceSha256": "d2cc6f03c1c8df33c78ca24d7d0c7ce6b0c365522d0e0e576c8af294b7466a97",
+      "currentSha256": "d2cc6f03c1c8df33c78ca24d7d0c7ce6b0c365522d0e0e576c8af294b7466a97"
+    },
+    {
+      "before": "mcp_servers/hardware-manuals/README.md",
+      "after": "mcp_servers/hardware-manuals/README.md",
+      "sourceSha256": "123344bcec03ef681e8643629b614f60f34304aee42a0f532a471b78d4e8abc2",
+      "currentSha256": "3c2388fc85bd9be90304b86f8ecd5c1c70abf4682856430096a258c1f97ec1fc"
+    },
+    {
+      "before": "mcp_servers/hardware-manuals/images/CP118UI.png",
+      "after": "mcp_servers/hardware-manuals/images/CP118UI.png",
+      "sourceSha256": "b56cb6c3d5754a69a92552c0820204d0193e639fecbcc1e3d91c777441c7b608",
+      "currentSha256": "b56cb6c3d5754a69a92552c0820204d0193e639fecbcc1e3d91c777441c7b608"
+    },
+    {
+      "before": "mcp_servers/hardware-manuals/images/PCI-1710L.jpg",
+      "after": "mcp_servers/hardware-manuals/images/PCI-1710L.jpg",
+      "sourceSha256": "845ccc1690bd7a4806ab19eb872db65d6fcdbbc452f41e50ba96bcf1aa1d6ce6",
+      "currentSha256": "845ccc1690bd7a4806ab19eb872db65d6fcdbbc452f41e50ba96bcf1aa1d6ce6"
+    },
+    {
+      "before": "mcp_servers/hardware-manuals/images/PCI-6208.jpg",
+      "after": "mcp_servers/hardware-manuals/images/PCI-6208.jpg",
+      "sourceSha256": "15bf5d70430261fc4ae1c9dbfd47ced10a348ef99a0b9ce08d42030ae95693cb",
+      "currentSha256": "15bf5d70430261fc4ae1c9dbfd47ced10a348ef99a0b9ce08d42030ae95693cb"
+    },
+    {
+      "before": "mcp_servers/hardware-manuals/images/pci-1762端口.png",
+      "after": "mcp_servers/hardware-manuals/images/pci-1762端口.png",
+      "sourceSha256": "0c27bba0983b751c864228374532c8fa676f2fcf48a612eef98b05cd8ceb7d94",
+      "currentSha256": "0c27bba0983b751c864228374532c8fa676f2fcf48a612eef98b05cd8ceb7d94"
+    },
+    {
+      "before": "mcp_servers/hardware-manuals/images/pci1710L端口图.png",
+      "after": "mcp_servers/hardware-manuals/images/pci1710L端口图.png",
+      "sourceSha256": "a295fb5db1a45749b3eef0180b1054705107b5bc3145cec28b45235f64d734c8",
+      "currentSha256": "a295fb5db1a45749b3eef0180b1054705107b5bc3145cec28b45235f64d734c8"
+    },
+    {
+      "before": "mcp_servers/hardware-manuals/images/pci1762.jpg",
+      "after": "mcp_servers/hardware-manuals/images/pci1762.jpg",
+      "sourceSha256": "447e5706ada1763f6a82dd5a5e05c40c4c63d55680da8e28ff8099636972bff8",
+      "currentSha256": "447e5706ada1763f6a82dd5a5e05c40c4c63d55680da8e28ff8099636972bff8"
+    },
+    {
+      "before": "mcp_servers/hardware-manuals/images/pci6208端口.png",
+      "after": "mcp_servers/hardware-manuals/images/pci6208端口.png",
+      "sourceSha256": "13aa1f6740f6924b5ff7f350a9192013d9baf98b30484d73c8352b1e1bd64124",
+      "currentSha256": "13aa1f6740f6924b5ff7f350a9192013d9baf98b30484d73c8352b1e1bd64124"
+    },
+    {
+      "before": "mcp_servers/hardware-manuals/images/串口.png",
+      "after": "mcp_servers/hardware-manuals/images/串口.png",
+      "sourceSha256": "aaa34901b98d9eeb263d38ef0145d463af34a7e620a04c32cc81ddcefd47666b",
+      "currentSha256": "aaa34901b98d9eeb263d38ef0145d463af34a7e620a04c32cc81ddcefd47666b"
+    },
+    {
+      "before": "mcp_servers/hardware-manuals/stm32-batianhu-v2/README.md",
+      "after": "mcp_servers/hardware-manuals/stm32-batianhu-v2/README.md",
+      "sourceSha256": "3681e64bca475d1ae02cbaa8e5e097695972bde9d1a78e9f1890f1bb1a7bf6ee",
+      "currentSha256": "152193532f7e06a9336ea3188fd25d26116219da93c6cad64ebfc598b99550c2"
+    },
+    {
+      "before": "mcp_servers/hardware-manuals/stm32-batianhu-v2/build_model.py",
+      "after": "mcp_servers/hardware-manuals/stm32-batianhu-v2/build_model.py",
+      "sourceSha256": "a1f115f91cf13bab86f7b0e23d7ffbf28432d72742ecb79982c8d8eb6045edf0",
+      "currentSha256": "52552c8b9d5af2cbbb4b6bdbeeccfe676fc83d4b72c29ccd23521d0adfcca909"
+    },
+    {
+      "before": "mcp_servers/hardware-manuals/stm32-batianhu-v2/firedap.hardware.json",
+      "after": "mcp_servers/hardware-manuals/stm32-batianhu-v2/firedap.hardware.json",
+      "sourceSha256": "f4841f3e931d517ee61f172e48e511fbfe73c4bb5768c5d8fe7f9e901e1e8568",
+      "currentSha256": "60cbbc5a60be32cabb52f5c06d7df07146c1e4708efa5c62daa35b74e0269158"
+    },
+    {
+      "before": "mcp_servers/hardware-manuals/stm32-batianhu-v2/firedap.pinout.json",
+      "after": "mcp_servers/hardware-manuals/stm32-batianhu-v2/firedap.pinout.json",
+      "sourceSha256": "1e71f24a7e9aad2b99739193dc29d7ff9de0987d9c7ac0b1a5ea3585530cc8cf",
+      "currentSha256": "90eb0665fb4b62b7fca0a653822ece305fec936eada802128af0c8234417d72b"
+    },
+    {
+      "before": "mcp_servers/hardware-manuals/stm32-batianhu-v2/hardware.json",
+      "after": "mcp_servers/hardware-manuals/stm32-batianhu-v2/hardware.json",
+      "sourceSha256": "ce04bd897f6a60b41cd90c804f2bba2aad645e0710b6f91b2500fcb1551b8d45",
+      "currentSha256": "29bd5bc618b6d899d50519001ae91a58cb45ecc27cfcc75af0860b8c32b055d7"
+    },
+    {
+      "before": "mcp_servers/hardware-manuals/stm32-batianhu-v2/images/CN2.png",
+      "after": "mcp_servers/hardware-manuals/stm32-batianhu-v2/images/CN2.png",
+      "sourceSha256": "6cd184d7a33d8007596684bf3ecd43464a09a9c877f07acb47e1c22ec085e6b8",
+      "currentSha256": "6cd184d7a33d8007596684bf3ecd43464a09a9c877f07acb47e1c22ec085e6b8"
+    },
+    {
+      "before": "mcp_servers/hardware-manuals/stm32-batianhu-v2/images/CN3.png",
+      "after": "mcp_servers/hardware-manuals/stm32-batianhu-v2/images/CN3.png",
+      "sourceSha256": "d6222377407c3309779e233ec03b7a7a2cf598ba326596f6d450e8ba446d2250",
+      "currentSha256": "d6222377407c3309779e233ec03b7a7a2cf598ba326596f6d450e8ba446d2250"
+    },
+    {
+      "before": "mcp_servers/hardware-manuals/stm32-batianhu-v2/images/CON1.png",
+      "after": "mcp_servers/hardware-manuals/stm32-batianhu-v2/images/CON1.png",
+      "sourceSha256": "756a66e5f20d9e6de91bbd791fd8af57d8b825456101847425143d33fde032a4",
+      "currentSha256": "756a66e5f20d9e6de91bbd791fd8af57d8b825456101847425143d33fde032a4"
+    },
+    {
+      "before": "mcp_servers/hardware-manuals/stm32-batianhu-v2/images/CON2.png",
+      "after": "mcp_servers/hardware-manuals/stm32-batianhu-v2/images/CON2.png",
+      "sourceSha256": "9054977e704bfef1716c2ce466a3b443433a56c267c21cd5dc706ab695cb6055",
+      "currentSha256": "9054977e704bfef1716c2ce466a3b443433a56c267c21cd5dc706ab695cb6055"
+    },
+    {
+      "before": "mcp_servers/hardware-manuals/stm32-batianhu-v2/images/J1.png",
+      "after": "mcp_servers/hardware-manuals/stm32-batianhu-v2/images/J1.png",
+      "sourceSha256": "1a1cbd9c63f0b72b10bb388ab33a071484aa67872ef975077e2ed1589e2a8add",
+      "currentSha256": "1a1cbd9c63f0b72b10bb388ab33a071484aa67872ef975077e2ed1589e2a8add"
+    },
+    {
+      "before": "mcp_servers/hardware-manuals/stm32-batianhu-v2/images/J13.png",
+      "after": "mcp_servers/hardware-manuals/stm32-batianhu-v2/images/J13.png",
+      "sourceSha256": "4b721b9137379347fa9b5e2a57bf66448ebbcbba0e9ffff3a0f8a671cae35ac0",
+      "currentSha256": "4b721b9137379347fa9b5e2a57bf66448ebbcbba0e9ffff3a0f8a671cae35ac0"
+    },
+    {
+      "before": "mcp_servers/hardware-manuals/stm32-batianhu-v2/images/J15.png",
+      "after": "mcp_servers/hardware-manuals/stm32-batianhu-v2/images/J15.png",
+      "sourceSha256": "539fee751d82a672725c797f4bd3a32dd023e455717e4a6ac0b90371426a1951",
+      "currentSha256": "539fee751d82a672725c797f4bd3a32dd023e455717e4a6ac0b90371426a1951"
+    },
+    {
+      "before": "mcp_servers/hardware-manuals/stm32-batianhu-v2/images/J24.png",
+      "after": "mcp_servers/hardware-manuals/stm32-batianhu-v2/images/J24.png",
+      "sourceSha256": "2377fac98f5004ed96368f66218fa29f91c5b371ed1e6d636dd64f8ca9e65cf7",
+      "currentSha256": "2377fac98f5004ed96368f66218fa29f91c5b371ed1e6d636dd64f8ca9e65cf7"
+    },
+    {
+      "before": "mcp_servers/hardware-manuals/stm32-batianhu-v2/images/J45.png",
+      "after": "mcp_servers/hardware-manuals/stm32-batianhu-v2/images/J45.png",
+      "sourceSha256": "957ce6b1fc582c89738390575416b78526b28638d4c58d07d7595b41f24c3458",
+      "currentSha256": "957ce6b1fc582c89738390575416b78526b28638d4c58d07d7595b41f24c3458"
+    },
+    {
+      "before": "mcp_servers/hardware-manuals/stm32-batianhu-v2/images/J5.png",
+      "after": "mcp_servers/hardware-manuals/stm32-batianhu-v2/images/J5.png",
+      "sourceSha256": "c79340f742fb5944677800e70737aba079694de0cdc4271ab765594dec6c27f7",
+      "currentSha256": "c79340f742fb5944677800e70737aba079694de0cdc4271ab765594dec6c27f7"
+    },
+    {
+      "before": "mcp_servers/hardware-manuals/stm32-batianhu-v2/images/J8.png",
+      "after": "mcp_servers/hardware-manuals/stm32-batianhu-v2/images/J8.png",
+      "sourceSha256": "ee35610f67fe33696051bf8e01a0e95f875aa5abac56fd0d868ecbd0b9662f6b",
+      "currentSha256": "ee35610f67fe33696051bf8e01a0e95f875aa5abac56fd0d868ecbd0b9662f6b"
+    },
+    {
+      "before": "mcp_servers/hardware-manuals/stm32-batianhu-v2/images/J82.png",
+      "after": "mcp_servers/hardware-manuals/stm32-batianhu-v2/images/J82.png",
+      "sourceSha256": "0aa6c3e35429a929b75e434a7deed0452c9519aaaa79159a52785a8f7fd697ef",
+      "currentSha256": "0aa6c3e35429a929b75e434a7deed0452c9519aaaa79159a52785a8f7fd697ef"
+    },
+    {
+      "before": "mcp_servers/hardware-manuals/stm32-batianhu-v2/images/J87.png",
+      "after": "mcp_servers/hardware-manuals/stm32-batianhu-v2/images/J87.png",
+      "sourceSha256": "ea4f7f89aaf189bce79acafd341640ab0696a69e181d2d7e8d9067a37581a4b0",
+      "currentSha256": "ea4f7f89aaf189bce79acafd341640ab0696a69e181d2d7e8d9067a37581a4b0"
+    },
+    {
+      "before": "mcp_servers/hardware-manuals/stm32-batianhu-v2/images/JACK1.png",
+      "after": "mcp_servers/hardware-manuals/stm32-batianhu-v2/images/JACK1.png",
+      "sourceSha256": "167427f29bc858aecb87f154084aae3ecce137dc2604c6d51935f4615f221be2",
+      "currentSha256": "167427f29bc858aecb87f154084aae3ecce137dc2604c6d51935f4615f221be2"
+    },
+    {
+      "before": "mcp_servers/hardware-manuals/stm32-batianhu-v2/images/appearance.png",
+      "after": "mcp_servers/hardware-manuals/stm32-batianhu-v2/images/appearance.png",
+      "sourceSha256": "27138c429613f4fa38e33417bc0d40efe5454c2efd96dabc44852d358ddb0e29",
+      "currentSha256": "27138c429613f4fa38e33417bc0d40efe5454c2efd96dabc44852d358ddb0e29"
+    },
+    {
+      "before": "mcp_servers/hardware-manuals/stm32-batianhu-v2/images/firedap-appearance.png",
+      "after": "mcp_servers/hardware-manuals/stm32-batianhu-v2/images/firedap-appearance.png",
+      "sourceSha256": "f80d41d4147dcf0ee272ceff7305c1b317b1a6c3ddd62a622a1686dcb9f230b8",
+      "currentSha256": "f80d41d4147dcf0ee272ceff7305c1b317b1a6c3ddd62a622a1686dcb9f230b8"
+    },
+    {
+      "before": "mcp_servers/hardware-manuals/stm32-batianhu-v2/model.json",
+      "after": "mcp_servers/hardware-manuals/stm32-batianhu-v2/model.json",
+      "sourceSha256": "ce7425520d17b2e3c7eec337473078af8075069fe99438ed6e07fbf3fc889025",
+      "currentSha256": "a96a91d604a21179a9192026f0ea2f5a2cb2b783371532667333671f273008cd"
+    },
+    {
+      "before": "mcp_servers/hardware-manuals/stm32-batianhu-v2/stm32-batianhu-v2.tfhw",
+      "after": "mcp_servers/hardware-manuals/stm32-batianhu-v2/stm32-batianhu-v2.hhhw",
+      "sourceSha256": "8ec1b11f105eb200f081b33977948e9cdfb90a8869a80f0a7b97a8b0749090e5",
+      "currentSha256": "8ec1b11f105eb200f081b33977948e9cdfb90a8869a80f0a7b97a8b0749090e5"
+    },
+    {
+      "before": "mcp_servers/hardware-manuals/stm32-batianhu-v2/swd-wiring.json",
+      "after": "mcp_servers/hardware-manuals/stm32-batianhu-v2/swd-wiring.json",
+      "sourceSha256": "4beebe7aba93e4e25593f41a23ca5eb8bf915b0befa57b11ba83b8eed5f901cb",
+      "currentSha256": "7a0fb5f2c80d29750709128c11688bf6b6ef9fdb90b46321bdab2681d7691036"
+    },
+    {
+      "before": "mcp_servers/pull.ps1",
+      "after": "mcp_servers/pull.ps1",
+      "sourceSha256": "8e32baacf97b4b23edbf701ae2d122d2a8c498898c0f38380ef3846330627d10",
+      "currentSha256": "8e32baacf97b4b23edbf701ae2d122d2a8c498898c0f38380ef3846330627d10"
+    },
+    {
+      "before": "mcp_servers/servers.json",
+      "after": "mcp_servers/servers.json",
+      "sourceSha256": "e12d0436ab788231a32a15eb99e9ebf31146b0935440e238c4b705a0c4b07413",
+      "currentSha256": "e12d0436ab788231a32a15eb99e9ebf31146b0935440e238c4b705a0c4b07413"
+    },
+    {
+      "before": "mcp_servers/servers/cp118u_i/README.md",
+      "after": "mcp_servers/servers/cp118u_i/README.md",
+      "sourceSha256": "b80a4e4055039288b87934d0e4811b6430f5c23a34efd7be0a622a7c3f4eb27c",
+      "currentSha256": "47fa9e4473723f2e4e0f5f3791d9194c491419ab1fcd4ab3bbc6ab0227139e7f"
+    },
+    {
+      "before": "mcp_servers/servers/cp118u_i/app/native/CMakeLists.txt",
+      "after": "mcp_servers/servers/cp118u_i/app/native/CMakeLists.txt",
+      "sourceSha256": "bc3c8c0008573d0fbd61ace0d7781c0be0cd899b25d8d4355d5054d9c6fefd17",
+      "currentSha256": "da3daaf496bc28ffa34e130aad5d1ea9c3fde3f4fb9005ffa0c14dfaff1d2698"
+    },
+    {
+      "before": "mcp_servers/servers/cp118u_i/app/pyproject.toml",
+      "after": "mcp_servers/servers/cp118u_i/app/pyproject.toml",
+      "sourceSha256": "0a8415e1f8f810bb46f5c14afd3cdf1491c635bdc8fc254cdd8deb2dab76de7c",
+      "currentSha256": "8546823b0fccc4269744c3c133c162d27acadd02a80cb930418ecc9278d5c3db"
+    },
+    {
+      "before": "mcp_servers/servers/cp118u_i/app/src/testforge_remote/__init__.py",
+      "after": "mcp_servers/servers/cp118u_i/app/src/hardwareharness_remote/__init__.py",
+      "sourceSha256": "c102487a65071fb9df0acd84339db475dee69ea18af7185553b0c792fc2c4e4f",
+      "currentSha256": "16a3408c5f9e346a9e60780dc0989f6c6c963115488c75fb5d1d9f3968dbae0c"
+    },
+    {
+      "before": "mcp_servers/servers/cp118u_i/app/src/testforge_remote/__main__.py",
+      "after": "mcp_servers/servers/cp118u_i/app/src/hardwareharness_remote/__main__.py",
+      "sourceSha256": "6d0ba506787bc55436e36958831471cec4486e018b8ab78096c7020387c67258",
+      "currentSha256": "4149426b6c402af77bd1029b7fedd957cd1df3b870d1927bf4cd40a0ee85a216"
+    },
+    {
+      "before": "mcp_servers/servers/cp118u_i/app/src/testforge_remote/adapters.py",
+      "after": "mcp_servers/servers/cp118u_i/app/src/hardwareharness_remote/adapters.py",
+      "sourceSha256": "37ec59b383409665d55d23db1503f5e239c92282168998e5f39f7a566173e80c",
+      "currentSha256": "80ff50107266ed55b5531de135d59f9886deb073a35fc353d5c6e63e53a98d56"
+    },
+    {
+      "before": "mcp_servers/servers/cp118u_i/app/src/testforge_remote/compat.py",
+      "after": "mcp_servers/servers/cp118u_i/app/src/hardwareharness_remote/compat.py",
+      "sourceSha256": "e1fa93c3ad2c483b28ba65eabde7ed1e7f612286471b77324b5923a6d4e121aa",
+      "currentSha256": "e1fa93c3ad2c483b28ba65eabde7ed1e7f612286471b77324b5923a6d4e121aa"
+    },
+    {
+      "before": "mcp_servers/servers/cp118u_i/app/src/testforge_remote/cp118u.py",
+      "after": "mcp_servers/servers/cp118u_i/app/src/hardwareharness_remote/cp118u.py",
+      "sourceSha256": "1c1233e830dd9fd312ab9ec375f341e0a9faa2d8fe014881464d3a1707a806aa",
+      "currentSha256": "5170175a5e40072b10b3d21bc9768aa07796f2151b82d7ba2021f2d5f0324859"
+    },
+    {
+      "before": "mcp_servers/servers/cp118u_i/app/src/testforge_remote/cp118u_sdk.py",
+      "after": "mcp_servers/servers/cp118u_i/app/src/hardwareharness_remote/cp118u_sdk.py",
+      "sourceSha256": "f03f4714bfc710feb704feb1b6523b1b17adbead917e5bef5143f00d3075810c",
+      "currentSha256": "ed0eadc0f66ebb4068ffe0ef5a0a23516faa2c7e7146eaba45052fa992e1bb17"
+    },
+    {
+      "before": "mcp_servers/servers/cp118u_i/app/src/testforge_remote/cp118u_state.py",
+      "after": "mcp_servers/servers/cp118u_i/app/src/hardwareharness_remote/cp118u_state.py",
+      "sourceSha256": "3accebb3d41f7eec67c563c9b120cc4aac3ba66973bff130925629f726c470ec",
+      "currentSha256": "a355d1e2a35f61db7dbbeacc800c776fab7bb33cf44d378f2f62cb6d49f52039"
+    },
+    {
+      "before": "mcp_servers/servers/cp118u_i/app/src/testforge_remote/lifecycle.py",
+      "after": "mcp_servers/servers/cp118u_i/app/src/hardwareharness_remote/lifecycle.py",
+      "sourceSha256": "a2fd4c8f88ee4eae04a3dad781ee8460d29b7f7fb12b73e9d49fc9b46e2295d4",
+      "currentSha256": "a0a1040e73a5c7277d06cc4591b61cc7c3a46188e2883ca4e317ca285c3aa9c1"
+    },
+    {
+      "before": "mcp_servers/servers/cp118u_i/app/src/testforge_remote/occupancy.py",
+      "after": "mcp_servers/servers/cp118u_i/app/src/hardwareharness_remote/occupancy.py",
+      "sourceSha256": "8e407400ca363bc6c408006af715ac801dd1a1835a18a8742aaadf9e2769c285",
+      "currentSha256": "b20c1bfc9accc7c198e2e16fe701417adb4d0b1411b8c79120c27175c87f92fb"
+    },
+    {
+      "before": "mcp_servers/servers/cp118u_i/app/src/testforge_remote/pci1710l.py",
+      "after": "mcp_servers/servers/cp118u_i/app/src/hardwareharness_remote/pci1710l.py",
+      "sourceSha256": "59731502d8dd1721ba7f04182b895ae4fe1b07ef2c3ae6b4fa0fcfcee590f8ea",
+      "currentSha256": "89d55b48aef38d85fd7dbe93f8ba06f3dac249e8697d20976e6aaaa8ea66b06d"
+    },
+    {
+      "before": "mcp_servers/servers/cp118u_i/app/src/testforge_remote/pci1710l_sdk.py",
+      "after": "mcp_servers/servers/cp118u_i/app/src/hardwareharness_remote/pci1710l_sdk.py",
+      "sourceSha256": "71db1ac56d91b535306e5580225c05984bfb091d57b20dc69f9d57300c9a5276",
+      "currentSha256": "cfc87af62025b1d11ca4e1e4607e1d4936236f2e315fa40aa3e9dfc203c5d36a"
+    },
+    {
+      "before": "mcp_servers/servers/cp118u_i/app/src/testforge_remote/pci1762.py",
+      "after": "mcp_servers/servers/cp118u_i/app/src/hardwareharness_remote/pci1762.py",
+      "sourceSha256": "02e9b19940af6fef8d5e887c2d7f8fb4a5dfdb695ccd573f2a9552f4125eb5b4",
+      "currentSha256": "f5757f84f1e5a8db083fe28e757ee3a58957ccc205e53b29193ea63896e4886b"
+    },
+    {
+      "before": "mcp_servers/servers/cp118u_i/app/src/testforge_remote/pci1762_sdk.py",
+      "after": "mcp_servers/servers/cp118u_i/app/src/hardwareharness_remote/pci1762_sdk.py",
+      "sourceSha256": "f5913afbceb349c85e175fb79fd3e0b874c3a955bc82508fe38f47fde74370b8",
+      "currentSha256": "b056f1469a41ee5e66b84b9159780c21e28cad66f510df9dfd92301a73d486a6"
+    },
+    {
+      "before": "mcp_servers/servers/cp118u_i/app/src/testforge_remote/pci6208v.py",
+      "after": "mcp_servers/servers/cp118u_i/app/src/hardwareharness_remote/pci6208v.py",
+      "sourceSha256": "ea0ae4db831a4ff42b207f55a76fdf7ab0276330f01503d6d590ad61d03ebbdd",
+      "currentSha256": "c0e5bf5996d568b5bf88a79d422de56cebbee8c70100ddb83d1ce72bc6019f83"
+    },
+    {
+      "before": "mcp_servers/servers/cp118u_i/app/src/testforge_remote/pci6208v_safety.py",
+      "after": "mcp_servers/servers/cp118u_i/app/src/hardwareharness_remote/pci6208v_safety.py",
+      "sourceSha256": "5d1b216565a4d1e98bae135261c1e644328da852eaf0fbaea45f13efaa229740",
+      "currentSha256": "c59a2005a2697b1538b232be1d793ef2d80792220ff863ec76de72379b2a8418"
+    },
+    {
+      "before": "mcp_servers/servers/cp118u_i/app/src/testforge_remote/pci6208v_sdk.py",
+      "after": "mcp_servers/servers/cp118u_i/app/src/hardwareharness_remote/pci6208v_sdk.py",
+      "sourceSha256": "9168a1abc10e53f1bf7789c36c1ae950b27d26efe1e4f8f91ac515b6ebe20c99",
+      "currentSha256": "4033383893cbd1de9466b79d1de2b224ef7c8587acf9f5471f6d30199e029da7"
+    },
+    {
+      "before": "mcp_servers/servers/cp118u_i/app/src/testforge_remote/pci6208v_state.py",
+      "after": "mcp_servers/servers/cp118u_i/app/src/hardwareharness_remote/pci6208v_state.py",
+      "sourceSha256": "6f647a30389e8c3f35ed22575750fb6794aa2a3108273780876dc91f5895a6ce",
+      "currentSha256": "d19ab71898c0b1e07374a6cbfc5b93246940ad0711a28582013ecdeac7ef6041"
+    },
+    {
+      "before": "mcp_servers/servers/cp118u_i/app/src/testforge_remote/pinouts.py",
+      "after": "mcp_servers/servers/cp118u_i/app/src/hardwareharness_remote/pinouts.py",
+      "sourceSha256": "23ccc49609ab9252619a2993363e22e5e914c50a5d8c249b8711d7034f7590e8",
+      "currentSha256": "23ccc49609ab9252619a2993363e22e5e914c50a5d8c249b8711d7034f7590e8"
+    },
+    {
+      "before": "mcp_servers/servers/cp118u_i/app/src/testforge_remote/result.py",
+      "after": "mcp_servers/servers/cp118u_i/app/src/hardwareharness_remote/result.py",
+      "sourceSha256": "02cac6e5f541f7ead7dcd698f5b222d4ea11f3faa50379070946509b97be7dc7",
+      "currentSha256": "175e7bca996462e5b6ff283506d39162e3caebd9566dc5fc7ef8967f034edb94"
+    },
+    {
+      "before": "mcp_servers/servers/cp118u_i/app/src/testforge_remote/server.py",
+      "after": "mcp_servers/servers/cp118u_i/app/src/hardwareharness_remote/server.py",
+      "sourceSha256": "fc9421289f0f692bfe37e925777e88716e85f551ef0b67ec8691b9fcaa005486",
+      "currentSha256": "66a0a97a548868297051f3176d5204bbb3b593921158dba2cd526c7ae906eac5"
+    },
+    {
+      "before": "mcp_servers/servers/cp118u_i/app/tests/test_occupancy.py",
+      "after": "mcp_servers/servers/cp118u_i/app/tests/test_occupancy.py",
+      "sourceSha256": "fc489d7e005173f50edb1bb2787a27a14c24ecf45e19359f0291134c08d2e36f",
+      "currentSha256": "204f9ba5c78ba934eb0d9b20ff06921a889b998c5db56d95f14fd986aa5a1359"
+    },
+    {
+      "before": "mcp_servers/servers/cp118u_i/app/tests/test_pinouts.py",
+      "after": "mcp_servers/servers/cp118u_i/app/tests/test_pinouts.py",
+      "sourceSha256": "5b8beed41ac554d7c7f2c1bb5f6d8a0c95f2de90fe79b857d08c405fce023f1f",
+      "currentSha256": "31b9e4de375eb4d3015a46f426c5b7663983c5b64665fe8442d05f696c1eef69"
+    },
+    {
+      "before": "mcp_servers/servers/cp118u_i/install.ps1",
+      "after": "mcp_servers/servers/cp118u_i/install.ps1",
+      "sourceSha256": "df30e5a47e4c8725fff460f9ab1cb844190c9ac12d57ef32ca1fc71b8a0b07ff",
+      "currentSha256": "df30e5a47e4c8725fff460f9ab1cb844190c9ac12d57ef32ca1fc71b8a0b07ff"
+    },
+    {
+      "before": "mcp_servers/servers/cp118u_i/runner.ps1",
+      "after": "mcp_servers/servers/cp118u_i/runner.ps1",
+      "sourceSha256": "2a01f69d3c1722fc53172cc657e9784757a51a3c2eb473a330f262b20568c940",
+      "currentSha256": "e68c74a536db2b43698d4d9914b02b00c25da063daafe55b64303b8740f5291e"
+    },
+    {
+      "before": "mcp_servers/servers/cp118u_i/server.example.json",
+      "after": "mcp_servers/servers/cp118u_i/server.example.json",
+      "sourceSha256": "240f13ba34ff0da8124bdf7ed13a3617c217d50b7e82cc208f579c10e99d8f4e",
+      "currentSha256": "240f13ba34ff0da8124bdf7ed13a3617c217d50b7e82cc208f579c10e99d8f4e"
+    },
+    {
+      "before": "mcp_servers/servers/cp118u_i/start.ps1",
+      "after": "mcp_servers/servers/cp118u_i/start.ps1",
+      "sourceSha256": "74cab03d1bf885c688cb144d6cb86317f71442b91ee6e33c110903c5f9caaafa",
+      "currentSha256": "e7d7bd3f132d7b588b50899ed830d9348ae9fd9884a8a4d366d303c4c3974934"
+    },
+    {
+      "before": "mcp_servers/servers/cp118u_i/status.ps1",
+      "after": "mcp_servers/servers/cp118u_i/status.ps1",
+      "sourceSha256": "2b22eafb9eba434ad9c8a1308c7644196abcba27b4b6e3a5f2704c1be6d8d649",
+      "currentSha256": "2b22eafb9eba434ad9c8a1308c7644196abcba27b4b6e3a5f2704c1be6d8d649"
+    },
+    {
+      "before": "mcp_servers/servers/cp118u_i/stop.ps1",
+      "after": "mcp_servers/servers/cp118u_i/stop.ps1",
+      "sourceSha256": "278963ecdc80952405791dfcf028f2832629b4ff2717ef31353490487857a9b0",
+      "currentSha256": "278963ecdc80952405791dfcf028f2832629b4ff2717ef31353490487857a9b0"
+    },
+    {
+      "before": "mcp_servers/servers/cp118u_i/tests/test_contract.py",
+      "after": "mcp_servers/servers/cp118u_i/tests/test_contract.py",
+      "sourceSha256": "30c6939f16361f5f1adaef6ad88e84d0f1832fcbeebe9bdd91b5b2983802b409",
+      "currentSha256": "0067674380fa85c225611c17a72c55d133fe403fc6feca12641f58be4a0e178f"
+    },
+    {
+      "before": "mcp_servers/servers/firedap/README.md",
+      "after": "mcp_servers/servers/firedap/README.md",
+      "sourceSha256": "de8aa202c15e2a89fb255778c0816239e5a25d225e934bfbccf6f583b9921589",
+      "currentSha256": "cf17622bfc6fed989580836866870a0a34f31a331873d23d23b6761498d3aa10"
+    },
+    {
+      "before": "mcp_servers/servers/firedap/app/pyproject.toml",
+      "after": "mcp_servers/servers/firedap/app/pyproject.toml",
+      "sourceSha256": "5f700aa5087d2d7f554dd3c6a4aed558122663602156c7fba5fc7d3774d87455",
+      "currentSha256": "ff54772ff2415dfa3d2824fa1ccd75042e04fe45ff3ee0a3110ccabb333c078d"
+    },
+    {
+      "before": "mcp_servers/servers/firedap/app/src/testforge_firedap/__init__.py",
+      "after": "mcp_servers/servers/firedap/app/src/hardwareharness_firedap/__init__.py",
+      "sourceSha256": "71de529874feac0af5e70adcdd878400abd03465b59e37ab5d9e8a4079bba17a",
+      "currentSha256": "05defa331f26067a5393d421a7e5d9f4762aae944c6781eb1f620ae21864d257"
+    },
+    {
+      "before": "mcp_servers/servers/firedap/app/src/testforge_firedap/__main__.py",
+      "after": "mcp_servers/servers/firedap/app/src/hardwareharness_firedap/__main__.py",
+      "sourceSha256": "ddd60a1df996b2b744c45953165711e5afe2711f5f0249f4e98875e1342411df",
+      "currentSha256": "4633ad8e486a021aea020d390e85b9e7e620e13c162667cd9abae6fea51d9379"
+    },
+    {
+      "before": "mcp_servers/servers/firedap/app/src/testforge_firedap/diagnostics.py",
+      "after": "mcp_servers/servers/firedap/app/src/hardwareharness_firedap/diagnostics.py",
+      "sourceSha256": "304d9554775b9cf667f7a397ae13deb030f6a65e5834b87bbba346b0c566bc09",
+      "currentSha256": "3c0c75346b7a2302287ed6ea1173cde5e58f26fa0030ac71eaf54be9f6faa5d7"
+    },
+    {
+      "before": "mcp_servers/servers/firedap/app/src/testforge_firedap/firmware.py",
+      "after": "mcp_servers/servers/firedap/app/src/hardwareharness_firedap/firmware.py",
+      "sourceSha256": "249dedade576e89547fb47f6576b13abfcf5114a8d2c408d25dd681720f82529",
+      "currentSha256": "5f0d5175cd75f91a790a78130955654ba64ca2abd5733efbf1900102d839cea3"
+    },
+    {
+      "before": "mcp_servers/servers/firedap/app/src/testforge_firedap/runtime.py",
+      "after": "mcp_servers/servers/firedap/app/src/hardwareharness_firedap/runtime.py",
+      "sourceSha256": "eafe1b0ad65774b6f3d81c807fbba4a561a01ff25acad611b394261c1ece9f31",
+      "currentSha256": "aea15608d76e6c40c35a4d42c9ad57abf03e53389ef80bc796835016de3ab64b"
+    },
+    {
+      "before": "mcp_servers/servers/firedap/app/src/testforge_firedap/server.py",
+      "after": "mcp_servers/servers/firedap/app/src/hardwareharness_firedap/server.py",
+      "sourceSha256": "6abf0ad84b2e95dc360964710e1dbd535765ca43d4f83745fe3af182d9f0dd84",
+      "currentSha256": "1531d1cdc941948244d11c6096ced1cd426fb3abb7d24328a888e97e87c204c4"
+    },
+    {
+      "before": "mcp_servers/servers/firedap/app/src/testforge_firedap/worker.py",
+      "after": "mcp_servers/servers/firedap/app/src/hardwareharness_firedap/worker.py",
+      "sourceSha256": "c9d7ea20e53d0b5365dde84c405efd14ecab292f5f96670df22810debb60ec4e",
+      "currentSha256": "938026867a95e0f0a8901c4d0d09063aee650cfc5b78f8114d571d67af3c915d"
+    },
+    {
+      "before": "mcp_servers/servers/firedap/app/tests/test_firmware.py",
+      "after": "mcp_servers/servers/firedap/app/tests/test_firmware.py",
+      "sourceSha256": "d236d04ff05e5dbb124ae73a3847e543a7223d582289f4b01ac0d8685d08491a",
+      "currentSha256": "ea59d69eba2bee8c0a3378dbc112e8ac64596fff6b4f206b7ec8d3454859235f"
+    },
+    {
+      "before": "mcp_servers/servers/firedap/app/tests/test_model.py",
+      "after": "mcp_servers/servers/firedap/app/tests/test_model.py",
+      "sourceSha256": "1aa27697c6d1e4e2c96a63fdfd35223ec0f7629e6f988c21f929b77b4b6e1fe8",
+      "currentSha256": "5f18454b07e2cf2639f41072ee9287e92e019079625d1946f8eabeb692da860b"
+    },
+    {
+      "before": "mcp_servers/servers/firedap/app/tests/test_runtime.py",
+      "after": "mcp_servers/servers/firedap/app/tests/test_runtime.py",
+      "sourceSha256": "375135fe3ead174652c92fa1330cb3b5fb8d56020b75b628d8c67fead7b43a79",
+      "currentSha256": "fd3e888ee8af6acba5ebf03d607527aa5ea6cd7d75f7a0df63b808e8cf13835f"
+    },
+    {
+      "before": "mcp_servers/servers/firedap/app/tests/test_worker.py",
+      "after": "mcp_servers/servers/firedap/app/tests/test_worker.py",
+      "sourceSha256": "8f66d9f2a2ab04223bd435eaff6d348546e20ccf54a9f077ef348b549fa73cd8",
+      "currentSha256": "bf62afa336382a654efb91cc5ba5c9ad1dea6fc0eb1c8a5204c9ac5ad2bc2f87"
+    },
+    {
+      "before": "mcp_servers/servers/firedap/app/uv.lock",
+      "after": "mcp_servers/servers/firedap/app/uv.lock",
+      "sourceSha256": "c207818e7dea15537ad8b464ab040c1c8b0cb9caa2c5d70da7f8ed4a602b4210",
+      "currentSha256": "dd165a97af1c5e4de45a40df7aaf8e14bf1527fb6f3e770c2b91793ef14ef3cd"
+    },
+    {
+      "before": "mcp_servers/servers/firedap/install.ps1",
+      "after": "mcp_servers/servers/firedap/install.ps1",
+      "sourceSha256": "dcfe8e673532071f5ad2ea2fe19ee8dd03b7f602715d85c4fc0b6d80b3806f11",
+      "currentSha256": "68cb5f623bdd276d39e614c8a3eb621a594f817219672e664fac427b785d53c5"
+    },
+    {
+      "before": "mcp_servers/servers/firedap/register-testforge.cjs",
+      "after": "mcp_servers/servers/firedap/register-hardwareharness.cjs",
+      "sourceSha256": "3f66a26650c38bf3d063e97278433857431778906d7fde0b80f45fb3361a9322",
+      "currentSha256": "f948bcc534704fdc5488ce46be9c37871e3bea5845a2349239d4423f79baf13f"
+    },
+    {
+      "before": "mcp_servers/servers/firedap/server.example.json",
+      "after": "mcp_servers/servers/firedap/server.example.json",
+      "sourceSha256": "9c05fe48f6d14cb1ef38f6e4c3b6ead6368e5623451d72127e447225b4ff5e1d",
+      "currentSha256": "56ad868073c11a6145e1307b8926d047ad144807d4dbb24642edfe362f86340a"
+    },
+    {
+      "before": "mcp_servers/servers/firedap/smoke_test.py",
+      "after": "mcp_servers/servers/firedap/smoke_test.py",
+      "sourceSha256": "ebe31c39db588091aaf74e10f4f420d76b9e5df3f4138fb2f981b9db3ef78f33",
+      "currentSha256": "d3eb9c0214180ba239fa9790bebc13aa3188f98f650945ee0a7911c6d29213e5"
+    },
+    {
+      "before": "mcp_servers/servers/firedap/start.ps1",
+      "after": "mcp_servers/servers/firedap/start.ps1",
+      "sourceSha256": "849d268fbf2ed3fde073c7f5adf54ce4158c211efd2ff7c57632aefd49c59247",
+      "currentSha256": "1bf55ee1cc657767dab93919cd968a872f583b3b65234e145d38c29c14499c10"
+    },
+    {
+      "before": "mcp_servers/servers/firedap/status.ps1",
+      "after": "mcp_servers/servers/firedap/status.ps1",
+      "sourceSha256": "91ed0f628e3b710bd6c8de1de9180b25d07bcbeb7b1e13d3a9bafceb0a53164a",
+      "currentSha256": "5e48eda7e01fe30ff112726b78d524043865ad2722d5439318a733d09e62ffad"
+    },
+    {
+      "before": "mcp_servers/servers/firedap/stop.ps1",
+      "after": "mcp_servers/servers/firedap/stop.ps1",
+      "sourceSha256": "174a73389b09d36b01e5abff34480957395e251e345f776114c53e24473a8c28",
+      "currentSha256": "dad2c8b14ef62ec06ddc36886a9b2b36f02645ae879cb855cd967fb6cc85e15e"
+    },
+    {
+      "before": "mcp_servers/servers/firedap/verify-desktop.cjs",
+      "after": "mcp_servers/servers/firedap/verify-desktop.cjs",
+      "sourceSha256": "4973a5020c6ba2f773a81d109212189b609a46543ffc5e9629e73ed267c7fedd",
+      "currentSha256": "cebd067a00c856554c8b3de491da176bab11838bcd0ee0b9ce4b43d5622a68ac"
+    },
+    {
+      "before": "mcp_servers/servers/pci1710l/README.md",
+      "after": "mcp_servers/servers/pci1710l/README.md",
+      "sourceSha256": "b80a4e4055039288b87934d0e4811b6430f5c23a34efd7be0a622a7c3f4eb27c",
+      "currentSha256": "47fa9e4473723f2e4e0f5f3791d9194c491419ab1fcd4ab3bbc6ab0227139e7f"
+    },
+    {
+      "before": "mcp_servers/servers/pci1710l/app/native/CMakeLists.txt",
+      "after": "mcp_servers/servers/pci1710l/app/native/CMakeLists.txt",
+      "sourceSha256": "bc3c8c0008573d0fbd61ace0d7781c0be0cd899b25d8d4355d5054d9c6fefd17",
+      "currentSha256": "da3daaf496bc28ffa34e130aad5d1ea9c3fde3f4fb9005ffa0c14dfaff1d2698"
+    },
+    {
+      "before": "mcp_servers/servers/pci1710l/app/pyproject.toml",
+      "after": "mcp_servers/servers/pci1710l/app/pyproject.toml",
+      "sourceSha256": "0a8415e1f8f810bb46f5c14afd3cdf1491c635bdc8fc254cdd8deb2dab76de7c",
+      "currentSha256": "8546823b0fccc4269744c3c133c162d27acadd02a80cb930418ecc9278d5c3db"
+    },
+    {
+      "before": "mcp_servers/servers/pci1710l/app/src/testforge_remote/__init__.py",
+      "after": "mcp_servers/servers/pci1710l/app/src/hardwareharness_remote/__init__.py",
+      "sourceSha256": "c102487a65071fb9df0acd84339db475dee69ea18af7185553b0c792fc2c4e4f",
+      "currentSha256": "16a3408c5f9e346a9e60780dc0989f6c6c963115488c75fb5d1d9f3968dbae0c"
+    },
+    {
+      "before": "mcp_servers/servers/pci1710l/app/src/testforge_remote/__main__.py",
+      "after": "mcp_servers/servers/pci1710l/app/src/hardwareharness_remote/__main__.py",
+      "sourceSha256": "6d0ba506787bc55436e36958831471cec4486e018b8ab78096c7020387c67258",
+      "currentSha256": "4149426b6c402af77bd1029b7fedd957cd1df3b870d1927bf4cd40a0ee85a216"
+    },
+    {
+      "before": "mcp_servers/servers/pci1710l/app/src/testforge_remote/adapters.py",
+      "after": "mcp_servers/servers/pci1710l/app/src/hardwareharness_remote/adapters.py",
+      "sourceSha256": "37ec59b383409665d55d23db1503f5e239c92282168998e5f39f7a566173e80c",
+      "currentSha256": "80ff50107266ed55b5531de135d59f9886deb073a35fc353d5c6e63e53a98d56"
+    },
+    {
+      "before": "mcp_servers/servers/pci1710l/app/src/testforge_remote/compat.py",
+      "after": "mcp_servers/servers/pci1710l/app/src/hardwareharness_remote/compat.py",
+      "sourceSha256": "e1fa93c3ad2c483b28ba65eabde7ed1e7f612286471b77324b5923a6d4e121aa",
+      "currentSha256": "e1fa93c3ad2c483b28ba65eabde7ed1e7f612286471b77324b5923a6d4e121aa"
+    },
+    {
+      "before": "mcp_servers/servers/pci1710l/app/src/testforge_remote/cp118u.py",
+      "after": "mcp_servers/servers/pci1710l/app/src/hardwareharness_remote/cp118u.py",
+      "sourceSha256": "1c1233e830dd9fd312ab9ec375f341e0a9faa2d8fe014881464d3a1707a806aa",
+      "currentSha256": "5170175a5e40072b10b3d21bc9768aa07796f2151b82d7ba2021f2d5f0324859"
+    },
+    {
+      "before": "mcp_servers/servers/pci1710l/app/src/testforge_remote/cp118u_sdk.py",
+      "after": "mcp_servers/servers/pci1710l/app/src/hardwareharness_remote/cp118u_sdk.py",
+      "sourceSha256": "f03f4714bfc710feb704feb1b6523b1b17adbead917e5bef5143f00d3075810c",
+      "currentSha256": "ed0eadc0f66ebb4068ffe0ef5a0a23516faa2c7e7146eaba45052fa992e1bb17"
+    },
+    {
+      "before": "mcp_servers/servers/pci1710l/app/src/testforge_remote/cp118u_state.py",
+      "after": "mcp_servers/servers/pci1710l/app/src/hardwareharness_remote/cp118u_state.py",
+      "sourceSha256": "3accebb3d41f7eec67c563c9b120cc4aac3ba66973bff130925629f726c470ec",
+      "currentSha256": "a355d1e2a35f61db7dbbeacc800c776fab7bb33cf44d378f2f62cb6d49f52039"
+    },
+    {
+      "before": "mcp_servers/servers/pci1710l/app/src/testforge_remote/lifecycle.py",
+      "after": "mcp_servers/servers/pci1710l/app/src/hardwareharness_remote/lifecycle.py",
+      "sourceSha256": "a2fd4c8f88ee4eae04a3dad781ee8460d29b7f7fb12b73e9d49fc9b46e2295d4",
+      "currentSha256": "a0a1040e73a5c7277d06cc4591b61cc7c3a46188e2883ca4e317ca285c3aa9c1"
+    },
+    {
+      "before": "mcp_servers/servers/pci1710l/app/src/testforge_remote/occupancy.py",
+      "after": "mcp_servers/servers/pci1710l/app/src/hardwareharness_remote/occupancy.py",
+      "sourceSha256": "8e407400ca363bc6c408006af715ac801dd1a1835a18a8742aaadf9e2769c285",
+      "currentSha256": "b20c1bfc9accc7c198e2e16fe701417adb4d0b1411b8c79120c27175c87f92fb"
+    },
+    {
+      "before": "mcp_servers/servers/pci1710l/app/src/testforge_remote/pci1710l.py",
+      "after": "mcp_servers/servers/pci1710l/app/src/hardwareharness_remote/pci1710l.py",
+      "sourceSha256": "59731502d8dd1721ba7f04182b895ae4fe1b07ef2c3ae6b4fa0fcfcee590f8ea",
+      "currentSha256": "89d55b48aef38d85fd7dbe93f8ba06f3dac249e8697d20976e6aaaa8ea66b06d"
+    },
+    {
+      "before": "mcp_servers/servers/pci1710l/app/src/testforge_remote/pci1710l_sdk.py",
+      "after": "mcp_servers/servers/pci1710l/app/src/hardwareharness_remote/pci1710l_sdk.py",
+      "sourceSha256": "71db1ac56d91b535306e5580225c05984bfb091d57b20dc69f9d57300c9a5276",
+      "currentSha256": "cfc87af62025b1d11ca4e1e4607e1d4936236f2e315fa40aa3e9dfc203c5d36a"
+    },
+    {
+      "before": "mcp_servers/servers/pci1710l/app/src/testforge_remote/pci1762.py",
+      "after": "mcp_servers/servers/pci1710l/app/src/hardwareharness_remote/pci1762.py",
+      "sourceSha256": "02e9b19940af6fef8d5e887c2d7f8fb4a5dfdb695ccd573f2a9552f4125eb5b4",
+      "currentSha256": "f5757f84f1e5a8db083fe28e757ee3a58957ccc205e53b29193ea63896e4886b"
+    },
+    {
+      "before": "mcp_servers/servers/pci1710l/app/src/testforge_remote/pci1762_sdk.py",
+      "after": "mcp_servers/servers/pci1710l/app/src/hardwareharness_remote/pci1762_sdk.py",
+      "sourceSha256": "f5913afbceb349c85e175fb79fd3e0b874c3a955bc82508fe38f47fde74370b8",
+      "currentSha256": "b056f1469a41ee5e66b84b9159780c21e28cad66f510df9dfd92301a73d486a6"
+    },
+    {
+      "before": "mcp_servers/servers/pci1710l/app/src/testforge_remote/pci6208v.py",
+      "after": "mcp_servers/servers/pci1710l/app/src/hardwareharness_remote/pci6208v.py",
+      "sourceSha256": "ea0ae4db831a4ff42b207f55a76fdf7ab0276330f01503d6d590ad61d03ebbdd",
+      "currentSha256": "c0e5bf5996d568b5bf88a79d422de56cebbee8c70100ddb83d1ce72bc6019f83"
+    },
+    {
+      "before": "mcp_servers/servers/pci1710l/app/src/testforge_remote/pci6208v_safety.py",
+      "after": "mcp_servers/servers/pci1710l/app/src/hardwareharness_remote/pci6208v_safety.py",
+      "sourceSha256": "5d1b216565a4d1e98bae135261c1e644328da852eaf0fbaea45f13efaa229740",
+      "currentSha256": "c59a2005a2697b1538b232be1d793ef2d80792220ff863ec76de72379b2a8418"
+    },
+    {
+      "before": "mcp_servers/servers/pci1710l/app/src/testforge_remote/pci6208v_sdk.py",
+      "after": "mcp_servers/servers/pci1710l/app/src/hardwareharness_remote/pci6208v_sdk.py",
+      "sourceSha256": "9168a1abc10e53f1bf7789c36c1ae950b27d26efe1e4f8f91ac515b6ebe20c99",
+      "currentSha256": "4033383893cbd1de9466b79d1de2b224ef7c8587acf9f5471f6d30199e029da7"
+    },
+    {
+      "before": "mcp_servers/servers/pci1710l/app/src/testforge_remote/pci6208v_state.py",
+      "after": "mcp_servers/servers/pci1710l/app/src/hardwareharness_remote/pci6208v_state.py",
+      "sourceSha256": "6f647a30389e8c3f35ed22575750fb6794aa2a3108273780876dc91f5895a6ce",
+      "currentSha256": "d19ab71898c0b1e07374a6cbfc5b93246940ad0711a28582013ecdeac7ef6041"
+    },
+    {
+      "before": "mcp_servers/servers/pci1710l/app/src/testforge_remote/pinouts.py",
+      "after": "mcp_servers/servers/pci1710l/app/src/hardwareharness_remote/pinouts.py",
+      "sourceSha256": "23ccc49609ab9252619a2993363e22e5e914c50a5d8c249b8711d7034f7590e8",
+      "currentSha256": "23ccc49609ab9252619a2993363e22e5e914c50a5d8c249b8711d7034f7590e8"
+    },
+    {
+      "before": "mcp_servers/servers/pci1710l/app/src/testforge_remote/result.py",
+      "after": "mcp_servers/servers/pci1710l/app/src/hardwareharness_remote/result.py",
+      "sourceSha256": "02cac6e5f541f7ead7dcd698f5b222d4ea11f3faa50379070946509b97be7dc7",
+      "currentSha256": "175e7bca996462e5b6ff283506d39162e3caebd9566dc5fc7ef8967f034edb94"
+    },
+    {
+      "before": "mcp_servers/servers/pci1710l/app/src/testforge_remote/server.py",
+      "after": "mcp_servers/servers/pci1710l/app/src/hardwareharness_remote/server.py",
+      "sourceSha256": "fc9421289f0f692bfe37e925777e88716e85f551ef0b67ec8691b9fcaa005486",
+      "currentSha256": "66a0a97a548868297051f3176d5204bbb3b593921158dba2cd526c7ae906eac5"
+    },
+    {
+      "before": "mcp_servers/servers/pci1710l/app/tests/test_occupancy.py",
+      "after": "mcp_servers/servers/pci1710l/app/tests/test_occupancy.py",
+      "sourceSha256": "fc489d7e005173f50edb1bb2787a27a14c24ecf45e19359f0291134c08d2e36f",
+      "currentSha256": "204f9ba5c78ba934eb0d9b20ff06921a889b998c5db56d95f14fd986aa5a1359"
+    },
+    {
+      "before": "mcp_servers/servers/pci1710l/app/tests/test_pinouts.py",
+      "after": "mcp_servers/servers/pci1710l/app/tests/test_pinouts.py",
+      "sourceSha256": "5b8beed41ac554d7c7f2c1bb5f6d8a0c95f2de90fe79b857d08c405fce023f1f",
+      "currentSha256": "31b9e4de375eb4d3015a46f426c5b7663983c5b64665fe8442d05f696c1eef69"
+    },
+    {
+      "before": "mcp_servers/servers/pci1710l/install.ps1",
+      "after": "mcp_servers/servers/pci1710l/install.ps1",
+      "sourceSha256": "df30e5a47e4c8725fff460f9ab1cb844190c9ac12d57ef32ca1fc71b8a0b07ff",
+      "currentSha256": "df30e5a47e4c8725fff460f9ab1cb844190c9ac12d57ef32ca1fc71b8a0b07ff"
+    },
+    {
+      "before": "mcp_servers/servers/pci1710l/runner.ps1",
+      "after": "mcp_servers/servers/pci1710l/runner.ps1",
+      "sourceSha256": "2a01f69d3c1722fc53172cc657e9784757a51a3c2eb473a330f262b20568c940",
+      "currentSha256": "e68c74a536db2b43698d4d9914b02b00c25da063daafe55b64303b8740f5291e"
+    },
+    {
+      "before": "mcp_servers/servers/pci1710l/server.example.json",
+      "after": "mcp_servers/servers/pci1710l/server.example.json",
+      "sourceSha256": "7b011e0a474fdc65509b36ce00c139a2bf493ce763964547166357770cf2f71b",
+      "currentSha256": "7b011e0a474fdc65509b36ce00c139a2bf493ce763964547166357770cf2f71b"
+    },
+    {
+      "before": "mcp_servers/servers/pci1710l/start.ps1",
+      "after": "mcp_servers/servers/pci1710l/start.ps1",
+      "sourceSha256": "74cab03d1bf885c688cb144d6cb86317f71442b91ee6e33c110903c5f9caaafa",
+      "currentSha256": "e7d7bd3f132d7b588b50899ed830d9348ae9fd9884a8a4d366d303c4c3974934"
+    },
+    {
+      "before": "mcp_servers/servers/pci1710l/status.ps1",
+      "after": "mcp_servers/servers/pci1710l/status.ps1",
+      "sourceSha256": "2b22eafb9eba434ad9c8a1308c7644196abcba27b4b6e3a5f2704c1be6d8d649",
+      "currentSha256": "2b22eafb9eba434ad9c8a1308c7644196abcba27b4b6e3a5f2704c1be6d8d649"
+    },
+    {
+      "before": "mcp_servers/servers/pci1710l/stop.ps1",
+      "after": "mcp_servers/servers/pci1710l/stop.ps1",
+      "sourceSha256": "278963ecdc80952405791dfcf028f2832629b4ff2717ef31353490487857a9b0",
+      "currentSha256": "278963ecdc80952405791dfcf028f2832629b4ff2717ef31353490487857a9b0"
+    },
+    {
+      "before": "mcp_servers/servers/pci1710l/tests/test_contract.py",
+      "after": "mcp_servers/servers/pci1710l/tests/test_contract.py",
+      "sourceSha256": "30c6939f16361f5f1adaef6ad88e84d0f1832fcbeebe9bdd91b5b2983802b409",
+      "currentSha256": "0067674380fa85c225611c17a72c55d133fe403fc6feca12641f58be4a0e178f"
+    },
+    {
+      "before": "mcp_servers/servers/pci1762/README.md",
+      "after": "mcp_servers/servers/pci1762/README.md",
+      "sourceSha256": "b80a4e4055039288b87934d0e4811b6430f5c23a34efd7be0a622a7c3f4eb27c",
+      "currentSha256": "47fa9e4473723f2e4e0f5f3791d9194c491419ab1fcd4ab3bbc6ab0227139e7f"
+    },
+    {
+      "before": "mcp_servers/servers/pci1762/app/native/CMakeLists.txt",
+      "after": "mcp_servers/servers/pci1762/app/native/CMakeLists.txt",
+      "sourceSha256": "bc3c8c0008573d0fbd61ace0d7781c0be0cd899b25d8d4355d5054d9c6fefd17",
+      "currentSha256": "da3daaf496bc28ffa34e130aad5d1ea9c3fde3f4fb9005ffa0c14dfaff1d2698"
+    },
+    {
+      "before": "mcp_servers/servers/pci1762/app/pyproject.toml",
+      "after": "mcp_servers/servers/pci1762/app/pyproject.toml",
+      "sourceSha256": "0a8415e1f8f810bb46f5c14afd3cdf1491c635bdc8fc254cdd8deb2dab76de7c",
+      "currentSha256": "8546823b0fccc4269744c3c133c162d27acadd02a80cb930418ecc9278d5c3db"
+    },
+    {
+      "before": "mcp_servers/servers/pci1762/app/src/testforge_remote/__init__.py",
+      "after": "mcp_servers/servers/pci1762/app/src/hardwareharness_remote/__init__.py",
+      "sourceSha256": "c102487a65071fb9df0acd84339db475dee69ea18af7185553b0c792fc2c4e4f",
+      "currentSha256": "16a3408c5f9e346a9e60780dc0989f6c6c963115488c75fb5d1d9f3968dbae0c"
+    },
+    {
+      "before": "mcp_servers/servers/pci1762/app/src/testforge_remote/__main__.py",
+      "after": "mcp_servers/servers/pci1762/app/src/hardwareharness_remote/__main__.py",
+      "sourceSha256": "6d0ba506787bc55436e36958831471cec4486e018b8ab78096c7020387c67258",
+      "currentSha256": "4149426b6c402af77bd1029b7fedd957cd1df3b870d1927bf4cd40a0ee85a216"
+    },
+    {
+      "before": "mcp_servers/servers/pci1762/app/src/testforge_remote/adapters.py",
+      "after": "mcp_servers/servers/pci1762/app/src/hardwareharness_remote/adapters.py",
+      "sourceSha256": "37ec59b383409665d55d23db1503f5e239c92282168998e5f39f7a566173e80c",
+      "currentSha256": "80ff50107266ed55b5531de135d59f9886deb073a35fc353d5c6e63e53a98d56"
+    },
+    {
+      "before": "mcp_servers/servers/pci1762/app/src/testforge_remote/compat.py",
+      "after": "mcp_servers/servers/pci1762/app/src/hardwareharness_remote/compat.py",
+      "sourceSha256": "e1fa93c3ad2c483b28ba65eabde7ed1e7f612286471b77324b5923a6d4e121aa",
+      "currentSha256": "e1fa93c3ad2c483b28ba65eabde7ed1e7f612286471b77324b5923a6d4e121aa"
+    },
+    {
+      "before": "mcp_servers/servers/pci1762/app/src/testforge_remote/cp118u.py",
+      "after": "mcp_servers/servers/pci1762/app/src/hardwareharness_remote/cp118u.py",
+      "sourceSha256": "1c1233e830dd9fd312ab9ec375f341e0a9faa2d8fe014881464d3a1707a806aa",
+      "currentSha256": "5170175a5e40072b10b3d21bc9768aa07796f2151b82d7ba2021f2d5f0324859"
+    },
+    {
+      "before": "mcp_servers/servers/pci1762/app/src/testforge_remote/cp118u_sdk.py",
+      "after": "mcp_servers/servers/pci1762/app/src/hardwareharness_remote/cp118u_sdk.py",
+      "sourceSha256": "f03f4714bfc710feb704feb1b6523b1b17adbead917e5bef5143f00d3075810c",
+      "currentSha256": "ed0eadc0f66ebb4068ffe0ef5a0a23516faa2c7e7146eaba45052fa992e1bb17"
+    },
+    {
+      "before": "mcp_servers/servers/pci1762/app/src/testforge_remote/cp118u_state.py",
+      "after": "mcp_servers/servers/pci1762/app/src/hardwareharness_remote/cp118u_state.py",
+      "sourceSha256": "3accebb3d41f7eec67c563c9b120cc4aac3ba66973bff130925629f726c470ec",
+      "currentSha256": "a355d1e2a35f61db7dbbeacc800c776fab7bb33cf44d378f2f62cb6d49f52039"
+    },
+    {
+      "before": "mcp_servers/servers/pci1762/app/src/testforge_remote/lifecycle.py",
+      "after": "mcp_servers/servers/pci1762/app/src/hardwareharness_remote/lifecycle.py",
+      "sourceSha256": "a2fd4c8f88ee4eae04a3dad781ee8460d29b7f7fb12b73e9d49fc9b46e2295d4",
+      "currentSha256": "a0a1040e73a5c7277d06cc4591b61cc7c3a46188e2883ca4e317ca285c3aa9c1"
+    },
+    {
+      "before": "mcp_servers/servers/pci1762/app/src/testforge_remote/occupancy.py",
+      "after": "mcp_servers/servers/pci1762/app/src/hardwareharness_remote/occupancy.py",
+      "sourceSha256": "8e407400ca363bc6c408006af715ac801dd1a1835a18a8742aaadf9e2769c285",
+      "currentSha256": "b20c1bfc9accc7c198e2e16fe701417adb4d0b1411b8c79120c27175c87f92fb"
+    },
+    {
+      "before": "mcp_servers/servers/pci1762/app/src/testforge_remote/pci1710l.py",
+      "after": "mcp_servers/servers/pci1762/app/src/hardwareharness_remote/pci1710l.py",
+      "sourceSha256": "59731502d8dd1721ba7f04182b895ae4fe1b07ef2c3ae6b4fa0fcfcee590f8ea",
+      "currentSha256": "89d55b48aef38d85fd7dbe93f8ba06f3dac249e8697d20976e6aaaa8ea66b06d"
+    },
+    {
+      "before": "mcp_servers/servers/pci1762/app/src/testforge_remote/pci1710l_sdk.py",
+      "after": "mcp_servers/servers/pci1762/app/src/hardwareharness_remote/pci1710l_sdk.py",
+      "sourceSha256": "71db1ac56d91b535306e5580225c05984bfb091d57b20dc69f9d57300c9a5276",
+      "currentSha256": "cfc87af62025b1d11ca4e1e4607e1d4936236f2e315fa40aa3e9dfc203c5d36a"
+    },
+    {
+      "before": "mcp_servers/servers/pci1762/app/src/testforge_remote/pci1762.py",
+      "after": "mcp_servers/servers/pci1762/app/src/hardwareharness_remote/pci1762.py",
+      "sourceSha256": "02e9b19940af6fef8d5e887c2d7f8fb4a5dfdb695ccd573f2a9552f4125eb5b4",
+      "currentSha256": "f5757f84f1e5a8db083fe28e757ee3a58957ccc205e53b29193ea63896e4886b"
+    },
+    {
+      "before": "mcp_servers/servers/pci1762/app/src/testforge_remote/pci1762_sdk.py",
+      "after": "mcp_servers/servers/pci1762/app/src/hardwareharness_remote/pci1762_sdk.py",
+      "sourceSha256": "f5913afbceb349c85e175fb79fd3e0b874c3a955bc82508fe38f47fde74370b8",
+      "currentSha256": "b056f1469a41ee5e66b84b9159780c21e28cad66f510df9dfd92301a73d486a6"
+    },
+    {
+      "before": "mcp_servers/servers/pci1762/app/src/testforge_remote/pci6208v.py",
+      "after": "mcp_servers/servers/pci1762/app/src/hardwareharness_remote/pci6208v.py",
+      "sourceSha256": "ea0ae4db831a4ff42b207f55a76fdf7ab0276330f01503d6d590ad61d03ebbdd",
+      "currentSha256": "c0e5bf5996d568b5bf88a79d422de56cebbee8c70100ddb83d1ce72bc6019f83"
+    },
+    {
+      "before": "mcp_servers/servers/pci1762/app/src/testforge_remote/pci6208v_safety.py",
+      "after": "mcp_servers/servers/pci1762/app/src/hardwareharness_remote/pci6208v_safety.py",
+      "sourceSha256": "5d1b216565a4d1e98bae135261c1e644328da852eaf0fbaea45f13efaa229740",
+      "currentSha256": "c59a2005a2697b1538b232be1d793ef2d80792220ff863ec76de72379b2a8418"
+    },
+    {
+      "before": "mcp_servers/servers/pci1762/app/src/testforge_remote/pci6208v_sdk.py",
+      "after": "mcp_servers/servers/pci1762/app/src/hardwareharness_remote/pci6208v_sdk.py",
+      "sourceSha256": "9168a1abc10e53f1bf7789c36c1ae950b27d26efe1e4f8f91ac515b6ebe20c99",
+      "currentSha256": "4033383893cbd1de9466b79d1de2b224ef7c8587acf9f5471f6d30199e029da7"
+    },
+    {
+      "before": "mcp_servers/servers/pci1762/app/src/testforge_remote/pci6208v_state.py",
+      "after": "mcp_servers/servers/pci1762/app/src/hardwareharness_remote/pci6208v_state.py",
+      "sourceSha256": "6f647a30389e8c3f35ed22575750fb6794aa2a3108273780876dc91f5895a6ce",
+      "currentSha256": "d19ab71898c0b1e07374a6cbfc5b93246940ad0711a28582013ecdeac7ef6041"
+    },
+    {
+      "before": "mcp_servers/servers/pci1762/app/src/testforge_remote/pinouts.py",
+      "after": "mcp_servers/servers/pci1762/app/src/hardwareharness_remote/pinouts.py",
+      "sourceSha256": "23ccc49609ab9252619a2993363e22e5e914c50a5d8c249b8711d7034f7590e8",
+      "currentSha256": "23ccc49609ab9252619a2993363e22e5e914c50a5d8c249b8711d7034f7590e8"
+    },
+    {
+      "before": "mcp_servers/servers/pci1762/app/src/testforge_remote/result.py",
+      "after": "mcp_servers/servers/pci1762/app/src/hardwareharness_remote/result.py",
+      "sourceSha256": "02cac6e5f541f7ead7dcd698f5b222d4ea11f3faa50379070946509b97be7dc7",
+      "currentSha256": "175e7bca996462e5b6ff283506d39162e3caebd9566dc5fc7ef8967f034edb94"
+    },
+    {
+      "before": "mcp_servers/servers/pci1762/app/src/testforge_remote/server.py",
+      "after": "mcp_servers/servers/pci1762/app/src/hardwareharness_remote/server.py",
+      "sourceSha256": "fc9421289f0f692bfe37e925777e88716e85f551ef0b67ec8691b9fcaa005486",
+      "currentSha256": "66a0a97a548868297051f3176d5204bbb3b593921158dba2cd526c7ae906eac5"
+    },
+    {
+      "before": "mcp_servers/servers/pci1762/app/tests/test_occupancy.py",
+      "after": "mcp_servers/servers/pci1762/app/tests/test_occupancy.py",
+      "sourceSha256": "fc489d7e005173f50edb1bb2787a27a14c24ecf45e19359f0291134c08d2e36f",
+      "currentSha256": "204f9ba5c78ba934eb0d9b20ff06921a889b998c5db56d95f14fd986aa5a1359"
+    },
+    {
+      "before": "mcp_servers/servers/pci1762/app/tests/test_pinouts.py",
+      "after": "mcp_servers/servers/pci1762/app/tests/test_pinouts.py",
+      "sourceSha256": "5b8beed41ac554d7c7f2c1bb5f6d8a0c95f2de90fe79b857d08c405fce023f1f",
+      "currentSha256": "31b9e4de375eb4d3015a46f426c5b7663983c5b64665fe8442d05f696c1eef69"
+    },
+    {
+      "before": "mcp_servers/servers/pci1762/install.ps1",
+      "after": "mcp_servers/servers/pci1762/install.ps1",
+      "sourceSha256": "df30e5a47e4c8725fff460f9ab1cb844190c9ac12d57ef32ca1fc71b8a0b07ff",
+      "currentSha256": "df30e5a47e4c8725fff460f9ab1cb844190c9ac12d57ef32ca1fc71b8a0b07ff"
+    },
+    {
+      "before": "mcp_servers/servers/pci1762/runner.ps1",
+      "after": "mcp_servers/servers/pci1762/runner.ps1",
+      "sourceSha256": "2a01f69d3c1722fc53172cc657e9784757a51a3c2eb473a330f262b20568c940",
+      "currentSha256": "e68c74a536db2b43698d4d9914b02b00c25da063daafe55b64303b8740f5291e"
+    },
+    {
+      "before": "mcp_servers/servers/pci1762/server.example.json",
+      "after": "mcp_servers/servers/pci1762/server.example.json",
+      "sourceSha256": "198fa94dc62db729d794ff8641fb12cd62b4f07f9af6b16ec2a26f54567668bf",
+      "currentSha256": "198fa94dc62db729d794ff8641fb12cd62b4f07f9af6b16ec2a26f54567668bf"
+    },
+    {
+      "before": "mcp_servers/servers/pci1762/start.ps1",
+      "after": "mcp_servers/servers/pci1762/start.ps1",
+      "sourceSha256": "74cab03d1bf885c688cb144d6cb86317f71442b91ee6e33c110903c5f9caaafa",
+      "currentSha256": "e7d7bd3f132d7b588b50899ed830d9348ae9fd9884a8a4d366d303c4c3974934"
+    },
+    {
+      "before": "mcp_servers/servers/pci1762/status.ps1",
+      "after": "mcp_servers/servers/pci1762/status.ps1",
+      "sourceSha256": "2b22eafb9eba434ad9c8a1308c7644196abcba27b4b6e3a5f2704c1be6d8d649",
+      "currentSha256": "2b22eafb9eba434ad9c8a1308c7644196abcba27b4b6e3a5f2704c1be6d8d649"
+    },
+    {
+      "before": "mcp_servers/servers/pci1762/stop.ps1",
+      "after": "mcp_servers/servers/pci1762/stop.ps1",
+      "sourceSha256": "278963ecdc80952405791dfcf028f2832629b4ff2717ef31353490487857a9b0",
+      "currentSha256": "278963ecdc80952405791dfcf028f2832629b4ff2717ef31353490487857a9b0"
+    },
+    {
+      "before": "mcp_servers/servers/pci1762/tests/test_contract.py",
+      "after": "mcp_servers/servers/pci1762/tests/test_contract.py",
+      "sourceSha256": "30c6939f16361f5f1adaef6ad88e84d0f1832fcbeebe9bdd91b5b2983802b409",
+      "currentSha256": "0067674380fa85c225611c17a72c55d133fe403fc6feca12641f58be4a0e178f"
+    },
+    {
+      "before": "mcp_servers/servers/pci6208v/README.md",
+      "after": "mcp_servers/servers/pci6208v/README.md",
+      "sourceSha256": "b80a4e4055039288b87934d0e4811b6430f5c23a34efd7be0a622a7c3f4eb27c",
+      "currentSha256": "47fa9e4473723f2e4e0f5f3791d9194c491419ab1fcd4ab3bbc6ab0227139e7f"
+    },
+    {
+      "before": "mcp_servers/servers/pci6208v/app/native/CMakeLists.txt",
+      "after": "mcp_servers/servers/pci6208v/app/native/CMakeLists.txt",
+      "sourceSha256": "bc3c8c0008573d0fbd61ace0d7781c0be0cd899b25d8d4355d5054d9c6fefd17",
+      "currentSha256": "da3daaf496bc28ffa34e130aad5d1ea9c3fde3f4fb9005ffa0c14dfaff1d2698"
+    },
+    {
+      "before": "mcp_servers/servers/pci6208v/app/pyproject.toml",
+      "after": "mcp_servers/servers/pci6208v/app/pyproject.toml",
+      "sourceSha256": "0a8415e1f8f810bb46f5c14afd3cdf1491c635bdc8fc254cdd8deb2dab76de7c",
+      "currentSha256": "8546823b0fccc4269744c3c133c162d27acadd02a80cb930418ecc9278d5c3db"
+    },
+    {
+      "before": "mcp_servers/servers/pci6208v/app/src/testforge_remote/__init__.py",
+      "after": "mcp_servers/servers/pci6208v/app/src/hardwareharness_remote/__init__.py",
+      "sourceSha256": "c102487a65071fb9df0acd84339db475dee69ea18af7185553b0c792fc2c4e4f",
+      "currentSha256": "16a3408c5f9e346a9e60780dc0989f6c6c963115488c75fb5d1d9f3968dbae0c"
+    },
+    {
+      "before": "mcp_servers/servers/pci6208v/app/src/testforge_remote/__main__.py",
+      "after": "mcp_servers/servers/pci6208v/app/src/hardwareharness_remote/__main__.py",
+      "sourceSha256": "6d0ba506787bc55436e36958831471cec4486e018b8ab78096c7020387c67258",
+      "currentSha256": "4149426b6c402af77bd1029b7fedd957cd1df3b870d1927bf4cd40a0ee85a216"
+    },
+    {
+      "before": "mcp_servers/servers/pci6208v/app/src/testforge_remote/adapters.py",
+      "after": "mcp_servers/servers/pci6208v/app/src/hardwareharness_remote/adapters.py",
+      "sourceSha256": "37ec59b383409665d55d23db1503f5e239c92282168998e5f39f7a566173e80c",
+      "currentSha256": "80ff50107266ed55b5531de135d59f9886deb073a35fc353d5c6e63e53a98d56"
+    },
+    {
+      "before": "mcp_servers/servers/pci6208v/app/src/testforge_remote/compat.py",
+      "after": "mcp_servers/servers/pci6208v/app/src/hardwareharness_remote/compat.py",
+      "sourceSha256": "e1fa93c3ad2c483b28ba65eabde7ed1e7f612286471b77324b5923a6d4e121aa",
+      "currentSha256": "e1fa93c3ad2c483b28ba65eabde7ed1e7f612286471b77324b5923a6d4e121aa"
+    },
+    {
+      "before": "mcp_servers/servers/pci6208v/app/src/testforge_remote/cp118u.py",
+      "after": "mcp_servers/servers/pci6208v/app/src/hardwareharness_remote/cp118u.py",
+      "sourceSha256": "1c1233e830dd9fd312ab9ec375f341e0a9faa2d8fe014881464d3a1707a806aa",
+      "currentSha256": "5170175a5e40072b10b3d21bc9768aa07796f2151b82d7ba2021f2d5f0324859"
+    },
+    {
+      "before": "mcp_servers/servers/pci6208v/app/src/testforge_remote/cp118u_sdk.py",
+      "after": "mcp_servers/servers/pci6208v/app/src/hardwareharness_remote/cp118u_sdk.py",
+      "sourceSha256": "f03f4714bfc710feb704feb1b6523b1b17adbead917e5bef5143f00d3075810c",
+      "currentSha256": "ed0eadc0f66ebb4068ffe0ef5a0a23516faa2c7e7146eaba45052fa992e1bb17"
+    },
+    {
+      "before": "mcp_servers/servers/pci6208v/app/src/testforge_remote/cp118u_state.py",
+      "after": "mcp_servers/servers/pci6208v/app/src/hardwareharness_remote/cp118u_state.py",
+      "sourceSha256": "3accebb3d41f7eec67c563c9b120cc4aac3ba66973bff130925629f726c470ec",
+      "currentSha256": "a355d1e2a35f61db7dbbeacc800c776fab7bb33cf44d378f2f62cb6d49f52039"
+    },
+    {
+      "before": "mcp_servers/servers/pci6208v/app/src/testforge_remote/lifecycle.py",
+      "after": "mcp_servers/servers/pci6208v/app/src/hardwareharness_remote/lifecycle.py",
+      "sourceSha256": "a2fd4c8f88ee4eae04a3dad781ee8460d29b7f7fb12b73e9d49fc9b46e2295d4",
+      "currentSha256": "a0a1040e73a5c7277d06cc4591b61cc7c3a46188e2883ca4e317ca285c3aa9c1"
+    },
+    {
+      "before": "mcp_servers/servers/pci6208v/app/src/testforge_remote/occupancy.py",
+      "after": "mcp_servers/servers/pci6208v/app/src/hardwareharness_remote/occupancy.py",
+      "sourceSha256": "8e407400ca363bc6c408006af715ac801dd1a1835a18a8742aaadf9e2769c285",
+      "currentSha256": "b20c1bfc9accc7c198e2e16fe701417adb4d0b1411b8c79120c27175c87f92fb"
+    },
+    {
+      "before": "mcp_servers/servers/pci6208v/app/src/testforge_remote/pci1710l.py",
+      "after": "mcp_servers/servers/pci6208v/app/src/hardwareharness_remote/pci1710l.py",
+      "sourceSha256": "59731502d8dd1721ba7f04182b895ae4fe1b07ef2c3ae6b4fa0fcfcee590f8ea",
+      "currentSha256": "89d55b48aef38d85fd7dbe93f8ba06f3dac249e8697d20976e6aaaa8ea66b06d"
+    },
+    {
+      "before": "mcp_servers/servers/pci6208v/app/src/testforge_remote/pci1710l_sdk.py",
+      "after": "mcp_servers/servers/pci6208v/app/src/hardwareharness_remote/pci1710l_sdk.py",
+      "sourceSha256": "71db1ac56d91b535306e5580225c05984bfb091d57b20dc69f9d57300c9a5276",
+      "currentSha256": "cfc87af62025b1d11ca4e1e4607e1d4936236f2e315fa40aa3e9dfc203c5d36a"
+    },
+    {
+      "before": "mcp_servers/servers/pci6208v/app/src/testforge_remote/pci1762.py",
+      "after": "mcp_servers/servers/pci6208v/app/src/hardwareharness_remote/pci1762.py",
+      "sourceSha256": "02e9b19940af6fef8d5e887c2d7f8fb4a5dfdb695ccd573f2a9552f4125eb5b4",
+      "currentSha256": "f5757f84f1e5a8db083fe28e757ee3a58957ccc205e53b29193ea63896e4886b"
+    },
+    {
+      "before": "mcp_servers/servers/pci6208v/app/src/testforge_remote/pci1762_sdk.py",
+      "after": "mcp_servers/servers/pci6208v/app/src/hardwareharness_remote/pci1762_sdk.py",
+      "sourceSha256": "f5913afbceb349c85e175fb79fd3e0b874c3a955bc82508fe38f47fde74370b8",
+      "currentSha256": "b056f1469a41ee5e66b84b9159780c21e28cad66f510df9dfd92301a73d486a6"
+    },
+    {
+      "before": "mcp_servers/servers/pci6208v/app/src/testforge_remote/pci6208v.py",
+      "after": "mcp_servers/servers/pci6208v/app/src/hardwareharness_remote/pci6208v.py",
+      "sourceSha256": "ea0ae4db831a4ff42b207f55a76fdf7ab0276330f01503d6d590ad61d03ebbdd",
+      "currentSha256": "c0e5bf5996d568b5bf88a79d422de56cebbee8c70100ddb83d1ce72bc6019f83"
+    },
+    {
+      "before": "mcp_servers/servers/pci6208v/app/src/testforge_remote/pci6208v_safety.py",
+      "after": "mcp_servers/servers/pci6208v/app/src/hardwareharness_remote/pci6208v_safety.py",
+      "sourceSha256": "5d1b216565a4d1e98bae135261c1e644328da852eaf0fbaea45f13efaa229740",
+      "currentSha256": "c59a2005a2697b1538b232be1d793ef2d80792220ff863ec76de72379b2a8418"
+    },
+    {
+      "before": "mcp_servers/servers/pci6208v/app/src/testforge_remote/pci6208v_sdk.py",
+      "after": "mcp_servers/servers/pci6208v/app/src/hardwareharness_remote/pci6208v_sdk.py",
+      "sourceSha256": "9168a1abc10e53f1bf7789c36c1ae950b27d26efe1e4f8f91ac515b6ebe20c99",
+      "currentSha256": "4033383893cbd1de9466b79d1de2b224ef7c8587acf9f5471f6d30199e029da7"
+    },
+    {
+      "before": "mcp_servers/servers/pci6208v/app/src/testforge_remote/pci6208v_state.py",
+      "after": "mcp_servers/servers/pci6208v/app/src/hardwareharness_remote/pci6208v_state.py",
+      "sourceSha256": "6f647a30389e8c3f35ed22575750fb6794aa2a3108273780876dc91f5895a6ce",
+      "currentSha256": "d19ab71898c0b1e07374a6cbfc5b93246940ad0711a28582013ecdeac7ef6041"
+    },
+    {
+      "before": "mcp_servers/servers/pci6208v/app/src/testforge_remote/pinouts.py",
+      "after": "mcp_servers/servers/pci6208v/app/src/hardwareharness_remote/pinouts.py",
+      "sourceSha256": "23ccc49609ab9252619a2993363e22e5e914c50a5d8c249b8711d7034f7590e8",
+      "currentSha256": "23ccc49609ab9252619a2993363e22e5e914c50a5d8c249b8711d7034f7590e8"
+    },
+    {
+      "before": "mcp_servers/servers/pci6208v/app/src/testforge_remote/result.py",
+      "after": "mcp_servers/servers/pci6208v/app/src/hardwareharness_remote/result.py",
+      "sourceSha256": "02cac6e5f541f7ead7dcd698f5b222d4ea11f3faa50379070946509b97be7dc7",
+      "currentSha256": "175e7bca996462e5b6ff283506d39162e3caebd9566dc5fc7ef8967f034edb94"
+    },
+    {
+      "before": "mcp_servers/servers/pci6208v/app/src/testforge_remote/server.py",
+      "after": "mcp_servers/servers/pci6208v/app/src/hardwareharness_remote/server.py",
+      "sourceSha256": "fc9421289f0f692bfe37e925777e88716e85f551ef0b67ec8691b9fcaa005486",
+      "currentSha256": "66a0a97a548868297051f3176d5204bbb3b593921158dba2cd526c7ae906eac5"
+    },
+    {
+      "before": "mcp_servers/servers/pci6208v/app/tests/test_occupancy.py",
+      "after": "mcp_servers/servers/pci6208v/app/tests/test_occupancy.py",
+      "sourceSha256": "fc489d7e005173f50edb1bb2787a27a14c24ecf45e19359f0291134c08d2e36f",
+      "currentSha256": "204f9ba5c78ba934eb0d9b20ff06921a889b998c5db56d95f14fd986aa5a1359"
+    },
+    {
+      "before": "mcp_servers/servers/pci6208v/app/tests/test_pinouts.py",
+      "after": "mcp_servers/servers/pci6208v/app/tests/test_pinouts.py",
+      "sourceSha256": "5b8beed41ac554d7c7f2c1bb5f6d8a0c95f2de90fe79b857d08c405fce023f1f",
+      "currentSha256": "31b9e4de375eb4d3015a46f426c5b7663983c5b64665fe8442d05f696c1eef69"
+    },
+    {
+      "before": "mcp_servers/servers/pci6208v/install.ps1",
+      "after": "mcp_servers/servers/pci6208v/install.ps1",
+      "sourceSha256": "df30e5a47e4c8725fff460f9ab1cb844190c9ac12d57ef32ca1fc71b8a0b07ff",
+      "currentSha256": "df30e5a47e4c8725fff460f9ab1cb844190c9ac12d57ef32ca1fc71b8a0b07ff"
+    },
+    {
+      "before": "mcp_servers/servers/pci6208v/runner.ps1",
+      "after": "mcp_servers/servers/pci6208v/runner.ps1",
+      "sourceSha256": "2a01f69d3c1722fc53172cc657e9784757a51a3c2eb473a330f262b20568c940",
+      "currentSha256": "e68c74a536db2b43698d4d9914b02b00c25da063daafe55b64303b8740f5291e"
+    },
+    {
+      "before": "mcp_servers/servers/pci6208v/server.example.json",
+      "after": "mcp_servers/servers/pci6208v/server.example.json",
+      "sourceSha256": "bdfcb7eab45c96e7d0cf1bf9ebceae773ce8952b51e1c0b2580019979acda58c",
+      "currentSha256": "bdfcb7eab45c96e7d0cf1bf9ebceae773ce8952b51e1c0b2580019979acda58c"
+    },
+    {
+      "before": "mcp_servers/servers/pci6208v/start.ps1",
+      "after": "mcp_servers/servers/pci6208v/start.ps1",
+      "sourceSha256": "74cab03d1bf885c688cb144d6cb86317f71442b91ee6e33c110903c5f9caaafa",
+      "currentSha256": "e7d7bd3f132d7b588b50899ed830d9348ae9fd9884a8a4d366d303c4c3974934"
+    },
+    {
+      "before": "mcp_servers/servers/pci6208v/status.ps1",
+      "after": "mcp_servers/servers/pci6208v/status.ps1",
+      "sourceSha256": "2b22eafb9eba434ad9c8a1308c7644196abcba27b4b6e3a5f2704c1be6d8d649",
+      "currentSha256": "2b22eafb9eba434ad9c8a1308c7644196abcba27b4b6e3a5f2704c1be6d8d649"
+    },
+    {
+      "before": "mcp_servers/servers/pci6208v/stop.ps1",
+      "after": "mcp_servers/servers/pci6208v/stop.ps1",
+      "sourceSha256": "278963ecdc80952405791dfcf028f2832629b4ff2717ef31353490487857a9b0",
+      "currentSha256": "278963ecdc80952405791dfcf028f2832629b4ff2717ef31353490487857a9b0"
+    },
+    {
+      "before": "mcp_servers/servers/pci6208v/tests/test_contract.py",
+      "after": "mcp_servers/servers/pci6208v/tests/test_contract.py",
+      "sourceSha256": "30c6939f16361f5f1adaef6ad88e84d0f1832fcbeebe9bdd91b5b2983802b409",
+      "currentSha256": "0067674380fa85c225611c17a72c55d133fe403fc6feca12641f58be4a0e178f"
+    },
+    {
+      "before": "mcp_servers/test.ps1",
+      "after": "mcp_servers/test.ps1",
+      "sourceSha256": "84a4860bd120b5cfc8eba605db87d1d04028c8b605da0cd9bd5af7cc8539e1e0",
+      "currentSha256": "17448c47566b4647293e480e359a3fcb3b96db8a18b0f6a2453a11977e4951d2"
+    },
+    {
+      "before": "mcp_servers/tools/invoke-remote-source.ps1",
+      "after": "mcp_servers/tools/invoke-remote-source.ps1",
+      "sourceSha256": "b775a4a8981aca8b6079bdc0d91f391f4e21db26dc7f198033cbb92cd4174cea",
+      "currentSha256": "024729e0f4f8f2f66a4fce1ab7b309bd5564f41fe97e10820e342b94cc4d8067"
+    },
+    {
+      "before": "mcp_servers/tools/remote-source.cjs",
+      "after": "mcp_servers/tools/remote-source.cjs",
+      "sourceSha256": "348757beb1f86af5dee036281bc1c9f72443def6d27ce793f36c732490da318e",
+      "currentSha256": "33c49f2f57563d8c907a406239355d133024a7a8f9ff909dcbb4fb353d4c59bc"
+    },
+    {
+      "before": "mcp_servers/verify.ps1",
+      "after": "mcp_servers/verify.ps1",
+      "sourceSha256": "9189b7fe32ee2fa28182dff3f7206c1036b7bffa89526643be48503a65ece77e",
+      "currentSha256": "9189b7fe32ee2fa28182dff3f7206c1036b7bffa89526643be48503a65ece77e"
+    }
+  ]
+}

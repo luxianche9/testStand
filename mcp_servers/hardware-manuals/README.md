@@ -18,8 +18,8 @@
 - PCI/cPCI-6208/6216-GL Series User Manual Rev. 4.02: ADLINK 厂商手册归档镜像，修订历史包含 3.22，PCI-6208V 针脚图已核对
 - CP-118U/138U Series Quick Installation Guide v6: Moxa QIG v6 镜像，Sixth Edition, May 2009
 
-截图后可在 TestForge 接线管理的硬件库中展开对应硬件：
+截图后可在 HardwareHarness 接线管理的硬件库中展开对应硬件：
 
 1. 上传整块板卡或设备照片作为“硬件外观图”。
 2. 上传从上述页面截取的端口针脚图作为 Connector 的“端口图”。
-3. TestForge 不校验图片内容，只在人工接线确认弹窗中展示端口图。
+3. HardwareHarness 不校验图片内容，只在人工接线确认弹窗中展示端口图。

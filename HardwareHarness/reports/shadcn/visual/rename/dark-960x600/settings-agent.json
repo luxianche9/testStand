@@ -1,0 +1,366 @@
+[
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": "button",
+    "name": "项目文件夹菜单",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "设置",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": "tab",
+    "type": null,
+    "name": "设备管理",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": "tab",
+    "type": null,
+    "name": "工位接线",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": "tab",
+    "type": null,
+    "name": "编排测试",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": "tab",
+    "type": null,
+    "name": "运行日志",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "信箱",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "打开 AI 侧栏",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "最小化",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "最大化",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "关闭",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "返回",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "外观",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "AI 模型",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "Agent 接入",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": "button",
+    "name": "接入 Codex",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": "button",
+    "name": "检测连接",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": "button",
+    "name": "轮换令牌",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": "button",
+    "name": "导出工具清单",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "get_projectRead the current project, root path, wiring, task and unsaved state.内建展开",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "initialize_projectInitialize a HardwareHarness project in an existing absolute directory and open it. Refuses existing projects, unsaved changes and active execution.内建展开",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "open_projectOpen an existing HardwareHarness project by absolute directory. Refuses unsaved changes and active execution.内建展开",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "save_projectSave the current project's task and canvas through the normal project service.内建展开",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "list_remote_computersList configured remote computers without credentials.内建展开",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "get_remote_computer_statusGet SSH and hosted MCP service status for one computer.内建展开",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "list_mcp_serversList registered MCP servers and their current status.内建展开",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "get_remote_mcp_serviceQuery one MCP server's remote process and connection state.内建展开",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "start_remote_mcp_servicestart one remote MCP service using its configured safe lifecycle.内建展开",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "stop_remote_mcp_servicestop one remote MCP service using its configured safe lifecycle.内建展开",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "restart_remote_mcp_servicerestart one remote MCP service using its configured safe lifecycle.内建展开",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "read_remote_mcp_logsRead the tail of one MCP server's logs.内建展开",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "list_managed_hardwareList live health for managed hardware.内建展开",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "list_hardware_catalogList local hardware definitions, ports and pins.内建展开",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "get_hardware_definitionGet one local hardware definition.内建展开",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "save_hardware_definitionCreate or update a local hardware definition.内建展开",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "remove_hardware_definitionDelete a local hardware definition and its images.内建展开",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "set_hardware_imageSet a PNG, JPEG or WebP appearance/port image from base64.内建展开",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "remove_hardware_imageRemove an appearance or port image.内建展开",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "request_hardware_occupancyAsk a human to occupy one or more managed hardware devices. This does not acquire a lease by itself.内建展开",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "cancel_hardware_occupancy_requestCancel a pending human hardware occupancy request.内建展开",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "get_hardware_occupancy_requestGet one hardware occupancy request.内建展开",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "list_hardware_occupancy_requestsList recent hardware occupancy requests.内建展开",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "add_managed_hardware_to_canvasIdempotently add managed hardware to the open project's canvas.内建展开",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "request_wiring_taskCreate a human wiring todo without changing physical wiring.内建展开",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "cancel_wiring_taskCancel a wiring todo.内建展开",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "get_wiring_taskGet one session wiring todo.内建展开",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "list_wiring_tasksList recent wiring todos.内建展开",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "get_test_taskGet the structured test task in the open project.内建展开",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "update_test_taskValidate and replace the open project's structured test task.内建展开",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "start_test_runStart the open project's test task.内建展开",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "cancel_test_runCancel a running test.内建展开",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "get_test_runGet a test run with paged node results and incremental events.内建展开",
+    "disabled": false
+  }
+]

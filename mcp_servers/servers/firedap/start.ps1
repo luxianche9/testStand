@@ -15,7 +15,7 @@ New-Item -ItemType Directory -Force -Path (Join-Path $root 'run'),(Join-Path $ro
 $python = Join-Path $root '.venv\Scripts\python.exe'
 if (-not (Test-Path -LiteralPath $python)) { throw 'Run install.ps1 first' }
 $configArgument = '"' + (Join-Path $root 'server.json') + '"'
-$process = Start-Process -FilePath $python -ArgumentList '-m','testforge_firedap','--config',$configArgument -WorkingDirectory $root -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $root 'logs\server.stdout.log') -RedirectStandardError (Join-Path $root 'logs\server.stderr.log')
+$process = Start-Process -FilePath $python -ArgumentList '-m','hardwareharness_firedap','--config',$configArgument -WorkingDirectory $root -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $root 'logs\server.stdout.log') -RedirectStandardError (Join-Path $root 'logs\server.stderr.log')
 $record = @{pid=$process.Id;startedAt=$process.StartTime.ToUniversalTime().ToString('o');python=$python}
 $record | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $root 'run\process.json') -Encoding utf8
 for ($attempt=0; $attempt -lt 30; $attempt++) {

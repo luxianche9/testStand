@@ -4,7 +4,7 @@ import struct
 import pytest
 from intelhex import IntelHex
 
-from testforge_firedap.firmware import FLASH_START, FLASH_END, OperationError, inspect_firmware, validate_segments
+from hardwareharness_firedap.firmware import FLASH_START, FLASH_END, OperationError, inspect_firmware, validate_segments
 
 
 def test_bin_explicit_address_snapshot_and_hash(tmp_path):

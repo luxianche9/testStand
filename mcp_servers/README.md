@@ -23,9 +23,9 @@ Pull one server only:
 Pull refuses to overwrite local source changes. Use `-Force` only when the remote
 copy is intentionally the source of truth.
 
-The command reads the SSH credential from TestForge Electron `safeStorage`. For CI
-or a maintenance workstation without the TestForge credential store, set
-`TESTFORGE_REMOTE_PASSWORD` for the current process before invoking the script.
+The command reads the SSH credential from HardwareHarness Electron `safeStorage`. For CI
+or a maintenance workstation without the HardwareHarness credential store, set
+`HARDWAREHARNESS_REMOTE_PASSWORD` for the current process before invoking the script.
 
 Each server directory contains a credential-free `server.example.json` for local
 tests and source review. Run all four local test suites with:

@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import unittest
 
-from testforge_remote.adapters import AdapterError
-from testforge_remote.lifecycle import HardwareManager
-from testforge_remote.pinouts import PINOUTS
+from hardwareharness_remote.adapters import AdapterError
+from hardwareharness_remote.lifecycle import HardwareManager
+from hardwareharness_remote.pinouts import PINOUTS
 
 
 class PinoutTests(unittest.TestCase):

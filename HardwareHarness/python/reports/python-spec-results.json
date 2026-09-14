@@ -1,0 +1,4802 @@
+{
+  "exitstatus": 0,
+  "sourceHashesBefore": {
+    "pyproject.toml": "f68860fb23ec6e7efd6bb755a31692a944d65d886ff0779028d2721f0487f1e0",
+    "scripts/build.py": "bca94008469013921be658f0df6c3cfd741dabd7a4d8204da4b04ddd136d1f2b",
+    "scripts/check_coverage.py": "bfa49542c65e7d5ee697f9740b1bcbf8e272fe7aa308552b29d2ef05eb1950c9",
+    "scripts/check_specs.py": "060624ee836553b9f573db7efa2adaf8fbca0f9c8414f99f2195edc5c98aac1a",
+    "scripts/frozen_entry.py": "4b17dfc8d4ea5eef2f36589627852e8909263bffe2b1404a6a22f0eade1484a3",
+    "scripts/prepare_icu.py": "7e9aa27c15a7382019cfebd28b017a6dd504527e53474f83af9f887f70c2f136",
+    "scripts/protected_baseline.py": "345ff5bfeeab1a945561df9fa4f3d33242b38cc6a5d93eb12a90063aea24c8ce",
+    "scripts/verify.py": "a16bf0f9983d4e3401d4ac6b35833621df878f43a7756166e81350389c29847f",
+    "src/hardwareharness_backend/__init__.py": "89c4bb42f5d197c8b455f2c0090aaa89b034837275c9738e267a63e2d0f60789",
+    "src/hardwareharness_backend/application/__init__.py": "710b25a410bc009d937c4d2d942304899dcd040b23830cdb92fc965a169213aa",
+    "src/hardwareharness_backend/application/authorization.py": "e167f41b6036cf9b8c3c41be85d81cadecc7290556449a5c78b7cac01bf3edcf",
+    "src/hardwareharness_backend/application/control.py": "212dc9335b2c061164cabfcb911ba15ca6ee7cdcb203530d3e0cd04ccfdc69ce",
+    "src/hardwareharness_backend/application/execution.py": "3e2fb295e7cac59b7299d3a77af7210766fa9d921419d1664a7f119d64223c17",
+    "src/hardwareharness_backend/application/services.py": "45d1bc04ca025dcaf697df27fdd4fb6f658d5a62d130c881cee0caa61026e571",
+    "src/hardwareharness_backend/compat/__init__.py": "6020036321b156c74c52f6e16352a66f77a1d04e4983cdfed0ec9a953a897af7",
+    "src/hardwareharness_backend/compat/collation.py": "6981f88a3ee20f287f1816799f0cdf96b38ffa72cf2926bf8516b26c416e57ad",
+    "src/hardwareharness_backend/compat/filesystem.py": "3792c1326a22d4701249a18de66eb28269c8cb13f79cd31d356c9b27048e1817",
+    "src/hardwareharness_backend/compat/json_syntax.py": "c81ff2d186b953f7541e2a784d0e97207e4fef65f1f262cb6986122800e5b794",
+    "src/hardwareharness_backend/contracts/__init__.py": "275d01db31714006c01533a7b60603e25deafa54fc961f43ee769cee53fb5213",
+    "src/hardwareharness_backend/contracts/agents.py": "7b1c29dd1532fec190b178026537c83063b3b3bc9151861978f3fc25b42cf928",
+    "src/hardwareharness_backend/contracts/desktop.py": "e57bf2e04806f356eb9d59a56623a179f4ee775b87b9f9c8d3b95a3a56debf6f",
+    "src/hardwareharness_backend/contracts/devices.py": "c2726994a297e0292f0a81ba9fa1f4fad24362d85456ff27445cd602dea87b3b",
+    "src/hardwareharness_backend/contracts/errors.py": "7caf224d934624d7a6fec40a4255e5a2815147310a84c2953bb5853222d540a8",
+    "src/hardwareharness_backend/contracts/execution.py": "c5fc3d9397af77088f0fdd16de5ebc78a589994fa70c2de41480a3586653620a",
+    "src/hardwareharness_backend/contracts/occupancy.py": "355fa6ce2e6d38c268d575bceb84c37ccd1aa9ef65b2f3834ebe79eef15f7246",
+    "src/hardwareharness_backend/contracts/orchestration.py": "f2417f8cf28de0e101e29809ae0146c537df0c3feb5a5771f85805cbf8d87750",
+    "src/hardwareharness_backend/contracts/projects.py": "098bb3564b88e36d6a7c81f39a0445a263290dd4e0ad5f1b3929d18e99ec9302",
+    "src/hardwareharness_backend/contracts/storage.py": "c74082c5bfbc5c625f28949374324c5ad0f8a573df2bfd639cd51577372da559",
+    "src/hardwareharness_backend/contracts/validation.py": "0a326f610ffcba1cdce1b67bfba10ea0d17042a6b28bdce48dec5144d58b9feb",
+    "src/hardwareharness_backend/contracts/wiring.py": "54c545ed07e1dd1b0e4f37a96f210f0db4ffd7655dc4d161a56a1ebbfee40ea1",
+    "src/hardwareharness_backend/contracts/workflow_types.py": "ee8ee8a8a9783539cca9192c709118d61127231feb9e3b77db91151691e88092",
+    "src/hardwareharness_backend/devices/__init__.py": "7529a42c984dd178c9a1f7e263ee64c6b4ae2b11142e91872784a6016168564b",
+    "src/hardwareharness_backend/devices/device_catalog_service.py": "1174a1eab186bbcb3964ee7da619c6bfe41eaa77ad810c3b8a4443a0c5c266e9",
+    "src/hardwareharness_backend/devices/device_service.py": "31f2aeb8140e1c548c5032e6460d161bc022feb1447546b51c0982d267c5fc99",
+    "src/hardwareharness_backend/devices/device_store.py": "ff2f04275ed65484a46ccac44b5b1a36d43320cd40fc5ba492e8ef341fca5e9c",
+    "src/hardwareharness_backend/devices/device_transport.py": "8183f53d148367c3ffdd140d72f22952e217f7c20bc5bb6cec4474726b0ddb2b",
+    "src/hardwareharness_backend/devices/hardware_occupancy.py": "078e3676403648246c86f099fe4cf7df73d79cef3ccbcd71306a0c9ceab5a67b",
+    "src/hardwareharness_backend/devices/local_shell.py": "fcbf64348189663ad5370dfd94d4e0e03ad01076816e4476da5aa9978061965f",
+    "src/hardwareharness_backend/devices/mcp_client.py": "0dc4ada0e3c529996096b3d950815648969515118ae267254ee862873b248836",
+    "src/hardwareharness_backend/devices/mcp_transport.py": "e4a8726de0609710cf080142657b63274df2c2fca52e5d48a1a0589b3d3b77b5",
+    "src/hardwareharness_backend/devices/remote_shell.py": "e12ee02b3eed88e58d463425fb3e6f3d50f869a8877513506d0bfc05eec58df9",
+    "src/hardwareharness_backend/devices/schema_validation.py": "eb994eb86e6d756af1ee21a8720db669ea083b1d7a2f07896b95a71b055dbfa6",
+    "src/hardwareharness_backend/devices/ssh.py": "1fb44d87549e55c15a646a288d85b1766694f4c82c849a6dfc39c65e65694acd",
+    "src/hardwareharness_backend/host/__init__.py": "8a7e93eab62cd1d0e71a560fedbccfa3c22596c36e725d33cb12d25aef4857f2",
+    "src/hardwareharness_backend/host/__main__.py": "f7ece5602383a0086452902088164efd68a4743ac2dda66161df874d6a90683e",
+    "src/hardwareharness_backend/host/codec.py": "9f1c23753ad3cda87f55127c54641857cef955acb5d5395cdee27bba54f8abc9",
+    "src/hardwareharness_backend/host/migrations.py": "90a5bf4ab5a6b6859ddfaeb46b79bbc3ea60aa4a35ef61ab4af65cbdb78afe57",
+    "src/hardwareharness_backend/host/register_firedap.py": "e70c03eb270c6abc27b7c50225d25ac7f7856455a83549be77bf8474ea41f6f6",
+    "src/hardwareharness_backend/host/rpc.py": "8ce72fe05c4ac2caaafd98c151f66f17795b0cf3b38813fc2a584ed79c4d5f12",
+    "src/hardwareharness_backend/host/runtime.py": "c61dbd2d8d041c1cd50c81b68925295b45ea303dd6664676f711f80df28d9154",
+    "src/hardwareharness_backend/mcp_gateway/__init__.py": "884608a4090ab2073a6cbbb0624b74e194c2d9c13c41f57e214fcd4d135858de",
+    "src/hardwareharness_backend/mcp_gateway/builtin_tools.json": "d04711e26d088dd1b84c53d7719c4838bad4c0229ff9390f5315c522c2e243d1",
+    "src/hardwareharness_backend/mcp_gateway/gateway.py": "c093ded3660207fbcfe3bb3daee3f66412088caf8dd63d3fc876f4044f03ae43",
+    "src/hardwareharness_backend/mcp_gateway/project_tools.json": "9482c18a13bff2b730c112dabcc978410dcf99d967119121cc967e7d63610b64",
+    "src/hardwareharness_backend/mcp_gateway/tool_registry.py": "4a209439f1c7ada7e536c4cc74216b2c7de9e64014cdb7baf8e18a0648aca592",
+    "src/hardwareharness_backend/mcp_gateway/workflow_schema.json": "efd965bc2c861b19f638d069a164ebabb2ebae5c83736043272b08025ac24db8",
+    "src/hardwareharness_backend/orchestration/__init__.py": "42a2670888601ec3a3951f2aa73591a36e57e7220560626a8cbbc96d7de4df6b",
+    "src/hardwareharness_backend/orchestration/cancellation.py": "27276c173f066204c037adb4d37995ecc56b1e981249b9dca81c0871caf1b15d",
+    "src/hardwareharness_backend/orchestration/machine.py": "9b3c2222f1c93456f570d903dd6b6a6d187dddb75e437dc2a94cbe124cbfe38b",
+    "src/hardwareharness_backend/orchestration/persistence.py": "260bb898668696ed5b026fe520436deb69635e1677a806143bf84c644f1dc681",
+    "src/hardwareharness_backend/orchestration/ports.py": "0bf95fb60ba2237fce0264711918ef054dd8ed180fc562d1972f17469240a08a",
+    "src/hardwareharness_backend/orchestration/service.py": "bfe25ec4b461d5e37f42fb956375230b38489925fc42de0f0beaeee280f19951",
+    "src/hardwareharness_backend/orchestration/store.py": "c5c870dd5ffb4a6b02f14c27f3d4e078569804f00f73856ae59efeebd9ea46e6",
+    "src/hardwareharness_backend/orchestration/utils.py": "e7bf49099ee6252725d87f7d78febc77ba3e59d1cfa652a2842640e3ef5f2a6e",
+    "src/hardwareharness_backend/orchestration/workflow.py": "77d8b5f0b685e73dd226547324911e4133c8df2ee8659d79cd4cecced113e925",
+    "src/hardwareharness_backend/projects/__init__.py": "a2fcd8ee48642fb6cc3e81a80946eaa1b2df36ae879ba7fef789a4b44062d59c",
+    "src/hardwareharness_backend/projects/project_service.py": "5b873ee8f7566e5dc45b75d2eec862db5125a334d44d098682a40f426451f0b9",
+    "src/hardwareharness_backend/storage/__init__.py": "7a686c22796e8e1ae84c3e09239b832ba2606e134fe9757500a3c09c5e96ddb1",
+    "src/hardwareharness_backend/storage/file_storage.py": "cfe72796e5eebb45cb43667b58e4b5da38c632f079304bcf9612ae6678a5854a",
+    "src/hardwareharness_backend/storage/run_log_store.py": "c7687c1197cb95e1e219c5227ffdf19fb840906cdf90760019a7a75c4c89ce0c",
+    "src/hardwareharness_backend/storage/secrets.py": "41ade01dc82a63cfa0c81e8f789efb81652aad71743609026ad088a0ccafc181",
+    "src/hardwareharness_backend/storage/serialized_writer.py": "5289ec8e468e6ffabcc9b908b5b3877b05565871db021c78f679bd2d2591f0f4",
+    "src/hardwareharness_backend/storage/settings_store.py": "325bfd9468791a835b98ff4625cb8cba229c0f3942ce94ef8581ef3e178a4732",
+    "src/hardwareharness_backend/wiring/__init__.py": "ff7bf45ac922502d637c5baa2433bd60c0a8a9c82969550592eaaa412166f808",
+    "src/hardwareharness_backend/wiring/project_wiring_service.py": "7555c53f0feb158410f746ebd3cbaa8a30b3da784efe9cce65da361731aecd0c",
+    "tests/application/test_application.py": "e37df489a82aa744d6706733b768b8e2348c49e3a5ffcdfc154aa8b84aa0b811",
+    "tests/application/test_project_services.py": "3268842d96095abadb34dcdc47494efec8f07a7b35cf1ea72591eb34ef18ddd1",
+    "tests/application/test_regressions.py": "057cb6ec261b8bc1d2cfac3fe7cb62449f0dfc283e253ae41924e466d7240584",
+    "tests/compat/fs-golden.json": "b39128ea317df07247e0edf076c14b114d79252eae2ba98d4c4bb3cad371bd8f",
+    "tests/compat/json_parse_cases.json": "4ca4017c93d86503107e3ba8828b66fa64593e8b8ec05af3467540e0ba5e668a",
+    "tests/compat/test_compat.py": "c8f9151a4aed3e525019e1fbe0529c0a6f5a9ec8c82bccb748d7530c6932e4b3",
+    "tests/compat/test_filesystem.py": "d8cf7134ad08bf1b86c04a5fedd1635d999e9189f77701375e57e9e8d0d289bd",
+    "tests/compat/test_json_parse.py": "5c27feeb3e04efcf54a93f80523404caa5444e0a62ca56503d1d5d5ff6f72e18",
+    "tests/conftest.py": "c087e75038c4780955ce36cd67537fc5143040e187bab6a142c58d1fc166b0a5",
+    "tests/contracts/contracts-golden.json": "5b7e6305ca2f509019e65f3a2b65a42133fe5b859cb3371932911e8099475e71",
+    "tests/contracts/test_contracts.py": "ae24179bac66fe3b59300dd19f8c3ebf063f47a8e7a359b57cbf91150b1d987e",
+    "tests/contracts/test_desktop.py": "e7d776c6d0c34e7817959f4cea25132f25f811ac5f6e916a75630937bf9eed8b",
+    "tests/contracts/test_differential.py": "3317c593a77de88805a1c04283448fe1c8d90bdbf7e885814cd4b8189aedf656",
+    "tests/contracts/test_workflow_types.py": "3dc3614a94fe18e3347896f0d1bb04bc9c8b3c60335fff62982fb5f7bca2ed72",
+    "tests/devices/ajv_cases.json": "3ec85988e6a646b87db87e9c5734a463c2c29b62565ddaf44e15e757c5ffa54b",
+    "tests/devices/test_development_merge.py": "e40174992d96b1c9a98538bf210f998880da134dc4f0cb4d94948bc50a029f38",
+    "tests/devices/test_device_store.py": "d43716e6f6fa104460b89aef03eca5f5bbafcff7b7fdd0136d96c5ae2906be94",
+    "tests/devices/test_devices.py": "bb1f9c6d1019db5de842dffe96fd1af593847522af7fe48bbba17b54b9665434",
+    "tests/devices/test_file_boundaries.py": "d26fe1a396039eb75da0f2892b3cdbaf9a21c9d368889083623f39b00536b3a1",
+    "tests/devices/test_regressions.py": "ebd6897a39c4995056a8f4962b62d6be0f80075c70c8362fa0dfe0bf62e9e65f",
+    "tests/devices/test_schema_validation.py": "c722bfcd1cf485957872c1a3e6292b4e8c5b00f59d04b3e41424496f35cb9bbc",
+    "tests/devices/test_service_boundaries.py": "1023a4e917bf4b8ff365ee36e3ff66f1bd48d14d750726677b5ac5507a7129bb",
+    "tests/devices/test_sse.py": "f7924b338d81578131b686961e4b5fdc8370275c1f98fa4350e269e5692fe046",
+    "tests/devices/test_transports.py": "3eecbcb90e2a68b740a52c6deaaef995cfce678c26436784b21d04de5cc8c7fe",
+    "tests/host/facade-calls.json": "d32ae0987e73b41513a9423dc79558c0e6de2fcf1a886a5ebd4e5f25a9af6a34",
+    "tests/host/test_codec.py": "d31ba211648f38e7932e66fdb5994e0070a8fba24d7d121c978383951f79ae4e",
+    "tests/host/test_facade_routes.py": "01ec92f560ca4967f95baba5117980010d6ae721356359925ae1266fc5dd7f08",
+    "tests/host/test_firedap_registration.py": "cd6dc959615348a0be8f13db2411b3c7be8babdbf5a1f3875de6c48474edaa76",
+    "tests/host/test_migrations.py": "16db7b2ed92c24fc4f5e77adb2ade24689f9631c35becd43b5932afae0bfb734",
+    "tests/host/test_process.py": "9c50195a67edc102a1574ca5d5ae520e7618e93fc3d1223958ea22537a9e2114",
+    "tests/host/test_rpc.py": "48b59471ef13179d8e43e2ad0806ae67e389b154a9446973ce7fc0d356e0b573",
+    "tests/mcp_gateway/protocol-golden.json": "83c890d5afbf49189dbde90ce617e77fbedaa19c61693adcad1ae3e5c69b7d74",
+    "tests/mcp_gateway/test_boundaries.py": "f5a2f89fcbdcfdd65368d4fd06ffc53e676779a35065619eca06ee22012aa223",
+    "tests/mcp_gateway/test_development_projects.py": "863a6c7ce179114f8d4ec30659a065d0df20b98c1ec88ce3cb0699d089c378f2",
+    "tests/mcp_gateway/test_gateway.py": "e4a3506850707dd41ed252e91233752253f45a506f813a21aa20ef45fdc185ad",
+    "tests/mcp_gateway/test_protocol_golden.py": "19c843dcd9dfa0d8734acacf21647476fe66712c6d986984c0e172099c05ed22",
+    "tests/orchestration/test_regressions.py": "0bf2dc7967ae025ca4e183b9b193588fb82663c44d2ec06c79a7c57b5a68a9c8",
+    "tests/orchestration/test_service.py": "b9c6c5ceb2115379d0ebb8f050f1be611c5ef8eb9d6a13cfe69574a30225e3e0",
+    "tests/orchestration/test_workflow.py": "2c1d72d2689a07032bedd12df839bb5a67ea97ea288ff0f78d742d788f2b92af",
+    "tests/projects/test_projects.py": "0a006bc7a69139697d0c74e8ad6be3e0d24d82fc7f8cb43240d229c36989b355",
+    "tests/storage/storage-golden.json": "80c1c842c997d85f645e85daa1df4c69d5b482b6f642e5499b3b553945cd065b",
+    "tests/storage/test_run_log_store.py": "1e3f5f5a5ec8ef5181cf79a36d9cc4a9965557bdd13df3690c03e55f8ca0d075",
+    "tests/storage/test_storage.py": "4693be75cd7b3306485e2e97a3eece9fcb20386b0b3ccefd5f7ffbdbcc502951",
+    "tests/storage/test_storage_runtime_golden.py": "02b3083bcfbf0743566d6b6d841e91c489c948115e349b0ac4b97c91c0e3f8cd",
+    "tests/test_specification_evidence.py": "35388f86bb98aaded999de611b508eb0fffa8eccbff5b0a1958c7f3737d8e669",
+    "tests/wiring/test_wiring.py": "ee932c160342efe0ab374bee1adccf6fd1251a79fb9cddaef80e6bedbc492915",
+    "tests/wiring/test_wiring_runtime_golden.py": "4e3640b05ab7e981154363bd68f3408dda7ea5f7ae4c5387a37c4947e9a8c93d",
+    "tests/wiring/wiring-golden.json": "444dc281b81eb6f34a86eeaf3750e96e62720e0b098973c2c0686486791f2db1",
+    "uv.lock": "18b737b45a9d21787a5a2386db08132a09baaea474030f5ea84af96dbbc97375"
+  },
+  "sourceHashesAfter": {
+    "pyproject.toml": "f68860fb23ec6e7efd6bb755a31692a944d65d886ff0779028d2721f0487f1e0",
+    "scripts/build.py": "bca94008469013921be658f0df6c3cfd741dabd7a4d8204da4b04ddd136d1f2b",
+    "scripts/check_coverage.py": "bfa49542c65e7d5ee697f9740b1bcbf8e272fe7aa308552b29d2ef05eb1950c9",
+    "scripts/check_specs.py": "060624ee836553b9f573db7efa2adaf8fbca0f9c8414f99f2195edc5c98aac1a",
+    "scripts/frozen_entry.py": "4b17dfc8d4ea5eef2f36589627852e8909263bffe2b1404a6a22f0eade1484a3",
+    "scripts/prepare_icu.py": "7e9aa27c15a7382019cfebd28b017a6dd504527e53474f83af9f887f70c2f136",
+    "scripts/protected_baseline.py": "345ff5bfeeab1a945561df9fa4f3d33242b38cc6a5d93eb12a90063aea24c8ce",
+    "scripts/verify.py": "a16bf0f9983d4e3401d4ac6b35833621df878f43a7756166e81350389c29847f",
+    "src/hardwareharness_backend/__init__.py": "89c4bb42f5d197c8b455f2c0090aaa89b034837275c9738e267a63e2d0f60789",
+    "src/hardwareharness_backend/application/__init__.py": "710b25a410bc009d937c4d2d942304899dcd040b23830cdb92fc965a169213aa",
+    "src/hardwareharness_backend/application/authorization.py": "e167f41b6036cf9b8c3c41be85d81cadecc7290556449a5c78b7cac01bf3edcf",
+    "src/hardwareharness_backend/application/control.py": "212dc9335b2c061164cabfcb911ba15ca6ee7cdcb203530d3e0cd04ccfdc69ce",
+    "src/hardwareharness_backend/application/execution.py": "3e2fb295e7cac59b7299d3a77af7210766fa9d921419d1664a7f119d64223c17",
+    "src/hardwareharness_backend/application/services.py": "45d1bc04ca025dcaf697df27fdd4fb6f658d5a62d130c881cee0caa61026e571",
+    "src/hardwareharness_backend/compat/__init__.py": "6020036321b156c74c52f6e16352a66f77a1d04e4983cdfed0ec9a953a897af7",
+    "src/hardwareharness_backend/compat/collation.py": "6981f88a3ee20f287f1816799f0cdf96b38ffa72cf2926bf8516b26c416e57ad",
+    "src/hardwareharness_backend/compat/filesystem.py": "3792c1326a22d4701249a18de66eb28269c8cb13f79cd31d356c9b27048e1817",
+    "src/hardwareharness_backend/compat/json_syntax.py": "c81ff2d186b953f7541e2a784d0e97207e4fef65f1f262cb6986122800e5b794",
+    "src/hardwareharness_backend/contracts/__init__.py": "275d01db31714006c01533a7b60603e25deafa54fc961f43ee769cee53fb5213",
+    "src/hardwareharness_backend/contracts/agents.py": "7b1c29dd1532fec190b178026537c83063b3b3bc9151861978f3fc25b42cf928",
+    "src/hardwareharness_backend/contracts/desktop.py": "e57bf2e04806f356eb9d59a56623a179f4ee775b87b9f9c8d3b95a3a56debf6f",
+    "src/hardwareharness_backend/contracts/devices.py": "c2726994a297e0292f0a81ba9fa1f4fad24362d85456ff27445cd602dea87b3b",
+    "src/hardwareharness_backend/contracts/errors.py": "7caf224d934624d7a6fec40a4255e5a2815147310a84c2953bb5853222d540a8",
+    "src/hardwareharness_backend/contracts/execution.py": "c5fc3d9397af77088f0fdd16de5ebc78a589994fa70c2de41480a3586653620a",
+    "src/hardwareharness_backend/contracts/occupancy.py": "355fa6ce2e6d38c268d575bceb84c37ccd1aa9ef65b2f3834ebe79eef15f7246",
+    "src/hardwareharness_backend/contracts/orchestration.py": "f2417f8cf28de0e101e29809ae0146c537df0c3feb5a5771f85805cbf8d87750",
+    "src/hardwareharness_backend/contracts/projects.py": "098bb3564b88e36d6a7c81f39a0445a263290dd4e0ad5f1b3929d18e99ec9302",
+    "src/hardwareharness_backend/contracts/storage.py": "c74082c5bfbc5c625f28949374324c5ad0f8a573df2bfd639cd51577372da559",
+    "src/hardwareharness_backend/contracts/validation.py": "0a326f610ffcba1cdce1b67bfba10ea0d17042a6b28bdce48dec5144d58b9feb",
+    "src/hardwareharness_backend/contracts/wiring.py": "54c545ed07e1dd1b0e4f37a96f210f0db4ffd7655dc4d161a56a1ebbfee40ea1",
+    "src/hardwareharness_backend/contracts/workflow_types.py": "ee8ee8a8a9783539cca9192c709118d61127231feb9e3b77db91151691e88092",
+    "src/hardwareharness_backend/devices/__init__.py": "7529a42c984dd178c9a1f7e263ee64c6b4ae2b11142e91872784a6016168564b",
+    "src/hardwareharness_backend/devices/device_catalog_service.py": "1174a1eab186bbcb3964ee7da619c6bfe41eaa77ad810c3b8a4443a0c5c266e9",
+    "src/hardwareharness_backend/devices/device_service.py": "31f2aeb8140e1c548c5032e6460d161bc022feb1447546b51c0982d267c5fc99",
+    "src/hardwareharness_backend/devices/device_store.py": "ff2f04275ed65484a46ccac44b5b1a36d43320cd40fc5ba492e8ef341fca5e9c",
+    "src/hardwareharness_backend/devices/device_transport.py": "8183f53d148367c3ffdd140d72f22952e217f7c20bc5bb6cec4474726b0ddb2b",
+    "src/hardwareharness_backend/devices/hardware_occupancy.py": "078e3676403648246c86f099fe4cf7df73d79cef3ccbcd71306a0c9ceab5a67b",
+    "src/hardwareharness_backend/devices/local_shell.py": "fcbf64348189663ad5370dfd94d4e0e03ad01076816e4476da5aa9978061965f",
+    "src/hardwareharness_backend/devices/mcp_client.py": "0dc4ada0e3c529996096b3d950815648969515118ae267254ee862873b248836",
+    "src/hardwareharness_backend/devices/mcp_transport.py": "e4a8726de0609710cf080142657b63274df2c2fca52e5d48a1a0589b3d3b77b5",
+    "src/hardwareharness_backend/devices/remote_shell.py": "e12ee02b3eed88e58d463425fb3e6f3d50f869a8877513506d0bfc05eec58df9",
+    "src/hardwareharness_backend/devices/schema_validation.py": "eb994eb86e6d756af1ee21a8720db669ea083b1d7a2f07896b95a71b055dbfa6",
+    "src/hardwareharness_backend/devices/ssh.py": "1fb44d87549e55c15a646a288d85b1766694f4c82c849a6dfc39c65e65694acd",
+    "src/hardwareharness_backend/host/__init__.py": "8a7e93eab62cd1d0e71a560fedbccfa3c22596c36e725d33cb12d25aef4857f2",
+    "src/hardwareharness_backend/host/__main__.py": "f7ece5602383a0086452902088164efd68a4743ac2dda66161df874d6a90683e",
+    "src/hardwareharness_backend/host/codec.py": "9f1c23753ad3cda87f55127c54641857cef955acb5d5395cdee27bba54f8abc9",
+    "src/hardwareharness_backend/host/migrations.py": "90a5bf4ab5a6b6859ddfaeb46b79bbc3ea60aa4a35ef61ab4af65cbdb78afe57",
+    "src/hardwareharness_backend/host/register_firedap.py": "e70c03eb270c6abc27b7c50225d25ac7f7856455a83549be77bf8474ea41f6f6",
+    "src/hardwareharness_backend/host/rpc.py": "8ce72fe05c4ac2caaafd98c151f66f17795b0cf3b38813fc2a584ed79c4d5f12",
+    "src/hardwareharness_backend/host/runtime.py": "c61dbd2d8d041c1cd50c81b68925295b45ea303dd6664676f711f80df28d9154",
+    "src/hardwareharness_backend/mcp_gateway/__init__.py": "884608a4090ab2073a6cbbb0624b74e194c2d9c13c41f57e214fcd4d135858de",
+    "src/hardwareharness_backend/mcp_gateway/builtin_tools.json": "d04711e26d088dd1b84c53d7719c4838bad4c0229ff9390f5315c522c2e243d1",
+    "src/hardwareharness_backend/mcp_gateway/gateway.py": "c093ded3660207fbcfe3bb3daee3f66412088caf8dd63d3fc876f4044f03ae43",
+    "src/hardwareharness_backend/mcp_gateway/project_tools.json": "9482c18a13bff2b730c112dabcc978410dcf99d967119121cc967e7d63610b64",
+    "src/hardwareharness_backend/mcp_gateway/tool_registry.py": "4a209439f1c7ada7e536c4cc74216b2c7de9e64014cdb7baf8e18a0648aca592",
+    "src/hardwareharness_backend/mcp_gateway/workflow_schema.json": "efd965bc2c861b19f638d069a164ebabb2ebae5c83736043272b08025ac24db8",
+    "src/hardwareharness_backend/orchestration/__init__.py": "42a2670888601ec3a3951f2aa73591a36e57e7220560626a8cbbc96d7de4df6b",
+    "src/hardwareharness_backend/orchestration/cancellation.py": "27276c173f066204c037adb4d37995ecc56b1e981249b9dca81c0871caf1b15d",
+    "src/hardwareharness_backend/orchestration/machine.py": "9b3c2222f1c93456f570d903dd6b6a6d187dddb75e437dc2a94cbe124cbfe38b",
+    "src/hardwareharness_backend/orchestration/persistence.py": "260bb898668696ed5b026fe520436deb69635e1677a806143bf84c644f1dc681",
+    "src/hardwareharness_backend/orchestration/ports.py": "0bf95fb60ba2237fce0264711918ef054dd8ed180fc562d1972f17469240a08a",
+    "src/hardwareharness_backend/orchestration/service.py": "bfe25ec4b461d5e37f42fb956375230b38489925fc42de0f0beaeee280f19951",
+    "src/hardwareharness_backend/orchestration/store.py": "c5c870dd5ffb4a6b02f14c27f3d4e078569804f00f73856ae59efeebd9ea46e6",
+    "src/hardwareharness_backend/orchestration/utils.py": "e7bf49099ee6252725d87f7d78febc77ba3e59d1cfa652a2842640e3ef5f2a6e",
+    "src/hardwareharness_backend/orchestration/workflow.py": "77d8b5f0b685e73dd226547324911e4133c8df2ee8659d79cd4cecced113e925",
+    "src/hardwareharness_backend/projects/__init__.py": "a2fcd8ee48642fb6cc3e81a80946eaa1b2df36ae879ba7fef789a4b44062d59c",
+    "src/hardwareharness_backend/projects/project_service.py": "5b873ee8f7566e5dc45b75d2eec862db5125a334d44d098682a40f426451f0b9",
+    "src/hardwareharness_backend/storage/__init__.py": "7a686c22796e8e1ae84c3e09239b832ba2606e134fe9757500a3c09c5e96ddb1",
+    "src/hardwareharness_backend/storage/file_storage.py": "cfe72796e5eebb45cb43667b58e4b5da38c632f079304bcf9612ae6678a5854a",
+    "src/hardwareharness_backend/storage/run_log_store.py": "c7687c1197cb95e1e219c5227ffdf19fb840906cdf90760019a7a75c4c89ce0c",
+    "src/hardwareharness_backend/storage/secrets.py": "41ade01dc82a63cfa0c81e8f789efb81652aad71743609026ad088a0ccafc181",
+    "src/hardwareharness_backend/storage/serialized_writer.py": "5289ec8e468e6ffabcc9b908b5b3877b05565871db021c78f679bd2d2591f0f4",
+    "src/hardwareharness_backend/storage/settings_store.py": "325bfd9468791a835b98ff4625cb8cba229c0f3942ce94ef8581ef3e178a4732",
+    "src/hardwareharness_backend/wiring/__init__.py": "ff7bf45ac922502d637c5baa2433bd60c0a8a9c82969550592eaaa412166f808",
+    "src/hardwareharness_backend/wiring/project_wiring_service.py": "7555c53f0feb158410f746ebd3cbaa8a30b3da784efe9cce65da361731aecd0c",
+    "tests/application/test_application.py": "e37df489a82aa744d6706733b768b8e2348c49e3a5ffcdfc154aa8b84aa0b811",
+    "tests/application/test_project_services.py": "3268842d96095abadb34dcdc47494efec8f07a7b35cf1ea72591eb34ef18ddd1",
+    "tests/application/test_regressions.py": "057cb6ec261b8bc1d2cfac3fe7cb62449f0dfc283e253ae41924e466d7240584",
+    "tests/compat/fs-golden.json": "b39128ea317df07247e0edf076c14b114d79252eae2ba98d4c4bb3cad371bd8f",
+    "tests/compat/json_parse_cases.json": "4ca4017c93d86503107e3ba8828b66fa64593e8b8ec05af3467540e0ba5e668a",
+    "tests/compat/test_compat.py": "c8f9151a4aed3e525019e1fbe0529c0a6f5a9ec8c82bccb748d7530c6932e4b3",
+    "tests/compat/test_filesystem.py": "d8cf7134ad08bf1b86c04a5fedd1635d999e9189f77701375e57e9e8d0d289bd",
+    "tests/compat/test_json_parse.py": "5c27feeb3e04efcf54a93f80523404caa5444e0a62ca56503d1d5d5ff6f72e18",
+    "tests/conftest.py": "c087e75038c4780955ce36cd67537fc5143040e187bab6a142c58d1fc166b0a5",
+    "tests/contracts/contracts-golden.json": "5b7e6305ca2f509019e65f3a2b65a42133fe5b859cb3371932911e8099475e71",
+    "tests/contracts/test_contracts.py": "ae24179bac66fe3b59300dd19f8c3ebf063f47a8e7a359b57cbf91150b1d987e",
+    "tests/contracts/test_desktop.py": "e7d776c6d0c34e7817959f4cea25132f25f811ac5f6e916a75630937bf9eed8b",
+    "tests/contracts/test_differential.py": "3317c593a77de88805a1c04283448fe1c8d90bdbf7e885814cd4b8189aedf656",
+    "tests/contracts/test_workflow_types.py": "3dc3614a94fe18e3347896f0d1bb04bc9c8b3c60335fff62982fb5f7bca2ed72",
+    "tests/devices/ajv_cases.json": "3ec85988e6a646b87db87e9c5734a463c2c29b62565ddaf44e15e757c5ffa54b",
+    "tests/devices/test_development_merge.py": "e40174992d96b1c9a98538bf210f998880da134dc4f0cb4d94948bc50a029f38",
+    "tests/devices/test_device_store.py": "d43716e6f6fa104460b89aef03eca5f5bbafcff7b7fdd0136d96c5ae2906be94",
+    "tests/devices/test_devices.py": "bb1f9c6d1019db5de842dffe96fd1af593847522af7fe48bbba17b54b9665434",
+    "tests/devices/test_file_boundaries.py": "d26fe1a396039eb75da0f2892b3cdbaf9a21c9d368889083623f39b00536b3a1",
+    "tests/devices/test_regressions.py": "ebd6897a39c4995056a8f4962b62d6be0f80075c70c8362fa0dfe0bf62e9e65f",
+    "tests/devices/test_schema_validation.py": "c722bfcd1cf485957872c1a3e6292b4e8c5b00f59d04b3e41424496f35cb9bbc",
+    "tests/devices/test_service_boundaries.py": "1023a4e917bf4b8ff365ee36e3ff66f1bd48d14d750726677b5ac5507a7129bb",
+    "tests/devices/test_sse.py": "f7924b338d81578131b686961e4b5fdc8370275c1f98fa4350e269e5692fe046",
+    "tests/devices/test_transports.py": "3eecbcb90e2a68b740a52c6deaaef995cfce678c26436784b21d04de5cc8c7fe",
+    "tests/host/facade-calls.json": "d32ae0987e73b41513a9423dc79558c0e6de2fcf1a886a5ebd4e5f25a9af6a34",
+    "tests/host/test_codec.py": "d31ba211648f38e7932e66fdb5994e0070a8fba24d7d121c978383951f79ae4e",
+    "tests/host/test_facade_routes.py": "01ec92f560ca4967f95baba5117980010d6ae721356359925ae1266fc5dd7f08",
+    "tests/host/test_firedap_registration.py": "cd6dc959615348a0be8f13db2411b3c7be8babdbf5a1f3875de6c48474edaa76",
+    "tests/host/test_migrations.py": "16db7b2ed92c24fc4f5e77adb2ade24689f9631c35becd43b5932afae0bfb734",
+    "tests/host/test_process.py": "9c50195a67edc102a1574ca5d5ae520e7618e93fc3d1223958ea22537a9e2114",
+    "tests/host/test_rpc.py": "48b59471ef13179d8e43e2ad0806ae67e389b154a9446973ce7fc0d356e0b573",
+    "tests/mcp_gateway/protocol-golden.json": "83c890d5afbf49189dbde90ce617e77fbedaa19c61693adcad1ae3e5c69b7d74",
+    "tests/mcp_gateway/test_boundaries.py": "f5a2f89fcbdcfdd65368d4fd06ffc53e676779a35065619eca06ee22012aa223",
+    "tests/mcp_gateway/test_development_projects.py": "863a6c7ce179114f8d4ec30659a065d0df20b98c1ec88ce3cb0699d089c378f2",
+    "tests/mcp_gateway/test_gateway.py": "e4a3506850707dd41ed252e91233752253f45a506f813a21aa20ef45fdc185ad",
+    "tests/mcp_gateway/test_protocol_golden.py": "19c843dcd9dfa0d8734acacf21647476fe66712c6d986984c0e172099c05ed22",
+    "tests/orchestration/test_regressions.py": "0bf2dc7967ae025ca4e183b9b193588fb82663c44d2ec06c79a7c57b5a68a9c8",
+    "tests/orchestration/test_service.py": "b9c6c5ceb2115379d0ebb8f050f1be611c5ef8eb9d6a13cfe69574a30225e3e0",
+    "tests/orchestration/test_workflow.py": "2c1d72d2689a07032bedd12df839bb5a67ea97ea288ff0f78d742d788f2b92af",
+    "tests/projects/test_projects.py": "0a006bc7a69139697d0c74e8ad6be3e0d24d82fc7f8cb43240d229c36989b355",
+    "tests/storage/storage-golden.json": "80c1c842c997d85f645e85daa1df4c69d5b482b6f642e5499b3b553945cd065b",
+    "tests/storage/test_run_log_store.py": "1e3f5f5a5ec8ef5181cf79a36d9cc4a9965557bdd13df3690c03e55f8ca0d075",
+    "tests/storage/test_storage.py": "4693be75cd7b3306485e2e97a3eece9fcb20386b0b3ccefd5f7ffbdbcc502951",
+    "tests/storage/test_storage_runtime_golden.py": "02b3083bcfbf0743566d6b6d841e91c489c948115e349b0ac4b97c91c0e3f8cd",
+    "tests/test_specification_evidence.py": "35388f86bb98aaded999de611b508eb0fffa8eccbff5b0a1958c7f3737d8e669",
+    "tests/wiring/test_wiring.py": "ee932c160342efe0ab374bee1adccf6fd1251a79fb9cddaef80e6bedbc492915",
+    "tests/wiring/test_wiring_runtime_golden.py": "4e3640b05ab7e981154363bd68f3408dda7ea5f7ae4c5387a37c4947e9a8c93d",
+    "tests/wiring/wiring-golden.json": "444dc281b81eb6f34a86eeaf3750e96e62720e0b098973c2c0686486791f2db1",
+    "uv.lock": "18b737b45a9d21787a5a2386db08132a09baaea474030f5ea84af96dbbc97375"
+  },
+  "tests": [
+    {
+      "nodeid": "tests/application/test_application.py::test_capability_matrix",
+      "tsCases": [
+        "packages/application/src/application.test.ts::implements the complete default Agent capability matrix"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/application/test_application.py::test_agent_allowed",
+      "tsCases": [
+        "packages/application/src/application.test.ts::allows Agent tests, hardware tools and wiring requests"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/application/test_application.py::test_agent_denied",
+      "tsCases": [
+        "packages/application/src/application.test.ts::denies Agent computer/server management, arbitrary SSH, force-stop and human confirmations"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/application/test_application.py::test_human_allowed",
+      "tsCases": [
+        "packages/application/src/application.test.ts::allows humans to manage infrastructure and confirm operator work"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/application/test_application.py::test_disjoint_leases",
+      "tsCases": [
+        "packages/application/src/execution-control.test.ts::allows disjoint leases and publishes a complete aggregate activity"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/application/test_application.py::test_atomic_lease",
+      "tsCases": [
+        "packages/application/src/execution-control.test.ts::acquires multiple hardware keys atomically"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/application/test_application.py::test_stale_release",
+      "tsCases": [
+        "packages/application/src/execution-control.test.ts::keeps newer holders safe from stale and idempotent releases"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/application/test_application.py::test_manual_metadata",
+      "tsCases": [
+        "packages/application/src/execution-control.test.ts::injects the selected hardwareId, applies the default timeout and returns timing metadata"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/application/test_application.py::test_manual_invalid[overrides0-invalid_argument]",
+      "tsCases": [
+        "packages/application/src/execution-control.test.ts::rejects passive hardware"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/application/test_application.py::test_manual_invalid[overrides1-unavailable]",
+      "tsCases": [
+        "packages/application/src/execution-control.test.ts::rejects unknown tool"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/application/test_application.py::test_manual_invalid[overrides2-invalid_argument]",
+      "tsCases": [
+        "packages/application/src/execution-control.test.ts::rejects tool from another Server"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/application/test_application.py::test_manual_invalid[overrides3-unavailable]",
+      "tsCases": [
+        "packages/application/src/execution-control.test.ts::rejects missing availability"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/application/test_application.py::test_manual_invalid[overrides4-unavailable]",
+      "tsCases": [
+        "packages/application/src/execution-control.test.ts::rejects offline hardware"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/application/test_application.py::test_management_tool_offline",
+      "tsCases": [
+        "packages/application/src/execution-control.test.ts::allows non-hardware MCP tools without requiring hardware availability"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/application/test_application.py::test_manual_remote_error",
+      "tsCases": [
+        "packages/application/src/execution-control.test.ts::releases its hardware lease after a remote error"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/application/test_application.py::test_manual_shutdown",
+      "tsCases": [
+        "packages/application/src/execution-control.test.ts::conflicts only with Runs that need the same hardware and aborts the call during shutdown"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/application/test_application.py::test_run_blocks_manual",
+      "tsCases": [
+        "packages/application/src/execution-control.test.ts::rejects a valid manual call while a Run lease is active"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/application/test_application.py::test_agent_occupancy_request_only",
+      "tsCases": [
+        "packages/application/src/hardware-occupancy-application.test.ts::allows AI to request occupancy but never to acquire or release it"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/application/test_application.py::test_batch_rollback",
+      "tsCases": [
+        "packages/application/src/hardware-occupancy-application.test.ts::rolls back only leases gained by the current batch attempt"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/application/test_application.py::test_batch_confirmation_busy",
+      "tsCases": [
+        "packages/application/src/hardware-occupancy-application.test.ts::confirms a successful batch and blocks release while hardware executes"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/application/test_project_services.py::test_documentary_canvas",
+      "tsCases": [
+        "packages/application/src/project-services.test.ts::keeps the wiring canvas documentary while the operator processes a task"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/application/test_project_services.py::test_pinless",
+      "tsCases": [
+        "packages/application/src/project-services.test.ts::records a pinless connection for connectors that have no pins"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/application/test_project_services.py::test_swapped_ports",
+      "tsCases": [
+        "packages/application/src/project-services.test.ts::normalises port order so one cable cannot be requested twice under swapped ends"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/application/test_project_services.py::test_invalid_pin",
+      "tsCases": [
+        "packages/application/src/project-services.test.ts::refuses pin pairs that name a pin the port does not have"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/application/test_project_services.py::test_project_roundtrip",
+      "tsCases": [
+        "packages/application/src/project-services.test.ts::round-trips one folder project with wiring and one task"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/application/test_project_services.py::test_prototype_and_parallel_writes",
+      "tsCases": [
+        "packages/application/src/project-services.test.ts::rejects prototype paths and parallel shared writes"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/application/test_project_services.py::test_readonly_inputs_types",
+      "tsCases": [
+        "packages/application/src/project-services.test.ts::keeps inputs read-only and validates statically known assignment types"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/application/test_regressions.py::test_expired_occupancy_never_confirms[get]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/application/test_regressions.py::test_expired_occupancy_never_confirms[acquire]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/application/test_regressions.py::test_expired_occupancy_never_confirms[reject]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/application/test_regressions.py::test_expired_occupancy_never_confirms[reconcile]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/application/test_regressions.py::test_occupancy_request_lifecycle_and_facade",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/application/test_regressions.py::test_manual_hardware_abort_is_scoped",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/application/test_regressions.py::test_device_application_crud_and_binary_boundaries",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/application/test_regressions.py::test_project_switch_reinitializes_on_success_and_failure",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/application/test_regressions.py::test_wiring_orchestration_and_dashboard_facades",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_compat.py::test_json_javascript_bytes",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_compat.py::test_expression_primitives",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_filesystem.py::test_electron_filesystem_error_golden[stat-missing]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_filesystem.py::test_electron_filesystem_error_golden[read-missing]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_filesystem.py::test_electron_filesystem_error_golden[read-directory]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_filesystem.py::test_electron_filesystem_error_golden[read-parent-file]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_filesystem.py::test_electron_filesystem_error_golden[stat-parent-file]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_filesystem.py::test_electron_filesystem_error_golden[mkdir-parent-file]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_filesystem.py::test_electron_filesystem_error_golden[mkdir-existing-file]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_filesystem.py::test_electron_filesystem_error_golden[scandir-file]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_filesystem.py::test_electron_filesystem_error_golden[rename-missing]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_filesystem.py::test_electron_filesystem_error_golden[rename-to-directory]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_filesystem.py::test_electron_filesystem_error_golden[open-existing]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_filesystem.py::test_electron_filesystem_error_golden[unlink-directory]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_filesystem.py::test_electron_filesystem_error_golden[rm-directory]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_filesystem.py::test_electron_filesystem_error_golden[rm-readonly]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_filesystem.py::test_electron_filesystem_error_golden[rm-missing]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_filesystem.py::test_null_path_message_and_successful_operations",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_filesystem.py::test_recursive_remove_readonly_and_missing_error",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors[' ']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['\\\\n\\\\t']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['{']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['[']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['{\"a\"']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['{\"a\":']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['{\"a\":1']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['{\"a\":1,']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['{\"a\":1,}']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['{,}']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['{x:1}']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['{\"a\" 1}']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['{\"a\":1 \"b\":2}']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['[1']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['[1,']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['[1,]']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['[,1]']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['[1 2]']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['[1,,2]']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['tru']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['trux']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['nul']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['nullx']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['true x']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['undefined']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['NaN']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['Infinity']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['-Infinity']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['+1']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['.1']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['01']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['-']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['-x']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['1.']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['1.e2']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['1e']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['1e+']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['1e-']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['1ex']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['0xFF']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['\"']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['\"abc']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['\"abc\\\\\\\\']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['\"a\\\\nb\"']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['\"a\\\\x00b\"']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['\"a\\\\\\\\q\"']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['\"\\\\\\\\u12\"']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['\"\\\\\\\\uxxxx\"']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['\"\\\\\\\\u123x\"']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['{}\\\\ufeff']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['\\\\ufeff{}']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['{\"\\U0001f600\": 1, invalid}']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['\"\\U0001f600\" x']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['[\\\\r\\\\n 1,\\\\r\\\\n ]']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['{\\\\r\\\\n \"a\": 1,\\\\r\\\\n}']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['!']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['!!!!!!!!!']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['!!!!!!!!!!']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['!!!!!!!!!!!']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['!!!!!!!!!!!!!!!!!!!']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['!!!!!!!!!!!!!!!!!!!!']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['!!!!!!!!!!!!!!!!!!!!!']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['x                              ']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors[' x                              ']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['         x                              ']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['          x                              ']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['           x                              ']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['                   x                              ']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['                    x                              ']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['                     x                              ']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['                              x                              ']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['{\"a\":nope}']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['{\"a\":     nope}']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['{\"a\":               nope}']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['{\"a\":                         nope}']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors[' undefined']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['undefined ']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors[' NaN']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['Infinity ']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['[object Object]']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['[object Array]']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['[object Object] ']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['null true']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['true false']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['false0']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['true01']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['[01]']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['{\"x\":01}']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['-01']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['0.1.2']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['\"\\\\\\\\u']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['\"\\\\\\\\u1']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['\"\\\\\\\\u12']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['\"\\\\\\\\u123']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['\"\\\\\\\\u1234']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['\"\\\\\\\\x']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['\"\\\\\\\\\\\\n']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['[\\\\r x]']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['[\\\\n x]']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['[\\\\r\\\\n x]']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['[\\\\r\\\\r x]']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['[\\\\n\\\\r x]']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['{\\\\r x}']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['{\\\\n x}']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['{\\\\r\\\\n x}']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['[\"x\"\\\\n 1]']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['\"\\U0001f600\\\\n\"']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['n\"abcdefg\"']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['t-12.34e+56']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['[t3]']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['{\"a\":n1}']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['fal0se']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['n\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['\\U0001f600']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['[\\U0001f600\\U0001f600\\U0001f600\\U0001f600\\U0001f600\\U0001f600\\U0001f600\\U0001f600\\U0001f600\\U0001f600\\U0001f600\\U0001f600\\U0001f600\\U0001f600\\U0001f600\\U0001f600\\U0001f600\\U0001f600\\U0001f600\\U0001f600]']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['[\"\\U0001f600\\U0001f600\\U0001f600\\U0001f600\\U0001f600\\U0001f600\\U0001f600\\U0001f600\\U0001f600\\U0001f600\\U0001f600\\U0001f600\",x]']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['{\\\\r\\\\r x}']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['{\\\\n\\\\r x}']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['{\\\\r\\\\n\\\\r x}']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['[                              x]']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['[          x]']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['[         x]']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['\"\\\\ud800\" x']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_electron_json_parse_errors['\"\\\\ud800\\\\n\"']",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_json_numbers_use_ieee_double_and_preserve_negative_zero",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/compat/test_json_parse.py::test_duplicate_names_last_wins_and_surrogate_strings_match",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_contracts.py::test_passive_references",
+      "tsCases": [
+        "packages/contracts/src/contracts.test.ts::public contracts::rejects passive hardware that references remote infrastructure"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_contracts.py::test_defaults",
+      "tsCases": [
+        "packages/contracts/src/contracts.test.ts::public contracts::applies stable defaults"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_contracts.py::test_managed_state",
+      "tsCases": [
+        "packages/contracts/src/contracts.test.ts::public contracts::validates managed hardware at the remote trust boundary"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_contracts.py::test_incomplete_project",
+      "tsCases": [
+        "packages/contracts/src/contracts.test.ts::public contracts::requires the current project format"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_contracts.py::test_upgrade_chain",
+      "tsCases": [
+        "packages/contracts/src/contracts.test.ts::public contracts::upgrades project files one version at a time"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_contracts.py::test_step_output_type",
+      "tsCases": [
+        "packages/contracts/src/contracts.test.ts::public contracts::keeps the TestStep schema output identical to the public type"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_contracts.py::test_named_ids",
+      "tsCases": [
+        "packages/contracts/src/contracts.test.ts::public contracts::uses strict named id inputs for IPC procedures"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_contracts.py::test_errors",
+      "tsCases": [
+        "packages/contracts/src/contracts.test.ts::public contracts::normalizes application errors for wire transport"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_desktop.py::test_desktop_channel_names",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[themeChoice0]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[themeChoice1]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[themeChoice2]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[themeChoice3]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[themeChoice4]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[themeChoice5]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[themeChoice6]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[themeChoice7]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[welcomeLayout0]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[welcomeLayout1]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[welcomeLayout2]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[welcomeLayout3]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[welcomeLayout4]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[welcomeLayout5]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[welcomeLayout6]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[welcomeLayout7]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[projectView0]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[projectView1]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[projectView2]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[projectView3]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[projectView4]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[projectView5]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[projectView6]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[projectView7]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[settings0]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[settings1]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[settings2]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[settings3]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[settings4]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[settings5]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[settings6]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[settings7]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[settings8]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[settings9]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[settings10]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[settings11]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[llm0]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[llm1]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[llm2]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[llm3]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[secrets0]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[secrets1]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[secrets2]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[secrets3]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[secrets4]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[computer0]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[computer1]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[computer2]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[computer3]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[computer4]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[computer5]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[computer6]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[computer7]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[computer8]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[computer9]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[server0]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[server1]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[server2]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[server3]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[server4]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[server5]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[server6]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[server7]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[server8]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[server9]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[server10]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[hardware0]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[hardware1]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[hardware2]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[hardware3]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[hardware4]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[hardware5]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[hardware6]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[hardware7]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[stored0]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[stored1]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[stored2]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[managedHardware0]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[managedHardware1]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[managedHardware2]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[managedHardware3]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[managedHardware4]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[reportedManagedHardware0]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[reportedManagedHardware1]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[reportedManagedHardware2]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[reportedManagedHardware3]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[reportedManagedHardware4]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[node0]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[node1]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[node2]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[node3]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[node4]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[node5]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[request0]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[request1]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[request2]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[request3]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[occupancy-requestHardwareOccupancyInput-97]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[occupancy-requestHardwareOccupancyInput-98]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[occupancy-requestHardwareOccupancyInput-99]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[occupancy-occupancyRequestListQuery-100]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[execution-manualToolInvocationInput-101]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[execution-manualToolInvocationInput-102]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[orchestration-testRunListQuery-103]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[orchestration-testRunListQuery-104]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[orchestration-testRunListQuery-105]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[step0]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[step-extra0]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[step1]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[step-extra1]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[step2]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[step-extra2]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[step3]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[step-extra3]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[step4]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[step-extra4]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[step5]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[step-extra5]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[step6]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[step-extra6]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[step7]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[step-extra7]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[unknown-step]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[invalid-literal-kind]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[empty-logical]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[var0]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[var1]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[var2]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[var3]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[var4]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[date0]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[date1]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[date2]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[date3]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[date4]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[date5]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[date6]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[project1]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[project2]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[project3]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[project99]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[execution0]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[execution1]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[execution2]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[execution3]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[execution4]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[execution5]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[execution6]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[execution7]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[execution8]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[execution9]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[record-special0]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[record-special1]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[record-special2]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[project-boolean]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[dirty-custom]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[bundle-bytes0]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[bundle-bytes1]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[bundle-bytes2]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-0]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-1]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-2]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-3]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-4]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-5]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-6]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-7]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-8]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-9]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-10]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-11]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-12]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-13]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-14]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-15]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-16]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-17]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-18]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-19]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-20]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-21]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-22]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-23]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-24]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-25]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-26]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-27]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-28]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-29]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-30]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-31]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-32]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-33]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-34]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-35]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-36]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-37]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-38]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-39]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-40]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-41]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-42]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-43]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-44]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-45]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-46]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-47]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-48]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-49]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-50]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-51]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-52]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-53]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-54]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-55]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-56]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-57]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-58]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-59]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-60]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-61]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-62]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-63]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-64]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-65]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-66]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-67]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-68]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[whatwg-url-69]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_development_merge.py::test_concurrent_probes_preserve_last_result_and_share_work[computer]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_development_merge.py::test_concurrent_probes_preserve_last_result_and_share_work[server]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_development_merge.py::test_restart_disconnects_only_after_successful_stop[0-0]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_development_merge.py::test_restart_disconnects_only_after_successful_stop[1-0]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_development_merge.py::test_restart_disconnects_only_after_successful_stop[0-1]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_development_merge.py::test_hardware_error_accepts_explicit_offsets[2026-09-10T07:40:00.123456+00:00]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_development_merge.py::test_hardware_error_accepts_explicit_offsets[2026-09-10T15:40:00+08:00]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_development_merge.py::test_hardware_error_accepts_explicit_offsets[2026-09-10T07:40:00Z]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_development_merge.py::test_hardware_error_rejects_invalid_or_ambiguous_timestamp[not-a-date]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_development_merge.py::test_hardware_error_rejects_invalid_or_ambiguous_timestamp[2026-09-10T07:40:00]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_development_merge.py::test_hardware_error_rejects_invalid_or_ambiguous_timestamp[2026-02-30T07:40:00+00:00]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_development_merge.py::test_local_computer_is_explicit_and_loopback_only",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_development_merge.py::test_local_shell_output_nonzero_timeout_and_buffer_limit",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_development_merge.py::test_local_execution_avoids_ssh_and_failed_probe_is_offline",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_device_store.py::test_canonical",
+      "tsCases": [
+        "packages/devices/src/device-store.test.ts::persists canonical files and derives managed hardware"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_device_store.py::test_one_server_index",
+      "tsCases": [
+        "packages/devices/src/device-store.test.ts::derives a hardware list with one server index instead of an N+1 directory scan"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_device_store.py::test_assignment",
+      "tsCases": [
+        "packages/devices/src/device-store.test.ts::enforces one server per hardware and deletion rules"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_device_store.py::test_cascade",
+      "tsCases": [
+        "packages/devices/src/device-store.test.ts::cascades computer servers but retains their hardware"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_device_store.py::test_bundle_roundtrip",
+      "tsCases": [
+        "packages/devices/src/device-store.test.ts::round-trips a canonical hardware-only bundle with images"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_device_store.py::test_preview",
+      "tsCases": [
+        "packages/devices/src/device-store.test.ts::previews a validated bundle without creating passive hardware"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_device_store.py::test_managed_import",
+      "tsCases": [
+        "packages/devices/src/device-store.test.ts::only applies a bundle to the managed hardware owned by the named server"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_device_store.py::test_unknown_fields",
+      "tsCases": [
+        "packages/devices/src/device-store.test.ts::drops unknown legacy fields during bundle export"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_device_store.py::test_image_bytes",
+      "tsCases": [
+        "packages/devices/src/device-store.test.ts::stores appearance images from raw bytes with magic-byte validation"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_device_store.py::test_validate_before_replace",
+      "tsCases": [
+        "packages/devices/src/device-store.test.ts::validates a replacement bundle before touching the existing hardware directory"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_device_store.py::test_rollback",
+      "tsCases": [
+        "packages/devices/src/device-store.test.ts::rolls a replacement back when the staged directory cannot be installed"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_device_store.py::test_failed_rollback",
+      "tsCases": [
+        "packages/devices/src/device-store.test.ts::preserves and reports the backup when automatic rollback also fails"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_device_store.py::test_unsafe_bundle",
+      "tsCases": [
+        "packages/devices/src/device-store.test.ts::rejects unsafe and oversized bundle entries"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_devices.py::test_server_isolation",
+      "tsCases": [
+        "packages/devices/src/device-service.test.ts::reports every server when one of them fails to connect"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_devices.py::test_error_status",
+      "tsCases": [
+        "packages/devices/src/device-service.test.ts::keeps a failing server's error on its own status instead of throwing"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_devices.py::test_unknown_server",
+      "tsCases": [
+        "packages/devices/src/device-service.test.ts::resolves an unknown serverId into an error status rather than an exception"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_devices.py::test_lifecycle_shell[powershell]",
+      "tsCases": [
+        "packages/devices/src/device-service.test.ts::wraps powershell lifecycle status commands through RemoteShell"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_devices.py::test_lifecycle_shell[posix]",
+      "tsCases": [
+        "packages/devices/src/device-service.test.ts::wraps posix lifecycle status commands through RemoteShell"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_devices.py::test_powershell",
+      "tsCases": [
+        "packages/devices/src/remote-shell.test.ts::encodes PowerShell scripts without teaching SSH about Windows"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_devices.py::test_posix",
+      "tsCases": [
+        "packages/devices/src/remote-shell.test.ts::builds POSIX probe and log commands without PowerShell syntax"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_devices.py::test_single_hardware[response0]",
+      "tsCases": [
+        "packages/devices/src/mcp-client.test.ts::rejects a zero list_hardware response"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_devices.py::test_single_hardware[response1]",
+      "tsCases": [
+        "packages/devices/src/mcp-client.test.ts::rejects a multiple list_hardware response"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_devices.py::test_single_hardware[response2]",
+      "tsCases": [
+        "packages/devices/src/mcp-client.test.ts::rejects a non-array list_hardware response"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_devices.py::test_hardware_identity",
+      "tsCases": [
+        "packages/devices/src/mcp-client.test.ts::rejects a hardwareId that differs from the saved Server identity"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_devices.py::test_ignored_identity",
+      "tsCases": [
+        "packages/devices/src/mcp-client.test.ts::ignores identity a Server has no business asserting"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_devices.py::test_owning_computer",
+      "tsCases": [
+        "packages/devices/src/mcp-client.test.ts::injects the owning computer and Server into a valid hardware record"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_devices.py::test_input_schema",
+      "tsCases": [
+        "packages/devices/src/mcp-client.test.ts::uses AJV for the authoritative pre-call input validation"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_devices.py::test_call_metadata",
+      "tsCases": [
+        "packages/devices/src/mcp-client.test.ts::sends execution context through MCP _meta and injects hardwareId only for legacy-declared schemas"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_devices.py::test_untrusted_state",
+      "tsCases": [
+        "packages/devices/src/mcp-client.test.ts::rejects untrusted hardware state before it reaches availability logic"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_devices.py::test_lease_lost",
+      "tsCases": [
+        "packages/devices/src/hardware-occupancy.test.ts::acquires a per-hardware lease and reports loss when remote ownership changes"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_file_boundaries.py::test_image_filesystem_failures_use_node_messages",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_file_boundaries.py::test_bundle_json_decoding_order_bom_and_zod_required",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_file_boundaries.py::test_fflate_empty_input_has_missing_manifest_error[]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_file_boundaries.py::test_fflate_empty_input_has_missing_manifest_error[junk]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_file_boundaries.py::test_fflate_empty_input_has_missing_manifest_error[PK\\x03\\x04abc]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_file_boundaries.py::test_fflate_reads_local_entries_without_central_directory_or_crc",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_file_boundaries.py::test_malformed_manifest_primitives_keep_ts_behavior",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_regressions.py::test_public_store_import_and_image_invalidate_catalog",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_regressions.py::test_invalid_remote_expiry_never_grants_lease[not-a-timestamp]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_regressions.py::test_invalid_remote_expiry_never_grants_lease[]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_regressions.py::test_invalid_remote_expiry_never_grants_lease[None]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_regressions.py::test_invalid_remote_expiry_never_grants_lease[123]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_regressions.py::test_valid_epoch_lease_can_be_reported_but_cannot_be_used",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_regressions.py::test_ssh_output_cap_is_utf8_bytes",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_regressions.py::test_lease_heartbeat_release_and_expiry",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_regressions.py::test_store_cache_corruption_legacy_and_image_boundaries",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_ajv_errors_text_golden[type]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_ajv_errors_text_golden[types]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_ajv_errors_text_golden[nullable]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_ajv_errors_text_golden[const]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_ajv_errors_text_golden[enum]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_ajv_errors_text_golden[not]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_ajv_errors_text_golden[anyOf]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_ajv_errors_text_golden[oneOf-none]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_ajv_errors_text_golden[oneOf-many]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_ajv_errors_text_golden[bounds]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_ajv_errors_text_golden[strings]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_ajv_errors_text_golden[items]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_ajv_errors_text_golden[tuple]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_ajv_errors_text_golden[contains]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_ajv_errors_text_golden[object]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_ajv_errors_text_golden[required]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_ajv_errors_text_golden[propertyCount]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_ajv_errors_text_golden[propertyNames]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_ajv_errors_text_golden[dependencies]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_ajv_errors_text_golden[schemaDependency]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_ajv_errors_text_golden[ifThen]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_ajv_errors_text_golden[ifElse]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_ajv_errors_text_golden[false]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_ajv_errors_text_golden[escapedPath]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_ajv_errors_text_golden[nestedAnyOf]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_ajv_errors_text_golden[patternProperties]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_ajv_errors_text_golden[unique]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_ajv_errors_text_golden[uniqueObjects]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_ajv_errors_text_golden[valid]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_draft7_edges[schema0-value0-data must NOT have duplicate items (items ## 2 and 0 are identical)]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_draft7_edges[schema1-None-data must be equal to one of the allowed values]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_draft7_edges[schema2-value2-data/b must be number, data/a must be number]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_draft7_edges[schema3-value3-data must NOT have fewer than 2 characters, data property name must be valid, data must NOT have fewer than 2 characters, data property name must be valid]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_draft7_edges[schema4-x-data must be number, data must be equal to constant]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_draft7_edges[schema5-value5-None]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_draft7_edges[schema6-value6-data/1 must be string, data/0 must be number]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_sdk_formats_are_opt_in[email-a@example.test-a@localhost]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_sdk_formats_are_opt_in[date-2024-02-29-2023-02-29]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_sdk_formats_are_opt_in[time-23:59:60Z-12:00:00]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_sdk_formats_are_opt_in[date-time-2024-02-29 12:00:00+08:00-2024-02-29T12:00:00]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_sdk_formats_are_opt_in[iso-time-12:00:00-25:00:00]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_sdk_formats_are_opt_in[uuid-urn:uuid:12345678-1234-1234-1234-123456789abc-broken]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_sdk_formats_are_opt_in[json-pointer-/a~1b/~0-/bad~2]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_sdk_formats_are_opt_in[byte-YWJj-!]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_sdk_formats_are_opt_in[int32-2147483647-2147483648]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_sdk_formats_are_opt_in[int64-18446744073709551616-1.5]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_sdk_formats_are_opt_in[uri-https://example.test/a?q=1#f-broken uri]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_sdk_formats_are_opt_in[uri-reference-../path?q=1-broken uri]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_sdk_formats_are_opt_in[uri-template-https://example.test/{id}-{unclosed]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_sdk_formats_are_opt_in[url-https://example.test/a-http://localhost/a]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_sdk_formats_are_opt_in[ipv4-192.168.1.1-192.168.01.1]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_sdk_formats_are_opt_in[ipv6-::ffff:192.168.1.1-1234::1234::1234]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_schema_validation.py::test_sdk_formats_are_opt_in[duration-P1DT2H-p1d]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_service_boundaries.py::test_lifecycle_order[start-commands0-False]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_service_boundaries.py::test_lifecycle_order[stop-commands1-True]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_service_boundaries.py::test_lifecycle_order[restart-commands2-True]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_service_boundaries.py::test_lifecycle_order[force-stop-commands3-False]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_service_boundaries.py::test_safe_stop_failure_leaves_process_and_force_stop_bypasses_prepare",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_service_boundaries.py::test_start_retries_only_connection_twenty_times",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_service_boundaries.py::test_computer_probe_status_logs_timeout_clamp_and_remove_cache",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_service_boundaries.py::test_tool_lease_metadata_and_faulted_hardware_refresh",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_sse.py::test_initial_get_failure_is_optional_and_does_not_retry[401]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_sse.py::test_initial_get_failure_is_optional_and_does_not_retry[405]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_sse.py::test_initial_get_failure_is_optional_and_does_not_retry[500]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_sse.py::test_sse_resumes_last_event_and_retries_failed_reconnect_five_times",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_sse.py::test_post_resumption_restores_request_id_and_stops_on_response",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_sse.py::test_resumption_exhaustion_and_no_session_exit",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_transports.py::test_real_mcp_session_metadata_validation_and_no_delete",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_transports.py::test_mcp_connection_failure_isolated_and_schema_enforced",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_transports.py::test_mcp_timeout_emits_cancellation_and_connection_remains_usable",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_transports.py::test_mcp_abort_signal_preserves_reason_and_required_task_rejection",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_transports.py::test_registry_routes_isolates_and_closes",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_transports.py::test_ssh_cache_credentials_generation_timeout_and_close",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_transports.py::test_ssh_drain_fingerprint_and_connection_config",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_transports.py::test_backoff_matches_ts_options",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_codec.py::test_nested_binary_missing_and_dates_round_trip",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_codec.py::test_tag_shaped_user_records_do_not_collide",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_codec.py::test_special_numbers_preserve_negative_zero_and_nan",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_codec.py::test_four_megabytes_use_base64_not_number_arrays",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_codec.py::test_invalid_frames_fail_without_interpreting_user_code[value0]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_codec.py::test_invalid_frames_fail_without_interpreting_user_code[value1]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_codec.py::test_invalid_frames_fail_without_interpreting_user_code[value2]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_codec.py::test_invalid_frames_fail_without_interpreting_user_code[value3]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[system.dashboard]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[devices.saveComputer]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[devices.removeComputer]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[devices.refreshComputer]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[devices.saveServer]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[devices.removeServer]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[devices.refreshServer]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[devices.serverAction]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[devices.readServerLogs]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[devices.executeSsh]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[devices.refreshManagedHardware]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[devices.listHardware]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[devices.saveHardware]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[devices.removeHardware]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[devices.importHardwareImage]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[devices.removeHardwareImage]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[devices.exportBundle]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[devices.importBundle]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[devices.previewBundle]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[devices.applyBundle]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[projects.current]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[projects.chooseFolder]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[projects.openFolder]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[projects.initializeFolder]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[projects.save]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[projects.leave]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[projects.listRecent]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[projects.forgetRecent]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[wiring.update]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[wiring.requestTask]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[wiring.startTask]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[wiring.completeTask]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[wiring.cancelTask]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[wiring.getTask]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[wiring.listTasks]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[orchestration.updateTask]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[orchestration.validateTask]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[orchestration.startRun]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[orchestration.cancelRun]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[orchestration.getRun]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[orchestration.listRuns]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[orchestration.exportRun]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[orchestration.deleteRun]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[orchestration.clearCompletedRuns]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[orchestration.listOperatorDecisions]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[orchestration.respondOperatorDecision]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[manual.invokeTool]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[occupancy.list]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[occupancy.acquire]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[occupancy.release]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[occupancy.listRequests]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[occupancy.acquireRequest]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[occupancy.rejectRequest]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[occupancy.cancelRequest]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[internal.wiring.addManagedHardwareToCanvas]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_firedap_registration.py::test_registration_uses_python_catalog_encryption_and_backup",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_migrations.py::test_atomic_settings_and_encrypted_deterministic_secrets",
+      "tsCases": [
+        "apps/desktop/src/main/migrations.test.ts::global file storage::atomically persists settings and encrypted deterministic secrets"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_migrations.py::test_legacy_entities_settings_and_credentials",
+      "tsCases": [
+        "apps/desktop/src/main/migrations.test.ts::global file storage::migrates legacy entities, settings and encrypted credentials through a validated stage"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_migrations.py::test_incomplete_current_storage_is_not_silently_replaced",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_migrations.py::test_clean_install_has_no_legacy_migration",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_migrations.py::test_legacy_hardware_nullish_ports_default_to_empty[None]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_migrations.py::test_legacy_hardware_nullish_ports_default_to_empty[ports1]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_migrations.py::test_legacy_hardware_nullish_ports_default_to_empty[ports2]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_migrations.py::test_null_legacy_computer_throws_before_publication[False]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_migrations.py::test_null_legacy_computer_throws_before_publication[True]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_migrations.py::test_empty_credential_buffer_still_reaches_decryption",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_migrations.py::test_legacy_document_enumeration_uses_node_utf16_order",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_migrations.py::test_legacy_hardware_enumeration_retains_last_duplicate_in_utf16_order",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_migrations.py::test_invalid_legacy_hardware_preserves_original_property_and_schema_errors[None]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_migrations.py::test_invalid_legacy_hardware_preserves_original_property_and_schema_errors[1]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_migrations.py::test_invalid_legacy_hardware_preserves_original_property_and_schema_errors[text]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_migrations.py::test_invalid_legacy_hardware_preserves_original_property_and_schema_errors[raw3]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_migrations.py::test_invalid_legacy_hardware_preserves_original_property_and_schema_errors[raw4]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_migrations.py::test_legacy_hardware_utf8_decoder_replaces_invalid_bytes",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_migrations.py::test_missing_hardware_image_reports_node_stat_error",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_migrations.py::test_original_partial_publish_failure_keeps_published_settings",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_migrations.py::test_existing_devices_file_is_backed_up_and_replaced_like_recursive_cp",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_migrations.py::test_falsy_sqlite_gateway_reference_is_not_coerced_to_string",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_migrations.py::test_legacy_image_directory_is_rejected_by_non_recursive_cp",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_migrations.py::test_sqlite_null_document_uses_json_parse_coercion",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_migrations.py::test_legacy_credential_matches_buffer_from_sqlite_value[protected:{\"token\":\"text\"}]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_migrations.py::test_legacy_credential_matches_buffer_from_sqlite_value[12]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_process.py::test_real_child_settings_project_and_safe_storage",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_process.py::test_private_dispatch_is_an_allowlist_and_rejects_actor_spoofing",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_process.py::test_binary_bundle_and_undefined_image_port",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_process.py::test_partial_settings_commit_is_visible_in_failed_response",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_process.py::test_killed_child_recovers_run_then_cancels_with_latest_cleanup_context",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_process.py::test_mcp_project_changes_notify_desktop_once_with_current_snapshot",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_rpc.py::test_sync_callback_reply_does_not_need_blocked_event_loop",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_rpc.py::test_pipelined_requests_errors_and_snapshot_precede_completion",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_boundaries.py::test_all_builtin_routes_and_defaults[list_remote_computers]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_boundaries.py::test_all_builtin_routes_and_defaults[get_remote_computer_status]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_boundaries.py::test_all_builtin_routes_and_defaults[list_mcp_servers]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_boundaries.py::test_all_builtin_routes_and_defaults[get_remote_mcp_service]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_boundaries.py::test_all_builtin_routes_and_defaults[start_remote_mcp_service]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_boundaries.py::test_all_builtin_routes_and_defaults[stop_remote_mcp_service]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_boundaries.py::test_all_builtin_routes_and_defaults[restart_remote_mcp_service]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_boundaries.py::test_all_builtin_routes_and_defaults[read_remote_mcp_logs]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_boundaries.py::test_all_builtin_routes_and_defaults[list_managed_hardware]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_boundaries.py::test_all_builtin_routes_and_defaults[list_hardware_catalog]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_boundaries.py::test_all_builtin_routes_and_defaults[get_hardware_definition]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_boundaries.py::test_all_builtin_routes_and_defaults[save_hardware_definition]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_boundaries.py::test_all_builtin_routes_and_defaults[remove_hardware_definition]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_boundaries.py::test_all_builtin_routes_and_defaults[set_hardware_image]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_boundaries.py::test_all_builtin_routes_and_defaults[remove_hardware_image]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_boundaries.py::test_all_builtin_routes_and_defaults[request_hardware_occupancy]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_boundaries.py::test_all_builtin_routes_and_defaults[cancel_hardware_occupancy_request]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_boundaries.py::test_all_builtin_routes_and_defaults[get_hardware_occupancy_request]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_boundaries.py::test_all_builtin_routes_and_defaults[list_hardware_occupancy_requests]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_boundaries.py::test_all_builtin_routes_and_defaults[add_managed_hardware_to_canvas]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_boundaries.py::test_all_builtin_routes_and_defaults[request_wiring_task]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_boundaries.py::test_all_builtin_routes_and_defaults[cancel_wiring_task]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_boundaries.py::test_all_builtin_routes_and_defaults[get_wiring_task]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_boundaries.py::test_all_builtin_routes_and_defaults[list_wiring_tasks]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_boundaries.py::test_all_builtin_routes_and_defaults[get_test_task]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_boundaries.py::test_all_builtin_routes_and_defaults[update_test_task]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_boundaries.py::test_all_builtin_routes_and_defaults[start_test_run]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_boundaries.py::test_all_builtin_routes_and_defaults[cancel_test_run]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_boundaries.py::test_all_builtin_routes_and_defaults[get_test_run]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_boundaries.py::test_zod_argument_errors_and_nested_stripping",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_boundaries.py::test_permissions_duplicate_builtin_and_snapshot_copy",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_boundaries.py::test_gateway_lifecycle_durable_token_and_bind_error",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_boundaries.py::test_http_routes_and_tool_errors",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_boundaries.py::test_initialize_validation_and_failed_transport_do_not_leak_sessions",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_boundaries.py::test_mcp_cancellation_keeps_application_operation_running",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_development_projects.py::test_project_tools_forward_agent_context",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_development_projects.py::test_switch_guards_preserve_dirty_and_active_projects[True-idle-Save the current project-initialize_project]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_development_projects.py::test_switch_guards_preserve_dirty_and_active_projects[True-idle-Save the current project-open_project]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_development_projects.py::test_switch_guards_preserve_dirty_and_active_projects[False-run-Finish the active execution-initialize_project]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_development_projects.py::test_switch_guards_preserve_dirty_and_active_projects[False-run-Finish the active execution-open_project]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_development_projects.py::test_project_tools_reject_relative_and_extra_arguments",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_development_projects.py::test_project_notifier_runs_after_session_initialization",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_gateway.py::test_token",
+      "tsCases": [
+        "packages/mcp-gateway/src/gateway.test.ts::binds loopback and requires its bearer token"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_gateway.py::test_origin",
+      "tsCases": [
+        "packages/mcp-gateway/src/gateway.test.ts::rejects untrusted Host and Origin before protocol handling"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_gateway.py::test_rotate",
+      "tsCases": [
+        "packages/mcp-gateway/src/gateway.test.ts::applies a durably rotated token immediately"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_gateway.py::test_body_limit",
+      "tsCases": [
+        "packages/mcp-gateway/src/gateway.test.ts::rejects request bodies larger than one MiB"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_gateway.py::test_port_fallback",
+      "tsCases": [
+        "packages/mcp-gateway/src/gateway.test.ts::falls back to an ephemeral port when the preferred port is occupied"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_gateway.py::test_stateful_session",
+      "tsCases": [
+        "packages/mcp-gateway/src/gateway.test.ts::maintains a stateful session and exposes only authorized Agent tools"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_gateway.py::test_unsupported_tools",
+      "tsCases": [
+        "packages/mcp-gateway/src/gateway.test.ts::omits permanently unsupported privileged tools"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_gateway.py::test_tool_routes",
+      "tsCases": [
+        "packages/mcp-gateway/src/gateway.test.ts::routes allowed wiring, orchestration and aggregated hardware calls"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_gateway.py::test_tool_schemas",
+      "tsCases": [
+        "packages/mcp-gateway/src/gateway.test.ts::has unique names and valid object schemas, including aggregated tools"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_gateway.py::test_duplicate_tool",
+      "tsCases": [
+        "packages/mcp-gateway/src/gateway.test.ts::rejects a remote tool name that collides with a builtin"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_gateway.py::test_workflow_schema",
+      "tsCases": [
+        "packages/mcp-gateway/src/gateway.test.ts::keeps all recursive workflow variants bidirectionally consistent"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_gateway.py::test_body_errors_and_shutdown",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_protocol_golden.py::test_unmodified_ts_gateway_protocol_golden[accept]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_protocol_golden.py::test_unmodified_ts_gateway_protocol_golden[contentType]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_protocol_golden.py::test_unmodified_ts_gateway_protocol_golden[invalidJsonrpc]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_protocol_golden.py::test_unmodified_ts_gateway_protocol_golden[invalidId]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_protocol_golden.py::test_unmodified_ts_gateway_protocol_golden[extraEnvelopeField]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_protocol_golden.py::test_unmodified_ts_gateway_protocol_golden[batch]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_protocol_golden.py::test_unmodified_ts_gateway_protocol_golden[toolsList]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_protocol_golden.py::test_unmodified_ts_gateway_protocol_golden[ping]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_protocol_golden.py::test_unmodified_ts_gateway_protocol_golden[unknownMethod]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_protocol_golden.py::test_unmodified_ts_gateway_protocol_golden[repeatInitialize]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_protocol_golden.py::test_unmodified_ts_gateway_protocol_golden[protocolVersion]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_protocol_golden.py::test_unmodified_ts_gateway_protocol_golden[getAccept]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_protocol_golden.py::test_unmodified_ts_gateway_protocol_golden[batchRequests]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_protocol_golden.py::test_unmodified_ts_gateway_protocol_golden[batchNotifications]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_protocol_golden.py::test_unmodified_ts_gateway_protocol_golden[emptyBatch]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_protocol_golden.py::test_unmodified_ts_gateway_protocol_golden[delete]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_protocol_golden.py::test_unmodified_ts_gateway_protocol_golden[oldVersion]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_regressions.py::test_expression_operators[add-1-2-3]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_regressions.py::test_expression_operators[subtract-1-2--1]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_regressions.py::test_expression_operators[multiply-3-4-12]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_regressions.py::test_expression_operators[divide-3-2-1.5]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_regressions.py::test_expression_operators[modulo--5-3--2]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_regressions.py::test_expression_operators[eq-0.0--0.0-False]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_regressions.py::test_expression_operators[eq-nan-nan-True]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_regressions.py::test_expression_operators[neq-left7-right7-True]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_regressions.py::test_expression_operators[eq-True-1-False]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_regressions.py::test_expression_operators[gt-3-2-True]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_regressions.py::test_expression_operators[gte-2-2-True]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_regressions.py::test_expression_operators[lt-a-b-True]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_regressions.py::test_expression_operators[lte-b-a-False]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_regressions.py::test_expression_operators[lt-nan-1-False]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_regressions.py::test_expression_errors[divide-1-0-Division by zero]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_regressions.py::test_expression_errors[modulo-1-0-Modulo by zero]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_regressions.py::test_expression_errors[add-True-1-finite numeric]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_regressions.py::test_expression_errors[multiply-inf-1-finite numeric]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_regressions.py::test_expression_errors[lt-1-2-Relational comparison]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_regressions.py::test_workflow_js_values_and_paths",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_regressions.py::test_unsafe_validation_returns_issue[assert]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_regressions.py::test_unsafe_validation_returns_issue[set_variable]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_regressions.py::test_unsafe_validation_returns_issue[delay]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_regressions.py::test_static_validation_issue_matrix",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_regressions.py::test_checkpoint_latest_context_cleanup_and_recovery",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_regressions.py::test_structured_steps_and_operator_roundtrip",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_regressions.py::test_execution_failure_details[value_step0-finite duration]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_regressions.py::test_execution_failure_details[value_step1-between 0 and 2]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_regressions.py::test_execution_failure_details[value_step2-maxIterations 2]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_regressions.py::test_execution_failure_details[value_step3-Unknown workflow variable]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_regressions.py::test_operator_cancel_hardware_loss_and_active_log_permissions",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_regressions.py::test_parallel_failure_cancels_siblings_and_local_index",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_regressions.py::test_preflight_validation_and_task_update",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_regressions.py::test_missing_recovery_task_and_cleanup_failure",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_regressions.py::test_store_duplicates_paging_sorting_and_values",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_regressions.py::test_cancellation_and_noop_ports",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_regressions.py::test_xstate_snapshot_wire_shape",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_regressions.py::test_electron_icu74_golden_collation",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_service.py::test_persistence_bounds_reload",
+      "tsCases": [
+        "packages/orchestration/src/task-orchestration-service.test.ts::persists completed Runs with task-name snapshots and UTF-8 bounded values, then reloads them"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_service.py::test_recovery_without_snapshot",
+      "tsCases": [
+        "packages/orchestration/src/task-orchestration-service.test.ts::marks a persisted active Run interrupted and appends a recovery event"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_service.py::test_history_query",
+      "tsCases": [
+        "packages/orchestration/src/task-orchestration-service.test.ts::filters, pages, exports, deletes and clears project-isolated history"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_service.py::test_delete_flushes",
+      "tsCases": [
+        "packages/orchestration/src/task-orchestration-service.test.ts::waits for pending persistence before deleting so a background save cannot recreate the file"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_service.py::test_per_run_event_ids",
+      "tsCases": [
+        "packages/orchestration/src/task-orchestration-service.test.ts::uses event ids that are monotonic within each Run instead of globally"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_service.py::test_retry_persistence",
+      "tsCases": [
+        "packages/orchestration/src/task-orchestration-service.test.ts::requeues a failed incremental write with backoff instead of silently losing it"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_service.py::test_preflight_occupancy",
+      "tsCases": [
+        "packages/orchestration/src/task-orchestration-service.test.ts::blocks Run preflight when referenced hardware is not occupied"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_service.py::test_blocked_without_lease",
+      "tsCases": [
+        "packages/orchestration/src/task-orchestration-service.test.ts::records a blocked preflight without attempting a hardware lease"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_service.py::test_manual_blocks_valid_run",
+      "tsCases": [
+        "packages/orchestration/src/task-orchestration-service.test.ts::rejects a valid Run when a manual call holds required hardware"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_service.py::test_cancel_releases_lease",
+      "tsCases": [
+        "packages/orchestration/src/task-orchestration-service.test.ts::holds the Run lease until cancellation completes and releases it afterward"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_service.py::test_close_interrupts",
+      "tsCases": [
+        "packages/orchestration/src/task-orchestration-service.test.ts::marks an active Run interrupted and releases its lease during close"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_service.py::test_queued_start_during_close",
+      "tsCases": [
+        "packages/orchestration/src/task-orchestration-service.test.ts::rejects a queued start while close waits for start operations"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_service.py::test_cleanup_operator_timeout",
+      "tsCases": [
+        "packages/orchestration/src/task-orchestration-service.test.ts::times out an operator step in cleanup instead of waiting forever"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_service.py::test_cleanup_budget",
+      "tsCases": [
+        "packages/orchestration/src/task-orchestration-service.test.ts::returns from close within the cleanup budget even when a remote call ignores abort"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_service.py::test_non_idempotent_no_retry",
+      "tsCases": [
+        "packages/orchestration/src/task-orchestration-service.test.ts::never retries a non-idempotent tool step"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_service.py::test_idempotent_retry",
+      "tsCases": [
+        "packages/orchestration/src/task-orchestration-service.test.ts::retries only selected categories and sends stable idempotency metadata"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_service.py::test_parallel_serializes_hardware",
+      "tsCases": [
+        "packages/orchestration/src/task-orchestration-service.test.ts::serializes parallel branches that target the same hardware"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_service.py::test_non_idempotent_recovery",
+      "tsCases": [
+        "packages/orchestration/src/task-orchestration-service.test.ts::runs compensating cleanup after a crash leaves a non-idempotent tool uncertain"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_service.py::test_idempotent_recovery",
+      "tsCases": [
+        "packages/orchestration/src/task-orchestration-service.test.ts::resumes an idempotent orphan from the last confirmed node with a stable key"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_service.py::test_disabled_skipped",
+      "tsCases": [
+        "packages/orchestration/src/task-orchestration-service.test.ts::records disabled steps as skipped nodes"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_workflow.py::test_expressions_and_templates",
+      "tsCases": [
+        "packages/orchestration/src/workflow.test.ts::evaluates safe structured expressions and value templates"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_workflow.py::test_safe_context",
+      "tsCases": [
+        "packages/orchestration/src/workflow.test.ts::uses null-prototype contexts and rejects unsafe or undeclared paths"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_workflow.py::test_interruption_terminal",
+      "tsCases": [
+        "packages/orchestration/src/run-machine.test.ts::keeps interruption terminal even when execution completion races afterward"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_workflow.py::test_restore_machine",
+      "tsCases": [
+        "packages/orchestration/src/run-machine.test.ts::restores a persisted active checkpoint"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/orchestration/test_workflow.py::test_node_states",
+      "tsCases": [
+        "packages/orchestration/src/run-machine.test.ts::models pending, waiting, skipped and terminal node states"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/projects/test_projects.py::test_no_project",
+      "tsCases": [
+        "packages/projects/src/project-service.test.ts::ProjectService folder projects::starts without an active project and reports requires_project for project operations"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/projects/test_projects.py::test_folder_lifecycle",
+      "tsCases": [
+        "packages/projects/src/project-service.test.ts::ProjectService folder projects::initializes and opens the fixed .testforge/project.json manifest"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/projects/test_projects.py::test_save_damage",
+      "tsCases": [
+        "packages/projects/src/project-service.test.ts::ProjectService folder projects::saves atomically and never overwrites a damaged manifest"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/projects/test_projects.py::test_legacy",
+      "tsCases": [
+        "packages/projects/src/project-service.test.ts::ProjectService folder projects::opens legacy manifests through the migration chain and persists formatVersion 3"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/projects/test_projects.py::test_future",
+      "tsCases": [
+        "packages/projects/src/project-service.test.ts::ProjectService folder projects::rejects future manifest versions without modifying them"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/projects/test_projects.py::test_recent",
+      "tsCases": [
+        "packages/projects/src/project-service.test.ts::ProjectService folder projects::keeps all recent projects newest-first, deduplicates canonical paths, and preserves broken entries"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/projects/test_projects.py::test_roundtrip_task_and_wiring",
+      "tsCases": [
+        "packages/application/src/project-services.test.ts::project-oriented services::round-trips one folder project with wiring and one task"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/projects/test_projects.py::test_open_current_bytes_and_explicit_save",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/projects/test_projects.py::test_identity_folder_errors_and_recent_fallbacks",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/projects/test_projects.py::test_realpath_failure_keeps_resolved_directory",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/projects/test_projects.py::test_project_filesystem_error_messages_match_electron",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/projects/test_projects.py::test_project_directory_occupied_by_file_matches_electron",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/storage/test_run_log_store.py::test_streams",
+      "tsCases": [
+        "packages/storage/src/run-log-store.test.ts::ProjectRunLogStore::appends and reloads one JSONL stream per Run"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/storage/test_run_log_store.py::test_corrupt_lines",
+      "tsCases": [
+        "packages/storage/src/run-log-store.test.ts::ProjectRunLogStore::reports corrupt records at line granularity and keeps valid Run streams"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/storage/test_run_log_store.py::test_compaction",
+      "tsCases": [
+        "packages/storage/src/run-log-store.test.ts::ProjectRunLogStore::deduplicates retried event appends and compacts to an atomic snapshot"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/storage/test_run_log_store.py::test_legacy_and_remove",
+      "tsCases": [
+        "packages/storage/src/run-log-store.test.ts::ProjectRunLogStore::migrates legacy archives and removes one Run or a selected group"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/storage/test_run_log_store.py::test_linear_bytes",
+      "tsCases": [
+        "packages/storage/src/run-log-store.test.ts::ProjectRunLogStore::keeps large Run persistence linear instead of rewriting the full archive"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/storage/test_run_log_store.py::test_dot_run_never_operates_on_parent[.]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/storage/test_run_log_store.py::test_dot_run_never_operates_on_parent[..]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/storage/test_run_log_store.py::test_load_empty_duplicate_legacy_and_recovery",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/storage/test_run_log_store.py::test_record_validation_and_archive_mismatch",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/storage/test_run_log_store.py::test_replay_preserves_node_order_and_last_event_value",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/storage/test_storage.py::test_atomic_files",
+      "tsCases": [
+        "packages/storage/src/storage.test.ts::file storage::atomically writes text and JSON and handles missing files"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/storage/test_storage.py::test_serialized_settings",
+      "tsCases": [
+        "packages/storage/src/storage.test.ts::SettingsStore::serializes concurrent writes so an older disk write cannot win"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/storage/test_storage.py::test_secrets",
+      "tsCases": [
+        "packages/storage/src/storage.test.ts::SecretStore::stores, retrieves, removes, and creates stable tokens"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/storage/test_storage.py::test_failed_secret_write_does_not_poison_queue",
+      "tsCases": [
+        "apps/desktop/src/main/migrations.test.ts::global file storage::keeps committed state intact after a failed secret write and accepts the next write"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/storage/test_storage.py::test_secret_decryption_stays_lazy",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/storage/test_storage.py::test_settings_defaults_strip_and_clone",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/storage/test_storage.py::test_atomic_failure_cleanup_and_sync_errors",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/storage/test_storage.py::test_secret_reopen_remove_absent_and_flush",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/storage/test_storage.py::test_secret_undefined_and_primitive_token_match_javascript",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/storage/test_storage.py::test_secret_base64_uses_node_buffer_rules[YQ-a]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/storage/test_storage.py::test_secret_base64_uses_node_buffer_rules[YQx-a\\x0c]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/storage/test_storage.py::test_secret_base64_uses_node_buffer_rules[YQxxx-a\\x0cq]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/storage/test_storage.py::test_secret_base64_uses_node_buffer_rules[YQ===garbage-a]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/storage/test_storage.py::test_secret_base64_uses_node_buffer_rules[Y Q\\n-a]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/storage/test_storage.py::test_secret_base64_uses_node_buffer_rules[-_8-\\xfb\\xff]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/storage/test_storage.py::test_secret_base64_uses_node_buffer_rules[a-]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/storage/test_storage_runtime_golden.py::test_original_typescript_storage_golden[append-replace-replay]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/storage/test_storage_runtime_golden.py::test_original_typescript_storage_golden[compaction-and-execution-snapshot]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/storage/test_storage_runtime_golden.py::test_original_typescript_storage_golden[legacy-and-duplicate-node-order]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/storage/test_storage_runtime_golden.py::test_original_typescript_storage_golden[boolean-format-versions]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/test_specification_evidence.py::test_fixed_evidence_does_not_require_live_original_typescript",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/test_specification_evidence.py::test_altered_fixed_evidence_is_rejected[reports/original-specification-evidence.json]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/test_specification_evidence.py::test_altered_fixed_evidence_is_rejected[reports/ts-assertion-inventory.json]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/test_specification_evidence.py::test_altered_fixed_evidence_is_rejected[reports/ts-migration-assertion-inventory.json]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/test_specification_evidence.py::test_altered_fixed_evidence_is_rejected[reports/coverage-baseline-by-package.json]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/test_specification_evidence.py::test_altered_fixed_evidence_is_rejected[reports/stage-protected-files.json]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/test_specification_evidence.py::test_altered_fixed_evidence_is_rejected[tests/contracts/contracts-golden.json]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/test_specification_evidence.py::test_missing_original_assertions_are_rejected",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/test_specification_evidence.py::test_current_successful_report_is_accepted",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/test_specification_evidence.py::test_stale_or_changing_python_inputs_are_rejected[before]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/test_specification_evidence.py::test_stale_or_changing_python_inputs_are_rejected[during]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/test_specification_evidence.py::test_stale_or_changing_python_inputs_are_rejected[new-test]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/test_specification_evidence.py::test_stale_or_changing_python_inputs_are_rejected[dependency]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/test_specification_evidence.py::test_incomplete_pytest_run_cannot_satisfy_the_gate[failed]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/test_specification_evidence.py::test_incomplete_pytest_run_cannot_satisfy_the_gate[skipped]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/test_specification_evidence.py::test_incomplete_pytest_run_cannot_satisfy_the_gate[not-run]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/test_specification_evidence.py::test_unsuccessful_pytest_session_cannot_satisfy_the_gate",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/test_specification_evidence.py::test_stage_protection_covers_behavior_and_allows_presentation",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/wiring/test_wiring.py::test_canvas",
+      "tsCases": [
+        "packages/wiring/src/project-wiring-agent.test.ts::Agent canvas permissions::adds a managed node without changing physical connections"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/wiring/test_wiring.py::test_canvas_idempotence",
+      "tsCases": [
+        "packages/wiring/src/project-wiring-agent.test.ts::Agent canvas permissions::is idempotent and refuses passive hardware"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/wiring/test_wiring.py::test_task_cable",
+      "tsCases": [
+        "packages/application/src/project-services.test.ts::project-oriented services::keeps the wiring canvas documentary while the operator processes a task"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/wiring/test_wiring.py::test_pinless",
+      "tsCases": [
+        "packages/application/src/project-services.test.ts::project-oriented services::records a pinless connection for connectors that have no pins"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/wiring/test_wiring.py::test_canonical",
+      "tsCases": [
+        "packages/application/src/project-services.test.ts::project-oriented services::normalises port order so one cable cannot be requested twice under swapped ends"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/wiring/test_wiring.py::test_invalid_pin",
+      "tsCases": [
+        "packages/application/src/project-services.test.ts::project-oriented services::refuses pin pairs that name a pin the port does not have"
+      ],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/wiring/test_wiring.py::test_lazy_timeout_only_pending",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/wiring/test_wiring.py::test_finish_failure_rejection_disconnect_shutdown",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/wiring/test_wiring_runtime_golden.py::test_original_typescript_wiring_golden[canvas-positions-permissions]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/wiring/test_wiring_runtime_golden.py::test_original_typescript_wiring_golden[task-lifecycle-canonical-timeout-shutdown]",
+      "tsCases": [],
+      "outcome": "passed"
+    }
+  ]
+}
