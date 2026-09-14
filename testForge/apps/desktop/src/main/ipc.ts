@@ -167,17 +167,15 @@ export function createDesktopRouter(dependencies: DesktopIpcDependencies) {
         const rootPath = await dialogs.chooseProjectFolder();
         return rootPath ? await application.projects.inspectFolder(HUMAN_REQUEST_CONTEXT, rootPath) : null;
       }),
-      openFolder: trpc.procedure.input(projectRootPathInputSchema).mutation(async ({ input }) => notifyProject(
-        await application.projects.openFolder(HUMAN_REQUEST_CONTEXT, input.id), true
+      openFolder: trpc.procedure.input(projectRootPathInputSchema).mutation(async ({ input }) => (
+        await application.projects.openFolder(HUMAN_REQUEST_CONTEXT, input.id)
       )),
-      initializeFolder: trpc.procedure.input(projectRootPathInputSchema).mutation(async ({ input }) => notifyProject(
-        await application.projects.initializeFolder(HUMAN_REQUEST_CONTEXT, input.id), true
+      initializeFolder: trpc.procedure.input(projectRootPathInputSchema).mutation(async ({ input }) => (
+        await application.projects.initializeFolder(HUMAN_REQUEST_CONTEXT, input.id)
       )),
-      save: trpc.procedure.input(emptyInput).mutation(async () => notifyProject(await application.projects.saveProject(HUMAN_REQUEST_CONTEXT), false)),
+      save: trpc.procedure.input(emptyInput).mutation(async () => application.projects.saveProject(HUMAN_REQUEST_CONTEXT)),
       leave: trpc.procedure.input(emptyInput).mutation(async () => {
         await application.projects.leaveProject(HUMAN_REQUEST_CONTEXT);
-        windows.publish("project", null);
-        await dependencies.workspaceChanged();
       }),
       listRecent: trpc.procedure.input(emptyInput).query(() => application.projects.listRecent(HUMAN_REQUEST_CONTEXT)),
       forgetRecent: trpc.procedure.input(projectRootPathInputSchema).mutation(async ({ input }) => {

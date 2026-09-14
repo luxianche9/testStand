@@ -1,10 +1,17 @@
 import type { RequestContext } from "@testforge/contracts/agents";
+import type { ProjectDocument } from "@testforge/contracts/projects";
 import type { ProjectService } from "@testforge/projects";
 import type { TaskOrchestrationService } from "@testforge/orchestration";
 import type { ProjectWiringService } from "@testforge/wiring";
 import type { Authorizer } from "./authorization.js";
 
 export class ProjectsApplication {
+  private notifier?: (document: ProjectDocument | null, workspaceChanged: boolean) => void;
+
+  setNotifier(notifier: (document: ProjectDocument | null, workspaceChanged: boolean) => void): void {
+    this.notifier = notifier;
+  }
+
   constructor(
     private readonly authorizer: Authorizer,
     private readonly projects: ProjectService,
@@ -34,7 +41,9 @@ export class ProjectsApplication {
 
   async saveProject(context: RequestContext) {
     this.authorizer.authorize(context, "projects.manage");
-    return await this.projects.save();
+    const document = await this.projects.save();
+    this.notifier?.(document, false);
+    return document;
   }
 
   async leaveProject(context: RequestContext) {
@@ -67,6 +76,7 @@ export class ProjectsApplication {
       const result = await action();
       await this.wiring.initialize();
       await this.orchestration.initialize();
+      this.notifier?.(this.projects.current(), true);
       return result;
     } catch (error) {
       await this.wiring.initialize();

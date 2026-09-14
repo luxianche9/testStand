@@ -10,6 +10,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from .firmware import OperationError, encode_segments, inspect_firmware
+from .diagnostics import validate_sram_read
 
 
 def now() -> str:
@@ -136,7 +137,8 @@ class Runtime:
 
     async def start_job(self, hardware_id: str, lease_id: str | None, operation: str,
                         path: str | None = None, base_address: int | None = None,
-                        expected_sha256: str | None = None, reset_after=True) -> dict:
+                        expected_sha256: str | None = None, reset_after=True,
+                        read_address: int | None = None, read_length: int | None = None) -> dict:
         self.check_id(hardware_id)
         async with self.lock:
             self.expire()
@@ -149,7 +151,11 @@ class Runtime:
             request = {"operation": operation, "config": {k: self.config[k] for k in ("probeSerial", "packPath", "frequencyHz")},
                        "resetAfter": reset_after}
             summary = None
-            if operation in {"flash", "verify"}:
+            if operation == "read_sram":
+                validate_sram_read(read_address, read_length)
+                request["readAddress"] = read_address
+                request["readLength"] = read_length
+            elif operation in {"flash", "verify"}:
                 if not path or not expected_sha256:
                     raise OperationError("path and expected_sha256 from firedap_inspect_firmware are required")
                 summary, segments = inspect_firmware(path, self.config["firmwareRoots"], base_address, expected_sha256)

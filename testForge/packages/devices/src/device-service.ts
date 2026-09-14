@@ -184,6 +184,9 @@ export class DeviceService {
     if (action === "restart") {
       const stopped = await this.execute(server.computerId, server.lifecycle.stopCommand, 90_000);
       if (stopped.exitCode !== 0) throw new Error(stopped.stderr || "Remote MCP stop command failed");
+      // The replacement process has a new MCP session and may expose a different tool catalog.
+      // Drop the old session before starting, including when the start command later fails.
+      await this.transports.disconnect(serverId);
     }
     const command = action === "stop" || action === "force-stop" ? server.lifecycle.stopCommand : server.lifecycle.startCommand;
     const result = await this.execute(server.computerId, command, 90_000);

@@ -4,6 +4,7 @@ from __future__ import annotations
 import base64
 import json
 import sys
+from contextlib import redirect_stdout
 
 from pyocd.core.session import Session
 from pyocd.flash.loader import FlashLoader
@@ -11,6 +12,7 @@ from pyocd.probe.aggregator import DebugProbeAggregator
 from pyocd.probe.debug_probe import DebugProbe
 
 from .firmware import OperationError, validate_segments
+from .diagnostics import validate_sram_read
 
 
 def probes() -> list[dict]:
@@ -33,6 +35,8 @@ def verify_bytes(target, segments: list[tuple[int, bytes]]) -> int:
 
 
 def execute(request: dict) -> dict:
+    if request["operation"] == "read_sram":
+        validate_sram_read(request["readAddress"], request["readLength"])
     if request["operation"] == "list_probes":
         return {"probes": probes()}
     config = request["config"]
@@ -49,6 +53,7 @@ def execute(request: dict) -> dict:
             "auto_unlock": False, "resume_on_disconnect": False,
             "load_deprecated_devices": True, "no_config": True,
             "dap_protocol": "swd",
+            "hide_programming_progress": True,
         })
     if session is None:
         raise OperationError("Unable to open configured FireDAP", "device_unreachable")
@@ -67,6 +72,13 @@ def execute(request: dict) -> dict:
                     "identityLimit": "DBGMCU identifies the F405/F407 group, not package or board revision"}
         if operation == "target_info":
             return {**identity, "coreState": str(target.get_state())}
+        if operation == "read_sram":
+            address, length = request["readAddress"], request["readLength"]
+            raw = bytes(target.read_memory_block8(address, length))
+            if len(raw) != length:
+                raise OperationError("Incomplete SRAM read", "invalid_response")
+            return {**identity, "coreState": str(target.get_state()), "address": address,
+                    "length": length, "words": [int.from_bytes(raw[i:i+4], "little") for i in range(0, length, 4)]}
         if operation == "reset":
             target.reset()
             return {**identity, "reset": True}
@@ -75,10 +87,13 @@ def execute(request: dict) -> dict:
         segments = validate_segments([(item["address"], base64.b64decode(item["base64"], validate=True))
                                       for item in request["segments"]])
         if operation == "flash":
-            target.halt()
+            # Attach can inherit active DMA, watchdogs and Flash/cache state from
+            # the user's application. Reset into a halted state before loading
+            # an algorithm into SRAM; never run the application while programming.
+            target.reset_and_halt()
             # Sector erase only; restore bytes outside the supplied image in affected sectors.
             loader = FlashLoader(session, chip_erase="sector", smart_flash=True,
-                                 trust_crc=False, keep_unwritten=True, no_reset=True)
+                                 trust_crc=False, keep_unwritten=True)
             for address, data in segments:
                 loader.add_data(address, data)
             loader.commit()
@@ -91,7 +106,12 @@ def execute(request: dict) -> dict:
 
 def main() -> None:
     try:
-        result = {"ok": True, "data": execute(json.load(sys.stdin))}
+        request = json.load(sys.stdin)
+        # pyOCD and pack algorithms may emit progress on stdout. Reserve stdout
+        # exclusively for the JSON response, including on programming failure.
+        with redirect_stdout(sys.stderr):
+            data = execute(request)
+        result = {"ok": True, "data": data}
     except Exception as exc:
         result = {"ok": False, "error": {"category": getattr(exc, "category", "device_unreachable"), "message": str(exc)}}
     print(json.dumps(result), flush=True)

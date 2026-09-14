@@ -113,6 +113,13 @@ export async function createDesktopComposition(windows: DesktopWindows): Promise
   });
   registerLogSecrets(() => [gateway.token(), llmApiKey(), openCodeRuntime.connectionInfo()?.password]);
   openCodeRuntime.setNotifier((status) => windows.publish("opencode", status));
+  application.projects.setNotifier((document, workspaceChanged) => {
+    windows.publish("project", document);
+    if (workspaceChanged) {
+      void reconcileOpenCodeWorkspace(openCodeRuntime, Boolean(document), llmApiKey())
+        .catch((error) => logger.error("OpenCode project reconciliation failed", error));
+    }
+  });
 
   const agentIntegration = new CodexAgentIntegrationService(
     gateway,

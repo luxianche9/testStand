@@ -73,6 +73,24 @@ async function fixture(broken: string, options: {
 }
 
 describe("DeviceService server isolation", () => {
+  it("restarts with a fresh transport only after safe shutdown and a successful stop", async () => {
+    const devices = await fixture("none", { shell: "posix" });
+    const events: string[] = [];
+    Object.assign(devices.transports, {
+      prepareShutdown: async () => { events.push("safe-stop"); }
+    });
+    vi.spyOn(devices.transports, "connect").mockImplementation(async () => {
+      events.push("connect"); return {} as never;
+    });
+    vi.spyOn(devices.transports, "disconnect").mockImplementation(async () => { events.push("disconnect"); });
+    vi.spyOn(devices.ssh, "execute").mockImplementation(async (_computer, command) => {
+      events.push(command.includes("stop.sh") ? "stop" : "start");
+      return { stdout: "", stderr: "", exitCode: 0, truncated: false };
+    });
+    await devices.serverAction("PCI1762_MCP", "restart");
+    expect(events.slice(0, 6)).toEqual(["connect", "safe-stop", "stop", "disconnect", "start", "connect"]);
+  });
+
   it("keeps the last complete server status during concurrent refreshes and reports failures and recovery", async () => {
     const devices = await fixture("none");
     const previous = await devices.refreshServer("PCI1762_MCP");

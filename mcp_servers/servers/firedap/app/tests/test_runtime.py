@@ -80,3 +80,27 @@ def test_byte_verification_detects_actual_readback_corruption():
     assert verify_bytes(Target(),[(FLASH_START,b'abcd')])==4
     with pytest.raises(OperationError,match='0x8000002'):
         verify_bytes(Target(),[(FLASH_START,b'abXd')])
+
+
+def test_sram_read_dispatches_with_lease_and_rejects_bad_range_before_worker(tmp_path):
+    async def run():
+        requests=[]
+        async def worker(request,timeout):
+            requests.append(request)
+            return {'address':request['readAddress'],'length':request['readLength'],'words':[1,2]}
+        runtime=Runtime(config(tmp_path),worker)
+        with pytest.raises(OperationError,match='occupancy'):
+            await runtime.start_job('DAP',None,'read_sram',read_address=0x20000000,read_length=8)
+        await runtime.occupancy('DAP','acquire','holder','Holder','lease')
+        with pytest.raises(OperationError):
+            await runtime.start_job('DAP','lease','read_sram',read_address=0x40000000,read_length=8)
+        assert requests==[]
+        job=await runtime.start_job('DAP','lease','read_sram',read_address=0x20000000,read_length=8)
+        await runtime.task
+        assert runtime.get_job(job['jobId'])['state']=='succeeded'
+        assert runtime.get_job(job['jobId'])['result']['words']==[1,2]
+        assert len(requests)==1
+        assert requests[0]['operation']=='read_sram'
+        assert requests[0]['readAddress']==0x20000000
+        assert requests[0]['readLength']==8
+    asyncio.run(run())

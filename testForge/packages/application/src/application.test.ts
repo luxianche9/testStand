@@ -89,6 +89,25 @@ function makeApp(overrides: {
 }
 
 describe("DefaultAuthorizer", () => {
+  it("publishes project changes from agent operations after session initialization", async () => {
+    let document: unknown = null;
+    const { app, orchestration } = makeApp({ projects: {
+      current: () => document,
+      openFolder: async () => { document = { rootPath: "/example", dirty: false }; return document; },
+      leave: async () => { document = null; }
+    } });
+    const notify = vi.fn(() => {
+      expect(orchestration.initialize).toHaveBeenCalled();
+    });
+    app.projects.setNotifier(notify);
+    await app.projects.openFolder(AGENT_REQUEST_CONTEXT, "/example");
+    expect(notify).toHaveBeenLastCalledWith({ rootPath: "/example", dirty: false }, true);
+    await app.projects.saveProject(AGENT_REQUEST_CONTEXT);
+    expect(notify).toHaveBeenLastCalledWith({ dirty: false }, false);
+    await app.projects.leaveProject(AGENT_REQUEST_CONTEXT);
+    expect(notify).toHaveBeenLastCalledWith(null, true);
+  });
+
   it("implements the complete default Agent capability matrix", () => {
     const authorizer = new DefaultAuthorizer();
     const allowed = new Set<Capability>([

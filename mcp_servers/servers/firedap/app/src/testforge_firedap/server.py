@@ -16,7 +16,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
 from . import __version__
-from .firmware import inspect_firmware
+from .firmware import OperationError, inspect_firmware
 from .runtime import Runtime, error, ok
 
 READ = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
@@ -133,6 +133,38 @@ def create_app(config: dict):
         """Start a target reset. Requires occupancy; poll firedap_get_job."""
         try:
             return ok(await runtime.start_job(hardwareId, lease_id(ctx), "reset"))
+        except Exception as exc:
+            return error(exc)
+
+    @mcp.tool(annotations=READ, meta={"testforge": {"kind": "hardware"}})
+    async def firedap_read_sram(hardwareId: str, ctx: Context, address: int, length: int = 108) -> dict[str, Any]:
+        """Start an attach-only, bounded main-SRAM read for firmware telemetry. No halt, reset or writes.
+        Address/length must be 4-byte aligned; maximum 4096 bytes. Returns jobId; use firedap_wait_job.
+        """
+        try:
+            return ok(await runtime.start_job(hardwareId, lease_id(ctx), "read_sram", read_address=address, read_length=length))
+        except Exception as exc:
+            return error(exc)
+
+    @mcp.tool(annotations=READ, meta={"testforge": {"kind": "hardware"}})
+    async def firedap_wait_job(hardwareId: str, ctx: Context, job_id: str, timeout_seconds: int = 60) -> dict[str, Any]:
+        """Wait up to 60 seconds for an existing job, for TestForge workflow tool steps.
+        Requires the current occupancy lease. Returns the job including its terminal state/result;
+        assert state=succeeded before using the result. Timeout does not cancel a programming job.
+        """
+        try:
+            runtime.check_id(hardwareId)
+            runtime.expire()
+            if not runtime.lease or runtime.lease["leaseId"] != lease_id(ctx):
+                raise OperationError("A current TestForge occupancy lease is required", "occupancy_required")
+            if not 1 <= timeout_seconds <= 60:
+                raise OperationError("timeout_seconds must be between 1 and 60")
+            deadline = asyncio.get_running_loop().time() + timeout_seconds
+            while True:
+                job = runtime.get_job(job_id)
+                if job["state"] != "running" or asyncio.get_running_loop().time() >= deadline:
+                    return ok(job)
+                await asyncio.sleep(0.1)
         except Exception as exc:
             return error(exc)
 

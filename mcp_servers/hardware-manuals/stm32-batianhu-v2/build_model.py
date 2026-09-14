@@ -228,7 +228,11 @@ def build(docs: Path):
     # FireDAP's 5-pin order comes from its straight-through cable to board J1 and enclosure labels.
     fhid="LOCAL_MCP.FIREDAP_0"
     fports=[]
-    for ref,title,signals in [("SWD","SWD 5针（VREF 为参考输入）","VTREF SWDIO GND SWCLK NRST")]:
+    for ref,title,signals in [
+        ("SWD","SWD 5针（VREF 为参考输入）","VTREF SWDIO GND SWCLK NRST"),
+        ("JTAG","JTAG / SWD 20针（2×10，VTREF 参考输入）",
+         "VTREF VTREF NC GND TDI GND TMS/SWDIO GND TCK/SWCLK GND NC GND TDO/SWO GND NRST GND NC GND NC GND")
+    ]:
         pid=f"{fhid}.{ref}"
         fports.append({"portId":pid,"name":title,"pins":[{"pinId":f"{pid}.{i}","position":i,"label":s} for i,s in enumerate(signals.split(),1)]})
     pid=f"{fhid}.USB"
@@ -241,7 +245,7 @@ def build(docs: Path):
     save(OUT / "firedap.pinout.json",{"hardwareId":fhid,"manufacturer":"Embedfire","model":"fireDAP CMSIS-DAP",
          "connectors":[{"connectorId":p["portId"],"name":p["name"],"pinIds":[s["pinId"] for s in p["pins"]]} for p in fports],
          "pins":[{**s,"connectorId":p["portId"]} for p in fports for s in p["pins"]],
-         "sources":[str(dap),str(schematic)+" p12"],"notes":["VREF senses target voltage, not a guaranteed board power supply.","This service models the SWD and USB connections it uses; JTAG and V-UART are outside this service's scope.","Confirm probe variant against enclosure markings before wiring."]})
+         "sources":[str(dap)+" p1,p2,p10",str(schematic)+" p12"],"notes":["VREF senses target voltage, not a guaranteed board power supply.","The 20-pin connector supports SWD; this service uses SWD protocol, not full JTAG. V-UART is outside this service's scope.","Pin 3 is NC on this FireDAP, unlike target-board J45 pin 3 (PB4/nTRST). Confirm probe variant against enclosure markings before wiring."]})
     save(OUT / "swd-wiring.json",{"description":"Preferred straight-through FireDAP SWD to board J1; board separately powered",
         "connections":[{"a":f"{fhid}.SWD.{i}","b":f"DUT_1.J1.{i}"} for i in range(1,6)],"physicalWiringConfirmed":False})
     print(f"Built {len(ports)} ports / {sum(len(p['pins']) for p in ports)} pins / {len(selected_resources)} resources / {len(configurations)} configuration records")

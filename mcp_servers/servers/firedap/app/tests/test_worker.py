@@ -15,6 +15,7 @@ def setup_target(monkeypatch, *, device_id=0x413, flash_kib=1024, corrupt=False)
         def read16(self,address):return flash_kib
         def get_state(self):return 'RUNNING'
         def halt(self):calls.append('halt')
+        def reset_and_halt(self):calls.append('reset_and_halt')
         def reset(self):calls.append('reset')
         def read_memory_block8(self,address,size):
             data=bytes(memory.get(address+i,0xFF) for i in range(size))
@@ -51,9 +52,11 @@ def test_flash_only_sector_erase_preserves_unwritten_and_resets_after_verificati
     assert result['programmed'] and result['verified'] and result['verifiedBytes']==4
     options=next(value for key,value in [c for c in calls if isinstance(c,tuple)] if key=='session')
     assert options['auto_unlock'] is False and options['connect_mode']=='attach'
+    assert options['hide_programming_progress'] is True
     loader=next(value for key,value in [c for c in calls if isinstance(c,tuple)] if key=='loader')
     assert loader['chip_erase']=='sector' and loader['keep_unwritten'] is True and loader['trust_crc'] is False
     assert calls[-2:]==['commit','reset']
+    assert calls.index('reset_and_halt') < calls.index('commit')
 
 
 @pytest.mark.parametrize('device_id,flash_kib',[(0x419,1024),(0x413,512)])
@@ -61,7 +64,7 @@ def test_target_mismatch_refuses_flash_before_halt(monkeypatch,device_id,flash_k
     calls=setup_target(monkeypatch,device_id=device_id,flash_kib=flash_kib)
     with pytest.raises(OperationError,match='Target mismatch'):
         worker.execute(request())
-    assert 'halt' not in calls and 'commit' not in calls
+    assert 'halt' not in calls and 'reset_and_halt' not in calls and 'commit' not in calls
 
 
 def test_verification_failure_does_not_boot_unverified_program(monkeypatch):
@@ -77,9 +80,50 @@ def test_identity_inspection_does_not_halt_reset_or_program(monkeypatch):
     assert len(calls)==1
 
 
+def test_flash_without_reset_after_still_prepares_halted_target(monkeypatch):
+    calls=setup_target(monkeypatch)
+    req=request();req['resetAfter']=False
+    result=worker.execute(req)
+    assert result['verified'] and result['reset'] is False
+    assert 'reset_and_halt' in calls and 'reset' not in calls
+
+
+def test_sram_read_does_not_halt_reset_or_program(monkeypatch):
+    calls=setup_target(monkeypatch)
+    req=request('read_sram');req.update(readAddress=0x20000000,readLength=8)
+    result=worker.execute(req)
+    assert result['words']==[0xffffffff,0xffffffff]
+    assert result['length']==8 and result['coreState']=='RUNNING'
+    assert len(calls)==1
+
+
+@pytest.mark.parametrize('address,length',[(0x40000000,4),(0x2001fffc,8),(0x20000001,4),
+    (0x20000000,4097),(0x20000000,0),(True,4),(0x20000000,4.0)])
+def test_invalid_sram_read_is_rejected_before_probe_access(monkeypatch,address,length):
+    calls=setup_target(monkeypatch)
+    req=request('read_sram');req.update(readAddress=address,readLength=length)
+    with pytest.raises(OperationError):worker.execute(req)
+    assert calls==[]
+
+
 def test_serial_is_exact_not_a_substring_match(monkeypatch):
     calls=setup_target(monkeypatch)
     req=request();req['config']['probeSerial']='serial'
     with pytest.raises(OperationError,match='not connected'):
         worker.execute(req)
     assert calls==[]
+
+
+def test_worker_progress_cannot_corrupt_json_protocol(monkeypatch,capsys):
+    import io,json
+    monkeypatch.setattr(worker.sys,'stdin',io.StringIO('{}'))
+    def noisy_execute(request):
+        print('[==] 50%')
+        raise OperationError('algorithm failed','device_unreachable')
+    monkeypatch.setattr(worker,'execute',noisy_execute)
+    worker.main()
+    captured=capsys.readouterr()
+    result=json.loads(captured.out)
+    assert result['ok'] is False
+    assert result['error']['message']=='algorithm failed'
+    assert '[==] 50%' in captured.err
