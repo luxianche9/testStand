@@ -8,6 +8,7 @@ from testforge_backend.contracts.devices import parse_mcp_server, parse_remote_c
 from testforge_backend.contracts.errors import app_error
 
 from .hardware_occupancy import HardwareOccupancyManager
+from .local_shell import execute_local_shell
 from .remote_shell import remote_shell_for
 from .ssh import SshManager
 
@@ -19,6 +20,8 @@ class DeviceService:
         self.store, self.secrets, self.transports = store, secrets, transports
         self.ssh: Any = SshManager(secrets)
         self.occupancy = HardwareOccupancyManager(store, transports)
+        self._computer_refreshes: dict[str, asyncio.Task[Record]] = {}
+        self._server_refreshes: dict[str, asyncio.Task[Record]] = {}
         self._statuses: dict[str, Record] = {}
         self._server_statuses: dict[str, Record] = {}
         self._hardware: list[Record] = []
@@ -110,6 +113,10 @@ class DeviceService:
 
     async def execute(self, computer_id: str, command: str, timeout_ms: int = 60000) -> Record:
         computer = self._require_computer(computer_id)
+        if computer.get("execution") == "local":
+            return await execute_local_shell(
+                computer["ssh"]["shell"], command, min(max(timeout_ms, 1000), 300000)
+            )
         return dict(
             await self.ssh.execute(
                 computer,
@@ -119,13 +126,23 @@ class DeviceService:
         )
 
     async def refresh_computer(self, computer_id: str) -> Record:
+        pending = self._computer_refreshes.get(computer_id)
+        if pending is None:
+            pending = asyncio.create_task(self._refresh_computer(computer_id))
+            self._computer_refreshes[computer_id] = pending
+            pending.add_done_callback(lambda _: self._computer_refreshes.pop(computer_id, None))
+        return await asyncio.shield(pending)
+
+    async def _refresh_computer(self, computer_id: str) -> Record:
         computer = self._require_computer(computer_id)
         started = now_ms()
         status: Record = {"computerId": computer_id, "ssh": {"state": "checking"}}
-        self._statuses[computer_id] = status
+        self._statuses.setdefault(computer_id, dict(status))
         try:
             shell = remote_shell_for(computer)
-            await self.ssh.execute(computer, shell.command(shell.probe_command()), 15000)
+            result = await self.execute(computer_id, shell.probe_command(), 15000)
+            if result["exitCode"] != 0:
+                raise RuntimeError(result["stderr"] or "Computer shell probe failed")
             status["ssh"] = {
                 "state": "online",
                 "checkedAt": utc_now_iso(),
@@ -137,9 +154,18 @@ class DeviceService:
                 "checkedAt": utc_now_iso(),
                 "message": js_string(error),
             }
+        self._statuses[computer_id] = status
         return status
 
     async def refresh_server(self, server_id: str) -> Record:
+        pending = self._server_refreshes.get(server_id)
+        if pending is None:
+            pending = asyncio.create_task(self._refresh_server(server_id))
+            self._server_refreshes[server_id] = pending
+            pending.add_done_callback(lambda _: self._server_refreshes.pop(server_id, None))
+        return await asyncio.shield(pending)
+
+    async def _refresh_server(self, server_id: str) -> Record:
         stored = self.store.get_server(server_id)
         status: Record = {
             "serverId": server_id,
@@ -147,7 +173,7 @@ class DeviceService:
             "service": {"state": "checking", "serviceState": "unknown"},
             "transport": {"state": "checking"},
         }
-        self._server_statuses[server_id] = status
+        self._server_statuses.setdefault(server_id, dict(status))
         try:
             server = self._require_server(server_id)
             self._require_computer(server["computerId"])
@@ -163,6 +189,7 @@ class DeviceService:
                 "checkedAt": utc_now_iso(),
                 "message": js_string(error),
             }
+            self._server_statuses[server_id] = status
             return status
         try:
             session = await self.transports.connect(server)
@@ -235,6 +262,7 @@ class DeviceService:
                         "ssh": js_string(diagnostic_error),
                     },
                 }
+        self._server_statuses[server_id] = status
         return status
 
     async def refresh_all_servers(self) -> list[Record]:
@@ -263,6 +291,7 @@ class DeviceService:
             )
             if stopped["exitCode"] != 0:
                 raise RuntimeError(stopped["stderr"] or "Remote MCP stop command failed")
+            await self.transports.disconnect(server_id)
         command = server["lifecycle"][
             "stopCommand" if action in {"stop", "force-stop"} else "startCommand"
         ]

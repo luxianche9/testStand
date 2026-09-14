@@ -12,6 +12,7 @@ import { Input, Select } from "../../../../shared/ui/input";
 import { EditorField } from "./EditorField.js";
 
 const computerEditorSchema = z.object({
+  execution: z.enum(["ssh", "local"]),
   id: z.string().trim().min(1, "请输入电脑 ID"),
   label: z.string().trim().min(1, "请输入显示名称"),
   address: z.string().trim().min(1, "请输入 IP 地址或主机名"),
@@ -26,6 +27,7 @@ const computerEditorSchema = z.object({
 
 type ComputerEditorValues = z.infer<typeof computerEditorSchema>;
 const blankComputer: ComputerEditorValues = {
+  execution: "ssh",
   id: "REMOTE_PC_1",
   label: "仪器控制电脑",
   address: "",
@@ -41,15 +43,17 @@ export function ComputerEditor({ open, computer, onClose, onChanged }: {
   onClose: () => void;
   onChanged: () => Promise<void>;
 }) {
-  const { register, reset, handleSubmit, formState: { errors, isValid } } = useForm<ComputerEditorValues>({
+  const { register, reset, watch, setValue, handleSubmit, formState: { errors, isValid } } = useForm<ComputerEditorValues>({
     resolver: zodResolver(computerEditorSchema),
     mode: "onChange",
     defaultValues: blankComputer
   });
+  const isLocal = watch("execution") === "local";
 
   useEffect(() => {
     if (!open) return;
     reset(computer ? {
+      execution: computer.execution ?? "ssh",
       id: computer.id,
       label: computer.label,
       address: computer.address,
@@ -63,9 +67,10 @@ export function ComputerEditor({ open, computer, onClose, onChanged }: {
   const save = useMutation({
     mutationFn: async (values: ComputerEditorValues) => {
       const input: RemoteComputer = {
+        execution: values.execution,
         id: values.id.trim(),
         label: values.label.trim(),
-        address: values.address.trim(),
+        address: values.execution === "local" ? "127.0.0.1" : values.address.trim(),
         ssh: { port: Number(values.sshPort), username: values.username.trim(), shell: values.shell }
       };
       return window.testforge.devices.saveComputer(input, values.sshSecret ? { ssh: values.sshSecret } : undefined);
@@ -79,16 +84,25 @@ export function ComputerEditor({ open, computer, onClose, onChanged }: {
 
   return <Dialog open={open} onOpenChange={(value) => { if (!value) onClose(); }}>
     <DialogContent size="default" className="w-[640px]">
-      <DialogHeader title={computer ? "编辑远程电脑" : "添加远程电脑"} onClose={onClose} />
+      <DialogHeader title={computer ? "编辑电脑" : "添加电脑"} onClose={onClose} />
       <DialogBody>
         <form id="computer-editor-form" className="grid grid-cols-2 gap-x-3.5 gap-y-3" onSubmit={(event) => { void submit(event); }}>
+          <EditorField label="运行位置" required><Select {...register("execution", { onChange: (event: { target: { value: string } }) => {
+            if (event.target.value === "local") {
+              setValue("address", "127.0.0.1", { shouldValidate: true });
+              setValue("username", "local", { shouldValidate: true });
+              setValue("sshSecret", "");
+            }
+          } })}><option value="ssh">远程电脑（SSH）</option><option value="local">本机</option></Select></EditorField>
           <EditorField label="电脑 ID" required error={errors.id?.message}><Input {...register("id")} disabled={Boolean(computer)} /></EditorField>
           <EditorField label="显示名称" required error={errors.label?.message}><Input {...register("label")} /></EditorField>
-          <EditorField label="IP 地址 / 主机名" required error={errors.address?.message}><Input {...register("address")} placeholder="192.168.3.51" /></EditorField>
-          <EditorField label="SSH 端口" required error={errors.sshPort?.message}><Input inputMode="numeric" {...register("sshPort")} /></EditorField>
-          <EditorField label="SSH 用户名" required error={errors.username?.message}><Input {...register("username")} /></EditorField>
-          <EditorField label="远程 Shell" required error={errors.shell?.message}><Select {...register("shell")}><option value="powershell">PowerShell</option><option value="posix">POSIX sh</option></Select></EditorField>
-          <EditorField label={computer ? "SSH 密码（留空保持不变）" : "SSH 密码"} error={errors.sshSecret?.message}><Input type="password" {...register("sshSecret")} /></EditorField>
+          {!isLocal && <>
+            <EditorField label="IP 地址 / 主机名" required error={errors.address?.message}><Input {...register("address")} placeholder="192.168.3.51" /></EditorField>
+            <EditorField label="SSH 端口" required error={errors.sshPort?.message}><Input inputMode="numeric" {...register("sshPort")} /></EditorField>
+            <EditorField label="SSH 用户名" required error={errors.username?.message}><Input {...register("username")} /></EditorField>
+            <EditorField label={computer ? "SSH 密码（留空保持不变）" : "SSH 密码"} error={errors.sshSecret?.message}><Input type="password" {...register("sshSecret")} /></EditorField>
+          </>}
+          <EditorField label="Shell" required error={errors.shell?.message}><Select {...register("shell")}><option value="powershell">PowerShell</option><option value="posix">POSIX sh</option></Select></EditorField>
           <div className="col-span-2 text-xs leading-relaxed text-muted-foreground">MCP Server 在电脑保存后逐个添加，每个硬件对应一个独立 Server。</div>
           {save.isError && <div className="col-span-2 flex items-start gap-2.5 rounded-md border border-destructive/35 bg-destructive/6 px-3.5 py-2.5 text-xs break-words whitespace-pre-wrap text-destructive [&_svg]:mt-0.5 [&_svg]:flex-none"><CircleAlertIcon className="size-4" /><span>{errorMessage(save.error)}</span></div>}
         </form>

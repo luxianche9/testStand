@@ -1,0 +1,433 @@
+> testforge@0.1.0 verify E:\Project\hardwareHarness\testForge
+> pnpm typecheck && pnpm lint && pnpm test && pnpm check:imports && pnpm check:dependencies && pnpm build
+
+
+> testforge@0.1.0 typecheck E:\Project\hardwareHarness\testForge
+> pnpm -r typecheck
+
+Scope: 2 of 3 workspace projects
+packages/contracts typecheck$ tsc -p tsconfig.json --noEmit
+packages/contracts typecheck: Done
+apps/desktop typecheck$ tsc -p tsconfig.json --noEmit
+apps/desktop typecheck: Done
+
+> testforge@0.1.0 lint E:\Project\hardwareHarness\testForge
+> eslint packages apps --ext .ts,.tsx
+
+
+> testforge@0.1.0 test E:\Project\hardwareHarness\testForge
+> pnpm -r test
+
+Scope: 2 of 3 workspace projects
+packages/contracts test$ vitest run
+packages/contracts test:  RUN  v3.2.7 E:/Project/hardwareHarness/testForge/packages/contracts
+packages/contracts test:  ✓ src/contracts.test.ts (8 tests) 7ms
+packages/contracts test:  Test Files  1 passed (1)
+packages/contracts test:       Tests  8 passed (8)
+packages/contracts test:    Start at  09:50:50
+packages/contracts test:    Duration  1.29s (transform 95ms, setup 0ms, collect 292ms, tests 7ms, environment 0ms, prepare 634ms)
+packages/contracts test: Done
+apps/desktop test$ vitest run --exclude e2e/**
+apps/desktop test:  RUN  v3.2.7 E:/Project/hardwareHarness/testForge/apps/desktop
+apps/desktop test:  ❯ src/main/python-bridge.test.ts (5 tests | 1 failed) 139ms
+apps/desktop test:    ✓ Python bridge > matches out-of-order replies and applies internal state before resolving 4ms
+apps/desktop test:    ✓ Python bridge > handles safeStorage callbacks while an outer business call is pending 58ms
+apps/desktop test:    × Python bridge > decodes split UTF-8 frames and publishes events in stream order 8ms
+apps/desktop test:      → expected "spy" to be called with arguments: [ 'project', '中文' ]
+apps/desktop test: Received:
+apps/desktop test:   1st spy call:
+apps/desktop test:   [
+apps/desktop test:     "project",
+apps/desktop test:     "中文",
+apps/desktop test: +   undefined,
+apps/desktop test:   ]
+apps/desktop test: Number of calls: 1
+apps/desktop test:    ✓ Python bridge > restores domain errors and rejects every pending request on process exit 2ms
+apps/desktop test:    ✓ Python bridge > closes stdin and waits for exit even when cleanup rejects 66ms
+apps/desktop test:  ✓ src/main/agent-integration.test.ts (5 tests) 59ms
+apps/desktop test:  ✓ src/main/python-facade.test.ts (79 tests) 180ms
+apps/desktop test:  ✓ src/main/dialogs.test.ts (4 tests) 37ms
+apps/desktop test:  ✓ src/main/opencode-runtime.test.ts (8 tests) 264ms
+apps/desktop test:  ✓ src/main/python-codec.test.ts (3 tests) 21ms
+apps/desktop test:  ✓ src/main/ipc.test.ts (3 tests) 25ms
+apps/desktop test:  ✓ src/renderer/features/logs/logs-model.test.ts (5 tests) 21ms
+apps/desktop test:  ✓ src/main/protocols.test.ts (3 tests) 9ms
+apps/desktop test:  ✓ src/main/opencode-lifecycle.test.ts (9 tests) 6ms
+apps/desktop test:  ✓ src/main/windows.test.ts (2 tests) 5ms
+apps/desktop test:  ✓ src/preload/api.test.ts (2 tests) 5ms
+apps/desktop test:  ✓ src/renderer/features/manual/schema-form-model.test.ts (5 tests) 5ms
+apps/desktop test:  ✓ src/shared/trpc-transformer.test.ts (2 tests) 4ms
+apps/desktop test:  ✓ src/renderer/app/app-navigation.test.ts (8 tests) 3ms
+apps/desktop test:  ✓ src/main/desktop-events.test.ts (1 test) 4ms
+apps/desktop test:  ✓ src/renderer/features/orchestration/task-draft-state.test.ts (5 tests) 3ms
+apps/desktop test:  ✓ src/main/orchestration-safety.test.ts (4 tests) 3ms
+apps/desktop test:  ✓ src/renderer/features/devices/DevicesPage/devices-invoke.test.ts (3 tests) 5ms
+apps/desktop test:  ✓ src/main/opencode-auth.test.ts (2 tests) 4ms
+apps/desktop test:  ✓ src/renderer/shared/errors.test.ts (3 tests) 2ms
+apps/desktop test:  ✓ src/test/renderer-compatibility.test.tsx (2 tests) 5ms
+apps/desktop test:  ✓ src/renderer/features/agent/workspace-opencode-client.test.ts (4 tests) 21ms
+apps/desktop test:  ✓ src/renderer/features/agent/react-opencode-patch.test.ts (3 tests) 7ms
+apps/desktop test:  ✓ src/renderer/features/agent/OpenCodeComposer.test.ts (3 tests) 5ms
+apps/desktop test:  ✓ src/renderer/app/assistant-preference.test.ts (2 tests) 5ms
+apps/desktop test:  ✓ src/renderer/features/agent/drawer.test.tsx (2 tests) 50ms
+apps/desktop test:  ✓ src/renderer/shared/ui.test.tsx (2 tests) 238ms
+apps/desktop test:  ✓ src/renderer/features/manual/SchemaForm.test.tsx (1 test) 212ms
+apps/desktop test:  ✓ src/renderer/features/agent/ThreadList.test.tsx (1 test) 348ms
+apps/desktop test:    ✓ OpenCode thread creation > initializes the remote session before closing the thread drawer  347ms
+apps/desktop test:  ✓ src/renderer/shared/ErrorBoundary.test.tsx (1 test) 266ms
+apps/desktop test:  ✓ src/renderer/features/agent/AgentSidebar.running.test.tsx (2 tests) 417ms
+apps/desktop test:  ✓ src/renderer/features/wiring/WiringTaskPanel.test.tsx (1 test) 382ms
+apps/desktop test:    ✓ WiringTaskModal > starts a pending task and then allows the operator to confirm it  381ms
+apps/desktop test:  ✓ src/test/shared-ui.test.tsx (6 tests) 1119ms
+apps/desktop test:    ✓ shared UI behavior across the shadcn visual update > keeps native Select empty values, option groups, disabled options, refs and form data  321ms
+apps/desktop test:  ✓ src/renderer/features/logs/LogsPage.test.tsx (3 tests) 778ms
+apps/desktop test:    ✓ LogsPage ledger > renders a sortable table without a side inspector  373ms
+apps/desktop test:  ❯ src/renderer/features/devices/DevicesPage.test.tsx (2 tests | 1 failed) 1166ms
+apps/desktop test:    × device editors > saves a new remote computer with normalized SSH fields 732ms
+apps/desktop test:      → Unable to find a label with the text of: /远程 Shell/
+apps/desktop test: Ignored nodes: comments, script, style
+apps/desktop test: [36m<body[39m
+apps/desktop test:   [33mdata-scroll-locked[39m=[32m"1"[39m
+apps/desktop test:   [33mstyle[39m=[32m"pointer-events: none;"[39m
+apps/desktop test: [36m>[39m
+apps/desktop test:   [36m<span[39m
+apps/desktop test:     [33maria-hidden[39m=[32m"true"[39m
+apps/desktop test:     [33mdata-aria-hidden[39m=[32m"true"[39m
+apps/desktop test:     [33mdata-radix-focus-guard[39m=[32m""[39m
+apps/desktop test:     [33mstyle[39m=[32m"outline: none; opacity: 0; position: fixed; pointer-events: none;"[39m
+apps/desktop test:     [33mtabindex[39m=[32m"0"[39m
+apps/desktop test:   [36m/>[39m
+apps/desktop test:   [36m<div[39m
+apps/desktop test:     [33maria-hidden[39m=[32m"true"[39m
+apps/desktop test:     [33mdata-aria-hidden[39m=[32m"true"[39m
+apps/desktop test:   [36m/>[39m
+apps/desktop test:   [36m<div[39m
+apps/desktop test:     [33mclass[39m=[32m"fixed inset-0 z-[100] grid animate-fade-in place-items-center bg-black/50 p-6"[39m
+apps/desktop test:     [33mdata-slot[39m=[32m"dialog-overlay"[39m
+apps/desktop test:     [33mdata-state[39m=[32m"open"[39m
+apps/desktop test:     [33mstyle[39m=[32m"pointer-events: auto;"[39m
+apps/desktop test:   [36m>[39m
+apps/desktop test:     [36m<div[39m
+apps/desktop test:       [33maria-labelledby[39m=[32m"radix-_r_1_"[39m
+apps/desktop test:       [33mclass[39m=[32m"flex max-h-[calc(100vh-96px)] max-w-[calc(100vw-96px)] animate-dialog-in flex-col rounded-lg border border-solid border-border bg-background text-foreground shadow-lg outline-none w-[640px]"[39m
+apps/desktop test:       [33mdata-slot[39m=[32m"dialog-content"[39m
+apps/desktop test:       [33mdata-state[39m=[32m"open"[39m
+apps/desktop test:       [33mid[39m=[32m"radix-_r_0_"[39m
+apps/desktop test:       [33mrole[39m=[32m"dialog"[39m
+apps/desktop test:       [33mstyle[39m=[32m"pointer-events: auto;"[39m
+apps/desktop test:       [33mtabindex[39m=[32m"-1"[39m
+apps/desktop test:     [36m>[39m
+apps/desktop test:       [36m<header[39m
+apps/desktop test:         [33mclass[39m=[32m"flex items-center justify-between gap-3 px-5 pt-5 pb-2"[39m
+apps/desktop test:         [33mdata-slot[39m=[32m"dialog-header"[39m
+apps/desktop test:       [36m>[39m
+apps/desktop test:         [36m<div[39m
+apps/desktop test:           [33mclass[39m=[32m"min-w-0"[39m
+apps/desktop test:         [36m>[39m
+apps/desktop test:           [36m<h2[39m
+apps/desktop test:             [33mclass[39m=[32m"text-[15px] font-semibold tracking-tight"[39m
+apps/desktop test:             [33mdata-slot[39m=[32m"dialog-title"[39m
+apps/desktop test:             [33mid[39m=[32m"radix-_r_1_"[39m
+apps/desktop test:           [36m>[39m
+apps/desktop test:             [0m添加电脑[0m
+apps/desktop test:           [36m</h2>[39m
+apps/desktop test:         [36m</div>[39m
+apps/desktop test:         [36m<button[39m
+apps/desktop test:           [33maria-label[39m=[32m"关闭"[39m
+apps/desktop test:           [33mclass[39m=[32m"grid size-7 flex-none place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"[39m
+apps/desktop test:           [33mtype[39m=[32m"button"[39m
+apps/desktop test:         [36m>[39m
+apps/desktop test:           [36m<svg[39m
+apps/desktop test:             [33maria-hidden[39m=[32m"true"[39m
+apps/desktop test:             [33mclass[39m=[32m"lucide lucide-x size-4"[39m
+apps/desktop test:             [33mfill[39m=[32m"none"[39m
+apps/desktop test:             [33mheight[39m=[32m"24"[39m
+apps/desktop test:             [33mstroke[39m=[32m"currentColor"[39m
+apps/desktop test:             [33mstroke-linecap[39m=[32m"round"[39m
+apps/desktop test:             [33mstroke-linejoin[39m=[32m"round"[39m
+apps/desktop test:             [33mstroke-width[39m=[32m"2"[39m
+apps/desktop test:             [33mviewBox[39m=[32m"0 0 24 24"[39m
+apps/desktop test:             [33mwidth[39m=[32m"24"[39m
+apps/desktop test:             [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+apps/desktop test:           [36m>[39m
+apps/desktop test:             [36m<path[39m
+apps/desktop test:               [33md[39m=[32m"M18 6 6 18"[39m
+apps/desktop test:             [36m/>[39m
+apps/desktop test:             [36m<path[39m
+apps/desktop test:               [33md[39m=[32m"m6 6 12 12"[39m
+apps/desktop test:             [36m/>[39m
+apps/desktop test:           [36m</svg>[39m
+apps/desktop test:         [36m</button>[39m
+apps/desktop test:       [36m</header>[39m
+apps/desktop test:       [36m<div[39m
+apps/desktop test:         [33mclass[39m=[32m"overflow-y-auto px-5 pt-1 pb-5 text-[13px] leading-relaxed"[39m
+apps/desktop test:         [33mdata-slot[39m=[32m"dialog-body"[39m
+apps/desktop test:       [36m>[39m
+apps/desktop test:         [36m<form[39m
+apps/desktop test:           [33mclass[39m=[32m"grid grid-cols-2 gap-x-3.5 gap-y-3"[39m
+apps/desktop test:           [33mid[39m=[32m"computer-editor-form"[39m
+apps/desktop test:         [36m>[39m
+apps/desktop test:           [36m<label[39m
+apps/desktop test:             [33mclass[39m=[32m"grid content-start gap-1.5"[39m
+apps/desktop test:           [36m>[39m
+apps/desktop test:             [36m<span[39m
+apps/desktop test:               [33mclass[39m=[32m"text-xs text-muted-foreground"[39m
+apps/desktop test:             [36m>[39m
+apps/desktop test:               [0m运行位置[0m
+apps/desktop test:               [36m<i[39m
+apps/desktop test:                 [33mclass[39m=[32m"ml-0.5 text-destructive not-italic"[39m
+apps/desktop test:               [36m>[39m
+apps/desktop test:                 [0m*[0m
+apps/desktop test:               [36m</i>[39m
+apps/desktop test:             [36m</span>[39m
+apps/desktop test:             [36m<span[39m
+apps/desktop test:               [33mclass[39m=[32m"relative inline-flex w-full items-center"[39m
+apps/desktop test:               [33mdata-slot[39m=[32m"native-select-wrapper"[39m
+apps/desktop test:             [36m>[39m
+apps/desktop test:               [36m<select[39m
+apps/desktop test:                 [33mclass[39m=[32m"h-9 w-full min-w-0 appearance-none rounded-md border border-solid border-input bg-transparent px-3 pr-8 text-[13px] text-foreground shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:bg-input/30 dark:hover:bg-input/50 dark:aria-invalid:ring-destructive/40 [&_option]:bg-[Canvas] [&_option]:text-[CanvasText] [&_optgroup]:bg-[Canvas] [&_optgroup]:text-[CanvasText]"[39m
+apps/desktop test:                 [33mdata-slot[39m=[32m"native-select"[39m
+apps/desktop test:                 [33mname[39m=[32m"execution"[39m
+apps/desktop test:               [36m>[39m
+apps/desktop test:                 [36m<option[39m
+apps/desktop test:                   [33mvalue[39m=[32m"ssh"[39m
+apps/desktop test:                 [36m>[39m
+apps/desktop test:                   [0m远程电脑（SSH）[0m
+apps/desktop test:                 [36m</option>[39m
+apps/desktop test:                 [36m<option[39m
+apps/desktop test:                   [33mvalue[39m=[32m"local"[39m
+apps/desktop test:                 [36m>[39m
+apps/desktop test:                   [0m本机[0m
+apps/desktop test:                 [36m</option>[39m
+apps/desktop test:               [36m</select>[39m
+apps/desktop test:               [36m<svg[39m
+apps/desktop test:                 [33maria-hidden[39m=[32m"true"[39m
+apps/desktop test:                 [33mclass[39m=[32m"lucide lucide-chevron-down pointer-events-none absolute right-2.5 size-4 text-muted-foreground opacity-50"[39m
+apps/desktop test:                 [33mdata-slot[39m=[32m"native-select-icon"[39m
+apps/desktop test:                 [33mfill[39m=[32m"none"[39m
+apps/desktop test:                 [33mheight[39m=[32m"24"[39m
+apps/desktop test:                 [33mstroke[39m=[32m"currentColor"[39m
+apps/desktop test:                 [33mstroke-linecap[39m=[32m"round"[39m
+apps/desktop test:                 [33mstroke-linejoin[39m=[32m"round"[39m
+apps/desktop test:                 [33mstroke-width[39m=[32m"2"[39m
+apps/desktop test:                 [33mviewBox[39m=[32m"0 0 24 24"[39m
+apps/desktop test:                 [33mwidth[39m=[32m"24"[39m
+apps/desktop test:                 [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+apps/desktop test:               [36m>[39m
+apps/desktop test:                 [36m<path[39m
+apps/desktop test:                   [33md[39m=[32m"m6 9 6 6 6-6"[39m
+apps/desktop test:                 [36m/>[39m
+apps/desktop test:               [36m</svg>[39m
+apps/desktop test:             [36m</span>[39m
+apps/desktop test:           [36m</label>[39m
+apps/desktop test:           [36m<label[39m
+apps/desktop test:             [33mclass[39m=[32m"grid content-start gap-1.5"[39m
+apps/desktop test:           [36m>[39m
+apps/desktop test:             [36m<span[39m
+apps/desktop test:               [33mclass[39m=[32m"text-xs text-muted-foreground"[39m
+apps/desktop test:             [36m>[39m
+apps/desktop test:               [0m电脑 ID[0m
+apps/desktop test:               [36m<i[39m
+apps/desktop test:                 [33mclass[39m=[32m"ml-0.5 text-destructive not-italic"[39m
+apps/desktop test:               [36m>[39m
+apps/desktop test:                 [0m*[0m
+apps/desktop test:      ...
+apps/desktop test:    ✓ device editors > saves a passive hardware definition  433ms
+apps/desktop test:  ✓ src/renderer/features/agent/tools/interactions.test.tsx (3 tests) 393ms
+apps/desktop test:  ✓ src/renderer/features/agent/OpenCodeComposer.interactions.test.tsx (4 tests) 2925ms
+apps/desktop test:    ✓ OpenCode composer interactions > sends ordinary text with Enter and cancels the active run through the real composer  1300ms
+apps/desktop test:    ✓ OpenCode composer interactions > selects and dispatches a registered slash command through session.command  604ms
+apps/desktop test:    ✓ OpenCode composer interactions > searches a project file, adds path-labelled context and removes it  730ms
+apps/desktop test:  ✓ src/renderer/features/agent/Thread.test.tsx (1 test) 519ms
+apps/desktop test:    ✓ upstream-style thread rendering > renders GFM Markdown, reasoning, and fallback tool details  518ms
+apps/desktop test:  ✓ src/renderer/features/agent/AgentSidebar.test.tsx (5 tests) 356ms
+apps/desktop test: ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+apps/desktop test:  FAIL  src/main/python-bridge.test.ts > Python bridge > decodes split UTF-8 frames and publishes events in stream order
+apps/desktop test: AssertionError: expected "spy" to be called with arguments: [ 'project', '中文' ]
+apps/desktop test: Received:
+apps/desktop test:   1st spy call:
+apps/desktop test:   [
+apps/desktop test:     "project",
+apps/desktop test:     "中文",
+apps/desktop test: +   undefined,
+apps/desktop test:   ]
+apps/desktop test: Number of calls: 1
+apps/desktop test:  ❯ src/main/python-bridge.test.ts:51:19
+apps/desktop test:      49|     expect(event).not.toHaveBeenCalled();
+apps/desktop test:      50|     child.stdout.write(frame.subarray(cut));
+apps/desktop test:      51|     expect(event).toHaveBeenCalledWith("project", "中文");
+apps/desktop test:        |                   ^
+apps/desktop test:      52|   });
+apps/desktop test:      53|
+apps/desktop test: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+apps/desktop test:  FAIL  src/renderer/features/devices/DevicesPage.test.tsx > device editors > saves a new remote computer with normalized SSH fields
+apps/desktop test: TestingLibraryElementError: Unable to find a label with the text of: /远程 Shell/
+apps/desktop test: Ignored nodes: comments, script, style
+apps/desktop test: [36m<body[39m
+apps/desktop test:   [33mdata-scroll-locked[39m=[32m"1"[39m
+apps/desktop test:   [33mstyle[39m=[32m"pointer-events: none;"[39m
+apps/desktop test: [36m>[39m
+apps/desktop test:   [36m<span[39m
+apps/desktop test:     [33maria-hidden[39m=[32m"true"[39m
+apps/desktop test:     [33mdata-aria-hidden[39m=[32m"true"[39m
+apps/desktop test:     [33mdata-radix-focus-guard[39m=[32m""[39m
+apps/desktop test:     [33mstyle[39m=[32m"outline: none; opacity: 0; position: fixed; pointer-events: none;"[39m
+apps/desktop test:     [33mtabindex[39m=[32m"0"[39m
+apps/desktop test:   [36m/>[39m
+apps/desktop test:   [36m<div[39m
+apps/desktop test:     [33maria-hidden[39m=[32m"true"[39m
+apps/desktop test:     [33mdata-aria-hidden[39m=[32m"true"[39m
+apps/desktop test:   [36m/>[39m
+apps/desktop test:   [36m<div[39m
+apps/desktop test:     [33mclass[39m=[32m"fixed inset-0 z-[100] grid animate-fade-in place-items-center bg-black/50 p-6"[39m
+apps/desktop test:     [33mdata-slot[39m=[32m"dialog-overlay"[39m
+apps/desktop test:     [33mdata-state[39m=[32m"open"[39m
+apps/desktop test:     [33mstyle[39m=[32m"pointer-events: auto;"[39m
+apps/desktop test:   [36m>[39m
+apps/desktop test:     [36m<div[39m
+apps/desktop test:       [33maria-labelledby[39m=[32m"radix-_r_1_"[39m
+apps/desktop test:       [33mclass[39m=[32m"flex max-h-[calc(100vh-96px)] max-w-[calc(100vw-96px)] animate-dialog-in flex-col rounded-lg border border-solid border-border bg-background text-foreground shadow-lg outline-none w-[640px]"[39m
+apps/desktop test:       [33mdata-slot[39m=[32m"dialog-content"[39m
+apps/desktop test:       [33mdata-state[39m=[32m"open"[39m
+apps/desktop test:       [33mid[39m=[32m"radix-_r_0_"[39m
+apps/desktop test:       [33mrole[39m=[32m"dialog"[39m
+apps/desktop test:       [33mstyle[39m=[32m"pointer-events: auto;"[39m
+apps/desktop test:       [33mtabindex[39m=[32m"-1"[39m
+apps/desktop test:     [36m>[39m
+apps/desktop test:       [36m<header[39m
+apps/desktop test:         [33mclass[39m=[32m"flex items-center justify-between gap-3 px-5 pt-5 pb-2"[39m
+apps/desktop test:         [33mdata-slot[39m=[32m"dialog-header"[39m
+apps/desktop test:       [36m>[39m
+apps/desktop test:         [36m<div[39m
+apps/desktop test:           [33mclass[39m=[32m"min-w-0"[39m
+apps/desktop test:         [36m>[39m
+apps/desktop test:           [36m<h2[39m
+apps/desktop test:             [33mclass[39m=[32m"text-[15px] font-semibold tracking-tight"[39m
+apps/desktop test:             [33mdata-slot[39m=[32m"dialog-title"[39m
+apps/desktop test:             [33mid[39m=[32m"radix-_r_1_"[39m
+apps/desktop test:           [36m>[39m
+apps/desktop test:             [0m添加电脑[0m
+apps/desktop test:           [36m</h2>[39m
+apps/desktop test:         [36m</div>[39m
+apps/desktop test:         [36m<button[39m
+apps/desktop test:           [33maria-label[39m=[32m"关闭"[39m
+apps/desktop test:           [33mclass[39m=[32m"grid size-7 flex-none place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"[39m
+apps/desktop test:           [33mtype[39m=[32m"button"[39m
+apps/desktop test:         [36m>[39m
+apps/desktop test:           [36m<svg[39m
+apps/desktop test:             [33maria-hidden[39m=[32m"true"[39m
+apps/desktop test:             [33mclass[39m=[32m"lucide lucide-x size-4"[39m
+apps/desktop test:             [33mfill[39m=[32m"none"[39m
+apps/desktop test:             [33mheight[39m=[32m"24"[39m
+apps/desktop test:             [33mstroke[39m=[32m"currentColor"[39m
+apps/desktop test:             [33mstroke-linecap[39m=[32m"round"[39m
+apps/desktop test:             [33mstroke-linejoin[39m=[32m"round"[39m
+apps/desktop test:             [33mstroke-width[39m=[32m"2"[39m
+apps/desktop test:             [33mviewBox[39m=[32m"0 0 24 24"[39m
+apps/desktop test:             [33mwidth[39m=[32m"24"[39m
+apps/desktop test:             [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+apps/desktop test:           [36m>[39m
+apps/desktop test:             [36m<path[39m
+apps/desktop test:               [33md[39m=[32m"M18 6 6 18"[39m
+apps/desktop test:             [36m/>[39m
+apps/desktop test:             [36m<path[39m
+apps/desktop test:               [33md[39m=[32m"m6 6 12 12"[39m
+apps/desktop test:             [36m/>[39m
+apps/desktop test:           [36m</svg>[39m
+apps/desktop test:         [36m</button>[39m
+apps/desktop test:       [36m</header>[39m
+apps/desktop test:       [36m<div[39m
+apps/desktop test:         [33mclass[39m=[32m"overflow-y-auto px-5 pt-1 pb-5 text-[13px] leading-relaxed"[39m
+apps/desktop test:         [33mdata-slot[39m=[32m"dialog-body"[39m
+apps/desktop test:       [36m>[39m
+apps/desktop test:         [36m<form[39m
+apps/desktop test:           [33mclass[39m=[32m"grid grid-cols-2 gap-x-3.5 gap-y-3"[39m
+apps/desktop test:           [33mid[39m=[32m"computer-editor-form"[39m
+apps/desktop test:         [36m>[39m
+apps/desktop test:           [36m<label[39m
+apps/desktop test:             [33mclass[39m=[32m"grid content-start gap-1.5"[39m
+apps/desktop test:           [36m>[39m
+apps/desktop test:             [36m<span[39m
+apps/desktop test:               [33mclass[39m=[32m"text-xs text-muted-foreground"[39m
+apps/desktop test:             [36m>[39m
+apps/desktop test:               [0m运行位置[0m
+apps/desktop test:               [36m<i[39m
+apps/desktop test:                 [33mclass[39m=[32m"ml-0.5 text-destructive not-italic"[39m
+apps/desktop test:               [36m>[39m
+apps/desktop test:                 [0m*[0m
+apps/desktop test:               [36m</i>[39m
+apps/desktop test:             [36m</span>[39m
+apps/desktop test:             [36m<span[39m
+apps/desktop test:               [33mclass[39m=[32m"relative inline-flex w-full items-center"[39m
+apps/desktop test:               [33mdata-slot[39m=[32m"native-select-wrapper"[39m
+apps/desktop test:             [36m>[39m
+apps/desktop test:               [36m<select[39m
+apps/desktop test:                 [33mclass[39m=[32m"h-9 w-full min-w-0 appearance-none rounded-md border border-solid border-input bg-transparent px-3 pr-8 text-[13px] text-foreground shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:bg-input/30 dark:hover:bg-input/50 dark:aria-invalid:ring-destructive/40 [&_option]:bg-[Canvas] [&_option]:text-[CanvasText] [&_optgroup]:bg-[Canvas] [&_optgroup]:text-[CanvasText]"[39m
+apps/desktop test:                 [33mdata-slot[39m=[32m"native-select"[39m
+apps/desktop test:                 [33mname[39m=[32m"execution"[39m
+apps/desktop test:               [36m>[39m
+apps/desktop test:                 [36m<option[39m
+apps/desktop test:                   [33mvalue[39m=[32m"ssh"[39m
+apps/desktop test:                 [36m>[39m
+apps/desktop test:                   [0m远程电脑（SSH）[0m
+apps/desktop test:                 [36m</option>[39m
+apps/desktop test:                 [36m<option[39m
+apps/desktop test:                   [33mvalue[39m=[32m"local"[39m
+apps/desktop test:                 [36m>[39m
+apps/desktop test:                   [0m本机[0m
+apps/desktop test:                 [36m</option>[39m
+apps/desktop test:               [36m</select>[39m
+apps/desktop test:               [36m<svg[39m
+apps/desktop test:                 [33maria-hidden[39m=[32m"true"[39m
+apps/desktop test:                 [33mclass[39m=[32m"lucide lucide-chevron-down pointer-events-none absolute right-2.5 size-4 text-muted-foreground opacity-50"[39m
+apps/desktop test:                 [33mdata-slot[39m=[32m"native-select-icon"[39m
+apps/desktop test:                 [33mfill[39m=[32m"none"[39m
+apps/desktop test:                 [33mheight[39m=[32m"24"[39m
+apps/desktop test:                 [33mstroke[39m=[32m"currentColor"[39m
+apps/desktop test:                 [33mstroke-linecap[39m=[32m"round"[39m
+apps/desktop test:                 [33mstroke-linejoin[39m=[32m"round"[39m
+apps/desktop test:                 [33mstroke-width[39m=[32m"2"[39m
+apps/desktop test:                 [33mviewBox[39m=[32m"0 0 24 24"[39m
+apps/desktop test:                 [33mwidth[39m=[32m"24"[39m
+apps/desktop test:                 [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+apps/desktop test:               [36m>[39m
+apps/desktop test:                 [36m<path[39m
+apps/desktop test:                   [33md[39m=[32m"m6 9 6 6 6-6"[39m
+apps/desktop test:                 [36m/>[39m
+apps/desktop test:               [36m</svg>[39m
+apps/desktop test:             [36m</span>[39m
+apps/desktop test:           [36m</label>[39m
+apps/desktop test:           [36m<label[39m
+apps/desktop test:             [33mclass[39m=[32m"grid content-start gap-1.5"[39m
+apps/desktop test:           [36m>[39m
+apps/desktop test:             [36m<span[39m
+apps/desktop test:               [33mclass[39m=[32m"text-xs text-muted-foreground"[39m
+apps/desktop test:             [36m>[39m
+apps/desktop test:               [0m电脑 ID[0m
+apps/desktop test:               [36m<i[39m
+apps/desktop test:                 [33mclass[39m=[32m"ml-0.5 text-destructive not-italic"[39m
+apps/desktop test:               [36m>[39m
+apps/desktop test:                 [0m*[0m
+apps/desktop test:      ...
+apps/desktop test:  ❯ Object.getElementError ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/config.js:37:19
+apps/desktop test:  ❯ getAllByLabelText ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/queries/label-text.js:111:38
+apps/desktop test:  ❯ ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+apps/desktop test:  ❯ ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+apps/desktop test:  ❯ src/renderer/features/devices/DevicesPage.test.tsx:47:42
+apps/desktop test:      45|     await userEvent.clear(screen.getByLabelText(/SSH 用户名/));
+apps/desktop test:      46|     await userEvent.type(screen.getByLabelText(/SSH 用户名/), " operator …
+apps/desktop test:      47|     await userEvent.selectOptions(screen.getByLabelText(/Shell/), "pos…
+apps/desktop test:        |                                          ^
+apps/desktop test:      48|     await userEvent.type(screen.getByLabelText("SSH 密码"), "secret");
+apps/desktop test:      49|     await userEvent.click(screen.getByRole("button", { name: "保存" }));
+apps/desktop test:  Test Files  2 failed | 38 passed (40)
+apps/desktop test:       Tests  2 failed | 207 passed (209)
+apps/desktop test: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+apps/desktop test:    Start at  09:50:52
+apps/desktop test:    Duration  36.25s (transform 3.17s, setup 0ms, collect 134.62s, tests 10.01s, environment 275.33s, prepare 5.56s)
+apps/desktop test: Failed
+E:\Project\hardwareHarness\testForge\apps\desktop:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @testforge/desktop@0.1.0 test: `vitest run --exclude e2e/**`
+Exit status 1
+ ELIFECYCLE  Test failed. See above for more details.
+ ELIFECYCLE  Command failed with exit code 1.

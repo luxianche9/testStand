@@ -7,14 +7,14 @@
     "scripts/check_specs.py": "060624ee836553b9f573db7efa2adaf8fbca0f9c8414f99f2195edc5c98aac1a",
     "scripts/frozen_entry.py": "70f420ac1d022f0a98231ded1994861fcfefe753992dbbddd529690665969df8",
     "scripts/prepare_icu.py": "7e9aa27c15a7382019cfebd28b017a6dd504527e53474f83af9f887f70c2f136",
-    "scripts/protected_baseline.py": "b822de71bd0861e0971b02dba42a107b09696c111602a07e91ebe998eb0d9a4c",
+    "scripts/protected_baseline.py": "a5c6c99f1ff8a852332e6c9d2a333e2c51571786633ce9d958704a3201581cdd",
     "scripts/verify.py": "a16bf0f9983d4e3401d4ac6b35833621df878f43a7756166e81350389c29847f",
     "src/testforge_backend/__init__.py": "95865b873b35e14b1af6762082b2b3cd6ecb8719409702e4f78a364d5a28bfc6",
     "src/testforge_backend/application/__init__.py": "1612830a7540d80a3e27e51ae4a4b5d74763adabafd53d790fe9540f98ee9418",
     "src/testforge_backend/application/authorization.py": "2676058b08af6fb0f042cba5af3b7e4144707d8d124ebd1c2f60e30fc9c01777",
     "src/testforge_backend/application/control.py": "e44df074b9129cdb90eb519ae5df92815079be13d08ebc264b92758ed8cfcf35",
     "src/testforge_backend/application/execution.py": "8af93c3462166e52f92a93c88061ba47aa4088ae01154712cca3875674701198",
-    "src/testforge_backend/application/services.py": "d40efd487c343a9892e25ca619f729155d6ff3422c796fee248889d66f419716",
+    "src/testforge_backend/application/services.py": "02cb19087e71b751757211e7fdbfac9036de60894be8b08e490c2eedade9d7ad",
     "src/testforge_backend/compat/__init__.py": "6020036321b156c74c52f6e16352a66f77a1d04e4983cdfed0ec9a953a897af7",
     "src/testforge_backend/compat/collation.py": "81a427abcc0cee123c4077cb82a7f80d8a8b1deaedbd8bfada12ca1eee49e99f",
     "src/testforge_backend/compat/filesystem.py": "3792c1326a22d4701249a18de66eb28269c8cb13f79cd31d356c9b27048e1817",
@@ -22,22 +22,23 @@
     "src/testforge_backend/contracts/__init__.py": "e001bfe42726d14d5f25d835391d3ebc5e59140f34e7beb38b10057b59929393",
     "src/testforge_backend/contracts/agents.py": "dc25fd49ca6ca0fea1447e44b3039e983d0571f7db3751a584ebf03f64b625a2",
     "src/testforge_backend/contracts/desktop.py": "ec01a446170b55fbd6eded1b13e20672411057e533e110d8165cd649c52d7190",
-    "src/testforge_backend/contracts/devices.py": "12ccf698071d91f81049d76b683baeb37df7c3e9677cbf2ec88303dd7351029d",
+    "src/testforge_backend/contracts/devices.py": "59b76e007cf39b5e27e26e4b81f77625893b2d9d3b12402e34a9367acb87bde9",
     "src/testforge_backend/contracts/errors.py": "ce5de4f17adef82b77aaaca22729850542c46a09994f21799d8bbe773993e1a1",
     "src/testforge_backend/contracts/execution.py": "78494a47c3fdc5e4066b0437a9090abd61628244cf7d1e5481da2da7876d4dc4",
     "src/testforge_backend/contracts/occupancy.py": "124834547fd9983821dca6a108d21145f120545e40f94ac311331751e02ae330",
     "src/testforge_backend/contracts/orchestration.py": "bfb34058bf6ad2b5d240a765d5f2594e73873c3ca9638c19022822bfe0db62ab",
     "src/testforge_backend/contracts/projects.py": "763113140259a40c712ce9fad94ee82c75b00d3d0f98525d4daf6f4b6fc7d390",
     "src/testforge_backend/contracts/storage.py": "8ba2b409d7d956034c2b3d1249f13b00b72d5d0ed916460b7637ca5e1a719638",
-    "src/testforge_backend/contracts/validation.py": "fb80f8653b10a2c03ecb04a1364644af6fefa37246a8aeb9e70c068826e52f51",
+    "src/testforge_backend/contracts/validation.py": "e6169b0f324cf91fd6a3267bee07c5ea30cd980f295c23bf3fe9256241974fcc",
     "src/testforge_backend/contracts/wiring.py": "584573d498856fc33b3510f5b77fc4e1f845a99ff9a3c96b66a3e2ffa0340fc0",
     "src/testforge_backend/contracts/workflow_types.py": "3a632263cac8fa360b82d1e750fc6f208ee02a9e947e054037c9d8c1d19408e8",
     "src/testforge_backend/devices/__init__.py": "7529a42c984dd178c9a1f7e263ee64c6b4ae2b11142e91872784a6016168564b",
     "src/testforge_backend/devices/device_catalog_service.py": "4b6d75b4c66e42c654859fe6582ab4e8b521519253453007c717e042caf64070",
-    "src/testforge_backend/devices/device_service.py": "d1e24053353cda4d2a2a7e2e7b5aa6c9bec8de599a4b80d9264dfcd7a9772441",
+    "src/testforge_backend/devices/device_service.py": "c5d0d23ce9b736125890fdeb876d26b542b229d064fb202d2fb614f2805ecea9",
     "src/testforge_backend/devices/device_store.py": "b43eb1dca5714d88393a30da24890e59f83503846038f9cedff3c4bef3edcb1b",
     "src/testforge_backend/devices/device_transport.py": "8183f53d148367c3ffdd140d72f22952e217f7c20bc5bb6cec4474726b0ddb2b",
     "src/testforge_backend/devices/hardware_occupancy.py": "eb9d027a54c7b0083c91f339513282b1f127f2a197870112d9d96b8833e10c60",
+    "src/testforge_backend/devices/local_shell.py": "fcbf64348189663ad5370dfd94d4e0e03ad01076816e4476da5aa9978061965f",
     "src/testforge_backend/devices/mcp_client.py": "25615b88d8900731d7c7cc2f7326a2480a54ce47895002e20b4b8567daacad30",
     "src/testforge_backend/devices/mcp_transport.py": "cbf8a748aec64cc572d93c24c87e084bbb2a260caf9a1052b295765aa8458dde",
     "src/testforge_backend/devices/remote_shell.py": "c3b4e9ea4db3fb8b3f64e31f974d8b1dc43b923977e62e84cb950a3c61250d74",
@@ -47,12 +48,14 @@
     "src/testforge_backend/host/__main__.py": "670285bedad02df5f919ce2b3378c2f945df0877da5d20fdce0aa023bb9fea07",
     "src/testforge_backend/host/codec.py": "ebb174e0c9ed0654e17e8a4ae221f55364e739443ad2df34bfc3a8549b56ef1b",
     "src/testforge_backend/host/migrations.py": "20aaccbc13a60a8a3e7f818790f6e561e47320e7ec46c2d54ab173921685800d",
+    "src/testforge_backend/host/register_firedap.py": "8cb2ac266f4b20d3d0103119500f579ef45c558fd0e6919b83c171cdc8232382",
     "src/testforge_backend/host/rpc.py": "af0c06a1d1cba44766cc6246903f0c71eb32d726a7ea9b6c0a32d7049c550262",
-    "src/testforge_backend/host/runtime.py": "1d15a17334bc409b1d7d63461ff1a345002128bca7ae5b46119cc55748685d69",
+    "src/testforge_backend/host/runtime.py": "6789b26c02d48e592f960c303e9a30ee45d371c2d4c8b18e80911354dabe6f1b",
     "src/testforge_backend/mcp_gateway/__init__.py": "884608a4090ab2073a6cbbb0624b74e194c2d9c13c41f57e214fcd4d135858de",
     "src/testforge_backend/mcp_gateway/builtin_tools.json": "d04711e26d088dd1b84c53d7719c4838bad4c0229ff9390f5315c522c2e243d1",
     "src/testforge_backend/mcp_gateway/gateway.py": "912dee69fdb8ccb29bee8993f1d0c400efe569d92a93aa91983aaa8a367fc3f3",
-    "src/testforge_backend/mcp_gateway/tool_registry.py": "6ce4dca22e255e8b349c34004760fda36e539ff8b5dd613caaf4d03756d57715",
+    "src/testforge_backend/mcp_gateway/project_tools.json": "3b3611b8b23b629acc5f934720b86681bbae3de9f6bc09066114ef37a2dd7510",
+    "src/testforge_backend/mcp_gateway/tool_registry.py": "3fe90828812cdb96c32fc1c7c12bdad073643e69212c3658955991ad42d3685b",
     "src/testforge_backend/mcp_gateway/workflow_schema.json": "efd965bc2c861b19f638d069a164ebabb2ebae5c83736043272b08025ac24db8",
     "src/testforge_backend/orchestration/__init__.py": "42a2670888601ec3a3951f2aa73591a36e57e7220560626a8cbbc96d7de4df6b",
     "src/testforge_backend/orchestration/cancellation.py": "27276c173f066204c037adb4d37995ecc56b1e981249b9dca81c0871caf1b15d",
@@ -88,24 +91,27 @@
     "tests/contracts/test_differential.py": "9160c3e4740e799ffea59fc2fcdb03e9a773afc9c75ed4941b8b1c8f89ae0578",
     "tests/contracts/test_workflow_types.py": "85839a298e4621f1bfd328b61dc735cc9356bd76a914bec6b042a0dabc4bfbea",
     "tests/devices/ajv_cases.json": "3ec85988e6a646b87db87e9c5734a463c2c29b62565ddaf44e15e757c5ffa54b",
+    "tests/devices/test_development_merge.py": "5d35968313b1d73de24456035378a74d86fd27b0572317da397ca4d6ce6bf96b",
     "tests/devices/test_device_store.py": "5542ae8a711f101834c513bdd4d731245d83b8b5a3bd4f6224c962397fc9706c",
     "tests/devices/test_devices.py": "2c01862708900ec2847029a6da14ad1be8b400c0b40d4c2eb32280db231a0c80",
     "tests/devices/test_file_boundaries.py": "5d7ecfcc689705088e292e69f7ce6beedc8235c3354e1cdf284008fec8a622c3",
     "tests/devices/test_regressions.py": "f848036d2b8f0195a88f14cb56f858d119d15415b5d6e9b5be792fb0f162a867",
     "tests/devices/test_schema_validation.py": "df5830382c10cffa8ed792f50069ee6356912967366cef9ea4d83e0aaa6cc857",
-    "tests/devices/test_service_boundaries.py": "ed41ec62c2321054fd6e805f08ea5be870b9f4e77f31b226009c6e4f33415d27",
+    "tests/devices/test_service_boundaries.py": "007a1e9bc509f89e2b1a17dc4a78719aec7b0e7fef0f91a7a69284527fb96cc7",
     "tests/devices/test_sse.py": "a47c6f246f8b5cc7245b9d62bbdffe250bad0be6e2d6e91ab0d12cfa896d35df",
     "tests/devices/test_transports.py": "3ad707f8ce4b3a4b1402f215d344f9bf2ea3879ed91e03a378140a55cc6f0a60",
     "tests/host/facade-calls.json": "d32ae0987e73b41513a9423dc79558c0e6de2fcf1a886a5ebd4e5f25a9af6a34",
     "tests/host/test_codec.py": "770025563e6f2a1594208fc95a30e1bc007f162f15480698f3ecfa8767989733",
     "tests/host/test_facade_routes.py": "19827f95469ee46a36680b20e06656dde6a6d91ad577558121b5edca15637a06",
+    "tests/host/test_firedap_registration.py": "90c53f0b174d1ba39f5312e7642cc43835738b43abd54e8ae05fec5a86b660aa",
     "tests/host/test_migrations.py": "5c72b3c97d5d6438357814979d4bb8eb2acc07ec7aa2acca49e285423aecc2eb",
-    "tests/host/test_process.py": "e135a19bbd7d07c8913c8d352adbe71573ce93b146d8a0758840d1cf72f116f5",
+    "tests/host/test_process.py": "536523b98fe264238bc061c2e4c30db5b9f2982d9986cc74574a9b5ccf69aaf0",
     "tests/host/test_rpc.py": "c5186db72e378f80c736e9bca22a71f38dda4e27a4e5650468ef83dfa2fd87e4",
     "tests/mcp_gateway/protocol-golden.json": "83c890d5afbf49189dbde90ce617e77fbedaa19c61693adcad1ae3e5c69b7d74",
     "tests/mcp_gateway/test_boundaries.py": "a445917a6e9af99b15ba7c746ad520e8d756ffeb08d76de320eb541edbe95073",
+    "tests/mcp_gateway/test_development_projects.py": "297b411c944e262b3f38221dd56d5f599f6cf646acacc5591a26e32da7fb3ff6",
     "tests/mcp_gateway/test_gateway.py": "36d1aff263c9bb414ad4d2080b497d1b259116fadd84a799a956749378b507a5",
-    "tests/mcp_gateway/test_protocol_golden.py": "4316d0958bb3799bd3f310a3dd1d2e0867983f9f972ff201be1c61a14d402d45",
+    "tests/mcp_gateway/test_protocol_golden.py": "19c843dcd9dfa0d8734acacf21647476fe66712c6d986984c0e172099c05ed22",
     "tests/orchestration/test_regressions.py": "c6e1c29d950404d3563dd24aea553643be455b71ad89d609ee7f8e5efcd2d0e5",
     "tests/orchestration/test_service.py": "2998320fdb5193d47cf09f88993d59a6cea7f104c617154e565096ff41b2540c",
     "tests/orchestration/test_workflow.py": "7a95a521124c3049fe4dc7da3b3bd71f3f0c00efb3302a507656a57bb0b6f45d",
@@ -127,14 +133,14 @@
     "scripts/check_specs.py": "060624ee836553b9f573db7efa2adaf8fbca0f9c8414f99f2195edc5c98aac1a",
     "scripts/frozen_entry.py": "70f420ac1d022f0a98231ded1994861fcfefe753992dbbddd529690665969df8",
     "scripts/prepare_icu.py": "7e9aa27c15a7382019cfebd28b017a6dd504527e53474f83af9f887f70c2f136",
-    "scripts/protected_baseline.py": "b822de71bd0861e0971b02dba42a107b09696c111602a07e91ebe998eb0d9a4c",
+    "scripts/protected_baseline.py": "a5c6c99f1ff8a852332e6c9d2a333e2c51571786633ce9d958704a3201581cdd",
     "scripts/verify.py": "a16bf0f9983d4e3401d4ac6b35833621df878f43a7756166e81350389c29847f",
     "src/testforge_backend/__init__.py": "95865b873b35e14b1af6762082b2b3cd6ecb8719409702e4f78a364d5a28bfc6",
     "src/testforge_backend/application/__init__.py": "1612830a7540d80a3e27e51ae4a4b5d74763adabafd53d790fe9540f98ee9418",
     "src/testforge_backend/application/authorization.py": "2676058b08af6fb0f042cba5af3b7e4144707d8d124ebd1c2f60e30fc9c01777",
     "src/testforge_backend/application/control.py": "e44df074b9129cdb90eb519ae5df92815079be13d08ebc264b92758ed8cfcf35",
     "src/testforge_backend/application/execution.py": "8af93c3462166e52f92a93c88061ba47aa4088ae01154712cca3875674701198",
-    "src/testforge_backend/application/services.py": "d40efd487c343a9892e25ca619f729155d6ff3422c796fee248889d66f419716",
+    "src/testforge_backend/application/services.py": "02cb19087e71b751757211e7fdbfac9036de60894be8b08e490c2eedade9d7ad",
     "src/testforge_backend/compat/__init__.py": "6020036321b156c74c52f6e16352a66f77a1d04e4983cdfed0ec9a953a897af7",
     "src/testforge_backend/compat/collation.py": "81a427abcc0cee123c4077cb82a7f80d8a8b1deaedbd8bfada12ca1eee49e99f",
     "src/testforge_backend/compat/filesystem.py": "3792c1326a22d4701249a18de66eb28269c8cb13f79cd31d356c9b27048e1817",
@@ -142,22 +148,23 @@
     "src/testforge_backend/contracts/__init__.py": "e001bfe42726d14d5f25d835391d3ebc5e59140f34e7beb38b10057b59929393",
     "src/testforge_backend/contracts/agents.py": "dc25fd49ca6ca0fea1447e44b3039e983d0571f7db3751a584ebf03f64b625a2",
     "src/testforge_backend/contracts/desktop.py": "ec01a446170b55fbd6eded1b13e20672411057e533e110d8165cd649c52d7190",
-    "src/testforge_backend/contracts/devices.py": "12ccf698071d91f81049d76b683baeb37df7c3e9677cbf2ec88303dd7351029d",
+    "src/testforge_backend/contracts/devices.py": "59b76e007cf39b5e27e26e4b81f77625893b2d9d3b12402e34a9367acb87bde9",
     "src/testforge_backend/contracts/errors.py": "ce5de4f17adef82b77aaaca22729850542c46a09994f21799d8bbe773993e1a1",
     "src/testforge_backend/contracts/execution.py": "78494a47c3fdc5e4066b0437a9090abd61628244cf7d1e5481da2da7876d4dc4",
     "src/testforge_backend/contracts/occupancy.py": "124834547fd9983821dca6a108d21145f120545e40f94ac311331751e02ae330",
     "src/testforge_backend/contracts/orchestration.py": "bfb34058bf6ad2b5d240a765d5f2594e73873c3ca9638c19022822bfe0db62ab",
     "src/testforge_backend/contracts/projects.py": "763113140259a40c712ce9fad94ee82c75b00d3d0f98525d4daf6f4b6fc7d390",
     "src/testforge_backend/contracts/storage.py": "8ba2b409d7d956034c2b3d1249f13b00b72d5d0ed916460b7637ca5e1a719638",
-    "src/testforge_backend/contracts/validation.py": "fb80f8653b10a2c03ecb04a1364644af6fefa37246a8aeb9e70c068826e52f51",
+    "src/testforge_backend/contracts/validation.py": "e6169b0f324cf91fd6a3267bee07c5ea30cd980f295c23bf3fe9256241974fcc",
     "src/testforge_backend/contracts/wiring.py": "584573d498856fc33b3510f5b77fc4e1f845a99ff9a3c96b66a3e2ffa0340fc0",
     "src/testforge_backend/contracts/workflow_types.py": "3a632263cac8fa360b82d1e750fc6f208ee02a9e947e054037c9d8c1d19408e8",
     "src/testforge_backend/devices/__init__.py": "7529a42c984dd178c9a1f7e263ee64c6b4ae2b11142e91872784a6016168564b",
     "src/testforge_backend/devices/device_catalog_service.py": "4b6d75b4c66e42c654859fe6582ab4e8b521519253453007c717e042caf64070",
-    "src/testforge_backend/devices/device_service.py": "d1e24053353cda4d2a2a7e2e7b5aa6c9bec8de599a4b80d9264dfcd7a9772441",
+    "src/testforge_backend/devices/device_service.py": "c5d0d23ce9b736125890fdeb876d26b542b229d064fb202d2fb614f2805ecea9",
     "src/testforge_backend/devices/device_store.py": "b43eb1dca5714d88393a30da24890e59f83503846038f9cedff3c4bef3edcb1b",
     "src/testforge_backend/devices/device_transport.py": "8183f53d148367c3ffdd140d72f22952e217f7c20bc5bb6cec4474726b0ddb2b",
     "src/testforge_backend/devices/hardware_occupancy.py": "eb9d027a54c7b0083c91f339513282b1f127f2a197870112d9d96b8833e10c60",
+    "src/testforge_backend/devices/local_shell.py": "fcbf64348189663ad5370dfd94d4e0e03ad01076816e4476da5aa9978061965f",
     "src/testforge_backend/devices/mcp_client.py": "25615b88d8900731d7c7cc2f7326a2480a54ce47895002e20b4b8567daacad30",
     "src/testforge_backend/devices/mcp_transport.py": "cbf8a748aec64cc572d93c24c87e084bbb2a260caf9a1052b295765aa8458dde",
     "src/testforge_backend/devices/remote_shell.py": "c3b4e9ea4db3fb8b3f64e31f974d8b1dc43b923977e62e84cb950a3c61250d74",
@@ -167,12 +174,14 @@
     "src/testforge_backend/host/__main__.py": "670285bedad02df5f919ce2b3378c2f945df0877da5d20fdce0aa023bb9fea07",
     "src/testforge_backend/host/codec.py": "ebb174e0c9ed0654e17e8a4ae221f55364e739443ad2df34bfc3a8549b56ef1b",
     "src/testforge_backend/host/migrations.py": "20aaccbc13a60a8a3e7f818790f6e561e47320e7ec46c2d54ab173921685800d",
+    "src/testforge_backend/host/register_firedap.py": "8cb2ac266f4b20d3d0103119500f579ef45c558fd0e6919b83c171cdc8232382",
     "src/testforge_backend/host/rpc.py": "af0c06a1d1cba44766cc6246903f0c71eb32d726a7ea9b6c0a32d7049c550262",
-    "src/testforge_backend/host/runtime.py": "1d15a17334bc409b1d7d63461ff1a345002128bca7ae5b46119cc55748685d69",
+    "src/testforge_backend/host/runtime.py": "6789b26c02d48e592f960c303e9a30ee45d371c2d4c8b18e80911354dabe6f1b",
     "src/testforge_backend/mcp_gateway/__init__.py": "884608a4090ab2073a6cbbb0624b74e194c2d9c13c41f57e214fcd4d135858de",
     "src/testforge_backend/mcp_gateway/builtin_tools.json": "d04711e26d088dd1b84c53d7719c4838bad4c0229ff9390f5315c522c2e243d1",
     "src/testforge_backend/mcp_gateway/gateway.py": "912dee69fdb8ccb29bee8993f1d0c400efe569d92a93aa91983aaa8a367fc3f3",
-    "src/testforge_backend/mcp_gateway/tool_registry.py": "6ce4dca22e255e8b349c34004760fda36e539ff8b5dd613caaf4d03756d57715",
+    "src/testforge_backend/mcp_gateway/project_tools.json": "3b3611b8b23b629acc5f934720b86681bbae3de9f6bc09066114ef37a2dd7510",
+    "src/testforge_backend/mcp_gateway/tool_registry.py": "3fe90828812cdb96c32fc1c7c12bdad073643e69212c3658955991ad42d3685b",
     "src/testforge_backend/mcp_gateway/workflow_schema.json": "efd965bc2c861b19f638d069a164ebabb2ebae5c83736043272b08025ac24db8",
     "src/testforge_backend/orchestration/__init__.py": "42a2670888601ec3a3951f2aa73591a36e57e7220560626a8cbbc96d7de4df6b",
     "src/testforge_backend/orchestration/cancellation.py": "27276c173f066204c037adb4d37995ecc56b1e981249b9dca81c0871caf1b15d",
@@ -208,24 +217,27 @@
     "tests/contracts/test_differential.py": "9160c3e4740e799ffea59fc2fcdb03e9a773afc9c75ed4941b8b1c8f89ae0578",
     "tests/contracts/test_workflow_types.py": "85839a298e4621f1bfd328b61dc735cc9356bd76a914bec6b042a0dabc4bfbea",
     "tests/devices/ajv_cases.json": "3ec85988e6a646b87db87e9c5734a463c2c29b62565ddaf44e15e757c5ffa54b",
+    "tests/devices/test_development_merge.py": "5d35968313b1d73de24456035378a74d86fd27b0572317da397ca4d6ce6bf96b",
     "tests/devices/test_device_store.py": "5542ae8a711f101834c513bdd4d731245d83b8b5a3bd4f6224c962397fc9706c",
     "tests/devices/test_devices.py": "2c01862708900ec2847029a6da14ad1be8b400c0b40d4c2eb32280db231a0c80",
     "tests/devices/test_file_boundaries.py": "5d7ecfcc689705088e292e69f7ce6beedc8235c3354e1cdf284008fec8a622c3",
     "tests/devices/test_regressions.py": "f848036d2b8f0195a88f14cb56f858d119d15415b5d6e9b5be792fb0f162a867",
     "tests/devices/test_schema_validation.py": "df5830382c10cffa8ed792f50069ee6356912967366cef9ea4d83e0aaa6cc857",
-    "tests/devices/test_service_boundaries.py": "ed41ec62c2321054fd6e805f08ea5be870b9f4e77f31b226009c6e4f33415d27",
+    "tests/devices/test_service_boundaries.py": "007a1e9bc509f89e2b1a17dc4a78719aec7b0e7fef0f91a7a69284527fb96cc7",
     "tests/devices/test_sse.py": "a47c6f246f8b5cc7245b9d62bbdffe250bad0be6e2d6e91ab0d12cfa896d35df",
     "tests/devices/test_transports.py": "3ad707f8ce4b3a4b1402f215d344f9bf2ea3879ed91e03a378140a55cc6f0a60",
     "tests/host/facade-calls.json": "d32ae0987e73b41513a9423dc79558c0e6de2fcf1a886a5ebd4e5f25a9af6a34",
     "tests/host/test_codec.py": "770025563e6f2a1594208fc95a30e1bc007f162f15480698f3ecfa8767989733",
     "tests/host/test_facade_routes.py": "19827f95469ee46a36680b20e06656dde6a6d91ad577558121b5edca15637a06",
+    "tests/host/test_firedap_registration.py": "90c53f0b174d1ba39f5312e7642cc43835738b43abd54e8ae05fec5a86b660aa",
     "tests/host/test_migrations.py": "5c72b3c97d5d6438357814979d4bb8eb2acc07ec7aa2acca49e285423aecc2eb",
-    "tests/host/test_process.py": "e135a19bbd7d07c8913c8d352adbe71573ce93b146d8a0758840d1cf72f116f5",
+    "tests/host/test_process.py": "536523b98fe264238bc061c2e4c30db5b9f2982d9986cc74574a9b5ccf69aaf0",
     "tests/host/test_rpc.py": "c5186db72e378f80c736e9bca22a71f38dda4e27a4e5650468ef83dfa2fd87e4",
     "tests/mcp_gateway/protocol-golden.json": "83c890d5afbf49189dbde90ce617e77fbedaa19c61693adcad1ae3e5c69b7d74",
     "tests/mcp_gateway/test_boundaries.py": "a445917a6e9af99b15ba7c746ad520e8d756ffeb08d76de320eb541edbe95073",
+    "tests/mcp_gateway/test_development_projects.py": "297b411c944e262b3f38221dd56d5f599f6cf646acacc5591a26e32da7fb3ff6",
     "tests/mcp_gateway/test_gateway.py": "36d1aff263c9bb414ad4d2080b497d1b259116fadd84a799a956749378b507a5",
-    "tests/mcp_gateway/test_protocol_golden.py": "4316d0958bb3799bd3f310a3dd1d2e0867983f9f972ff201be1c61a14d402d45",
+    "tests/mcp_gateway/test_protocol_golden.py": "19c843dcd9dfa0d8734acacf21647476fe66712c6d986984c0e172099c05ed22",
     "tests/orchestration/test_regressions.py": "c6e1c29d950404d3563dd24aea553643be455b71ad89d609ee7f8e5efcd2d0e5",
     "tests/orchestration/test_service.py": "2998320fdb5193d47cf09f88993d59a6cea7f104c617154e565096ff41b2540c",
     "tests/orchestration/test_workflow.py": "7a95a521124c3049fe4dc7da3b3bd71f3f0c00efb3302a507656a57bb0b6f45d",
@@ -2422,6 +2434,76 @@
       "outcome": "passed"
     },
     {
+      "nodeid": "tests/devices/test_development_merge.py::test_concurrent_probes_preserve_last_result_and_share_work[computer]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_development_merge.py::test_concurrent_probes_preserve_last_result_and_share_work[server]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_development_merge.py::test_restart_disconnects_only_after_successful_stop[0-0]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_development_merge.py::test_restart_disconnects_only_after_successful_stop[1-0]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_development_merge.py::test_restart_disconnects_only_after_successful_stop[0-1]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_development_merge.py::test_hardware_error_accepts_explicit_offsets[2026-09-10T07:40:00.123456+00:00]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_development_merge.py::test_hardware_error_accepts_explicit_offsets[2026-09-10T15:40:00+08:00]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_development_merge.py::test_hardware_error_accepts_explicit_offsets[2026-09-10T07:40:00Z]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_development_merge.py::test_hardware_error_rejects_invalid_or_ambiguous_timestamp[not-a-date]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_development_merge.py::test_hardware_error_rejects_invalid_or_ambiguous_timestamp[2026-09-10T07:40:00]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_development_merge.py::test_hardware_error_rejects_invalid_or_ambiguous_timestamp[2026-02-30T07:40:00+00:00]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_development_merge.py::test_local_computer_is_explicit_and_loopback_only",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_development_merge.py::test_local_shell_output_nonzero_timeout_and_buffer_limit",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/devices/test_development_merge.py::test_local_execution_avoids_ssh_and_failed_probe_is_offline",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
       "nodeid": "tests/devices/test_device_store.py::test_canonical",
       "tsCases": [
         "packages/devices/src/device-store.test.ts::persists canonical files and derives managed hardware"
@@ -3402,6 +3484,11 @@
       "outcome": "passed"
     },
     {
+      "nodeid": "tests/host/test_firedap_registration.py::test_registration_uses_python_catalog_encryption_and_backup",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
       "nodeid": "tests/host/test_migrations.py::test_atomic_settings_and_encrypted_deterministic_secrets",
       "tsCases": [
         "apps/desktop/src/main/migrations.test.ts::global file storage::atomically persists settings and encrypted deterministic secrets"
@@ -3557,6 +3644,11 @@
     },
     {
       "nodeid": "tests/host/test_process.py::test_killed_child_recovers_run_then_cancels_with_latest_cleanup_context",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/host/test_process.py::test_mcp_project_changes_notify_desktop_once_with_current_snapshot",
       "tsCases": [],
       "outcome": "passed"
     },
@@ -3742,6 +3834,41 @@
     },
     {
       "nodeid": "tests/mcp_gateway/test_boundaries.py::test_mcp_cancellation_keeps_application_operation_running",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_development_projects.py::test_project_tools_forward_agent_context",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_development_projects.py::test_switch_guards_preserve_dirty_and_active_projects[True-idle-Save the current project-initialize_project]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_development_projects.py::test_switch_guards_preserve_dirty_and_active_projects[True-idle-Save the current project-open_project]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_development_projects.py::test_switch_guards_preserve_dirty_and_active_projects[False-run-Finish the active execution-initialize_project]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_development_projects.py::test_switch_guards_preserve_dirty_and_active_projects[False-run-Finish the active execution-open_project]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_development_projects.py::test_project_tools_reject_relative_and_extra_arguments",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_development_projects.py::test_project_notifier_runs_after_session_initialization",
       "tsCases": [],
       "outcome": "passed"
     },

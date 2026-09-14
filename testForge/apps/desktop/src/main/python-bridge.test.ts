@@ -51,6 +51,20 @@ describe("Python bridge", () => {
     expect(event).toHaveBeenCalledWith("project", "中文");
   });
 
+  it("applies project state before notifying a workspace switch exactly once", () => {
+    const { bridge, reply, event } = fixture();
+    event.mockImplementation((name, payload, changed) => {
+      expect(name).toBe("project");
+      expect(changed).toBe(true);
+      expect(bridge.state.project).toEqual(payload);
+    });
+    reply({ method: "desktop.event", params: encodeProcessValue({
+      event: "project", payload: { rootPath: "E:/project" }, workspaceChanged: true,
+      state: { generation: 4, project: { rootPath: "E:/project" } }
+    }) });
+    expect(event).toHaveBeenCalledOnce();
+  });
+
   it("restores domain errors and rejects every pending request on process exit", async () => {
     const { bridge, frames, reply, child } = fixture();
     const failed = bridge.call("bad", {});

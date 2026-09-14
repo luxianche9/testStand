@@ -1,0 +1,211 @@
+{
+  "hardwareId": "LOCAL_MCP.FIREDAP_0",
+  "manufacturer": "Embedfire",
+  "model": "fireDAP CMSIS-DAP",
+  "connectors": [
+    {
+      "connectorId": "LOCAL_MCP.FIREDAP_0.SWD",
+      "name": "SWD 5针（VREF 为参考输入）",
+      "pinIds": [
+        "LOCAL_MCP.FIREDAP_0.SWD.1",
+        "LOCAL_MCP.FIREDAP_0.SWD.2",
+        "LOCAL_MCP.FIREDAP_0.SWD.3",
+        "LOCAL_MCP.FIREDAP_0.SWD.4",
+        "LOCAL_MCP.FIREDAP_0.SWD.5"
+      ]
+    },
+    {
+      "connectorId": "LOCAL_MCP.FIREDAP_0.USB",
+      "name": "USB Type-C 上行（整根 USB 数据线）",
+      "pinIds": []
+    },
+    {
+      "connectorId": "LOCAL_MCP.FIREDAP_0.JTAG",
+      "name": "JTAG / SWD 20针（2×10，VTREF 参考输入）",
+      "pinIds": [
+        "LOCAL_MCP.FIREDAP_0.JTAG.1",
+        "LOCAL_MCP.FIREDAP_0.JTAG.2",
+        "LOCAL_MCP.FIREDAP_0.JTAG.3",
+        "LOCAL_MCP.FIREDAP_0.JTAG.4",
+        "LOCAL_MCP.FIREDAP_0.JTAG.5",
+        "LOCAL_MCP.FIREDAP_0.JTAG.6",
+        "LOCAL_MCP.FIREDAP_0.JTAG.7",
+        "LOCAL_MCP.FIREDAP_0.JTAG.8",
+        "LOCAL_MCP.FIREDAP_0.JTAG.9",
+        "LOCAL_MCP.FIREDAP_0.JTAG.10",
+        "LOCAL_MCP.FIREDAP_0.JTAG.11",
+        "LOCAL_MCP.FIREDAP_0.JTAG.12",
+        "LOCAL_MCP.FIREDAP_0.JTAG.13",
+        "LOCAL_MCP.FIREDAP_0.JTAG.14",
+        "LOCAL_MCP.FIREDAP_0.JTAG.15",
+        "LOCAL_MCP.FIREDAP_0.JTAG.16",
+        "LOCAL_MCP.FIREDAP_0.JTAG.17",
+        "LOCAL_MCP.FIREDAP_0.JTAG.18",
+        "LOCAL_MCP.FIREDAP_0.JTAG.19",
+        "LOCAL_MCP.FIREDAP_0.JTAG.20"
+      ]
+    }
+  ],
+  "pins": [
+    {
+      "pinId": "LOCAL_MCP.FIREDAP_0.SWD.1",
+      "position": 1,
+      "label": "VTREF",
+      "connectorId": "LOCAL_MCP.FIREDAP_0.SWD"
+    },
+    {
+      "pinId": "LOCAL_MCP.FIREDAP_0.SWD.2",
+      "position": 2,
+      "label": "SWDIO",
+      "connectorId": "LOCAL_MCP.FIREDAP_0.SWD"
+    },
+    {
+      "pinId": "LOCAL_MCP.FIREDAP_0.SWD.3",
+      "position": 3,
+      "label": "GND",
+      "connectorId": "LOCAL_MCP.FIREDAP_0.SWD"
+    },
+    {
+      "pinId": "LOCAL_MCP.FIREDAP_0.SWD.4",
+      "position": 4,
+      "label": "SWCLK",
+      "connectorId": "LOCAL_MCP.FIREDAP_0.SWD"
+    },
+    {
+      "pinId": "LOCAL_MCP.FIREDAP_0.SWD.5",
+      "position": 5,
+      "label": "NRST",
+      "connectorId": "LOCAL_MCP.FIREDAP_0.SWD"
+    },
+    {
+      "pinId": "LOCAL_MCP.FIREDAP_0.JTAG.1",
+      "position": 1,
+      "label": "VTREF",
+      "connectorId": "LOCAL_MCP.FIREDAP_0.JTAG"
+    },
+    {
+      "pinId": "LOCAL_MCP.FIREDAP_0.JTAG.2",
+      "position": 2,
+      "label": "VTREF",
+      "connectorId": "LOCAL_MCP.FIREDAP_0.JTAG"
+    },
+    {
+      "pinId": "LOCAL_MCP.FIREDAP_0.JTAG.3",
+      "position": 3,
+      "label": "NC",
+      "connectorId": "LOCAL_MCP.FIREDAP_0.JTAG"
+    },
+    {
+      "pinId": "LOCAL_MCP.FIREDAP_0.JTAG.4",
+      "position": 4,
+      "label": "GND",
+      "connectorId": "LOCAL_MCP.FIREDAP_0.JTAG"
+    },
+    {
+      "pinId": "LOCAL_MCP.FIREDAP_0.JTAG.5",
+      "position": 5,
+      "label": "TDI",
+      "connectorId": "LOCAL_MCP.FIREDAP_0.JTAG"
+    },
+    {
+      "pinId": "LOCAL_MCP.FIREDAP_0.JTAG.6",
+      "position": 6,
+      "label": "GND",
+      "connectorId": "LOCAL_MCP.FIREDAP_0.JTAG"
+    },
+    {
+      "pinId": "LOCAL_MCP.FIREDAP_0.JTAG.7",
+      "position": 7,
+      "label": "TMS/SWDIO",
+      "connectorId": "LOCAL_MCP.FIREDAP_0.JTAG"
+    },
+    {
+      "pinId": "LOCAL_MCP.FIREDAP_0.JTAG.8",
+      "position": 8,
+      "label": "GND",
+      "connectorId": "LOCAL_MCP.FIREDAP_0.JTAG"
+    },
+    {
+      "pinId": "LOCAL_MCP.FIREDAP_0.JTAG.9",
+      "position": 9,
+      "label": "TCK/SWCLK",
+      "connectorId": "LOCAL_MCP.FIREDAP_0.JTAG"
+    },
+    {
+      "pinId": "LOCAL_MCP.FIREDAP_0.JTAG.10",
+      "position": 10,
+      "label": "GND",
+      "connectorId": "LOCAL_MCP.FIREDAP_0.JTAG"
+    },
+    {
+      "pinId": "LOCAL_MCP.FIREDAP_0.JTAG.11",
+      "position": 11,
+      "label": "NC",
+      "connectorId": "LOCAL_MCP.FIREDAP_0.JTAG"
+    },
+    {
+      "pinId": "LOCAL_MCP.FIREDAP_0.JTAG.12",
+      "position": 12,
+      "label": "GND",
+      "connectorId": "LOCAL_MCP.FIREDAP_0.JTAG"
+    },
+    {
+      "pinId": "LOCAL_MCP.FIREDAP_0.JTAG.13",
+      "position": 13,
+      "label": "TDO/SWO",
+      "connectorId": "LOCAL_MCP.FIREDAP_0.JTAG"
+    },
+    {
+      "pinId": "LOCAL_MCP.FIREDAP_0.JTAG.14",
+      "position": 14,
+      "label": "GND",
+      "connectorId": "LOCAL_MCP.FIREDAP_0.JTAG"
+    },
+    {
+      "pinId": "LOCAL_MCP.FIREDAP_0.JTAG.15",
+      "position": 15,
+      "label": "NRST",
+      "connectorId": "LOCAL_MCP.FIREDAP_0.JTAG"
+    },
+    {
+      "pinId": "LOCAL_MCP.FIREDAP_0.JTAG.16",
+      "position": 16,
+      "label": "GND",
+      "connectorId": "LOCAL_MCP.FIREDAP_0.JTAG"
+    },
+    {
+      "pinId": "LOCAL_MCP.FIREDAP_0.JTAG.17",
+      "position": 17,
+      "label": "NC",
+      "connectorId": "LOCAL_MCP.FIREDAP_0.JTAG"
+    },
+    {
+      "pinId": "LOCAL_MCP.FIREDAP_0.JTAG.18",
+      "position": 18,
+      "label": "GND",
+      "connectorId": "LOCAL_MCP.FIREDAP_0.JTAG"
+    },
+    {
+      "pinId": "LOCAL_MCP.FIREDAP_0.JTAG.19",
+      "position": 19,
+      "label": "NC",
+      "connectorId": "LOCAL_MCP.FIREDAP_0.JTAG"
+    },
+    {
+      "pinId": "LOCAL_MCP.FIREDAP_0.JTAG.20",
+      "position": 20,
+      "label": "GND",
+      "connectorId": "LOCAL_MCP.FIREDAP_0.JTAG"
+    }
+  ],
+  "sources": [
+    "E:\\Project\\learnSTM32\\doc\\5-配套模块资料\\野火【DAP高速款下载器】\\1-DAP高速款使用说明.pdf",
+    "E:\\Project\\learnSTM32\\doc\\2-开发板硬件资料_原理图_尺寸图_封装库_规格书\\F407_霸天虎V2\\原理图\\野火STM32F407_霸天虎V2开发板原理图2025.pdf p12"
+  ],
+  "notes": [
+    "VTREF is a target-voltage reference, not a guaranteed board supply.",
+    "20-pin JTAG connector supports SWD. Service uses SWD only; V-UART is outside scope.",
+    "Pin 3 is NC on FireDAP but PB4/nTRST on target J45.",
+    "Pin map: supplied DAP high-speed manual pages 1, 2, 10 and photographed enclosure."
+  ]
+}

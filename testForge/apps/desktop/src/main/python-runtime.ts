@@ -6,7 +6,7 @@ import { PythonBridge } from "./python-bridge.js";
 import { logger } from "./logger.js";
 import { orchestrationSafetyFromEnv } from "./orchestration-safety.js";
 
-export async function startPythonBackend(event: (name: TestForgeEventName, payload: unknown) => void): Promise<PythonBridge> {
+export async function startPythonBackend(event: (name: TestForgeEventName, payload: unknown, workspaceChanged?: boolean) => void): Promise<PythonBridge> {
   if (!safeStorage.isEncryptionAvailable()) throw new Error("Windows credential encryption is not available");
   const developmentRoot = resolve(app.getAppPath(), "../../python");
   const frozen = app.isPackaged || Boolean(process.env.TESTFORGE_BACKEND_EXECUTABLE);

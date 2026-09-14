@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import inspect
+import os
 from dataclasses import dataclass
 from importlib.resources import files
 from typing import Any
@@ -17,6 +18,7 @@ from testforge_backend.contracts.orchestration import test_task_schema
 from testforge_backend.contracts.validation import (
     Schema,
     array,
+    custom_issue,
     number,
     obj,
     parse_record,
@@ -43,6 +45,28 @@ _HARDWARE_ID = obj({"hardwareId": string(1)}, strict=True)
 _WIRING_TASK_ID = obj({"wiringTaskId": string(1)}, strict=True)
 _OCCUPANCY_REQUEST_ID = obj({"occupancyRequestId": string(1)}, strict=True)
 _ARGUMENT_SCHEMAS: dict[str, Schema] = {
+    "get_project": _EMPTY,
+    "save_project": _EMPTY,
+    "initialize_project": obj(
+        {
+            "rootPath": string(1).refine(
+                lambda value: (
+                    [] if os.path.isabs(value) else [custom_issue("rootPath must be absolute")]
+                )
+            )
+        },
+        strict=True,
+    ),
+    "open_project": obj(
+        {
+            "rootPath": string(1).refine(
+                lambda value: (
+                    [] if os.path.isabs(value) else [custom_issue("rootPath must be absolute")]
+                )
+            )
+        },
+        strict=True,
+    ),
     "list_remote_computers": _EMPTY,
     "get_remote_computer_status": _COMPUTER_ID,
     "list_mcp_servers": _EMPTY,
@@ -134,7 +158,8 @@ class GatewayToolDefinition:
 
 BUILTIN_TOOL_DEFINITIONS = [
     GatewayToolDefinition(item["tool"], item["capability"])
-    for item in json_parse(files(__package__).joinpath("builtin_tools.json").read_text("utf-8"))
+    for resource in ("project_tools.json", "builtin_tools.json")
+    for item in json_parse(files(__package__).joinpath(resource).read_text("utf-8"))
 ]
 
 
@@ -197,6 +222,21 @@ class ToolRegistry:
 def _handler_arguments(
     app: Any, context: Record, name: str, value: Record
 ) -> tuple[Any, list[Any]]:
+    if name in {"get_project", "save_project", "initialize_project", "open_project"}:
+        if name in {"initialize_project", "open_project"}:
+            if app.system.dashboard(context)["execution"]["state"] != "idle":
+                raise app_error("conflict", "Finish the active execution before switching projects")
+            if (app.projects.document(context) or {}).get("dirty"):
+                raise app_error("conflict", "Save the current project before switching projects")
+            handler = (
+                app.projects.initialize_folder
+                if name == "initialize_project"
+                else app.projects.open_folder
+            )
+            return handler, [context, value["rootPath"]]
+        return (app.projects.document if name == "get_project" else app.projects.save_project), [
+            context
+        ]
     devices, wiring, occupancy, orchestration = (
         app.devices,
         app.wiring,

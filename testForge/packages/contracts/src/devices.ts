@@ -7,12 +7,18 @@ export const remoteComputerSchema = z.object({
   id: z.string().min(1),
   label: z.string().min(1),
   address: z.string().min(1),
+  // Existing records remain SSH hosts. Local lifecycle execution must be explicit.
+  execution: z.enum(["ssh", "local"]).optional(),
   ssh: z.object({
     port: z.number().int().min(1).max(65535).default(22),
     username: z.string().min(1),
     hostKeyFingerprint: z.string().optional(),
     shell: z.enum(["powershell", "posix"]).default("powershell")
   })
+}).superRefine((value, context) => {
+  if (value.execution === "local" && !["127.0.0.1", "localhost", "::1"].includes(value.address)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["address"], message: "Local computers require a loopback address" });
+  }
 });
 export type RemoteComputer = z.infer<typeof remoteComputerSchema>;
 export type StoredRemoteComputer = RemoteComputer;
@@ -61,7 +67,8 @@ export const managedHardwareSchema = z.object({
   serverId: z.string().min(1),
   state: z.enum(["initializing", "open", "unreachable", "faulted", "closing", "closed"]),
   health: z.string(),
-  lastError: z.object({ category: z.string().min(1), message: z.string(), at: z.string().datetime().optional() }).nullable().optional()
+  // Python datetime.isoformat() reports UTC as +00:00 and may include microseconds.
+  lastError: z.object({ category: z.string().min(1), message: z.string(), at: z.string().datetime({ offset: true }).optional() }).nullable().optional()
 });
 export type ManagedHardware = z.infer<typeof managedHardwareSchema>;
 export const reportedManagedHardwareSchema = managedHardwareSchema.omit({ computerId: true, serverId: true });

@@ -1,0 +1,153 @@
+{
+  "formatVersion": 2,
+  "hardwareId": "LOCAL_MCP.FIREDAP_0",
+  "kind": "managed",
+  "serverId": "FIREDAP_MCP",
+  "computerId": "LOCAL_PC",
+  "appearanceAssetId": "appearance.png",
+  "label": "野火 FireDAP · STM32 烧录器（本机）",
+  "ports": [
+    {
+      "portId": "LOCAL_MCP.FIREDAP_0.SWD",
+      "name": "SWD 5针（VREF 为参考输入）",
+      "pins": [
+        {
+          "pinId": "LOCAL_MCP.FIREDAP_0.SWD.1",
+          "position": 1,
+          "label": "VTREF"
+        },
+        {
+          "pinId": "LOCAL_MCP.FIREDAP_0.SWD.2",
+          "position": 2,
+          "label": "SWDIO"
+        },
+        {
+          "pinId": "LOCAL_MCP.FIREDAP_0.SWD.3",
+          "position": 3,
+          "label": "GND"
+        },
+        {
+          "pinId": "LOCAL_MCP.FIREDAP_0.SWD.4",
+          "position": 4,
+          "label": "SWCLK"
+        },
+        {
+          "pinId": "LOCAL_MCP.FIREDAP_0.SWD.5",
+          "position": 5,
+          "label": "NRST"
+        }
+      ]
+    },
+    {
+      "portId": "LOCAL_MCP.FIREDAP_0.USB",
+      "name": "USB Type-C 上行（整根 USB 数据线）",
+      "pins": []
+    },
+    {
+      "portId": "LOCAL_MCP.FIREDAP_0.JTAG",
+      "name": "JTAG / SWD 20针（2×10，VTREF 参考输入）",
+      "pins": [
+        {
+          "pinId": "LOCAL_MCP.FIREDAP_0.JTAG.1",
+          "position": 1,
+          "label": "VTREF"
+        },
+        {
+          "pinId": "LOCAL_MCP.FIREDAP_0.JTAG.2",
+          "position": 2,
+          "label": "VTREF"
+        },
+        {
+          "pinId": "LOCAL_MCP.FIREDAP_0.JTAG.3",
+          "position": 3,
+          "label": "NC"
+        },
+        {
+          "pinId": "LOCAL_MCP.FIREDAP_0.JTAG.4",
+          "position": 4,
+          "label": "GND"
+        },
+        {
+          "pinId": "LOCAL_MCP.FIREDAP_0.JTAG.5",
+          "position": 5,
+          "label": "TDI"
+        },
+        {
+          "pinId": "LOCAL_MCP.FIREDAP_0.JTAG.6",
+          "position": 6,
+          "label": "GND"
+        },
+        {
+          "pinId": "LOCAL_MCP.FIREDAP_0.JTAG.7",
+          "position": 7,
+          "label": "TMS/SWDIO"
+        },
+        {
+          "pinId": "LOCAL_MCP.FIREDAP_0.JTAG.8",
+          "position": 8,
+          "label": "GND"
+        },
+        {
+          "pinId": "LOCAL_MCP.FIREDAP_0.JTAG.9",
+          "position": 9,
+          "label": "TCK/SWCLK"
+        },
+        {
+          "pinId": "LOCAL_MCP.FIREDAP_0.JTAG.10",
+          "position": 10,
+          "label": "GND"
+        },
+        {
+          "pinId": "LOCAL_MCP.FIREDAP_0.JTAG.11",
+          "position": 11,
+          "label": "NC"
+        },
+        {
+          "pinId": "LOCAL_MCP.FIREDAP_0.JTAG.12",
+          "position": 12,
+          "label": "GND"
+        },
+        {
+          "pinId": "LOCAL_MCP.FIREDAP_0.JTAG.13",
+          "position": 13,
+          "label": "TDO/SWO"
+        },
+        {
+          "pinId": "LOCAL_MCP.FIREDAP_0.JTAG.14",
+          "position": 14,
+          "label": "GND"
+        },
+        {
+          "pinId": "LOCAL_MCP.FIREDAP_0.JTAG.15",
+          "position": 15,
+          "label": "NRST"
+        },
+        {
+          "pinId": "LOCAL_MCP.FIREDAP_0.JTAG.16",
+          "position": 16,
+          "label": "GND"
+        },
+        {
+          "pinId": "LOCAL_MCP.FIREDAP_0.JTAG.17",
+          "position": 17,
+          "label": "NC"
+        },
+        {
+          "pinId": "LOCAL_MCP.FIREDAP_0.JTAG.18",
+          "position": 18,
+          "label": "GND"
+        },
+        {
+          "pinId": "LOCAL_MCP.FIREDAP_0.JTAG.19",
+          "position": 19,
+          "label": "NC"
+        },
+        {
+          "pinId": "LOCAL_MCP.FIREDAP_0.JTAG.20",
+          "position": 20,
+          "label": "GND"
+        }
+      ]
+    }
+  ]
+}

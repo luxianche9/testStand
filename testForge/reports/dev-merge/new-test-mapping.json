@@ -1,0 +1,97 @@
+{
+  "sourceRevision": "fb7b808ae605c661e70afe10e5a392de8499dd1f",
+  "sourceExpandedCases": 18,
+  "cases": [
+    {
+      "sourceFile": "testForge/packages/application/src/application.test.ts",
+      "sourceCase": "publishes project changes from agent operations after session initialization",
+      "sha256": "9bc48148a081551a004f1ae8fb0efd952e173998876651550538b12fae190960",
+      "pythonNode": "tests/mcp_gateway/test_development_projects.py::test_project_notifier_runs_after_session_initialization",
+      "parameterExpansion": 1
+    },
+    {
+      "sourceFile": "testForge/packages/devices/src/device-service.test.ts",
+      "sourceCase": "restarts with a fresh transport only after safe shutdown and a successful stop",
+      "sha256": "b007de385ccb2d3bd8640389b33042fcaceff008ad3f6c1cb0ad00e97313e80b",
+      "pythonNode": "tests/devices/test_development_merge.py::test_restart_disconnects_only_after_successful_stop",
+      "parameterExpansion": 1
+    },
+    {
+      "sourceFile": "testForge/packages/devices/src/device-service.test.ts",
+      "sourceCase": "keeps the last complete server status during concurrent refreshes and reports failures and recovery",
+      "sha256": "b007de385ccb2d3bd8640389b33042fcaceff008ad3f6c1cb0ad00e97313e80b",
+      "pythonNode": "tests/devices/test_development_merge.py::test_concurrent_probes_preserve_last_result_and_share_work[server]",
+      "parameterExpansion": 1
+    },
+    {
+      "sourceFile": "testForge/packages/devices/src/device-service.test.ts",
+      "sourceCase": "keeps the last SSH status while sharing concurrent computer probes",
+      "sha256": "b007de385ccb2d3bd8640389b33042fcaceff008ad3f6c1cb0ad00e97313e80b",
+      "pythonNode": "tests/devices/test_development_merge.py::test_concurrent_probes_preserve_last_result_and_share_work[computer]",
+      "parameterExpansion": 1
+    },
+    {
+      "sourceFile": "testForge/packages/devices/src/local-shell.test.ts",
+      "sourceCase": "captures stdout and nonzero exit codes without an SSH credential",
+      "sha256": "5b87348b17f2ce6916b3b89c8cd3e5d65ad0ca44b3d83b6f7bfae107bc50a652",
+      "pythonNode": "tests/devices/test_development_merge.py::test_local_shell_output_nonzero_timeout_and_buffer_limit",
+      "parameterExpansion": 1
+    },
+    {
+      "sourceFile": "testForge/packages/devices/src/local-shell.test.ts",
+      "sourceCase": "enforces a deadline",
+      "sha256": "5b87348b17f2ce6916b3b89c8cd3e5d65ad0ca44b3d83b6f7bfae107bc50a652",
+      "pythonNode": "tests/devices/test_development_merge.py::test_local_shell_output_nonzero_timeout_and_buffer_limit",
+      "parameterExpansion": 1
+    },
+    {
+      "sourceFile": "testForge/packages/devices/src/local-shell.test.ts",
+      "sourceCase": "requires explicit local execution and a loopback address",
+      "sha256": "5b87348b17f2ce6916b3b89c8cd3e5d65ad0ca44b3d83b6f7bfae107bc50a652",
+      "pythonNode": "tests/devices/test_development_merge.py::test_local_computer_is_explicit_and_loopback_only",
+      "parameterExpansion": 1
+    },
+    {
+      "sourceFile": "testForge/packages/devices/src/mcp-client.test.ts",
+      "sourceCase": "accepts a remote hardware error timestamp %s without losing the connection",
+      "sha256": "3789e15ff8167c71449c72bdd7ecf8f1fc758a6bc92402a9bdbf2276a0b006c7",
+      "pythonNode": "tests/devices/test_development_merge.py::test_hardware_error_accepts_explicit_offsets",
+      "parameterExpansion": 3
+    },
+    {
+      "sourceFile": "testForge/packages/devices/src/mcp-client.test.ts",
+      "sourceCase": "rejects an invalid or ambiguous error timestamp %s",
+      "sha256": "3789e15ff8167c71449c72bdd7ecf8f1fc758a6bc92402a9bdbf2276a0b006c7",
+      "pythonNode": "tests/devices/test_development_merge.py::test_hardware_error_rejects_invalid_or_ambiguous_timestamp",
+      "parameterExpansion": 3
+    },
+    {
+      "sourceFile": "testForge/packages/mcp-gateway/src/tools/projects.test.ts",
+      "sourceCase": "uses existing project services with the agent context",
+      "sha256": "f4ecb79f2abe1f034927777165f7aa6476f480730ef144cdd6fa6b4b34a29cbc",
+      "pythonNode": "tests/mcp_gateway/test_development_projects.py::test_project_tools_forward_agent_context",
+      "parameterExpansion": 1
+    },
+    {
+      "sourceFile": "testForge/packages/mcp-gateway/src/tools/projects.test.ts",
+      "sourceCase": "%s preserves unsaved work",
+      "sha256": "f4ecb79f2abe1f034927777165f7aa6476f480730ef144cdd6fa6b4b34a29cbc",
+      "pythonNode": "tests/mcp_gateway/test_development_projects.py::test_switch_guards_preserve_dirty_and_active_projects",
+      "parameterExpansion": 2
+    },
+    {
+      "sourceFile": "testForge/packages/mcp-gateway/src/tools/projects.test.ts",
+      "sourceCase": "does not interrupt active execution to switch projects",
+      "sha256": "f4ecb79f2abe1f034927777165f7aa6476f480730ef144cdd6fa6b4b34a29cbc",
+      "pythonNode": "tests/mcp_gateway/test_development_projects.py::test_switch_guards_preserve_dirty_and_active_projects",
+      "parameterExpansion": 1
+    },
+    {
+      "sourceFile": "testForge/packages/mcp-gateway/src/tools/projects.test.ts",
+      "sourceCase": "rejects relative project paths and extra parameters",
+      "sha256": "f4ecb79f2abe1f034927777165f7aa6476f480730ef144cdd6fa6b4b34a29cbc",
+      "pythonNode": "tests/mcp_gateway/test_development_projects.py::test_project_tools_reject_relative_and_extra_arguments",
+      "parameterExpansion": 1
+    }
+  ]
+}

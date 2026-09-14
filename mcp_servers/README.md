@@ -1,5 +1,9 @@
 # Real hardware MCP servers
 
+本机 FireDAP 烧录服务见 [`servers/firedap/README.md`](servers/firedap/README.md)，
+霸天虎 V2 常用接口模型见 [`hardware-manuals/stm32-batianhu-v2/README.md`](hardware-manuals/stm32-batianhu-v2/README.md)。
+FireDAP 使用独立的本地安装/注册脚本，不属于下述四台 PCI/串口服务的远程同步清单。
+
 This directory is the source-controlled mirror of the four MCP servers running on
 `192.168.3.63`. Runtime state, virtual environments, logs, backups and credentials
 are deliberately excluded.

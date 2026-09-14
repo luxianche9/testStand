@@ -44,11 +44,12 @@ describe("device editors", () => {
     await userEvent.type(screen.getByLabelText(/IP 地址 \/ 主机名/), " 192.168.3.51 ");
     await userEvent.clear(screen.getByLabelText(/SSH 用户名/));
     await userEvent.type(screen.getByLabelText(/SSH 用户名/), " operator ");
-    await userEvent.selectOptions(screen.getByLabelText(/远程 Shell/), "posix");
+    await userEvent.selectOptions(screen.getByLabelText(/Shell/), "posix");
     await userEvent.type(screen.getByLabelText("SSH 密码"), "secret");
     await userEvent.click(screen.getByRole("button", { name: "保存" }));
 
     await waitFor(() => expect(saveComputer).toHaveBeenCalledWith({
+      execution: "ssh",
       id: "REMOTE_PC_1",
       label: "仪器控制电脑",
       address: "192.168.3.51",
@@ -56,6 +57,19 @@ describe("device editors", () => {
     }, { ssh: "secret" }));
     expect(onChanged).toHaveBeenCalledOnce();
     expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("saves an explicit local computer without sending hidden SSH credentials", async () => {
+    render(<ComputerEditor open onClose={vi.fn()} onChanged={vi.fn(async () => undefined)} />, { wrapper: Wrapper });
+    await userEvent.type(screen.getByLabelText("SSH 密码"), "discard-me");
+    await userEvent.selectOptions(screen.getByLabelText(/运行位置/), "local");
+    expect(screen.queryByLabelText(/SSH 用户名/)).toBeNull();
+    expect(screen.queryByLabelText(/IP 地址/)).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "保存" }));
+    await waitFor(() => expect(saveComputer).toHaveBeenCalledWith({
+      execution: "local", id: "REMOTE_PC_1", label: "仪器控制电脑", address: "127.0.0.1",
+      ssh: { port: 22, username: "local", shell: "powershell" }
+    }, undefined));
   });
 
   it("saves a passive hardware definition", async () => {

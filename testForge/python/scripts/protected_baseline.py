@@ -50,6 +50,17 @@ def main() -> None:
         )
     else:
         expected = json.loads(target.read_text(encoding="utf-8"))["entries"]
+        # The authorized development merge changes Python behavior. Keep the presentation
+        # baseline immutable and apply only the individually recorded Python source changes.
+        merge = json.loads(
+            (root / "reports/dev-merge/protected-changes.json").read_text(encoding="utf-8")
+        )
+        if hashlib.sha256(target.read_bytes()).hexdigest() != merge["previousBaselineSha256"]:
+            raise SystemExit("Historical presentation baseline changed")
+        for name, hashes in merge["changes"].items():
+            if not name.startswith("python/src/") or expected.get(name) != hashes["before"]:
+                raise SystemExit(f"Invalid development merge boundary: {name}")
+            expected[name] = hashes["after"]
         changed = [
             key for key in expected.keys() | actual.keys() if expected.get(key) != actual.get(key)
         ]

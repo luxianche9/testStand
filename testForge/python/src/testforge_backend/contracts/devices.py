@@ -21,6 +21,7 @@ remote_computer_schema = obj(
         "id": string(1),
         "label": string(1),
         "address": string(1),
+        "execution": enum("ssh", "local").optional(),
         "ssh": obj(
             {
                 "port": number(1, 65535, integer=True).default(22),
@@ -30,6 +31,13 @@ remote_computer_schema = obj(
             }
         ),
     }
+).refine(
+    lambda value: (
+        [custom_issue("Local computers require a loopback address", ["address"])]
+        if value.get("execution") == "local"
+        and value["address"] not in {"127.0.0.1", "localhost", "::1"}
+        else []
+    )
 )
 server_lifecycle_schema = obj(
     {
@@ -61,7 +69,11 @@ _managed_fields = {
     "state": hardware_state_schema,
     "health": string(),
     "lastError": obj(
-        {"category": string(1), "message": string(), "at": string(datetime=True).optional()}
+        {
+            "category": string(1),
+            "message": string(),
+            "at": string(datetime=True, offset=True).optional(),
+        }
     )
     .nullable()
     .optional(),

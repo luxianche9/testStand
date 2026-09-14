@@ -41,7 +41,14 @@ async def test_unmodified_ts_gateway_protocol_golden(case: dict[str, Any]) -> No
             else:
                 body = response.json() if response.content else None
             if case["name"] == "toolsList":
-                body["result"]["tools"] = [tool["name"] for tool in body["result"]["tools"]]
+                names = [tool["name"] for tool in body["result"]["tools"]]
+                assert names[:4] == [
+                    "get_project",
+                    "initialize_project",
+                    "open_project",
+                    "save_project",
+                ]
+                body["result"]["tools"] = names[4:]
             assert {"status": response.status_code, "body": body} == case["expected"]
     finally:
         await gateway.stop()

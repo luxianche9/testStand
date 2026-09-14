@@ -84,7 +84,7 @@ async def test_lifecycle_order(action: str, commands: list[str], prepared: bool)
     ):
         await service.server_action("S", action)
     assert sequence == (["prepare"] if prepared else []) + commands
-    if action in {"stop", "force-stop"}:
+    if action in {"stop", "force-stop", "restart"}:
         service.transports.disconnect.assert_awaited_once_with("S")
     else:
         service.transports.disconnect.assert_not_awaited()

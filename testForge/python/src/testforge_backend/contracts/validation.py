@@ -241,7 +241,7 @@ class Schema:
                         "path": path,
                     }
                 )
-            if options.get("datetime") and not _valid_datetime(value):
+            if options.get("datetime") and not _valid_datetime(value, options.get("offset", False)):
                 issues.append(
                     {
                         "code": "invalid_string",
@@ -381,9 +381,10 @@ def _aborted(issues: list[Record]) -> bool:
     return False
 
 
-def _valid_datetime(value: str) -> bool:
+def _valid_datetime(value: str, offset: bool = False) -> bool:
+    zone = r"(?:Z|[+-]\d{2}:?\d{2})" if offset else "Z"
     match = re.fullmatch(
-        r"(\d{4})-(\d{2})-(\d{2})T([01]\d|2[0-3]):([0-5]\d)(?::([0-5]\d)(?:\.\d+)?)?Z", value
+        r"(\d{4})-(\d{2})-(\d{2})T([01]\d|2[0-3]):([0-5]\d)(?::([0-5]\d)(?:\.\d+)?)?" + zone, value
     )
     if not match:
         return False
@@ -407,6 +408,7 @@ def string(
     trim: bool = False,
     regex: str | None = None,
     datetime: bool = False,
+    offset: bool = False,
     url: bool = False,
 ) -> Schema:
     return Schema(
@@ -417,6 +419,7 @@ def string(
             "trim": trim,
             "regex": regex,
             "datetime": datetime,
+            "offset": offset,
             "url": url,
         },
     )

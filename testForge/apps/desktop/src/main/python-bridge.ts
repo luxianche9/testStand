@@ -20,7 +20,7 @@ export interface BackendState {
 
 interface BridgeOptions {
   hostCall(method: string, params: unknown): Promise<unknown>;
-  event(name: TestForgeEventName, payload: unknown): void;
+  event(name: TestForgeEventName, payload: unknown, workspaceChanged?: boolean): void;
   log(message: string): void;
   failed?(error: Error): void;
 }
@@ -109,9 +109,10 @@ export class PythonBridge {
       } else if (frame.method === "desktop.state") {
         this.applyState(frame.params);
       } else if (frame.method === "desktop.event") {
-        const value = params as { event: TestForgeEventName; payload: unknown; state?: BackendState };
+        const value = params as { event: TestForgeEventName; payload: unknown; state?: BackendState; workspaceChanged?: boolean };
         if (value.state) this.applyState(encodeProcessValue(value.state));
-        this.options.event(value.event, value.payload);
+        if (value.workspaceChanged === undefined) this.options.event(value.event, value.payload);
+        else this.options.event(value.event, value.payload, value.workspaceChanged);
       }
       return;
     }

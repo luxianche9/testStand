@@ -30,8 +30,12 @@ export interface DesktopComposition {
 export async function createDesktopComposition(windows: DesktopWindows): Promise<DesktopComposition> {
   const userData = app.getPath("userData");
   const integrationTestMode = process.env.TESTFORGE_AGENT_INTEGRATION_TEST_MODE === "1";
-  const backend = await startPythonBackend((event, payload) => {
+  let reconcileWorkspace: (() => Promise<void>) | undefined;
+  const backend = await startPythonBackend((event, payload, workspaceChanged) => {
     windows.publish(event, payload);
+    if (workspaceChanged) {
+      void reconcileWorkspace?.().catch((error) => logger.error("OpenCode project reconciliation failed", error));
+    }
     if ((event === "wiringTask" || event === "occupancyRequest") && (payload as { status?: string })?.status === "pending") windows.flashFrame(true);
   });
   const application = createPythonApplication(backend);
@@ -52,6 +56,7 @@ export async function createDesktopComposition(windows: DesktopWindows): Promise
     llmSettings: () => backend.state.settings.llm, apiKey: llmApiKey,
     corsOrigins: rendererCorsOrigins()
   });
+  reconcileWorkspace = async () => { await reconcileOpenCodeWorkspace(openCodeRuntime, Boolean(backend.state.project), llmApiKey()); };
   registerLogSecrets(() => [gateway.token(), llmApiKey(), openCodeRuntime.connectionInfo()?.password]);
   openCodeRuntime.setNotifier((status) => windows.publish("opencode", status));
   const agentIntegration = new CodexAgentIntegrationService(

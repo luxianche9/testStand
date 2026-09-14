@@ -1,0 +1,174 @@
+..................................F..................................... [  8%]
+........................................................................ [ 16%]
+........................................................................ [ 25%]
+........................................................................ [ 33%]
+........................................................................ [ 42%]
+........................................................................ [ 50%]
+........................................................................ [ 58%]
+.................................F...................................... [ 67%]
+........................................................................ [ 75%]
+.................................................................F...... [ 84%]
+........................................................................ [ 92%]
+.................................................................        [100%]
+================================== FAILURES ===================================
+__________ test_project_switch_reinitializes_on_success_and_failure ___________
+
+    async def test_project_switch_reinitializes_on_success_and_failure() -> None:
+        trace: list[str] = []
+
+        def sync(name: str, result: Any = None) -> Mock:
+            def call(*args: Any) -> Any:
+                trace.append(name)
+                return result
+
+            return Mock(side_effect=call)
+
+        def asynchronous(name: str, result: Any = None) -> AsyncMock:
+            async def call(*args: Any) -> Any:
+                trace.append(name)
+                return result
+
+            return AsyncMock(side_effect=call)
+
+        projects = Mock(
+            current=sync("current", {"dirty": False}),
+            inspect_folder=asynchronous("inspect", {"status": "ready"}),
+            initialize_folder=asynchronous("initializeFolder", {"dirty": False}),
+            open_folder=asynchronous("openFolder", {"dirty": False}),
+            save=asynchronous("save", {"dirty": False}),
+            leave=asynchronous("leave"),
+            list_recent=asynchronous("recent", []),
+            forget_recent=asynchronous("forget"),
+            close=asynchronous("project.close"),
+        )
+        wiring = Mock(
+            close=asynchronous("wiring.close"),
+            clear_session=sync("wiring.clear"),
+            initialize=asynchronous("wiring.initialize"),
+        )
+        orchestration = Mock(
+            close=asynchronous("orchestration.close"),
+            clear_session=sync("orchestration.clear"),
+            initialize=asynchronous("orchestration.initialize"),
+        )
+        app = ProjectsApplication(DefaultAuthorizer(), projects, wiring, orchestration)
+        assert app.document(HUMAN) == {"dirty": False}
+        assert await app.inspect_folder(HUMAN, "path") == {"status": "ready"}
+        trace.clear()
+        assert await app.initialize_folder(HUMAN, "path") == {"dirty": False}
+>       assert trace == [
+            "orchestration.close",
+            "wiring.close",
+            "orchestration.clear",
+            "wiring.clear",
+            "initializeFolder",
+            "wiring.initialize",
+            "orchestration.initialize",
+        ]
+E       AssertionError: assert ['orchestrati...tialize', ...] == ['orchestrati...tialize', ...]
+E
+E         Left contains one more item: 'current'
+E         Use -v to get more diff
+
+tests\application\test_regressions.py:265: AssertionError
+________________ test_lifecycle_order[restart-commands2-True] _________________
+
+action = 'restart', commands = ['stop', 'start'], prepared = True
+
+    @pytest.mark.parametrize(
+        "action,commands,prepared",
+        [
+            ("start", ["start"], False),
+            ("stop", ["stop"], True),
+            ("restart", ["stop", "start"], True),
+            ("force-stop", ["stop"], False),
+        ],
+    )
+    async def test_lifecycle_order(action: str, commands: list[str], prepared: bool) -> None:
+        service, server = service_fixture()
+        sequence: list[str] = []
+
+        async def prepare(_server: Any) -> None:
+            sequence.append("prepare")
+
+        async def execute(_computer: str, command: str, timeout: int) -> dict[str, Any]:
+            assert timeout == 90000
+            sequence.append(command)
+            return {"exitCode": 0, "stderr": ""}
+
+        service.transports.prepare_shutdown.side_effect = prepare
+        with (
+            patch.object(service, "execute", side_effect=execute),
+            patch.object(
+                service, "refresh_server", AsyncMock(return_value={"transport": {"state": "online"}})
+            ),
+        ):
+            await service.server_action("S", action)
+        assert sequence == (["prepare"] if prepared else []) + commands
+        if action in {"stop", "force-stop"}:
+            service.transports.disconnect.assert_awaited_once_with("S")
+        else:
+>           service.transports.disconnect.assert_not_awaited()
+
+tests\devices\test_service_boundaries.py:90:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <AsyncMock name='mock.disconnect' id='2071941761680'>
+
+    def assert_not_awaited(self):
+        """
+        Assert that the mock was never awaited.
+        """
+        if self.await_count != 0:
+            msg = (f"Expected {self._mock_name or 'mock'} to not have been awaited."
+                   f" Awaited {self.await_count} times.")
+>           raise AssertionError(msg)
+E           AssertionError: Expected disconnect to not have been awaited. Awaited 1 times.
+
+D:\uv\python\cpython-3.11.15-windows-x86_64-none\Lib\unittest\mock.py:2378: AssertionError
+____________ test_unmodified_ts_gateway_protocol_golden[toolsList] ____________
+
+case = {'name': 'toolsList', 'session': True, 'body': {'jsonrpc': '2.0', 'id': 2, 'method': 'tools/list'}, 'expected': {'stat...', 'get_remote_mcp_service', 'start_remote_mcp_service', 'stop_remote_mcp_service', ...]}, 'jsonrpc': '2.0', 'id': 2}}}
+
+    @pytest.mark.parametrize("case", CASES, ids=[case["name"] for case in CASES])
+    async def test_unmodified_ts_gateway_protocol_golden(case: dict[str, Any]) -> None:
+        gateway, _ = make_gateway()
+        await gateway.start()
+        try:
+            async with httpx.AsyncClient(headers=_HEADERS) as client:
+                url = gateway.status()["endpoint"]
+                if case.get("session"):
+                    opened = await client.post(url, json=_INITIALIZE)
+                    client.headers["mcp-session-id"] = opened.headers["mcp-session-id"]
+                response = await client.request(
+                    case.get("method", "POST"),
+                    url,
+                    headers=case.get("headers", {}),
+                    **({"json": case["body"]} if "body" in case else {}),
+                )
+                body: Any
+                if response.headers.get("content-type", "").startswith("text/event-stream"):
+                    messages = [
+                        json.loads(line[6:])
+                        for line in response.text.splitlines()
+                        if line.startswith("data: ")
+                    ]
+                    body = messages if len(messages) > 1 else messages[0]
+                else:
+                    body = response.json() if response.content else None
+                if case["name"] == "toolsList":
+                    body["result"]["tools"] = [tool["name"] for tool in body["result"]["tools"]]
+>               assert {"status": response.status_code, "body": body} == case["expected"]
+E               AssertionError: assert {'status': 20...atus', ...]}}} == {'status': 20....0', 'id': 2}}
+E
+E                 Omitting 1 identical items, use -vv to show
+E                 Differing items:
+E                 {'body': {'jsonrpc': '2.0', 'id': 2, 'result': {'tools': ['get_project', 'initialize_project', 'open_project', 'save_project', 'list_remote_computers', 'get_remote_computer_status', ...]}}} != {'body': {'result': {'tools': ['list_remote_computers', 'get_remote_computer_status', 'list_mcp_servers', 'get_remote_mcp_service', 'start_remote_mcp_service', 'stop_remote_mcp_service', ...]}, 'jsonrpc': '2.0', 'id': 2}}
+E                 Use -v to get more diff
+
+tests\mcp_gateway\test_protocol_golden.py:45: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/application/test_regressions.py::test_project_switch_reinitializes_on_success_and_failure
+FAILED tests/devices/test_service_boundaries.py::test_lifecycle_order[restart-commands2-True]
+FAILED tests/mcp_gateway/test_protocol_golden.py::test_unmodified_ts_gateway_protocol_golden[toolsList]
+3 failed, 854 passed in 29.61s

@@ -1,0 +1,117 @@
+> testforge@0.1.0 verify:python E:\Project\hardwareHarness\testForge
+> uv run --project python python python/scripts/verify.py
+
+All checks passed!
+111 files already formatted
+Success: no issues found in 104 source files
+============================= test session starts =============================
+platform win32 -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: E:\Project\hardwareHarness\testForge\python
+configfile: pyproject.toml
+testpaths: tests
+plugins: anyio-4.15.1, asyncio-1.4.0, cov-7.1.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 859 items
+
+tests\application\test_application.py ....................               [  2%]
+tests\application\test_project_services.py .......                       [  3%]
+tests\application\test_regressions.py .........                          [  4%]
+tests\compat\test_compat.py ..                                           [  4%]
+tests\compat\test_filesystem.py .................                        [  6%]
+tests\compat\test_json_parse.py ........................................ [ 11%]
+........................................................................ [ 19%]
+.................                                                        [ 21%]
+tests\contracts\test_contracts.py ........                               [ 22%]
+tests\contracts\test_desktop.py .                                        [ 22%]
+tests\contracts\test_differential.py ................................... [ 26%]
+........................................................................ [ 34%]
+........................................................................ [ 43%]
+..................................................                       [ 49%]
+tests\devices\test_development_merge.py ..............                   [ 50%]
+tests\devices\test_device_store.py .............                         [ 52%]
+tests\devices\test_devices.py .................                          [ 54%]
+tests\devices\test_file_boundaries.py .......                            [ 55%]
+tests\devices\test_regressions.py .........                              [ 56%]
+tests\devices\test_schema_validation.py ................................ [ 59%]
+.....................                                                    [ 62%]
+tests\devices\test_service_boundaries.py ........                        [ 63%]
+tests\devices\test_sse.py ......                                         [ 63%]
+tests\devices\test_transports.py ........                                [ 64%]
+tests\host\test_codec.py ........                                        [ 65%]
+tests\host\test_facade_routes.py ....................................... [ 70%]
+................                                                         [ 72%]
+tests\host\test_firedap_registration.py .                                [ 72%]
+tests\host\test_migrations.py ..........................                 [ 75%]
+tests\host\test_process.py ......                                        [ 76%]
+tests\host\test_rpc.py ..                                                [ 76%]
+tests\mcp_gateway\test_boundaries.py ................................... [ 80%]
+                                                                         [ 80%]
+tests\mcp_gateway\test_development_projects.py .......                   [ 81%]
+tests\mcp_gateway\test_gateway.py ............                           [ 82%]
+tests\mcp_gateway\test_protocol_golden.py .................              [ 84%]
+tests\orchestration\test_regressions.py ................................ [ 88%]
+......                                                                   [ 88%]
+tests\orchestration\test_service.py ....................                 [ 91%]
+tests\orchestration\test_workflow.py .....                               [ 91%]
+tests\projects\test_projects.py ............                             [ 93%]
+tests\storage\test_run_log_store.py ..........                           [ 94%]
+tests\storage\test_storage.py ................                           [ 96%]
+tests\storage\test_storage_runtime_golden.py ....                        [ 96%]
+tests\test_specification_evidence.py ..................                  [ 98%]
+tests\wiring\test_wiring.py ........                                     [ 99%]
+tests\wiring\test_wiring_runtime_golden.py ..                            [100%]
+
+=============================== tests coverage ================================
+______________ coverage: platform win32, python 3.11.15-final-0 _______________
+
+Name                                                      Stmts   Miss Branch BrPart  Cover   Missing
+-----------------------------------------------------------------------------------------------------
+src\testforge_backend\application\execution.py               79      2     22      2    96%   75, 116, 119->118
+src\testforge_backend\application\services.py               248      2     22      0    99%   83-84
+src\testforge_backend\compat\__init__.py                    207     21     88      7    90%   25, 28, 61-62, 103-104, 149, 165, 171-172, 183, 215, 220-225, 249, 260, 295
+src\testforge_backend\compat\collation.py                    51      5     12      3    84%   36, 67, 78, 86-87
+src\testforge_backend\compat\filesystem.py                  131      6     38      5    93%   128, 130, 147, 216, 220, 231
+src\testforge_backend\compat\json_syntax.py                 155      8     90      7    94%   80->82, 111, 150-151, 156->141, 163-164, 169-170, 183
+src\testforge_backend\contracts\devices.py                   59      2     14      0    97%   188, 192
+src\testforge_backend\contracts\errors.py                    24      1      2      0    96%   63
+src\testforge_backend\contracts\execution.py                 23      8      4      0    56%   50-54, 58, 68, 79
+src\testforge_backend\contracts\occupancy.py                 21      4      0      0    81%   65, 69, 77, 81
+src\testforge_backend\contracts\storage.py                   15      1      0      0    93%   53
+src\testforge_backend\contracts\validation.py               254      3    114      4    98%   149, 218->227, 314, 491
+src\testforge_backend\contracts\wiring.py                    20      2      0      0    90%   75, 79
+src\testforge_backend\devices\device_catalog_service.py      63      1     18      0    99%   22
+src\testforge_backend\devices\device_service.py             216      1     40      2    99%   73, 88->90
+src\testforge_backend\devices\device_store.py               373     34    134     17    88%   99->98, 121, 176, 266->268, 338-339, 340->349, 396-397, 408-409, 499, 511, 524, 526, 528-536, 543-547, 555-557, 565, 568, 576, 588, 593
+src\testforge_backend\devices\hardware_occupancy.py         142      4     40      6    95%   131->133, 160-161, 196->exit, 198, 246, 258->exit, 259->261
+src\testforge_backend\devices\local_shell.py                 36      1     10      1    96%   25
+src\testforge_backend\devices\mcp_client.py                 237     10     80     12    93%   89->99, 108-109, 156, 204, 208->212, 233, 237->240, 263->exit, 323->327, 341, 345-351, 395
+src\testforge_backend\devices\mcp_transport.py               89      2     34      9    91%   53->55, 55->57, 58, 78->80, 83, 87->74, 88->90, 90->92, 98->87
+src\testforge_backend\devices\remote_shell.py                27      2      0      0    93%   26-27
+src\testforge_backend\devices\schema_validation.py          201     16    130     22    88%   84->86, 94, 109->exit, 111->exit, 119->exit, 122->120, 131, 139->132, 147, 153->152, 170->exit, 178, 182, 187, 194, 213, 240, 352, 354, 361, 379, 450-452
+src\testforge_backend\devices\ssh.py                        133     20     36      9    80%   69->71, 72, 80->82, 83-85, 102-103, 109-110, 125->exit, 152-159, 179->182, 182->185, 191-194
+src\testforge_backend\host\__main__.py                       19     19      2      0     0%   3-30
+src\testforge_backend\host\codec.py                          65      2     54      4    95%   26->28, 42, 61->65, 78
+src\testforge_backend\host\migrations.py                    210     23     96     13    87%   97, 102, 119, 125, 136->138, 156-163, 189, 217, 224-225, 234, 240, 246-247, 276, 308, 311
+src\testforge_backend\host\register_firedap.py               81     25     20      4    67%   28, 36, 38, 110-117, 120, 123, 127-139, 143
+src\testforge_backend\host\rpc.py                           113     27     30     10    69%   52, 56, 75, 77, 84->exit, 89-91, 99, 101-103, 107, 109-110, 119-120, 125-126, 127->exit, 136, 139-142, 145-148
+src\testforge_backend\host\runtime.py                       188    114     54      6    36%   150, 154-245, 248-269, 272-273, 276, 287, 293, 295-296, 301, 304, 315-373, 376-378, 381-389
+src\testforge_backend\mcp_gateway\gateway.py                315     17     96      7    93%   35->37, 175-176, 203, 251, 273->exit, 335-340, 461-466, 476->exit, 530
+src\testforge_backend\orchestration\cancellation.py          71      3     20      2    95%   66, 86, 98
+src\testforge_backend\orchestration\persistence.py           81      2     24      2    96%   62, 77
+src\testforge_backend\orchestration\service.py              529     28    186     22    93%   247, 301-303, 310->319, 315-318, 319->321, 405->408, 414, 429, 452, 456->468, 542, 599-606, 626-631, 650-652, 835, 853, 895->897, 940->exit, 951->exit, 960, 968->exit, 1011->1072, 1013, 1080, 1082, 1090
+src\testforge_backend\orchestration\store.py                127      4     22      2    96%   20-21, 43->exit, 169, 242
+src\testforge_backend\orchestration\workflow.py             293      9    198     12    96%   55, 105, 222, 224, 232, 234, 236, 238, 245, 339->341, 344->343, 352->354
+src\testforge_backend\projects\project_service.py           161      6     26      5    94%   60, 72-73, 85, 130, 195
+src\testforge_backend\storage\run_log_store.py              238      3     76      4    98%   234->243, 249-250, 271->273, 307, 315->exit
+src\testforge_backend\storage\secrets.py                     78      0     14      1    99%   35->37
+src\testforge_backend\storage\settings_store.py              32      0      2      1    97%   23->25
+src\testforge_backend\wiring\project_wiring_service.py      157      1     56      3    98%   91->93, 231->233, 269
+-----------------------------------------------------------------------------------------------------
+TOTAL                                                      6303    439   2020    204    91%
+
+24 files skipped due to complete coverage.
+Coverage JSON written to file reports/python-coverage.json
+============================ 859 passed in 38.93s =============================
+All 117 original package cases + 3 desktop migration cases (120 total) have current passing Python equivalents; fixed evidence verified
+All eight Python packages meet the original line and branch coverage floors
+Protected source baseline: 110 entries verified

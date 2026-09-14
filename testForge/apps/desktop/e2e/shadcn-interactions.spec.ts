@@ -171,13 +171,13 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
   test("submits the computer editor with Enter and the keyboard-selected native shell", async () => {
     await page.getByRole("tab", { name: "设备管理", exact: true }).click();
     await page.getByRole("button", { name: "添加电脑", exact: true }).click();
-    const dialog = page.getByRole("dialog", { name: "添加远程电脑", exact: true });
+    const dialog = page.getByRole("dialog", { name: "添加电脑", exact: true });
     await expect(dialog.getByRole("button", { name: "保存", exact: true })).toBeDisabled();
     await dialog.getByLabel("电脑 ID").fill("KEYBOARD_PC");
     await dialog.getByLabel("显示名称").fill("Keyboard computer");
     await dialog.getByLabel("IP 地址 / 主机名").fill("127.0.0.1");
     await dialog.getByLabel("SSH 用户名").fill("keyboard");
-    const shell = dialog.getByLabel("远程 Shell");
+    const shell = dialog.getByLabel("Shell");
     await expect(shell).toHaveValue("powershell");
     await shell.focus();
     await shell.press("End");

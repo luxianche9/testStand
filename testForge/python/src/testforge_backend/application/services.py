@@ -223,12 +223,16 @@ class ProjectsApplication:
         wiring: ProjectWiringService,
         orchestration: TaskOrchestrationService,
     ) -> None:
+        self._notifier: Callable[[Json | None, bool], None] | None = None
         self.authorizer, self.projects, self.wiring, self.orchestration = (
             authorizer,
             projects,
             wiring,
             orchestration,
         )
+
+    def set_notifier(self, notifier: Callable[[Json | None, bool], None]) -> None:
+        self._notifier = notifier
 
     def document(self, context: Json) -> Json | None:
         self.authorizer.authorize(context, "projects.read")
@@ -248,7 +252,10 @@ class ProjectsApplication:
 
     async def save_project(self, context: Json) -> Json:
         self.authorizer.authorize(context, "projects.manage")
-        return await self.projects.save()
+        document = await self.projects.save()
+        if self._notifier:
+            self._notifier(document, False)
+        return document
 
     async def leave_project(self, context: Json) -> None:
         self.authorizer.authorize(context, "projects.manage")
@@ -276,6 +283,8 @@ class ProjectsApplication:
             result = await action()
             await self.wiring.initialize()
             await self.orchestration.initialize()
+            if self._notifier:
+                self._notifier(self.projects.current(), True)
             return result
         except Exception:
             await self.wiring.initialize()

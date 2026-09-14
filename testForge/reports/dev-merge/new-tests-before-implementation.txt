@@ -1,0 +1,20 @@
+============================= test session starts =============================
+platform win32 -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: E:\Project\hardwareHarness\testForge\python
+configfile: pyproject.toml
+plugins: anyio-4.15.1, asyncio-1.4.0, cov-7.1.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 7 items / 1 error
+
+=================================== ERRORS ====================================
+__________ ERROR collecting tests/devices/test_development_merge.py ___________
+ImportError while importing test module 'E:\Project\hardwareHarness\testForge\python\tests\devices\test_development_merge.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+python\tests\devices\test_development_merge.py:16: in <module>
+    from testforge_backend.devices.local_shell import execute_local_shell
+E   ModuleNotFoundError: No module named 'testforge_backend.devices.local_shell'
+=========================== short test summary info ===========================
+ERROR python\tests\devices\test_development_merge.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+============================== 1 error in 0.80s ===============================

@@ -11,6 +11,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
+import httpx
 import pytest
 import pytest_asyncio
 
@@ -308,3 +309,60 @@ async def test_killed_child_recovers_run_then_cancels_with_latest_cleanup_contex
         assert sum(node["nodeId"] == "S1" for node in detail["nodeRuns"]) == 1
         assert sum(node["nodeId"] == "S2" for node in detail["nodeRuns"]) == 1
         assert "run.recovery_resumed" in [event["type"] for event in detail["events"]]
+
+
+async def test_mcp_project_changes_notify_desktop_once_with_current_snapshot(
+    client: Client, tmp_path: Path
+) -> None:
+    root = tmp_path / "agent project"
+    root.mkdir()
+    context = {"actor": "human", "source": "desktop"}
+    async with httpx.AsyncClient(
+        headers={
+            "Authorization": "Bearer " + client.state["gatewayToken"],
+            "Accept": "application/json, text/event-stream",
+        }
+    ) as http:
+        endpoint = client.state["gateway"]["endpoint"]
+        initialized = await http.post(
+            endpoint,
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2025-03-26",
+                    "capabilities": {},
+                    "clientInfo": {"name": "merge-test", "version": "1"},
+                },
+            },
+        )
+        assert initialized.status_code == 200
+        http.headers["mcp-session-id"] = initialized.headers["mcp-session-id"]
+        for name, args, changed in [
+            ("initialize_project", {"rootPath": str(root)}, True),
+            ("save_project", {}, False),
+            ("open_project", {"rootPath": str(root)}, True),
+        ]:
+            client.events.clear()
+            response = await http.post(
+                endpoint,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "method": "tools/call",
+                    "params": {"name": name, "arguments": args},
+                },
+            )
+            assert response.status_code == 200 and '"isError":true' not in response.text
+            await client.call("application.system.dashboard", {"args": [context]})
+            events = [item for item in client.events if item["event"] == "project"]
+            assert len(events) == 1
+            assert events[0]["workspaceChanged"] is changed
+            assert events[0]["payload"]["rootPath"] == str(root)
+            assert events[0]["state"]["project"] == events[0]["payload"]
+    client.events.clear()
+    await client.call("application.projects.leaveProject", {"args": [context]})
+    events = [item for item in client.events if item["event"] == "project"]
+    assert len(events) == 1 and events[0]["payload"] is None
+    assert events[0]["workspaceChanged"] is True and "project" not in events[0]["state"]

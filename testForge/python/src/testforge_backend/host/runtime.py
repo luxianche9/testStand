@@ -194,6 +194,7 @@ class HostRuntime:
             }
         )
         gateway = LocalMcpGateway(application, secrets, options.get("gatewayPort", 8000))
+        application.projects.set_notifier(self.publish_project)
         wiring.set_notifier(lambda task: self.publish("wiringTask", task))
         wiring.set_project_notifier(lambda: self.publish("project", projects.current()))
         orchestration.set_notifier(self.publish)
@@ -270,6 +271,17 @@ class HostRuntime:
     def publish_state(self) -> None:
         if self.services is not None:
             self.rpc.notify("desktop.state", self.snapshot())
+
+    def publish_project(self, document: dict[str, Any] | None, workspace_changed: bool) -> None:
+        self.rpc.notify(
+            "desktop.event",
+            {
+                "event": "project",
+                "payload": document,
+                "state": self.snapshot(),
+                "workspaceChanged": workspace_changed,
+            },
+        )
 
     def publish(self, event: str, payload: Any) -> None:
         self.rpc.notify(
