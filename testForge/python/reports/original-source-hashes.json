@@ -1,0 +1,431 @@
+{
+  "gitRevision": "85de20e27f346c73848f572762ae4d1bba326c6e",
+  "normalization": "Git blobs and Windows checkout bytes may differ only by CRLF/LF; both SHA256 values are retained.",
+  "files": {
+    "apps/desktop/src/main/migrations.test.ts": {
+      "sha256": "5039b9a4d7202567a7be26e4363a15bf9e4a56dc2a94d15b9bd5267603c00932",
+      "gitBlobSha256": "5039b9a4d7202567a7be26e4363a15bf9e4a56dc2a94d15b9bd5267603c00932",
+      "gitPath": "testForge/apps/desktop/src/main/migrations.test.ts"
+    },
+    "apps/desktop/src/main/migrations.ts": {
+      "sha256": "855bac845cf4ce411322c86042921342e1fd32f66b08f9be22a0223c2981def5",
+      "gitBlobSha256": "855bac845cf4ce411322c86042921342e1fd32f66b08f9be22a0223c2981def5",
+      "gitPath": "testForge/apps/desktop/src/main/migrations.ts"
+    },
+    "packages/application/src/application.test.ts": {
+      "sha256": "bff727ef2ee8c560b9a63dfdfd626825f55172d101dea59f784c09a3c71adfe4",
+      "gitBlobSha256": "8fc7f820ea62bef23e5a4730e54ed8b6037b71f4b2d7b572b09a653652061379",
+      "gitPath": "testForge/packages/application/src/application.test.ts"
+    },
+    "packages/application/src/application.ts": {
+      "sha256": "8dc4d5dc982d4058c63db3451659bcb375adbe1158e54386dc6096bacfae23ec",
+      "gitBlobSha256": "dc05f86177097f1d80ba46e949025be5a4834ac4487da28a00183192ee21a686",
+      "gitPath": "testForge/packages/application/src/application.ts"
+    },
+    "packages/application/src/authorization.ts": {
+      "sha256": "4196962bbd09c2a33c08bff7dbe741d217bc2e6cd5c3067d34cef900b53162e2",
+      "gitBlobSha256": "4196962bbd09c2a33c08bff7dbe741d217bc2e6cd5c3067d34cef900b53162e2",
+      "gitPath": "testForge/packages/application/src/authorization.ts"
+    },
+    "packages/application/src/devices-application.ts": {
+      "sha256": "2aa70a7b8db37b32d58f598342a9fff397e37677d49d23892f0c4d61f884bd48",
+      "gitBlobSha256": "2aa70a7b8db37b32d58f598342a9fff397e37677d49d23892f0c4d61f884bd48",
+      "gitPath": "testForge/packages/application/src/devices-application.ts"
+    },
+    "packages/application/src/execution-control.test.ts": {
+      "sha256": "f348afba4c92525d0c361149c2a8b51c2fe5746b11bd677cab81aba61e062dae",
+      "gitBlobSha256": "f348afba4c92525d0c361149c2a8b51c2fe5746b11bd677cab81aba61e062dae",
+      "gitPath": "testForge/packages/application/src/execution-control.test.ts"
+    },
+    "packages/application/src/execution-coordinator.ts": {
+      "sha256": "31293fc0db1588c7c4c7fe97f8d7bfbdf739246c8d1b99809823c921cfad6a7a",
+      "gitBlobSha256": "31293fc0db1588c7c4c7fe97f8d7bfbdf739246c8d1b99809823c921cfad6a7a",
+      "gitPath": "testForge/packages/application/src/execution-coordinator.ts"
+    },
+    "packages/application/src/hardware-occupancy-application.test.ts": {
+      "sha256": "7c473ed77ed0b1f812784ed91e96f91a9f628d7c7c02c77f5849bb3cadfb3dd7",
+      "gitBlobSha256": "7c473ed77ed0b1f812784ed91e96f91a9f628d7c7c02c77f5849bb3cadfb3dd7",
+      "gitPath": "testForge/packages/application/src/hardware-occupancy-application.test.ts"
+    },
+    "packages/application/src/hardware-occupancy-application.ts": {
+      "sha256": "5238154dd089cee5022bc7942e3335014a80e8034a906fbb3dc943dd3aa9455c",
+      "gitBlobSha256": "5238154dd089cee5022bc7942e3335014a80e8034a906fbb3dc943dd3aa9455c",
+      "gitPath": "testForge/packages/application/src/hardware-occupancy-application.ts"
+    },
+    "packages/application/src/index.ts": {
+      "sha256": "87ea6907910e343c68650a2e4e8a885d6105833cd155f749ceb974aff03861c4",
+      "gitBlobSha256": "87ea6907910e343c68650a2e4e8a885d6105833cd155f749ceb974aff03861c4",
+      "gitPath": "testForge/packages/application/src/index.ts"
+    },
+    "packages/application/src/manual-control-application.ts": {
+      "sha256": "27d7269f763aa0ded282566f5816e92d19e66870d447a27cf6a3fa59f0080fdc",
+      "gitBlobSha256": "27d7269f763aa0ded282566f5816e92d19e66870d447a27cf6a3fa59f0080fdc",
+      "gitPath": "testForge/packages/application/src/manual-control-application.ts"
+    },
+    "packages/application/src/orchestration-application.ts": {
+      "sha256": "1ada1a31ebeb1fbe715ea78a633f36f5a93246f21f9de4f44d13b24b9fed6292",
+      "gitBlobSha256": "79154b4584c5ee970f7687b44f0126d5dd70c27d37eddfbb90f063483fcb767a",
+      "gitPath": "testForge/packages/application/src/orchestration-application.ts"
+    },
+    "packages/application/src/project-services.test.ts": {
+      "sha256": "6a8bf7ae27f386e2944898b69d36995839530ffc71d67eefdf5cf1d5bd2f7763",
+      "gitBlobSha256": "0e9f272f6a514de708c64c6cf13cc5569a045e1c38a29883df87b121984ac607",
+      "gitPath": "testForge/packages/application/src/project-services.test.ts"
+    },
+    "packages/application/src/projects-application.ts": {
+      "sha256": "ae6edb45e7e4b09f67104efc43176309d5b6bc951e75a11a6256ffd32178509f",
+      "gitBlobSha256": "249b3bc609bd148e97fbb8c646b114817b6beddab82f0784f92e2ced02434e2a",
+      "gitPath": "testForge/packages/application/src/projects-application.ts"
+    },
+    "packages/application/src/system-application.ts": {
+      "sha256": "4c5ff59a7c8cba3c34a1746a881da992e51e299ebc2ac874c91437a92453e2dc",
+      "gitBlobSha256": "4c5ff59a7c8cba3c34a1746a881da992e51e299ebc2ac874c91437a92453e2dc",
+      "gitPath": "testForge/packages/application/src/system-application.ts"
+    },
+    "packages/application/src/wiring-application.ts": {
+      "sha256": "a1cac9b487b15869df3aac594d1fb1313351bd2f7c2db096bfc618ca86d86433",
+      "gitBlobSha256": "a1cac9b487b15869df3aac594d1fb1313351bd2f7c2db096bfc618ca86d86433",
+      "gitPath": "testForge/packages/application/src/wiring-application.ts"
+    },
+    "packages/contracts/src/agents.ts": {
+      "sha256": "99ff928eb6f7fe5c57a99ce3c8308078f42bfd7d95f14ba7f0ff945c3a33882a",
+      "gitBlobSha256": "99ff928eb6f7fe5c57a99ce3c8308078f42bfd7d95f14ba7f0ff945c3a33882a",
+      "gitPath": "testForge/packages/contracts/src/agents.ts"
+    },
+    "packages/contracts/src/contracts.test.ts": {
+      "sha256": "b9c9d25554db48c0db75e583fb06b94bea6212313b60d4cc616e7f25ef450114",
+      "gitBlobSha256": "b9c9d25554db48c0db75e583fb06b94bea6212313b60d4cc616e7f25ef450114",
+      "gitPath": "testForge/packages/contracts/src/contracts.test.ts"
+    },
+    "packages/contracts/src/desktop.ts": {
+      "sha256": "e2edb83862e26e250d1923668a1d2d99aeeebe9b4440df333dfe2a47f1f108bf",
+      "gitBlobSha256": "bfebb3a58186cf1cdec4403a1055b7bebe4090116b951f0f88d24c9deef43a4a",
+      "gitPath": "testForge/packages/contracts/src/desktop.ts"
+    },
+    "packages/contracts/src/devices.ts": {
+      "sha256": "08986be6c8582f9c5adaddc6f83f99f216db1be689efbca595b020faaec6f857",
+      "gitBlobSha256": "08986be6c8582f9c5adaddc6f83f99f216db1be689efbca595b020faaec6f857",
+      "gitPath": "testForge/packages/contracts/src/devices.ts"
+    },
+    "packages/contracts/src/errors.ts": {
+      "sha256": "6ec48e681758b41a561a4e4d805ce56b0a5b9a7e384694e5a44ccab26d43178d",
+      "gitBlobSha256": "6ec48e681758b41a561a4e4d805ce56b0a5b9a7e384694e5a44ccab26d43178d",
+      "gitPath": "testForge/packages/contracts/src/errors.ts"
+    },
+    "packages/contracts/src/execution.ts": {
+      "sha256": "91de1ede3d054c4bd0ccc649464462b3953cd537e7672d0512ffb81d19f4c5af",
+      "gitBlobSha256": "91de1ede3d054c4bd0ccc649464462b3953cd537e7672d0512ffb81d19f4c5af",
+      "gitPath": "testForge/packages/contracts/src/execution.ts"
+    },
+    "packages/contracts/src/occupancy.ts": {
+      "sha256": "3841840e4b9444918f1c994e613d9aaa4fb9746a049ecc25542d41e10183971d",
+      "gitBlobSha256": "3841840e4b9444918f1c994e613d9aaa4fb9746a049ecc25542d41e10183971d",
+      "gitPath": "testForge/packages/contracts/src/occupancy.ts"
+    },
+    "packages/contracts/src/orchestration.ts": {
+      "sha256": "d6d5eed66cd62685a0613944069b665ba7f89782dec1fce76f2d5eaf5e5b8f3c",
+      "gitBlobSha256": "11a19f1f1ad1bcb3c647fe3c2bfc7e280665a37f0fbac403087abc0c146549ce",
+      "gitPath": "testForge/packages/contracts/src/orchestration.ts"
+    },
+    "packages/contracts/src/projects.ts": {
+      "sha256": "55a19fffc21b4e06da0d55bf16247d21e2c1141b5fa456a907689510fa4393f8",
+      "gitBlobSha256": "62cc103433bcfaac192f71cc8f81b75feaef9f4f6949cad3e1c4d3a5f91d4c5c",
+      "gitPath": "testForge/packages/contracts/src/projects.ts"
+    },
+    "packages/contracts/src/storage.ts": {
+      "sha256": "8bc8e8710863e04b7e066465630aae1f6b825260809bab648c09835c6fec0192",
+      "gitBlobSha256": "8bc8e8710863e04b7e066465630aae1f6b825260809bab648c09835c6fec0192",
+      "gitPath": "testForge/packages/contracts/src/storage.ts"
+    },
+    "packages/contracts/src/wiring.ts": {
+      "sha256": "a53b54da8914429c38b8c29bb3e51f220476f9b249c5aef45f7591df10d02785",
+      "gitBlobSha256": "a53b54da8914429c38b8c29bb3e51f220476f9b249c5aef45f7591df10d02785",
+      "gitPath": "testForge/packages/contracts/src/wiring.ts"
+    },
+    "packages/devices/src/device-catalog-service.ts": {
+      "sha256": "48a21acb1d7eefd2f6d3fb3ef85f123215d2bad6143dcc93fb39c991a47d00ea",
+      "gitBlobSha256": "48a21acb1d7eefd2f6d3fb3ef85f123215d2bad6143dcc93fb39c991a47d00ea",
+      "gitPath": "testForge/packages/devices/src/device-catalog-service.ts"
+    },
+    "packages/devices/src/device-service.test.ts": {
+      "sha256": "685c216809d891d8349f3ef6d86219c6d96037f699fe44181152abaeae042c56",
+      "gitBlobSha256": "7143c2328c2f7535b45c0fe8fb5ec7918a173c6a9f198e0bdaebc12f842abf44",
+      "gitPath": "testForge/packages/devices/src/device-service.test.ts"
+    },
+    "packages/devices/src/device-service.ts": {
+      "sha256": "41bdd72528c6b88c4d6ce7c08ec5dc60827b5fd16caeccf5e2ee538ef1797563",
+      "gitBlobSha256": "143d2088bf33a6aad131cee554c80292f92b8461de537bda10a79fda945bf99d",
+      "gitPath": "testForge/packages/devices/src/device-service.ts"
+    },
+    "packages/devices/src/device-store.test.ts": {
+      "sha256": "29bacdf63d7f370191d2b2b06a037a454a42c44906a438cbfccb837a3c4260d8",
+      "gitBlobSha256": "29bacdf63d7f370191d2b2b06a037a454a42c44906a438cbfccb837a3c4260d8",
+      "gitPath": "testForge/packages/devices/src/device-store.test.ts"
+    },
+    "packages/devices/src/device-store.ts": {
+      "sha256": "419728f453436cf6b9cb2c63bf5b1c1a0f7da709868e60c2395c233feeb40dc3",
+      "gitBlobSha256": "419728f453436cf6b9cb2c63bf5b1c1a0f7da709868e60c2395c233feeb40dc3",
+      "gitPath": "testForge/packages/devices/src/device-store.ts"
+    },
+    "packages/devices/src/device-transport.ts": {
+      "sha256": "129aafa2aec3869d7f20556c3d8661fda38c46a512c7ae2447d516af42c11501",
+      "gitBlobSha256": "129aafa2aec3869d7f20556c3d8661fda38c46a512c7ae2447d516af42c11501",
+      "gitPath": "testForge/packages/devices/src/device-transport.ts"
+    },
+    "packages/devices/src/hardware-occupancy.test.ts": {
+      "sha256": "7f61c6f82bbe67aeda457f1c15ef99109afe4c599812d7cb0a4a1ac949426042",
+      "gitBlobSha256": "7f61c6f82bbe67aeda457f1c15ef99109afe4c599812d7cb0a4a1ac949426042",
+      "gitPath": "testForge/packages/devices/src/hardware-occupancy.test.ts"
+    },
+    "packages/devices/src/hardware-occupancy.ts": {
+      "sha256": "8e57023d25480d32cfbc5c69297fcecb3933907c11198214434f8d2ef0fd3b96",
+      "gitBlobSha256": "8e57023d25480d32cfbc5c69297fcecb3933907c11198214434f8d2ef0fd3b96",
+      "gitPath": "testForge/packages/devices/src/hardware-occupancy.ts"
+    },
+    "packages/devices/src/index.ts": {
+      "sha256": "9fe35f6017a18be15ec746312ee3dc81e11886294f239472bd5c6f780d71e772",
+      "gitBlobSha256": "9fe35f6017a18be15ec746312ee3dc81e11886294f239472bd5c6f780d71e772",
+      "gitPath": "testForge/packages/devices/src/index.ts"
+    },
+    "packages/devices/src/mcp-client.test.ts": {
+      "sha256": "516278f56120803cd64790e12333145b8b4212c01f471cfc0c1ecb82f4f6f680",
+      "gitBlobSha256": "be72d9cdf8734ac462019704a6211783d97c0b4e2e3dea6394f448be73606fd8",
+      "gitPath": "testForge/packages/devices/src/mcp-client.test.ts"
+    },
+    "packages/devices/src/mcp-client.ts": {
+      "sha256": "c82d773884185c4713c7778a8910a767266e01cb5a4cd72c6a11febc1b0624e3",
+      "gitBlobSha256": "d7ff36ac8a7a9192b039ec276a43e0292f8b8b5ecf200c8d43b2cc3a3eaad49a",
+      "gitPath": "testForge/packages/devices/src/mcp-client.ts"
+    },
+    "packages/devices/src/remote-shell.test.ts": {
+      "sha256": "fbab86496d3da0f7206662c6d1beecd417337a42d7d832026e0914bd4a135de5",
+      "gitBlobSha256": "fbab86496d3da0f7206662c6d1beecd417337a42d7d832026e0914bd4a135de5",
+      "gitPath": "testForge/packages/devices/src/remote-shell.test.ts"
+    },
+    "packages/devices/src/remote-shell.ts": {
+      "sha256": "bfee35d0b4148059a75bc33a77c6fef1851bb25a58ab0cd86950d5a5761629e2",
+      "gitBlobSha256": "bfee35d0b4148059a75bc33a77c6fef1851bb25a58ab0cd86950d5a5761629e2",
+      "gitPath": "testForge/packages/devices/src/remote-shell.ts"
+    },
+    "packages/devices/src/ssh.ts": {
+      "sha256": "12c928788f2c4f2b9af29eabe6f8b5b66b27980fd9e18102303f91873bc1c9e5",
+      "gitBlobSha256": "ab4e4f533b699ecc757ddfcd72bd44de271558f6e8cd0759661aaad8ebb6a400",
+      "gitPath": "testForge/packages/devices/src/ssh.ts"
+    },
+    "packages/mcp-gateway/src/gateway.test.ts": {
+      "sha256": "d78b436c875d28c80412df565467102b52d7122c30f740992a3eb223f18a32a7",
+      "gitBlobSha256": "35a4de528360d4636d4042003fae43237fa31c5cd27fbe54ff1a327a8bdb2923",
+      "gitPath": "testForge/packages/mcp-gateway/src/gateway.test.ts"
+    },
+    "packages/mcp-gateway/src/gateway.ts": {
+      "sha256": "f4ce3d1a0c479159c47a914180d9dec78778ad8b05e6677f547c32e94e8326c1",
+      "gitBlobSha256": "f4ce3d1a0c479159c47a914180d9dec78778ad8b05e6677f547c32e94e8326c1",
+      "gitPath": "testForge/packages/mcp-gateway/src/gateway.ts"
+    },
+    "packages/mcp-gateway/src/http-transport.ts": {
+      "sha256": "08cae127aaf25d4bcfde090415f9c08b789af1d0aaddcd5bf4de840894f0c552",
+      "gitBlobSha256": "08cae127aaf25d4bcfde090415f9c08b789af1d0aaddcd5bf4de840894f0c552",
+      "gitPath": "testForge/packages/mcp-gateway/src/http-transport.ts"
+    },
+    "packages/mcp-gateway/src/index.ts": {
+      "sha256": "8bddd0204238ef6c67a754a446a353df8d8085b2cc64d0a4c1dcd39612833ae3",
+      "gitBlobSha256": "8bddd0204238ef6c67a754a446a353df8d8085b2cc64d0a4c1dcd39612833ae3",
+      "gitPath": "testForge/packages/mcp-gateway/src/index.ts"
+    },
+    "packages/mcp-gateway/src/sessions.ts": {
+      "sha256": "0140374f2835a66bd54b8fe018d9c027651eb3070c0c6e247573f0f76f866114",
+      "gitBlobSha256": "0140374f2835a66bd54b8fe018d9c027651eb3070c0c6e247573f0f76f866114",
+      "gitPath": "testForge/packages/mcp-gateway/src/sessions.ts"
+    },
+    "packages/mcp-gateway/src/tool-registry.ts": {
+      "sha256": "dd733242d54bcbafd7ee18e56ada19353ae0cfe986188d00d9392e590c561f39",
+      "gitBlobSha256": "dd733242d54bcbafd7ee18e56ada19353ae0cfe986188d00d9392e590c561f39",
+      "gitPath": "testForge/packages/mcp-gateway/src/tool-registry.ts"
+    },
+    "packages/mcp-gateway/src/tools/definition.ts": {
+      "sha256": "3b36c051d5b3e7e17d5a02afea0893ebfd265373bf911d604ba36d5557297557",
+      "gitBlobSha256": "f57a744fa6a489e4cb690814320b78c1158d1c04b850096893ad52ee69e212fe",
+      "gitPath": "testForge/packages/mcp-gateway/src/tools/definition.ts"
+    },
+    "packages/mcp-gateway/src/tools/devices.ts": {
+      "sha256": "e6b80b42aa40934f8ea37428b3e2438a5c9665ab8f6924fdd1186a8b6c7952f8",
+      "gitBlobSha256": "e6b80b42aa40934f8ea37428b3e2438a5c9665ab8f6924fdd1186a8b6c7952f8",
+      "gitPath": "testForge/packages/mcp-gateway/src/tools/devices.ts"
+    },
+    "packages/mcp-gateway/src/tools/hardware.ts": {
+      "sha256": "8d2905923fb658da35064391528021be14ffb78043e051c4ddfc9e894fd0c66c",
+      "gitBlobSha256": "8d2905923fb658da35064391528021be14ffb78043e051c4ddfc9e894fd0c66c",
+      "gitPath": "testForge/packages/mcp-gateway/src/tools/hardware.ts"
+    },
+    "packages/mcp-gateway/src/tools/index.ts": {
+      "sha256": "901e2675d33d0b72d1b0ff4112a95746c8be6b0b8e93278b0f2a88f4316ceccc",
+      "gitBlobSha256": "901e2675d33d0b72d1b0ff4112a95746c8be6b0b8e93278b0f2a88f4316ceccc",
+      "gitPath": "testForge/packages/mcp-gateway/src/tools/index.ts"
+    },
+    "packages/mcp-gateway/src/tools/occupancy.ts": {
+      "sha256": "41db757342975965ddafb99db72bcb8db5eb4978a8946c6cc53dd0a912420dfd",
+      "gitBlobSha256": "41db757342975965ddafb99db72bcb8db5eb4978a8946c6cc53dd0a912420dfd",
+      "gitPath": "testForge/packages/mcp-gateway/src/tools/occupancy.ts"
+    },
+    "packages/mcp-gateway/src/tools/orchestration.ts": {
+      "sha256": "1de876ad13ade8ad8b78bdcf68fe7f1e409476bac2571a516538e1253a0c8747",
+      "gitBlobSha256": "1de876ad13ade8ad8b78bdcf68fe7f1e409476bac2571a516538e1253a0c8747",
+      "gitPath": "testForge/packages/mcp-gateway/src/tools/orchestration.ts"
+    },
+    "packages/mcp-gateway/src/tools/wiring.ts": {
+      "sha256": "17ea3cf9fc9152334457645ff44e0e283898ac655f41a903da6cc44c15434855",
+      "gitBlobSha256": "17ea3cf9fc9152334457645ff44e0e283898ac655f41a903da6cc44c15434855",
+      "gitPath": "testForge/packages/mcp-gateway/src/tools/wiring.ts"
+    },
+    "packages/mcp-gateway/src/tools/workflow-schema.ts": {
+      "sha256": "8a9f34eb96b2c228d50a7f436bc5ebb155f1753339ba71b67881965004d332f2",
+      "gitBlobSha256": "8a9f34eb96b2c228d50a7f436bc5ebb155f1753339ba71b67881965004d332f2",
+      "gitPath": "testForge/packages/mcp-gateway/src/tools/workflow-schema.ts"
+    },
+    "packages/orchestration/src/hardware-mailbox.ts": {
+      "sha256": "0a3af7b8c1958efe922d4348c9a4d31fd29da04e7c672c6a8b21975f1aa8f8d1",
+      "gitBlobSha256": "0a3af7b8c1958efe922d4348c9a4d31fd29da04e7c672c6a8b21975f1aa8f8d1",
+      "gitPath": "testForge/packages/orchestration/src/hardware-mailbox.ts"
+    },
+    "packages/orchestration/src/index.ts": {
+      "sha256": "d8806085a7940c8cf68702df9c3fd5f14711773724088fb7ff49388056488042",
+      "gitBlobSha256": "d8806085a7940c8cf68702df9c3fd5f14711773724088fb7ff49388056488042",
+      "gitPath": "testForge/packages/orchestration/src/index.ts"
+    },
+    "packages/orchestration/src/orchestration-ports.ts": {
+      "sha256": "433bb6cf3ffa302d61a69c66ec3193ef4071d6c04e3700237be387f464232a44",
+      "gitBlobSha256": "433bb6cf3ffa302d61a69c66ec3193ef4071d6c04e3700237be387f464232a44",
+      "gitPath": "testForge/packages/orchestration/src/orchestration-ports.ts"
+    },
+    "packages/orchestration/src/orchestration-utils.ts": {
+      "sha256": "18f023d769f0a75407807960d5e7edeccbafba6bb3c1b40c902a49b7af31416d",
+      "gitBlobSha256": "18f023d769f0a75407807960d5e7edeccbafba6bb3c1b40c902a49b7af31416d",
+      "gitPath": "testForge/packages/orchestration/src/orchestration-utils.ts"
+    },
+    "packages/orchestration/src/run-interpreter.ts": {
+      "sha256": "a89d65f85b29e5f87181a45ec76758deb9c8755263cc725d67b0a8d6cae826d1",
+      "gitBlobSha256": "a89d65f85b29e5f87181a45ec76758deb9c8755263cc725d67b0a8d6cae826d1",
+      "gitPath": "testForge/packages/orchestration/src/run-interpreter.ts"
+    },
+    "packages/orchestration/src/run-lifecycle.ts": {
+      "sha256": "909d944769b85fd74ffe15fe12637bb244ae44d21fde79a73a267968575b00b8",
+      "gitBlobSha256": "909d944769b85fd74ffe15fe12637bb244ae44d21fde79a73a267968575b00b8",
+      "gitPath": "testForge/packages/orchestration/src/run-lifecycle.ts"
+    },
+    "packages/orchestration/src/run-machine.test.ts": {
+      "sha256": "9b8f3a0e6326918bb6edfe527a503650145bf47271494e436a300f60592b5f92",
+      "gitBlobSha256": "9b8f3a0e6326918bb6edfe527a503650145bf47271494e436a300f60592b5f92",
+      "gitPath": "testForge/packages/orchestration/src/run-machine.test.ts"
+    },
+    "packages/orchestration/src/run-machine.ts": {
+      "sha256": "554c77ff55533b79bb1311dc97af1214f6460d9bffcc0088b0072125aa869fe8",
+      "gitBlobSha256": "554c77ff55533b79bb1311dc97af1214f6460d9bffcc0088b0072125aa869fe8",
+      "gitPath": "testForge/packages/orchestration/src/run-machine.ts"
+    },
+    "packages/orchestration/src/run-persistence.ts": {
+      "sha256": "9e0c606514c624f0ff2cf75a4eff5890fce67a24d1b9b734cb7c97ff200a90b0",
+      "gitBlobSha256": "9e0c606514c624f0ff2cf75a4eff5890fce67a24d1b9b734cb7c97ff200a90b0",
+      "gitPath": "testForge/packages/orchestration/src/run-persistence.ts"
+    },
+    "packages/orchestration/src/run-store.ts": {
+      "sha256": "77596bf9f02a2dee87030423e8a22e6eff77b40fa1c59d701dcdbd535b25c753",
+      "gitBlobSha256": "77596bf9f02a2dee87030423e8a22e6eff77b40fa1c59d701dcdbd535b25c753",
+      "gitPath": "testForge/packages/orchestration/src/run-store.ts"
+    },
+    "packages/orchestration/src/task-orchestration-service.test.ts": {
+      "sha256": "7f73e1c4de0dc636c9a6cef43b3b3b68317b5c4a657ce4e6bf1758b5c71a64b5",
+      "gitBlobSha256": "7f73e1c4de0dc636c9a6cef43b3b3b68317b5c4a657ce4e6bf1758b5c71a64b5",
+      "gitPath": "testForge/packages/orchestration/src/task-orchestration-service.test.ts"
+    },
+    "packages/orchestration/src/task-orchestration-service.ts": {
+      "sha256": "d7c4abc949a40a6a8135ca7944536096b17773241cf982066a828093bbe28f31",
+      "gitBlobSha256": "d7c4abc949a40a6a8135ca7944536096b17773241cf982066a828093bbe28f31",
+      "gitPath": "testForge/packages/orchestration/src/task-orchestration-service.ts"
+    },
+    "packages/orchestration/src/task-validator.ts": {
+      "sha256": "9e44b08c92252bda6b9d23cd4e656c8b38dee4a22797e6cf81240ed326376539",
+      "gitBlobSha256": "9e44b08c92252bda6b9d23cd4e656c8b38dee4a22797e6cf81240ed326376539",
+      "gitPath": "testForge/packages/orchestration/src/task-validator.ts"
+    },
+    "packages/orchestration/src/workflow.test.ts": {
+      "sha256": "762245ac99a650e80388c4cd49afcf6dece1de7354cbd743c766421fac3797a7",
+      "gitBlobSha256": "762245ac99a650e80388c4cd49afcf6dece1de7354cbd743c766421fac3797a7",
+      "gitPath": "testForge/packages/orchestration/src/workflow.test.ts"
+    },
+    "packages/orchestration/src/workflow.ts": {
+      "sha256": "ce6832dbc8dcfbc8b284951430e713b33203159504a5c26aa2597c05ada575be",
+      "gitBlobSha256": "ce6832dbc8dcfbc8b284951430e713b33203159504a5c26aa2597c05ada575be",
+      "gitPath": "testForge/packages/orchestration/src/workflow.ts"
+    },
+    "packages/projects/src/index.ts": {
+      "sha256": "e2cd1f352fd45cc4e53c3eaa15acd9250de9d35590f572d2968a07772cd2d9b8",
+      "gitBlobSha256": "e2cd1f352fd45cc4e53c3eaa15acd9250de9d35590f572d2968a07772cd2d9b8",
+      "gitPath": "testForge/packages/projects/src/index.ts"
+    },
+    "packages/projects/src/project-service.test.ts": {
+      "sha256": "364d5b82c210d28528f26ff1995d17d4a05002404fe7753d94a68ed79f89030b",
+      "gitBlobSha256": "9020519c3ca90d247e30b96afbd69852fac46aead3b3de1635f8b85603214cbe",
+      "gitPath": "testForge/packages/projects/src/project-service.test.ts"
+    },
+    "packages/projects/src/project-service.ts": {
+      "sha256": "eb1461f562587f95f672fe69acd5186905f91e4a0ad88193c25c53da712555e6",
+      "gitBlobSha256": "f606b438ea85bad4141aa65114ae9404b1ac949bd846364b5436ab1a28f817da",
+      "gitPath": "testForge/packages/projects/src/project-service.ts"
+    },
+    "packages/storage/src/file-storage.ts": {
+      "sha256": "3b4de5847f8a9da75bb2b8626d0bcf652447f581760740bcf242a987a5b7ab48",
+      "gitBlobSha256": "3b4de5847f8a9da75bb2b8626d0bcf652447f581760740bcf242a987a5b7ab48",
+      "gitPath": "testForge/packages/storage/src/file-storage.ts"
+    },
+    "packages/storage/src/index.ts": {
+      "sha256": "55bdeca830ab7dfcd040f72378ed03bb571c18ca77805f179eb40a18c13eed5c",
+      "gitBlobSha256": "55bdeca830ab7dfcd040f72378ed03bb571c18ca77805f179eb40a18c13eed5c",
+      "gitPath": "testForge/packages/storage/src/index.ts"
+    },
+    "packages/storage/src/run-log-store.test.ts": {
+      "sha256": "ba64808b7553e564e4e56cd83720e5fca146594ec8b5b2625b1d2882e03cfbd1",
+      "gitBlobSha256": "ba64808b7553e564e4e56cd83720e5fca146594ec8b5b2625b1d2882e03cfbd1",
+      "gitPath": "testForge/packages/storage/src/run-log-store.test.ts"
+    },
+    "packages/storage/src/run-log-store.ts": {
+      "sha256": "6746d819b5d84f64084afe8f4966f49e5d0d2acacead7516e7027da9982e535b",
+      "gitBlobSha256": "6746d819b5d84f64084afe8f4966f49e5d0d2acacead7516e7027da9982e535b",
+      "gitPath": "testForge/packages/storage/src/run-log-store.ts"
+    },
+    "packages/storage/src/secrets.ts": {
+      "sha256": "9be74a797946626ac317dc3083a94cbb9c14d2460875ec37fe355204be0d2765",
+      "gitBlobSha256": "9be74a797946626ac317dc3083a94cbb9c14d2460875ec37fe355204be0d2765",
+      "gitPath": "testForge/packages/storage/src/secrets.ts"
+    },
+    "packages/storage/src/serialized-writer.ts": {
+      "sha256": "308499bf3520dea5a9e712a0d05c5be71b2d3274733df0160944bf77128d5f39",
+      "gitBlobSha256": "308499bf3520dea5a9e712a0d05c5be71b2d3274733df0160944bf77128d5f39",
+      "gitPath": "testForge/packages/storage/src/serialized-writer.ts"
+    },
+    "packages/storage/src/settings-store.ts": {
+      "sha256": "e2d41fe50aaba6465053f4f4380cbf10083541d887a13e0d36c3e3faf657e1b5",
+      "gitBlobSha256": "e2d41fe50aaba6465053f4f4380cbf10083541d887a13e0d36c3e3faf657e1b5",
+      "gitPath": "testForge/packages/storage/src/settings-store.ts"
+    },
+    "packages/storage/src/storage.test.ts": {
+      "sha256": "7f0dfe98f5cdca8cec7119c2f9f00833a117ad649bf6cfbfe91b44801ac9622e",
+      "gitBlobSha256": "7f0dfe98f5cdca8cec7119c2f9f00833a117ad649bf6cfbfe91b44801ac9622e",
+      "gitPath": "testForge/packages/storage/src/storage.test.ts"
+    },
+    "packages/wiring/src/index.ts": {
+      "sha256": "4e2c53a9248cb4908e6855d2479e60c418a84c4b82a1ffc27c7572b4e9f783ca",
+      "gitBlobSha256": "4e2c53a9248cb4908e6855d2479e60c418a84c4b82a1ffc27c7572b4e9f783ca",
+      "gitPath": "testForge/packages/wiring/src/index.ts"
+    },
+    "packages/wiring/src/project-wiring-agent.test.ts": {
+      "sha256": "7b89d460b38c34d639c678161de03ba40a79180e3a4a122aed1cba6ef71803fc",
+      "gitBlobSha256": "83a67022eceac5b5d57a3976845838ecda6fa310afd042195e0ffed7c6e761c5",
+      "gitPath": "testForge/packages/wiring/src/project-wiring-agent.test.ts"
+    },
+    "packages/wiring/src/project-wiring-service.ts": {
+      "sha256": "b7e245552b4d66252bc5b09e1f7a10946cb3a4708eb49aaa66d75cfc23ad7b07",
+      "gitBlobSha256": "6ac97e7b575d210e5c2c963825669d9a0ffb8a284c11f0531ad32f5600a4584e",
+      "gitPath": "testForge/packages/wiring/src/project-wiring-service.ts"
+    }
+  }
+}

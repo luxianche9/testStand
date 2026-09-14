@@ -76,7 +76,7 @@ function AgentConfig({ gateway, showHeader = false }: { gateway: DashboardSnapsh
           <p className="mt-1.5 mb-0 text-sm text-muted-foreground">管理 Gateway、Codex 一键接入、访问令牌、手动接入方式和 MCP 工具清单。</p>
         </header>
       )}
-      <div className={cn("flex items-center gap-3 rounded-xl px-4 py-3 shadow-sm ring-1", gateway.running ? "bg-success/8 ring-success/35" : "bg-secondary/40 ring-black/[0.04] dark:ring-white/[0.06]")}>
+      <div className={cn("flex items-center gap-3 rounded-xl px-4 py-3 shadow-sm ring-1", gateway.running ? "bg-success/8 ring-success/35" : "bg-secondary/40 ring-border")}>
         <Dot state={gateway.running ? "ok" : "bad"} />
         <span className="grid min-w-0 flex-1 gap-0.5">
           <strong className="text-sm font-semibold">MCP Gateway {gateway.running ? "正在运行" : "未运行"}</strong>
@@ -98,7 +98,7 @@ function AgentConfig({ gateway, showHeader = false }: { gateway: DashboardSnapsh
         </div>
       )}
 
-      <section className="mt-4 overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]">
+      <section className="mt-4 overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-border">
         <header className="flex items-center justify-between bg-secondary/50 px-4 py-3">
           <div className="grid gap-0.5">
             <strong className="text-sm font-semibold">Codex</strong>
@@ -128,7 +128,7 @@ function AgentConfig({ gateway, showHeader = false }: { gateway: DashboardSnapsh
         </footer>
       </section>
 
-      <details className="mt-4 overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]">
+      <details className="mt-4 overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-border">
         <summary className="cursor-pointer px-4 py-3 text-sm font-medium select-none hover:bg-accent">高级设置</summary>
         <div className="bg-secondary/20">
           <PropRow label="Gateway 地址"><code>{gateway.endpoint}</code></PropRow>
@@ -142,7 +142,7 @@ function AgentConfig({ gateway, showHeader = false }: { gateway: DashboardSnapsh
         </div>
       </details>
 
-      <details className="mt-4 overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]">
+      <details className="mt-4 overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-border">
         <summary className="cursor-pointer px-4 py-3 text-sm font-medium select-none hover:bg-accent">其他 Agent 手动接入</summary>
         <div className="grid gap-4 bg-secondary/20 px-4 py-4 sm:grid-cols-2">
           <div><strong className="text-sm font-medium">Claude Code</strong><p className="mt-1 mb-0 text-xs text-muted-foreground">在 Claude Code 的 MCP 设置中添加 HTTP Server，并配置 Authorization 标头。</p></div>
@@ -233,7 +233,7 @@ function AgentToolsSection() {
   });
   const items = tools.data ?? [];
   return (
-    <details className="mt-4 overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]">
+    <details className="mt-4 overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-border">
       <summary className="flex cursor-pointer items-center gap-2 px-4 py-3 text-sm font-medium select-none hover:bg-accent">可调用的工具 <Badge variant="secondary">{items.length}</Badge></summary>
       <div className="bg-secondary/20 px-4 py-3">
         <div className="mb-3 flex items-center gap-3">
@@ -252,7 +252,7 @@ function AgentToolsSection() {
 function AgentToolRow({ tool }: { tool: AgentToolInfo }) {
   const [open, setOpen] = useState(false);
   return (
-    <article className="overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]">
+    <article className="overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-border">
       <button className="flex w-full items-center justify-between gap-3 px-3.5 py-2.5 text-left hover:bg-accent" onClick={() => setOpen((value) => !value)}>
         <span className="grid min-w-0 gap-0.5">
           <strong className="text-sm font-medium">{tool.name}</strong>

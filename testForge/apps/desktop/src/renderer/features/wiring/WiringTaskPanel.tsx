@@ -45,7 +45,7 @@ export function WiringTaskModal({ task, hardware, assetUrls, onAssetUrl, onChang
             <PortGuide portRef={task.portB} hardware={hardware} assetUrls={assetUrls} onAssetUrl={onAssetUrl} />
           </div>
           {task.pins.length > 0 && (
-            <div className="mt-3 overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]">
+            <div className="mt-3 overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-border">
               <header className="flex items-center gap-2 bg-secondary/60 px-2.5 py-2 text-xs text-muted-foreground"><span>需要连接的针脚</span><strong>{task.pins.length}</strong></header>
               {task.pins.map((pin) => (
                 <div key={`${pin.a}-${pin.b}`} className="grid grid-cols-[minmax(0,1fr)_24px_minmax(0,1fr)] gap-2 px-2.5 py-1.5 text-xs odd:bg-secondary/20">
@@ -99,8 +99,8 @@ function PortGuide({ portRef, hardware, assetUrls, onAssetUrl }: {
   }, [assetId, assetUrls, key, onAssetUrl, owner]);
   const url = key ? assetUrls[key] : undefined;
   return (
-    <article className="overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]">
-      <header className="grid gap-0.5 bg-card/90 px-2.5 py-2">
+    <article className="overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-border">
+      <header className="grid gap-0.5 bg-card px-2.5 py-2">
         <strong>{owner?.label ?? "未解析设备"}</strong>
         <span className="font-semibold text-ring">{port?.name ?? "未知端口"}{port ? `，${port.pins.length ? `${port.pins.length} 针` : "无针脚"}` : ""}</span>
       </header>

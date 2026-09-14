@@ -37,9 +37,7 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "cpu-features",
       "esbuild",
-      "ssh2",
       "electron"
     ],
     "patchedDependencies": {

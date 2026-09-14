@@ -87,7 +87,7 @@ export function WelcomePage({ onOpened }: { onOpened: (rootPath: string) => Prom
             <h2 id="recent-projects-title" className="m-0 text-[15px] font-semibold tracking-tight">最近项目</h2>
             <span className="text-[12px] tabular-nums text-muted-foreground">{recent.data?.length ?? 0} 个项目</span>
           </div>
-          <div className="flex rounded-[var(--tf-radius-control)] bg-secondary/50 p-0.5 shadow-[var(--tf-shadow-sm)] ring-1 ring-black/[0.04] dark:ring-white/[0.06]" role="group" aria-label="最近项目布局">
+          <div className="flex rounded-md bg-secondary/50 p-0.5 shadow-[var(--tf-shadow-sm)] ring-1 ring-border" role="group" aria-label="最近项目布局">
             <button
               type="button"
               className={cn("grid h-7 w-7.5 place-items-center rounded-md text-muted-foreground transition-[color,background-color,box-shadow] duration-200 ease-[var(--tf-ease-out)]", layout === "grid" && "bg-background text-primary shadow-[var(--tf-shadow-sm)]")}
@@ -117,7 +117,7 @@ export function WelcomePage({ onOpened }: { onOpened: (rootPath: string) => Prom
         {recent.isLoading ? (
           <div className="grid min-h-[220px] place-items-center"><Spinner label="正在读取最近项目…" /></div>
         ) : !hasProjects ? (
-          <div className="grid min-h-[260px] place-items-center rounded-[var(--tf-radius)] border border-dashed border-border/60 bg-secondary/20">
+          <div className="grid min-h-[260px] place-items-center rounded-lg border border-dashed border-border/60 bg-secondary/20">
             <div className="grid justify-items-center gap-3 text-center">
               <span className="grid size-14 place-items-center rounded-2xl bg-secondary/80 text-muted-foreground">
                 <ServerIcon size={24} strokeWidth={1.5} />
@@ -148,7 +148,7 @@ export function WelcomePage({ onOpened }: { onOpened: (rootPath: string) => Prom
             {layout === "grid" && (
               <button
                 type="button"
-                className="grid min-h-[196px] place-content-center justify-items-center gap-2 rounded-[var(--tf-radius)] border border-dashed border-border/80 text-muted-foreground transition-[color,background-color,border-color] duration-200 ease-[var(--tf-ease-out)] hover:border-primary/50 hover:bg-accent/70 hover:text-primary"
+                className="grid min-h-[196px] place-content-center justify-items-center gap-2 rounded-lg border border-dashed border-border/80 text-muted-foreground transition-[color,background-color,border-color] duration-200 ease-[var(--tf-ease-out)] hover:border-primary/50 hover:bg-accent/70 hover:text-primary"
                 onClick={() => choose.mutate()}
                 disabled={busy}
               >
@@ -191,7 +191,7 @@ function RecentProject({ project, hardware, layout, disabled, onOpen, onForget }
   const unavailable = project.status !== "available";
   return (
     <article className={cn(
-      "relative min-w-0 overflow-hidden rounded-[var(--tf-radius)] bg-card shadow-[var(--tf-shadow-sm)] ring-1 ring-black/[0.04] transition-[box-shadow,ring-color,transform] duration-200 ease-[var(--tf-ease-out)] dark:ring-white/[0.06]",
+      "relative min-w-0 overflow-hidden rounded-lg bg-card shadow-[var(--tf-shadow-sm)] ring-1 ring-border transition-[box-shadow,ring-color,transform] duration-200 ease-[var(--tf-ease-out)]",
       !unavailable && "hover:-translate-y-0.5 hover:scale-[1.008] hover:shadow-[var(--tf-shadow-md)] hover:ring-ring/40",
       unavailable && "opacity-60",
       !isGrid && "min-h-[76px]"
@@ -217,7 +217,7 @@ function RecentProject({ project, hardware, layout, disabled, onOpen, onForget }
       <button
         type="button"
         className={cn(
-          "absolute right-2 grid size-6.5 place-items-center rounded text-muted-foreground/70 transition-colors hover:bg-destructive/8 hover:text-destructive",
+          "absolute right-2 grid size-6.5 place-items-center rounded-sm text-muted-foreground/70 transition-colors hover:bg-destructive/8 hover:text-destructive",
           isGrid ? "bottom-2" : "top-1/2 -translate-y-1/2"
         )}
         aria-label={`从最近项目移除 ${project.name}`}

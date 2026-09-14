@@ -134,9 +134,9 @@ export function RunDetail({ runId }: { runId: string }) {
       <Badge variant={badgeVariantFromTone(runStatusTone(detail.run.status))}>{detail.run.status}</Badge>
     </header>
     <div className="grid grid-cols-3 gap-1.5">
-      <span className="rounded-xl bg-secondary/40 px-2 py-1.5 text-xs text-muted-foreground shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]">开始时间<strong className="mt-0.5 block text-xs font-medium text-foreground">{formatTime(detail.run.createdAt)}</strong></span>
-      <span className="rounded-xl bg-secondary/40 px-2 py-1.5 text-xs text-muted-foreground shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]">完成时间<strong className="mt-0.5 block text-xs font-medium text-foreground">{detail.run.completedAt ? formatTime(detail.run.completedAt) : "—"}</strong></span>
-      <span className="rounded-xl bg-secondary/40 px-2 py-1.5 text-xs text-muted-foreground shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]">耗时<strong className="mt-0.5 block text-xs font-medium text-foreground">{durationText(detail.run.startedAt ?? detail.run.createdAt, detail.run.completedAt)}</strong></span>
+      <span className="rounded-xl bg-secondary/40 px-2 py-1.5 text-xs text-muted-foreground shadow-sm ring-1 ring-border">开始时间<strong className="mt-0.5 block text-xs font-medium text-foreground">{formatTime(detail.run.createdAt)}</strong></span>
+      <span className="rounded-xl bg-secondary/40 px-2 py-1.5 text-xs text-muted-foreground shadow-sm ring-1 ring-border">完成时间<strong className="mt-0.5 block text-xs font-medium text-foreground">{detail.run.completedAt ? formatTime(detail.run.completedAt) : "—"}</strong></span>
+      <span className="rounded-xl bg-secondary/40 px-2 py-1.5 text-xs text-muted-foreground shadow-sm ring-1 ring-border">耗时<strong className="mt-0.5 block text-xs font-medium text-foreground">{durationText(detail.run.startedAt ?? detail.run.createdAt, detail.run.completedAt)}</strong></span>
     </div>
     {active && <Button variant="destructive" size="sm" className="self-start" disabled={cancel.isPending} onClick={() => cancel.mutate()}><SquareIcon />取消运行</Button>}
     {cancel.isError && (
@@ -153,9 +153,9 @@ export function RunDetail({ runId }: { runId: string }) {
     )}
     {detail.run.summary?.message && <p className="m-0 text-xs text-muted-foreground">{detail.run.summary.message}</p>}
     <div className="grid grid-cols-3 gap-1.5">
-      <span className="rounded-xl bg-secondary/40 px-2 py-1.5 text-xs text-muted-foreground shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]">通过 <strong className="mt-0.5 block text-lg font-semibold text-foreground">{detail.run.summary?.passedNodes ?? counts.passed}</strong></span>
-      <span className="rounded-xl bg-secondary/40 px-2 py-1.5 text-xs text-muted-foreground shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]">失败 <strong className="mt-0.5 block text-lg font-semibold text-foreground">{detail.run.summary?.failedNodes ?? counts.failed}</strong></span>
-      <span className="rounded-xl bg-secondary/40 px-2 py-1.5 text-xs text-muted-foreground shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]">取消 <strong className="mt-0.5 block text-lg font-semibold text-foreground">{detail.run.summary?.cancelledNodes ?? counts.cancelled}</strong></span>
+      <span className="rounded-xl bg-secondary/40 px-2 py-1.5 text-xs text-muted-foreground shadow-sm ring-1 ring-border">通过 <strong className="mt-0.5 block text-lg font-semibold text-foreground">{detail.run.summary?.passedNodes ?? counts.passed}</strong></span>
+      <span className="rounded-xl bg-secondary/40 px-2 py-1.5 text-xs text-muted-foreground shadow-sm ring-1 ring-border">失败 <strong className="mt-0.5 block text-lg font-semibold text-foreground">{detail.run.summary?.failedNodes ?? counts.failed}</strong></span>
+      <span className="rounded-xl bg-secondary/40 px-2 py-1.5 text-xs text-muted-foreground shadow-sm ring-1 ring-border">取消 <strong className="mt-0.5 block text-lg font-semibold text-foreground">{detail.run.summary?.cancelledNodes ?? counts.cancelled}</strong></span>
     </div>
     <JsonSection title="运行输入" value={detail.run.inputs} />
     {detail.run.validationIssues?.length ? <div className="flex flex-col gap-1.5 rounded-md border border-destructive p-2.5">
@@ -201,7 +201,7 @@ function VirtualNodeList({ nodes }: { nodes: TestRunDetail["nodeRuns"] }) {
           key={node.nodeRunId}
           ref={virtualizer.measureElement}
           data-index={item.index}
-          className="absolute inset-x-0 top-0 grid w-full grid-cols-[auto_minmax(0,1fr)] items-start gap-2 border-b border-border/30 py-2"
+          className="absolute inset-x-0 top-0 grid w-full grid-cols-[auto_minmax(0,1fr)] items-start gap-2 border-b border-border py-2"
           style={{ transform: `translateY(${item.start}px)` }}
         >
           <Badge variant={badgeVariantFromTone(nodeStatusTone(node.status))}>{node.status}</Badge>
@@ -240,7 +240,7 @@ function VirtualEventList({ events }: { events: TestRunDetail["events"] }) {
           key={event.eventId}
           ref={virtualizer.measureElement}
           data-index={item.index}
-          className="absolute inset-x-0 top-0 grid w-full grid-cols-[150px_minmax(0,1fr)] gap-2.5 border-b border-border/30 py-2"
+          className="absolute inset-x-0 top-0 grid w-full grid-cols-[150px_minmax(0,1fr)] gap-2.5 border-b border-border py-2"
           style={{ transform: `translateY(${item.start}px)` }}
         >
           <time className="text-xs text-muted-foreground">{formatTime(event.timestamp)}</time>
@@ -253,7 +253,7 @@ function VirtualEventList({ events }: { events: TestRunDetail["events"] }) {
 
 function JsonSection({ title, value, compact = false }: { title: string; value: unknown; compact?: boolean }) {
   const [open, setOpen] = useState(false);
-  return <details className={cn("overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]", compact && "mt-1.5")} onToggle={(event) => setOpen(event.currentTarget.open)}>
+  return <details className={cn("overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-border", compact && "mt-1.5")} onToggle={(event) => setOpen(event.currentTarget.open)}>
     <summary className="cursor-pointer bg-secondary/60 px-2.5 py-1.5 text-xs text-muted-foreground">{title}</summary>
     {open && <pre className="m-0 max-h-75 overflow-auto p-2.5 font-mono text-xs whitespace-pre-wrap">{pretty(value)}</pre>}
   </details>;

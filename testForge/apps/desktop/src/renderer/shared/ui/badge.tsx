@@ -3,16 +3,16 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "./cn";
 
 const badgeVariants = cva(
-  "inline-flex w-fit shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-medium tracking-wide whitespace-nowrap",
+  "inline-flex w-fit shrink-0 items-center rounded-full border border-solid border-transparent px-2 py-0.5 text-[11px] font-medium whitespace-nowrap transition-[color,box-shadow]",
   {
     variants: {
       variant: {
-        default: "border-transparent bg-primary text-primary-foreground",
-        secondary: "border-transparent bg-secondary text-secondary-foreground",
-        destructive: "border-transparent bg-destructive text-destructive-foreground",
-        outline: "border-transparent bg-secondary/80 text-foreground",
-        success: "border-transparent bg-success/12 text-success",
-        warning: "border-transparent bg-warning/14 text-warning"
+        default: "bg-primary text-primary-foreground",
+        secondary: "bg-secondary text-secondary-foreground",
+        destructive: "bg-destructive text-destructive-foreground dark:bg-destructive/60",
+        outline: "border-border text-foreground",
+        success: "bg-success/12 text-success",
+        warning: "bg-warning/14 text-warning"
       }
     },
     defaultVariants: { variant: "default" }
@@ -22,7 +22,7 @@ const badgeVariants = cva(
 export type BadgeVariant = VariantProps<typeof badgeVariants>["variant"];
 
 export function Badge({ className, variant, ...props }: React.ComponentPropsWithoutRef<"span"> & VariantProps<typeof badgeVariants>) {
-  return <span className={cn(badgeVariants({ variant }), className)} {...props} />;
+  return <span data-slot="badge" className={cn(badgeVariants({ variant }), className)} {...props} />;
 }
 
 /** 旧 BadgeTone 到新 variant 的映射,便于渐进迁移。 */

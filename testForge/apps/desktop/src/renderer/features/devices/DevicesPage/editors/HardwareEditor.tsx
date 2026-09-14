@@ -71,7 +71,7 @@ export function HardwareEditor({ open, hardware, onClose, onChanged }: {
           <EditorField label="稳定 hardwareId" required error={errors.hardwareId?.message}><Input {...register("hardwareId")} disabled={Boolean(hardware)} placeholder="DUT_1" /></EditorField>
           <EditorField label="显示名称" required error={errors.label?.message}><Input {...register("label")} /></EditorField>
           <div className="col-span-2 text-xs leading-relaxed text-muted-foreground">被动硬件不由 MCP Server 控制，仅用于接线建模。</div>
-          <div className="col-span-2 flex flex-col gap-2.5 rounded-xl bg-secondary/40 p-3 shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]">
+          <div className="col-span-2 flex flex-col gap-2.5 rounded-xl bg-secondary/40 p-3 shadow-sm ring-1 ring-border">
             <AppearanceImage
               hardwareId={hardwareId}
               assetId={live?.appearanceAssetId}

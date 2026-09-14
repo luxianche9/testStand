@@ -43,7 +43,7 @@ export const BashTerminal: ToolCallMessagePartComponent = memo(({ args, result, 
       </CollapsibleTrigger>
       {output && (
         <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
-          <div className="mt-1 ml-5 max-h-96 overflow-y-auto rounded-xl bg-muted/50 p-3 font-mono text-xs shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]">
+          <div className="mt-1 ml-5 max-h-96 overflow-y-auto rounded-xl bg-muted/50 p-3 font-mono text-xs shadow-sm ring-1 ring-border">
             {command && <div className="mb-2 text-muted-foreground">$ {command}</div>}
             {stdout && <pre className="whitespace-pre-wrap text-foreground wrap-break-word">{stdout}</pre>}
             {stderr && <pre className={cn("whitespace-pre-wrap text-destructive wrap-break-word", stdout && "mt-2")}>{stderr}</pre>}

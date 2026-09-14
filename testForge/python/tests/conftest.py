@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
@@ -9,6 +10,28 @@ from typing import Any
 import pytest
 
 _results: dict[str, str] = {}
+_source_hashes: dict[str, str] = {}
+
+
+def source_hashes() -> dict[str, str]:
+    root = Path(__file__).resolve().parents[1]
+    files = [root / "pyproject.toml", root / "uv.lock"]
+    for directory in ("src", "tests", "scripts"):
+        files += [
+            path
+            for path in (root / directory).rglob("*")
+            if path.is_file() and path.suffix in {".py", ".json"}
+        ]
+    return {
+        path.relative_to(root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+        for path in sorted(files)
+    }
+
+
+def pytest_sessionstart(session: pytest.Session) -> None:
+    _results.clear()
+    _source_hashes.clear()
+    _source_hashes.update(source_hashes())
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -37,5 +60,15 @@ def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
     path = Path(target)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
-        json.dumps({"exitstatus": exitstatus, "tests": items}, indent=2) + "\n", encoding="utf-8"
+        json.dumps(
+            {
+                "exitstatus": exitstatus,
+                "sourceHashesBefore": _source_hashes,
+                "sourceHashesAfter": source_hashes(),
+                "tests": items,
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
     )

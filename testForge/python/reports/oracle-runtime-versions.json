@@ -1,0 +1,17 @@
+{
+  "originalGoldenRuntime": {
+    "electron": "36.9.5",
+    "node": "22.19.0",
+    "v8": "13.6.233.17-electron.0",
+    "icu": "74.2",
+    "ada": "2.9.2"
+  },
+  "sourceRevision": "85de20e27f346c73848f572762ae4d1bba326c6e",
+  "stageRevision": "0b90bfc1b1c4cccc6ebba29666343ec84c494824",
+  "note": "Existing goldens were previously generated/verified against this Electron runtime; this capture verifies its installed version, not a new regeneration of every golden.",
+  "dependencyLock": {
+    "gitPath": "testForge/pnpm-lock.yaml",
+    "gitRevision": "0b90bfc1b1c4cccc6ebba29666343ec84c494824",
+    "gitBlobSha256": "bdedcaa93d6e70c24e3c6adb478de91056d231432636ef15238e8f4c58e2796a"
+  }
+}

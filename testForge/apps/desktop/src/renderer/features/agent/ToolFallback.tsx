@@ -183,7 +183,7 @@ export function ToolFallbackApproval({
       <div className="flex flex-col gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
         <p className="font-semibold">{meta?.title ?? `确认“${optionLabel(confirming)}”？`}</p>
         {(meta?.description ?? confirming.description) && <p className="text-xs text-muted-foreground">{meta?.description ?? confirming.description}</p>}
-        {confirming.grants?.map((grant) => <code key={grant} className="rounded bg-muted px-1.5 py-0.5 text-xs">{grant}</code>)}
+        {confirming.grants?.map((grant) => <code key={grant} className="rounded-sm bg-muted px-1.5 py-0.5 text-xs">{grant}</code>)}
         <div className="flex gap-2">
           <Button size="sm" disabled={submitted} onClick={() => respondWithOption(confirming)}>确认</Button>
           <Button size="sm" variant="outline" disabled={submitted} onClick={() => setConfirmingId(null)}>返回</Button>

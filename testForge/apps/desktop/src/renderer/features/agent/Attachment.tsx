@@ -45,15 +45,15 @@ const AttachmentTile: FC = () => {
   return (
     <AttachmentPrimitive.Root
       className={cn(
-        "group/attachment relative flex min-w-0 items-center gap-2 rounded-xl bg-background px-2 py-1.5 text-xs shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]",
+        "group/attachment relative flex min-w-0 items-center gap-2 rounded-xl bg-background px-2 py-1.5 text-xs shadow-sm ring-1 ring-border",
         composer ? "max-w-48" : "max-w-56",
         failed && "ring-destructive/50"
       )}
     >
-      <div className="relative grid size-8 shrink-0 place-items-center overflow-hidden rounded bg-muted text-muted-foreground">
+      <div className="relative grid size-8 shrink-0 place-items-center overflow-hidden rounded-sm bg-muted text-muted-foreground">
         {preview ? <img src={preview} alt="附件预览" className="size-full object-cover" /> : <FileTextIcon className="size-4" />}
-        {loading && <div className="absolute grid size-8 place-items-center rounded bg-background/75"><Loader2Icon className="size-3.5 animate-spin" /></div>}
-        {failed && <div className="absolute grid size-8 place-items-center rounded bg-background/80 text-destructive"><AlertCircleIcon className="size-3.5" /></div>}
+        {loading && <div className="absolute grid size-8 place-items-center rounded-sm bg-background/75"><Loader2Icon className="size-3.5 animate-spin" /></div>}
+        {failed && <div className="absolute grid size-8 place-items-center rounded-sm bg-background/80 text-destructive"><AlertCircleIcon className="size-3.5" /></div>}
       </div>
       <div className="min-w-0 flex-1">
         <span className="block truncate font-medium text-foreground"><AttachmentPrimitive.Name /></span>
@@ -61,7 +61,7 @@ const AttachmentTile: FC = () => {
       </div>
       {composer && (
         <AttachmentPrimitive.Remove asChild>
-          <TooltipIconButton tooltip={`移除 ${name}`} className="size-5 rounded opacity-70 hover:opacity-100" aria-label={`移除 ${name}`}>
+          <TooltipIconButton tooltip={`移除 ${name}`} className="size-5 rounded-sm opacity-70 hover:opacity-100" aria-label={`移除 ${name}`}>
             <XIcon className="size-3" />
           </TooltipIconButton>
         </AttachmentPrimitive.Remove>

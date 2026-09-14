@@ -69,7 +69,7 @@ export function PortEditor({ hardwareId, ports, saved, onChange, onImageChanged 
         {ports.map((port) => {
           const open = expanded[port.portId] ?? false;
           return (
-            <article className={cn("rounded-xl bg-card shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]", open && "ring-foreground/20")} key={port.portId}>
+            <article className={cn("rounded-xl bg-card shadow-sm ring-1 ring-border", open && "ring-foreground/20")} key={port.portId}>
               <div className="flex flex-wrap items-center gap-2 px-2 py-1.5">
                 <button
                   type="button"

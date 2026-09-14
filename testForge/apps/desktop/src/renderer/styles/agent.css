@@ -9,7 +9,7 @@
     overflow: visible;
     color: var(--tf-foreground);
     background: var(--tf-card);
-    box-shadow: -8px 0 24px rgb(var(--tf-shadow-color) / 0.05);
+    box-shadow: inset 1px 0 0 var(--tf-border), -4px 0 16px rgb(var(--tf-shadow-color) / 0.03);
     container-type: inline-size;
   }
 

@@ -99,7 +99,7 @@ export function ManualInvokePanel({ hardwareId, preferredToolName }: {
     <SchemaArgumentsForm schema={displaySchema} value={argumentsValue} onChange={setArgumentsValue} onValidityChange={setFormValid} />
     {validation.errors.length > 0 && <div className="mt-3 flex flex-col gap-1.5 rounded-md border border-destructive/50 p-2.5"><strong className="text-xs">参数校验</strong>{validation.errors.map((message, index) => <div key={index} className="grid grid-cols-[auto_1fr] gap-1.5 text-[11px]"><code className="text-destructive">input</code><span>{message}</span></div>)}</div>}
     <div className="mt-3.5 flex items-center gap-2.5 pt-3"><Button disabled={!hardwareReady || !formValid || !validation.valid || runBusy || manualBusy || invoke.isPending} onClick={() => invoke.mutate()}><PlayIcon />{invoke.isPending ? "正在执行…" : "执行一次"}</Button><span className="text-[11px] text-muted-foreground">超时 30 秒 · 硬件上下文由 TestForge 通过协议元数据传递</span></div>
-    {(result || callError) && <section className={cn("mt-4 overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]", callError && "ring-destructive/55")}>
+    {(result || callError) && <section className={cn("mt-4 overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-border", callError && "ring-destructive/55")}>
       <header className="flex items-center justify-between bg-secondary/50 px-2.5 py-2 text-xs"><strong>{callError ? "调用失败" : "调用成功"}</strong><span className="text-muted-foreground">{callError ? `${callError.durationMs} ms` : `${result!.durationMs} ms`}</span></header>
       {callError
         ? <div className={cn(alertClass, "m-3")}><CircleAlertIcon className="size-4" /><span>{callError.message}</span></div>

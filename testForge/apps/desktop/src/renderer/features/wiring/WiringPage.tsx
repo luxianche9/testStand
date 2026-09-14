@@ -368,7 +368,7 @@ function WiringWorkbench() {
                   const showingImage = menuNode?.showImage !== false;
                   const itemClass = "flex min-h-8 w-full items-center rounded-sm px-2.5 text-left text-xs whitespace-nowrap transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:outline-none active:translate-y-px disabled:pointer-events-none disabled:opacity-50";
                   return <div
-                    className="wiring-node-menu fixed z-30 grid w-[168px] gap-0.5 rounded-xl bg-popover p-1 text-popover-foreground shadow-lg ring-1 ring-black/[0.04] animate-fade-in dark:ring-white/[0.06]"
+                    className="wiring-node-menu fixed z-30 grid w-[168px] gap-0.5 rounded-xl bg-popover p-1 text-popover-foreground shadow-lg ring-1 ring-border animate-fade-in"
                     role="menu"
                     aria-label="硬件操作"
                     style={{ left: nodeMenu.x, top: nodeMenu.y }}

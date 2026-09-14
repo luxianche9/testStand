@@ -1,0 +1,149 @@
+[
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": "button",
+    "name": "项目文件夹菜单",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "设置",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": "tab",
+    "type": null,
+    "name": "设备管理",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": "tab",
+    "type": null,
+    "name": "工位接线",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": "tab",
+    "type": null,
+    "name": "编排测试",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": "tab",
+    "type": null,
+    "name": "运行日志",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "信箱",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "打开 AI 侧栏",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "最小化",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "最大化",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "关闭",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": "button",
+    "name": "刷新",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "DUT_A被动",
+    "disabled": true
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "DUT_B被动",
+    "disabled": true
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": "button",
+    "name": "画布",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": "button",
+    "name": "列表",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": "button",
+    "name": "端口 信号接口",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": "button",
+    "name": "端口 信号接口",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": "button",
+    "name": "Zoom In",
+    "disabled": true
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": "button",
+    "name": "Zoom Out",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": "button",
+    "name": "Fit View",
+    "disabled": false
+  }
+]

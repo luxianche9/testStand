@@ -133,7 +133,7 @@ function TaskWorkspace({ project, selectedRunId, onRunSelected }: {
   const error = apply.error ?? validate.error ?? start.error;
 
   return <section className="relative flex min-h-0 min-w-0 flex-col">
-    <div className="flex items-center justify-end gap-2 bg-card/90 px-4 py-2.5">
+    <div className="flex items-center justify-end gap-2 bg-card px-4 py-2.5">
       <Button variant="ghost" size="sm" onClick={() => { void client.invalidateQueries({ queryKey: queryKeys.projectDocument }); }}><RefreshCwIcon className="size-3.5" />刷新</Button>
       <Button variant="ghost" size="sm" disabled={apply.isPending} onClick={() => apply.mutate(task)}>应用</Button>
       <Button variant="ghost" size="sm" disabled={validate.isPending} onClick={() => validate.mutate(task)}>校验</Button>
@@ -155,7 +155,7 @@ function TaskWorkspace({ project, selectedRunId, onRunSelected }: {
       <div className="flex min-w-0 flex-col gap-3 overflow-auto p-3.5">
         <VariableEditor task={task} onChange={update} />
         {SECTIONS.map((name) => <section
-          className={`rounded-xl bg-card p-2.5 shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06] ${section === name ? "ring-ring" : ""}`}
+          className={`rounded-xl bg-card p-2.5 shadow-sm ring-1 ring-border ${section === name ? "ring-ring" : ""}`}
           key={name}
           onClick={() => setSection(name)}
         >
@@ -181,7 +181,7 @@ function TaskWorkspace({ project, selectedRunId, onRunSelected }: {
           {...inspector.handleProps}
         />
         <aside className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] bg-secondary/50" aria-label="步骤属性">
-          <header className="flex items-center justify-between gap-2 bg-card/90 px-3 py-2.5 text-xs">
+          <header className="flex items-center justify-between gap-2 bg-card px-3 py-2.5 text-xs">
             <strong className="truncate text-sm font-semibold">步骤属性 · {stepTypeLabel(editing.type)}</strong>
             <Button variant="ghost" size="icon-xs" aria-label="关闭步骤属性" onClick={() => setEditingStepId(undefined)}><XIcon className="size-3.5" /></Button>
           </header>

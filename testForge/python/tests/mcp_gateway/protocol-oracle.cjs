@@ -2,8 +2,13 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const {createRequire} = require('node:module');
-const root = path.resolve(__dirname, '../../..');
-const compiler = createRequire(path.join(root, 'package.json'))('typescript');
+const workspace = path.resolve(__dirname, '../../..');
+const referenceIndex = process.argv.indexOf('--reference-root');
+if (referenceIndex < 0 || !process.argv[referenceIndex + 1]) {
+  throw new Error('Usage: protocol-oracle.cjs --reference-root <historical-checkout/testForge>; output uses stdout');
+}
+const root = path.resolve(process.argv[referenceIndex + 1]);
+const compiler = createRequire(path.join(workspace, 'package.json'))('typescript');
 const cache = new Map();
 function load(filename) {
   if (cache.has(filename)) return cache.get(filename).exports;
@@ -68,7 +73,7 @@ async function main() {
       results.push({...item, expected: response});
       if (opened) await request({method: 'DELETE'}, opened.sessionId);
     }
-    fs.writeFileSync(path.join(__dirname, 'protocol-golden.json'), JSON.stringify(results, null, 2) + '\n');
+    process.stdout.write(JSON.stringify(results, null, 2) + '\n');
   } finally { await gateway.stop(); }
 }
 main().catch(error => { process.stderr.write(String(error)); process.exitCode = 1; });

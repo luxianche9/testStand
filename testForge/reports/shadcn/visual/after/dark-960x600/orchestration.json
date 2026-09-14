@@ -1,0 +1,191 @@
+[
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": "button",
+    "name": "项目文件夹菜单",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "设置",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": "tab",
+    "type": null,
+    "name": "设备管理",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": "tab",
+    "type": null,
+    "name": "工位接线",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": "tab",
+    "type": null,
+    "name": "编排测试",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": "tab",
+    "type": null,
+    "name": "运行日志",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "信箱",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "打开 AI 侧栏",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "最小化",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "最大化",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "关闭",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": "button",
+    "name": "刷新",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": "button",
+    "name": "应用",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": "button",
+    "name": "校验",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": "button",
+    "name": "运行",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "硬件动作",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "延时",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "变量赋值",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "断言",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "判断",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "循环",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "并行",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "人工确认",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "输入 0",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "变量 0",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": "button",
+    "name": "新增",
+    "disabled": false
+  },
+  {
+    "tag": "BUTTON",
+    "role": null,
+    "type": null,
+    "name": "●等待设备稳定延时",
+    "disabled": false
+  }
+]

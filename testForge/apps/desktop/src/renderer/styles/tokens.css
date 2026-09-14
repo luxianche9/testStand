@@ -1,3 +1,5 @@
+/* shadcn new-york-v4 neutral, adapted to the existing --tf-* names.
+   The exact downloaded source and its hashes are in docs/shadcn/. */
 @theme inline {
   --color-background: var(--tf-background);
   --color-foreground: var(--tf-foreground);
@@ -26,7 +28,7 @@
   --color-wiring-edge-strong: var(--tf-wiring-edge-strong);
   --font-sans: var(--tf-font-sans);
   --font-mono: var(--tf-font-mono);
-  --radius-sm: calc(var(--tf-radius-control) - 2px);
+  --radius-sm: calc(var(--tf-radius) - 4px);
   --radius-md: var(--tf-radius-control);
   --radius-lg: var(--tf-radius);
   --radius-xl: calc(var(--tf-radius) + 4px);
@@ -41,8 +43,8 @@
 }
 
 :root {
-  --tf-radius: 1rem;
-  --tf-radius-control: 0.625rem;
+  --tf-radius: 0.625rem;
+  --tf-radius-control: calc(var(--tf-radius) - 2px);
   --tf-font-sans: "Geist Variable", "Segoe UI Variable", "Microsoft YaHei UI", "PingFang SC", system-ui, sans-serif;
   --tf-font-mono: "Geist Mono Variable", "Cascadia Code", Consolas, monospace;
   --tf-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
@@ -55,60 +57,60 @@
 :root,
 :root[data-theme="light"] {
   color-scheme: light;
-  --tf-shadow-color: 30 41 59;
-  --tf-background: oklch(0.962 0.008 265);
-  --tf-foreground: oklch(0.24 0.02 265);
-  --tf-card: oklch(0.995 0.003 265);
-  --tf-card-foreground: oklch(0.24 0.02 265);
-  --tf-popover: oklch(0.995 0.003 265);
-  --tf-popover-foreground: oklch(0.24 0.02 265);
-  --tf-primary: oklch(0.38 0.07 255);
+  --tf-shadow-color: 0 0 0;
+  --tf-background: oklch(1 0 0);
+  --tf-foreground: oklch(0.145 0 0);
+  --tf-card: oklch(1 0 0);
+  --tf-card-foreground: oklch(0.145 0 0);
+  --tf-popover: oklch(1 0 0);
+  --tf-popover-foreground: oklch(0.145 0 0);
+  --tf-primary: oklch(0.205 0 0);
   --tf-primary-foreground: oklch(0.985 0 0);
-  --tf-secondary: oklch(0.942 0.01 265);
-  --tf-secondary-foreground: oklch(0.3 0.025 265);
-  --tf-muted: oklch(0.942 0.01 265);
-  --tf-muted-foreground: oklch(0.5 0.025 265);
-  --tf-accent: oklch(0.945 0.018 255);
-  --tf-accent-foreground: oklch(0.3 0.05 255);
-  --tf-destructive: oklch(0.55 0.2 27);
+  --tf-secondary: oklch(0.97 0 0);
+  --tf-secondary-foreground: oklch(0.205 0 0);
+  --tf-muted: oklch(0.97 0 0);
+  --tf-muted-foreground: oklch(0.556 0 0);
+  --tf-accent: oklch(0.97 0 0);
+  --tf-accent-foreground: oklch(0.205 0 0);
+  --tf-destructive: oklch(0.577 0.245 27.325);
   --tf-destructive-foreground: oklch(0.985 0 0);
-  --tf-border: oklch(0.86 0.012 265 / 0.42);
-  --tf-input: oklch(0.86 0.012 265 / 0.65);
-  --tf-ring: oklch(0.58 0.11 255);
+  --tf-border: oklch(0.922 0 0);
+  --tf-input: oklch(0.922 0 0);
+  --tf-ring: oklch(0.708 0 0);
   --tf-success: oklch(0.58 0.15 155);
   --tf-warning: oklch(0.68 0.14 75);
-  --tf-canvas: oklch(0.952 0.01 255);
-  --tf-canvas-grid: oklch(0.88 0.014 255);
-  --tf-wiring-edge: oklch(0.52 0.16 255);
-  --tf-wiring-edge-strong: oklch(0.45 0.18 255);
+  --tf-canvas: var(--tf-muted);
+  --tf-canvas-grid: var(--tf-border);
+  --tf-wiring-edge: var(--tf-muted-foreground);
+  --tf-wiring-edge-strong: var(--tf-foreground);
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
   --tf-shadow-color: 0 0 0;
-  --tf-background: oklch(0.17 0.015 265);
-  --tf-foreground: oklch(0.96 0.006 265);
-  --tf-card: oklch(0.225 0.016 265);
-  --tf-card-foreground: oklch(0.96 0.006 265);
-  --tf-popover: oklch(0.245 0.016 265);
-  --tf-popover-foreground: oklch(0.96 0.006 265);
-  --tf-primary: oklch(0.78 0.07 255);
-  --tf-primary-foreground: oklch(0.22 0.04 255);
-  --tf-secondary: oklch(0.27 0.016 265);
-  --tf-secondary-foreground: oklch(0.96 0.006 265);
-  --tf-muted: oklch(0.27 0.016 265);
-  --tf-muted-foreground: oklch(0.7 0.02 265);
-  --tf-accent: oklch(0.29 0.03 255);
-  --tf-accent-foreground: oklch(0.96 0.006 265);
-  --tf-destructive: oklch(0.68 0.17 22);
+  --tf-background: oklch(0.145 0 0);
+  --tf-foreground: oklch(0.985 0 0);
+  --tf-card: oklch(0.205 0 0);
+  --tf-card-foreground: oklch(0.985 0 0);
+  --tf-popover: oklch(0.205 0 0);
+  --tf-popover-foreground: oklch(0.985 0 0);
+  --tf-primary: oklch(0.922 0 0);
+  --tf-primary-foreground: oklch(0.205 0 0);
+  --tf-secondary: oklch(0.269 0 0);
+  --tf-secondary-foreground: oklch(0.985 0 0);
+  --tf-muted: oklch(0.269 0 0);
+  --tf-muted-foreground: oklch(0.708 0 0);
+  --tf-accent: oklch(0.269 0 0);
+  --tf-accent-foreground: oklch(0.985 0 0);
+  --tf-destructive: oklch(0.704 0.191 22.216);
   --tf-destructive-foreground: oklch(0.985 0 0);
-  --tf-border: oklch(1 0 0 / 7%);
-  --tf-input: oklch(1 0 0 / 11%);
-  --tf-ring: oklch(0.68 0.09 255);
+  --tf-border: oklch(1 0 0 / 10%);
+  --tf-input: oklch(1 0 0 / 15%);
+  --tf-ring: oklch(0.556 0 0);
   --tf-success: oklch(0.72 0.14 155);
   --tf-warning: oklch(0.78 0.13 80);
-  --tf-canvas: oklch(0.185 0.014 255);
-  --tf-canvas-grid: oklch(0.3 0.018 255);
-  --tf-wiring-edge: oklch(0.72 0.12 250);
-  --tf-wiring-edge-strong: oklch(0.8 0.1 245);
+  --tf-canvas: var(--tf-background);
+  --tf-canvas-grid: var(--tf-muted);
+  --tf-wiring-edge: var(--tf-muted-foreground);
+  --tf-wiring-edge-strong: var(--tf-foreground);
 }

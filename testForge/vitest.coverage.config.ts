@@ -4,13 +4,6 @@ export default defineConfig({
   test: {
     projects: [
       "packages/contracts",
-      "packages/storage",
-      "packages/projects",
-      "packages/devices",
-      "packages/wiring",
-      "packages/application",
-      "packages/orchestration",
-      "packages/mcp-gateway",
       "apps/desktop"
     ],
     exclude: ["**/node_modules/**", "**/dist/**", "**/out/**", "**/e2e/**"],

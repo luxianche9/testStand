@@ -13,7 +13,7 @@ export function WiringViewSwitch({ view, onChange }: { view: WiringView; onChang
     <div
       role="group"
       aria-label="接线视图"
-      className="absolute top-2.5 left-2.5 z-[5] flex items-center gap-0.5 rounded-lg bg-popover p-0.5 shadow-md ring-1 ring-black/[0.04] dark:ring-white/[0.06]"
+      className="absolute top-2.5 left-2.5 z-[5] flex items-center gap-0.5 rounded-lg bg-popover p-0.5 shadow-md ring-1 ring-border"
     >
       <button type="button" aria-pressed={view === "canvas"} className={itemClass(view === "canvas")} onClick={() => onChange("canvas")}>画布</button>
       <button type="button" aria-pressed={view === "list"} className={itemClass(view === "list")} onClick={() => onChange("list")}>列表</button>

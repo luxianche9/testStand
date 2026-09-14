@@ -11,13 +11,14 @@ export const Checkbox = React.forwardRef<
   return (
     <CheckboxPrimitive.Root
       ref={ref}
+      data-slot="checkbox"
       className={cn(
-        "peer size-4 shrink-0 rounded-md border-0 bg-background outline-none ring-1 ring-input focus-visible:ring-[3px] focus-visible:ring-ring/45 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:ring-primary",
+        "peer size-4 shrink-0 rounded-[4px] border border-solid border-input shadow-xs outline-none transition-shadow focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground dark:bg-input/30 dark:aria-invalid:ring-destructive/40 dark:data-[state=checked]:bg-primary",
         className
       )}
       {...props}
     >
-      <CheckboxPrimitive.Indicator className="grid place-items-center text-current">
+      <CheckboxPrimitive.Indicator data-slot="checkbox-indicator" className="grid place-items-center text-current">
         <CheckIcon className="size-3.5" />
       </CheckboxPrimitive.Indicator>
     </CheckboxPrimitive.Root>
@@ -37,9 +38,10 @@ export function Tooltip({ content, side = "bottom", children }: {
         <TooltipPrimitive.Trigger asChild>{children}</TooltipPrimitive.Trigger>
         <TooltipPrimitive.Portal>
           <TooltipPrimitive.Content
+            data-slot="tooltip-content"
             side={side}
             sideOffset={5}
-            className="z-[120] animate-fade-in rounded-md bg-foreground px-2.5 py-1.5 text-xs text-background shadow-md"
+            className="z-[120] animate-fade-in rounded-md bg-foreground px-2.5 py-1.5 text-xs text-background"
           >
             {content}
             <TooltipPrimitive.Arrow className="fill-foreground" />
@@ -60,7 +62,7 @@ export const TooltipIconButton = React.forwardRef<HTMLButtonElement, TooltipIcon
 ) {
   return (
     <Tooltip content={tooltip} side={side}>
-      <Button variant="ghost" size="icon-xs" {...rest} className={cn("active:scale-95", className)} ref={ref}>
+      <Button variant="ghost" size="icon-xs" {...rest} className={className} ref={ref}>
         {children}
         <span className="sr-only">{tooltip}</span>
       </Button>

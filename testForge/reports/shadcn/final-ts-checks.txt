@@ -1,0 +1,7 @@
+
+> testforge@0.1.0 check:dependencies E:\Project\hardwareHarness\testForge
+> depcruise --config .dependency-cruiser.cjs packages apps/desktop/src --output-type err && knip --config knip.json --include "dependencies,unlisted,exports,types,cycles"
+
+
+✔ no dependency violations found (234 modules, 901 dependencies cruised)
+

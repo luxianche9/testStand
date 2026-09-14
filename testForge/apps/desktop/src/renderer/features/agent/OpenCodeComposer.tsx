@@ -333,7 +333,7 @@ export function OpenCodeComposer({
   return (
     <ComposerPrimitive.Root className="relative flex w-full flex-col" onSubmit={handleSubmit}>
       <ComposerPrimitive.AttachmentDropzone asChild>
-        <div className="flex w-full flex-col gap-2 rounded-xl bg-(--composer-bg) p-2 shadow-[0_8px_28px_-18px_rgba(0,0,0,0.35),0_1px_2px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04] transition-[box-shadow,ring-color] focus-within:ring-ring data-[dragging=true]:border data-[dragging=true]:border-dashed data-[dragging=true]:bg-accent/50 dark:shadow-none dark:ring-white/[0.06]">
+        <div className="flex w-full flex-col gap-2 rounded-lg bg-(--composer-bg) p-2 shadow-[var(--tf-shadow-sm)] ring-1 ring-border transition-[box-shadow,ring-color] focus-within:ring-ring data-[dragging=true]:border data-[dragging=true]:border-dashed data-[dragging=true]:bg-accent/50 dark:shadow-none">
           <ComposerAttachments />
           <ComposerPrimitive.Input
             placeholder="输入任务，使用 @ 添加文件，使用 / 调用命令"
@@ -478,7 +478,7 @@ function AgentPicker({ catalog, selection, onSelectionChange }: { catalog: OpenC
 }
 
 function PickerContent({ className, ...props }: ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>) {
-  return <PopoverPrimitive.Portal><PopoverPrimitive.Content sideOffset={8} collisionPadding={12} className={cn("z-[100] overflow-hidden rounded-xl bg-popover text-popover-foreground shadow-xl outline-none ring-1 ring-black/[0.04] dark:ring-white/[0.06]", className)} {...props} /></PopoverPrimitive.Portal>;
+  return <PopoverPrimitive.Portal><PopoverPrimitive.Content sideOffset={8} collisionPadding={12} className={cn("z-[100] overflow-hidden rounded-xl bg-popover text-popover-foreground shadow-xl outline-none ring-1 ring-border", className)} {...props} /></PopoverPrimitive.Portal>;
 }
 
 function PickerLabel({ children }: { children: ReactNode }) {

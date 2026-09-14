@@ -1,0 +1,13 @@
+import { describe, expectTypeOf, it } from "vitest";
+import type { BackendApplication } from "@testforge/contracts/application";
+import type { TestForgeApplication } from "@testforge/application";
+
+type PublicMethods<T> = { [K in keyof T as T[K] extends (...args: never[]) => unknown ? K : never]: T[K] };
+type Original = { [K in keyof BackendApplication]: PublicMethods<TestForgeApplication[K]> };
+
+describe("application contract extraction before deleting the TS implementation", () => {
+  it("preserves every public method in both directions", () => {
+    expectTypeOf<BackendApplication>().toMatchTypeOf<Original>();
+    expectTypeOf<Original>().toMatchTypeOf<BackendApplication>();
+  });
+});

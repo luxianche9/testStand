@@ -20,7 +20,7 @@ export function StepPalette({ onAdd }: { onAdd: (type: TestStep["type"]) => void
       return <button
         key={type}
         onClick={() => onAdd(type)}
-        className="flex items-center gap-1.5 rounded-xl bg-background px-2 py-1.5 text-left text-sm shadow-sm ring-1 ring-black/[0.04] transition-[box-shadow,ring-color] hover:ring-ring hover:text-foreground/80 dark:ring-white/[0.06]"
+        className="flex items-center gap-1.5 rounded-xl bg-background px-2 py-1.5 text-left text-sm shadow-sm ring-1 ring-border transition-[box-shadow,ring-color] hover:ring-ring hover:text-foreground/80"
       ><Icon className="size-3.5" />{stepTypeLabel(type)}</button>;
     })}
   </aside>;

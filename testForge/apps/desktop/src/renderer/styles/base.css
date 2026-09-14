@@ -1,3 +1,8 @@
+/* Color resets precede component utilities; keep the existing typography and spacing reset. */
+@layer theme {
+  button { color: inherit; border: 0; background: none; }
+}
+
 @layer base {
   * { box-sizing: border-box; }
   html, body, #root { height: 100%; }
@@ -20,7 +25,7 @@
     letter-spacing: -0.02em;
     text-wrap: balance;
   }
-  button { font: inherit; color: inherit; padding: 0; border: 0; background: none; cursor: pointer; }
+  button { font: inherit; padding: 0; cursor: pointer; }
   input, textarea, select { font: inherit; }
   code, pre, .tabular, [data-tabular] {
     font-family: var(--tf-font-mono);

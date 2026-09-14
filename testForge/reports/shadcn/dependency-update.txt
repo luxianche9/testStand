@@ -1,0 +1,16 @@
+Scope: all 3 workspace projects
+ WARN  `node_modules` is present. Lockfile only installation will make it out-of-date
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Progress: resolved 3, reused 0, downloaded 0, added 0
+ WARN  deprecated eslint@9.39.5: This version is no longer supported. Please see https://eslint.org/version-support for other options.
+Progress: resolved 23, reused 0, downloaded 0, added 0
+Progress: resolved 36, reused 0, downloaded 0, added 0
+Progress: resolved 46, reused 0, downloaded 0, added 0
+Progress: resolved 106, reused 0, downloaded 0, added 0
+Progress: resolved 431, reused 0, downloaded 0, added 0
+Progress: resolved 935, reused 0, downloaded 0, added 0
+Progress: resolved 995, reused 0, downloaded 0, added 0
+ WARN  5 deprecated subdependencies found: boolean@3.2.0, glob@10.5.0, glob@7.2.3, inflight@1.0.6, rimraf@2.6.3
+Progress: resolved 997, reused 0, downloaded 0, added 0, done
+
+Done in 8.8s using pnpm v10.15.0

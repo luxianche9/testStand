@@ -53,8 +53,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               key={item.id}
               role="alert"
               className={cn(
-                "pointer-events-auto relative flex w-auto max-w-full animate-toast-in items-center gap-2.5 overflow-hidden rounded-xl bg-popover px-3.5 py-2.5 text-sm text-popover-foreground shadow-[var(--tf-shadow-lg)] ring-1 ring-black/[0.05] dark:ring-white/[0.08]",
-                item.kind === "error" && "ring-destructive/30"
+                "pointer-events-auto relative flex w-auto max-w-full animate-toast-in items-center gap-2.5 overflow-hidden rounded-lg border border-solid border-border bg-popover px-3.5 py-2.5 text-sm text-popover-foreground shadow-lg",
+                item.kind === "error" && "border-destructive/30"
               )}
             >
               {icons[item.kind]}

@@ -13,10 +13,10 @@ export function ConnectionDrawer({ connection, hardware, onClose, onEdit, onRemo
 }) {
   return (
     <aside
-      className="absolute top-3 right-3 bottom-3 z-[12] grid w-[390px] animate-fade-in grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-xl bg-card shadow-2xl ring-1 ring-black/[0.04] dark:ring-white/[0.06]"
+      className="absolute top-3 right-3 bottom-3 z-[12] grid w-[390px] animate-fade-in grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-xl bg-card shadow-2xl ring-1 ring-border"
       aria-label="端口接线详情"
     >
-      <header className="flex items-start justify-between gap-2.5 bg-card/90 p-3">
+      <header className="flex items-start justify-between gap-2.5 bg-card p-3">
         <div className="grid min-w-0 gap-1">
           <strong>端口接线</strong>
           <span className="truncate text-xs text-muted-foreground">{connectionLabel(connection, hardware)}</span>
@@ -59,7 +59,7 @@ function ConnectionRow({ connection, hardware, onRemove, removing, onEdit }: {
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <article className={cn("overflow-hidden rounded-xl bg-card shadow-sm ring-1 [&+article]:mt-2", open ? "ring-input" : "ring-black/[0.04] dark:ring-white/[0.06]")}>
+    <article className={cn("overflow-hidden rounded-xl bg-card shadow-sm ring-1 [&+article]:mt-2", open ? "ring-input" : "ring-border")}>
       <button
         className="flex min-h-[54px] w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors hover:bg-accent"
         onClick={() => setOpen((value) => !value)}
@@ -105,7 +105,7 @@ function ConnectionPins({ connection, hardware, drawer, bordered }: {
     <div className={wrapClass}>
       <div className="grid gap-1.5">
         {connection.pins.map((pin) => (
-          <div key={`${pin.a}-${pin.b}`} className="grid grid-cols-[auto_minmax(0,1fr)_42px_minmax(0,1fr)] items-center gap-2 rounded-xl bg-secondary/60 p-2.5 shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]">
+          <div key={`${pin.a}-${pin.b}`} className="grid grid-cols-[auto_minmax(0,1fr)_42px_minmax(0,1fr)] items-center gap-2 rounded-xl bg-secondary/60 p-2.5 shadow-sm ring-1 ring-border">
             <span className="grid min-w-0 gap-0.5">
               <strong className="truncate text-[11px] font-medium">{pinText(a.port, pin.a)}</strong>
               <small className="truncate font-mono text-[9px] text-muted-foreground">{a.port?.name ?? connection.portA}</small>

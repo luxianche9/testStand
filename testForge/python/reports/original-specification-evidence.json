@@ -1,0 +1,69 @@
+{
+  "formatVersion": 1,
+  "sourceRevision": "85de20e27f346c73848f572762ae4d1bba326c6e",
+  "stageRevision": "0b90bfc1b1c4cccc6ebba29666343ec84c494824",
+  "packageCaseCount": 117,
+  "migrationCaseCount": 3,
+  "packageTestFileCount": 18,
+  "sourceFileCount": 85,
+  "evidence": {
+    "python/reports/ts-packages-results.json": "0f7bbda196fc8f0c5744c11e6c27cd1386bfd940dcf1cfadbab6a4890400ab78",
+    "python/reports/ts-assertion-inventory.json": "c0c4b6c78f45aa997e24d4555aaf7e76e40783c2755668fc909a5ed81349e314",
+    "python/reports/ts-migrations-results.json": "7643fcc006f223e4276a0c898b5ab88b3320f5c08423d40f11dfa0e8955fd4e2",
+    "python/reports/ts-migration-assertion-inventory.json": "be75ebabd0cbc7b25faeffa7648208f6f86710450c6737c2f3ef3ec7048c2ed1",
+    "python/reports/original-source-hashes.json": "23116b257492c45c7f5d95f0cbdb3e88812653e1fe593f1c631c225f3221f356",
+    "python/reports/oracle-runtime-versions.json": "a8695964875ac33893e3cb4db77c1712c07afcdf5381629ec0a832c265068083",
+    "python/reports/coverage-baseline-by-package.json": "ebdb05b2e2b096e5bf6d9ea836b747867a31bd2b2cced4c142ea7272701a362d",
+    "python/reports/protected-files.json": "c33cc67130fa31a20d71343ef23d41b874c8bebf4ff37dd42e64493f61b87e2d",
+    "python/reports/protected-exceptions.json": "3402099574b6940104a920d2f2e88ccbea0c15ead97cb42e29ef17efb32b75d0",
+    "python/reports/stage-protected-files.json": "cd6c11c85597f42e6658096fa766780c4ab5ba8a5ccedbb19bf4b42877b4a85d"
+  },
+  "goldens": {
+    "python/tests/compat/fs-golden.json": {
+      "sha256": "b39128ea317df07247e0edf076c14b114d79252eae2ba98d4c4bb3cad371bd8f",
+      "topLevelCount": 15,
+      "topLevelType": "list"
+    },
+    "python/tests/compat/json_parse_cases.json": {
+      "sha256": "4ca4017c93d86503107e3ba8828b66fa64593e8b8ec05af3467540e0ba5e668a",
+      "topLevelCount": 127,
+      "topLevelType": "list"
+    },
+    "python/tests/contracts/contracts-golden.json": {
+      "sha256": "5b7e6305ca2f509019e65f3a2b65a42133fe5b859cb3371932911e8099475e71",
+      "topLevelCount": 229,
+      "topLevelType": "list"
+    },
+    "python/tests/devices/ajv_cases.json": {
+      "sha256": "3ec85988e6a646b87db87e9c5734a463c2c29b62565ddaf44e15e757c5ffa54b",
+      "topLevelCount": 29,
+      "topLevelType": "list"
+    },
+    "python/tests/host/facade-calls.json": {
+      "sha256": "d32ae0987e73b41513a9423dc79558c0e6de2fcf1a886a5ebd4e5f25a9af6a34",
+      "topLevelCount": 54,
+      "topLevelType": "list"
+    },
+    "python/tests/mcp_gateway/protocol-golden.json": {
+      "sha256": "83c890d5afbf49189dbde90ce617e77fbedaa19c61693adcad1ae3e5c69b7d74",
+      "topLevelCount": 17,
+      "topLevelType": "list"
+    },
+    "python/tests/storage/storage-golden.json": {
+      "sha256": "80c1c842c997d85f645e85daa1df4c69d5b482b6f642e5499b3b553945cd065b",
+      "topLevelCount": 4,
+      "topLevelType": "list"
+    },
+    "python/tests/wiring/wiring-golden.json": {
+      "sha256": "444dc281b81eb6f34a86eeaf3750e96e62720e0b098973c2c0686486791f2db1",
+      "topLevelCount": 2,
+      "topLevelType": "list"
+    }
+  },
+  "provenance": {
+    "typescript": "Original package source and tests are Git-addressable at sourceRevision. All 85 working-source hashes were checked against that Git revision with only CRLF/LF normalization; both byte hashes are retained.",
+    "tests": "ts-packages-results.json is the original 117-case run. The three original desktop migrations cases were rerun before deletion and all their 14 assertion statements frozen separately.",
+    "goldens": "Saved differential data comes from unmodified TypeScript/Node or AJV, not Python output. Runtime and dependency lock provenance is in oracle-runtime-versions.json. Goldens remain fixed pytest inputs after source deletion.",
+    "regeneration": "The three original-business-source generators require --reference-root pointing to a historical testForge checkout. Install that checkout using its frozen pnpm lock, invoke with the recorded Electron Node runtime, and compare stdout to saved fixtures; do not overwrite the evidence."
+  }
+}

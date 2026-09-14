@@ -1,7 +1,7 @@
 import { cn } from "./cn";
 
 export function Skeleton({ className, ...props }: React.ComponentPropsWithoutRef<"div">) {
-  return <div className={cn("animate-pulse rounded-md bg-muted", className)} {...props} />;
+  return <div data-slot="skeleton" className={cn("animate-pulse rounded-md bg-accent", className)} {...props} />;
 }
 
 export function Spinner({ label, size = "default", className }: { label?: string | undefined; size?: "sm" | "default" | "lg" | undefined; className?: string | undefined }) {

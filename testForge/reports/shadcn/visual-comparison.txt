@@ -1,0 +1,1 @@
+90 screenshot pairs have identical controls and viewport dimensions.

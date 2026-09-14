@@ -28,24 +28,17 @@ module.exports = {
       to: { path: "^apps/desktop/" }
     },
     packageRule("contracts", []),
-    packageRule("storage", ["contracts"]),
-    packageRule("devices", ["contracts", "storage"]),
-    packageRule("projects", ["contracts", "storage"]),
-    packageRule("wiring", ["contracts"]),
-    packageRule("orchestration", ["contracts"]),
-    packageRule("application", ["contracts", "devices", "projects", "wiring", "orchestration"]),
-    packageRule("mcp-gateway", ["contracts", "application"]),
     {
-      name: "ipc-only-uses-application-and-contracts",
+      name: "ipc-only-uses-contracts",
       severity: "error",
       from: { path: "^apps/desktop/src/main/ipc\\.ts$" },
-      to: { path: "^packages/(?!application|contracts)[^/]+/src/" }
+      to: { path: "^packages/(?!contracts)[^/]+/src/" }
     },
     {
-      name: "concrete-services-stay-in-composition",
+      name: "typescript-business-backends-stay-removed",
       severity: "error",
-      from: { path: "^apps/desktop/src/main/", pathNot: "^apps/desktop/src/main/(?:composition|migrations)(?:\\.test)?\\.ts$" },
-      to: { path: "^packages/(?:devices|projects|wiring|orchestration|storage|mcp-gateway)/src/" }
+      from: { path: "^apps/desktop/src/" },
+      to: { path: "^packages/(?:application|devices|projects|wiring|orchestration|storage|mcp-gateway)/src/" }
     },
     ...["agent", "devices", "projects", "wiring", "orchestration"].map((feature) => ({
       name: `renderer-${feature}-feature-isolated`,

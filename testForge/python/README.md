@@ -1,11 +1,14 @@
 # TestForge Python backend
 
-This directory ports the eight TypeScript domain packages. TypeScript originals remain the
-reference implementation and test oracle. The desktop uses a private bidirectional stdio
+This directory ports the eight TypeScript domain packages. The seven TypeScript business
+implementations have been removed; contracts remain for desktop types and validation.
+Historical Git sources, assertion inventories and saved golden fixtures remain the test oracle.
+Oracle generators require an explicit historical checkout (`--reference-root`). The desktop uses a private bidirectional stdio
 JSON-RPC connection; the existing external MCP endpoint remains Streamable HTTP.
 
 Final implementation, verification evidence, compatibility notes, approved deviations,
-and installer hashes are indexed in [the delivery report](reports/implementation.md).
+and installer hashes from the port are indexed in [the original delivery report](reports/implementation.md).
+The subsequent TS removal and shadcn update are recorded in [the current report](../reports/shadcn/implementation.md).
 
 ```powershell
 uv sync --frozen
@@ -20,7 +23,8 @@ uv run pyinstaller --noconfirm backend.spec
 
 From the `testForge` workspace root, `pnpm python:setup` restores the locked Python
 environment and ICU binary. `pnpm verify:python` runs lint, formatting, strict typing,
-pytest branch coverage, all 117 specification mappings, coverage floors and protected
+pytest branch coverage, all 117 package and three legacy migration specification mappings,
+the original eight-package coverage floors and protected
 file hashes. `pnpm verify` keeps the TypeScript gates; `pnpm verify:full` runs both and
 Electron E2E. `pnpm package:win` builds the backend, production app and x64 NSIS installer.
 
@@ -36,10 +40,11 @@ For installed Electron, set `TESTFORGE_DESKTOP_EXECUTABLE` and run the desktop P
 These checks isolate runtime dependencies on this Windows host; they are not a substitute
 for an independent clean Windows VM acceptance run.
 
-`reports/protected-files.json` records the original renderer, OpenCode and integration
-dependency hashes. The only renderer exception authorized during implementation is the
-existing `LogsPage.tsx` hooks lint correction recorded separately in
-`reports/protected-exceptions.json`.
+`reports/protected-files.json` and `reports/protected-exceptions.json` preserve the original
+renderer freeze and authorized LogsPage lint correction as historical evidence.
+For the authorized shadcn stage, `reports/stage-protected-files.json` protects Python business
+sources, renderer pure TypeScript logic, OpenCode main files and dependency pins/patches.
+TSX presentation changes are checked by diff review and component/Electron interaction tests.
 
 Domain JSON continues to use camelCase. The process envelope uses an unambiguous tagged
 codec for bytes, undefined, dates and special numbers. Ciphertext files stay owned by Python,

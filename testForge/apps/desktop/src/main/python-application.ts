@@ -1,4 +1,4 @@
-import type { TestForgeApplication } from "@testforge/application";
+import type { BackendApplication } from "@testforge/contracts/application";
 import type { RequestContext } from "@testforge/contracts/agents";
 import type { PythonBridge } from "./python-bridge.js";
 
@@ -7,7 +7,7 @@ type AsyncMethods<T> = {
     T[K] extends (...args: infer A) => infer R ? (...args: A) => Promise<Awaited<R>> : never
 };
 type Namespace = "devices" | "projects" | "wiring" | "orchestration" | "manual" | "occupancy" | "system";
-export type PythonApplication = { [K in Namespace]: AsyncMethods<TestForgeApplication[K]> };
+export type PythonApplication = { [K in Namespace]: AsyncMethods<BackendApplication[K]> };
 
 export const DESKTOP_HUMAN_CONTEXT: Readonly<RequestContext> = Object.freeze({ actor: "human", source: "desktop" });
 

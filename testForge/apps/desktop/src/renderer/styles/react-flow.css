@@ -9,9 +9,17 @@
 .topology-preview .flow-connector-label { display: none; }
 .topology-empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--tf-muted-foreground); font-size: 11px; }
 
-.react-flow { background: var(--tf-canvas); }
-.react-flow__controls { overflow: hidden; border: 0; border-radius: 10px; background: var(--tf-popover); box-shadow: var(--tf-shadow-md); outline: 1px solid color-mix(in srgb, var(--tf-foreground) 6%, transparent); }
-.react-flow__controls-button { border-bottom-color: color-mix(in srgb, var(--tf-foreground) 6%, transparent); background: var(--tf-popover); fill: var(--tf-foreground); }
+.react-flow {
+  background: var(--tf-canvas);
+  --xy-controls-button-background-color: var(--tf-popover);
+  --xy-controls-button-background-color-hover: var(--tf-accent);
+  --xy-controls-button-color: var(--tf-foreground);
+  --xy-controls-button-color-hover: var(--tf-foreground);
+  --xy-controls-button-border-color: var(--tf-border);
+  --xy-controls-box-shadow: var(--tf-shadow-sm);
+}
+.react-flow__controls { overflow: hidden; border: 0; border-radius: var(--tf-radius-control); background: var(--tf-popover); box-shadow: var(--tf-shadow-sm); outline: 1px solid var(--tf-border); }
+.react-flow__controls-button { border-bottom-color: var(--tf-border); background: var(--tf-popover); fill: var(--tf-foreground); }
 .react-flow__controls-button:hover { background: var(--tf-accent); }
 .react-flow__edge-text { fill: var(--tf-foreground); font-family: var(--tf-font-mono); font-size: 10px; }
 .react-flow__edge-textbg { fill: var(--tf-popover); stroke: var(--tf-border); stroke-width: 1; }
@@ -20,7 +28,7 @@
   stroke-width: 3.5;
   stroke-linecap: round;
   opacity: 1;
-  filter: drop-shadow(0 0 2px color-mix(in srgb, var(--tf-wiring-edge) 55%, transparent));
+  filter: none;
 }
 .react-flow__edge.wiring-flow-edge.selected .react-flow__edge-path {
   stroke: var(--tf-wiring-edge-strong);
@@ -49,10 +57,10 @@
   width: 100%;
   height: 100%;
   overflow: visible;
-  border: 1px solid color-mix(in srgb, var(--tf-foreground) 8%, transparent);
-  border-radius: 12px;
+  border: 1px solid var(--tf-border);
+  border-radius: var(--tf-radius);
   background: var(--tf-card);
-  box-shadow: var(--tf-shadow-md);
+  box-shadow: var(--tf-shadow-sm);
   transition: border-color .12s ease, box-shadow .12s ease;
 }
 .flow-node-body {
@@ -63,7 +71,7 @@
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  border-radius: 11px;
+  border-radius: calc(var(--tf-radius) - 1px);
   background: var(--tf-card);
 }
 .flow-node-image {
@@ -121,7 +129,7 @@
 }
 .flow-hardware-node.selected {
   border-color: var(--tf-wiring-edge);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--tf-wiring-edge) 22%, transparent), 0 8px 24px color-mix(in srgb, #000 12%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--tf-wiring-edge) 22%, transparent), var(--tf-shadow-md);
 }
 .flow-hardware-node.connector-editing {
   outline: 1px dashed var(--tf-wiring-edge);
@@ -168,10 +176,10 @@
   padding: 2px 7px;
   overflow: hidden;
   border: 0;
-  border-radius: 6px;
+  border-radius: calc(var(--tf-radius-control) - 2px);
   background: var(--tf-popover);
   box-shadow: var(--tf-shadow-sm);
-  outline: 1px solid color-mix(in srgb, var(--tf-foreground) 8%, transparent);
+  outline: 1px solid var(--tf-border);
   color: var(--tf-popover-foreground);
   font-family: var(--tf-font-mono);
   font-size: 10px;

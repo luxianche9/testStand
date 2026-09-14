@@ -3,17 +3,18 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { Slot } from "radix-ui";
 import { cn } from "./cn";
 
+// Adapted from shadcn new-york-v4; see docs/shadcn/README.md for the upstream snapshot.
 export const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-2 rounded-[var(--tf-radius-control)] text-[13px] font-medium whitespace-nowrap outline-none transition-[color,background-color,box-shadow,transform,opacity] duration-200 ease-[var(--tf-ease-out)] focus-visible:ring-[3px] focus-visible:ring-ring/45 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-[13px] font-medium whitespace-nowrap outline-none transition-[color,background-color,border-color,box-shadow,opacity] duration-150 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground shadow-[var(--tf-shadow-sm)] hover:bg-primary/92",
-        destructive: "bg-destructive text-destructive-foreground shadow-[var(--tf-shadow-sm)] hover:bg-destructive/92",
-        outline: "bg-card text-foreground shadow-[var(--tf-shadow-sm)] ring-1 ring-border/60 hover:bg-accent hover:text-accent-foreground",
+        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:bg-destructive/60 dark:focus-visible:ring-destructive/40",
+        outline: "border border-solid border-border bg-background text-foreground shadow-xs hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
         secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline active:scale-100"
+        ghost: "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
+        link: "text-primary underline-offset-4 hover:underline"
       },
       size: {
         default: "h-9 px-3.5 py-2",
@@ -37,5 +38,5 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
   ref
 ) {
   const Comp = asChild ? Slot.Root : "button";
-  return <Comp ref={ref} type={type} className={cn(buttonVariants({ variant, size }), className)} {...props} />;
+  return <Comp ref={ref} type={type} data-slot="button" data-variant={variant} data-size={size} className={cn(buttonVariants({ variant, size }), className)} {...props} />;
 });

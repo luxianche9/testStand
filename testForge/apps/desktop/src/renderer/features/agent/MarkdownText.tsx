@@ -73,7 +73,7 @@ const defaultComponents = memoizeMarkdownComponents({
     return <code className={cn(!isCodeBlock && "rounded-md bg-muted px-1.5 py-0.5 font-mono text-[0.85em]", className)} {...props} />;
   },
   img: ({ alt }) => (
-    <span className="my-2 inline-flex items-center gap-1.5 rounded-xl bg-muted/30 px-2 py-1 text-xs text-muted-foreground shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]">
+    <span className="my-2 inline-flex items-center gap-1.5 rounded-xl bg-muted/30 px-2 py-1 text-xs text-muted-foreground shadow-sm ring-1 ring-border">
       <ImageOffIcon className="size-3.5" />
       远程图片未启用{alt ? `：${alt}` : ""}
     </span>

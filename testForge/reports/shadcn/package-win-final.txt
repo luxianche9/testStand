@@ -1,0 +1,11 @@
+  • electron-builder  version=26.15.3 os=10.0.26200
+  • loaded configuration  file=E:\Project\hardwareHarness\testForge\apps\desktop\electron-builder.config.ts
+  • description is missed in the package.json  appPackageFile=E:\Project\hardwareHarness\testForge\apps\desktop\package.json
+  • author is missed in the package.json  appPackageFile=E:\Project\hardwareHarness\testForge\apps\desktop\package.json
+  • packageManager not detected by file, falling back to environment detection  resolvedPackageManager=pnpm detected=E:\Project\hardwareHarness\testForge\apps\desktop
+  • building        target=nsis file=E:\Project\hardwareHarness\testForge\dist\TestForge-0.1.0-windows-x64.exe archs=x64 oneClick=true perMachine=false
+  • default Electron icon is used  reason=application icon is not set
+  • signing with signtool.exe  path=E:\Project\hardwareHarness\testForge\dist\win-unpacked\resources\elevate.exe
+  • signing with signtool.exe  path=E:\Project\hardwareHarness\testForge\dist\TestForge-0.1.0-windows-x64.__uninstaller.exe
+  • signing with signtool.exe  path=E:\Project\hardwareHarness\testForge\dist\TestForge-0.1.0-windows-x64.exe
+  • building block map  blockMapFile=E:\Project\hardwareHarness\testForge\dist\TestForge-0.1.0-windows-x64.exe.blockmap

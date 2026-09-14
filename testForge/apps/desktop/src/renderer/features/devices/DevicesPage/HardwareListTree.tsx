@@ -17,7 +17,7 @@ export function HardwareListTree({ hardware, selected, isOpen, onSelect, onToggl
 }) {
   const passive = hardware.filter((item) => item.kind === "passive");
   const rootOpen = isOpen("hardware");
-  return <div className="min-w-0 overflow-hidden rounded-[var(--tf-radius)] bg-card shadow-[var(--tf-shadow-sm)] ring-1 ring-black/[0.04] dark:ring-white/[0.06]" role="tree" aria-label="硬件列表">
+  return <div className="min-w-0 overflow-hidden rounded-lg bg-card shadow-[var(--tf-shadow-sm)] ring-1 ring-border" role="tree" aria-label="硬件列表">
     <div>
       <TreeRow
         className="h-9 bg-secondary/60 font-semibold"

@@ -14,7 +14,7 @@ from testforge_backend.compat import filesystem as fs
 from testforge_backend.contracts.devices import parse_stored_hardware_definition
 from testforge_backend.host import migrations
 from testforge_backend.host.migrations import migrate_global_storage
-from testforge_backend.storage import SecretStore
+from testforge_backend.storage import SecretStore, SettingsStore
 
 
 class Protector:
@@ -26,7 +26,42 @@ class Protector:
 
 
 @pytest.mark.ts_case(
-    "apps/desktop/src/main/migrations.test.ts::migrates legacy entities, settings "
+    "apps/desktop/src/main/migrations.test.ts::global file storage::"
+    "atomically persists settings and encrypted deterministic secrets"
+)
+async def test_atomic_settings_and_encrypted_deterministic_secrets(tmp_path: Path) -> None:
+    settings = SettingsStore(tmp_path / "settings.json")
+    await settings.initialize()
+    await settings.update(
+        {
+            "theme": "dark",
+            "projectView": "orchestration",
+            "welcomeLayout": "list",
+            "recentProjects": [
+                {
+                    "rootPath": "E:\\work\\sample",
+                    "name": "sample",
+                    "openedAt": "2026-09-10T00:00:00.000Z",
+                }
+            ],
+        }
+    )
+    actual = settings.get()
+    assert actual["formatVersion"] == 1
+    assert actual["theme"] == "dark"
+    assert actual["projectView"] == "orchestration"
+    secrets = SecretStore(tmp_path / "secrets.json", Protector())
+    await secrets.initialize()
+    await secrets.set("ssh:PC1", {"kind": "password", "password": "plain-secret"})
+    assert secrets.get("ssh:PC1")["password"] == "plain-secret"
+    assert "plain-secret" not in (tmp_path / "secrets.json").read_text("utf-8")
+    await secrets.remove("ssh:PC1")
+    assert secrets.has("ssh:PC1") is False
+
+
+@pytest.mark.ts_case(
+    "apps/desktop/src/main/migrations.test.ts::global file storage::"
+    "migrates legacy entities, settings "
     "and encrypted credentials through a validated stage"
 )
 async def test_legacy_entities_settings_and_credentials(tmp_path: Path) -> None:
@@ -79,7 +114,7 @@ async def test_legacy_entities_settings_and_credentials(tmp_path: Path) -> None:
     database.execute("INSERT INTO settings VALUES ('theme','dark')")
     database.commit()
     database.close()
-    assert await migrate_global_storage(tmp_path, protector)
+    assert await migrate_global_storage(tmp_path, protector) is True
     server = json.loads((tmp_path / "devices/servers/S1.json").read_text())
     assert "credentialRef" not in server
     hardware = json.loads((tmp_path / "devices/hardware/CARD/hardware.json").read_text())
@@ -88,7 +123,9 @@ async def test_legacy_entities_settings_and_credentials(tmp_path: Path) -> None:
     await secrets.initialize()
     assert secrets.get("ssh:PC1")["password"] == "pw"
     assert secrets.get("mcp:S1")["token"] == "mt"
-    assert json.loads((tmp_path / "settings.json").read_text())["theme"] == "dark"
+    settings = json.loads((tmp_path / "settings.json").read_text())
+    assert settings["theme"] == "dark"
+    assert settings["projectView"] == "wiring"
     assert list((tmp_path / "backups").glob("storage-*"))
     assert not await migrate_global_storage(tmp_path, protector)
 

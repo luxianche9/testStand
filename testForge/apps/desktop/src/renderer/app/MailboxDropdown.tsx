@@ -33,8 +33,8 @@ export function MailboxDropdown({ tasks, occupancyRequests, hardware, busyReques
 
   return (
     <div className="fixed inset-0 z-[60]" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <section role="dialog" aria-label="信箱" className="absolute top-12 right-3 grid max-h-[60vh] w-[420px] max-w-[calc(100vw-24px)] animate-fade-in grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-[var(--tf-radius)] bg-popover shadow-[var(--tf-shadow-lg)] ring-1 ring-black/[0.04] dark:ring-white/[0.06]">
-        <header className="flex items-center justify-between bg-card/90 px-4 py-2.5 text-[13px] font-semibold tracking-tight">
+      <section role="dialog" aria-label="信箱" className="absolute top-12 right-3 grid max-h-[60vh] w-[420px] max-w-[calc(100vw-24px)] animate-fade-in grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-lg bg-popover shadow-[var(--tf-shadow-lg)] ring-1 ring-border">
+        <header className="flex items-center justify-between bg-card px-4 py-2.5 text-[13px] font-semibold tracking-tight">
           信箱<span className="text-xs font-normal text-muted-foreground">{items.length} 条</span>
         </header>
         <div className="grid content-start gap-0.5 overflow-y-auto p-1.5">

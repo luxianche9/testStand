@@ -17,7 +17,7 @@ const ANIMATION_DURATION = 160;
 const reasoningVariants = cva("aui-reasoning-root mb-4 w-full", {
   variants: {
     variant: {
-      outline: "rounded-xl bg-card px-3 py-2 shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]",
+      outline: "rounded-xl bg-card px-3 py-2 shadow-sm ring-1 ring-border",
       ghost: "",
       muted: "rounded-xl bg-muted/50 px-3 py-2"
     }

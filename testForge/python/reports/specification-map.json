@@ -4549,5 +4549,176 @@
         }
       ]
     }
+  },
+  {
+    "typescript": "apps/desktop/src/main/migrations.test.ts::global file storage::atomically persists settings and encrypted deterministic secrets",
+    "python": [
+      "tests/host/test_migrations.py::test_atomic_settings_and_encrypted_deterministic_secrets"
+    ],
+    "passed": true,
+    "originalAssertions": [
+      {
+        "line": 25,
+        "source": "expect(settings.get()).toMatchObject({ formatVersion: 1, theme: \"dark\", projectView: \"orchestration\" });"
+      },
+      {
+        "line": 28,
+        "source": "expect(secrets.get<{ password: string }>(\"ssh:PC1\").password).toBe(\"plain-secret\");"
+      },
+      {
+        "line": 29,
+        "source": "expect(await readFile(join(directory, \"secrets.json\"), \"utf8\")).not.toContain(\"plain-secret\");"
+      },
+      {
+        "line": 31,
+        "source": "expect(secrets.has(\"ssh:PC1\")).toBe(false);"
+      }
+    ],
+    "pythonAssertions": {
+      "tests/host/test_migrations.py::test_atomic_settings_and_encrypted_deterministic_secrets": [
+        {
+          "line": 50,
+          "source": "assert actual[\"formatVersion\"] == 1"
+        },
+        {
+          "line": 51,
+          "source": "assert actual[\"theme\"] == \"dark\""
+        },
+        {
+          "line": 52,
+          "source": "assert actual[\"projectView\"] == \"orchestration\""
+        },
+        {
+          "line": 56,
+          "source": "assert secrets.get(\"ssh:PC1\")[\"password\"] == \"plain-secret\""
+        },
+        {
+          "line": 57,
+          "source": "assert \"plain-secret\" not in (tmp_path / \"secrets.json\").read_text(\"utf-8\")"
+        },
+        {
+          "line": 59,
+          "source": "assert secrets.has(\"ssh:PC1\") is False"
+        }
+      ]
+    }
+  },
+  {
+    "typescript": "apps/desktop/src/main/migrations.test.ts::global file storage::keeps committed state intact after a failed secret write and accepts the next write",
+    "python": [
+      "tests/storage/test_storage.py::test_failed_secret_write_does_not_poison_queue"
+    ],
+    "passed": true,
+    "originalAssertions": [
+      {
+        "line": 44,
+        "source": "await expect(secrets.set(\"failed\", { value: 2 })).rejects.toThrow(\"simulated write failure\");"
+      },
+      {
+        "line": 45,
+        "source": "expect(secrets.has(\"failed\")).toBe(false);"
+      },
+      {
+        "line": 46,
+        "source": "expect(secrets.get<{ value: number }>(\"stable\").value).toBe(1);"
+      },
+      {
+        "line": 48,
+        "source": "expect(secrets.get<{ value: number }>(\"recovered\").value).toBe(3);"
+      }
+    ],
+    "pythonAssertions": {
+      "tests/storage/test_storage.py::test_failed_secret_write_does_not_poison_queue": [
+        {
+          "line": 118,
+          "source": "assert not store.has(\"failed\")"
+        },
+        {
+          "line": 119,
+          "source": "assert store.get(\"stable\") == {\"value\": 1}"
+        },
+        {
+          "line": 121,
+          "source": "assert store.get(\"recovered\") == {\"value\": 3}"
+        },
+        {
+          "line": 116,
+          "source": "pytest.raises(RuntimeError, match=\"simulated write failure\")"
+        }
+      ]
+    }
+  },
+  {
+    "typescript": "apps/desktop/src/main/migrations.test.ts::global file storage::migrates legacy entities, settings and encrypted credentials through a validated stage",
+    "python": [
+      "tests/host/test_migrations.py::test_legacy_entities_settings_and_credentials"
+    ],
+    "passed": true,
+    "originalAssertions": [
+      {
+        "line": 65,
+        "source": "expect(await migrateGlobalStorage(directory, protector)).toBe(true);"
+      },
+      {
+        "line": 66,
+        "source": "expect(JSON.parse(await readFile(join(directory, \"devices\", \"servers\", \"S1.json\"), \"utf8\"))).not.toHaveProperty(legacyReferenceField);"
+      },
+      {
+        "line": 67,
+        "source": "expect(JSON.parse(await readFile(join(directory, \"devices\", \"hardware\", \"CARD\", \"hardware.json\"), \"utf8\"))).toMatchObject({ formatVersion: 2, hardwareId: \"CARD\" });"
+      },
+      {
+        "line": 69,
+        "source": "expect(secrets.get<{ password: string }>(\"ssh:PC1\").password).toBe(\"pw\");"
+      },
+      {
+        "line": 70,
+        "source": "expect(secrets.get<{ token: string }>(\"mcp:S1\").token).toBe(\"mt\");"
+      },
+      {
+        "line": 71,
+        "source": "expect(JSON.parse(await readFile(join(directory, \"settings.json\"), \"utf8\"))).toMatchObject({ theme: \"dark\", projectView: \"wiring\" });"
+      }
+    ],
+    "pythonAssertions": {
+      "tests/host/test_migrations.py::test_legacy_entities_settings_and_credentials": [
+        {
+          "line": 117,
+          "source": "assert await migrate_global_storage(tmp_path, protector) is True"
+        },
+        {
+          "line": 119,
+          "source": "assert \"credentialRef\" not in server"
+        },
+        {
+          "line": 121,
+          "source": "assert hardware[\"formatVersion\"] == 2 and hardware[\"hardwareId\"] == \"CARD\""
+        },
+        {
+          "line": 124,
+          "source": "assert secrets.get(\"ssh:PC1\")[\"password\"] == \"pw\""
+        },
+        {
+          "line": 125,
+          "source": "assert secrets.get(\"mcp:S1\")[\"token\"] == \"mt\""
+        },
+        {
+          "line": 127,
+          "source": "assert settings[\"theme\"] == \"dark\""
+        },
+        {
+          "line": 128,
+          "source": "assert settings[\"projectView\"] == \"wiring\""
+        },
+        {
+          "line": 129,
+          "source": "assert list((tmp_path / \"backups\").glob(\"storage-*\"))"
+        },
+        {
+          "line": 130,
+          "source": "assert not await migrate_global_storage(tmp_path, protector)"
+        }
+      ]
+    }
   }
 ]

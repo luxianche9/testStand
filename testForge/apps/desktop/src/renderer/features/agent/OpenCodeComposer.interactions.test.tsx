@@ -48,8 +48,8 @@ function createClient() {
   } as unknown as OpencodeClient;
 }
 
-function Harness({ client, onSelectionChange, onError }: { client: OpencodeClient; onSelectionChange: (selection: OpenCodeSelection) => void; onError: (reason: unknown) => void }) {
-  const runtime = useLocalRuntime(modelAdapter, { adapters: { attachments: attachmentAdapter } });
+function Harness({ client, onSelectionChange, onError, adapter = modelAdapter }: { client: OpencodeClient; onSelectionChange: (selection: OpenCodeSelection) => void; onError: (reason: unknown) => void; adapter?: ChatModelAdapter }) {
+  const runtime = useLocalRuntime(adapter, { adapters: { attachments: attachmentAdapter } });
   return (
     <AssistantRuntimeProvider runtime={runtime}>
       <OpenCodeComposer
@@ -74,6 +74,54 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 describe("OpenCode composer interactions", () => {
+  it("sends ordinary text with Enter and cancels the active run through the real composer", async () => {
+    const started = vi.fn<(options: Parameters<ChatModelAdapter["run"]>[0]) => void>();
+    const aborted = vi.fn();
+    const adapter: ChatModelAdapter = {
+      async *run(options) {
+        started(options);
+        const cancellation = new Promise<void>((resolve) => {
+          const finish = () => { aborted(); resolve(); };
+          if (options.abortSignal.aborted) finish();
+          else options.abortSignal.addEventListener("abort", finish, { once: true });
+        });
+        yield { content: [{ type: "text", text: "Working on the request" }] };
+        await cancellation;
+      }
+    };
+    const client = createClient();
+    const onError = vi.fn();
+    const user = userEvent.setup();
+    render(<Harness client={client} adapter={adapter} onSelectionChange={() => undefined} onError={onError} />);
+    const input = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "消息" });
+    expect(screen.getByRole<HTMLButtonElement>("button", { name: "发送消息" }).disabled).toBe(true);
+    await user.type(input, "Check the input");
+    await user.keyboard("{Shift>}{Enter}{/Shift}then wait");
+    expect(input.value).toBe("Check the input\nthen wait");
+    expect(started).not.toHaveBeenCalled();
+    await user.keyboard("{Enter}");
+
+    const cancel = await screen.findByRole("button", { name: "停止生成" });
+    await waitFor(() => expect(started).toHaveBeenCalledOnce());
+    const request = started.mock.calls[0]![0];
+    expect(request.messages.at(-1)).toMatchObject({ role: "user", content: [{ type: "text", text: "Check the input\nthen wait" }] });
+    expect(request.abortSignal.aborted).toBe(false);
+    expect(input.value).toBe("");
+    expect(screen.queryByRole("button", { name: "发送消息" })).toBeNull();
+    expect(screen.getByText("OpenCode 正在执行")).toBeTruthy();
+    await user.click(cancel);
+
+    await waitFor(() => expect(request.abortSignal.aborted).toBe(true));
+    expect(aborted).toHaveBeenCalledOnce();
+    await waitFor(() => expect(screen.queryByRole("button", { name: "停止生成" })).toBeNull());
+    expect(screen.getByRole<HTMLButtonElement>("button", { name: "发送消息" }).disabled).toBe(true);
+    await user.type(input, "Next request");
+    expect(screen.getByRole<HTMLButtonElement>("button", { name: "发送消息" }).disabled).toBe(false);
+    expect(started).toHaveBeenCalledOnce();
+    expect(client.session.command).not.toHaveBeenCalled();
+    expect(onError).not.toHaveBeenCalled();
+  });
+
   it("selects and dispatches a registered slash command through session.command", async () => {
     const client = createClient();
     render(<Harness client={client} onSelectionChange={() => undefined} onError={() => undefined} />);

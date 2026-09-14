@@ -161,7 +161,7 @@ export function ServerEditor({ open, server, computerId, computers, hardware, on
           <EditorField label="启动命令" required span><Textarea className="min-h-[54px] font-mono text-xs" {...pathField("startCommand")} /></EditorField>
           <EditorField label="停止命令" required span><Textarea className="min-h-[54px] font-mono text-xs" {...pathField("stopCommand")} /></EditorField>
           <EditorField label="日志目录" required span><Input className="font-mono text-xs" {...pathField("logPath")} /></EditorField>
-          <div className="col-span-2 flex flex-col gap-2.5 rounded-xl bg-secondary/40 p-3 shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]">
+          <div className="col-span-2 flex flex-col gap-2.5 rounded-xl bg-secondary/40 p-3 shadow-sm ring-1 ring-border">
             <AppearanceImage hardwareId={form.hardwareId} assetId={selectedHardware?.appearanceAssetId} saved={Boolean(selectedHardware)} onChanged={(item) => setPorts(structuredClone(item.ports))} />
             <PortEditor hardwareId={form.hardwareId} ports={ports} saved={Boolean(selectedHardware)} onChange={setPorts} onImageChanged={(item) => setPorts(structuredClone(item.ports))} />
           </div>

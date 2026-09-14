@@ -1,0 +1,4 @@
+
+> @testforge/desktop@0.1.0 typecheck E:\Project\hardwareHarness\testForge\apps\desktop
+> tsc -p tsconfig.json --noEmit
+

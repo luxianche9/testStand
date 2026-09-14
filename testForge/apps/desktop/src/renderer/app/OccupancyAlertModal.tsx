@@ -15,7 +15,7 @@ export function OccupancyAlertModal({ requests, busyRequestId, onAction }: {
         <DialogBody>
           <div className="grid gap-2.5">
             {requests.map((request) => (
-              <div key={request.occupancyRequestId} className="grid gap-1 rounded-xl bg-secondary/40 px-3 py-2.5 shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]">
+              <div key={request.occupancyRequestId} className="grid gap-1 rounded-xl bg-secondary/40 px-3 py-2.5 shadow-sm ring-1 ring-border">
                 <strong className="text-sm">{occupancyHardwareLabel(request, [])}</strong>
                 <small className="text-xs text-muted-foreground">{request.reason || "AI 请求在操作前占用这些硬件。"}</small>
                 {request.message && <small className="text-xs text-muted-foreground">{request.message}</small>}

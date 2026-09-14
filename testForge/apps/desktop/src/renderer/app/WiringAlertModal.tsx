@@ -15,7 +15,7 @@ export function WiringAlertModal({ tasks, hardware, onGoWiring }: {
         <DialogBody>
           <div className="grid gap-2.5">
             {tasks.map((task) => (
-              <div key={task.wiringTaskId} className="grid gap-1 rounded-xl bg-secondary/40 px-3 py-2.5 shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]">
+              <div key={task.wiringTaskId} className="grid gap-1 rounded-xl bg-secondary/40 px-3 py-2.5 shadow-sm ring-1 ring-border">
                 <strong className="text-sm">{taskTitle(task, hardware)}</strong>
                 <small className="text-xs text-muted-foreground">{pinCountText(task)}</small>
                 {task.message && <small className="text-xs text-muted-foreground">{task.message}</small>}
