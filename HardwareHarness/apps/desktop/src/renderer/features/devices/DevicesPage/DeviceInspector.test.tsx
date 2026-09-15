@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -11,6 +11,7 @@ import { queryKeys } from "../../../shared/query-keys.js";
 import { DeviceInspector } from "./DeviceInspector.js";
 import { HardwareListTree } from "./HardwareListTree.js";
 import { RemoteComputerTree } from "./RemoteComputerTree.js";
+import { HardwareLibrary } from "../../wiring/WiringCanvas.js";
 
 const snapshot: DashboardSnapshot = {
   computers: [{ id: "LOCAL_FIXTURE", label: "Local fixture", address: "127.0.0.1", ssh: { port: 22, username: "fixture", shell: "powershell" } }],
@@ -98,6 +99,36 @@ afterEach(() => {
 });
 
 describe("device trees", () => {
+  it.each([
+    ["faulted", "online", "故障", "SWD No ACK"],
+    ["available", "online", "在线", undefined],
+    ["available", "offline", "离线", "Connection refused"]
+  ] as const)("agrees with wiring when hardware is %s and transport is %s", (state, transport, label, message) => {
+    const data: DashboardSnapshot = {
+      ...snapshot,
+      availability: [{ hardwareId: "E2E_CARD", state, checkedAt: "2026-09-15T00:00:00Z", ...(message ? { message } : {}) }],
+      serverStatuses: snapshot.serverStatuses.map((status) => ({ ...status, transport: { state: transport, ...(message ? { message } : {}) } }))
+    };
+    const client = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } });
+    client.setQueryData(queryKeys.dashboard, data);
+    render(<QueryClientProvider client={client}>
+      <RemoteComputerTree data={data} hardware={catalog} selected={null} isOpen={() => true} onSelect={vi.fn()} onToggle={vi.fn()} onAddComputer={vi.fn()} />
+      <HardwareLibrary hardware={catalog} assetUrls={{}} placed={new Set()} onAdd={vi.fn()} onRefresh={vi.fn()} />
+    </QueryClientProvider>);
+    const device = screen.getByRole("treeitem", { name: /E2E fixture card/ });
+    const wiring = screen.getByRole("button", { name: /E2E fixture card/ });
+    expect(within(device).getByText(label)).toBeTruthy();
+    expect(within(wiring).getByText(label)).toBeTruthy();
+    if (message) {
+      expect(within(device).getByTitle(message)).toBeTruthy();
+      expect(within(wiring).getByTitle(message)).toBeTruthy();
+    }
+    if (state === "faulted") {
+      expect(within(device).queryByText("在线")).toBeNull();
+      expect(within(wiring).queryByText("离线")).toBeNull();
+    }
+  });
+
   it("shows a two-level computer-device tree with status and without actions or MCP tools", () => {
     const onSelect = vi.fn();
     render(<RemoteComputerTree data={snapshot} hardware={catalog} selected={null} isOpen={() => true} onSelect={onSelect} onToggle={vi.fn()} onAddComputer={vi.fn()} />);

@@ -1,12 +1,13 @@
-import type { ServerStatus } from "@hardwareharness/contracts/devices";
+import type { HardwareAvailability, ServerStatus } from "@hardwareharness/contracts/devices";
+import { hardwareStatus } from "../../../shared/hardware-status.js";
 
 
-export function mcpRowStatuses(serverStatus?: ServerStatus): { dot: string; label: string; title?: string | undefined }[] {
-  const mcpState = serverStatus?.transport.state ?? "unknown";
+export function mcpRowStatuses(serverStatus?: ServerStatus, availability?: HardwareAvailability): { dot: string; label: string; title?: string | undefined }[] {
+  const status = hardwareStatus(serverStatus, availability);
   return [{
-    dot: connectionDot(mcpState),
-    label: mcpState === "online" ? "在线" : mcpState === "checking" ? "检测中" : "离线",
-    title: serverStatus?.transport.message
+    dot: status.tone,
+    label: status.label,
+    title: status.title
   }];
 }
 

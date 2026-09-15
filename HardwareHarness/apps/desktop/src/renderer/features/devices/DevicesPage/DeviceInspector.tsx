@@ -75,7 +75,7 @@ function ComputerInspector({ computer, snapshot, hardware, onSelect, onEditCompu
       {servers.map((server) => {
         const device = hardwareForServer(server, hardware);
         const serverStatus = snapshot.serverStatuses.find((item) => item.serverId === server.serverId);
-        const online = mcpRowStatuses(serverStatus)[0];
+        const online = mcpRowStatuses(serverStatus, snapshot.availability?.find((item) => item.hardwareId === server.hardwareId))[0];
         return <button
           key={server.serverId}
           type="button"
@@ -101,16 +101,15 @@ function ManagedInspector({ server, snapshot, hardware, onEditServer, onChanged 
   const device = hardwareForServer(server, hardware);
   const computer = snapshot.computers.find((item) => item.id === server.computerId);
   const serverStatus = snapshot.serverStatuses.find((item) => item.serverId === server.serverId);
-  const availability = snapshot.availability?.find((item) => item.hardwareId === server.hardwareId)?.state ?? "checking";
+  const availability = snapshot.availability?.find((item) => item.hardwareId === server.hardwareId);
   const sshOnline = snapshot.statuses.find((item) => item.computerId === server.computerId)?.ssh.state === "online";
-  const online = mcpRowStatuses(serverStatus)[0];
+  const online = mcpRowStatuses(serverStatus, availability)[0];
   return <InspectorShell
     icon={<CpuIcon className="size-5" />}
     title={device?.label ?? server.label}
     subtitle={server.hardwareId}
     badges={[
-      { label: online?.label ?? "离线", tone: toneFromDot(online?.dot ?? "muted") },
-      { label: availability, tone: availability === "available" ? "ok" : availability === "faulted" ? "bad" : availability === "checking" ? "accent" : "muted" }
+      { label: online?.label ?? "未检测", tone: toneFromDot(online?.dot ?? "muted") }
     ]}
     actions={<ServerActions server={server} status={serverStatus} sshOnline={sshOnline} onEdit={() => onEditServer(server)} onChanged={onChanged} />}
   >
@@ -121,6 +120,7 @@ function ManagedInspector({ server, snapshot, hardware, onEditServer, onChanged 
       { label: "MCP 地址", value: server.url },
       { label: "进程", value: serverStatus?.service.serviceState ?? "unknown" }
     ]} />
+    {online?.title && <p className="m-0 text-xs break-words text-muted-foreground">{online.title}</p>}
     {device && <HardwareGallery hardware={device} />}
     <ManualInvokePanel hardwareId={server.hardwareId} />
   </InspectorShell>;

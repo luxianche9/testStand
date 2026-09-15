@@ -10,8 +10,9 @@
     },
     "apps/desktop/src/main/opencode-runtime.test.ts": {
       "before": "3660a5e7042d3cadbab1181e25836e72f91451fe1ef61f62c78434cbc98095f5",
-      "after": "bd9b2534f6c9434fb4c141e3b1ff4df2c2b6af2fedd74c7536c735751067badb",
-      "reason": "Verify shared prompt injection alongside preserved runtime configuration."
+      "after": "65d5d264427ab1492d7048cd4463553b6f40707ff3de44bdd88b5f37164c21e7",
+      "reason": "Verify shared prompt injection into build/plan without requiring a particular long-form prompt policy.",
+      "supersededAfter": "bd9b2534f6c9434fb4c141e3b1ff4df2c2b6af2fedd74c7536c735751067badb"
     },
     "apps/desktop/src/main/opencode-runtime.ts": {
       "before": "38cf6e7bbd7f4964ef10223ec53e2a2cd9fff88fcbdd8de1e00b4f020af75bac",
@@ -33,5 +34,6 @@
       "after": "4805e492304a61ec250da49099f247974952f8d0f2e1e8fc9419b4a933bda019",
       "reason": "Support validated same-port loopback and canonical persisted endpoints with serialized task completion."
     }
-  }
+  },
+  "followupAuthorization": "用户要求简化系统提示词，仅说明硬件开发、查看现有硬件和改变连线的场景。"
 }

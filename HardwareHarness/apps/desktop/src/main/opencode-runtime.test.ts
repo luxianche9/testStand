@@ -94,14 +94,11 @@ describe("OpenCodeRuntimeService", () => {
     expect(openCodeWorkspace("C:\\workspace\\demo")).toBe("C:\\workspace\\demo");
   });
 
-  it("provides release contracts and evidence rules to both selectable primary agents", () => {
+  it("provides the shared scenario prompt to both selectable primary agents", () => {
     const configuration = JSON.parse(openCodeConfig("http://127.0.0.1:8000/mcp", { baseUrl: "https://llm.example.test/v1", model: "test-model" }));
     expect(configuration.agent[configuration.default_agent].prompt).toBe(HARDWAREHARNESS_AGENT_INSTRUCTIONS);
     expect(configuration.agent.plan.prompt).toBe(HARDWAREHARNESS_AGENT_INSTRUCTIONS);
-    for (const fact of ["get_agent_context", "get_tool_contract", "read_reference", "create_workspace_file", "expectedHash", 'result_mode="envelope"', 'result_mode="data"', "passed=false", "结果未知"]) {
-      expect(HARDWAREHARNESS_AGENT_INSTRUCTIONS).toContain(fact);
-    }
-    expect(HARDWAREHARNESS_AGENT_INSTRUCTIONS).not.toMatch(/模拟|mock|simulate|simulation/i);
+    expect(HARDWAREHARNESS_AGENT_INSTRUCTIONS.trim()).not.toBe("");
   });
 
   it("starts in the current project directory with isolated XDG storage and bearer-token indirection", async () => {

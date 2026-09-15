@@ -30,8 +30,16 @@ All four remote MCP services on `192.168.3.63` were deployed and restarted. Remo
 
 Local FireDAP on port 8015 was restarted using the updated workspace installation. The desktop production build was launched with its Python backend and gateway on port 8000. The desktop reports all five MCP transports online. Direct read-only calls succeeded for all four remote devices and through the desktop gateway without acquiring a lease. Occupancy tools, preload APIs and dashboard fields are absent.
 
-FireDAP detects the USB probe, and the target-information job was accepted without a lease. However, STM32 communication failed with `SWD/JTAG communication failure (No ACK)` and the device state is `faulted`. The MCP service remains online. The failed target operation was not retried; no firmware was flashed or MCU reset requested. This physical connection issue remains unresolved.
+During initial deployment, FireDAP detected the USB probe, and the target-information job was accepted without a lease. STM32 communication failed with `SWD/JTAG communication failure (No ACK)` and the device state became `faulted`. The MCP service remained online. No firmware was flashed or MCU reset requested. A later user-requested check recovered successfully, as recorded below.
 
 See `live-verification.json` for the completed checks and `firedap-diagnostic.json` for the target failure. In the live report, `ok: true` means deployment and API verification succeeded; `physicalChecksPassed: false` explicitly records the FireDAP limitation. The desktop remains running for use.
 
 Deployment tooling now installs its own pinned SSH dependency under `mcp_servers/tools` and locates the current desktop credential directory. Existing remote source backups were retained. No compatibility acquisition or renewal path is retained.
+
+## FireDAP recovery and consistent device status — 2026-09-15 11:21 CST
+
+After the user reported that the target board may previously have been powered off, an explicit attach-only target identity check succeeded. It read device ID `0x101f6413`, 1024 KiB Flash and a running core. The service cleared `lastError` and changed from `faulted` to `open` without a restart. See `firedap-recovery.json`; the original deployment report remains historical evidence.
+
+The display disagreement was caused by different predicates: device management labelled an online MCP transport as online even when hardware was faulted, while the wiring library labelled every non-available/non-checking hardware state as offline. Both views now use one shared hardware-status function. Faulted hardware displays `故障` with its diagnostic, disconnected services display `离线`, and healthy hardware displays `在线`. Device details also use this status instead of a second raw English availability badge.
+
+Seven device UI tests passed, including regressions comparing wiring and device-management output for a target fault, recovery, and transport loss with stale available hardware. Desktop type checking, targeted ESLint and the production build passed. The running desktop backend confirms FireDAP is open. The current project has unsaved changes, so the desktop was kept running; the newly built display logic will load on the next desktop start.

@@ -1,0 +1,221 @@
+{
+  "checkedAt": "2026-09-15T03:27:01.455Z",
+  "project": {
+    "rootPath": "E:\\Project\\hardwareHarness\\examples\\stm32_example1",
+    "path": "E:\\Project\\hardwareHarness\\examples\\stm32_example1\\.hardwareharness\\project.json",
+    "dirty": true,
+    "file": {
+      "formatVersion": 4,
+      "projectId": "7194f9ec-15c9-45ea-b091-771bd3c17f12",
+      "name": "stm32_example1",
+      "wiring": {
+        "nodes": [
+          {
+            "hardwareId": "DUT_1",
+            "x": 201.56097374531973,
+            "y": 387.8585651371671,
+            "width": 220,
+            "height": 168,
+            "showImage": true,
+            "portPositions": {
+              "DUT_1.J1": {
+                "side": "top",
+                "offset": 0.560698769309304
+              },
+              "DUT_1.J87": {
+                "side": "left",
+                "offset": 0.6782271067301432
+              },
+              "J1": {
+                "side": "top",
+                "offset": 0.20009266246448865
+              },
+              "DUT_1.J82": {
+                "side": "top",
+                "offset": 0.25463811700994315
+              },
+              "DUT_1.J45": {
+                "side": "top",
+                "offset": 0.4303956465287642
+              },
+              "DUT_1.JACK1": {
+                "side": "left",
+                "offset": 0.807195300147647
+              },
+              "251574e3-45eb-4ccd-9a0d-be332ee3ac06.J1": {
+                "side": "top",
+                "offset": 0.13115331476384942
+              },
+              "DUT_1.J5": {
+                "side": "top",
+                "offset": 0.8546381170099432
+              },
+              "DUT_1.CN2": {
+                "side": "top",
+                "offset": 0.2993351329456676
+              },
+              "DUT_1.J8": {
+                "side": "left",
+                "offset": 0.7476714906238374
+              },
+              "DUT_1.CON1": {
+                "side": "left",
+                "offset": 0.5006476811000279
+              },
+              "DUT_1.CN3": {
+                "side": "top",
+                "offset": 0.7220624056729403
+              },
+              "DUT_1.J24": {
+                "side": "right",
+                "offset": 0.5671158745175316
+              },
+              "DUT_1.CON2": {
+                "side": "left",
+                "offset": 0.19112387157621838
+              }
+            }
+          },
+          {
+            "hardwareId": "PC1_MCP.CP118U_I_CARD_0",
+            "x": 518.9316028216706,
+            "y": 135.24466220238338,
+            "width": 220,
+            "height": 168,
+            "showImage": true,
+            "portPositions": {
+              "PC1_MCP.CP118U_I_CARD_0.P1": {
+                "side": "left",
+                "offset": 0.24594506301897748
+              },
+              "PC1_MCP.CP118U_I_CARD_0.P5": {
+                "side": "left",
+                "offset": 0.4985644809285561
+              },
+              "PC1_MCP.CP118U_I_CARD_0.P2": {
+                "side": "left",
+                "offset": 0.3090999174963721
+              },
+              "PC1_MCP.CP118U_I_CARD_0.P6": {
+                "side": "left",
+                "offset": 0.5677339916736452
+              },
+              "PC1_MCP.CP118U_I_CARD_0.P3": {
+                "side": "left",
+                "offset": 0.381276894041966
+              },
+              "PC1_MCP.CP118U_I_CARD_0.P7": {
+                "side": "left",
+                "offset": 0.6158520678151461
+              },
+              "PC1_MCP.CP118U_I_CARD_0.P4": {
+                "side": "left",
+                "offset": 0.4324021606506567
+              },
+              "PC1_MCP.CP118U_I_CARD_0.P8": {
+                "side": "left",
+                "offset": 0.6666666666666666
+              }
+            }
+          },
+          {
+            "hardwareId": "PC1_MCP.PCI1710L_CARD_0",
+            "x": 520.4164311882555,
+            "y": 331.84387379130743,
+            "width": 220,
+            "height": 168,
+            "showImage": true,
+            "portPositions": {
+              "PC1_MCP.PCI1710L_CARD_0.CN1": {
+                "side": "left",
+                "offset": 0.5272666711913108
+              }
+            }
+          },
+          {
+            "hardwareId": "LOCAL_MCP.FIREDAP_0",
+            "x": 196.34210597055142,
+            "y": 163.77702372040315,
+            "width": 220,
+            "height": 168,
+            "showImage": true,
+            "portPositions": {
+              "LOCAL_MCP.FIREDAP_0.SWD": {
+                "side": "top",
+                "offset": 0.30040930241555075
+              },
+              "LOCAL_MCP.FIREDAP_0.USB": {
+                "side": "right",
+                "offset": 0.41770226395540483
+              },
+              "LOCAL_MCP.FIREDAP_0.JTAG": {
+                "side": "left",
+                "offset": 0.4387539021608706
+              }
+            }
+          },
+          {
+            "hardwareId": "PC1_MCP.PCI6208V_CARD_0",
+            "x": 527.1831873977818,
+            "y": 528.3060034413036,
+            "width": 220,
+            "height": 168,
+            "showImage": true,
+            "portPositions": {
+              "PC1_MCP.PCI6208V_CARD_0.CN1": {
+                "side": "left",
+                "offset": 0.5218255179268974
+              }
+            }
+          }
+        ],
+        "connections": []
+      },
+      "createdAt": "2026-09-14T03:11:03.614Z",
+      "updatedAt": "2026-09-15T03:26:08.749Z"
+    }
+  },
+  "hardware": [
+    {
+      "hardwareId": "PC1_MCP.CP118U_I_CARD_0",
+      "computerId": "REMOTE_PC_1",
+      "serverId": "CP118U_I_MCP",
+      "state": "open",
+      "health": "ok",
+      "lastError": null
+    },
+    {
+      "hardwareId": "LOCAL_MCP.FIREDAP_0",
+      "computerId": "LOCAL_PC",
+      "serverId": "FIREDAP_MCP",
+      "state": "open",
+      "health": "CMSIS-DAP enumerated; target checked per operation",
+      "lastError": null
+    },
+    {
+      "hardwareId": "PC1_MCP.PCI1710L_CARD_0",
+      "computerId": "REMOTE_PC_1",
+      "serverId": "PCI1710L_MCP",
+      "state": "open",
+      "health": "ok",
+      "lastError": null
+    },
+    {
+      "hardwareId": "PC1_MCP.PCI1762_CARD_0",
+      "computerId": "REMOTE_PC_1",
+      "serverId": "PCI1762_MCP",
+      "state": "open",
+      "health": "ok",
+      "lastError": null
+    },
+    {
+      "hardwareId": "PC1_MCP.PCI6208V_CARD_0",
+      "computerId": "REMOTE_PC_1",
+      "serverId": "PCI6208V_MCP",
+      "state": "open",
+      "health": "ok",
+      "lastError": null
+    }
+  ],
+  "runs": []
+}

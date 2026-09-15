@@ -7,6 +7,7 @@ import { cn } from "../../shared/ui/cn";
 import { Badge, badgeVariantFromTone } from "../../shared/ui/badge";
 import { Button } from "../../shared/ui/button";
 import { useDashboard } from "../../shared/queries.js";
+import { hardwareStatus } from "../../shared/hardware-status.js";
 import {
   MAX_CARD_HEIGHT,
   MAX_CARD_WIDTH,
@@ -51,7 +52,9 @@ export function HardwareLibrary({ hardware, assetUrls, placed, onAdd, onRefresh 
       {hardware.map((item) => {
         const onCanvas = placed.has(item.hardwareId);
         const url = item.appearanceAssetId ? assetUrls[assetKey(item.hardwareId, item.appearanceAssetId)] : undefined;
-        const state = item.kind === "managed" ? availability.get(item.hardwareId)?.state ?? "checking" : undefined;
+        const status = item.kind === "managed"
+          ? hardwareStatus(dashboard.data?.serverStatuses.find((server) => server.serverId === item.serverId), availability.get(item.hardwareId))
+          : { label: "被动", tone: "muted" as const, title: undefined };
         return <article
           className={cn(
             "mb-2 overflow-hidden rounded-xl bg-card shadow-sm ring-1 transition-[box-shadow,ring-color,transform] active:scale-[0.99]",
@@ -70,28 +73,13 @@ export function HardwareLibrary({ hardware, assetUrls, placed, onAdd, onRefresh 
               {url ? <img src={url} alt="" /> : <CpuIcon className="size-5" />}
             </span>
             <span className="min-w-0 flex-1"><strong className="block truncate text-xs">{item.label}</strong></span>
-            <Badge variant={badgeVariantFromTone(onlineTone(item, state))} className="ml-auto flex-none">{onlineText(item, state)}</Badge>
+            <Badge variant={badgeVariantFromTone(status.tone)} title={status.title} className="ml-auto flex-none">{status.label}</Badge>
           </button>
         </article>;
       })}
       {!hardware.length && <div className="p-4 text-xs leading-normal text-muted-foreground">还没有登记设备。请到「设备管理」页登记硬件及其端口。</div>}
     </div>
   </aside>;
-}
-
-/** 在线状态：受管硬件看可用性探测，非受管（纯接线对象）没有远端可探，显示为「被动」。 */
-function onlineText(item: Hardware, state: string | undefined): string {
-  if (item.kind !== "managed") return "被动";
-  if (state === "available") return "在线";
-  if (state === "checking") return "检测中";
-  return "离线";
-}
-
-function onlineTone(item: Hardware, state: string | undefined): "ok" | "warn" | "bad" | "muted" {
-  if (item.kind !== "managed") return "muted";
-  if (state === "available") return "ok";
-  if (state === "checking") return "warn";
-  return "bad";
 }
 
 function HardwareNode({ id, data, selected, width, height }: NodeProps<HardwareFlowNode>) {

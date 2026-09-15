@@ -119,7 +119,7 @@ def main() -> None:
         # preceding manifest and record only its six reviewed boundary changes.
         interface_path = root / "reports/agent-interface/protected-changes.json"
         if hashlib.sha256(interface_path.read_bytes()).hexdigest() != (
-            "6fd32cb88bbe4d1925e3bc683cf99c18cd52aafcb072d138750020c24ca5ad5c"
+            "6b47ef15c6fb1453f9c82e73c89eedbfc686733f2138b41805ad4874b32933fe"
         ):
             raise SystemExit("Agent interface manifest changed")
         interface = json.loads(interface_path.read_text("utf-8"))

@@ -60,7 +60,7 @@ export function RemoteComputerTree({ data, hardware, selected, isOpen, onSelect,
               icon={<CpuIcon className="size-4" />}
               label={device?.label ?? server.label}
               title={`${server.hardwareId} · ${server.serverId}`}
-              statuses={mcpRowStatuses(serverStatus)}
+              statuses={mcpRowStatuses(serverStatus, data.availability?.find((item) => item.hardwareId === server.hardwareId))}
               selected={selected === serverKey}
               onClick={() => onSelect(serverKey)}
             />;
