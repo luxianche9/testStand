@@ -98,21 +98,16 @@ APPLICATION_METHODS = {
         "renameFile",
         "search",
         "deleteRun",
-        "listApps",
         "startRun",
         "createFile",
         "initializeWorkspace",
         "cancelRun",
-        "appLogs",
         "listFiles",
         "writeFile",
         "exportRun",
-        "createApp",
         "getRun",
-        "startApp",
         "deleteFile",
         "listRuns",
-        "stopApp",
         "diagnostics",
         "runEvents",
         "readRunSource",
@@ -120,20 +115,6 @@ APPLICATION_METHODS = {
         "readFile",
     },
     "manual": {"invokeTool"},
-    "occupancy": set(
-        [
-            "list",
-            "refresh",
-            "acquire",
-            "release",
-            "request",
-            "getRequest",
-            "listRequests",
-            "acquireRequest",
-            "rejectRequest",
-            "cancelRequest",
-        ]
-    ),
 }
 
 
@@ -211,29 +192,6 @@ class HostRuntime:
         wiring.set_notifier(lambda task: self.publish("wiringTask", task))
         wiring.set_project_notifier(lambda: self.publish("project", projects.current()))
         execution.set_notifier(lambda activity: self.publish("execution", activity))
-        application.occupancy.set_notifier(
-            lambda request: self.publish("occupancyRequest", request)
-        )
-
-        def occupancy(statuses: list[dict[str, Any]]) -> None:
-            application.occupancy.reconcile(statuses)
-            self.publish("occupancy", statuses)
-
-        def lost(hardware_id: str, message: str) -> None:
-            async def abort() -> None:
-                await asyncio.gather(
-                    application.devices.abort_hardware(hardware_id),
-                    application.manual.abort_hardware(hardware_id, message),
-                    applications.runner.abort_hardware(hardware_id, message),
-                    return_exceptions=True,
-                )
-
-            task = asyncio.create_task(abort())
-            self._background.add(task)
-            task.add_done_callback(self._background.discard)
-
-        devices.occupancy.set_notifier(occupancy)
-        devices.occupancy.set_lost_notifier(lost)
         test_token = options.get("gatewayTestToken")
         if (
             options.get("integrationTestMode")
@@ -358,7 +316,6 @@ class HostRuntime:
                 ),
                 return_exceptions=True,
             )
-            await services.devices.occupancy.refresh_all()
             return {
                 "availability": services.devices.list_availability(),
                 "servers": [result for result in results if not isinstance(result, BaseException)],

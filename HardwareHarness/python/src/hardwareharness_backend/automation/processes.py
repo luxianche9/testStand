@@ -4,8 +4,34 @@ import asyncio
 import ctypes
 import os
 import signal
+import sys
 from contextlib import suppress
 from typing import Any
+
+_external_spawn_lock = asyncio.Lock()
+
+
+async def create_external_process(*command: str, **options: Any) -> asyncio.subprocess.Process:
+    """Keep PyInstaller's Windows DLL search directory out of external child processes."""
+    if os.name != "nt" or not getattr(sys, "frozen", False):
+        return await asyncio.create_subprocess_exec(*command, **options)
+    async with _external_spawn_lock:
+        kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel.GetDllDirectoryW.argtypes = [ctypes.c_uint32, ctypes.c_wchar_p]
+        kernel.GetDllDirectoryW.restype = ctypes.c_uint32
+        kernel.SetDllDirectoryW.argtypes = [ctypes.c_wchar_p]
+        kernel.SetDllDirectoryW.restype = ctypes.c_int
+        length = kernel.GetDllDirectoryW(0, None)
+        buffer = ctypes.create_unicode_buffer(length + 1)
+        if length:
+            kernel.GetDllDirectoryW(len(buffer), buffer)
+        previous = buffer.value or None
+        if not kernel.SetDllDirectoryW(None):
+            raise OSError(ctypes.get_last_error(), "Cannot reset DLL search for external process")
+        try:
+            return await asyncio.create_subprocess_exec(*command, **options)
+        finally:
+            kernel.SetDllDirectoryW(previous)
 
 
 class ProcessJob:

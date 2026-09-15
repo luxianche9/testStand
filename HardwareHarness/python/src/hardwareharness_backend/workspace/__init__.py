@@ -1,4 +1,4 @@
-"""Project source workspaces, isolated Python environments and embedded Web applications."""
+"""Python script workspaces and isolated project environments."""
 
 from .environment import EnvironmentManager
 from .files import WorkspaceService

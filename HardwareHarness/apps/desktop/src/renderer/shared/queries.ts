@@ -34,10 +34,11 @@ export function useRecentProjects() {
 
 /** AI 发起的人工接线任务（含调用历史）。刷新由 AppShell 的 wiringTask/project 订阅驱动。 */
 export function useWiringTasks() {
-  return useQuery({ queryKey: queryKeys.wiringTasks, queryFn: () => window.hardwareharness.wiring.listTasks({ limit: 200 }) });
+  return useQuery({
+    queryKey: queryKeys.wiringTasks,
+    queryFn: () => window.hardwareharness.wiring.listTasks({ limit: 500 }),
+    refetchInterval: (query) => query.state.data?.some((task) => task.status === "pending") ? 5_000 : false
+  });
 }
 
 /** Session-scoped AI requests for a human to occupy one or more hardware devices. */
-export function useOccupancyRequests() {
-  return useQuery({ queryKey: queryKeys.occupancyRequests, queryFn: () => window.hardwareharness.occupancy.listRequests({ limit: 200 }) });
-}

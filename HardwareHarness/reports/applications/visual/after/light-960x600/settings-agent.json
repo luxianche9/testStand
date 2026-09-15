@@ -31,7 +31,7 @@
     "tag": "BUTTON",
     "role": "tab",
     "type": null,
-    "name": "应用搭建",
+    "name": "动作编排",
     "disabled": false
   },
   {
@@ -136,7 +136,7 @@
     "tag": "BUTTON",
     "role": null,
     "type": null,
-    "name": "get_projectRead the current project, root path, wiring, application workspace and unsaved state.内建展开",
+    "name": "get_projectRead the current project, root path, wiring, Python program workspace and unsaved state.内建展开",
     "disabled": false
   },
   {
@@ -157,7 +157,7 @@
     "tag": "BUTTON",
     "role": null,
     "type": null,
-    "name": "save_projectSave the current project's application workspace and canvas through the normal project service.内建展开",
+    "name": "save_projectSave the current project's Python program workspace and canvas through the normal project service.内建展开",
     "disabled": false
   },
   {
@@ -332,77 +332,42 @@
     "tag": "BUTTON",
     "role": null,
     "type": null,
-    "name": "list_workspace_fileslist workspace files. Workspace paths are relative to .hardwareharness. Hardware operations require existing occupancy; handle wiring and human approval before starting. No automatic replay.内建展开",
+    "name": "list_workspace_filesList Python programs under .hardwareharness/scripts. Only .py files are exposed. Hardware operations require existing occupancy; handle wiring and human approval before starting. No automatic replay.内建展开",
     "disabled": false
   },
   {
     "tag": "BUTTON",
     "role": null,
     "type": null,
-    "name": "read_workspace_fileread workspace file. Workspace paths are relative to .hardwareharness. Hardware operations require existing occupancy; handle wiring and human approval before starting. No automatic replay.内建展开",
+    "name": "read_workspace_fileRead one Python program under .hardwareharness/scripts. Paths start with scripts/ and end with .py.内建展开",
     "disabled": false
   },
   {
     "tag": "BUTTON",
     "role": null,
     "type": null,
-    "name": "write_workspace_filewrite workspace file. Workspace paths are relative to .hardwareharness. Hardware operations require existing occupancy; handle wiring and human approval before starting. No automatic replay.内建展开",
+    "name": "write_workspace_fileWrite one Python program under .hardwareharness/scripts. Paths start with scripts/ and end with .py.内建展开",
     "disabled": false
   },
   {
     "tag": "BUTTON",
     "role": null,
     "type": null,
-    "name": "initialize_workspacePrepare the shared project uv environment after saving dependency changes and stopping all applications and runs. Packaged defaults install from bundled offline wheels. Set online=true only when intentionally installing additional dependencies from package indexes. Read .hardwareharness/docs/hardwareharness-sdk.md before writing workflows. Hardware occupancy and wiring remain Agent responsibilities; no automatic replay.内建展开",
+    "name": "initialize_workspacePrepare the shared project uv environment after saving changes and stopping all Python runs. Packaged defaults install from bundled offline wheels. Set online=true only when intentionally installing additional dependencies from package indexes. Read .hardwareharness/docs/hardwareharness-sdk.md before writing scripts. Hardware occupancy and wiring remain Agent responsibilities; no automatic replay.内建展开",
     "disabled": false
   },
   {
     "tag": "BUTTON",
     "role": null,
     "type": null,
-    "name": "list_applicationslist applications. Workspace paths are relative to .hardwareharness. Hardware operations require existing occupancy; handle wiring and human approval before starting. No automatic replay.内建展开",
+    "name": "validate_python_fileValidate one Python program under .hardwareharness/scripts with Python syntax checks and Ruff.内建展开",
     "disabled": false
   },
   {
     "tag": "BUTTON",
     "role": null,
     "type": null,
-    "name": "create_applicationcreate application. Workspace paths are relative to .hardwareharness. Hardware operations require existing occupancy; handle wiring and human approval before starting. No automatic replay.内建展开",
-    "disabled": false
-  },
-  {
-    "tag": "BUTTON",
-    "role": null,
-    "type": null,
-    "name": "start_applicationstart application. Workspace paths are relative to .hardwareharness. Hardware operations require existing occupancy; handle wiring and human approval before starting. No automatic replay.内建展开",
-    "disabled": false
-  },
-  {
-    "tag": "BUTTON",
-    "role": null,
-    "type": null,
-    "name": "stop_applicationstop application. Workspace paths are relative to .hardwareharness. Hardware operations require existing occupancy; handle wiring and human approval before starting. No automatic replay.内建展开",
-    "disabled": false
-  },
-  {
-    "tag": "BUTTON",
-    "role": null,
-    "type": null,
-    "name": "get_application_logsget application logs. Workspace paths are relative to .hardwareharness. Hardware operations require existing occupancy; handle wiring and human approval before starting. No automatic replay.内建展开",
-    "disabled": false
-  },
-  {
-    "tag": "BUTTON",
-    "role": null,
-    "type": null,
-    "name": "validate_python_filevalidate python file. Workspace paths are relative to .hardwareharness. Hardware operations require existing occupancy; handle wiring and human approval before starting. No automatic replay.内建展开",
-    "disabled": false
-  },
-  {
-    "tag": "BUTTON",
-    "role": null,
-    "type": null,
-    "name": "start_python_runstart python run. Workspace paths are relative to .hardwareharness. Hardware operations require existing occupancy; handle wiring and human approval before starting. No automatic replay.内建展开",
+    "name": "start_python_runStart one saved Python program from .hardwareharness/scripts. The entrypoint must start with scripts/ and end with .py. Hardware operations require existing occupancy; handle wiring and human approval before starting. No automatic replay.内建展开",
     "disabled": false
   },
   {

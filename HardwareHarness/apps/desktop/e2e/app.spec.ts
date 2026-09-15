@@ -77,7 +77,7 @@ test.describe.serial("HardwareHarness folder project desktop", () => {
     await expect(page.getByRole("heading", { name: "最近项目" })).toBeVisible();
     await page.getByText("project-a", { exact: true }).first().click();
     await expect(page.getByRole("tab", { name: "工位接线", exact: true })).toBeVisible();
-    await expect(page.getByRole("tab", { name: "应用搭建", exact: true })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "动作编排", exact: true })).toBeVisible();
     await expect(page.getByRole("tab", { name: "设备管理", exact: true })).toBeVisible();
     await expect(page.getByRole("tab", { name: "运行日志", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "打开 AI 侧栏" })).toBeVisible();
@@ -108,6 +108,8 @@ test.describe.serial("HardwareHarness folder project desktop", () => {
     expect(result.beforeSave?.dirty).toBe(true);
     expect(result.afterSave.dirty).toBe(false);
     expect(result.beforeSave?.file.wiring.connections[0]?.pins).toEqual([{ a: "1", b: "1" }, { a: "2", b: "2" }]);
+    const seededTask = page.getByRole("dialog", { name: "接线任务", exact: true });
+    if (await seededTask.isVisible()) await seededTask.getByRole("button", { name: "关闭", exact: true }).last().click();
 
     await page.getByRole("tab", { name: "设备管理", exact: true }).click();
     await expect(page.getByRole("heading", { name: "设备管理" })).toBeVisible();
@@ -119,10 +121,10 @@ test.describe.serial("HardwareHarness folder project desktop", () => {
     await expect(page.getByRole("button", { name: "信箱" })).toBeVisible();
     await page.screenshot({ path: resolve(artifactDir, "project-wiring.png") });
 
-    await page.getByRole("tab", { name: "应用搭建", exact: true }).click();
-    await expect(page.getByRole("button", { name: "新建应用", exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "准备 Python 环境", exact: true })).toBeVisible();
-    await expect(page.getByRole("tree", { name: "工程文件树" })).toBeVisible();
+    await page.getByRole("tab", { name: "动作编排", exact: true }).click();
+    await expect(page.getByRole("button", { name: "运行", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "终端", exact: true })).toBeVisible();
+    await expect(page.getByRole("listbox", { name: "Python 脚本列表" })).toBeVisible();
     await page.screenshot({ path: resolve(artifactDir, "project-applications.png") });
   });
 
@@ -142,26 +144,16 @@ test.describe.serial("HardwareHarness folder project desktop", () => {
       return [connect.wiringTaskId, disconnect.wiringTaskId];
     });
 
-    const alert = page.getByRole("dialog", { name: "AI 请求人工接线" });
-    await expect(alert).toBeVisible();
-    await expect(alert.getByText("2 对针脚")).toBeVisible();
-    await alert.getByRole("button", { name: "前往处理" }).click();
+    for (let index = 0; index < taskIds.length; index++) {
+      const modal = page.getByRole("dialog", { name: /^(接线|断线)任务$/ });
+      const confirm = modal.getByRole("button", { name: "已完成", exact: true });
+      await expect(confirm).toBeEnabled();
+      await confirm.click();
+      await expect(modal.getByText("已完成", { exact: true })).toBeVisible();
+      await modal.getByRole("button", { name: "关闭", exact: true }).last().click();
+    }
 
-    const firstConfirm = page.getByRole("button", { name: "已完成" });
-    await expect(firstConfirm).toBeVisible();
-    await expect(firstConfirm).toBeEnabled();
-    await firstConfirm.click();
-
-    const startNext = page.getByRole("button", { name: "开始处理" });
-    await expect(startNext).toBeVisible();
-    await expect(startNext).toBeEnabled();
-    await startNext.click();
-    const secondConfirm = page.getByRole("button", { name: "已完成" });
-    await expect(secondConfirm).toBeVisible();
-    await expect(secondConfirm).toBeEnabled();
-    await secondConfirm.click();
-
-    await expect(page.getByRole("dialog", { name: /人工(?:接线|断线)任务/ })).toHaveCount(0);
+    await expect(page.getByRole("dialog", { name: /^(接线|断线)任务$/ })).toHaveCount(0);
     const completed = await page.evaluate(async (ids) => Promise.all(ids.map((id) => window.hardwareharness.wiring.getTask(id))), taskIds);
     expect(completed.map((task) => task.status)).toEqual(["confirmed", "confirmed"]);
   });

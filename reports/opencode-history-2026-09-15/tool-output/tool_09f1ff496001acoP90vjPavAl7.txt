@@ -1,0 +1,465 @@
+ConvertFrom-Json : ����Ķ�����Ч��ӦΪ��:����}���� (111): {"ok":true,"data":{"run":{"runId":"run_43edb89c4ade422b8eb953f3
+cfa4a0e3","name":"CP-118U 波特率扫描（9600 固件�?,"entrypoint":"workflows/serial_sniff.py","inputs":{"channel":
+1,"seconds":2},"hardwareIds":["PC1_MCP.CP118U_I_CARD_0"],"status":"succeeded","startedAt":"2026-09-14T08:53:44.396Z","e
+ventCount":75,"sourcePath":".hardwareharness/logs/application-runs/run_43edb89c4ade422b8eb953f3cfa4a0e3/source","source
+Hashes":{"project.json":"b606b20c44d30ed7e35b3dea44a157e1ba8093bcfe7015f9422d49cde0d97777","pyproject.toml":"fa0bc98d5f
+db1c0f4632be0fccaa795eb7209a37327bd826703abfc478471569","uv.lock":"93576711adac16b8e067002789729474c0f90bfbaed5dd81fb2d
+53eb8318b483","apps/hil-test/app.json":"4f0899f3ea7e492d906457e7cb6e26bfa79322d94a7c6f10176ae2b7b3edf941","apps/hil-tes
+t/server.py":"84bdd62cb750a14d6b3efc363cabe16c556bac25547e86a785f2221c7fa9ab57","apps/hil-test/web/index.html":"6ecd50d
+9756d302fb204f5cf0c903f277f7157e7b503a7992e5a0ec6bd21c43e","apps/my-app/app.json":"8fd8f06313342377ccc57b0dcb3037531722
+6b1f97e9ab2f317d7831b6f675d2","apps/my-app/server.py":"84bdd62cb750a14d6b3efc363cabe16c556bac25547e86a785f2221c7fa9ab57
+","apps/my-app/web/index.html":"c956fedc06b044165823d7bd0ba604bb7061aaa3d5acb7d13e897d6c5baf3cdf","docs/hardwareharness
+-sdk.md":"da50f388f6c78ec85ca2e5264efbbe43e78c933cdd74450422dbdda489d12e2b","tests/test_hil_hardware_test.py":"ae22aa5d
+879243630ec87c6868cb0fb54adccbd5955ea8bc6ade289a335451ce","workflows/hil_hardware_test.py":"edc51fcf2c90beb3c4a7184b799
+ab6847766bdb63879adfc96aa5f5d1fecffc4","workflows/my-app.py":"790062821d6f92d53b6af513424e2eed6dd70ac8906b64530e4cd02a3
+40ad7b4","workflows/serial_loopback.py":"80ef5da9590733319317a58864bfb621b7c33b794ab60e6418a402ccd2f44a60","workflows/s
+erial_sniff.py":"0ed4d3b02286d9256246023f0d532ee40b848ca921bd04fd78fb036d8402cb33"},"pythonVersion":"3.11","sdkVersion"
+:"0.1.0","result":{"channel":1,"results":[{"baud":2400,"bytes":9,"printable":1,"hex":"b7 5d dd ff b7 9a 5d b7 ff","samp
+le":"�]����]��"},{"baud":4800,"bytes":14,"printable":1,"hex":"28 a9 ab 55 55 b1 f3 28 a9 ad ab ab 8b d9",
+"sample":"(��UU��(������"},{"baud":9600,"bytes":28,"printable":1,"hex":"d5 56 d6 5a f6 76 fb a7 9f 
+a7 9f e5 eb fc d5 56 d6 5a d6 76 fb a7 9f a7 9f e5 eb fc","sample":"�V�Z�v���������V�Z�v�
+��������"},{"baud":19200,"bytes":69,"printable":1,"hex":"66 7e 66 78 7e 9e 7e 9e 78 98 fe 78 98 fe 78 98 
+fe 78 86 9e fe e0 66 7e 66 78 7e 9e 7e 86 78 98 ","sample":"f~fx~�~�x��x��x��x����f~fx~�~�x
+��x��x��x����f~fx~�~~x��xx~�~�x��x����"},{"baud":38400,"bytes":65,"printable"
+:0.969,"hex":"78 78 80 78 78 78 80 f8 78 80 78 78 f8 80 f8 f8 80 f8 80 f8 f8 80 f8 80 f8 f8 80 78 80 f8 78 00 ","sample
+":"xx�xxx��x�xx���������������x��x\u0000xx�xxx��x��������
+�������������x��x\u0000"},{"baud":57600,"bytes":87,"printable":0.655,"hex":"e0 e0 e0 e0 00 e0
+ e0 e0 00 e0 e0 00 e0 e0 e0 00 e0 00 00 e0 00 e0 e0 00 e0 00 e0 00 e0 e0 00 00 ","sample":"����\u0000���\
+u0000��\u0000���\u0000�\u0000\u0000�\u0000��\u0000�\u0000�\u0000��\u0000\u0000��\u0000�
+�\u0000��\u0000��\u0000���\u0000����\u0000���\u0000��\u0000���\u0000�\u0000�\
+u0000��\u0000�\u0000��\u0000�\u0000��\u0000��\u0000���\u0000"},{"baud":115200,"bytes":90,"pri
+ntable":0,"hex":"00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ","sam
+ple":"\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u000
+0\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u00
+00\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0
+000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u
+0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000"},{"baud":230400,"bytes":98,"printable":0,"hex":
+"00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ","sample":"\u0000\u00
+00\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0
+000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u
+0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\
+u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000
+\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000"}],"best":{"baud":19200,"byt
+es":69,"printable":1,"hex":"66 7e 66 78 7e 9e 7e 9e 78 98 fe 78 98 fe 78 98 fe 78 86 9e fe e0 66 7e 66 78 7e 9e 7e 86 7
+8 98 ","sample":"f~fx~�~�x��x��x��x����f~fx~�~�x��x��x��x����f~fx~�~~
+x��xx~�~�x��x����"}},"completedAt":"2026-09-14T08:54:03.629Z","durationMs":19219},"events":[{"runId
+":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":1,"timestamp":"2026-09-14T08:53:44.424Z","type":"run.started","data
+":{"entrypoint":"workflows/serial_sniff.py","inputs":{"channel":1,"seconds":2}}},{"runId":"run_43edb89c4ade422b8eb953f3
+cfa4a0e3","sequence":2,"timestamp":"2026-09-14T08:53:44.645Z","type":"step.started","data":{"source":{"path":"workflows
+/serial_sniff.py","line":51},"occurrence":1},"spanId":"27875509985b4e36b02eb9dbccc5ab1e","name":"2400 baud 监听"},{"r
+unId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":3,"timestamp":"2026-09-14T08:53:44.658Z","type":"hardware.start
+ed","data":{"hardwareId":"PC1_MCP.CP118U_I_CARD_0","toolName":"CP118U_I_MCP__cp118u_configure_port","arguments":{"chann
+el":1,"baud":2400,"data_bits":8,"parity":"N","stop_bits":1,"flow":0},"source":{"path":"workflows/serial_sniff.py","line
+":35}},"spanId":"ba75e58ee7cc442f933f868c712cc466","parentSpanId":"27875509985b4e36b02eb9dbccc5ab1e","name":"CP118U_I_M
+CP__cp118u_configure_port"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":4,"timestamp":"2026-09-14T08:53:
+44.732Z","type":"hardware.completed","data":{"status":"succeeded","output":{"content":[{"type":"text","text":"{\n  \"ok
+\": true,\n  \"message\": \"\",\n  \"data\": {\n    \"channel\": 1,\n    \"port\": 3,\n    \"baud\": 2400,\n    \"mode\
+": 3,\n    \"flow\": 0,\n    \"flow_rc\": 0\n  },\n  \"meta\": {\n    \"timestamp\": \"2026-09-14T08:53:47.719940+00:00
+\"\n  }\n}"}],"structuredContent":{"ok":true,"message":"","data":{"channel":1,"port":3,"baud":2400,"mode":3,"flow":0,"f
+low_rc":0},"meta":{"timestamp":"2026-09-14T08:53:47.719940+00:00"}},"isError":false},"durationMs":62},"spanId":"ba75e58
+ee7cc442f933f868c712cc466","parentSpanId":"27875509985b4e36b02eb9dbccc5ab1e","name":"CP118U_I_MCP__cp118u_configure_por
+t"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":5,"timestamp":"2026-09-14T08:53:44.742Z","type":"hardwar
+e.started","data":{"hardwareId":"PC1_MCP.CP118U_I_CARD_0","toolName":"CP118U_I_MCP__cp118u_clear_rx","arguments":{"chan
+nel":1},"source":{"path":"workflows/serial_sniff.py","line":35}},"spanId":"6b5a7773dd094f80be187822a6a861da","parentSpa
+nId":"27875509985b4e36b02eb9dbccc5ab1e","name":"CP118U_I_MCP__cp118u_clear_rx"},{"runId":"run_43edb89c4ade422b8eb953f3c
+fa4a0e3","sequence":6,"timestamp":"2026-09-14T08:53:44.811Z","type":"hardware.completed","data":{"status":"succeeded","
+output":{"content":[{"type":"text","text":"{\n  \"ok\": true,\n  \"message\": \"\",\n  \"data\": {\n    \"channel\": 1\
+n  },\n  \"meta\": {\n    \"timestamp\": \"2026-09-14T08:53:47.803212+00:00\"\n  }\n}"}],"structuredContent":{"ok":true
+,"message":"","data":{"channel":1},"meta":{"timestamp":"2026-09-14T08:53:47.803212+00:00"}},"isError":false},"durationM
+s":63},"spanId":"6b5a7773dd094f80be187822a6a861da","parentSpanId":"27875509985b4e36b02eb9dbccc5ab1e","name":"CP118U_I_M
+CP__cp118u_clear_rx"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":7,"timestamp":"2026-09-14T08:53:46.824
+Z","type":"hardware.started","data":{"hardwareId":"PC1_MCP.CP118U_I_CARD_0","toolName":"CP118U_I_MCP__cp118u_read_rx","
+arguments":{"channel":1,"timeout_ms":0,"max_bytes":65536},"source":{"path":"workflows/serial_sniff.py","line":35}},"spa
+nId":"5a7126996bef4eff8ed00dce547ad880","parentSpanId":"27875509985b4e36b02eb9dbccc5ab1e","name":"CP118U_I_MCP__cp118u_
+read_rx"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":8,"timestamp":"2026-09-14T08:53:46.908Z","type":"h
+ardware.completed","data":{"status":"succeeded","output":{"content":[{"type":"text","text":"{\n  \"ok\": true,\n  \"mes
+sage\": \"\",\n  \"data\": {\n    \"channel\": 1,\n    \"bytes\": 9,\n    \"hex\": \"b7 5d dd ff b7 9a 5d b7 ff\",\n   
+ \"text\": \"�]����]��\"\n  },\n  \"meta\": {\n    \"timestamp\": \"2026-09-14T08:53:49.896522+00:00\"\n 
+ }\n}"}],"structuredContent":{"ok":true,"message":"","data":{"channel":1,"bytes":9,"hex":"b7 5d dd ff b7 9a 5d b7 ff","
+text":"�]����]��"},"meta":{"timestamp":"2026-09-14T08:53:49.896522+00:00"}},"isError":false},"durationMs"
+:78},"spanId":"5a7126996bef4eff8ed00dce547ad880","parentSpanId":"27875509985b4e36b02eb9dbccc5ab1e","name":"CP118U_I_MCP
+__cp118u_read_rx"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":9,"timestamp":"2026-09-14T08:53:46.924Z",
+"type":"log","data":{"message":"监听结果","level":"info","fields":{"baud":2400,"bytes":9,"printable":1,"hex":"b7 5d
+ dd ff b7 9a 5d b7 ff","sample":"�]����]��"},"source":{"path":"workflows/serial_sniff.py","line":78}},"sp
+anId":"27875509985b4e36b02eb9dbccc5ab1e"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":10,"timestamp":"20
+26-09-14T08:53:46.944Z","type":"step.completed","data":{"status":"succeeded","durationMs":2278},"spanId":"27875509985b4
+e36b02eb9dbccc5ab1e","name":"2400 baud 监听"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":11,"timestam
+p":"2026-09-14T08:53:46.969Z","type":"step.started","data":{"source":{"path":"workflows/serial_sniff.py","line":51},"oc
+currence":1},"spanId":"55ea5471829b4fe7b221b0908e08ce8f","name":"4800 baud 监听"},{"runId":"run_43edb89c4ade422b8eb95
+3f3cfa4a0e3","sequence":12,"timestamp":"2026-09-14T08:53:46.992Z","type":"hardware.started","data":{"hardwareId":"PC1_M
+CP.CP118U_I_CARD_0","toolName":"CP118U_I_MCP__cp118u_configure_port","arguments":{"channel":1,"baud":4800,"data_bits":8
+,"parity":"N","stop_bits":1,"flow":0},"source":{"path":"workflows/serial_sniff.py","line":35}},"spanId":"05d05fa1db0e4b
+22a795751c83d4fd13","parentSpanId":"55ea5471829b4fe7b221b0908e08ce8f","name":"CP118U_I_MCP__cp118u_configure_port"},{"r
+unId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":13,"timestamp":"2026-09-14T08:53:47.075Z","type":"hardware.comp
+leted","data":{"status":"succeeded","output":{"content":[{"type":"text","text":"{\n  \"ok\": true,\n  \"message\": \"\"
+,\n  \"data\": {\n    \"channel\": 1,\n    \"port\": 3,\n    \"baud\": 4800,\n    \"mode\": 3,\n    \"flow\": 0,\n    \
+"flow_rc\": 0\n  },\n  \"meta\": {\n    \"timestamp\": \"2026-09-14T08:53:50.059845+00:00\"\n  }\n}"}],"structuredConte
+nt":{"ok":true,"message":"","data":{"channel":1,"port":3,"baud":4800,"mode":3,"flow":0,"flow_rc":0},"meta":{"timestamp"
+:"2026-09-14T08:53:50.059845+00:00"}},"isError":false},"durationMs":78},"spanId":"05d05fa1db0e4b22a795751c83d4fd13","pa
+rentSpanId":"55ea5471829b4fe7b221b0908e08ce8f","name":"CP118U_I_MCP__cp118u_configure_port"},{"runId":"run_43edb89c4ade
+422b8eb953f3cfa4a0e3","sequence":14,"timestamp":"2026-09-14T08:53:47.089Z","type":"hardware.started","data":{"hardwareI
+d":"PC1_MCP.CP118U_I_CARD_0","toolName":"CP118U_I_MCP__cp118u_clear_rx","arguments":{"channel":1},"source":{"path":"wor
+kflows/serial_sniff.py","line":35}},"spanId":"966fab4871154cc3acba54db6e1daef2","parentSpanId":"55ea5471829b4fe7b221b09
+08e08ce8f","name":"CP118U_I_MCP__cp118u_clear_rx"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":15,"times
+tamp":"2026-09-14T08:53:47.211Z","type":"hardware.completed","data":{"status":"succeeded","output":{"content":[{"type":
+"text","text":"{\n  \"ok\": true,\n  \"message\": \"\",\n  \"data\": {\n    \"channel\": 1\n  },\n  \"meta\": {\n    \"
+timestamp\": \"2026-09-14T08:53:50.161986+00:00\"\n  }\n}"}],"structuredContent":{"ok":true,"message":"","data":{"chann
+el":1},"meta":{"timestamp":"2026-09-14T08:53:50.161986+00:00"}},"isError":false},"durationMs":109},"spanId":"966fab4871
+154cc3acba54db6e1daef2","parentSpanId":"55ea5471829b4fe7b221b0908e08ce8f","name":"CP118U_I_MCP__cp118u_clear_rx"},{"run
+Id":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":16,"timestamp":"2026-09-14T08:53:49.238Z","type":"hardware.starte
+d","data":{"hardwareId":"PC1_MCP.CP118U_I_CARD_0","toolName":"CP118U_I_MCP__cp118u_read_rx","arguments":{"channel":1,"t
+imeout_ms":0,"max_bytes":65536},"source":{"path":"workflows/serial_sniff.py","line":35}},"spanId":"f21c066f5e0243e1b962
+f768094e39e4","parentSpanId":"55ea5471829b4fe7b221b0908e08ce8f","name":"CP118U_I_MCP__cp118u_read_rx"},{"runId":"run_43
+edb89c4ade422b8eb953f3cfa4a0e3","sequence":17,"timestamp":"2026-09-14T08:53:49.330Z","type":"hardware.completed","data"
+:{"status":"succeeded","output":{"content":[{"type":"text","text":"{\n  \"ok\": true,\n  \"message\": \"\",\n  \"data\"
+: {\n    \"channel\": 1,\n    \"bytes\": 14,\n    \"hex\": \"28 a9 ab 55 55 b1 f3 28 a9 ad ab ab 8b d9\",\n    \"text\"
+: \"(��UU��(������\"\n  },\n  \"meta\": {\n    \"timestamp\": \"2026-09-14T08:53:52.299292+00:00\"\
+n  }\n}"}],"structuredContent":{"ok":true,"message":"","data":{"channel":1,"bytes":14,"hex":"28 a9 ab 55 55 b1 f3 28 a9
+ ad ab ab 8b d9","text":"(��UU��(������"},"meta":{"timestamp":"2026-09-14T08:53:52.299292+00:00"}},
+"isError":false},"durationMs":78},"spanId":"f21c066f5e0243e1b962f768094e39e4","parentSpanId":"55ea5471829b4fe7b221b0908
+e08ce8f","name":"CP118U_I_MCP__cp118u_read_rx"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":18,"timestam
+p":"2026-09-14T08:53:49.364Z","type":"log","data":{"message":"监听结果","level":"info","fields":{"baud":4800,"bytes
+":14,"printable":1,"hex":"28 a9 ab 55 55 b1 f3 28 a9 ad ab ab 8b d9","sample":"(��UU��(������"},"so
+urce":{"path":"workflows/serial_sniff.py","line":78}},"spanId":"55ea5471829b4fe7b221b0908e08ce8f"},{"runId":"run_43edb8
+9c4ade422b8eb953f3cfa4a0e3","sequence":19,"timestamp":"2026-09-14T08:53:49.388Z","type":"step.completed","data":{"statu
+s":"succeeded","durationMs":2395},"spanId":"55ea5471829b4fe7b221b0908e08ce8f","name":"4800 baud 监听"},{"runId":"run_
+43edb89c4ade422b8eb953f3cfa4a0e3","sequence":20,"timestamp":"2026-09-14T08:53:49.405Z","type":"step.started","data":{"s
+ource":{"path":"workflows/serial_sniff.py","line":51},"occurrence":1},"spanId":"07bd92a2b22f4c01beb6b44e28fe5214","name
+":"9600 baud 监听"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":21,"timestamp":"2026-09-14T08:53:49.43
+5Z","type":"hardware.started","data":{"hardwareId":"PC1_MCP.CP118U_I_CARD_0","toolName":"CP118U_I_MCP__cp118u_configure
+_port","arguments":{"channel":1,"baud":9600,"data_bits":8,"parity":"N","stop_bits":1,"flow":0},"source":{"path":"workfl
+ows/serial_sniff.py","line":35}},"spanId":"758f16b8ad5a4031936e5808192204ba","parentSpanId":"07bd92a2b22f4c01beb6b44e28
+fe5214","name":"CP118U_I_MCP__cp118u_configure_port"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":22,"ti
+mestamp":"2026-09-14T08:53:49.558Z","type":"hardware.completed","data":{"status":"succeeded","output":{"content":[{"typ
+e":"text","text":"{\n  \"ok\": true,\n  \"message\": \"\",\n  \"data\": {\n    \"channel\": 1,\n    \"port\": 3,\n    \
+"baud\": 9600,\n    \"mode\": 3,\n    \"flow\": 0,\n    \"flow_rc\": 0\n  },\n  \"meta\": {\n    \"timestamp\": \"2026-
+09-14T08:53:52.520160+00:00\"\n  }\n}"}],"structuredContent":{"ok":true,"message":"","data":{"channel":1,"port":3,"baud
+":9600,"mode":3,"flow":0,"flow_rc":0},"meta":{"timestamp":"2026-09-14T08:53:52.520160+00:00"}},"isError":false},"durati
+onMs":110},"spanId":"758f16b8ad5a4031936e5808192204ba","parentSpanId":"07bd92a2b22f4c01beb6b44e28fe5214","name":"CP118U
+_I_MCP__cp118u_configure_port"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":23,"timestamp":"2026-09-14T0
+8:53:49.587Z","type":"hardware.started","data":{"hardwareId":"PC1_MCP.CP118U_I_CARD_0","toolName":"CP118U_I_MCP__cp118u
+_clear_rx","arguments":{"channel":1},"source":{"path":"workflows/serial_sniff.py","line":35}},"spanId":"2191290e600b427
+f9f6d352dbe5bcd76","parentSpanId":"07bd92a2b22f4c01beb6b44e28fe5214","name":"CP118U_I_MCP__cp118u_clear_rx"},{"runId":"
+run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":24,"timestamp":"2026-09-14T08:53:49.684Z","type":"hardware.completed",
+"data":{"status":"succeeded","output":{"content":[{"type":"text","text":"{\n  \"ok\": true,\n  \"message\": \"\",\n  \"
+data\": {\n    \"channel\": 1\n  },\n  \"meta\": {\n    \"timestamp\": \"2026-09-14T08:53:52.659622+00:00\"\n  }\n}"}],
+"structuredContent":{"ok":true,"message":"","data":{"channel":1},"meta":{"timestamp":"2026-09-14T08:53:52.659622+00:00"
+}},"isError":false},"durationMs":94},"spanId":"2191290e600b427f9f6d352dbe5bcd76","parentSpanId":"07bd92a2b22f4c01beb6b4
+4e28fe5214","name":"CP118U_I_MCP__cp118u_clear_rx"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":25,"time
+stamp":"2026-09-14T08:53:51.703Z","type":"hardware.started","data":{"hardwareId":"PC1_MCP.CP118U_I_CARD_0","toolName":"
+CP118U_I_MCP__cp118u_read_rx","arguments":{"channel":1,"timeout_ms":0,"max_bytes":65536},"source":{"path":"workflows/se
+rial_sniff.py","line":35}},"spanId":"30619faa756c4a47b564815e8446b9fe","parentSpanId":"07bd92a2b22f4c01beb6b44e28fe5214
+","name":"CP118U_I_MCP__cp118u_read_rx"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":26,"timestamp":"202
+6-09-14T08:53:51.784Z","type":"hardware.completed","data":{"status":"succeeded","output":{"content":[{"type":"text","te
+xt":"{\n  \"ok\": true,\n  \"message\": \"\",\n  \"data\": {\n    \"channel\": 1,\n    \"bytes\": 28,\n    \"hex\": \"d
+5 56 d6 5a f6 76 fb a7 9f a7 9f e5 eb fc d5 56 d6 5a d6 76 fb a7 9f a7 9f e5 eb fc\",\n    \"text\": \"�V�Z�v��
+���������V�Z�v��������\"\n  },\n  \"meta\": {\n    \"timestamp\": \"2026-09-14T08:53:
+54.773795+00:00\"\n  }\n}"}],"structuredContent":{"ok":true,"message":"","data":{"channel":1,"bytes":28,"hex":"d5 56 d6
+ 5a f6 76 fb a7 9f a7 9f e5 eb fc d5 56 d6 5a d6 76 fb a7 9f a7 9f e5 eb fc","text":"�V�Z�v��������
+���V�Z�v��������"},"meta":{"timestamp":"2026-09-14T08:53:54.773795+00:00"}},"isError":false},"dur
+ationMs":62},"spanId":"30619faa756c4a47b564815e8446b9fe","parentSpanId":"07bd92a2b22f4c01beb6b44e28fe5214","name":"CP11
+8U_I_MCP__cp118u_read_rx"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":27,"timestamp":"2026-09-14T08:53:
+51.810Z","type":"log","data":{"message":"监听结果","level":"info","fields":{"baud":9600,"bytes":28,"printable":1,"h
+ex":"d5 56 d6 5a f6 76 fb a7 9f a7 9f e5 eb fc d5 56 d6 5a d6 76 fb a7 9f a7 9f e5 eb fc","sample":"�V�Z�v��
+�������V�Z�v��������"},"source":{"path":"workflows/serial_sniff.py","line":78}},"span
+Id":"07bd92a2b22f4c01beb6b44e28fe5214"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":28,"timestamp":"2026
+-09-14T08:53:51.835Z","type":"step.completed","data":{"status":"succeeded","durationMs":2408},"spanId":"07bd92a2b22f4c0
+1beb6b44e28fe5214","name":"9600 baud 监听"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":29,"timestamp"
+:"2026-09-14T08:53:51.846Z","type":"step.started","data":{"source":{"path":"workflows/serial_sniff.py","line":51},"occu
+rrence":1},"spanId":"f9d8f132a8a740c0acd9e803236b658d","name":"19200 baud 监听"},{"runId":"run_43edb89c4ade422b8eb953
+f3cfa4a0e3","sequence":30,"timestamp":"2026-09-14T08:53:51.859Z","type":"hardware.started","data":{"hardwareId":"PC1_MC
+P.CP118U_I_CARD_0","toolName":"CP118U_I_MCP__cp118u_configure_port","arguments":{"channel":1,"baud":19200,"data_bits":8
+,"parity":"N","stop_bits":1,"flow":0},"source":{"path":"workflows/serial_sniff.py","line":35}},"spanId":"72e3f38c801b4a
+8aad2b22ef6ae28a10","parentSpanId":"f9d8f132a8a740c0acd9e803236b658d","name":"CP118U_I_MCP__cp118u_configure_port"},{"r
+unId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":31,"timestamp":"2026-09-14T08:53:51.946Z","type":"hardware.comp
+leted","data":{"status":"succeeded","output":{"content":[{"type":"text","text":"{\n  \"ok\": true,\n  \"message\": \"\"
+,\n  \"data\": {\n    \"channel\": 1,\n    \"port\": 3,\n    \"baud\": 19200,\n    \"mode\": 3,\n    \"flow\": 0,\n    
+\"flow_rc\": 0\n  },\n  \"meta\": {\n    \"timestamp\": \"2026-09-14T08:53:54.931256+00:00\"\n  }\n}"}],"structuredCont
+ent":{"ok":true,"message":"","data":{"channel":1,"port":3,"baud":19200,"mode":3,"flow":0,"flow_rc":0},"meta":{"timestam
+p":"2026-09-14T08:53:54.931256+00:00"}},"isError":false},"durationMs":78},"spanId":"72e3f38c801b4a8aad2b22ef6ae28a10","
+parentSpanId":"f9d8f132a8a740c0acd9e803236b658d","name":"CP118U_I_MCP__cp118u_configure_port"},{"runId":"run_43edb89c4a
+de422b8eb953f3cfa4a0e3","sequence":32,"timestamp":"2026-09-14T08:53:51.976Z","type":"hardware.started","data":{"hardwar
+eId":"PC1_MCP.CP118U_I_CARD_0","toolName":"CP118U_I_MCP__cp118u_clear_rx","arguments":{"channel":1},"source":{"path":"w
+orkflows/serial_sniff.py","line":35}},"spanId":"38ee39800c454311861118b9334a594c","parentSpanId":"f9d8f132a8a740c0acd9e
+803236b658d","name":"CP118U_I_MCP__cp118u_clear_rx"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":33,"tim
+estamp":"2026-09-14T08:53:52.064Z","type":"hardware.completed","data":{"status":"succeeded","output":{"content":[{"type
+":"text","text":"{\n  \"ok\": true,\n  \"message\": \"\",\n  \"data\": {\n    \"channel\": 1\n  },\n  \"meta\": {\n    
+\"timestamp\": \"2026-09-14T08:53:55.045295+00:00\"\n  }\n}"}],"structuredContent":{"ok":true,"message":"","data":{"cha
+nnel":1},"meta":{"timestamp":"2026-09-14T08:53:55.045295+00:00"}},"isError":false},"durationMs":79},"spanId":"38ee39800
+c454311861118b9334a594c","parentSpanId":"f9d8f132a8a740c0acd9e803236b658d","name":"CP118U_I_MCP__cp118u_clear_rx"},{"ru
+nId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":34,"timestamp":"2026-09-14T08:53:54.081Z","type":"hardware.start
+ed","data":{"hardwareId":"PC1_MCP.CP118U_I_CARD_0","toolName":"CP118U_I_MCP__cp118u_read_rx","arguments":{"channel":1,"
+timeout_ms":0,"max_bytes":65536},"source":{"path":"workflows/serial_sniff.py","line":35}},"spanId":"1c622ab9a4c34ecf9af
+e456a20b76390","parentSpanId":"f9d8f132a8a740c0acd9e803236b658d","name":"CP118U_I_MCP__cp118u_read_rx"},{"runId":"run_4
+3edb89c4ade422b8eb953f3cfa4a0e3","sequence":35,"timestamp":"2026-09-14T08:53:54.172Z","type":"hardware.completed","data
+":{"status":"succeeded","output":{"content":[{"type":"text","text":"{\n  \"ok\": true,\n  \"message\": \"\",\n  \"data\
+": {\n    \"channel\": 1,\n    \"bytes\": 69,\n    \"hex\": \"66 7e 66 78 7e 9e 7e 9e 78 98 fe 78 98 fe 78 98 fe 78 86 
+9e fe e0 66 7e 66 78 7e 9e 7e 86 78 98 fe 78 98 fe 78 98 fe 78 86 9e fe e0 66 7e 66 78 7e 9e 7e 7e 78 98 e6 78 78 7e 9e
+ 7e fe 78 98 fe 78 86 9e fe e0\",\n    \"text\": \"f~fx~�~�x��x��x��x����f~fx~�~�x��x�
+��x��x����f~fx~�~~x��xx~�~�x��x����\"\n  },\n  \"meta\": {\n    \"timestamp\": \"20
+26-09-14T08:53:57.154611+00:00\"\n  }\n}"}],"structuredContent":{"ok":true,"message":"","data":{"channel":1,"bytes":69,
+"hex":"66 7e 66 78 7e 9e 7e 9e 78 98 fe 78 98 fe 78 98 fe 78 86 9e fe e0 66 7e 66 78 7e 9e 7e 86 78 98 fe 78 98 fe 78 9
+8 fe 78 86 9e fe e0 66 7e 66 78 7e 9e 7e 7e 78 98 e6 78 78 7e 9e 7e fe 78 98 fe 78 86 9e fe e0","text":"f~fx~�~�x�
+��x��x��x����f~fx~�~�x��x��x��x����f~fx~�~~x��xx~�~�x��x��
+��"},"meta":{"timestamp":"2026-09-14T08:53:57.154611+00:00"}},"isError":false},"durationMs":78},"spanId":"1c622ab9a
+4c34ecf9afe456a20b76390","parentSpanId":"f9d8f132a8a740c0acd9e803236b658d","name":"CP118U_I_MCP__cp118u_read_rx"},{"run
+Id":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":36,"timestamp":"2026-09-14T08:53:54.184Z","type":"log","data":{"m
+essage":"监听结果","level":"info","fields":{"baud":19200,"bytes":69,"printable":1,"hex":"66 7e 66 78 7e 9e 7e 9e 78
+ 98 fe 78 98 fe 78 98 fe 78 86 9e fe e0 66 7e 66 78 7e 9e 7e 86 78 98 ","sample":"f~fx~�~�x��x��x��x�
+����f~fx~�~�x��x��x��x����f~fx~�~~x��xx~�~�x��x����"},"source":{"pa
+th":"workflows/serial_sniff.py","line":78}},"spanId":"f9d8f132a8a740c0acd9e803236b658d"},{"runId":"run_43edb89c4ade422b
+8eb953f3cfa4a0e3","sequence":37,"timestamp":"2026-09-14T08:53:54.196Z","type":"step.completed","data":{"status":"succee
+ded","durationMs":2337},"spanId":"f9d8f132a8a740c0acd9e803236b658d","name":"19200 baud 监听"},{"runId":"run_43edb89c4
+ade422b8eb953f3cfa4a0e3","sequence":38,"timestamp":"2026-09-14T08:53:54.225Z","type":"step.started","data":{"source":{"
+path":"workflows/serial_sniff.py","line":51},"occurrence":1},"spanId":"4c44f45945c7449d8a25f26eff64c412","name":"38400 
+baud 监听"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":39,"timestamp":"2026-09-14T08:53:54.251Z","typ
+e":"hardware.started","data":{"hardwareId":"PC1_MCP.CP118U_I_CARD_0","toolName":"CP118U_I_MCP__cp118u_configure_port","
+arguments":{"channel":1,"baud":38400,"data_bits":8,"parity":"N","stop_bits":1,"flow":0},"source":{"path":"workflows/ser
+ial_sniff.py","line":35}},"spanId":"c217becdb70e419dae1d1325c3c039fc","parentSpanId":"4c44f45945c7449d8a25f26eff64c412"
+,"name":"CP118U_I_MCP__cp118u_configure_port"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":40,"timestamp
+":"2026-09-14T08:53:54.324Z","type":"hardware.completed","data":{"status":"succeeded","output":{"content":[{"type":"tex
+t","text":"{\n  \"ok\": true,\n  \"message\": \"\",\n  \"data\": {\n    \"channel\": 1,\n    \"port\": 3,\n    \"baud\"
+: 38400,\n    \"mode\": 3,\n    \"flow\": 0,\n    \"flow_rc\": 0\n  },\n  \"meta\": {\n    \"timestamp\": \"2026-09-14T
+08:53:57.315637+00:00\"\n  }\n}"}],"structuredContent":{"ok":true,"message":"","data":{"channel":1,"port":3,"baud":3840
+0,"mode":3,"flow":0,"flow_rc":0},"meta":{"timestamp":"2026-09-14T08:53:57.315637+00:00"}},"isError":false},"durationMs"
+:62},"spanId":"c217becdb70e419dae1d1325c3c039fc","parentSpanId":"4c44f45945c7449d8a25f26eff64c412","name":"CP118U_I_MCP
+__cp118u_configure_port"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":41,"timestamp":"2026-09-14T08:53:5
+4.343Z","type":"hardware.started","data":{"hardwareId":"PC1_MCP.CP118U_I_CARD_0","toolName":"CP118U_I_MCP__cp118u_clear
+_rx","arguments":{"channel":1},"source":{"path":"workflows/serial_sniff.py","line":35}},"spanId":"f5f3772d42ea4334934c7
+beec27e28f2","parentSpanId":"4c44f45945c7449d8a25f26eff64c412","name":"CP118U_I_MCP__cp118u_clear_rx"},{"runId":"run_43
+edb89c4ade422b8eb953f3cfa4a0e3","sequence":42,"timestamp":"2026-09-14T08:53:54.422Z","type":"hardware.completed","data"
+:{"status":"succeeded","output":{"content":[{"type":"text","text":"{\n  \"ok\": true,\n  \"message\": \"\",\n  \"data\"
+: {\n    \"channel\": 1\n  },\n  \"meta\": {\n    \"timestamp\": \"2026-09-14T08:53:57.408198+00:00\"\n  }\n}"}],"struc
+turedContent":{"ok":true,"message":"","data":{"channel":1},"meta":{"timestamp":"2026-09-14T08:53:57.408198+00:00"}},"is
+Error":false},"durationMs":63},"spanId":"f5f3772d42ea4334934c7beec27e28f2","parentSpanId":"4c44f45945c7449d8a25f26eff64
+c412","name":"CP118U_I_MCP__cp118u_clear_rx"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":43,"timestamp"
+:"2026-09-14T08:53:56.458Z","type":"hardware.started","data":{"hardwareId":"PC1_MCP.CP118U_I_CARD_0","toolName":"CP118U
+_I_MCP__cp118u_read_rx","arguments":{"channel":1,"timeout_ms":0,"max_bytes":65536},"source":{"path":"workflows/serial_s
+niff.py","line":35}},"spanId":"5b1f21c87110454f81f86ae02f6e58ab","parentSpanId":"4c44f45945c7449d8a25f26eff64c412","nam
+e":"CP118U_I_MCP__cp118u_read_rx"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":44,"timestamp":"2026-09-1
+4T08:53:56.539Z","type":"hardware.completed","data":{"status":"succeeded","output":{"content":[{"type":"text","text":"{
+\n  \"ok\": true,\n  \"message\": \"\",\n  \"data\": {\n    \"channel\": 1,\n    \"bytes\": 65,\n    \"hex\": \"78 78 8
+0 78 78 78 80 f8 78 80 78 78 f8 80 f8 f8 80 f8 80 f8 f8 80 f8 80 f8 f8 80 78 80 f8 78 00 78 78 80 78 78 78 80 f8 78 80 
+f8 80 80 f8 80 f8 f8 80 f8 80 f8 f8 80 f8 80 f8 f8 80 78 80 f8 78 00\",\n    \"text\": \"xx�xxx��x�xx����
+�������������x��x\\u0000xx�xxx��x������������������
+�x��x\\u0000\"\n  },\n  \"meta\": {\n    \"timestamp\": \"2026-09-14T08:53:59.526277+00:00\"\n  }\n}"}],"structur
+edContent":{"ok":true,"message":"","data":{"channel":1,"bytes":65,"hex":"78 78 80 78 78 78 80 f8 78 80 78 78 f8 80 f8 f
+8 80 f8 80 f8 f8 80 f8 80 f8 f8 80 78 80 f8 78 00 78 78 80 78 78 78 80 f8 78 80 f8 80 80 f8 80 f8 f8 80 f8 80 f8 f8 80 
+f8 80 f8 f8 80 78 80 f8 78 00","text":"xx�xxx��x�xx���������������x��x\u0000x
+x�xxx��x�������������������x��x\u0000"},"meta":{"timestamp":"2026-09-14
+T08:53:59.526277+00:00"}},"isError":false},"durationMs":78},"spanId":"5b1f21c87110454f81f86ae02f6e58ab","parentSpanId":
+"4c44f45945c7449d8a25f26eff64c412","name":"CP118U_I_MCP__cp118u_read_rx"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e
+3","sequence":45,"timestamp":"2026-09-14T08:53:56.554Z","type":"log","data":{"message":"监听结果","level":"info","f
+ields":{"baud":38400,"bytes":65,"printable":0.969,"hex":"78 78 80 78 78 78 80 f8 78 80 78 78 f8 80 f8 f8 80 f8 80 f8 f8
+ 80 f8 80 f8 f8 80 78 80 f8 78 00 ","sample":"xx�xxx��x�xx���������������x��x
+\u0000xx�xxx��x�������������������x��x\u0000"},"source":{"path":"workfl
+ows/serial_sniff.py","line":78}},"spanId":"4c44f45945c7449d8a25f26eff64c412"},{"runId":"run_43edb89c4ade422b8eb953f3cfa
+4a0e3","sequence":46,"timestamp":"2026-09-14T08:53:56.569Z","type":"step.completed","data":{"status":"succeeded","durat
+ionMs":2334},"spanId":"4c44f45945c7449d8a25f26eff64c412","name":"38400 baud 监听"},{"runId":"run_43edb89c4ade422b8eb9
+53f3cfa4a0e3","sequence":47,"timestamp":"2026-09-14T08:53:56.584Z","type":"step.started","data":{"source":{"path":"work
+flows/serial_sniff.py","line":51},"occurrence":1},"spanId":"626419d8e4a643e1b63be246e6aff203","name":"57600 baud 监听
+"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":48,"timestamp":"2026-09-14T08:53:56.601Z","type":"hardwar
+e.started","data":{"hardwareId":"PC1_MCP.CP118U_I_CARD_0","toolName":"CP118U_I_MCP__cp118u_configure_port","arguments":
+{"channel":1,"baud":57600,"data_bits":8,"parity":"N","stop_bits":1,"flow":0},"source":{"path":"workflows/serial_sniff.p
+y","line":35}},"spanId":"e6b6155b76814a7f8f68b7b44661db0a","parentSpanId":"626419d8e4a643e1b63be246e6aff203","name":"CP
+118U_I_MCP__cp118u_configure_port"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":49,"timestamp":"2026-09-
+14T08:53:56.691Z","type":"hardware.completed","data":{"status":"succeeded","output":{"content":[{"type":"text","text":"
+{\n  \"ok\": true,\n  \"message\": \"\",\n  \"data\": {\n    \"channel\": 1,\n    \"port\": 3,\n    \"baud\": 57600,\n 
+   \"mode\": 3,\n    \"flow\": 0,\n    \"flow_rc\": 0\n  },\n  \"meta\": {\n    \"timestamp\": \"2026-09-14T08:53:59.67
+1407+00:00\"\n  }\n}"}],"structuredContent":{"ok":true,"message":"","data":{"channel":1,"port":3,"baud":57600,"mode":3,
+"flow":0,"flow_rc":0},"meta":{"timestamp":"2026-09-14T08:53:59.671407+00:00"}},"isError":false},"durationMs":79},"spanI
+d":"e6b6155b76814a7f8f68b7b44661db0a","parentSpanId":"626419d8e4a643e1b63be246e6aff203","name":"CP118U_I_MCP__cp118u_co
+nfigure_port"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":50,"timestamp":"2026-09-14T08:53:56.704Z","ty
+pe":"hardware.started","data":{"hardwareId":"PC1_MCP.CP118U_I_CARD_0","toolName":"CP118U_I_MCP__cp118u_clear_rx","argum
+ents":{"channel":1},"source":{"path":"workflows/serial_sniff.py","line":35}},"spanId":"2b2caac716f4439aae54681c8ea30165
+","parentSpanId":"626419d8e4a643e1b63be246e6aff203","name":"CP118U_I_MCP__cp118u_clear_rx"},{"runId":"run_43edb89c4ade4
+22b8eb953f3cfa4a0e3","sequence":51,"timestamp":"2026-09-14T08:53:56.794Z","type":"hardware.completed","data":{"status":
+"succeeded","output":{"content":[{"type":"text","text":"{\n  \"ok\": true,\n  \"message\": \"\",\n  \"data\": {\n    \"
+channel\": 1\n  },\n  \"meta\": {\n    \"timestamp\": \"2026-09-14T08:53:59.775498+00:00\"\n  }\n}"}],"structuredConten
+t":{"ok":true,"message":"","data":{"channel":1},"meta":{"timestamp":"2026-09-14T08:53:59.775498+00:00"}},"isError":fals
+e},"durationMs":78},"spanId":"2b2caac716f4439aae54681c8ea30165","parentSpanId":"626419d8e4a643e1b63be246e6aff203","name
+":"CP118U_I_MCP__cp118u_clear_rx"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":52,"timestamp":"2026-09-1
+4T08:53:58.820Z","type":"hardware.started","data":{"hardwareId":"PC1_MCP.CP118U_I_CARD_0","toolName":"CP118U_I_MCP__cp1
+18u_read_rx","arguments":{"channel":1,"timeout_ms":0,"max_bytes":65536},"source":{"path":"workflows/serial_sniff.py","l
+ine":35}},"spanId":"d587da90a9fd41a09b31887f8be09543","parentSpanId":"626419d8e4a643e1b63be246e6aff203","name":"CP118U_
+I_MCP__cp118u_read_rx"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":53,"timestamp":"2026-09-14T08:53:58.
+868Z","type":"hardware.completed","data":{"status":"succeeded","output":{"content":[{"type":"text","text":"{\n  \"ok\":
+ true,\n  \"message\": \"\",\n  \"data\": {\n    \"channel\": 1,\n    \"bytes\": 87,\n    \"hex\": \"e0 e0 e0 e0 00 e0 
+e0 e0 00 e0 e0 00 e0 e0 e0 00 e0 00 00 e0 00 e0 e0 00 e0 00 e0 00 e0 e0 00 00 e0 e0 00 e0 00 e0 e0 00 e0 e0 00 e0 e0 e0
+ 00 e0 e0 e0 e0 00 e0 e0 e0 00 e0 e0 00 e0 e0 e0 00 e0 00 e0 00 e0 e0 00 e0 00 e0 e0 00 e0 00 e0 e0 00 e0 e0 00 e0 e0 e
+0 00\",\n    \"text\": \"����\\u0000���\\u0000��\\u0000���\\u0000�\\u0000\\u0000�\\u0000�
+��\\u0000�\\u0000�\\u0000��\\u0000\\u0000��\\u0000�\\u0000��\\u0000��\\u0000���\\u0000�
+����\\u0000���\\u0000��\\u0000���\\u0000�\\u0000�\\u0000��\\u0000�\\u0000��\\u0000
+�\\u0000��\\u0000��\\u0000���\\u0000\"\n  },\n  \"meta\": {\n    \"timestamp\": \"2026-09-14T08:54:01.9
+02573+00:00\"\n  }\n}"}],"structuredContent":{"ok":true,"message":"","data":{"channel":1,"bytes":87,"hex":"e0 e0 e0 e0 
+00 e0 e0 e0 00 e0 e0 00 e0 e0 e0 00 e0 00 00 e0 00 e0 e0 00 e0 00 e0 00 e0 e0 00 00 e0 e0 00 e0 00 e0 e0 00 e0 e0 00 e0
+ e0 e0 00 e0 e0 e0 e0 00 e0 e0 e0 00 e0 e0 00 e0 e0 e0 00 e0 00 e0 00 e0 e0 00 e0 00 e0 e0 00 e0 00 e0 e0 00 e0 e0 00 e
+0 e0 e0 00","text":"����\u0000���\u0000��\u0000���\u0000�\u0000\u0000�\u0000��\u0000�
+�\u0000�\u0000��\u0000\u0000��\u0000�\u0000��\u0000��\u0000���\u0000����\u0000��
+�\u0000��\u0000���\u0000�\u0000�\u0000��\u0000�\u0000��\u0000�\u0000��\u0000��\u000
+0���\u0000"},"meta":{"timestamp":"2026-09-14T08:54:01.902573+00:00"}},"isError":false},"durationMs":47},"spanId":
+"d587da90a9fd41a09b31887f8be09543","parentSpanId":"626419d8e4a643e1b63be246e6aff203","name":"CP118U_I_MCP__cp118u_read_
+rx"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":54,"timestamp":"2026-09-14T08:53:58.881Z","type":"log",
+"data":{"message":"监听结果","level":"info","fields":{"baud":57600,"bytes":87,"printable":0.655,"hex":"e0 e0 e0 e0 
+00 e0 e0 e0 00 e0 e0 00 e0 e0 e0 00 e0 00 00 e0 00 e0 e0 00 e0 00 e0 00 e0 e0 00 00 ","sample":"����\u0000��
+���\u0000��\u0000���\u0000�\u0000\u0000�\u0000��\u0000�\u0000�\u0000��\u0000\u0000��\u0
+000�\u0000��\u0000��\u0000���\u0000����\u0000���\u0000��\u0000���\u0000�\u000
+0�\u0000��\u0000�\u0000��\u0000�\u0000��\u0000��\u0000���\u0000"},"source":{"path":"workflo
+ws/serial_sniff.py","line":78}},"spanId":"626419d8e4a643e1b63be246e6aff203"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4
+a0e3","sequence":55,"timestamp":"2026-09-14T08:53:58.904Z","type":"step.completed","data":{"status":"succeeded","durati
+onMs":2290},"spanId":"626419d8e4a643e1b63be246e6aff203","name":"57600 baud 监听"},{"runId":"run_43edb89c4ade422b8eb95
+3f3cfa4a0e3","sequence":56,"timestamp":"2026-09-14T08:53:58.930Z","type":"step.started","data":{"source":{"path":"workf
+lows/serial_sniff.py","line":51},"occurrence":1},"spanId":"eb7d7f7bf7c144d2a1ed4eee0ad061c2","name":"115200 baud 监听
+"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":57,"timestamp":"2026-09-14T08:53:58.941Z","type":"hardwar
+e.started","data":{"hardwareId":"PC1_MCP.CP118U_I_CARD_0","toolName":"CP118U_I_MCP__cp118u_configure_port","arguments":
+{"channel":1,"baud":115200,"data_bits":8,"parity":"N","stop_bits":1,"flow":0},"source":{"path":"workflows/serial_sniff.
+py","line":35}},"spanId":"15cbfcc493304e2b8a0ac255ca4d5538","parentSpanId":"eb7d7f7bf7c144d2a1ed4eee0ad061c2","name":"C
+P118U_I_MCP__cp118u_configure_port"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":58,"timestamp":"2026-09
+-14T08:53:59.021Z","type":"hardware.completed","data":{"status":"succeeded","output":{"content":[{"type":"text","text":
+"{\n  \"ok\": true,\n  \"message\": \"\",\n  \"data\": {\n    \"channel\": 1,\n    \"port\": 3,\n    \"baud\": 115200,\
+n    \"mode\": 3,\n    \"flow\": 0,\n    \"flow_rc\": 0\n  },\n  \"meta\": {\n    \"timestamp\": \"2026-09-14T08:54:02.
+000583+00:00\"\n  }\n}"}],"structuredContent":{"ok":true,"message":"","data":{"channel":1,"port":3,"baud":115200,"mode"
+:3,"flow":0,"flow_rc":0},"meta":{"timestamp":"2026-09-14T08:54:02.000583+00:00"}},"isError":false},"durationMs":63},"sp
+anId":"15cbfcc493304e2b8a0ac255ca4d5538","parentSpanId":"eb7d7f7bf7c144d2a1ed4eee0ad061c2","name":"CP118U_I_MCP__cp118u
+_configure_port"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":59,"timestamp":"2026-09-14T08:53:59.044Z",
+"type":"hardware.started","data":{"hardwareId":"PC1_MCP.CP118U_I_CARD_0","toolName":"CP118U_I_MCP__cp118u_clear_rx","ar
+guments":{"channel":1},"source":{"path":"workflows/serial_sniff.py","line":35}},"spanId":"3c645374d0824fb0a1111f8162d97
+d30","parentSpanId":"eb7d7f7bf7c144d2a1ed4eee0ad061c2","name":"CP118U_I_MCP__cp118u_clear_rx"},{"runId":"run_43edb89c4a
+de422b8eb953f3cfa4a0e3","sequence":60,"timestamp":"2026-09-14T08:53:59.120Z","type":"hardware.completed","data":{"statu
+s":"succeeded","output":{"content":[{"type":"text","text":"{\n  \"ok\": true,\n  \"message\": \"\",\n  \"data\": {\n   
+ \"channel\": 1\n  },\n  \"meta\": {\n    \"timestamp\": \"2026-09-14T08:54:02.103421+00:00\"\n  }\n}"}],"structuredCon
+tent":{"ok":true,"message":"","data":{"channel":1},"meta":{"timestamp":"2026-09-14T08:54:02.103421+00:00"}},"isError":f
+alse},"durationMs":78},"spanId":"3c645374d0824fb0a1111f8162d97d30","parentSpanId":"eb7d7f7bf7c144d2a1ed4eee0ad061c2","n
+ame":"CP118U_I_MCP__cp118u_clear_rx"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":61,"timestamp":"2026-0
+9-14T08:54:01.147Z","type":"hardware.started","data":{"hardwareId":"PC1_MCP.CP118U_I_CARD_0","toolName":"CP118U_I_MCP__
+cp118u_read_rx","arguments":{"channel":1,"timeout_ms":0,"max_bytes":65536},"source":{"path":"workflows/serial_sniff.py"
+,"line":35}},"spanId":"105de951cf4440f9b05abd838b86734f","parentSpanId":"eb7d7f7bf7c144d2a1ed4eee0ad061c2","name":"CP11
+8U_I_MCP__cp118u_read_rx"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":62,"timestamp":"2026-09-14T08:54:
+01.188Z","type":"hardware.completed","data":{"status":"succeeded","output":{"content":[{"type":"text","text":"{\n  \"ok
+\": true,\n  \"message\": \"\",\n  \"data\": {\n    \"channel\": 1,\n    \"bytes\": 90,\n    \"hex\": \"00 00 00 00 00 
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 0
+0 00 00 00 00 00\",\n    \"text\": \"\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u00
+00\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u00
+00\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u00
+00\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u00
+00\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u00
+00\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\"\n  },\n  \"meta\": {\n    \"timestamp\": \"2
+026-09-14T08:54:04.222309+00:00\"\n  }\n}"}],"structuredContent":{"ok":true,"message":"","data":{"channel":1,"bytes":90
+,"hex":"00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+ 00 00 00 00 00 00 00 00 00 00 00 00 00","text":"\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u00
+00\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0
+000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u
+0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\
+u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000"},"me
+ta":{"timestamp":"2026-09-14T08:54:04.222309+00:00"}},"isError":false},"durationMs":32},"spanId":"105de951cf4440f9b05ab
+d838b86734f","parentSpanId":"eb7d7f7bf7c144d2a1ed4eee0ad061c2","name":"CP118U_I_MCP__cp118u_read_rx"},{"runId":"run_43e
+db89c4ade422b8eb953f3cfa4a0e3","sequence":63,"timestamp":"2026-09-14T08:54:01.210Z","type":"log","data":{"message":"�
+�听结果","level":"info","fields":{"baud":115200,"bytes":90,"printable":0,"hex":"00 00 00 00 00 00 00 00 00 00 00 00 
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ","sample":"\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u000
+0\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u00
+00\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0
+000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u
+0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\
+u0000\u0000\u0000"},"source":{"path":"workflows/serial_sniff.py","line":78}},"spanId":"eb7d7f7bf7c144d2a1ed4eee0ad061c2
+"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":64,"timestamp":"2026-09-14T08:54:01.240Z","type":"step.co
+mpleted","data":{"status":"succeeded","durationMs":2281},"spanId":"eb7d7f7bf7c144d2a1ed4eee0ad061c2","name":"115200 bau
+d 监听"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":65,"timestamp":"2026-09-14T08:54:01.250Z","type":
+"step.started","data":{"source":{"path":"workflows/serial_sniff.py","line":51},"occurrence":1},"spanId":"af68d2fbdc1143
+7899202129a9a97783","name":"230400 baud 监听"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":66,"timesta
+mp":"2026-09-14T08:54:01.272Z","type":"hardware.started","data":{"hardwareId":"PC1_MCP.CP118U_I_CARD_0","toolName":"CP1
+18U_I_MCP__cp118u_configure_port","arguments":{"channel":1,"baud":230400,"data_bits":8,"parity":"N","stop_bits":1,"flow
+":0},"source":{"path":"workflows/serial_sniff.py","line":35}},"spanId":"16e2497dcd4441afa75b9bd53c8b06ff","parentSpanId
+":"af68d2fbdc11437899202129a9a97783","name":"CP118U_I_MCP__cp118u_configure_port"},{"runId":"run_43edb89c4ade422b8eb953
+f3cfa4a0e3","sequence":67,"timestamp":"2026-09-14T08:54:01.352Z","type":"hardware.completed","data":{"status":"succeede
+d","output":{"content":[{"type":"text","text":"{\n  \"ok\": true,\n  \"message\": \"\",\n  \"data\": {\n    \"channel\"
+: 1,\n    \"port\": 3,\n    \"baud\": 230400,\n    \"mode\": 3,\n    \"flow\": 0,\n    \"flow_rc\": 0\n  },\n  \"meta\"
+: {\n    \"timestamp\": \"2026-09-14T08:54:04.336117+00:00\"\n  }\n}"}],"structuredContent":{"ok":true,"message":"","da
+ta":{"channel":1,"port":3,"baud":230400,"mode":3,"flow":0,"flow_rc":0},"meta":{"timestamp":"2026-09-14T08:54:04.336117+
+00:00"}},"isError":false},"durationMs":78},"spanId":"16e2497dcd4441afa75b9bd53c8b06ff","parentSpanId":"af68d2fbdc114378
+99202129a9a97783","name":"CP118U_I_MCP__cp118u_configure_port"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequen
+ce":68,"timestamp":"2026-09-14T08:54:01.382Z","type":"hardware.started","data":{"hardwareId":"PC1_MCP.CP118U_I_CARD_0",
+"toolName":"CP118U_I_MCP__cp118u_clear_rx","arguments":{"channel":1},"source":{"path":"workflows/serial_sniff.py","line
+":35}},"spanId":"bd42a02642204e89aa11a924421a96c2","parentSpanId":"af68d2fbdc11437899202129a9a97783","name":"CP118U_I_M
+CP__cp118u_clear_rx"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":69,"timestamp":"2026-09-14T08:54:01.45
+6Z","type":"hardware.completed","data":{"status":"succeeded","output":{"content":[{"type":"text","text":"{\n  \"ok\": t
+rue,\n  \"message\": \"\",\n  \"data\": {\n    \"channel\": 1\n  },\n  \"meta\": {\n    \"timestamp\": \"2026-09-14T08:
+54:04.446846+00:00\"\n  }\n}"}],"structuredContent":{"ok":true,"message":"","data":{"channel":1},"meta":{"timestamp":"2
+026-09-14T08:54:04.446846+00:00"}},"isError":false},"durationMs":62},"spanId":"bd42a02642204e89aa11a924421a96c2","paren
+tSpanId":"af68d2fbdc11437899202129a9a97783","name":"CP118U_I_MCP__cp118u_clear_rx"},{"runId":"run_43edb89c4ade422b8eb95
+3f3cfa4a0e3","sequence":70,"timestamp":"2026-09-14T08:54:03.474Z","type":"hardware.started","data":{"hardwareId":"PC1_M
+CP.CP118U_I_CARD_0","toolName":"CP118U_I_MCP__cp118u_read_rx","arguments":{"channel":1,"timeout_ms":0,"max_bytes":65536
+},"source":{"path":"workflows/serial_sniff.py","line":35}},"spanId":"c5c818389522402c8ebe5c920fc80292","parentSpanId":"
+af68d2fbdc11437899202129a9a97783","name":"CP118U_I_MCP__cp118u_read_rx"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3
+","sequence":71,"timestamp":"2026-09-14T08:54:03.500Z","type":"hardware.completed","data":{"status":"succeeded","output
+":{"content":[{"type":"text","text":"{\n  \"ok\": true,\n  \"message\": \"\",\n  \"data\": {\n    \"channel\": 1,\n    
+\"bytes\": 98,\n    \"hex\": \"00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 0
+0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\",\n    \"text\": \"\\u0000\\u00
+00\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u00
+00\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u00
+00\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u00
+00\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u00
+00\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u00
+00\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000\"\n  },\n  \"meta\": {\n    \"timestamp
+\": \"2026-09-14T08:54:06.534531+00:00\"\n  }\n}"}],"structuredContent":{"ok":true,"message":"","data":{"channel":1,"by
+tes":98,"hex":"00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 0
+0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00","text":"\u0000\u0000\u0000\u0000\u0000\u0000\u0
+000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u
+0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\
+u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000
+\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u000
+0\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000"},"meta":{"timestamp":"2026-09-14T08:54:06.53
+4531+00:00"}},"isError":false},"durationMs":16},"spanId":"c5c818389522402c8ebe5c920fc80292","parentSpanId":"af68d2fbdc1
+1437899202129a9a97783","name":"CP118U_I_MCP__cp118u_read_rx"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence
+":72,"timestamp":"2026-09-14T08:54:03.513Z","type":"log","data":{"message":"监听结果","level":"info","fields":{"bau
+d":230400,"bytes":98,"printable":0,"hex":"00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+ 00 00 00 00 00 00 ","sample":"\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u00
+00\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0
+000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u
+0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\
+u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000
+\u0000\u0000"},"source":{"path":"workflows/serial_sniff.py","line":78}},"spanId":"af68d2fbdc11437899202129a9a97783"},{"
+runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":73,"timestamp":"2026-09-14T08:54:03.525Z","type":"step.complet
+ed","data":{"status":"succeeded","durationMs":2266},"spanId":"af68d2fbdc11437899202129a9a97783","name":"230400 baud �
+�听"},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":74,"timestamp":"2026-09-14T08:54:03.558Z","type":"log
+","data":{"message":"可能匹配的波特率","level":"info","fields":{"baud":19200,"printable":1},"source":{"path":"wo
+rkflows/serial_sniff.py","line":81}}},{"runId":"run_43edb89c4ade422b8eb953f3cfa4a0e3","sequence":75,"timestamp":"2026-0
+9-14T08:54:03.629Z","type":"run.completed","data":{"status":"succeeded","result":{"channel":1,"results":[{"baud":2400,"
+bytes":9,"printable":1,"hex":"b7 5d dd ff b7 9a 5d b7 ff","sample":"�]����]��"},{"baud":4800,"bytes":14,"
+printable":1,"hex":"28 a9 ab 55 55 b1 f3 28 a9 ad ab ab 8b d9","sample":"(��UU��(������"},{"baud":9
+600,"bytes":28,"printable":1,"hex":"d5 56 d6 5a f6 76 fb a7 9f a7 9f e5 eb fc d5 56 d6 5a d6 76 fb a7 9f a7 9f e5 eb fc
+","sample":"�V�Z�v���������V�Z�v��������"},{"baud":19200,"bytes":69,"printa
+ble":1,"hex":"66 7e 66 78 7e 9e 7e 9e 78 98 fe 78 98 fe 78 98 fe 78 86 9e fe e0 66 7e 66 78 7e 9e 7e 86 78 98 ","sample
+":"f~fx~�~�x��x��x��x����f~fx~�~�x��x��x��x����f~fx~�~~x��xx~�~
+�x��x����"},{"baud":38400,"bytes":65,"printable":0.969,"hex":"78 78 80 78 78 78 80 f8 78 80 78 78 f8 80 f
+8 f8 80 f8 80 f8 f8 80 f8 80 f8 f8 80 78 80 f8 78 00 ","sample":"xx�xxx��x�xx������������
+�����x��x\u0000xx�xxx��x�������������������x��x\u0000"},{"bau
+d":57600,"bytes":87,"printable":0.655,"hex":"e0 e0 e0 e0 00 e0 e0 e0 00 e0 e0 00 e0 e0 e0 00 e0 00 00 e0 00 e0 e0 00 e0
+ 00 e0 00 e0 e0 00 00 ","sample":"����\u0000���\u0000��\u0000���\u0000�\u0000\u0000�\u0000
+��\u0000�\u0000�\u0000��\u0000\u0000��\u0000�\u0000��\u0000��\u0000���\u0000����
+��\u0000���\u0000��\u0000���\u0000�\u0000�\u0000��\u0000�\u0000��\u0000�\u0000��\u0
+000��\u0000���\u0000"},{"baud":115200,"bytes":90,"printable":0,"hex":"00 00 00 00 00 00 00 00 00 00 00 00 00 
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ","sample":"\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u
+0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\
+u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000
+\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u000
+0\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u00
+00\u0000\u0000"},{"baud":230400,"bytes":98,"printable":0,"hex":"00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 0
+0 00 00 00 00 00 00 00 00 00 00 00 00 00 ","sample":"\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000
+\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u000
+0\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u00
+00\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0
+000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u
+0000\u0000\u0000\u0000\u0000\u0000"}],"best":{"baud":19200,"bytes":69,"printable":1,"hex":"66 7e 66 78 7e 9e 7e 9e 78 9
+8 fe 78 98 fe 78 98 fe 78 86 9e fe e0 66 7e 66 78 7e 9e 7e 86 78 98 ","sample":"f~fx~�~�x��x��x��x��
+����f~fx~�~�x��x��x��x����f~fx~�~~x��xx~�~�x��x����"}}}}],"hasMore":f
+alse}}
+����λ�� ��:1 �ַ�: 159
++ ... tDjP"; $j=Get-Content -LiteralPath $f -Raw | ConvertFrom-Json; $j.dat ...
++                                                  ~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [ConvertFrom-Json], ArgumentException
+    + FullyQualifiedErrorId : System.ArgumentException,Microsoft.PowerShell.Commands.ConvertFromJsonCommand
+ 

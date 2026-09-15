@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import atexit
 import logging
+import math
 import os
 import sys
 from typing import Any, Optional
@@ -185,7 +186,7 @@ def close() -> dict[str, Any]:
 
 @mcp.tool()
 def set_voltage(channel: int, volts: float) -> dict[str, Any]:
-    """Write one AO channel. ACTUATES real voltage. Clamped to ±10 V before SDK call."""
+    """Write one AO channel. ACTUATES real voltage. Reject nonfinite/out-of-range V before SDK call."""
     gate = require_open()
     if gate is not None:
         return gate
@@ -194,7 +195,7 @@ def set_voltage(channel: int, volts: float) -> dict[str, Any]:
     if msg:
         return err(msg, reachable=True)
 
-    if volts < VOLT_MIN or volts > VOLT_MAX:
+    if not math.isfinite(volts) or volts < VOLT_MIN or volts > VOLT_MAX:
         return err(
             f"volts {volts} outside [{VOLT_MIN}, {VOLT_MAX}] V — refused (no clamp-and-write; fix the value)",
             reachable=True,

@@ -32,9 +32,9 @@ describe("public contracts", () => {
     expect(projectFileSchema.safeParse({ ...project, formatVersion: 3 }).success).toBe(false);
   });
 
-  it("validates Python launches without exposing occupancy or context", () => {
-    expect(runStartSchema.parse({ entrypoint: "workflows/main.py" })).toEqual({ entrypoint: "workflows/main.py", inputs: {}, hardwareIds: [] });
-    expect(runStartSchema.safeParse({ entrypoint: "main.py", occupancy: true }).success).toBe(false);
+  it("validates Python launches without exposing runtime context", () => {
+    expect(runStartSchema.parse({ entrypoint: "scripts/main.py" })).toEqual({ entrypoint: "scripts/main.py", inputs: {}, hardwareIds: [] });
+    expect(runStartSchema.safeParse({ entrypoint: "scripts/main.py", context: {} }).success).toBe(false);
   });
 
   it("uses strict named id inputs for IPC procedures", () => {

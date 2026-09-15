@@ -45,15 +45,15 @@ def test_transport_json_success_and_hardware_error(monkeypatch: pytest.MonkeyPat
             "Denied",
             Message(),
             io.BytesIO(
-                b'{"error":{"category":"occupancy_required","message":"hold first",'
+                b'{"error":{"category":"unavailable","message":"device offline",'
                 b'"details":{"id":"a"}}}'
             ),
         )
 
     monkeypatch.setattr(_transport, "urlopen", reject)
-    with pytest.raises(_transport.HardwareHarnessError, match="hold first") as caught:
+    with pytest.raises(_transport.HardwareHarnessError, match="device offline") as caught:
         _transport.request("event", {})
-    assert caught.value.category == "occupancy_required"
+    assert caught.value.category == "unavailable"
     assert caught.value.details == {"id": "a"}
 
 

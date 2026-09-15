@@ -1,0 +1,13 @@
+{
+  "jobId": "5745879c-6095-49c1-9967-33c6f7a25371",
+  "operation": "target_info",
+  "state": "failed",
+  "startedAt": "2026-09-15T10:23:14.78457+08:00",
+  "finishedAt": "2026-09-15T10:23:15.717317+08:00",
+  "error": {
+    "category": "device_unreachable",
+    "message": "Error while running debug sequence 'DebugPortSetup' (core Cortex-M4): SWD/JTAG communication failure (No ACK); check USB cable, reduce debugger clock",
+    "retryable": false
+  },
+  "submittedWithoutLease": true
+}

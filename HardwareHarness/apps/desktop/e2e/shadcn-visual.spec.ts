@@ -36,11 +36,11 @@ test.afterAll(async () => {
   if (referenceServer) await new Promise<void>((resolveClose) => referenceServer!.close(() => resolveClose()));
 });
 
-async function navigateProject(page: Page, view: "设备管理" | "工位接线" | "应用搭建" | "运行日志"): Promise<void> {
+async function navigateProject(page: Page, view: "设备管理" | "工位接线" | "动作编排" | "运行日志"): Promise<void> {
   // The existing compact navigation hides its text below 1100px; order is unchanged.
   const tabs = page.getByRole("tablist", { name: "项目子页面" }).getByRole("tab");
   await expect(tabs).toHaveCount(4);
-  await tabs.nth(["设备管理", "工位接线", "应用搭建", "运行日志"].indexOf(view)).click();
+  await tabs.nth(["设备管理", "工位接线", "动作编排", "运行日志"].indexOf(view)).click();
 }
 
 async function capture(page: Page, group: string, name: string): Promise<void> {
@@ -109,7 +109,7 @@ for (const theme of ["light", "dark", "system"] as const) {
           const pending = await window.hardwareharness.wiring.requestTask({ portA: "DUT_A.J1", portB: "DUT_B.J1", action: "connect", pins: [{ a: "1", b: "1" }] });
           await window.hardwareharness.wiring.startTask(pending.wiringTaskId);
           await window.hardwareharness.wiring.completeTask(pending.wiringTaskId, "confirmed");
-          await window.hardwareharness.applications.createFile({ path: "workflows/visual.py", kind: "file", content: "def main(inputs):\n    return inputs\n" });
+          await window.hardwareharness.applications.createFile({ path: "scripts/visual.py", kind: "file", content: "def main(inputs):\n    return inputs\n" });
           await window.hardwareharness.projects.save();
           await window.hardwareharness.projects.leave();
         }, { theme, projectRoot });
@@ -124,8 +124,8 @@ for (const theme of ["light", "dark", "system"] as const) {
         await navigateProject(page, "设备管理");
         await expect(page.getByRole("treeitem", { name: /DUT_A/ })).toBeVisible();
         await capture(page, group, "devices");
-        await navigateProject(page, "应用搭建");
-        await expect(page.getByRole("button", { name: "新建应用", exact: true })).toBeVisible();
+        await navigateProject(page, "动作编排");
+        await expect(page.getByRole("listbox", { name: "Python 脚本列表" })).toBeVisible();
         await capture(page, group, "applications");
         await navigateProject(page, "运行日志");
         await expect(page.getByRole("heading", { name: "运行日志", exact: true })).toBeVisible();

@@ -21,7 +21,7 @@ async def wait_run(service: AutomationService, run_id: str) -> dict[str, Any]:
 
 
 def script(root: Path, source: str) -> None:
-    path = root / ".hardwareharness" / "workflows" / "main.py"
+    path = root / ".hardwareharness" / "scripts" / "main.py"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(source, encoding="utf-8")
 
@@ -51,7 +51,7 @@ def main(inputs):
     service = AutomationService(lambda: str(tmp_path), invoke, python_provider=python)
     try:
         record = await service.start_run(
-            {"entrypoint": "workflows/main.py", "inputs": {"n": 2}, "hardwareIds": ["board"]}
+            {"entrypoint": "scripts/main.py", "inputs": {"n": 2}, "hardwareIds": ["board"]}
         )
         detail = await wait_run(service, record["runId"])
         assert detail["run"]["status"] == "succeeded", detail
@@ -64,7 +64,7 @@ def main(inputs):
         step_id = next(event["spanId"] for event in events if event["type"] == "step.started")
         assert all(event["spanId"] == step_id for event in events if event["type"] == "stdout")
         script(tmp_path, "def main(inputs): return 0")
-        assert "measure" in await service.read_run_source(record["runId"], "workflows/main.py")
+        assert "measure" in await service.read_run_source(record["runId"], "scripts/main.py")
     finally:
         await service.close()
 
@@ -79,7 +79,7 @@ async def test_worker_rejects_undeclared_hardware_and_records_failure(tmp_path: 
     )
     service = AutomationService(lambda: str(tmp_path), invoke)
     try:
-        run = await service.start_run({"entrypoint": "workflows/main.py", "hardwareIds": []})
+        run = await service.start_run({"entrypoint": "scripts/main.py", "hardwareIds": []})
         detail = await wait_run(service, run["runId"])
         assert detail["run"]["status"] == "failed"
         assert "not declared" in detail["run"]["error"]["message"]
@@ -95,7 +95,7 @@ async def test_validation_does_not_start_process(tmp_path: Path) -> None:
     with pytest.raises(Exception, match="inputs"):
         await service.start_run(
             {
-                "entrypoint": "workflows/main.py",
+                "entrypoint": "scripts/main.py",
                 "inputs": {"n": "bad"},
                 "inputSchema": {"type": "object", "properties": {"n": {"type": "number"}}},
             }
@@ -145,7 +145,7 @@ async def main(inputs):
     )
     service = AutomationService(lambda: str(tmp_path), acquire=acquire)
     try:
-        run = await service.start_run({"entrypoint": "workflows/main.py"})
+        run = await service.start_run({"entrypoint": "scripts/main.py"})
         async with asyncio.timeout(10):
             while not any(e["type"] == "log" for e in await service.run_events(run["runId"])):
                 await asyncio.sleep(0.03)

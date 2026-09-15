@@ -2,14 +2,14 @@ const { app, safeStorage } = require("electron");
 const { createHash } = require("node:crypto");
 const { readFileSync, writeFileSync, mkdirSync, readdirSync, statSync, rmSync, existsSync } = require("node:fs");
 const { join, dirname, relative, resolve, sep } = require("node:path");
-const { pathToFileURL } = require("node:url");
 
 const realHardwareRoot = resolve(__dirname, "..");
 const workspaceRoot = resolve(realHardwareRoot, "..");
-const hardwareHarnessUserData = process.env.HARDWAREHARNESS_USER_DATA
-  || join(process.env.APPDATA, "@hardwareharness", "desktop");
+const hardwareHarnessUserData = process.env.HARDWAREHARNESS_USER_DATA_DIR
+  || process.env.HARDWAREHARNESS_USER_DATA
+  || join(process.env.APPDATA, "HardwareHarness");
 app.setPath("userData", hardwareHarnessUserData);
-const { Client } = require(join(workspaceRoot, "hardwareHarness", "apps", "desktop", "node_modules", "ssh2"));
+const { Client } = require("ssh2");
 const config = JSON.parse(readFileSync(join(realHardwareRoot, "servers.json"), "utf8"));
 
 const sourceExtensions = new Set([
@@ -31,23 +31,21 @@ const localOnlyPreservedFiles = new Set(["server.example.json"]);
 
 function parseArguments(argv) {
   const [action, ...rest] = argv;
-  if (!["inventory", "pull", "deploy", "verify", "occupancy"].includes(action)) {
-    throw new Error("Usage: pull|deploy|verify|inventory|occupancy [--server all|pci1710l|pci1762|pci6208v|cp118u_i] [--skip-tests]");
+  if (!["inventory", "pull", "deploy", "verify"].includes(action)) {
+    throw new Error("Usage: pull|deploy|verify|inventory [--server all|pci1710l|pci1762|pci6208v|cp118u_i] [--skip-tests]");
   }
   let server = "all";
   let skipTests = false;
   let force = false;
-  let forceOccupied = false;
   for (let index = 0; index < rest.length; index += 1) {
     if (rest[index] === "--server") server = rest[++index];
     else if (rest[index] === "--skip-tests") skipTests = true;
     else if (rest[index] === "--force") force = true;
-    else if (rest[index] === "--force-occupied") forceOccupied = true;
     else throw new Error(`Unknown argument: ${rest[index]}`);
   }
   const selected = server === "all" ? config.servers : config.servers.filter((item) => item.id === server);
   if (selected.length === 0) throw new Error(`Unknown server: ${server}`);
-  return { action, selected, skipTests, force, forceOccupied };
+  return { action, selected, skipTests, force };
 }
 
 function psQuote(value) {
@@ -112,34 +110,6 @@ function credentialFromSafeStorage() {
   const password = process.env.HARDWAREHARNESS_REMOTE_PASSWORD;
   if (password) return { kind: "password", password };
   return secretFromSafeStorage(config.computer.credentialKey);
-}
-
-async function readOccupancy(server) {
-  const { token } = secretFromSafeStorage(server.mcpCredentialKey);
-  if (!token) throw new Error(`MCP token is missing for ${server.label}`);
-  const sdkRoot = join(workspaceRoot, "hardwareHarness", "apps", "desktop", "node_modules", "@modelcontextprotocol", "sdk", "dist", "esm", "client");
-  const [{ Client: McpClient }, { StreamableHTTPClientTransport }] = await Promise.all([
-    import(pathToFileURL(join(sdkRoot, "index.js")).href),
-    import(pathToFileURL(join(sdkRoot, "streamableHttp.js")).href)
-  ]);
-  const transport = new StreamableHTTPClientTransport(new URL(server.mcpUrl), {
-    requestInit: { headers: { Authorization: `Bearer ${token}` } }
-  });
-  const client = new McpClient({ name: "hardwareharness-source-deployer", version: "1.0.0" });
-  try {
-    await client.connect(transport);
-    const result = await client.callTool({
-      name: "hardwareharness_hardware_occupancy",
-      arguments: { hardwareId: server.hardwareId, action: "status" }
-    });
-    const structured = result.structuredContent;
-    if (!structured || typeof structured !== "object" || typeof structured.state !== "string") {
-      throw new Error(`Invalid occupancy response from ${server.label}`);
-    }
-    return structured;
-  } finally {
-    await client.close().catch(() => {});
-  }
 }
 
 function connect(credential) {
@@ -280,13 +250,7 @@ async function verifyServer(client, server) {
   console.log(`[verify] ${server.label}: ${local.length} files match`);
 }
 
-async function deployServer(client, sftp, server, skipTests, forceOccupied) {
-  if (!forceOccupied) {
-    const occupancy = await readOccupancy(server);
-    if (occupancy.state === "occupied") {
-      throw new Error(`Hardware is occupied by ${occupancy.holderLabel || "another client"}; release it before deployment or use -ForceOccupied explicitly.`);
-    }
-  }
+async function deployServer(client, sftp, server, skipTests) {
   const localRoot = resolve(realHardwareRoot, "servers", server.id);
   const files = localSourceFiles(localRoot);
   if (files.length === 0) throw new Error(`No source files found for ${server.label}. Run pull.ps1 first.`);
@@ -405,18 +369,11 @@ async function main() {
       }
       return;
     }
-    if (options.action === "occupancy") {
-      for (const server of options.selected) {
-        const occupancy = await readOccupancy(server);
-        console.log(`[occupancy] ${server.label}: ${occupancy.state}${occupancy.holderLabel ? ` (${occupancy.holderLabel})` : ""}`);
-      }
-      return;
-    }
     const failures = [];
     for (const server of options.selected) {
       try {
         if (options.action === "pull") await pullServer(client, sftp, server, options.force);
-        else if (options.action === "deploy") await deployServer(client, sftp, server, options.skipTests, options.forceOccupied);
+        else if (options.action === "deploy") await deployServer(client, sftp, server, options.skipTests);
         else await verifyServer(client, server);
       } catch (error) {
         failures.push(`${server.label}: ${error.message}`);

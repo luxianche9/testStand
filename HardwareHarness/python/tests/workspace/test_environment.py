@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import shutil
 import sys
 from pathlib import Path
@@ -19,7 +20,7 @@ def test_scaffold_does_not_replace_existing_project_code(tmp_path: Path) -> None
     manager = EnvironmentManager()
     manager.scaffold(str(tmp_path))
     assert (root / "pyproject.toml").read_text() == "# user dependencies\n"
-    assert (root / "workflows").is_dir()
+    assert (root / "scripts").is_dir()
     assert not (root / "apps/example").exists()
 
 
@@ -48,14 +49,40 @@ def test_runtime_resolution_does_not_use_pyinstaller_as_python(tmp_path: Path) -
     assert manager._runtime()[0] != sys.executable
 
 
-def test_default_project_pins_sdk_and_web_dependencies(tmp_path: Path) -> None:
+def test_default_project_pins_sdk_and_python_tools(tmp_path: Path) -> None:
     manager = EnvironmentManager()
     manager.scaffold(str(tmp_path))
     text = (tmp_path / ".hardwareharness/pyproject.toml").read_text()
     assert "hardwareharness==0.1.0" in text
-    assert "fastapi==" in text
+    assert "fastapi==" not in text
+    assert "uvicorn==" not in text
     assert "ruff==" in text
     assert manager.info(str(tmp_path))["status"] == "missing"
+
+
+async def test_old_sdk_contract_is_refreshed_without_changing_user_dependency_pins(
+    tmp_path: Path,
+) -> None:
+    manager = RecordingEnvironment(runtime_tree(tmp_path))
+    project = tmp_path / "project"
+    await manager.prepare(str(project))
+    root = project / ".hardwareharness"
+    dependencies = (root / "pyproject.toml").read_bytes()
+    marker = root / ".venv/hardwareharness-environment.json"
+    stale = json.loads(marker.read_bytes())
+    stale.pop("sdkContractRevision")
+    marker.write_text(json.dumps(stale), encoding="utf-8")
+    assert manager.info(str(project))["status"] == "missing"
+    assert manager.info(str(project))["sdkContractRevision"] is None
+    manager.commands.clear()
+    await manager.prepare(str(project))
+    command = manager.commands[-1]
+    assert "--reinstall-package" in command and "--refresh-package" not in command
+    assert "--offline" in command and "--no-index" in command
+    assert (root / "pyproject.toml").read_bytes() == dependencies
+    assert manager.info(str(project))["status"] == "ready"
+    assert manager.info(str(project))["sdkContractRevision"] == "2026-09-15.1"
+    assert json.loads(marker.read_bytes())["sdkContractRevision"] == "2026-09-15.1"
 
 
 class RecordingEnvironment(EnvironmentManager):
@@ -68,6 +95,9 @@ class RecordingEnvironment(EnvironmentManager):
         interpreter = self._venv_python(str(cwd.parent))
         interpreter.parent.mkdir(parents=True, exist_ok=True)
         interpreter.write_bytes(b"python")
+
+    async def _verify_sdk(self, python: str, root: Path) -> None:
+        pass
 
 
 def runtime_tree(tmp_path: Path) -> Path:

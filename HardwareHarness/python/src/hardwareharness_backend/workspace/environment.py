@@ -11,19 +11,21 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from hardwareharness_backend.automation.processes import ProcessJob, terminate_tree
+from hardwareharness_backend.automation.processes import (
+    ProcessJob,
+    create_external_process,
+    terminate_tree,
+)
 from hardwareharness_backend.contracts.errors import AppError
 
 from .files import atomic_write
+from .references import bundled_reference, versions
 
 PROJECT_DEPENDENCIES = (
     "hardwareharness==0.1.0",
-    "fastapi==0.135.1",
-    "uvicorn==0.41.0",
     "ruff==0.15.6",
     "pytest==9.0.2",
     "pytest-asyncio==1.3.0",
-    "httpx==0.28.1",
 )
 PROJECT_TOML = """[project]
 name = "hardwareharness-project"
@@ -72,7 +74,7 @@ class EnvironmentManager:
     def scaffold(self, root_path: str) -> None:
         root = Path(root_path) / ".hardwareharness"
         root.mkdir(parents=True, exist_ok=True)
-        for name in ("workflows", "apps", "tests", "docs"):
+        for name in ("scripts", "tests", "docs"):
             (root / name).mkdir(exist_ok=True)
         target = root / "pyproject.toml"
         if not target.exists():
@@ -86,6 +88,21 @@ class EnvironmentManager:
             source = Path(__file__).parent / "templates" / "sdk-guide.md"
             with guide.open("xb") as stream:
                 stream.write(source.read_bytes())
+        # Immutable release/hash paths keep edited user guides intact across app upgrades.
+        reference = bundled_reference("hh-sdk")
+        release_name = (
+            f"hardwareharness-sdk-{reference['contractRevision']}-{reference['sha256'][:12]}.md"
+        )
+        release_guide = root / "docs" / release_name
+        if not release_guide.exists():
+            atomic_write(release_guide, reference["content"].encode())
+        atomic_write(
+            root / "docs/hardwareharness-reference-index.json",
+            (
+                json.dumps({**versions(), "sdkGuide": release_name, "sha256": reference["sha256"]})
+                + "\n"
+            ).encode(),
+        )
 
     def info(self, root_path: str) -> dict[str, Any]:
         python = self._venv_python(root_path)
@@ -96,6 +113,8 @@ class EnvironmentManager:
             "status": status,
             "pythonPath": str(python) if python.is_file() else None,
             "error": self._error,
+            "requiredSdkContractRevision": versions()["contractRevision"],
+            "sdkContractRevision": self._installed_revision(root_path),
         }
 
     async def python(self, root_path: str) -> str:
@@ -134,9 +153,7 @@ class EnvironmentManager:
     async def _prepare(self, root_path: str, *, online: bool) -> dict[str, Any]:
         async with self._lock:
             if self.busy():
-                raise AppError(
-                    "conflict", "Stop applications and runs before changing dependencies"
-                )
+                raise AppError("conflict", "Stop Python runs before changing dependencies")
             self._preparing, self._error = True, None
             try:
                 python, uv = self._runtime()
@@ -166,13 +183,24 @@ class EnvironmentManager:
                         )
                 if not self._venv_python(root_path).is_file():
                     await self._command([uv, "venv", "--python", python, ".venv"], root)
+                if self._installed_revision(root_path) != versions()["contractRevision"]:
+                    # The version pin is compatible; the release contract may have been upgraded.
+                    # Explicit refresh/reinstall prevents a same-version cached SDK staying stale.
+                    options += [
+                        "--reinstall-package",
+                        "hardwareharness",
+                    ]
+                    if "--offline" not in options:
+                        options += ["--refresh-package", "hardwareharness"]
                 await self._command([uv, "sync", "--python", python, *options], root)
+                await self._verify_sdk(str(self._venv_python(root_path)), root)
                 atomic_write(
                     root / ".venv/hardwareharness-environment.json",
                     (
                         json.dumps(
                             {
                                 "sdkVersion": "0.1.0",
+                                "sdkContractRevision": versions()["contractRevision"],
                                 "python": "3.11",
                                 "dependencyHash": self._dependency_hash(root),
                             }
@@ -201,6 +229,22 @@ class EnvironmentManager:
             raise AppError("unavailable", "uv is required to prepare the project environment")
         return sys.executable, uv_path
 
+    async def _verify_sdk(self, python: str, root: Path) -> None:
+        revision = versions()["contractRevision"]
+        # Isolated mode ignores the backend's PYTHONPATH and the project's current directory.
+        await self._command(
+            [
+                python,
+                "-I",
+                "-c",
+                "import inspect, hardwareharness as hh; "
+                f"assert getattr(hh, '__contract_revision__', None) == {revision!r}, "
+                "'Installed SDK does not match the required HH contract'; "
+                "assert 'result_mode' in inspect.signature(hh.call).parameters",
+            ],
+            root,
+        )
+
     @staticmethod
     def _venv_python(root_path: str) -> Path:
         return (
@@ -226,14 +270,27 @@ class EnvironmentManager:
             value = json.loads(marker.read_bytes())
         except (json.JSONDecodeError, UnicodeError):
             return False
-        return isinstance(value, dict) and value.get("dependencyHash") == self._dependency_hash(
-            root
+        return (
+            isinstance(value, dict)
+            and value.get("sdkContractRevision") == versions()["contractRevision"]
+            and value.get("dependencyHash") == self._dependency_hash(root)
         )
 
+    @staticmethod
+    def _installed_revision(root_path: str) -> str | None:
+        marker = Path(root_path) / ".hardwareharness/.venv/hardwareharness-environment.json"
+        try:
+            value = json.loads(marker.read_bytes())
+        except (OSError, ValueError, UnicodeError):
+            return None
+        revision = value.get("sdkContractRevision") if isinstance(value, dict) else None
+        return revision if isinstance(revision, str) else None
+
     async def _command(self, command: list[str], cwd: Path) -> None:
-        process = await asyncio.create_subprocess_exec(
+        process = await create_external_process(
             *command,
             cwd=cwd,
+            stdin=asyncio.subprocess.DEVNULL,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,

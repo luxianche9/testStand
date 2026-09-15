@@ -1,0 +1,272 @@
+"""Mock-hardware tests for the STM32 HIL workflow.
+
+The workflow talks to hardware only through the module-level ``call`` symbol, so a
+fake device model can replace ``call``/``step``/``log``/``measurement``/``attachment``
+and exercise the full control flow - sweep, decision branches, error paths and
+input validation - without touching the bench.
+"""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+from types import ModuleType
+from typing import Any
+
+import pytest
+
+MODULE_PATH = Path(__file__).resolve().parents[1] / "workflows" / "hil_hardware_test.py"
+
+
+def load_workflow() -> ModuleType:
+    spec = importlib.util.spec_from_file_location("hil_workflow", MODULE_PATH)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+class NullStep:
+    def __enter__(self) -> NullStep:
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        return None
+
+
+class FakeHardware:
+    """A deterministic stand-in for FireDAP + CP-118U + PCI-6208V + PCI-1710L."""
+
+    def __init__(
+        self,
+        module: ModuleType,
+        *,
+        gain: float = 1.0,
+        offset_mv: float = 0.0,
+        di_stuck: int | None = None,
+        respond: bool = True,
+        raw_max: int = 4095,
+        vref_mv: float = 3300.0,
+    ) -> None:
+        self.module = module
+        self.gain = gain
+        self.offset_mv = offset_mv
+        self.di_stuck = di_stuck
+        self.respond = respond
+        self.raw_max = raw_max
+        self.vref_mv = vref_mv
+        self.rx = ""
+        self.last_volts = 0.0
+        self.di_level = 0
+        self.calls: list[tuple[str, dict[str, Any]]] = []
+
+    def __call__(
+        self,
+        hardware_id: str,
+        tool_name: str,
+        arguments: dict[str, Any],
+        *,
+        timeout_ms: int | None = None,
+    ) -> Any:
+        self.calls.append((tool_name, arguments))
+        handler = getattr(self, "_tool_" + tool_name.split("__", 1)[1])
+        return handler(arguments)
+
+    # FireDAP -----------------------------------------------------------------
+    def _tool_firedap_inspect_firmware(self, arguments: dict[str, Any]) -> Any:
+        path = Path(arguments["path"])
+        return {"sha256": self.module._sha256(path), "programBytes": path.stat().st_size}
+
+    def _tool_firedap_flash(self, arguments: dict[str, Any]) -> Any:
+        return {"jobId": "job-flash", "state": "running"}
+
+    def _tool_firedap_target_info(self, arguments: dict[str, Any]) -> Any:
+        return {"jobId": "job-target", "state": "running"}
+
+    def _tool_firedap_wait_job(self, arguments: dict[str, Any]) -> Any:
+        if arguments["job_id"] == "job-flash":
+            return {
+                "jobId": "job-flash",
+                "state": "succeeded",
+                "result": {"verified": True, "verifiedBytes": 2048, "uid": ["0x1", "0x2", "0x3"]},
+            }
+        return {
+            "jobId": "job-target",
+            "state": "succeeded",
+            "result": {"target": "stm32f407zg", "deviceId": "0x413"},
+        }
+
+    # CP-118U-I ---------------------------------------------------------------
+    def _tool_cp118u_configure_port(self, arguments: dict[str, Any]) -> Any:
+        return {"channel": arguments["channel"], "baud": arguments["baud"]}
+
+    def _tool_cp118u_clear_rx(self, arguments: dict[str, Any]) -> Any:
+        self.rx = ""
+        return {"channel": arguments["channel"]}
+
+    def _tool_cp118u_write_text(self, arguments: dict[str, Any]) -> Any:
+        text = arguments["text"]
+        if self.respond:
+            self._fake_firmware(text)
+        return {"channel": arguments["channel"], "bytes": len(text)}
+
+    def _tool_cp118u_read_rx(self, arguments: dict[str, Any]) -> Any:
+        return {"channel": arguments["channel"], "bytes": len(self.rx), "text": self.rx}
+
+    # PCI-6208V ---------------------------------------------------------------
+    def _tool_pci6208v_set_voltage(self, arguments: dict[str, Any]) -> Any:
+        self.last_volts = float(arguments["volts"])
+        return {"channel": arguments["channel"], "volts": self.last_volts}
+
+    def _tool_pci6208v_safe_state(self, arguments: dict[str, Any]) -> Any:
+        self.last_volts = 0.0
+        return {"safe_volts": 0.0}
+
+    # PCI-1710L ---------------------------------------------------------------
+    def _tool_pci1710l_configure_ai(self, arguments: dict[str, Any]) -> Any:
+        return {"channel": arguments["channel"], "value_range": arguments.get("value_range", 1)}
+
+    def _tool_pci1710l_read_voltage(self, arguments: dict[str, Any]) -> Any:
+        return {"channel": arguments["channel"], "volts": self.last_volts}
+
+    def _tool_pci1710l_read_bit(self, arguments: dict[str, Any]) -> Any:
+        value = bool(self.di_stuck) if self.di_stuck is not None else bool(self.di_level)
+        kind = arguments.get("kind", "DI")
+        return {"kind": kind, "channel": arguments["channel"], "value": value}
+
+    def _tool_pci1710l_safe_state(self, arguments: dict[str, Any]) -> Any:
+        return {"safe_do_mask": 0}
+
+    # Firmware protocol -------------------------------------------------------
+    def _fake_firmware(self, text: str) -> None:
+        command = text.strip()
+        if command == "PING":
+            self.rx += "PONG\r\n"
+        elif command in {"ID?", "ID"}:
+            self.rx += "ID,STM32F407-HIL,1.0.0,b1\r\n"
+        elif command in {"ADC?", "ADC"}:
+            mv = self.gain * self.last_volts * 1000.0 + self.offset_mv
+            raw = max(0, min(self.raw_max, round(mv / self.vref_mv * self.raw_max)))
+            uart_mv = round(raw * self.vref_mv / self.raw_max)
+            self.rx += f"ADC,{raw},{uart_mv}\r\n"
+        elif command.startswith("STAT"):
+            self.di_level = 1 if command.split()[-1] != "0" else 0
+            self.rx += f"STAT,{self.di_level}\r\n"
+        elif command.startswith("TLM"):
+            self.rx += f"TLM,{command.split()[-1]}\r\n"
+
+
+def _install_fakes(module: ModuleType, monkeypatch: pytest.MonkeyPatch) -> dict[str, list]:
+    recorded = {"logs": [], "measurements": [], "attachments": []}
+    monkeypatch.setattr(module, "step", lambda name: NullStep())
+    monkeypatch.setattr(module, "log", lambda message, **kwargs: recorded["logs"].append(message))
+    monkeypatch.setattr(
+        module,
+        "measurement",
+        lambda name, value, **kwargs: recorded["measurements"].append((name, value)),
+    )
+    monkeypatch.setattr(
+        module, "attachment", lambda path, **kwargs: recorded["attachments"].append(str(path))
+    )
+    return recorded
+
+
+def _firmware(tmp_path: Path) -> Path:
+    path = tmp_path / "hil_demo.bin"
+    path.write_bytes(bytes(range(256)) * 4)
+    return path
+
+
+def test_input_validation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    module = load_workflow()
+    _install_fakes(module, monkeypatch)
+    with pytest.raises(ValueError, match="protected"):
+        module.main({"firmware": str(_firmware(tmp_path)), "scan_volts": "0,3.5"})
+    with pytest.raises(ValueError, match="scan_volts"):
+        module.main({"firmware": str(_firmware(tmp_path)), "scan_volts": " , "})
+    with pytest.raises(ValueError, match="settle_ms"):
+        module.main({"firmware": str(_firmware(tmp_path)), "settle_ms": 5})
+    with pytest.raises(ValueError, match="Firmware file not found"):
+        module.main({"firmware": str(tmp_path / "missing.bin")})
+
+
+def test_happy_path_passes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    module = load_workflow()
+    recorded = _install_fakes(module, monkeypatch)
+    fake = FakeHardware(module)
+    monkeypatch.setattr(module, "call", fake)
+    monkeypatch.chdir(tmp_path)
+
+    result = module.main(
+        {
+            "firmware": str(_firmware(tmp_path)),
+            "scan_volts": "0,1.0,2.0,3.0",
+            "tolerance_mv": 100,
+            "settle_ms": 50,
+        }
+    )
+
+    assert result["passed"] is True
+    assert result["gain"] == pytest.approx(1.0, abs=0.02)
+    assert result["firmware_id"] == "STM32F407-HIL"
+    assert [point["set_mv"] for point in result["sweep"]] == [0, 1000, 2000, 3000]
+    assert all(item["set"] == item["read"] for item in result["digital_readback"])
+    assert recorded["attachments"], "sweep CSV must be attached to the run"
+    assert not list(tmp_path.glob("*.csv")), "temporary CSV must be removed after attach"
+
+
+def test_gain_fault_fails_judgement(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    module = load_workflow()
+    _install_fakes(module, monkeypatch)
+    fake = FakeHardware(module, gain=0.6)
+    monkeypatch.setattr(module, "call", fake)
+    monkeypatch.chdir(tmp_path)
+
+    result = module.main(
+        {"firmware": str(_firmware(tmp_path)), "scan_volts": "0,1.0,2.0,3.0", "tolerance_mv": 100}
+    )
+
+    assert result["passed"] is False
+    assert result["max_error_mv"] > 100
+
+
+def test_stuck_digital_output_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    module = load_workflow()
+    _install_fakes(module, monkeypatch)
+    fake = FakeHardware(module, di_stuck=0)
+    monkeypatch.setattr(module, "call", fake)
+    monkeypatch.chdir(tmp_path)
+
+    result = module.main({"firmware": str(_firmware(tmp_path)), "scan_volts": "0,3.0"})
+
+    assert result["passed"] is False
+    assert result["digital_readback"] == [{"set": 1, "read": 0}, {"set": 0, "read": 0}]
+
+
+def test_silent_serial_raises(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    module = load_workflow()
+    _install_fakes(module, monkeypatch)
+    fake = FakeHardware(module, respond=False)
+    monkeypatch.setattr(module, "call", fake)
+    monkeypatch.chdir(tmp_path)
+
+    with pytest.raises(RuntimeError, match="PONG"):
+        module.main({"firmware": str(_firmware(tmp_path)), "scan_volts": "0,1.0"})
+
+
+def test_fit_recovers_slope() -> None:
+    module = load_workflow()
+    points = [{"set_mv": x, "uart_mv": 2 * x + 10} for x in range(0, 3000, 500)]
+    slope, intercept = module._fit(points)
+    assert slope == pytest.approx(2.0, abs=1e-6)
+    assert intercept == pytest.approx(10.0, abs=1e-6)
+
+
+def test_line_with_prefix() -> None:
+    module = load_workflow()
+    assert module._line_with_prefix("noise\r\nADC,12,34\r\n", "ADC,") == "ADC,12,34"
+    assert module._line_with_prefix("nothing here", "ADC,") == ""

@@ -26,12 +26,9 @@ describe("preload API", () => {
     void api.applications.listFiles(); void api.applications.readFile("a.py"); void api.applications.writeFile({ path: "a.py", content: "", expectedHash: "h" });
     void api.applications.createFile({ path: "a.py", kind: "file" }); void api.applications.renameFile({ path: "a.py", target: "b.py" }); void api.applications.deleteFile("b.py");
     void api.applications.search("x"); void api.applications.diagnostics("a.py"); void api.applications.initializeWorkspace();
-    void api.applications.listApps(); void api.applications.createApp("demo", "Demo"); void api.applications.startApp("demo"); void api.applications.stopApp("demo"); void api.applications.appLogs("demo");
     void api.applications.startRun({ entrypoint: "a.py" }); void api.applications.cancelRun("R"); void api.applications.getRun("R"); void api.applications.listRuns();
     void api.applications.runEvents("R"); void api.applications.exportRun("R"); void api.applications.deleteRun("R"); void api.applications.clearCompletedRuns(); void api.applications.readRunSource("R", "a.py"); void api.applications.readRunAttachment("R", "a.csv");
     void api.manual.invokeTool({ hardwareId: "H", toolName: "S__write", arguments: { value: 1 } });
-    void api.occupancy.list(); void api.occupancy.acquire("H"); void api.occupancy.release("H"); void api.occupancy.listRequests();
-    void api.occupancy.acquireRequest("O"); void api.occupancy.rejectRequest("O"); void api.occupancy.cancelRequest("O");
     void api.agents.rotateGatewayToken(); void api.agents.status("codex"); void api.agents.preview("codex"); void api.agents.install("codex");
     void api.agents.remove("codex"); void api.agents.test("codex"); void api.agents.listTools(); void api.agents.openCodeStatus(); void api.agents.startOpenCode(); void api.agents.stopOpenCode(); void api.agents.restartOpenCode();
     void api.settings.getTheme(); void api.settings.setTheme("system"); void api.settings.getProjectView(); void api.settings.setProjectView("wiring");
@@ -44,7 +41,7 @@ describe("preload API", () => {
     expect(new Set(calls.map((call) => call.replace(/\.(query|mutate|subscribe)$/, ""))))
       .toEqual(new Set([...flattenProcedurePaths(HARDWAREHARNESS_IPC), "events.subscribe"]));
     expect(unsubscribe).toHaveBeenCalledOnce();
-    expect(Object.keys(api)).toEqual(["system", "devices", "projects", "wiring", "applications", "manual", "occupancy", "agents", "settings", "window", "events"]);
+    expect(Object.keys(api)).toEqual(["system", "devices", "projects", "wiring", "applications", "manual", "agents", "settings", "window", "events"]);
   });
 
   it("restores the domain error category from a tRPC client error", async () => {

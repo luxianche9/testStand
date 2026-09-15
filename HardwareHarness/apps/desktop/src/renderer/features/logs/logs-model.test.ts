@@ -6,7 +6,7 @@ function run(overrides: Partial<RunRecord> = {}): RunRecord {
   return {
     runId: "RUN1",
     name: "通信握手测试",
-    entrypoint: "workflows/main.py", hardwareIds: [], eventCount: 0, sourcePath: "snapshot",
+    entrypoint: "scripts/main.py", hardwareIds: [], eventCount: 0, sourcePath: "snapshot",
     status: "succeeded",
     inputs: {},
     startedAt: "2026-08-18T05:51:08.000Z",

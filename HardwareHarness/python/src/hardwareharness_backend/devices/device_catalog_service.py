@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from hardwareharness_backend.compat import json_stringify
+from hardwareharness_backend.contracts.errors import app_error
 
 from .device_store import DeviceStore
 
@@ -57,12 +58,46 @@ class DeviceCatalogService:
             self._port_index_signature = signature
         if port_ref in self._port_index:
             return self._port_index[port_ref]
-        first, separator, rest = port_ref.partition(".")
-        if separator and first and any(item["hardwareId"] == first for item in hardware):
-            raise RuntimeError(f"Hardware {first} has no port {rest}")
-        raise RuntimeError(f"No hardware matches port reference {port_ref}")
+        matches = [
+            (ref, item)
+            for ref, item in self._port_index.items()
+            if port_ref
+            in {
+                item["port"]["portId"],
+                f"{item['hardware']['hardwareId']}."
+                + item["port"]["portId"].removeprefix(item["hardware"]["hardwareId"] + "."),
+            }
+        ]
+        if len(matches) == 1:
+            return matches[0][1]
+        prefix = next(
+            (
+                item["hardwareId"]
+                for item in sorted(hardware, key=lambda item: len(item["hardwareId"]), reverse=True)
+                if port_ref.startswith(item["hardwareId"] + ".")
+            ),
+            None,
+        )
+        message = (
+            f"Ambiguous port reference: {port_ref}"
+            if matches
+            else f"Hardware {prefix} has no port {port_ref[len(prefix) + 1 :]}"
+            if prefix
+            else f"No hardware matches port reference {port_ref}"
+        )
+        raise app_error(
+            "conflict" if matches else "not_found",
+            message,
+            {
+                "endpointRef": port_ref,
+                "candidates": [ref for ref, _ in matches],
+                "recovery": "Read get_hardware_definition and copy ports[].endpointRef exactly.",
+            },
+        )
 
     def validate_pins(self, port_a: str, port_b: str, pins: list[Record]) -> None:
+        if port_a == port_b and (not pins or any(pin["a"] == pin["b"] for pin in pins)):
+            raise app_error("invalid_argument", "Same-port wiring requires distinct pin pairs")
         a = self.resolve_port(port_a)["port"]
         b = self.resolve_port(port_b)["port"]
         known_a = {pin["pinId"] for pin in a["pins"]}
@@ -70,17 +105,29 @@ class DeviceCatalogService:
         seen = set()
         for pair in pins:
             if pair["a"] not in known_a:
-                raise RuntimeError(f"Port {port_a} has no pin {pair['a']}")
+                raise app_error(
+                    "invalid_argument",
+                    f"Port {port_a} has no pin {pair['a']}",
+                    {"validPinIds": sorted(known_a), "endpointRef": port_a},
+                )
             if pair["b"] not in known_b:
-                raise RuntimeError(f"Port {port_b} has no pin {pair['b']}")
-            key = (pair["a"], pair["b"])
+                raise app_error(
+                    "invalid_argument",
+                    f"Port {port_b} has no pin {pair['b']}",
+                    {"validPinIds": sorted(known_b), "endpointRef": port_b},
+                )
+            key = (
+                tuple(sorted((pair["a"], pair["b"])))
+                if port_a == port_b
+                else (pair["a"], pair["b"])
+            )
             if key in seen:
-                raise RuntimeError(f"Duplicate pin pair {pair['a']} - {pair['b']}")
+                raise app_error("invalid_argument", f"Duplicate pin pair {pair['a']} - {pair['b']}")
             seen.add(key)
 
     def warnings_for_ports(self, port_a: str, port_b: str) -> list[str]:
         warnings = []
-        for reference in [port_a, port_b]:
+        for reference in dict.fromkeys([port_a, port_b]):
             try:
                 resolved = self.resolve_port(reference)
                 hardware, port = resolved["hardware"], resolved["port"]

@@ -7,7 +7,6 @@ from hardwareharness_backend.compat import js_string, json_parse, now_ms, utc_no
 from hardwareharness_backend.contracts.devices import parse_mcp_server, parse_remote_computer
 from hardwareharness_backend.contracts.errors import app_error
 
-from .hardware_occupancy import HardwareOccupancyManager
 from .local_shell import execute_local_shell
 from .remote_shell import remote_shell_for
 from .ssh import SshManager
@@ -19,7 +18,6 @@ class DeviceService:
     def __init__(self, store: Any, secrets: Any, transports: Any) -> None:
         self.store, self.secrets, self.transports = store, secrets, transports
         self.ssh: Any = SshManager(secrets)
-        self.occupancy = HardwareOccupancyManager(store, transports)
         self._computer_refreshes: dict[str, asyncio.Task[Record]] = {}
         self._server_refreshes: dict[str, asyncio.Task[Record]] = {}
         self._statuses: dict[str, Record] = {}
@@ -47,9 +45,6 @@ class DeviceService:
 
     def list_tools(self) -> list[Record]:
         return list(self.transports.list_tools())
-
-    def is_hardware_occupied(self, hardware_id: str) -> bool:
-        return self.occupancy.is_held(hardware_id)
 
     async def call_tool(self, name: str, args: Record, options: Record | None = None) -> Any:
         return await self.call_aggregated_tool(name, args, options)
@@ -214,7 +209,6 @@ class DeviceService:
                 "checkedAt": utc_now_iso(),
                 **({"message": last_error["message"]} if last_error.get("message") else {}),
             }
-            await self.occupancy.refresh(hardware_id)
         except Exception as error:
             status["transport"] = {
                 "state": "offline",
@@ -343,11 +337,6 @@ class DeviceService:
         if not tool:
             raise RuntimeError(f"Unknown aggregated tool: {external_name}")
         server = self._require_server(tool["serverId"])
-        lease = (
-            self.occupancy.require_lease(server["hardwareId"])
-            if tool["kind"] == "hardware"
-            else None
-        )
         options = options or {}
         return await self.transports.call_tool(
             external_name,
@@ -357,13 +346,11 @@ class DeviceService:
                 "metadata": {
                     **options.get("metadata", {}),
                     "hardwareId": server["hardwareId"],
-                    **({"occupancyLeaseId": lease} if lease else {}),
                 },
             },
         )
 
     async def close(self) -> None:
-        await self.occupancy.close()
         await self.ssh.close()
 
 

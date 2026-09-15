@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { Background, BackgroundVariant, ConnectionMode, ReactFlow } from "@xyflow/react";
-import { SmartSmoothStepEdge } from "@tisoap/react-flow-smart-edge";
 import type { Hardware } from "@hardwareharness/contracts/devices";
 import type { RecentProjectSummary } from "@hardwareharness/contracts/projects";
 import { wiringNodeTypes } from "./WiringCanvas.js";
@@ -15,7 +14,6 @@ import {
   type TopologyEdge
 } from "./wiring-model.js";
 
-const previewEdgeTypes = { smart: SmartSmoothStepEdge };
 const noopMovePort = () => undefined;
 const noopResizeNode = () => undefined;
 
@@ -28,7 +26,6 @@ export function TopologyPreview({ project, hardware, compact }: { project: Recen
           nodes={topology.nodes}
           edges={topology.edges}
           nodeTypes={wiringNodeTypes}
-          edgeTypes={previewEdgeTypes}
           connectionMode={ConnectionMode.Loose}
           fitView
           fitViewOptions={{ padding: compact ? 0.08 : 0.16, minZoom: 0.1, maxZoom: compact ? 0.75 : 1 }}
@@ -88,6 +85,7 @@ function buildPreviewTopology(project: RecentProjectSummary, hardware: Hardware[
     };
   });
   const edges: TopologyEdge[] = project.preview.connections.flatMap((connection) => {
+    if (connection.portA === connection.portB) return [];
     const a = splitPortRef(connection.portA, nodes.map((node) => node.data.hardware));
     const b = splitPortRef(connection.portB, nodes.map((node) => node.data.hardware));
     if (!a || !b) return [];
@@ -97,7 +95,7 @@ function buildPreviewTopology(project: RecentProjectSummary, hardware: Hardware[
       sourceHandle: a.portId,
       target: b.hardwareId,
       targetHandle: b.portId,
-      type: "smart",
+      type: "step",
       className: "wiring-flow-edge",
       selectable: false,
       focusable: false,

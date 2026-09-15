@@ -12,6 +12,7 @@ import uuid
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
 
+from hardwareharness_backend.automation.processes import create_external_process
 from hardwareharness_backend.contracts.errors import AppError
 
 Record = dict[str, Any]
@@ -88,11 +89,24 @@ def atomic_write(path: Path, data: bytes) -> None:
 class WorkspaceService:
     def __init__(self, root_path: str) -> None:
         self.root = Path(root_path).resolve() / ".hardwareharness"
+        self.scripts = self.root / "scripts"
         self._lock = threading.RLock()
 
+    @staticmethod
+    def _script_path(path: str, *, directory: bool = False) -> None:
+        parts = PurePosixPath(path).parts
+        if not parts or parts[0].casefold() != "scripts":
+            raise AppError("invalid_argument", "Python programs must be stored under scripts/")
+        if len(parts) == 1:
+            if directory:
+                return
+            raise AppError("invalid_argument", "Select a Python script under scripts/")
+        if not directory and not path.casefold().endswith(".py"):
+            raise AppError("invalid_argument", "The scripts directory only accepts .py files")
+
     def tree(self) -> list[Record]:
-        result: list[Record] = []
-        if not self.root.exists():
+        result: list[Record] = [{"path": "scripts", "name": "scripts", "kind": "directory"}]
+        if not self.scripts.exists():
             return result
 
         def visit(directory: Path) -> None:
@@ -100,6 +114,8 @@ class WorkspaceService:
                 directory.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower())
             ):
                 if child.name.casefold() in HIDDEN or child.name.endswith(".tmp"):
+                    continue
+                if child.is_file() and child.suffix.casefold() != ".py":
                     continue
                 relative = child.relative_to(self.root).as_posix()
                 try:
@@ -113,10 +129,11 @@ class WorkspaceService:
                 if child.is_dir():
                     visit(child)
 
-        visit(self.root)
+        visit(self.scripts)
         return result
 
     def read(self, path: str) -> Record:
+        self._script_path(path)
         target = source_path(self.root, path)
         if not target.is_file():
             raise AppError("not_found", f"File does not exist: {path}")
@@ -132,6 +149,7 @@ class WorkspaceService:
         return {"path": path, "content": content, "hash": hashlib.sha256(data).hexdigest()}
 
     def write(self, path: str, content: str, expected_hash: str) -> Record:
+        self._script_path(path)
         target = source_path(self.root, path, writable=True)
         data = self._encode(content)
         with self._lock:
@@ -143,6 +161,7 @@ class WorkspaceService:
 
     def create(self, path: str, kind: str, content: str = "") -> Record:
         target = source_path(self.root, path, writable=True)
+        self._script_path(path, directory=kind == "directory")
         with self._lock:
             if target.exists():
                 raise AppError("conflict", f"Path already exists: {path}")
@@ -158,7 +177,10 @@ class WorkspaceService:
         return self.read(path)
 
     def rename(self, path: str, target_path: str) -> Record:
-        source = source_path(self.root, path, writable=True)
+        source_target = source_path(self.root, path, writable=True)
+        self._script_path(path, directory=source_target.is_dir())
+        self._script_path(target_path, directory=source_target.is_dir())
+        source = source_target
         target = source_path(self.root, target_path, writable=True)
         with self._lock:
             if not source.exists():
@@ -175,6 +197,7 @@ class WorkspaceService:
 
     def delete(self, path: str) -> None:
         target = source_path(self.root, path, writable=True)
+        self._script_path(path, directory=target.is_dir())
         with self._lock:
             if not target.exists():
                 raise AppError("not_found", f"Path does not exist: {path}")
@@ -214,9 +237,8 @@ class WorkspaceService:
         return digest.hexdigest()
 
     def syntax_diagnostics(self, path: str, content: str | None = None) -> list[Record]:
+        self._script_path(path)
         source_path(self.root, path)
-        if not path.endswith(".py"):
-            return []
         text = str(self.read(path)["content"]) if content is None else content
         try:
             ast.parse(text, filename=path)
@@ -237,10 +259,10 @@ class WorkspaceService:
         self, path: str, content: str | None = None, *, python: str | None = None
     ) -> list[Record]:
         diagnostics = self.syntax_diagnostics(path, content)
-        if diagnostics or not path.endswith(".py") or python is None:
+        if diagnostics or python is None:
             return diagnostics
         text = str(self.read(path)["content"]) if content is None else content
-        process = await asyncio.create_subprocess_exec(
+        process = await create_external_process(
             python,
             "-m",
             "ruff",

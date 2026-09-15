@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import inspect
 import os
 from dataclasses import dataclass
@@ -10,20 +11,18 @@ from typing import Any
 from hardwareharness_backend.compat import clone, json_parse
 from hardwareharness_backend.contracts.devices import hardware_schema
 from hardwareharness_backend.contracts.errors import app_error
-from hardwareharness_backend.contracts.occupancy import (
-    occupancy_request_list_query_schema,
-    request_hardware_occupancy_input_schema,
-)
 from hardwareharness_backend.contracts.validation import (
     Schema,
     array,
     boolean,
     custom_issue,
+    enum,
     number,
     obj,
     parse_record,
     record,
     string,
+    union,
     unknown,
 )
 from hardwareharness_backend.contracts.wiring import (
@@ -32,13 +31,22 @@ from hardwareharness_backend.contracts.wiring import (
     wiring_task_status_schema,
 )
 
+from .agent_services import AGENT_ARGUMENT_SCHEMAS, AGENT_TOOL_DEFINITIONS, invoke_agent_tool
+from .contract_tools import (
+    CONTRACT_ARGUMENT_SCHEMAS,
+    CONTRACT_TOOL_DEFINITIONS,
+    import_firmware,
+    read_tool_contract,
+)
+from .public_contracts import public_remote_tool, with_error_schema
+
 Record = dict[str, Any]
 _EMPTY = obj({}, strict=True)
 _COMPUTER_ID = obj({"computerId": string(1)}, strict=True)
 _SERVER_ID = obj({"serverId": string(1)}, strict=True)
 _HARDWARE_ID = obj({"hardwareId": string(1)}, strict=True)
 _WIRING_TASK_ID = obj({"wiringTaskId": string(1)}, strict=True)
-_OCCUPANCY_REQUEST_ID = obj({"occupancyRequestId": string(1)}, strict=True)
+_ENDPOINT = union(string(1), obj({"hardwareId": string(1), "portId": string(1)}, strict=True))
 _ARGUMENT_SCHEMAS: dict[str, Schema] = {
     "get_project": _EMPTY,
     "save_project": _EMPTY,
@@ -89,17 +97,11 @@ _ARGUMENT_SCHEMAS: dict[str, Schema] = {
     "remove_hardware_image": obj(
         {"hardwareId": string(1), "portId": string(1).optional()}, strict=True
     ),
-    "request_hardware_occupancy": request_hardware_occupancy_input_schema,
-    "cancel_hardware_occupancy_request": obj(
-        {"occupancyRequestId": string(1), "message": string().optional()}, strict=True
-    ),
-    "get_hardware_occupancy_request": _OCCUPANCY_REQUEST_ID,
-    "list_hardware_occupancy_requests": occupancy_request_list_query_schema,
     "add_managed_hardware_to_canvas": _HARDWARE_ID,
     "request_wiring_task": obj(
         {
-            "portA": string(1),
-            "portB": string(1),
+            "portA": _ENDPOINT,
+            "portB": _ENDPOINT,
             "pins": array(pin_pair_schema).default([]),
             "action": wiring_action_schema,
             "timeoutMs": number(1000, 86_400_000, integer=True).default(1_800_000),
@@ -123,13 +125,6 @@ _ARGUMENT_SCHEMAS: dict[str, Schema] = {
         {"path": string(1), "content": string(), "expectedHash": string()}, strict=True
     ),
     "initialize_workspace": obj({"online": boolean().default(False)}, strict=True),
-    "list_applications": obj({}, strict=True),
-    "create_application": obj({"id": string(1), "name": string(1)}, strict=True),
-    "start_application": obj({"id": string(1)}, strict=True),
-    "stop_application": obj({"id": string(1)}, strict=True),
-    "get_application_logs": obj(
-        {"id": string(1), "after": number(0, None, integer=True).default(0)}, strict=True
-    ),
     "validate_python_file": obj({"path": string(1)}, strict=True),
     "start_python_run": obj(
         {
@@ -145,9 +140,12 @@ _ARGUMENT_SCHEMAS: dict[str, Schema] = {
     "get_python_run": obj({"runId": string(1)}, strict=True),
     "list_python_runs": obj(
         {
-            "limit": number(1, 10000, integer=True).default(1000),
+            "limit": number(1, 10000, integer=True).default(100),
             "search": string().optional(),
-            "applicationId": string().optional(),
+            "offset": number(0, None, integer=True).default(0),
+            "status": enum(
+                "running", "cancelling", "succeeded", "failed", "cancelled", "interrupted"
+            ).optional(),
         },
         strict=True,
     ),
@@ -160,6 +158,8 @@ _ARGUMENT_SCHEMAS: dict[str, Schema] = {
         strict=True,
     ),
 }
+_ARGUMENT_SCHEMAS.update(AGENT_ARGUMENT_SCHEMAS)
+_ARGUMENT_SCHEMAS.update(CONTRACT_ARGUMENT_SCHEMAS)
 
 
 @dataclass
@@ -171,10 +171,24 @@ class GatewayToolDefinition:
         return parse_record(_ARGUMENT_SCHEMAS[self.tool["name"]], value)
 
     async def execute(self, application: Any, context: Record, value: Record) -> Record:
+        name = self.tool["name"]
+        if name in AGENT_ARGUMENT_SCHEMAS:
+            return {"ok": True, "data": await invoke_agent_tool(application, context, name, value)}
+        if name == "import_firmware_artifact":
+            return {"ok": True, "data": await import_firmware(application, context, value)}
+        if name == "request_wiring_task":
+            value = dict(value)
+            for key in ("portA", "portB"):
+                if isinstance(value[key], dict):
+                    value[key] = f"{value[key]['hardwareId']}.{value[key]['portId']}"
         handler, arguments = _handler_arguments(application, context, self.tool["name"], value)
         data = handler(*arguments)
         if inspect.isawaitable(data):
             data = await data
+        if name in {"list_hardware_catalog", "list_managed_hardware"} and isinstance(data, list):
+            data = [_with_endpoints(item) for item in data]
+        elif name == "get_hardware_definition" and isinstance(data, dict):
+            data = _with_endpoints(data)
         return {"ok": True, "data": data}
 
 
@@ -183,6 +197,18 @@ BUILTIN_TOOL_DEFINITIONS = [
     for resource in ("project_tools.json", "builtin_tools.json")
     for item in json_parse(files(__package__).joinpath(resource).read_text("utf-8"))
 ]
+BUILTIN_TOOL_DEFINITIONS.extend(
+    GatewayToolDefinition(item["tool"], item["capability"])
+    for item in [*AGENT_TOOL_DEFINITIONS, *CONTRACT_TOOL_DEFINITIONS]
+)
+
+
+def _with_endpoints(hardware: Record) -> Record:
+    result = clone(hardware)
+    for port in result.get("ports", []):
+        port["endpointRef"] = f"{result['hardwareId']}.{port['portId']}"
+        port["endpoint"] = {"hardwareId": result["hardwareId"], "portId": port["portId"]}
+    return result
 
 
 class ToolRegistry:
@@ -199,7 +225,10 @@ class ToolRegistry:
 
     def list_builtin(self, context: Record) -> list[Record]:
         return [
-            clone(definition.tool)
+            {
+                **clone(definition.tool),
+                "outputSchema": with_error_schema(definition.tool["outputSchema"]),
+            }
             for definition in self._builtin.values()
             if self.application.authorizer.is_allowed(context, definition.capability)
         ]
@@ -208,12 +237,7 @@ class ToolRegistry:
         output = self.list_builtin(context)
         if self.application.authorizer.is_allowed(context, "hardware.executeTools"):
             output += [
-                {
-                    "name": tool["externalName"],
-                    "inputSchema": clone(tool["inputSchema"]),
-                    **({"description": tool["description"]} if "description" in tool else {}),
-                }
-                for tool in self.application.devices.list_tools(context)
+                public_remote_tool(tool) for tool in self.application.devices.list_tools(context)
             ]
         names = set()
         for tool in output:
@@ -226,7 +250,15 @@ class ToolRegistry:
         builtin = self._builtin.get(name)
         if builtin:
             self.application.authorizer.authorize(context, builtin.capability)
-            return await builtin.execute(self.application, context, builtin.parse(args))
+            parsed = builtin.parse(args)
+            if name == "get_tool_contract":
+                return {"ok": True, "data": read_tool_contract(self, context, parsed)}
+            result = await builtin.execute(self.application, context, parsed)
+            if name == "get_agent_context":
+                result["data"]["catalogRevision"] = hashlib.sha256(
+                    repr(self.list(context)).encode()
+                ).hexdigest()
+            return result
         self.application.authorizer.authorize(context, "hardware.executeTools")
         remote = next(
             (
@@ -259,10 +291,9 @@ def _handler_arguments(
         return (app.projects.document if name == "get_project" else app.projects.save_project), [
             context
         ]
-    devices, wiring, occupancy, applications = (
+    devices, wiring, applications = (
         app.devices,
         app.wiring,
-        app.occupancy,
         app.applications,
     )
     mapping: dict[str, tuple[Any, list[Any]]] = {
@@ -283,16 +314,6 @@ def _handler_arguments(
             devices.remove_hardware_image,
             [value.get("hardwareId"), value.get("portId")],
         ),
-        "request_hardware_occupancy": (occupancy.request, [value]),
-        "cancel_hardware_occupancy_request": (
-            occupancy.cancel_request,
-            [value.get("occupancyRequestId"), value.get("message")],
-        ),
-        "get_hardware_occupancy_request": (
-            occupancy.get_request,
-            [value.get("occupancyRequestId")],
-        ),
-        "list_hardware_occupancy_requests": (occupancy.list_requests, [value]),
         "add_managed_hardware_to_canvas": (
             wiring.add_managed_hardware_to_canvas,
             [value.get("hardwareId")],
@@ -308,11 +329,6 @@ def _handler_arguments(
         "read_workspace_file": (applications.read_file, [value.get("path")]),
         "write_workspace_file": (applications.write_file, [value]),
         "initialize_workspace": (applications.initialize_workspace, [value]),
-        "list_applications": (applications.list_apps, []),
-        "create_application": (applications.create_app, [value.get("id"), value.get("name")]),
-        "start_application": (applications.start_app, [value.get("id")]),
-        "stop_application": (applications.stop_app, [value.get("id")]),
-        "get_application_logs": (applications.app_logs, [value.get("id"), value.get("after")]),
         "validate_python_file": (applications.diagnostics, [value.get("path")]),
         "start_python_run": (applications.start_run, [value]),
         "cancel_python_run": (applications.cancel_run, [value.get("runId")]),

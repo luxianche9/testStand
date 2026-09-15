@@ -23,6 +23,21 @@ if TYPE_CHECKING:
 
 T = TypeVar("T")
 
+# Platform-owned policy, independent of third-party readOnlyHint annotations.
+_BUILTIN_METADATA_READS = {
+    server: {"get_server_info", "list_hardware", "get_hardware_info", "get_pinout"}
+    for server in ("CP118U_I_MCP", "PCI1710L_MCP", "PCI6208V_MCP", "PCI1762_MCP")
+}
+_BUILTIN_METADATA_READS["FIREDAP_MCP"] = {
+    "get_server_info",
+    "list_hardware",
+    "get_hardware_info",
+    "get_pinout",
+    "firedap_get_job",
+    "firedap_wait_job",
+    "firedap_get_board_reference",
+}
+
 
 class ApplicationSystemPort(Protocol):
     def gateway_status(self) -> Json: ...
@@ -229,13 +244,20 @@ class DevicesApplication:
         )
         if server is None:
             raise app_error("unavailable", f"Unknown hardware server: {tool['serverId']}")
-        lease = self.execution.acquire(
-            {
-                "state": "manual",
-                "hardwareId": server["hardwareId"],
-                "toolName": name,
-                "startedAt": utc_now_iso(),
-            }
+        metadata_read = tool.get("remoteName") in _BUILTIN_METADATA_READS.get(
+            tool["serverId"], set()
+        )
+        handle = (
+            None
+            if metadata_read
+            else self.execution.acquire(
+                {
+                    "state": "manual",
+                    "hardwareId": server["hardwareId"],
+                    "toolName": name,
+                    "startedAt": utc_now_iso(),
+                }
+            )
         )
         task = asyncio.create_task(self.service.call_aggregated_tool(name, args))
         self.active[task] = server["hardwareId"]
@@ -243,11 +265,14 @@ class DevicesApplication:
             return await task
         except asyncio.CancelledError as error:
             raise app_error(
-                "cancelled", "Hardware call cancelled; remote result may be unknown"
+                "cancelled",
+                "Hardware call cancelled; remote result may be unknown",
+                {"outcomeKnown": False, "automaticRetry": False, "toolName": name},
             ) from error
         finally:
             self.active.pop(task, None)
-            lease.release()
+            if handle is not None:
+                handle.release()
 
     async def abort_hardware(self, hardware_id: str) -> None:
         tasks = [task for task, hardware in self.active.items() if hardware == hardware_id]
@@ -361,9 +386,10 @@ class WiringApplication:
     ) -> None:
         self.authorizer, self.projects, self.wiring = authorizer, projects, wiring
 
-    def update_document(self, context: Json, wiring: Json) -> Json:
+    async def update_document(self, context: Json, wiring: Json) -> Json:
         self.authorizer.authorize(context, "wiring.confirm")
-        return self.projects.update_wiring(wiring)
+        self.wiring.validate_document_connections(wiring)
+        return await self.projects.update_wiring_with_layout(wiring)
 
     async def add_managed_hardware_to_canvas(self, context: Json, hardware_id: str) -> Json:
         self.authorizer.authorize(context, "projects.manage")
@@ -433,6 +459,5 @@ class SystemApplication:
             "tools": self.devices.list_tools(),
             "gateway": self.system.gateway_status(),
             "execution": self.execution.current(),
-            "occupancy": self.devices.occupancy.list(),
             "availability": self.devices.list_availability(),
         }

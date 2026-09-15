@@ -36,23 +36,27 @@ tests and source review. Run all four local test suites with:
 
 ## Deploy
 
+Install the deployment tool's SSH dependency once from the repository root:
+
+```powershell
+npm ci --prefix mcp_servers/tools
+```
+
 ```powershell
 .\deploy.ps1
 ```
 
 Deployment is sequential and isolated per server. For each server it:
 
-1. refuses to interrupt a currently occupied hardware device;
-2. uploads to a staging directory and verifies SHA-256 hashes;
-3. creates `source-backup-<timestamp>` on the remote computer;
-4. stops only that MCP server and replaces the managed source files;
-5. runs the remote `app/tests` suite;
-6. starts the server and verifies `/health`;
-7. restores only that server's backup if tests, startup or health checks fail.
+1. uploads to a staging directory and verifies SHA-256 hashes;
+2. creates `source-backup-<timestamp>` on the remote computer;
+3. stops only that MCP server and replaces the managed source files;
+4. runs the remote `app/tests` suite;
+5. starts the server and verifies `/health`;
+6. restores only that server's backup if tests, startup or health checks fail.
 
 Use `-Server` to deploy one server. `-SkipTests` is available for an emergency
-maintenance window, but the default is to run tests. `-ForceOccupied` is an
-explicit emergency override that may interrupt active hardware work.
+maintenance window, but the default is to run tests.
 
 ## Verify local and remote hashes
 

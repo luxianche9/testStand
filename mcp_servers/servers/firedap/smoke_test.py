@@ -7,7 +7,6 @@ import argparse
 import asyncio
 import json
 from pathlib import Path
-from uuid import uuid4
 
 import httpx
 from mcp import ClientSession
@@ -42,29 +41,17 @@ async def run(target_info: bool):
                 board=(await call('firedap_get_board_reference'))['data']
                 assert len(board['ports'])==14
                 report['boardPorts']=len(board['ports'])
-                denied=await call('firedap_target_info',{'hardwareId':config['hardwareId']})
-                assert denied['error']['category']=='occupancy_required'
-                report['unleasedOperationRejected']=True
                 if target_info:
-                    holder,lease=str(uuid4()),str(uuid4())
-                    base={'hardwareId':config['hardwareId'],'holderId':holder,'leaseId':lease}
-                    acquired=await call('hardwareharness_hardware_occupancy',{**base,'action':'acquire','holderLabel':'FireDAP connection smoke test'})
-                    assert acquired['ok'],acquired
-                    try:
-                        started=await call('firedap_target_info',{'hardwareId':config['hardwareId']},
-                                           {'hardwareharness':{'occupancyLeaseId':lease}})
-                        assert started['ok'],started
-                        job=started['data']
-                        for _ in range(130):
-                            await asyncio.sleep(1)
-                            await call('hardwareharness_hardware_occupancy',{**base,'action':'heartbeat'})
-                            job=(await call('firedap_get_job',{'job_id':job['jobId']}))['data']
-                            if job['state']!='running':break
-                        report['targetInfo']=job
-                        assert job['state']!='running','Target job exceeded its deadline'
-                    finally:
-                        released=await call('hardwareharness_hardware_occupancy',{**base,'action':'release'})
-                        report['leaseReleased']=released['ok']
+                    started = await call('firedap_target_info', {'hardwareId': config['hardwareId']})
+                    assert started['ok'], started
+                    job = started['data']
+                    for _ in range(130):
+                        await asyncio.sleep(1)
+                        job = (await call('firedap_get_job', {'job_id': job['jobId']}))['data']
+                        if job['state'] != 'running':
+                            break
+                    report['targetInfo'] = job
+                    assert job['state'] != 'running', 'Target job exceeded its deadline'
     destination=Path(__file__).parent/'run/smoke-test.json'
     destination.parent.mkdir(exist_ok=True)
     destination.write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf8')

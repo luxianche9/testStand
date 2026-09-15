@@ -11,7 +11,7 @@ from hardwareharness_backend.contracts.errors import app_error
 from .authorization import Json
 
 
-class ExecutionLease:
+class ExecutionHandle:
     def __init__(self, release: Callable[[], None]) -> None:
         self._release = release
         self._released = False
@@ -47,7 +47,7 @@ class ExecutionCoordinator:
         self.holders: dict[int, _Holder] = {}
         self.hardware_holders: dict[str, tuple[int, int]] = {}
         self.generations: dict[str, int] = {}
-        self.next_lease_id = 0
+        self.next_handle_id = 0
         self.notifier: Callable[[Json], None] | None = None
 
     def current(self) -> Json:
@@ -76,7 +76,7 @@ class ExecutionCoordinator:
             hardware_id in _hardware_ids(holder.activity) for holder in self.holders.values()
         )
 
-    def acquire(self, activity: Json) -> ExecutionLease:
+    def acquire(self, activity: Json) -> ExecutionHandle:
         normalized = clone(activity)
         if normalized["state"] != "manual":
             normalized["hardwareIds"] = sorted(
@@ -98,29 +98,29 @@ class ExecutionCoordinator:
                 f"Hardware execution is already active for {', '.join(ids)}",
                 {"hardwareIds": ids, "activities": activities},
             )
-        self.next_lease_id += 1
-        lease_id = self.next_lease_id
+        self.next_handle_id += 1
+        handle_id = self.next_handle_id
         keys: list[tuple[str, int]] = []
         for hardware_id in hardware_ids:
             generation = self.generations.get(hardware_id, 0) + 1
             self.generations[hardware_id] = generation
             keys.append((hardware_id, generation))
         holder = _Holder(normalized, keys)
-        self.holders[lease_id] = holder
+        self.holders[handle_id] = holder
         for hardware_id, generation in keys:
-            self.hardware_holders[hardware_id] = (lease_id, generation)
+            self.hardware_holders[hardware_id] = (handle_id, generation)
         self._notify()
 
         def release() -> None:
-            if self.holders.get(lease_id) is not holder:
+            if self.holders.get(handle_id) is not holder:
                 return
-            del self.holders[lease_id]
+            del self.holders[handle_id]
             for hardware_id, generation in keys:
-                if self.hardware_holders.get(hardware_id) == (lease_id, generation):
+                if self.hardware_holders.get(hardware_id) == (handle_id, generation):
                     del self.hardware_holders[hardware_id]
             self._notify()
 
-        return ExecutionLease(release)
+        return ExecutionHandle(release)
 
     def _notify(self) -> None:
         if self.notifier:

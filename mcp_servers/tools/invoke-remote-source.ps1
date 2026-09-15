@@ -12,6 +12,9 @@ $entrypoint = Join-Path $realHardwareRoot "tools\remote-source.cjs"
 if (-not (Test-Path -LiteralPath $electron)) {
     throw "Electron runtime not found at $electron. Run pnpm install in hardwareHarness first."
 }
+if (-not (Test-Path -LiteralPath (Join-Path $realHardwareRoot 'tools\node_modules\ssh2\package.json'))) {
+    throw 'Deployment dependencies are missing. Run npm ci --prefix mcp_servers/tools from the repository root.'
+}
 
 $previousRunAsNode = $env:ELECTRON_RUN_AS_NODE
 try {

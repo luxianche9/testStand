@@ -72,11 +72,6 @@ export function createHardwareHarnessApi(client: DesktopTrpcClient): HardwareHar
       search: (query) => call(client.applications.search.query({ query })),
       diagnostics: (path, content) => call(client.applications.diagnostics.query({ path, content })),
       initializeWorkspace: (options) => call(client.applications.initializeWorkspace.mutate(options)),
-      listApps: () => call(client.applications.listApps.query()),
-      createApp: (id, name) => call(client.applications.createApp.mutate({ id, name })),
-      startApp: (id) => call(client.applications.startApp.mutate({ id })),
-      stopApp: (id) => call(client.applications.stopApp.mutate({ id })),
-      appLogs: (id, after) => call(client.applications.appLogs.query({ id, after })),
       startRun: (input) => call(client.applications.startRun.mutate(input)),
       cancelRun: (id) => call(client.applications.cancelRun.mutate({ id })),
       getRun: (id) => call(client.applications.getRun.query({ id })),
@@ -91,15 +86,7 @@ export function createHardwareHarnessApi(client: DesktopTrpcClient): HardwareHar
     manual: {
       invokeTool: (input) => call(client.manual.invokeTool.mutate(input))
     },
-    occupancy: {
-      list: () => call(client.occupancy.list.query()),
-      acquire: (hardwareId) => call(client.occupancy.acquire.mutate({ hardwareId })),
-      release: (hardwareId) => call(client.occupancy.release.mutate({ hardwareId })),
-      listRequests: (input) => call(client.occupancy.listRequests.query(input)),
-      acquireRequest: (id) => call(client.occupancy.acquireRequest.mutate({ id })),
-      rejectRequest: (id, message) => call(client.occupancy.rejectRequest.mutate({ id, message })),
-      cancelRequest: (id, message) => call(client.occupancy.cancelRequest.mutate({ id, message }))
-    },
+
     agents: {
       rotateGatewayToken: () => call(client.agents.rotateGatewayToken.mutate()),
       status: (agent) => call(client.agents.status.query({ agent })),
@@ -140,7 +127,7 @@ export function createHardwareHarnessApi(client: DesktopTrpcClient): HardwareHar
 const errorCategories = new Set<ErrorCategory>([
   "permission_denied", "invalid_argument", "unavailable", "conflict", "not_found", "validation_failed",
   "requires_project", "safe_stop_failed", "invalid_response", "loop_limit", "assertion_failed", "project_exists",
-  "invalid_project", "project_uninitialized", "invalid_project_folder", "occupancy_required", "cancelled", "error"
+  "invalid_project", "project_uninitialized", "invalid_project_folder", "cancelled", "error"
 ]);
 
 function isErrorCategory(value: unknown): value is ErrorCategory {

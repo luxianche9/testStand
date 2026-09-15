@@ -4,10 +4,12 @@ import { BrowserWindow, nativeTheme } from "electron";
 import type { HardwareHarnessEventName } from "@hardwareharness/contracts/desktop";
 import { DesktopEventHub, type DesktopEventListener } from "./desktop-events.js";
 import { injectOpenCodeAuthorization } from "./opencode-auth.js";
+import { readWindowState, writeWindowState } from "./window-state.js";
 
 const mainDirectory = fileURLToPath(new URL(".", import.meta.url));
 
 interface WindowOptions {
+  statePath?: string;
   preloadPath?: string;
   rendererUrl?: string;
   theme: "system" | "light" | "dark";
@@ -16,15 +18,17 @@ interface WindowOptions {
 
 export class DesktopWindows {
   private mainWindow: BrowserWindow | undefined;
+  private persistState: (() => void) | undefined;
   private readonly events = new DesktopEventHub();
 
   current(): BrowserWindow | undefined { return this.mainWindow; }
 
   create(options: WindowOptions): BrowserWindow {
     this.applyTheme(options.theme);
+    const state = readWindowState(options.statePath);
     const window = new BrowserWindow({
-      width: 1360,
-      height: 860,
+      width: state.width,
+      height: state.height,
       minWidth: 1040,
       minHeight: 680,
       show: false,
@@ -41,10 +45,33 @@ export class DesktopWindows {
     const rendererTarget = options.rendererUrl ?? pathToFileURL(join(mainDirectory, "../renderer/index.html")).toString();
     installNavigationGuards(window, rendererTarget);
     installOpenCodeAuthorization(window, options.connectionInfo);
-    window.on("closed", () => { if (this.mainWindow === window) this.mainWindow = undefined; });
-    window.on("maximize", () => this.publish("window-state", { maximized: true }));
-    window.on("unmaximize", () => this.publish("window-state", { maximized: false }));
-    window.once("ready-to-show", () => window.show());
+    let resizeTimer: ReturnType<typeof setTimeout> | undefined;
+    const saveState = () => {
+      clearTimeout(resizeTimer);
+      if (!options.statePath || window.isMinimized()) return;
+      const { width, height } = window.getNormalBounds();
+      writeWindowState(options.statePath, { width, height, maximized: window.isMaximized() });
+    };
+    this.persistState = saveState;
+    window.on("resize", () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(saveState, 150);
+    });
+    window.on("resized", saveState);
+    window.on("close", saveState);
+    window.on("closed", () => {
+      clearTimeout(resizeTimer);
+      if (this.mainWindow === window) {
+        this.mainWindow = undefined;
+        this.persistState = undefined;
+      }
+    });
+    window.on("maximize", () => { saveState(); this.publish("window-state", { maximized: true }); });
+    window.on("unmaximize", () => { saveState(); this.publish("window-state", { maximized: false }); });
+    window.once("ready-to-show", () => {
+      if (state.maximized) window.maximize();
+      window.show();
+    });
     if (options.rendererUrl) void window.loadURL(options.rendererUrl);
     else void window.loadFile(join(mainDirectory, "../renderer/index.html"));
     return window;
@@ -59,6 +86,7 @@ export class DesktopWindows {
   }
 
   flashFrame(flag: boolean): void { this.mainWindow?.flashFrame(flag); }
+  saveState(): void { this.persistState?.(); }
   minimize(): void { this.mainWindow?.minimize(); }
   close(): void { this.mainWindow?.close(); }
 

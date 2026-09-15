@@ -7,8 +7,7 @@ export const fileCreateSchema = z.object({ path: workspacePathSchema, kind: z.en
 export const fileRenameSchema = z.object({ path: workspacePathSchema, target: workspacePathSchema }).strict();
 export const runStartSchema = z.object({
   name: z.string().min(1).optional(), entrypoint: z.string().min(1), inputs: z.record(z.unknown()).default({}),
-  hardwareIds: z.array(z.string().min(1)).default([]), inputSchema: z.record(z.unknown()).optional(),
-  applicationId: z.string().optional(), actionId: z.string().optional()
+  hardwareIds: z.array(z.string().min(1)).default([]), inputSchema: z.record(z.unknown()).optional()
 }).strict();
 export type RunStartInput = z.input<typeof runStartSchema>;
 export type FileWriteInput = z.infer<typeof fileWriteSchema>;
@@ -20,12 +19,9 @@ export interface WorkspaceFile { path: string; content: string; hash: string }
 export interface WorkspaceSearchResult { path: string; line: number; column: number; text: string }
 export interface WorkspaceDiagnostic { path: string; line: number; column: number; severity: string; message: string; code: string }
 export interface WorkspaceEnvironment { status: "missing" | "preparing" | "ready"; pythonPath: string | null; error: string | null }
-export interface ApplicationAction { id: string; name: string; entrypoint: string; inputSchema: Record<string, unknown>; hardwareIds: string[] }
-export interface WorkspaceApplication { id: string; name: string; actions: ApplicationAction[]; status: string; previewUrl?: string }
-export interface ApplicationServiceLog { sequence: number; timestamp: string; stream: string; text: string }
 export interface RunRecord {
   runId: string; name: string; entrypoint: string; inputs: Record<string, unknown>; hardwareIds: string[];
-  applicationId?: string; actionId?: string; status: RunStatus; startedAt: string; completedAt?: string;
+  status: RunStatus; startedAt: string; completedAt?: string;
   durationMs?: number; result?: unknown; error?: { category: string; message: string; details?: unknown };
   eventCount: number; sourcePath: string;
 }
@@ -36,7 +32,7 @@ export interface RunEvent {
 export interface RunDetail { run: RunRecord; events: RunEvent[]; hasMore: boolean }
 export const runListQuerySchema = z.object({
   statuses: z.array(z.enum(["running", "cancelling", "succeeded", "failed", "cancelled", "interrupted"])).optional(),
-  search: z.string().optional(), applicationId: z.string().optional(), limit: z.number().int().min(1).max(10000).optional(), offset: z.number().int().min(0).optional()
+  search: z.string().optional(), limit: z.number().int().min(1).max(10000).optional(), offset: z.number().int().min(0).optional()
 }).strict();
 export type RunListQuery = z.infer<typeof runListQuerySchema>;
 
@@ -50,11 +46,6 @@ export interface HardwareHarnessApplicationsApi {
   search(query: string): Promise<WorkspaceSearchResult[]>;
   diagnostics(path: string, content?: string): Promise<WorkspaceDiagnostic[]>;
   initializeWorkspace(options?: { online?: boolean }): Promise<WorkspaceEnvironment>;
-  listApps(): Promise<WorkspaceApplication[]>;
-  createApp(id: string, name: string): Promise<WorkspaceApplication>;
-  startApp(id: string): Promise<WorkspaceApplication>;
-  stopApp(id: string): Promise<WorkspaceApplication>;
-  appLogs(id: string, after?: number): Promise<ApplicationServiceLog[]>;
   startRun(input: RunStartInput): Promise<RunRecord>;
   cancelRun(runId: string): Promise<RunRecord>;
   getRun(runId: string): Promise<RunDetail>;

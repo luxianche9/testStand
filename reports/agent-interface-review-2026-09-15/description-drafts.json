@@ -1,0 +1,417 @@
+[
+  {
+    "name": "get_project",
+    "description": "读取当前打开工程的根目录、持久化文档、接线连接与未保存状态。用于确定工作区和已有连接；无工程时按返回状态先打开或初始化工程。画布记录不证明物理导通。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "initialize_project",
+    "description": "在指定的现有绝对目录创建并打开新 HH 工程。已有工程、未保存改动或活跃执行会拒绝。不会自动配置接线或完成 Python 依赖初始化；成功后检查工程状态。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "open_project",
+    "description": "按本机绝对目录打开已有 HH 工程。未保存改动和活跃执行会阻止切换。成功后重新读取工程和会话状态；不要假设上个工程的待办仍有效。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "save_project",
+    "description": "通过项目服务保存当前工程及画布文档。检查返回的 dirty 状态；保存记录不执行物理接线。Python 源文件的写入状态与工程文档的保存状态分别核对。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "list_remote_computers",
+    "description": "列出已登记计算机及非敏感连接标识，用 computerId 查询状态。此列表说明配置存在，不保证主机在线；不返回认证凭据。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "get_remote_computer_status",
+    "description": "查询一个已登记计算机的 SSH 可达性及托管 MCP 服务状态。computerId 从计算机列表复制；SSH 在线不等于硬件可操作。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "list_mcp_servers",
+    "description": "列出已登记 MCP 服务、所绑定硬件及连接状态。用于选择 serverId 与识别公开工具来源；服务登记或连接成功不代表目标电路通过测试。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "get_remote_mcp_service",
+    "description": "刷新一个已登记 MCP 服务的进程和连接状态。用于核对启动、停止或重启结果；unknown 表示尚无法确认，不应解释为停止或成功。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "start_remote_mcp_service",
+    "description": "按已配置生命周期启动服务，可能初始化设备和驱动。serverId 从服务列表复制。超时不代表未启动；先查询状态再决定下一步。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "stop_remote_mcp_service",
+    "description": "按服务的正常关闭流程停止 MCP 服务，可能应用设备安全状态并断开硬件。操作前核对活跃运行；成功与安全收尾结果分别检查。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "restart_remote_mcp_service",
+    "description": "按已配置的正常关闭与启动流程重启 MCP 服务。可能改变设备会话和输出配置；超时后先查询状态，避免重复重启。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "read_remote_mcp_logs",
+    "description": "读取一个 MCP 服务最近的日志，lines 默认200、范围1–2000。用于服务故障诊断；truncated 为真时当前响应不完整。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "list_managed_hardware",
+    "description": "列出平台管理的主动硬件及当前健康状态。用于选择 hardwareId；健康状态和执行资源可用状态应分别检查，不能由登记成功推断设备可用。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "list_hardware_catalog",
+    "description": "列出本地登记的主动/被动硬件定义、端口和引脚。用于查接线资料，不会测量设备。调用接线工具时复用规范端点引用，不自行拼接 ID。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "get_hardware_definition",
+    "description": "按 hardwareId 读取一份硬件定义及端口/引脚资料。区分厂商资料、人工录入和实时观测；本工具不验证实物版本或当前跳帽状态。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "save_hardware_definition",
+    "description": "创建或更新一份本地硬件定义。影响目录和画布引用，不操作实物。必须按硬件定义 schema 提交；修改已有端口/引脚 ID 前检查关联接线。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "remove_hardware_definition",
+    "description": "删除指定硬件的本地定义及关联图片。不会卸载驱动或移除实物；删除前核对工程引用，检查返回结果。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "set_hardware_image",
+    "description": "为硬件外观或指定端口设置 PNG/JPEG/WebP 图片。imageBase64 是图片编码，portId 使用目录中的原值；此动作只修改资料图片。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "remove_hardware_image",
+    "description": "移除指定硬件外观图或端口图；省略 portId 时作用于硬件外观图。不会删除硬件定义或改变物理接线。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "add_managed_hardware_to_canvas",
+    "description": "幂等地将已登记主动硬件加入当前工程画布，已存在时返回 added=false。会改变工程未保存状态；不创建物理接线或测量结果。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "request_wiring_task",
+    "description": "创建人工 connect/disconnect 接线待办，返回 wiringTaskId 和状态；本调用不移动任何线缆。端点和 pinId 必须来自目录的规范引用。确认后更新项目连接记录，待办本身属于应用会话。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "cancel_wiring_task",
+    "description": "取消尚未完成的接线待办。取消待办不会撤销已经插好的线，也不会自动断开已确认连接；检查返回的当前状态。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "get_wiring_task",
+    "description": "读取本应用会话中的一个接线待办。返回状态、到期时间和结果；confirmed 是人工确认记录，不是电气测量。重启后任务可能不存在。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "list_wiring_tasks",
+    "description": "按状态列出当前会话最近的接线待办，limit默认100、最大500。列表为空不代表工程没有已保存连接；已有连接应查询 get_project。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "list_workspace_files",
+    "description": "列出当前工程 .hardwareharness/scripts 下的 Python 程序；隐藏平台目录和非.py文件。返回的相对路径可用于读取、更新和启动程序。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "read_workspace_file",
+    "description": "读取 scripts/ 下一个 UTF-8 Python 文件，返回 content 与 hash。path 使用斜杠相对 .hardwareharness，最大4MiB；更新时把 hash 作为 expectedHash。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "write_workspace_file",
+    "description": "按 expectedHash 更新一个已存在的 scripts/*.py 文件。先读取得到当前 hash；冲突时重新读取并合并。本工具当前不能创建缺失文件。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "initialize_workspace",
+    "description": "准备当前工程共享 Python/uv 环境。默认online=false从随包离线wheels安装；online=true才允许依赖索引安装。操作前保存更改并停止Python运行，完成后检查环境状态。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "validate_python_file",
+    "description": "对 scripts/*.py 进行 Python 语法与 Ruff 静态检查，返回诊断。本工具不执行脚本、不验证硬件行为，也不等于模拟测试通过。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "start_python_run",
+    "description": "启动一个已保存的 scripts/*.py，入口 main(inputs)，支持同步或异步，输入/返回为JSON。hardwareIds列出将用的主动设备。返回runId仅表示创建/启动；之后读取Run终态和业务结果。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "cancel_python_run",
+    "description": "请求取消运行：先协作退出，最多约10秒后可能终止进程树。取消不撤销远端物理动作，清理可能失败；查询最终状态和未知结果，不能自动重放。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "get_python_run",
+    "description": "读取指定Run的状态、业务返回值/错误及部分事件。succeeded仅代表程序正常结束；若业务返回passed=false仍未通过。hasMore为真时继续分页读取事件。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "list_python_runs",
+    "description": "查询当前工程运行记录，支持search和limit。历史记录存在不代表设备当前状态；选定runId后读取具体结果。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "get_python_run_events",
+    "description": "按Run事件sequence分页读取。after表示已读的最后序号（不含），从0开始；按最后sequence继续，核对eventCount直至终态。事件包含步骤、硬件调用、测量、错误和附件登记。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "CP118U_I_MCP__get_server_info",
+    "description": "读取本服务版本、设备绑定和初始化状态，不执行实验动作。服务就绪不等于物理链路已验证。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "CP118U_I_MCP__list_hardware",
+    "description": "列出本服务管理的设备；当前约定一个服务恰好管理一个主动设备。此列表用于身份发现，不代表全部通道健康。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "CP118U_I_MCP__get_hardware_info",
+    "description": "读取该设备身份与健康摘要，不执行信号激励。网关会注入绑定的hardwareId；应用使用平台返回的标识。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "CP118U_I_MCP__get_pinout",
+    "description": "读取设备连接器、针号、模式相关信号与方向；这是接线参考，不探测当前线缆或开关位置。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "CP118U_I_MCP__cp118u_configure_port",
+    "description": "配置CP-118U逻辑端口的波特率、帧格式和流控。channel从1开始并对应P1…P8，非Windows COM号。此配置不改变板卡实体RS232/422/485拨码；结果中的mode是帧格式编码。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "CP118U_I_MCP__cp118u_write_text",
+    "description": "将text按UTF-8发送到channel端口，不自动添加CR/LF。bytes表示驱动接受的发送字节数，不证明对端收到或执行。clear_rx=true会丢弃已收数据。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "CP118U_I_MCP__cp118u_write_hex",
+    "description": "把hex_data解析为原始字节后发送，允许空白分隔，不自动追加帧尾。返回写入字节数，不能替代对端确认；clear_rx=true先丢弃接收缓存。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "CP118U_I_MCP__cp118u_read_rx",
+    "description": "读取自最近清空以来的累计RX缓存，并在timeout_ms窗口内继续采集。重复读取可能返回相同数据；max_bytes限制返回前缀。hex为原始字节，text为UTF8替换解码，乱码不等于ASCII帧。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "CP118U_I_MCP__cp118u_clear_rx",
+    "description": "清空指定端口的软件累计RX缓存及硬件接收FIFO，已收证据会丢失；此操作不改变线缆和电气模式。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "CP118U_I_MCP__cp118u_flush",
+    "description": "清空指定端口rx、tx或both缓冲区；默认both，可能丢失接收数据或待发送数据。它不是等待发送完成的drain操作。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "CP118U_I_MCP__cp118u_get_line_status",
+    "description": "查询该逻辑端口驱动报告的波特率、帧格式、流控和线路状态。channel不是COM号；本结果不能证明实体拨码模式或DUT收发方向。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "PCI1710L_MCP__get_server_info",
+    "description": "读取本服务版本、设备绑定和初始化状态，不执行实验动作。服务就绪不等于物理链路已验证。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "PCI1710L_MCP__list_hardware",
+    "description": "列出本服务管理的设备；当前约定一个服务恰好管理一个主动设备。此列表用于身份发现，不代表全部通道健康。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "PCI1710L_MCP__get_hardware_info",
+    "description": "读取该设备身份与健康摘要，不执行信号激励。网关会注入绑定的hardwareId；应用使用平台返回的标识。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "PCI1710L_MCP__get_pinout",
+    "description": "读取设备连接器、针号、模式相关信号与方向；这是接线参考，不探测当前线缆或开关位置。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "PCI1710L_MCP__pci1710l_configure_ai",
+    "description": "配置PCI-1710L的一个AI通道后再采样。channel为0基；signal_type=0单端、1差分；value_range是量程枚举，不是电压数值。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "PCI1710L_MCP__pci1710l_read_voltage",
+    "description": "读取已配置AI通道的实际采样电压，单位V。返回值依赖输入模式、量程和参考地；读数接近零不能单独说明线缆未接。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "PCI1710L_MCP__pci1710l_read_bit",
+    "description": "读取0基通道0–15的DI或DO位，kind=DI/DO。DO寄存器回读不等同于对端观察到输出电平。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "PCI1710L_MCP__pci1710l_set_level",
+    "description": "将0基DO通道0–15设置为指定逻辑电平，会改变真实数字输出。调用成功不证明DUT响应。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "PCI1710L_MCP__pci1710l_safe_state",
+    "description": "按设备配置的safe_do_mask设置数字输出并检查可用回读；这会改变真实输出。具体安全值由配置决定，不承诺无条件全零。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "PCI6208V_MCP__get_server_info",
+    "description": "读取本服务版本、设备绑定和初始化状态，不执行实验动作。服务就绪不等于物理链路已验证。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "PCI6208V_MCP__list_hardware",
+    "description": "列出本服务管理的设备；当前约定一个服务恰好管理一个主动设备。此列表用于身份发现，不代表全部通道健康。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "PCI6208V_MCP__get_hardware_info",
+    "description": "读取该设备身份与健康摘要，不执行信号激励。网关会注入绑定的hardwareId；应用使用平台返回的标识。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "PCI6208V_MCP__get_pinout",
+    "description": "读取设备连接器、针号、模式相关信号与方向；这是接线参考，不探测当前线缆或开关位置。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "PCI6208V_MCP__pci6208v_set_voltage",
+    "description": "设置PCI-6208V的0基AO通道0–7，volts单位V，卡范围±10V；超范围拒绝，不钳位后写入。必须同时满足接收设备的更窄额定范围。返回设定值不代表外部实测电压。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "PCI6208V_MCP__pci6208v_read_last",
+    "description": "读取当前打开会话最后成功写入的AO设定值，这是软件影子值，板卡没有该工具可用的ADC回读。尚未写入则报错；不能用它证明线端有对应电压。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "PCI6208V_MCP__pci6208v_safe_state",
+    "description": "将全部8路AO设置为已配置safe_volts；该值不一定是0V。真实输出会改变，某些通道可能失败；结果不是独立电压测量。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "PCI1762_MCP__get_server_info",
+    "description": "读取本服务版本、设备绑定和初始化状态，不执行实验动作。服务就绪不等于物理链路已验证。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "PCI1762_MCP__list_hardware",
+    "description": "列出本服务管理的设备；当前约定一个服务恰好管理一个主动设备。此列表用于身份发现，不代表全部通道健康。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "PCI1762_MCP__get_hardware_info",
+    "description": "读取该设备身份与健康摘要，不执行信号激励。网关会注入绑定的hardwareId；应用使用平台返回的标识。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "PCI1762_MCP__get_pinout",
+    "description": "读取设备连接器、针号、模式相关信号与方向；这是接线参考，不探测当前线缆或开关位置。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "PCI1762_MCP__pci1762_set_relay",
+    "description": "设置0基RELAY0–15，closed=true使线圈吸合。输出回读只能验证控制状态，不证明外部触点连通或负载动作。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "PCI1762_MCP__pci1762_set_bank",
+    "description": "按16位mask设置继电器，bit0对应RELAY0，0≤mask≤65535。底层按8位端口写入，不能保证16路整体原子切换。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "PCI1762_MCP__pci1762_read_bit",
+    "description": "读取0基通道0–15的DI或继电器控制回读；kind=DI/RELAY，DO为当前兼容别名。回读不测量触点电阻。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "PCI1762_MCP__pci1762_safe_state",
+    "description": "释放16路继电器并检查控制回读，会改变真实继电器状态。操作失败或部分失败时不能认为负载已经隔离。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "FIREDAP_MCP__get_server_info",
+    "description": "读取本服务版本、设备绑定和初始化状态，不执行实验动作。服务就绪不等于物理链路已验证。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "FIREDAP_MCP__list_hardware",
+    "description": "列出本服务管理的设备；当前约定一个服务恰好管理一个主动设备。此列表用于身份发现，不代表全部通道健康。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "FIREDAP_MCP__get_hardware_info",
+    "description": "读取该设备身份与健康摘要，不执行信号激励。网关会注入绑定的hardwareId；应用使用平台返回的标识。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "FIREDAP_MCP__get_pinout",
+    "description": "读取设备连接器、针号、模式相关信号与方向；这是接线参考，不探测当前线缆或开关位置。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "FIREDAP_MCP__firedap_list_probes",
+    "description": "枚举CMSIS-DAP USB探针，不连接或复位MCU。枚举到探针不代表目标板供电、SWD连通或MCU运行。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "FIREDAP_MCP__firedap_get_board_reference",
+    "description": "读取随服务提供的被动板卡连接器、跳帽、共享网络和资料来源，不查询实物。资料型号/版本必须与目标板一致。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "FIREDAP_MCP__firedap_inspect_firmware",
+    "description": "离线检查服务主机可访问的BIN/HEX/ELF/AXF文件，验证地址并计算SHA-256，不访问MCU。path必须在该服务允许的固件目录内；裸BIN需要适用的base_address。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "FIREDAP_MCP__firedap_flash",
+    "description": "提交扇区烧录及逐字节回读校验，使用inspect所得expected_sha256。返回jobId后等待终态；reset_after默认true。仅成功作业且verified=true证明写入校验，不证明固件行为。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "FIREDAP_MCP__firedap_verify",
+    "description": "提交固件内容与目标Flash的回读比较，不编程。使用inspect所得摘要并等待job终态；验证内容相符不代表程序运行正确。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "FIREDAP_MCP__firedap_target_info",
+    "description": "提交attach-only目标身份读取，不主动reset或写Flash。等待job终态；DBGMCU识别范围可能仅到芯片组，不能证明封装或板卡修订版。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "FIREDAP_MCP__firedap_reset",
+    "description": "提交目标MCU复位，会中断当前固件行为。返回jobId，查询终态；超时不代表没有复位，不应自动重复。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "FIREDAP_MCP__firedap_read_sram",
+    "description": "提交不中断/不复位目标的主SRAM读取。address和length需4字节对齐，length≤4096；返回jobId后等待结果。多字采样不是自动原子快照，地址含义须有对应固件符号依据。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "FIREDAP_MCP__firedap_wait_job",
+    "description": "等待已有job，timeout_seconds范围1–60。超时只停止等待，可能返回running，不取消烧录；只有state=succeeded后才能使用成功结果。",
+    "status": "proposed_not_installed"
+  },
+  {
+    "name": "FIREDAP_MCP__firedap_get_job",
+    "description": "查询已有job状态及结果，不重新提交硬件动作。只在succeeded时使用结果；flash/verify需检查verified，其他作业按对应结果判定。",
+    "status": "proposed_not_installed"
+  }
+]

@@ -31,7 +31,7 @@
     "tag": "BUTTON",
     "role": "tab",
     "type": null,
-    "name": "应用搭建",
+    "name": "动作编排",
     "disabled": false
   },
   {
@@ -77,20 +77,6 @@
     "disabled": false
   },
   {
-    "tag": "SELECT",
-    "role": null,
-    "type": null,
-    "name": "选择应用",
-    "disabled": false,
-    "options": [
-      {
-        "text": "选择应用",
-        "value": "",
-        "disabled": false
-      }
-    ]
-  },
-  {
     "tag": "BUTTON",
     "role": null,
     "type": "button",
@@ -108,106 +94,50 @@
     "tag": "BUTTON",
     "role": null,
     "type": "button",
-    "name": "新建应用",
+    "name": "新建 Python 脚本",
     "disabled": false
   },
   {
     "tag": "BUTTON",
     "role": null,
     "type": "button",
-    "name": "新建文件",
-    "disabled": false
-  },
-  {
-    "tag": "BUTTON",
-    "role": null,
-    "type": "button",
-    "name": "新建目录",
+    "name": "新建脚本目录",
     "disabled": false
   },
   {
     "tag": "INPUT",
     "role": null,
     "type": null,
-    "name": "搜索工作区",
+    "name": "搜索 Python 脚本",
     "disabled": false
   },
   {
     "tag": "BUTTON",
     "role": "treeitem",
     "type": null,
-    "name": "workflows",
-    "disabled": false
-  },
-  {
-    "tag": "BUTTON",
-    "role": null,
-    "type": "button",
-    "name": "重命名 workflows",
-    "disabled": false
-  },
-  {
-    "tag": "BUTTON",
-    "role": null,
-    "type": "button",
-    "name": "删除 workflows",
+    "name": "scripts",
     "disabled": false
   },
   {
     "tag": "BUTTON",
     "role": "treeitem",
     "type": null,
-    "name": "workflows/visual.py",
+    "name": "scripts/visual.py",
     "disabled": false
   },
   {
     "tag": "BUTTON",
     "role": null,
     "type": "button",
-    "name": "重命名 workflows/visual.py",
+    "name": "重命名 scripts/visual.py",
     "disabled": false
   },
   {
     "tag": "BUTTON",
     "role": null,
     "type": "button",
-    "name": "删除 workflows/visual.py",
+    "name": "删除 scripts/visual.py",
     "disabled": false
-  },
-  {
-    "tag": "BUTTON",
-    "role": "treeitem",
-    "type": null,
-    "name": "project.json",
-    "disabled": false
-  },
-  {
-    "tag": "BUTTON",
-    "role": null,
-    "type": "button",
-    "name": "重命名 project.json",
-    "disabled": true
-  },
-  {
-    "tag": "BUTTON",
-    "role": null,
-    "type": "button",
-    "name": "删除 project.json",
-    "disabled": true
-  },
-  {
-    "tag": "BUTTON",
-    "role": null,
-    "type": "button",
-    "name": "编辑器",
-    "disabled": false
-  },
-  {
-    "tag": "BUTTON",
-    "role": null,
-    "type": "button",
-    "name": "Web 预览",
-    "disabled": true
   },
   {
     "tag": "BUTTON",
@@ -228,13 +158,6 @@
     "role": null,
     "type": "button",
     "name": "诊断",
-    "disabled": false
-  },
-  {
-    "tag": "BUTTON",
-    "role": null,
-    "type": "button",
-    "name": "应用输出",
     "disabled": false
   },
   {

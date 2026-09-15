@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile, spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
@@ -7,6 +8,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { _electron as electron } from "@playwright/test";
+import { verifyAgentInterface } from "./agent-release-smoke.mjs";
 
 const execFileAsync = promisify(execFile);
 const desktopDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -20,17 +22,21 @@ const userDataDir = await mkdtemp(join(tmpdir(), "hardwareharness-packaged-smoke
 const projectName = "packaged-smoke 中文 项目";
 const projectRoot = join(userDataDir, projectName);
 const gatewayPort = await availablePort();
+const gatewayTestToken = randomUUID();
 const environment = {
   ...process.env,
   HARDWAREHARNESS_USER_DATA_DIR: userDataDir,
   HARDWAREHARNESS_GATEWAY_PORT: String(gatewayPort),
   HARDWAREHARNESS_AGENT_INTEGRATION_TEST_MODE: "1",
+  HARDWAREHARNESS_GATEWAY_TEST_TOKEN: gatewayTestToken,
   UV_OFFLINE: "1",
   UV_CACHE_DIR: join(userDataDir, "empty-cache"),
   PATH: join(process.env.SYSTEMROOT ?? "C:\\Windows", "System32")
 };
 delete environment.ELECTRON_RUN_AS_NODE;
 delete environment.HARDWAREHARNESS_PROJECT_RUNTIME;
+delete environment.HARDWAREHARNESS_BACKEND_EXECUTABLE;
+delete environment.PYTHONPATH;
 
 let application;
 const launchedSidecarPids = new Set();
@@ -52,8 +58,12 @@ try {
   await mkdir(projectRoot);
   await page.evaluate((rootPath) => window.hardwareharness.projects.initializeFolder(rootPath), projectRoot);
   await page.evaluate(async () => {
-    await window.hardwareharness.applications.createApp("sample", "Packaged sample");
     await window.hardwareharness.applications.initializeWorkspace();
+    await window.hardwareharness.applications.createFile({
+      path: "scripts/sample.py",
+      kind: "file",
+      content: "from hardwareharness import measurement, step\n\ndef main(inputs):\n    with step('packaged smoke'):\n        measurement('value', inputs.get('value', 1), unit='count')\n    return {'value': inputs.get('value', 1)}\n"
+    });
   });
   await page.evaluate(() => window.hardwareharness.settings.saveLlm({
     baseUrl: "https://api.openai.com/v1",
@@ -64,7 +74,11 @@ try {
   await page.evaluate(() => localStorage.setItem("hardwareharness.assistant-open", "true"));
   await page.reload();
   await page.getByText(projectName, { exact: true }).first().click();
-  await verifyApplications(page);
+  await verifyPrograms(page);
+  const agentReport = await verifyAgentInterface(`http://127.0.0.1:${gatewayPort}/mcp`, gatewayTestToken);
+  const agentReportPath = resolve(workspaceDir, "reports/applications/packaging/agent-interface.json");
+  await mkdir(dirname(agentReportPath), { recursive: true });
+  await writeFile(agentReportPath, JSON.stringify(agentReport, null, 2) + "\n");
   await verifyAgentUi(page);
   assert.deepEqual(rendererErrors, [], `Renderer errors during first launch:\n${rendererErrors.join("\n")}`);
   const firstSidecarPid = await waitForSidecar(baselinePids);
@@ -118,46 +132,40 @@ async function launchPackaged() {
   return instance;
 }
 
-async function verifyApplications(page) {
-  await page.getByRole("tab", { name: "应用搭建", exact: true }).click();
-  await page.getByLabel("选择应用").selectOption("sample");
-  await page.getByRole("button", { name: "启动应用", exact: true }).click();
-  const preview = page.frameLocator('iframe[title="应用 Web 预览"]');
-  await preview.getByRole("heading", { name: "HardwareHarness 应用" }).waitFor();
-  const capabilities = await preview.locator("body").evaluate(() => ({
-    bridge: typeof window.hardwareharness, node: typeof window.require
-  }));
-  assert.deepEqual(capabilities, { bridge: "undefined", node: "undefined" });
+async function verifyPrograms(page) {
+  await page.getByRole("tab", { name: "动作编排", exact: true }).click();
+  await page.getByText(".hardwareharness/scripts", { exact: true }).waitFor();
+  await page.getByRole("treeitem", { name: "sample.py", exact: true }).click();
   for (let index = 0; index < 2; index++) {
-    await preview.getByLabel("采样次数").fill("1");
-    // Hidden Electron frames do not reliably receive synthesized pointer input. This invokes
-    // the actual HTML form's validation and submit handler; visible pointer input is covered by E2E.
-    await preview.locator("form").evaluate((form) => form.requestSubmit());
-    await poll(async () => (await preview.getByRole("status").innerText()) === "succeeded", 30_000).catch(async (error) => {
+    await page.getByRole("button", { name: "运行脚本", exact: true }).click();
+    await page.getByLabel("程序输入 JSON").fill(JSON.stringify({ value: index + 1 }));
+    await page.getByRole("button", { name: "运行", exact: true }).click();
+    await poll(async () => {
+      const runs = await page.evaluate(() => window.hardwareharness.applications.listRuns());
+      return runs.length === index + 1 && runs.every((run) => run.status === "succeeded");
+    }, 30_000).catch(async (error) => {
       const diagnostic = await page.evaluate(async () => {
         const runs = await window.hardwareharness.applications.listRuns();
-        return { runs: await Promise.all(runs.map((run) => window.hardwareharness.applications.getRun(run.runId))),
-          logs: await window.hardwareharness.applications.appLogs("sample") };
+        return { runs: await Promise.all(runs.map((run) => window.hardwareharness.applications.getRun(run.runId))) };
       });
-      diagnostic.preview = await preview.getByRole("status").innerText();
-      const report = resolve(workspaceDir, "reports/applications/packaging/failed-applications-smoke.json");
+      const report = resolve(workspaceDir, "reports/applications/packaging/failed-programs-smoke.json");
       await mkdir(dirname(report), { recursive: true });
       await writeFile(report, JSON.stringify(diagnostic, null, 2) + "\n");
-      throw new Error(`${error.message}; preview status: ${diagnostic.preview}; diagnostics: ${report}`);
+      throw new Error(`${error.message}; diagnostics: ${report}`);
     });
-    assert.match(await preview.getByLabel("运行日志").innerText(), /measurement/);
   }
   const runs = await page.evaluate(() => window.hardwareharness.applications.listRuns());
   assert.equal(runs.length, 2);
   assert.equal(new Set(runs.map((run) => run.runId)).size, 2);
-  assert.ok(runs.every((run) => run.status === "succeeded" && run.applicationId === "sample"));
-  await page.getByRole("button", { name: "停止应用", exact: true }).click();
-  await poll(async () => (await page.evaluate(() => window.hardwareharness.applications.listApps()))[0]?.status === "stopped", 15_000);
+  assert.ok(runs.every((run) => run.status === "succeeded" && run.entrypoint === "scripts/sample.py"));
+  const details = await page.evaluate((ids) => Promise.all(ids.map((id) => window.hardwareharness.applications.getRun(id))), runs.map((run) => run.runId));
+  assert.ok(details.every((detail) => detail.events.some((event) => event.type === "measurement")));
+  assert.equal(await page.locator('iframe[title="应用 Web 预览"]').count(), 0);
   const reportDir = resolve(workspaceDir, "reports/applications/packaging");
   await mkdir(reportDir, { recursive: true });
-  await writeFile(join(reportDir, "packaged-applications.json"), JSON.stringify({
-    executablePath, runs, capabilities, applicationStopped: true,
-    submittedThroughNativeForm: true, hiddenWindow: true
+  await writeFile(join(reportDir, "packaged-programs.json"), JSON.stringify({
+    executablePath, runs, measurementEventsRecorded: true, webPreviewAbsent: true,
+    hiddenWindow: true
   }, null, 2) + "\n");
 }
 
@@ -169,6 +177,22 @@ function collectRendererErrors(page) {
 }
 
 async function verifyAgentUi(page) {
+  const agentConfiguration = await page.evaluate(async () => {
+    const status = await window.hardwareharness.agents.openCodeStatus();
+    const query = `?directory=${encodeURIComponent(status.workspace)}`;
+    const [configuration, agents] = await Promise.all([
+      fetch(`${status.apiUrl}/config${query}`).then((response) => response.json()),
+      fetch(`${status.apiUrl}/agent${query}`).then((response) => response.json())
+    ]);
+    return { configuration, agents };
+  });
+  assert.equal(agentConfiguration.configuration.default_agent, "build");
+  for (const name of ["build", "plan"]) {
+    const configured = agentConfiguration.configuration.agent[name].prompt;
+    assert.ok(configured.includes("get_tool_contract"));
+    assert.doesNotMatch(configured, /模拟|mock|simulate|simulation/i);
+    assert.equal(agentConfiguration.agents.find((agent) => agent.name === name)?.prompt, configured);
+  }
   const openSidebar = page.getByRole("button", { name: "打开 AI 侧栏", exact: true });
   if (await openSidebar.count()) await openSidebar.evaluate((button) => button.click());
   const sidebar = page.locator(".tf-agent-sidebar");
@@ -203,7 +227,6 @@ while ($true) {
     elseif ($_.Name -eq 'opencode.exe') { $role = 'opencode' }
     elseif ($_.Name -eq 'uv.exe') { $role = 'uv' }
     elseif ($_.CommandLine -like '*hardwareharness._worker*') { $role = 'worker' }
-    elseif ($_.CommandLine -like '*-m uvicorn*') { $role = 'application-service' }
     elseif ($_.Name -eq 'python.exe') { $role = 'python' }
     [pscustomobject]@{ pid = $_.ProcessId; parent = $_.ParentProcessId; name = $_.Name;
       executable = $_.ExecutablePath; started = $_.CreationDate.ToUniversalTime().ToString('o'); role = $role }
@@ -252,7 +275,7 @@ while ($true) {
         live.pid === item.pid && live.started === item.started)), 20_000);
     },
     async writeReport() {
-      for (const role of ["electron", "backend", "uv", "worker", "application-service", "opencode"]) {
+      for (const role of ["electron", "backend", "uv", "worker", "opencode"]) {
         assert.ok([...tracked.values()].some((item) => item.role === role), `Missing process audit role: ${role}`);
       }
       const report = resolve(workspaceDir, "reports/applications/packaging/process-cleanup.json");

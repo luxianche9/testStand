@@ -32,6 +32,7 @@ mcp = MCPServer(
 )
 
 _open = False
+_active_safe_do_mask: int | None = None
 
 # Common ValueRange enums from this card's probe (static table for tool docs).
 VALUE_RANGE_HINT = {
@@ -92,7 +93,7 @@ def info() -> dict[str, Any]:
 @mcp.tool()
 def open(description: Optional[str] = None, safe_do_mask: Optional[int] = None) -> dict[str, Any]:
     """Bind AI/DI/DO controllers. Does not write DO until safe_state/set_level."""
-    global _open
+    global _open, _active_safe_do_mask
     if _open:
         return err("Already open", reachable=True)
     desc = description or _default_desc()
@@ -101,6 +102,7 @@ def open(description: Optional[str] = None, safe_do_mask: Optional[int] = None) 
         resp = _wrap(sdk.call({"cmd": "open", "description": desc, "safe_do_mask": mask}))
         if resp.get("ok"):
             _open = True
+            _active_safe_do_mask = mask
         return resp
     except sdk.SdkError as exc:
         return err(str(exc), reachable=False)

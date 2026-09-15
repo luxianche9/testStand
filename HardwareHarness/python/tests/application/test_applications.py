@@ -44,7 +44,7 @@ async def fixture(tmp_path: Path) -> tuple[ApplicationsApplication, Mock]:
     ), devices
 
 
-async def test_hardware_claims_are_atomic_and_never_acquire_occupancy(tmp_path: Path) -> None:
+async def test_hardware_execution_is_atomic_without_manual_setup(tmp_path: Path) -> None:
     app, devices = await fixture(tmp_path)
     release = await app._acquire(["H"], {"runId": "R", "startedAt": "2026-01-01T00:00:00Z"})
     assert app.execution.is_hardware_busy("H")
@@ -58,15 +58,13 @@ async def test_hardware_claims_are_atomic_and_never_acquire_occupancy(tmp_path: 
         {"value": 3},
         {"timeoutMs": 1000, "metadata": {"hardwareId": "H"}, "preserveEnvelope": True},
     )
-    devices.occupancy.acquire.assert_not_called()
     release()
     assert not app.execution.is_hardware_busy("H")
-    devices.occupancy.release.assert_not_called()
 
 
 @pytest.mark.parametrize(
     "condition",
-    ["passive", "server", "lease", "hidden", "unknown", "foreign", "offline", "unchecked"],
+    ["passive", "server", "hidden", "unknown", "foreign", "offline", "unchecked"],
 )
 async def test_hardware_gates_before_remote_send(tmp_path: Path, condition: str) -> None:
     app, devices = await fixture(tmp_path)
@@ -74,8 +72,6 @@ async def test_hardware_gates_before_remote_send(tmp_path: Path, condition: str)
         app.catalog = Mock(get_hardware=Mock(return_value={"kind": "passive"}))
     elif condition == "server":
         devices.list_servers.return_value = []
-    elif condition == "lease":
-        devices.occupancy.require_lease.side_effect = AppError("occupancy_required", "not occupied")
     elif condition in {"hidden", "foreign"}:
         devices.list_tools.return_value = [
             {
@@ -100,15 +96,14 @@ async def test_public_nonhardware_tools_still_require_claim(tmp_path: Path) -> N
     devices.list_tools.return_value[0]["kind"] = "metadata"
     devices.list_availability.return_value = []
     await app._invoke("H", "S__call", {}, 1000)
-    devices.occupancy.require_lease.assert_called_once_with("H")
 
 
 async def test_workspace_real_files_and_explicit_save(tmp_path: Path) -> None:
     app, _ = await fixture(tmp_path)
-    app.create_file(AGENT, {"path": "workflows/main.py", "kind": "file", "content": "x = 1\n"})
-    file = app.read_file(AGENT, "workflows/main.py")
+    app.create_file(AGENT, {"path": "scripts/main.py", "kind": "file", "content": "x = 1\n"})
+    file = app.read_file(AGENT, "scripts/main.py")
     assert len(file["hash"]) == 64
-    assert app.search(AGENT, "x")[0]["path"] == "workflows/main.py"
+    assert app.search(AGENT, "x")[0]["path"] == "scripts/main.py"
     saved = app.write_file(
         AGENT, {"path": file["path"], "content": "x = 2\n", "expectedHash": file["hash"]}
     )
@@ -117,11 +112,11 @@ async def test_workspace_real_files_and_explicit_save(tmp_path: Path) -> None:
         app.write_file(
             AGENT, {"path": file["path"], "content": "lost", "expectedHash": file["hash"]}
         )
-    app.rename_file(AGENT, {"path": file["path"], "target": "workflows/other.py"})
+    app.rename_file(AGENT, {"path": file["path"], "target": "scripts/other.py"})
     assert any(entry["name"] == "other.py" for entry in app.list_files(AGENT))
-    errors = await app.diagnostics(AGENT, "workflows/other.py", "def broken(")
+    errors = await app.diagnostics(AGENT, "scripts/other.py", "def broken(")
     assert errors and errors[0]["severity"] == "error"
-    app.delete_file(AGENT, "workflows/other.py")
+    app.delete_file(AGENT, "scripts/other.py")
     await app.projects.leave()
     with pytest.raises(AppError) as caught:
         app.list_files(AGENT)
@@ -130,21 +125,22 @@ async def test_workspace_real_files_and_explicit_save(tmp_path: Path) -> None:
 
 async def test_production_diagnostics_run_ruff_with_project_python(tmp_path: Path) -> None:
     app, _ = await fixture(tmp_path)
-    app.create_file(AGENT, {"path": "workflows/main.py", "kind": "file", "content": "print(1)\n"})
+    app.create_file(AGENT, {"path": "scripts/main.py", "kind": "file", "content": "print(1)\n"})
     project_python = AsyncMock(return_value=sys.executable)
     app.environment = Mock(python=project_python)
-    diagnostics = await app.diagnostics(AGENT, "workflows/main.py", "import os\n")
+    diagnostics = await app.diagnostics(AGENT, "scripts/main.py", "import os\n")
     assert any(item["code"] == "F401" for item in diagnostics)
     project_python.assert_awaited_once_with(str(tmp_path))
-    assert app.read_file(AGENT, "workflows/main.py")["content"] == "print(1)\n"
+    assert app.read_file(AGENT, "scripts/main.py")["content"] == "print(1)\n"
 
 
-async def test_syntax_and_nonpython_diagnostics_do_not_prepare_environment(tmp_path: Path) -> None:
+async def test_syntax_diagnostics_do_not_prepare_environment(tmp_path: Path) -> None:
     app, _ = await fixture(tmp_path)
     project_python = AsyncMock()
     app.environment = Mock(python=project_python)
-    assert (await app.diagnostics(AGENT, "main.py", "def broken("))[0]["code"] == "syntax"
-    assert await app.diagnostics(AGENT, "index.html", "<html></html>") == []
+    assert (await app.diagnostics(AGENT, "scripts/main.py", "def broken("))[0]["code"] == "syntax"
+    with pytest.raises(AppError, match="only accepts"):
+        await app.diagnostics(AGENT, "scripts/index.html", "<html></html>")
     project_python.assert_not_called()
 
 
@@ -167,20 +163,17 @@ async def test_lifecycle_facade_and_scope(tmp_path: Path) -> None:
     app.runner = runtime
     assert app._busy()
     for path in ("pyproject.toml", "uv.lock"):
-        with pytest.raises(AppError, match="Stop applications"):
+        with pytest.raises(AppError, match="Stop Python runs"):
             app._write_guard(path)
-    app._write_guard("workflows/main.py")
+    app._write_guard("scripts/main.py")
     for name, args in [("delete_run", ["R"]), ("clear_completed_runs", [])]:
         with pytest.raises(AppError) as denied:
             await getattr(app, name)(AGENT, *args)
         assert denied.value.category == "permission_denied"
-    assert (await app.read_run_source(HUMAN, "R", "workflows/main.py"))["content"] == "code"
+    assert (await app.read_run_source(HUMAN, "R", "scripts/main.py"))["content"] == "code"
     assert (await app.read_run_attachment(HUMAN, "R", "x"))["content"] == b"hi"
-    assert app.create_app(AGENT, "example", "Example")["id"] == "example"
-    assert len(app.list_apps(AGENT)) == 1
-    assert app.app_logs(AGENT, "example") == []
     await app.close()
-    assert app.apps is None and app.runner is runtime
+    assert app.runner is runtime
     app.resume()
     assert app.runner is not runtime and app.runner is not first
     runtime.close.assert_awaited_once()
@@ -190,7 +183,7 @@ async def test_lifecycle_facade_and_scope(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     "method,args,delegate",
     [
-        ("start_run", [{"entrypoint": "workflows/main.py"}], "start_run"),
+        ("start_run", [{"entrypoint": "scripts/main.py"}], "start_run"),
         ("cancel_run", ["R"], "cancel_run"),
         ("get_run", ["R"], "get_run"),
         ("list_runs", [], "list_runs"),
@@ -225,13 +218,8 @@ async def test_export_all_pages_and_delete(tmp_path: Path) -> None:
     assert await app.delete_run(HUMAN, "R") == {"runId": "R"}
 
 
-async def test_app_service_and_environment_facades(tmp_path: Path) -> None:
+async def test_environment_facade(tmp_path: Path) -> None:
     app, _ = await fixture(tmp_path)
-    app.apps = Mock(
-        busy=False,
-        start=AsyncMock(return_value={"status": "running"}),
-        stop=AsyncMock(return_value={"status": "stopped"}),
-    )
     app.environment = Mock(
         prepare=AsyncMock(return_value={"status": "ready"}),
         python=AsyncMock(return_value="python.exe"),
@@ -239,8 +227,6 @@ async def test_app_service_and_environment_facades(tmp_path: Path) -> None:
     assert not app._busy()
     assert await app.initialize_workspace(HUMAN) == {"status": "ready"}
     assert await app._python() == "python.exe"
-    assert await app.start_app(HUMAN, "app") == {"status": "running"}
-    assert await app.stop_app(HUMAN, "app") == {"status": "stopped"}
 
 
 @pytest.mark.parametrize("options,online", [(None, False), ({}, False), ({"online": True}, True)])
@@ -279,14 +265,14 @@ async def test_project_switch_rejects_calls_until_new_session_is_ready(tmp_path:
     switching = asyncio.create_task(projects.initialize_folder(HUMAN, str(next_root)))
     await waiting.wait()
     with pytest.raises(AppError, match="switching or closed"):
-        await app.start_run(HUMAN, {"entrypoint": "workflows/main.py"})
+        await app.start_run(HUMAN, {"entrypoint": "scripts/main.py"})
     proceed.set()
     await switching
     assert app._root() == str(next_root)
-    assert app.list_apps(HUMAN) == []
+    assert app.list_files(HUMAN) == [{"path": "scripts", "name": "scripts", "kind": "directory"}]
     await app.close()
     with pytest.raises(AppError, match="switching or closed"):
-        app.list_apps(HUMAN)
+        app.list_files(HUMAN)
 
 
 async def test_agent_direct_calls_share_run_execution_claims(tmp_path: Path) -> None:

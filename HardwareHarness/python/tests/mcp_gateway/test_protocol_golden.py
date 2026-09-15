@@ -57,7 +57,19 @@ async def test_unmodified_ts_gateway_protocol_golden(case: dict[str, Any]) -> No
                     for item in BUILTIN_TOOL_DEFINITIONS
                     if item.capability.startswith("applications.")
                 }
+                replacement.update(
+                    {
+                        "get_agent_context",
+                        "get_execution_availability",
+                        "read_reference",
+                        "register_reference",
+                        "get_tool_contract",
+                        "wait_for_status",
+                        "import_firmware_artifact",
+                    }
+                )
                 assert replacement.issubset(names)
+                assert not any("occupancy" in name for name in names)
                 assert not {
                     "get_test_task",
                     "update_test_task",
@@ -71,7 +83,8 @@ async def test_unmodified_ts_gateway_protocol_golden(case: dict[str, Any]) -> No
                 expected["body"]["result"]["tools"] = [
                     name
                     for name in expected["body"]["result"]["tools"]
-                    if name
+                    if "occupancy" not in name
+                    and name
                     not in {
                         "get_test_task",
                         "update_test_task",

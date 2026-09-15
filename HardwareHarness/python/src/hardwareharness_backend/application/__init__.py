@@ -19,13 +19,10 @@ from .authorization import (
     DefaultAuthorizer as DefaultAuthorizer,
 )
 from .control import (
-    HardwareOccupancyApplication as HardwareOccupancyApplication,
-)
-from .control import (
     ManualControlApplication as ManualControlApplication,
 )
 from .execution import ExecutionCoordinator as ExecutionCoordinator
-from .execution import ExecutionLease as ExecutionLease
+from .execution import ExecutionHandle as ExecutionHandle
 from .services import (
     ApplicationSystemPort as ApplicationSystemPort,
 )
@@ -64,9 +61,6 @@ class HardwareHarnessApplication:
         )
         self.manual = ManualControlApplication(
             self.authorizer, dependencies["devices"], dependencies["catalog"], execution
-        )
-        self.occupancy = HardwareOccupancyApplication(
-            self.authorizer, dependencies["devices"], execution
         )
         self.system = SystemApplication(
             self.authorizer, dependencies["devices"], dependencies["system"], execution

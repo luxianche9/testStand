@@ -268,3 +268,59 @@ async def test_project_directory_occupied_by_file_matches_electron(tmp_path: Pat
     assert str(caught.value) == (
         f"EEXIST: file already exists, mkdir '{tmp_path / '.hardwareharness'}'"
     )
+
+
+async def test_layout_survives_restart_without_saving_pending_connections(tmp_path: Path) -> None:
+    service, _ = await fixture(tmp_path)
+    await service.initialize_folder(tmp_path)
+    service.update_wiring({"nodes": [{"hardwareId": "A", "x": 0, "y": 0}], "connections": []})
+    await service.save()
+    pending = service.wiring()
+    pending["connections"].append(
+        {
+            "connectionId": "C",
+            "portA": "A.J1",
+            "portB": "B.J1",
+            "pins": [],
+            "confirmedAt": "2026-09-15T00:00:00.000Z",
+            "confirmedBy": "user",
+        }
+    )
+    service.update_wiring(pending)
+    next_wiring = service.wiring()
+    next_wiring["nodes"][0].update(
+        {
+            "x": 42,
+            "y": 64,
+            "width": 300,
+            "height": 180,
+            "portPositions": {"J1": {"side": "top", "offset": 0.25}},
+        }
+    )
+    updated = await service.update_wiring_with_layout(next_wiring)
+    assert updated["dirty"] is True
+    assert len(updated["file"]["wiring"]["connections"]) == 1
+    restarted, _ = await fixture(tmp_path)
+    restored = await restarted.open_folder(tmp_path)
+    assert restored["file"]["wiring"]["nodes"] == next_wiring["nodes"]
+    assert restored["file"]["wiring"]["connections"] == []
+    assert restored["dirty"] is False
+    layout_only = restarted.wiring()
+    layout_only["nodes"][0]["portPositions"]["J1"] = {"side": "left", "offset": 0.7}
+    assert (await restarted.update_wiring_with_layout(layout_only))["dirty"] is False
+    await restarted.leave()
+    assert (await restarted.open_folder(tmp_path))["file"]["wiring"] == layout_only
+
+
+async def test_layout_does_not_replace_a_damaged_project(tmp_path: Path) -> None:
+    service, _ = await fixture(tmp_path)
+    created = await service.initialize_folder(tmp_path)
+    service.update_wiring({"nodes": [{"hardwareId": "A", "x": 0, "y": 0}], "connections": []})
+    await service.save()
+    next_wiring = service.wiring()
+    next_wiring["nodes"][0]["width"] = 350
+    Path(created["path"]).write_text("{ broken", encoding="utf-8")
+    with pytest.raises(ValueError):
+        await service.update_wiring_with_layout(next_wiring)
+    assert "width" not in service.wiring()["nodes"][0]
+    assert Path(created["path"]).read_text(encoding="utf-8") == "{ broken"

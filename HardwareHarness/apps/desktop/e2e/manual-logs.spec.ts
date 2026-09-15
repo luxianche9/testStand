@@ -8,7 +8,7 @@ import { startHardwareMcpFixture, type HardwareMcpFixture } from "./fixtures/har
 
 const desktopDir = resolve(import.meta.dirname, "..");
 const gatewayPort = 18086;
-const gatewayToken = "hardwareharness-occupancy-e2e-token";
+const gatewayToken = "hardwareharness-direct-e2e-token";
 
 test.describe.serial("manual control and persisted Run logs", () => {
   let fixture: HardwareMcpFixture;
@@ -53,10 +53,10 @@ test.describe.serial("manual control and persisted Run logs", () => {
     await page.getByRole("tab", { name: "设备管理" }).click();
 
     await expect(page.getByRole("heading", { name: "设备管理" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "占用硬件" })).toBeEnabled();
-    await page.getByRole("button", { name: "占用硬件" }).click();
-    await expect(page.getByRole("button", { name: "释放硬件" })).toBeVisible();
-    await page.getByRole("treeitem", { name: /write_voltage/ }).click();
+    await page.getByRole("treeitem", { name: /E2E fixture card/ }).click();
+    await expect(page.getByRole("button", { name: "占用硬件" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "释放硬件" })).toHaveCount(0);
+    await page.getByRole("button", { name: /write_voltage/ }).click();
     await expect(page.getByText("Hardware ID", { exact: true })).toHaveCount(0);
     await page.getByLabel("Voltage").fill("4.2");
     await page.getByLabel("Mode").selectOption("pulse");
@@ -73,8 +73,8 @@ test.describe.serial("manual control and persisted Run logs", () => {
   test("persists a Python Run across restart, filters, exports and deletes it", async () => {
     const runId = await page.evaluate(async () => {
       await window.hardwareharness.applications.initializeWorkspace();
-      await window.hardwareharness.applications.createFile({ path: "workflows/persisted.py", kind: "file", content: 'from hardwareharness import call, step\n\ndef main(inputs):\n    with step("Write fixture voltage"):\n        return call("E2E_CARD", "E2E_MCP__write_voltage", {"voltage": 2.5, "mode": "dc", "options": {"enabled": True}, "tags": ["run"]})\n' });
-      const started = await window.hardwareharness.applications.startRun({ name: "Persisted fixture Run", entrypoint: "workflows/persisted.py", inputs: {}, hardwareIds: ["E2E_CARD"] });
+      await window.hardwareharness.applications.createFile({ path: "scripts/persisted.py", kind: "file", content: 'from hardwareharness import call, step\n\ndef main(inputs):\n    with step("Write fixture voltage"):\n        return call("E2E_CARD", "E2E_MCP__write_voltage", {"voltage": 2.5, "mode": "dc", "options": {"enabled": True}, "tags": ["run"]})\n' });
+      const started = await window.hardwareharness.applications.startRun({ name: "Persisted fixture Run", entrypoint: "scripts/persisted.py", inputs: {}, hardwareIds: ["E2E_CARD"] });
       return started.runId;
     });
     await expect.poll(async () => page.evaluate(async (id) => (await window.hardwareharness.applications.getRun(id)).run.status, runId)).toBe("succeeded");
@@ -104,27 +104,24 @@ test.describe.serial("manual control and persisted Run logs", () => {
     expect(await page.evaluate((id) => window.hardwareharness.applications.getRun(id).then(() => false, () => true), runId)).toBe(true);
   });
 
-  test("delivers an AI occupancy request to the global mailbox for one human click", async () => {
+  test("AI calls hardware directly without a manual approval request", async () => {
     const transport = new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${gatewayPort}/mcp`), {
       requestInit: { headers: { Authorization: `Bearer ${gatewayToken}` } }
     });
-    const client = new Client({ name: "occupancy-e2e-agent", version: "1.0.0" }, { capabilities: {} });
+    const client = new Client({ name: "direct-e2e-agent", version: "1.0.0" }, { capabilities: {} });
     await client.connect(transport);
     try {
-      await client.callTool({ name: "request_hardware_occupancy", arguments: { hardwareIds: ["E2E_CARD"], reason: "AI E2E Run" } });
+      const { tools } = await client.listTools();
+      expect(tools.some((tool) => tool.name.includes("occupancy"))).toBe(false);
+      const result = await client.callTool({ name: "E2E_MCP__write_voltage", arguments: {
+        hardwareId: "E2E_CARD", voltage: 1.5, mode: "dc", options: { enabled: true }, tags: ["agent"]
+      } });
+      expect(result.isError).not.toBe(true);
+      expect(fixture.calls.at(-1)).toMatchObject({ name: "write_voltage", arguments: { voltage: 1.5 } });
     } finally {
       await transport.close();
     }
-
-    const prompt = page.getByRole("dialog", { name: "AI 请求人工占用硬件" });
-    await expect(prompt).toContainText("E2E_CARD");
-    await prompt.getByRole("button", { name: "占用全部" }).click();
-    await expect(prompt).toBeHidden();
-
-    await page.getByRole("button", { name: "信箱" }).click();
-    const mailbox = page.getByRole("dialog", { name: "信箱" });
-    await expect(mailbox).toContainText("E2E fixture card");
-    await expect(mailbox).toContainText("confirmed");
+    await expect(page.getByRole("dialog", { name: "AI 请求人工占用硬件" })).toHaveCount(0);
   });
 });
 

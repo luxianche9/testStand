@@ -9,7 +9,6 @@ from typing import Any, Literal
 
 from hardwareharness_remote.adapters import AdapterError, HardwareAdapter, build_adapters
 from hardwareharness_remote.pinouts import Pinout
-from hardwareharness_remote.occupancy import OccupancyRegistry
 
 HardwareState = Literal["initializing", "open", "unreachable", "faulted", "closing", "closed"]
 
@@ -48,7 +47,6 @@ class HardwareManager:
         self.startup_complete = False
         self._watchdog: asyncio.Task[None] | None = None
         self._start_lock = asyncio.Lock()
-        self.occupancy = OccupancyRegistry()
 
     def _runtime(self, hardware_id: str) -> HardwareRuntime:
         runtime = self.runtimes.get(hardware_id)
@@ -99,8 +97,6 @@ class HardwareManager:
                     await runtime.adapter.safe()
                 except Exception:
                     log.exception("Safe state failed during shutdown: %s", hardware_id)
-                finally:
-                    self.occupancy.clear_locked(hardware_id)
                 try:
                     await runtime.adapter.close()
                     runtime.state = "closed"
@@ -115,15 +111,11 @@ class HardwareManager:
             now = time.monotonic()
             for runtime in self.runtimes.values():
                 async with runtime.operation_lock:
-                    try:
-                        await self.occupancy.expire_locked(runtime)
-                    except Exception:
-                        log.exception("Safe state failed for expired occupancy lease: %s", runtime.adapter.hardware_id)
                     if runtime.state == "unreachable" and now >= runtime.next_retry and not self.draining:
                         await self._open_runtime(runtime)
             await asyncio.sleep(1)
 
-    async def invoke(self, hardware_id: str, operation: str, occupancy_lease_id: str | None, **kwargs: Any) -> Any:
+    async def invoke(self, hardware_id: str, operation: str, **kwargs: Any) -> Any:
         if self.draining:
             raise AdapterError("Server is draining", category="service_unavailable")
         runtime = self._runtime(hardware_id)
@@ -132,13 +124,8 @@ class HardwareManager:
                 raise AdapterError("Server is draining", category="service_unavailable")
             if runtime.state != "open":
                 raise AdapterError(f"Hardware is not available: {runtime.state}", category="device_unreachable", details=runtime.snapshot())
-            await self.occupancy.require_locked(runtime, occupancy_lease_id)
             return await runtime.adapter.invoke(operation, **kwargs)
 
-    async def occupancy_action(self, hardware_id: str, action: str, holder_id: str | None = None, holder_label: str | None = None, lease_id: str | None = None) -> dict[str, Any]:
-        runtime = self._runtime(hardware_id)
-        async with runtime.operation_lock:
-            return await self.occupancy.action_locked(runtime, action, holder_id, holder_label, lease_id)
 
     def get_pinout(self, hardware_id: str) -> Pinout:
         return self._runtime(hardware_id).adapter.pinout.model_copy(deep=True)

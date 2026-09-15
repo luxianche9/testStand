@@ -1,4 +1,5 @@
 import { app, Menu } from "electron";
+import { join } from "node:path";
 import { createDesktopComposition } from "./composition.js";
 import { DesktopDialogs } from "./dialogs.js";
 import { createElectronTrpcV11Handler } from "./electron-trpc-v11.js";
@@ -23,6 +24,7 @@ export async function startDesktop(): Promise<void> {
     workspaceChanged: composition.workspaceChanged
   });
   const window = windows.create({
+    statePath: join(app.getPath("userData"), "window-state.json"),
     theme: composition.theme(),
     ...(process.env.ELECTRON_RENDERER_URL ? { rendererUrl: process.env.ELECTRON_RENDERER_URL } : {}),
     connectionInfo: composition.connectionInfo
@@ -40,6 +42,7 @@ export async function startDesktop(): Promise<void> {
     if (exiting) return;
     event.preventDefault();
     exiting = true;
+    windows.saveState();
     clearInterval(availabilityTimer);
     void composition.shutdown()
       .catch((error) => logger.error("Desktop shutdown failed", error))

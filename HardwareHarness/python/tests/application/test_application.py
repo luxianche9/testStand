@@ -16,7 +16,6 @@ from hardwareharness_backend.application import (
     DefaultAuthorizer,
     ExecutionCoordinator,
     HardwareHarnessApplication,
-    HardwareOccupancyApplication,
     ManualControlApplication,
 )
 from hardwareharness_backend.contracts.agents import CAPABILITIES
@@ -33,8 +32,6 @@ AGENT_ALLOWED = {
     "projects.manage",
     "wiring.read",
     "wiring.request",
-    "hardware.readOccupancy",
-    "hardware.requestOccupancy",
     "applications.read",
     "applications.manage",
     "applications.run",
@@ -489,81 +486,3 @@ async def test_run_blocks_manual() -> None:
     assert getattr(caught.value, "category", None) == "conflict"
     call.assert_not_called()
     lease.release()
-
-
-def occupancy_fixture(
-    fail_on: str | None = None, busy: str | None = None
-) -> tuple[HardwareOccupancyApplication, set[str], list[str], list[str]]:
-    held = {"H1"}
-    acquired: list[str] = []
-    released: list[str] = []
-
-    async def acquire(hardware_id: str) -> Json:
-        if hardware_id == fail_on:
-            raise Exception("remote conflict")
-        held.add(hardware_id)
-        acquired.append(hardware_id)
-        return {"hardwareId": hardware_id, "state": "occupied_by_self"}
-
-    async def release(hardware_id: str) -> Json:
-        held.discard(hardware_id)
-        released.append(hardware_id)
-        return {"hardwareId": hardware_id, "state": "unoccupied"}
-
-    occupancy = Mock(is_held=lambda key: key in held, acquire=acquire, release=release)
-    devices = Mock(
-        occupancy=occupancy,
-        list_servers=lambda: [{"hardwareId": key, "enabled": True} for key in ["H1", "H2", "H3"]],
-    )
-    return (
-        HardwareOccupancyApplication(
-            DefaultAuthorizer(), devices, Mock(is_hardware_busy=lambda key: key == busy)
-        ),
-        held,
-        acquired,
-        released,
-    )
-
-
-@pytest.mark.ts_case(
-    "packages/application/src/hardware-occupancy-application.test.ts::allows AI "
-    "to request occupancy but never to acquire or release it"
-)
-async def test_agent_occupancy_request_only() -> None:
-    application, *_ = occupancy_fixture()
-    request = application.request(AGENT, {"hardwareIds": ["H2", "H1"], "reason": "run test"})
-    assert request["hardwareIds"] == ["H1", "H2"]
-    for operation in [application.acquire(AGENT, "H2"), application.release(AGENT, "H1")]:
-        with pytest.raises(Exception) as caught:
-            await operation
-        assert getattr(caught.value, "category", None) == "permission_denied"
-
-
-@pytest.mark.ts_case(
-    "packages/application/src/hardware-occupancy-application.test.ts::rolls back "
-    "only leases gained by the current batch attempt"
-)
-async def test_batch_rollback() -> None:
-    application, held, acquired, released = occupancy_fixture(fail_on="H3")
-    request = application.request(AGENT, {"hardwareIds": ["H1", "H2", "H3"]})
-    with pytest.raises(Exception) as caught:
-        await application.acquire_request(HUMAN, request["occupancyRequestId"])
-    assert getattr(caught.value, "category", None) == "conflict"
-    assert acquired == ["H2"] and released == ["H2"] and "H1" in held
-    current = application.get_request(HUMAN, request["occupancyRequestId"])
-    assert current["status"] == "pending" and "remote conflict" in current["message"]
-
-
-@pytest.mark.ts_case(
-    "packages/application/src/hardware-occupancy-application.test.ts::confirms a "
-    "successful batch and blocks release while hardware executes"
-)
-async def test_batch_confirmation_busy() -> None:
-    application, *_ = occupancy_fixture(busy="H1")
-    request = application.request(AGENT, {"hardwareIds": ["H1", "H2"]})
-    assert (await application.acquire_request(HUMAN, request["occupancyRequestId"]))[
-        "status"
-    ] == "confirmed"
-    with pytest.raises(Exception) as caught:
-        await application.release(HUMAN, "H1")
-    assert getattr(caught.value, "category", None) == "conflict"

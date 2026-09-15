@@ -30,7 +30,6 @@ async def prepared(tmp_path: Path) -> AsyncIterator[tuple[AutomationService, _Ru
         "status": "running",
         "name": "Read voltage",
         "eventCount": 0,
-        "applicationId": "panel",
     }
     store.save(record)
     run = _Run(record, store, "private-token", lambda: None)
@@ -96,7 +95,7 @@ async def test_hardware_errors_preserve_category_without_replay(
         nonlocal calls
         calls += 1
         if case == "denied":
-            raise app_error("occupancy_required", "Lease expired", {"hardwareId": hardware})
+            raise app_error("unavailable", "Device offline", {"hardwareId": hardware})
         if case == "cancel":
             raise asyncio.CancelledError()
         await asyncio.sleep(60)
@@ -111,7 +110,7 @@ async def test_hardware_errors_preserve_category_without_replay(
     assert calls == 1
     event = run.store.events("run_test")[-1]
     if case == "denied":
-        assert event["data"]["error"]["category"] == "occupancy_required"
+        assert event["data"]["error"]["category"] == "unavailable"
     if case == "timeout":
         assert "unknown" in event["data"]["error"]["message"]
     if case == "cancel":
@@ -121,7 +120,7 @@ async def test_hardware_errors_preserve_category_without_replay(
 @pytest.mark.parametrize(
     "operation,data",
     [
-        ("occupancy.acquire", {}),
+        ("unsupported.method", {}),
         ("event", {"type": "run.completed"}),
         ("complete", {"status": "invented"}),
         ("call", {"hardwareId": "other", "toolName": "read", "arguments": {}}),
@@ -189,20 +188,13 @@ async def test_large_results_and_files_are_exportable_attachments(
 
 async def test_list_filters_cancel_and_delete(prepared: tuple[AutomationService, _Run]) -> None:
     service, run = prepared
-    assert (
-        len(
-            await service.list_runs(
-                {"statuses": ["running"], "search": "VOLTAGE", "applicationId": "panel"}
-            )
-        )
-        == 1
-    )
+    assert len(await service.list_runs({"statuses": ["running"], "search": "VOLTAGE"})) == 1
     assert await service.list_runs({"status": "succeeded"}) == []
     assert await service.list_runs({"search": "absent"}) == []
     assert await service.clear_completed_runs() == {"deleted": 0}
     with pytest.raises(AppError, match="Stop"):
         await service.delete_run("run_test")
-    await service.abort_hardware("board", "Lease lost")
+    await service.abort_hardware("board", "Device disconnected")
     assert (await service.cancel_run("run_test"))["status"] == "cancelling"
     service.active.clear()
     assert (await service.cancel_run("run_test"))["status"] == "cancelling"
@@ -268,10 +260,10 @@ async def test_private_rpc_cancellation_response(prepared: tuple[AutomationServi
     [
         {},
         {"entrypoint": "absent.py"},
-        {"entrypoint": "workflows/main.py", "hardwareIds": [1]},
-        {"entrypoint": "workflows/main.py", "inputs": []},
-        {"entrypoint": "workflows/main.py", "inputSchema": {"type": "invalid"}},
-        {"entrypoint": "workflows/main.py", "context": {}},
+        {"entrypoint": "scripts/main.py", "hardwareIds": [1]},
+        {"entrypoint": "scripts/main.py", "inputs": []},
+        {"entrypoint": "scripts/main.py", "inputSchema": {"type": "invalid"}},
+        {"entrypoint": "scripts/main.py", "context": {}},
     ],
 )
 async def test_bad_launch_has_no_run(tmp_path: Path, payload: dict[str, Any]) -> None:
@@ -301,7 +293,7 @@ async def test_unopened_closed_and_launch_failure_release(tmp_path: Path) -> Non
     script(tmp_path, "def main(inputs): return inputs")
     service = AutomationService(lambda: str(tmp_path), acquire=acquire, python_provider=python)
     with pytest.raises(FileNotFoundError):
-        await service.start_run({"entrypoint": "workflows/main.py"})
+        await service.start_run({"entrypoint": "scripts/main.py"})
     assert released == [True]
     assert (await service.list_runs())[0]["status"] == "failed"
     await service.close()
@@ -310,11 +302,11 @@ async def test_unopened_closed_and_launch_failure_release(tmp_path: Path) -> Non
 async def test_forced_stop_and_process_crash(tmp_path: Path) -> None:
     script(tmp_path, "def main(inputs):\n while True: pass")
     service = AutomationService(lambda: str(tmp_path), cancellation_timeout=0.1)
-    run = await service.start_run({"entrypoint": "workflows/main.py"})
+    run = await service.start_run({"entrypoint": "scripts/main.py"})
     await service.cancel_run(run["runId"])
     assert (await wait_run(service, run["runId"]))["run"]["status"] == "cancelled"
     script(tmp_path, "import os\ndef main(inputs): os._exit(7)")
-    run = await service.start_run({"entrypoint": "workflows/main.py"})
+    run = await service.start_run({"entrypoint": "scripts/main.py"})
     detail = await wait_run(service, run["runId"])
     assert detail["run"]["status"] == "failed"
     assert "exit 7" in detail["run"]["error"]["message"]
@@ -333,7 +325,7 @@ async def test_normal_completion_kills_descendant_process(tmp_path: Path) -> Non
         f" subprocess.Popen([sys.executable, '-c', {child!r}])\n return 1",
     )
     service = AutomationService(lambda: str(tmp_path))
-    run = await service.start_run({"entrypoint": "workflows/main.py"})
+    run = await service.start_run({"entrypoint": "scripts/main.py"})
     assert (await wait_run(service, run["runId"]))["run"]["status"] == "succeeded"
     await asyncio.sleep(0.9)
     assert not marker.exists()
@@ -357,7 +349,7 @@ def main(inputs):
 """,
     )
     service = AutomationService(lambda: str(tmp_path), notifier=notifications.append)
-    run = await service.start_run({"entrypoint": "workflows/main.py"})
+    run = await service.start_run({"entrypoint": "scripts/main.py"})
     detail = await wait_run(service, run["runId"])
     assert detail["run"]["status"] == "succeeded"
     assert (
@@ -433,7 +425,7 @@ async def test_close_active_run_and_cancel_inflight_callback(tmp_path: Path) -> 
         'async def main(inputs): return await acall("board", "read", {})',
     )
     service = AutomationService(lambda: str(tmp_path), invoke, cancellation_timeout=0.3)
-    run = await service.start_run({"entrypoint": "workflows/main.py", "hardwareIds": ["board"]})
+    run = await service.start_run({"entrypoint": "scripts/main.py", "hardwareIds": ["board"]})
     await asyncio.wait_for(entered.wait(), 10)
     await service.close()
     assert cancelled.is_set()
@@ -450,7 +442,7 @@ async def test_transient_log_failure_stops_process_and_reports_failed(
         ' time.sleep(0.2)\n log("write")',
     )
     service = AutomationService(lambda: str(tmp_path), cancellation_timeout=0.2)
-    record = await service.start_run({"entrypoint": "workflows/main.py"})
+    record = await service.start_run({"entrypoint": "scripts/main.py"})
     run = service.active[record["runId"]]
 
     def fail(*args: Any, **kwargs: Any) -> Any:
@@ -466,7 +458,7 @@ async def test_transient_log_failure_stops_process_and_reports_failed(
 async def test_partial_raw_character_flushes_without_losing_bytes(tmp_path: Path) -> None:
     script(tmp_path, 'import os\ndef main(inputs): os.write(1, b"\\xe4")')
     service = AutomationService(lambda: str(tmp_path))
-    run = await service.start_run({"entrypoint": "workflows/main.py"})
+    run = await service.start_run({"entrypoint": "scripts/main.py"})
     detail = await wait_run(service, run["runId"])
     assert any(event["data"].get("text") == "�" for event in detail["events"])
     await service.close()
@@ -500,7 +492,7 @@ async def test_close_during_environment_preparation_never_launches_old_project(
 
     script(tmp_path, "def main(inputs): return inputs")
     service = AutomationService(lambda: str(tmp_path), acquire=acquire, python_provider=python)
-    startup = asyncio.create_task(service.start_run({"entrypoint": "workflows/main.py"}))
+    startup = asyncio.create_task(service.start_run({"entrypoint": "scripts/main.py"}))
     await preparing.wait()
     await service.close()
     resume.set()
@@ -521,7 +513,7 @@ async def test_close_during_acquire_releases_claim_without_spawning(tmp_path: Pa
 
     script(tmp_path, "def main(inputs): return inputs")
     service = AutomationService(lambda: str(tmp_path), acquire=acquire)
-    startup = asyncio.create_task(service.start_run({"entrypoint": "workflows/main.py"}))
+    startup = asyncio.create_task(service.start_run({"entrypoint": "scripts/main.py"}))
     await preparing.wait()
     closing = asyncio.create_task(service.close())
     await asyncio.sleep(0)
@@ -568,10 +560,12 @@ async def test_cancel_cannot_be_reported_as_success(
     assert run.complete["status"] == "cancelled"
 
 
-@pytest.mark.parametrize("field,value", [("name", ""), ("applicationId", None), ("actionId", 5)])
-async def test_launch_metadata_is_strict(tmp_path: Path, field: str, value: Any) -> None:
+async def test_launch_metadata_is_strict(tmp_path: Path) -> None:
     script(tmp_path, "def main(inputs): return None")
     service = AutomationService(lambda: str(tmp_path))
-    with pytest.raises(AppError, match=field):
-        await service.start_run({"entrypoint": "workflows/main.py", field: value})
+    with pytest.raises(AppError, match="name"):
+        await service.start_run({"entrypoint": "scripts/main.py", "name": ""})
+    for field in ("applicationId", "actionId"):
+        with pytest.raises(AppError, match="Unexpected"):
+            await service.start_run({"entrypoint": "scripts/main.py", field: "legacy"})
     await service.close()

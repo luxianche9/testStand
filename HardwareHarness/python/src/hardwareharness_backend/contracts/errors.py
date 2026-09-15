@@ -13,7 +13,6 @@ ERROR_CATEGORIES = (
     "requires_project",
     "safe_stop_failed",
     "invalid_response",
-    "occupancy_required",
     "loop_limit",
     "assertion_failed",
     "project_exists",

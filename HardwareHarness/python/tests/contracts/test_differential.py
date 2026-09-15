@@ -33,7 +33,7 @@ def decode(value: Any) -> Any:
     [
         item
         for item in json_parse(FIXTURES.read_text(encoding="utf-8"))
-        if not item["schema"].startswith(("orchestration.", "projects."))
+        if not item["schema"].startswith(("orchestration.", "projects.", "occupancy."))
     ],
     ids=lambda value: value["id"],
 )

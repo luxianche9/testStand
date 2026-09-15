@@ -96,12 +96,30 @@ async def test_original_typescript_wiring_golden(
         if action.get("inspect"):
             result["wiring"] = projects.wiring()
         results.append(result)
-    actual = {
+    actual: Record = {
         "results": results,
         "wiring": projects.wiring(),
         "dirty": projects.dirty,
         "notifications": notifications,
         "projectNotifications": len(project_notifications),
     }
-    assert actual == case["expected"]
-    assert json_stringify(actual, 2) + "\n" == case["expectedJson"]
+    # Release contracts add actionable recovery data; preserve all legacy state/message semantics.
+    legacy = clone(actual)
+    for result in legacy["results"]:
+        wire_error = result.get("error", {})
+        if "details" in wire_error:
+            details = wire_error.pop("details")
+            assert details["recovery"]
+            if wire_error["category"] == "conflict":
+                assert details["existingTaskId"].startswith("uuid-")
+                assert details["status"] == "pending"
+            elif wire_error["message"].startswith("Unknown wiringTaskId:"):
+                assert wire_error["category"] == "not_found"
+                # The original TS contract had no typed not-found error.
+                wire_error["category"] = "error"
+    for index, (actual_result, expected_result) in enumerate(
+        zip(legacy["results"], case["expected"]["results"], strict=True)
+    ):
+        assert actual_result == expected_result, f"Action {index}: {case['actions'][index]}"
+    assert legacy == case["expected"]
+    assert json_stringify(legacy, 2) + "\n" == case["expectedJson"]

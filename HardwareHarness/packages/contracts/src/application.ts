@@ -2,7 +2,7 @@ import type { RequestContext } from "./agents.js";
 import type { DashboardSnapshot } from "./desktop.js";
 import type { ConnectionStatus, Hardware, ManagedHardware, McpServerConfig, RemoteComputer, RemoteServiceLog, ServerStatus, StoredHardwareDefinition, ToolCatalogItem } from "./devices.js";
 import type { ManualToolInvocationInput, ManualToolInvocationResult } from "./execution.js";
-import type { HardwareOccupancyRequest, HardwareOccupancyRequestStatus, HardwareOccupancyStatus, RequestHardwareOccupancyInput } from "./occupancy.js";
+
 import type { HardwareHarnessApplicationsApi } from "./applications.js";
 import type { ProjectDocument, ProjectFolderSelection, RecentProjectSummary } from "./projects.js";
 import type { ProjectCanvasNode, ProjectWiring, RequestWiringTaskInput, WiringTask, WiringTaskStatus } from "./wiring.js";
@@ -83,20 +83,7 @@ export interface BackendApplication {
     abortHardware(hardwareId: string, message: string): Promise<void>;
     close(): Promise<void>;
   };
-  readonly occupancy: {
-    setNotifier(notifier: (request: HardwareOccupancyRequest) => void): void;
-    list(context: RequestContext): HardwareOccupancyStatus[];
-    refresh(context: RequestContext): Promise<HardwareOccupancyStatus[]>;
-    acquire(context: RequestContext, hardwareId: string): Promise<HardwareOccupancyStatus>;
-    release(context: RequestContext, hardwareId: string): Promise<HardwareOccupancyStatus>;
-    request(context: RequestContext, raw: RequestHardwareOccupancyInput): HardwareOccupancyRequest;
-    getRequest(context: RequestContext, requestId: string): HardwareOccupancyRequest;
-    listRequests(context: RequestContext, input?: { status?: HardwareOccupancyRequestStatus; limit?: number }): HardwareOccupancyRequest[];
-    acquireRequest(context: RequestContext, requestId: string): Promise<HardwareOccupancyRequest>;
-    rejectRequest(context: RequestContext, requestId: string, message?: string): HardwareOccupancyRequest;
-    cancelRequest(context: RequestContext, requestId: string, message?: string): HardwareOccupancyRequest;
-    reconcile(statuses: HardwareOccupancyStatus[]): void;
-  };
+
   readonly system: {
     dashboard(context: RequestContext): DashboardSnapshot;
   };

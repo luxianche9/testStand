@@ -1,0 +1,7 @@
+{
+  "name": "hardwareharness-remote-tools",
+  "private": true,
+  "dependencies": {
+    "ssh2": "1.17.0"
+  }
+}

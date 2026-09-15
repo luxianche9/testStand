@@ -12,6 +12,7 @@ import uvicorn
 from starlette.types import Receive, Scope, Send
 
 from hardwareharness_backend.compat.cancellation import AbortController
+from hardwareharness_backend.contracts.errors import AppError
 from hardwareharness_backend.devices import DeviceTransportRegistry, McpHttpTransport, SshManager
 from hardwareharness_backend.devices.mcp_client import McpCompatibilityError
 from hardwareharness_backend.devices.mcp_transport import CompatibleHttpTransport
@@ -77,7 +78,14 @@ class Remote:
                                 "properties": {"ok": {"const": True}, "data": {"type": "object"}},
                                 "required": ["ok", "data"],
                             },
-                            "_meta": {"hardwareharness": {"kind": "hardware"}},
+                            "annotations": {"readOnlyHint": True},
+                            "_meta": {
+                                "hardwareharness": {
+                                    "kind": "hardware",
+                                    "resultSemantics": "physical reading",
+                                    "privateImplementation": "hidden",
+                                }
+                            },
                         },
                         {
                             "name": "hardwareharness_prepare_shutdown",
@@ -175,6 +183,10 @@ async def test_real_mcp_session_metadata_validation_and_no_delete(remote: Remote
         assert len(tools) == 1 and tools[0]["description"] == "Measure"
         assert "hardwareId" not in tools[0]["inputSchema"]["properties"]
         assert "hardwareId" not in tools[0]["inputSchema"]["required"]
+        assert tools[0]["upstreamOutputSchema"]["required"] == ["ok", "data"]
+        assert tools[0]["annotations"]["readOnlyHint"] is True
+        assert tools[0]["contractMetadata"]["resultSemantics"] == "physical reading"
+        assert "privateImplementation" not in tools[0]["contractMetadata"]
         assert pool.find_tool("S__measure")["session"] is one
         with pytest.raises(RuntimeError, match="Unknown aggregated tool"):
             pool.find_tool("missing")
@@ -186,7 +198,7 @@ async def test_real_mcp_session_metadata_validation_and_no_delete(remote: Remote
                     "hardwareId": "H",
                     "attempt": 2,
                     "idempotencyKey": "same",
-                    "occupancyLeaseId": "L",
+                    "traceId": "L",
                 }
             },
         )
@@ -195,7 +207,7 @@ async def test_real_mcp_session_metadata_validation_and_no_delete(remote: Remote
             request for request in reversed(remote.requests) if request["method"] == "tools/call"
         )
         assert call["params"]["arguments"] == {"hardwareId": "H", "channel": 2}
-        assert call["params"]["_meta"]["hardwareharness"]["occupancyLeaseId"] == "L"
+        assert call["params"]["_meta"]["hardwareharness"]["traceId"] == "L"
         assert any(h.get("authorization") == "Bearer secret" for h in remote.headers)
         assert (await pool.list_hardware([server(remote), {**server(remote), "enabled": False}]))[
             0
@@ -208,12 +220,12 @@ async def test_real_mcp_session_metadata_validation_and_no_delete(remote: Remote
         with pytest.raises(McpCompatibilityError, match="did not return structured"):
             await pool.call("S__measure", {"channel": 2}, {"metadata": {"hardwareId": "H"}})
         remote.result = {"content": [], "isError": True, "structuredContent": {"ok": False}}
-        with pytest.raises(McpCompatibilityError, match="does not match"):
+        # MCP errors are not required to match the success output schema.
+        with pytest.raises(AppError, match="Remote MCP tool failed"):
             await pool.call("S__measure", {"channel": 2}, {"metadata": {"hardwareId": "H"}})
         remote.result = {"content": [], "isError": True}
-        assert (
-            await pool.call("S__measure", {"channel": 2}, {"metadata": {"hardwareId": "H"}}) == []
-        )
+        with pytest.raises(AppError, match="Remote MCP tool failed"):
+            await pool.call("S__measure", {"channel": 2}, {"metadata": {"hardwareId": "H"}})
         await pool.disconnect("S")
         assert pool.list_tools() == []
         with pytest.raises(RuntimeError, match="not connected"):

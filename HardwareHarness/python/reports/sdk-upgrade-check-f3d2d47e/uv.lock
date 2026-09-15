@@ -1,0 +1,22 @@
+version = 1
+revision = 3
+requires-python = "==3.11.*"
+
+[[package]]
+name = "hardwareharness"
+version = "0.1.0"
+source = { registry = "E:/Project/hardwareHarness/HardwareHarness/python/reports/sdk-upgrade-check-f3d2d47e/wheels" }
+wheels = [
+    { path = "E:/Project/hardwareHarness/HardwareHarness/python/reports/sdk-upgrade-check-f3d2d47e/wheels/hardwareharness-0.1.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "upgrade-check"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "hardwareharness" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "hardwareharness", specifier = "==0.1.0" }]

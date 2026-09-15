@@ -10,7 +10,7 @@ requires-python = ">=3.11"
 dependencies = ["mcp[cli]>=1.30,<2", "pyocd>=0.45,<0.46", "intelhex>=2.3", "pyelftools>=0.33", "uvicorn>=0.35,<1"]
 
 [project.optional-dependencies]
-test = ["pytest>=8", "httpx>=0.28"]
+test = ["pytest>=8", "httpx>=0.28", "jsonschema>=4.20"]
 
 [project.scripts]
 hardwareharness-firedap = "hardwareharness_firedap.server:main"

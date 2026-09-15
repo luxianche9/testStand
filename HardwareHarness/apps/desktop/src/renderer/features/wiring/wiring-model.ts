@@ -106,3 +106,11 @@ export function taskTone(status: WiringTask["status"]): "muted" | "ok" | "warn" 
   if (status === "failed" || status === "rejected") return "bad";
   return "muted";
 }
+
+export function taskStatusLabel(status: WiringTask["status"]): string {
+  return { pending: "待处理", in_progress: "待处理", confirmed: "已完成", rejected: "未完成", cancelled: "已取消", timed_out: "已过期", failed: "处理失败" }[status];
+}
+
+export function isTaskActionable(task: WiringTask): boolean {
+  return task.status === "pending" || task.status === "in_progress";
+}

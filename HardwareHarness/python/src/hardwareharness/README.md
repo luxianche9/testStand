@@ -1,67 +1,124 @@
-# hardwareharness Python SDK
+# HardwareHarness Python SDK
 
-The SDK exposes only hardware calls and structured logging. Launch workflows from HardwareHarness;
-an ordinary Python interpreter without a platform launch cannot connect to hardware through this SDK.
-Device discovery, documentation, wiring, human confirmation and occupancy are managed by the Agent
-and the existing HardwareHarness interfaces. Scripts do not request or release occupancy.
+SDK version: 0.1.0. Contract revision: 2026-09-15.1. Retrieve the current bundled copy with
+`read_reference(referenceId="hh-sdk")`; an existing project's edited guide is not replaced on upgrade.
 
-## Workflow entry points
+## Project and execution
 
-Save a Python file under the project's `.hardwareharness/workflows/` directory. Define `main(inputs)`;
-the function may be synchronous or asynchronous. Inputs and return values must be JSON-compatible.
-The launch configuration declares hardware IDs and input JSON Schema outside the business code.
+Use `get_agent_context` for the current project, Python environment and effective policy.
+The platform runs saved Python programs under `.hardwareharness/scripts/` in separate processes.
+Create the first file with `create_workspace_file(path="scripts/main.py", content=...)`.
+For updates first read its `hash`, then pass it as `expectedHash` to `write_workspace_file`.
+The public path starts with `scripts/`, not `.hardwareharness/`. Only UTF-8 Python files up to 4 MiB
+are editable; subdirectories are supported. Each entrypoint defines synchronous or asynchronous
+`main(inputs)`. Inputs and return values must be JSON-compatible. Dependencies belong to the project's
+environment; `initialize_workspace` prepares it using the installed runtime and bundled wheels.
+It must finish before running code. Dependency changes require all Python runs to stop.
+
+Discover the registered hardware, read `get_tool_contract(toolName=...)`, resolve any required wiring,
+and check `get_execution_availability` before starting. `start_python_run` takes the saved entrypoint,
+JSON inputs, input JSON Schema and the exact `hardwareIds` that code will use. A successful start
+only accepts the Run. Inspect its terminal state and business return value using
+`get_python_run_summary` and `get_python_run_events`; use `wait_for_status(kind="run", id=...)` to
+wait without launching a second Run. Process `succeeded` does not imply a business `passed=true`.
+Every Run uses an immutable source snapshot, which `read_python_run_source` can inspect.
+
+## call and acall
+
+`call(hardware_id, tool_name, arguments, *, timeout_ms=None, result_mode="envelope")` invokes one
+declared, available hardware tool. `await acall(...)` is its asynchronous equivalent.
+Use the exact SDK tool name returned by the public contract, not an OpenCode client-added prefix.
+Timeouts default to 30,000 ms and accept integers from 100 to 1,800,000 ms. Hardware must be declared
+in the Run's `hardwareIds`. Passive, offline, unknown, hidden internal and undeclared hardware
+operations fail. Concurrent calls to different hardware are allowed; overlapping calls on the same
+hardware return a conflict, including overlaps inside one Run. Await them in order.
+
+The default `result_mode="envelope"` preserves the existing complete MCP result:
+
+```json
+{"content":[{"type":"text","text":"{\"ok\":true,\"data\":{\"volts\":1.23}}"}],
+ "structuredContent":{"ok":true,"data":{"volts":1.23}},"isError":false}
+```
+
+This is a contract example, not a measurement. The raw result can contain images, audio, resources,
+and extra metadata. It is retained by the Run before any SDK selection. Large results are stored as
+artifacts. Agent tool responses use the gateway's `ok/data` envelope, which is a different surface.
+
+New code can request `result_mode="data"`: select `structuredContent` if present; otherwise parse a
+single JSON text content block when possible; unwrap `{ok:true,data:...}` exactly once. Unwrapped
+structured values are returned unchanged. Non-JSON or multiple text/media blocks stay in the full
+envelope, so inspect the contract when data is not structured. `isError=true` or selected
+`ok=false` raises a `RuntimeError` subtype with `category` and `details`. Transport errors also raise.
+The default envelope behavior remains unchanged for existing code. An invalid result mode is rejected
+before any hardware action. Full evidence and media remain retrievable with `read_python_run_artifact`.
+
+## Structured logging
+
+The library exposes exactly six public functions:
+
+| Function | Contract |
+| --- | --- |
+| `call(...)` | Synchronous hardware call; result modes described above. |
+| `await acall(...)` | Same result/error contract; async does not bypass device serialization. |
+| `step(name)` | Nonempty name; synchronous/asynchronous context manager or decorator. Use an independent block per concurrent invocation. The step succeeds when its body returns without an exception; it does not decide business pass/fail. |
+| `log(message, *, level="info", fields=None)` | Records a message, level string, optional JSON fields and source location. Use conventional info/warning/error/debug levels. Fields and outputs must not contain credentials. |
+| `measurement(name, value, *, unit=None)` | Records a finite JSON number and optional unit. Distinguish commanded, cached and measured names. Logging a number does not evaluate a limit or prove physical behavior. |
+| `attachment(path, *, name=None, media_type=None)` | Copies an existing file accessible to the Run process into its artifacts and records SHA-256/size. `name` is a filename, not a directory. No published attachment size limit is enforced by this SDK; keep outputs bounded. Delete temporary files only after this call succeeds. |
+
+Standard output/error, exceptions, calls and durations are recorded automatically. SDK logging requires
+a platform-launched process. Ordinary project Python is trusted local code, not an operating-system
+sandbox. It cannot use this SDK to call hardware outside a platform launch.
+
+## Pure computation example
+
+This script needs no hardware declarations and verifies only its own arithmetic:
 
 ```python
-from hardwareharness import call, measurement, step
+from hardwareharness import log, measurement, step
 
 
 def main(inputs):
-    with step("Read voltage"):
-        response = call("board-id", "discovered-tool-name", {"channel": inputs["channel"]})
-        # Tool names, arguments and output shapes come from the device's discovered schema.
-        value = response["structuredContent"]["data"]["value"]
-        measurement("voltage", value, unit="V")
-        return {"voltage": value}
+    with step("Calculate mean"):
+        samples = inputs["samples"]
+        if not samples:
+            raise ValueError("samples must not be empty")
+        mean = sum(samples) / len(samples)
+        measurement("calculated_mean", mean)
+        log("Calculation complete", fields={"sample_count": len(samples)})
+        return {"mean": mean, "sample_count": len(samples)}
 ```
 
-Every Run executes in a separate process from a saved code snapshot. Editing the workspace does not
-change that Run. A Web application's business buttons each create a separate Run; its FastAPI server
-does not have hardware invocation credentials.
+## Hardware flow and cleanup
 
-## Public functions
+This example uses runtime inputs containing exact discovered hardware IDs, tool names and arguments.
+Before running, validate those tools' contracts and the load's allowed stimulation and cleanup state.
+The desired safe state is an explicit input; it is not inferred to mean zero volts.
 
-| Function | Behavior |
-| --- | --- |
-| `call(hardware_id, tool_name, arguments, *, timeout_ms=None)` | Invoke a declared active hardware tool synchronously. |
-| `await acall(...)` | The same invocation without blocking the workflow event loop. |
-| `step(name)` | A synchronous/asynchronous context manager or a function decorator. Each invocation gets a distinct step. |
-| `log(message, *, level="info", fields=None)` | Record a structured message and optional JSON fields. |
-| `measurement(name, value, *, unit=None)` | Record a numeric measurement and optional unit. |
-| `attachment(path, *, name=None, media_type=None)` | Copy a file into the Run's artifacts and record its hash. |
+```python
+from hardwareharness import call, log, step
 
-Hardware responses retain the complete MCP result, including `content` and `structuredContent` when
-provided. Existing device input/output validation and error normalization still apply. A structured
-device envelope may put its business value under `structuredContent.data`; check the discovered
-schema instead of assuming a universal result shape.
 
-Timeouts default to 30,000 milliseconds and accept integers from 100 to 1,800,000. Missing or expired
-occupancy, passive hardware, hidden management tools and undeclared hardware produce explicit errors.
-The platform does not acquire occupancy, queue authorization requests or replay hardware calls.
-Concurrent calls to different hardware are allowed. Overlapping calls to the same hardware return a
-conflict, including overlaps inside one Run; await such operations in order.
+def main(inputs):
+    hardware_id = inputs["hardware_id"]
+    try:
+        with step("Apply configured output"):
+            applied = call(
+                hardware_id, inputs["apply_tool"], inputs["apply_arguments"], result_mode="data"
+            )
+        log("Output command completed", fields={"command_result": applied})
+        return {"command_result": applied}
+    finally:
+        with step("Restore configured safe state"):
+            call(
+                hardware_id, inputs["cleanup_tool"], inputs["cleanup_arguments"], result_mode="data"
+            )
+```
 
-## Logs and cancellation
-
-Nested and repeated steps form the execution tree. Asynchronous tasks inherit their parent step;
-ordinary user-created threads without an inherited context log at the Run root. Hardware operations,
-standard output/error, exceptions and durations are recorded automatically. Large hardware results
-are kept as downloadable artifacts while the original result is returned to the script.
-
-Cancellation interrupts an asynchronous entry point and is delivered to synchronous code at the next
-SDK hardware-call boundary. Use Python `try/finally` for cleanup. The cleanup grace period is ten
-seconds, after which the platform terminates the process tree; forced termination cannot execute
-`finally`. Cleanup calls still require a valid occupancy lease. A timed-out or cancelled remote
-operation may already have acted on hardware, so its result is explicitly unknown and is never retried.
-
-After a platform restart, unfinished runs are marked interrupted. Their saved events and source
-snapshots remain inspectable; arbitrary Python call stacks are not resumed.
+Command success is not physical readback. Use a separate measurement channel and explicit limits
+when the task requires a pass/fail conclusion. Check recorded events after every real Run.
+The platform never replays a hardware call. A timeout, cancellation or lost connection can leave
+the physical result unknown. Query status/evidence before deciding on any further action.
+Cancellation interrupts asynchronous code or reaches synchronous code at the next SDK call boundary.
+`try/finally` can clean up during the ten-second grace period; forced termination cannot execute it.
+Cleanup calls still require an available device. After a restart unfinished Runs are marked
+`interrupted`; saved evidence remains readable and arbitrary Python execution is not resumed.

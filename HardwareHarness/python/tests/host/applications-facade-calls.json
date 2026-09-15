@@ -328,7 +328,7 @@
     "path": "applications.readFile",
     "method": "application.applications.readFile",
     "args": [
-      "a.py"
+      "scripts/a.py"
     ]
   },
   {
@@ -336,7 +336,7 @@
     "method": "application.applications.writeFile",
     "args": [
       {
-        "path": "a.py",
+        "path": "scripts/a.py",
         "content": "x",
         "expectedHash": "h"
       }
@@ -347,7 +347,7 @@
     "method": "application.applications.createFile",
     "args": [
       {
-        "path": "a.py",
+        "path": "scripts/a.py",
         "kind": "file"
       }
     ]
@@ -357,8 +357,8 @@
     "method": "application.applications.renameFile",
     "args": [
       {
-        "path": "a.py",
-        "target": "b.py"
+        "path": "scripts/a.py",
+        "target": "scripts/b.py"
       }
     ]
   },
@@ -366,7 +366,7 @@
     "path": "applications.deleteFile",
     "method": "application.applications.deleteFile",
     "args": [
-      "b.py"
+      "scripts/b.py"
     ]
   },
   {
@@ -380,7 +380,7 @@
     "path": "applications.diagnostics",
     "method": "application.applications.diagnostics",
     "args": [
-      "a.py",
+      "scripts/a.py",
       {
         "__undefined__": true
       }
@@ -392,48 +392,11 @@
     "args": []
   },
   {
-    "path": "applications.listApps",
-    "method": "application.applications.listApps",
-    "args": []
-  },
-  {
-    "path": "applications.createApp",
-    "method": "application.applications.createApp",
-    "args": [
-      "demo",
-      "Demo"
-    ]
-  },
-  {
-    "path": "applications.startApp",
-    "method": "application.applications.startApp",
-    "args": [
-      "demo"
-    ]
-  },
-  {
-    "path": "applications.stopApp",
-    "method": "application.applications.stopApp",
-    "args": [
-      "demo"
-    ]
-  },
-  {
-    "path": "applications.appLogs",
-    "method": "application.applications.appLogs",
-    "args": [
-      "demo",
-      {
-        "__undefined__": true
-      }
-    ]
-  },
-  {
     "path": "applications.startRun",
     "method": "application.applications.startRun",
     "args": [
       {
-        "entrypoint": "a.py:main",
+        "entrypoint": "scripts/a.py",
         "inputs": {},
         "hardwareIds": []
       }
@@ -521,62 +484,6 @@
         "toolName": "S__read",
         "arguments": {},
         "timeoutMs": 30000
-      }
-    ]
-  },
-  {
-    "path": "occupancy.list",
-    "method": "application.occupancy.list",
-    "args": []
-  },
-  {
-    "path": "occupancy.acquire",
-    "method": "application.occupancy.acquire",
-    "args": [
-      "ID"
-    ]
-  },
-  {
-    "path": "occupancy.release",
-    "method": "application.occupancy.release",
-    "args": [
-      "ID"
-    ]
-  },
-  {
-    "path": "occupancy.listRequests",
-    "method": "application.occupancy.listRequests",
-    "args": [
-      {
-        "status": "pending",
-        "limit": 200
-      }
-    ]
-  },
-  {
-    "path": "occupancy.acquireRequest",
-    "method": "application.occupancy.acquireRequest",
-    "args": [
-      "ID"
-    ]
-  },
-  {
-    "path": "occupancy.rejectRequest",
-    "method": "application.occupancy.rejectRequest",
-    "args": [
-      "ID",
-      {
-        "__undefined__": true
-      }
-    ]
-  },
-  {
-    "path": "occupancy.cancelRequest",
-    "method": "application.occupancy.cancelRequest",
-    "args": [
-      "ID",
-      {
-        "__undefined__": true
       }
     ]
   }

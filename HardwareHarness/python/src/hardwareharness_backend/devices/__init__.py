@@ -13,7 +13,6 @@ from .device_transport import (
 from .device_transport import (
     DeviceTransportRegistry as DeviceTransportRegistry,
 )
-from .hardware_occupancy import HardwareOccupancyManager as HardwareOccupancyManager
 from .mcp_client import McpHttpTransport as McpHttpTransport
 from .remote_shell import (
     PosixRemoteShell as PosixRemoteShell,

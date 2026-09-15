@@ -10,10 +10,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-import httpx
-
 from hardwareharness_backend.automation.service import AutomationService
-from hardwareharness_backend.workspace.apps import AppsService
 from hardwareharness_backend.workspace.environment import EnvironmentManager
 
 
@@ -26,8 +23,6 @@ async def smoke(runtime: Path) -> dict[str, Any]:
             return await environment.python(str(project))
 
         runner = AutomationService(lambda: str(project), python_provider=interpreter)
-        apps = AppsService(str(project), runner, environment)
-        apps.create_app("sample", "Offline sample")
         old_env = os.environ.copy()
         os.environ.update(
             PATH=str(Path(os.environ.get("SYSTEMROOT", "C:/Windows")) / "System32"),
@@ -39,32 +34,32 @@ async def smoke(runtime: Path) -> dict[str, Any]:
         try:
             info = await environment.prepare(str(project))
             assert info["status"] == "ready", info
-            application = await apps.start("sample")
-            async with httpx.AsyncClient(trust_env=False, follow_redirects=True) as client:
-                initial = await client.get(application["previewUrl"], follow_redirects=False)
-                assert initial.status_code == 303
-                # cookiejar lacks Chromium's localhost exemption for Secure cookies.
-                # Electron E2E independently exercises real browser cookie delivery.
-                for cookie in client.cookies.jar:
-                    cookie.secure = False
-                page = await client.get(str(initial.url).split("?")[0])
-                assert page.status_code == 200 and "HardwareHarness" in page.text
-                origin = str(page.url).rstrip("/")
-                response = await client.post(
-                    origin + "/__hardwareharness/actions/sample",
-                    json={"samples": 2},
-                    headers={"origin": origin},
-                )
-                response.raise_for_status()
-                run_id = response.json()["runId"]
-                async with asyncio.timeout(30):
-                    while True:
-                        detail = await runner.get_run(run_id)
-                        if detail["run"]["status"] not in {"running", "cancelling"}:
-                            break
-                        await asyncio.sleep(0.05)
-                assert detail["run"]["status"] == "succeeded", detail
-                assert len(detail["events"]) >= 5, detail
+            script = project / ".hardwareharness/scripts/sample.py"
+            script.write_text(
+                "from hardwareharness import measurement, step\n\n"
+                "def main(inputs):\n"
+                "    with step('offline smoke'):\n"
+                "        measurement('value', inputs['value'], unit='count')\n"
+                "    return {'value': inputs['value']}\n",
+                encoding="utf-8",
+                newline="\n",
+            )
+            started = await runner.start_run(
+                {
+                    "entrypoint": "scripts/sample.py",
+                    "name": "Offline Python program",
+                    "inputs": {"value": 2},
+                    "hardwareIds": [],
+                }
+            )
+            async with asyncio.timeout(30):
+                while True:
+                    detail = await runner.get_run(started["runId"])
+                    if detail["run"]["status"] not in {"running", "cancelling"}:
+                        break
+                    await asyncio.sleep(0.05)
+            assert detail["run"]["status"] == "succeeded", detail
+            assert any(event["type"] == "measurement" for event in detail["events"]), detail
             return {
                 "status": "passed",
                 "runtime": str(runtime.resolve()),
@@ -72,16 +67,16 @@ async def smoke(runtime: Path) -> dict[str, Any]:
                 "systemPythonAndUvRemovedFromPath": True,
                 "uvOffline": True,
                 "freshCache": True,
-                "previewHttpStatus": page.status_code,
                 "runStatus": detail["run"]["status"],
                 "events": len(detail["events"]),
+                "measurementRecorded": True,
+                "webApplicationServiceAbsent": True,
                 "independentCleanWindowsVerified": False,
                 "physicalNetworkDisconnected": False,
             }
         finally:
-            await apps.close()
             await runner.close()
-            assert not apps._processes and not runner.active
+            assert not runner.active
             os.environ.clear()
             os.environ.update(old_env)
 

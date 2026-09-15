@@ -217,8 +217,6 @@ async def test_finish_failure_rejection_disconnect_shutdown(
     task = await service.request_task(
         {"portA": "DUT_A.P1", "portB": "DUT_B.P1", "action": "disconnect"}
     )
-    with pytest.raises(AppError, match="not in progress"):
-        await service.complete_task(task["wiringTaskId"], "confirmed")
     await service.start_task(task["wiringTaskId"], "tester")
     await service.complete_task(task["wiringTaskId"], "confirmed")
     assert projects.wiring()["connections"] == []

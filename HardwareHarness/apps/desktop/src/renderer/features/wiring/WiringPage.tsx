@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Background,
   BackgroundVariant,
+  ConnectionLineType,
   ConnectionMode,
   Controls,
   ReactFlow,
@@ -12,7 +13,6 @@ import {
   useReactFlow,
   type Connection
 } from "@xyflow/react";
-import { SmartSmoothStepEdge } from "@tisoap/react-flow-smart-edge";
 import "@xyflow/react/dist/style.css";
 import type { Hardware } from "@hardwareharness/contracts/devices";
 import type { PinPair, PortPosition, PortSide, ProjectWiring } from "@hardwareharness/contracts/wiring";
@@ -22,14 +22,13 @@ import { cn } from "../../shared/ui/cn";
 import { Button } from "../../shared/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader } from "../../shared/ui/dialog";
 import { Spinner } from "../../shared/ui/skeleton";
-import { useDeviceCatalog, useWiringTasks } from "../../shared/queries.js";
+import { useDeviceCatalog } from "../../shared/queries.js";
 import { invalidateWiringData } from "../../shared/mutations.js";
 import { queryKeys } from "../../shared/query-keys.js";
 import { useResizableWidth } from "../../shared/resizable.js";
 import { HardwareLibrary, wiringNodeTypes } from "./WiringCanvas.js";
 import { ConnectionDrawer, WiringList } from "./WiringInspector.js";
 import { EditPinsModal, ListCreateConnectionModal, ManualConnectionModal } from "./ConnectionEditor.js";
-import { WiringTaskModal } from "./WiringTaskPanel.js";
 import { WiringViewSwitch, type WiringView } from "./WiringToolbar.js";
 import {
   DEFAULT_CARD_HEIGHT,
@@ -48,21 +47,18 @@ import {
   type TopologyEdge
 } from "./wiring-model.js";
 
-const edgeTypes = { smart: SmartSmoothStepEdge };
-
 export function WiringPage() {
   return <ReactFlowProvider><WiringWorkbench /></ReactFlowProvider>;
 }
 
-/** Edits push into the main-process project buffer and mark the document dirty; disk write is explicit. */
+/** Layout changes are saved automatically; structural edits remain in the project buffer. */
 function useWiringData() {
   const client = useQueryClient();
   const project = useQuery({ queryKey: queryKeys.projectDocument, queryFn: () => window.hardwareharness.projects.current() });
   const catalog = useDeviceCatalog();
-  // wiringTask/project 事件的订阅在 AppShell 全局进行，这里只读共享缓存。
-  const tasks = useWiringTasks();
 
   const save = useMutation({
+    scope: { id: "wiring-document" },
     mutationFn: (next: ProjectWiring) => window.hardwareharness.wiring.update(next),
     onSuccess: (doc) => { client.setQueryData(queryKeys.projectDocument, doc); }
   });
@@ -72,14 +68,14 @@ function useWiringData() {
     data: project.data ? { wiring: project.data.file.wiring } : undefined
   };
 
-  return { wiringDoc, catalog, tasks, save };
+  return { wiringDoc, catalog, save };
 }
 
 function WiringWorkbench() {
   const client = useQueryClient();
-  const { wiringDoc, catalog, tasks, save } = useWiringData();
+  const { wiringDoc, catalog, save } = useWiringData();
   const [view, setView] = useState<"canvas" | "list">("canvas");
-  const library = useResizableWidth({ defaultWidth: 300, min: 200, max: 520, direction: "right" });
+  const library = useResizableWidth({ storageKey: "hardwareharness.wiring-library-width", defaultWidth: 300, min: 200, max: 520, direction: "right" });
   const [manualPair, setManualPair] = useState<ManualPair>();
   const [listCreateOpen, setListCreateOpen] = useState(false);
   const [editingConnectionId, setEditingConnectionId] = useState<string>();
@@ -94,7 +90,6 @@ function WiringWorkbench() {
 
   const wiring = wiringDoc.data?.wiring;
   const hardware = useMemo(() => catalog.data?.hardware ?? [], [catalog.data]);
-  const taskList = useMemo(() => tasks.data ?? [], [tasks.data]);
 
   // `useMutation` returns a fresh object every render, but `mutate` is referentially stable.
   // Depending on the object here would churn every memo below it and loop `setNodes`.
@@ -202,8 +197,6 @@ function WiringWorkbench() {
     });
   }, [persist, wiring]);
 
-  const rememberAssetUrl = useCallback((assetId: string, url: string) => setAssetUrls((current) => ({ ...current, [assetId]: url })), []);
-
   // Appearance images are resolved lazily and cached. The key carries the hardwareId because an
   // assetId like `appearance.png` is only unique inside one device's directory.
   useEffect(() => {
@@ -245,9 +238,9 @@ function WiringWorkbench() {
     };
   }), [assetUrls, editingPortHardwareId, hardware, movePort, resizeNode, wiring?.nodes]);
 
-  // One record is one cable is one edge — no grouping step, because the document already stores
-  // the connection at the port level the canvas draws at.
+  // Same-port pin connections are retained in the document and list only.
   const flowEdges = useMemo<TopologyEdge[]>(() => connections.flatMap((connection) => {
+    if (connection.portA === connection.portB) return [];
     const a = splitPortRef(connection.portA, hardware);
     const b = splitPortRef(connection.portB, hardware);
     if (!a || !b) return [];
@@ -257,7 +250,7 @@ function WiringWorkbench() {
       sourceHandle: a.portId,
       target: b.hardwareId,
       targetHandle: b.portId,
-      type: "smart",
+      type: "step",
       className: "wiring-flow-edge",
       deletable: false,
       data: { connectionId: connection.connectionId }
@@ -275,7 +268,7 @@ function WiringWorkbench() {
       const target = event.target;
       if (!(target instanceof Element)) { setNodeMenu(undefined); setEditingPortHardwareId(undefined); return; }
       if (target.closest(".wiring-node-menu")) return;
-      const portNode = target.closest(".flow-connector-label")?.closest<HTMLElement>(".flow-hardware-node");
+      const portNode = target.closest(".flow-connector-hit")?.closest<HTMLElement>(".flow-hardware-node");
       if (editingPortHardwareId && portNode?.dataset.hardwareId === editingPortHardwareId) { setNodeMenu(undefined); return; }
       setNodeMenu(undefined);
       setEditingPortHardwareId(undefined);
@@ -314,7 +307,6 @@ function WiringWorkbench() {
 
   const selectedConnection = connections.find((item) => item.connectionId === selectedConnectionId);
   const editingConnection = connections.find((item) => item.connectionId === editingConnectionId);
-  const activeTask = taskList.find((task) => task.status === "in_progress") ?? taskList.find((task) => task.status === "pending");
 
   return (
     <main className="h-full min-h-0 min-w-0 overflow-hidden bg-background">
@@ -337,10 +329,10 @@ function WiringWorkbench() {
                   nodes={nodes}
                   edges={edges}
                   nodeTypes={wiringNodeTypes}
-                  edgeTypes={edgeTypes}
                   onNodesChange={onNodesChange}
                   onEdgesChange={onEdgesChange}
                   onConnect={onConnect}
+                  connectionLineType={ConnectionLineType.Step}
                   connectionMode={ConnectionMode.Loose}
                   onNodeDragStop={(_event, node) => persist({ ...wiring, nodes: wiring.nodes.map((item) => item.hardwareId === node.id ? { ...item, x: node.position.x, y: node.position.y } : item) })}
                   onNodeContextMenu={(event, node) => {
@@ -393,7 +385,6 @@ function WiringWorkbench() {
         </section>
       </section>
 
-      {activeTask && <WiringTaskModal task={activeTask} hardware={hardware} assetUrls={assetUrls} onAssetUrl={rememberAssetUrl} onChanged={refreshAll} />}
       <ManualConnectionModal
         pair={manualPair}
         hardware={hardware}

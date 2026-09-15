@@ -1,5 +1,6 @@
 import type { ServerStatus } from "@hardwareharness/contracts/devices";
 
+
 export function mcpRowStatuses(serverStatus?: ServerStatus): { dot: string; label: string; title?: string | undefined }[] {
   const mcpState = serverStatus?.transport.state ?? "unknown";
   return [{
@@ -8,6 +9,8 @@ export function mcpRowStatuses(serverStatus?: ServerStatus): { dot: string; labe
     title: serverStatus?.transport.message
   }];
 }
+
+
 
 export function connectionDot(state: string): string {
   if (state === "online") return "ok";

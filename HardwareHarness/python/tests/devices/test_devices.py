@@ -7,12 +7,10 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from hardwareharness_backend.compat import utc_now_iso
 from hardwareharness_backend.contracts.validation import ValidationError
 from hardwareharness_backend.devices import (
     DeviceService,
     DeviceStore,
-    HardwareOccupancyManager,
     McpHttpTransport,
     PosixRemoteShell,
     PowerShellRemoteShell,
@@ -277,7 +275,7 @@ async def test_call_metadata() -> None:
         "hardwareId": server()["hardwareId"],
         "attempt": 2,
         "idempotencyKey": "stable-key",
-        "occupancyLeaseId": "lease-1",
+        "traceId": "trace-1",
     }
     assert await pool.call_remote(
         server()["serverId"], "read_channel", {"channel": 2}, {"metadata": metadata}
@@ -296,54 +294,3 @@ async def test_untrusted_state() -> None:
         await transport(
             [{**hardware(), "state": "vendor-specific-ready"}]
         )._refresh_single_hardware({"server": server()})
-
-
-@pytest.mark.ts_case(
-    "packages/devices/src/hardware-occupancy.test.ts::"
-    "acquires a per-hardware lease and reports loss when remote ownership changes"
-)
-async def test_lease_lost() -> None:
-    current: dict[str, Any] = {"state": "unoccupied"}
-
-    async def call_internal(_server: Any, _name: str, args: dict[str, Any]) -> Any:
-        nonlocal current
-        if args["action"] == "acquire":
-            current = {
-                "state": "occupied",
-                "holderId": args["holderId"],
-                "holderLabel": args["holderLabel"],
-                "acquiredAt": utc_now_iso(),
-                "expiresAt": "2099-01-01T00:00:00.000Z",
-            }
-        elif args["action"] == "release":
-            current = {"state": "unoccupied"}
-        return current
-
-    manager = HardwareOccupancyManager(
-        Mock(
-            list_servers=Mock(
-                return_value=[
-                    {"serverId": "S1", "hardwareId": "H1", "enabled": True, "transport": "mcp-http"}
-                ]
-            )
-        ),
-        Mock(call_internal=AsyncMock(side_effect=call_internal)),
-    )
-    lost = Mock()
-    manager.set_lost_notifier(lost)
-    try:
-        assert (await manager.acquire("H1"))["state"] == "occupied_by_self"
-        assert isinstance(manager.require_lease("H1"), str)
-        current = {
-            "state": "occupied",
-            "holderId": "another-client",
-            "holderLabel": "Other",
-            "expiresAt": "2099-01-01T00:00:00.000Z",
-        }
-        await manager.refresh("H1")
-        assert lost.call_args.args[0] == "H1"
-        assert "no longer owned" in lost.call_args.args[1]
-        with pytest.raises(Exception, match="must be occupied"):
-            manager.require_lease("H1")
-    finally:
-        await manager.close()

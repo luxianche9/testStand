@@ -83,3 +83,78 @@ def test_source_when_python_frames_are_unavailable(monkeypatch: pytest.MonkeyPat
 
     monkeypatch.setattr(inspect, "currentframe", lambda: None)
     assert hardwareharness._source() == {}
+
+
+@pytest.mark.parametrize("asynchronous", [False, True])
+async def test_data_mode_selects_data_but_preserves_default_and_media(
+    monkeypatch: pytest.MonkeyPatch, asynchronous: bool
+) -> None:
+    import hardwareharness
+
+    envelope = {
+        "content": [{"type": "image", "mimeType": "image/png", "data": "YWJj"}],
+        "structuredContent": {"ok": True, "data": {"volts": 1.25}},
+        "isError": False,
+    }
+    monkeypatch.setattr(hardwareharness._transport, "request", lambda *args: envelope)
+    if asynchronous:
+        assert await hardwareharness.acall("board", "read", {}) is envelope
+        assert await hardwareharness.acall("board", "read", {}, result_mode="data") == {
+            "volts": 1.25
+        }
+    else:
+        assert hardwareharness.call("board", "read", {}) is envelope
+        assert hardwareharness.call("board", "read", {}, result_mode="data") == {"volts": 1.25}
+    assert envelope["content"][0]["data"] == "YWJj"
+
+
+@pytest.mark.parametrize(
+    "envelope,expected",
+    [
+        ({"content": [{"type": "text", "text": '{"ok":true,"data":[1,2]}'}]}, [1, 2]),
+        ({"structuredContent": {"count": 2}}, {"count": 2}),
+        (
+            {"content": [{"type": "text", "text": "plain"}]},
+            {"content": [{"type": "text", "text": "plain"}]},
+        ),
+    ],
+)
+def test_data_mode_handles_actual_result_shapes(
+    monkeypatch: pytest.MonkeyPatch, envelope: Any, expected: Any
+) -> None:
+    import hardwareharness
+
+    monkeypatch.setattr(hardwareharness._transport, "request", lambda *args: envelope)
+    assert hardwareharness.call("board", "read", {}, result_mode="data") == expected
+
+
+@pytest.mark.parametrize(
+    "envelope",
+    [
+        {"content": [{"type": "text", "text": "failed"}], "isError": True},
+        {"structuredContent": {"ok": False, "error": {"message": "offline"}}},
+        {"content": [{"type": "text", "text": '{"ok":false,"error":"offline"}'}]},
+    ],
+)
+def test_data_mode_never_treats_error_envelope_as_business_success(
+    monkeypatch: pytest.MonkeyPatch, envelope: Any
+) -> None:
+    import hardwareharness
+
+    monkeypatch.setattr(hardwareharness._transport, "request", lambda *args: envelope)
+    with pytest.raises(RuntimeError, match="failed"):
+        hardwareharness.call("board", "read", {}, result_mode="data")
+    assert hardwareharness.call("board", "read", {}) is envelope
+
+
+async def test_invalid_result_mode_fails_before_transport(monkeypatch: pytest.MonkeyPatch) -> None:
+    import hardwareharness
+
+    def fail(*args: Any) -> None:
+        raise AssertionError("Hardware must not be called")
+
+    monkeypatch.setattr(hardwareharness._transport, "request", fail)
+    with pytest.raises(ValueError, match="result_mode"):
+        hardwareharness.call("board", "write", {}, result_mode="unknown")  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="result_mode"):
+        await hardwareharness.acall("board", "write", {}, result_mode="unknown")  # type: ignore[arg-type]

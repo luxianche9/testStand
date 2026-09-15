@@ -106,6 +106,42 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
     expect(afterMove).toMatchObject({ width: 220, height: 140, portPositions: afterPort.portPositions });
     await expect(wrapper).toHaveCSS("width", "220px");
     await expect(wrapper).toHaveCSS("height", "140px");
+    await page.evaluate(async () => {
+      const current = (await window.hardwareharness.projects.current())!;
+      await window.hardwareharness.projects.leave();
+      await window.hardwareharness.projects.openFolder(current.rootPath);
+    });
+    await page.reload();
+    await page.getByText("interaction-fixture", { exact: true }).first().click();
+    await expect(page.getByRole("tab", { name: "工位接线", exact: true })).toBeVisible();
+    expect(await readNode(page, "DUT_A")).toEqual(afterMove);
+  });
+
+  test("restores each panel width after navigating and reloading", async () => {
+    const panels = [
+      { tab: "工位接线", label: "调整硬件库宽度" },
+      { tab: "设备管理", label: "拖拽调整面板宽度" },
+      { tab: "动作编排", label: "拖拽调整面板宽度" }
+    ];
+    const widths: number[] = [];
+    for (const panel of panels) {
+      await page.getByRole("tab", { name: panel.tab, exact: true }).click();
+      const separator = page.getByRole("separator", { name: panel.label, exact: true });
+      const bounds = (await separator.boundingBox())!;
+      await page.mouse.move(bounds.x + 2, bounds.y + bounds.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(bounds.x + 62, bounds.y + bounds.height / 2, { steps: 8 });
+      await page.mouse.up();
+      widths.push(await separator.evaluate((element) => parseFloat((element.parentElement as HTMLElement).style.gridTemplateColumns)));
+    }
+    await page.reload();
+    await page.getByText("interaction-fixture", { exact: true }).first().click();
+    for (const [index, panel] of panels.entries()) {
+      await page.getByRole("tab", { name: panel.tab, exact: true }).click();
+      const separator = page.getByRole("separator", { name: panel.label, exact: true });
+      await expect.poll(() => separator.evaluate((element) => parseFloat((element.parentElement as HTMLElement).style.gridTemplateColumns))).toBe(widths[index]);
+    }
+    await page.getByRole("tab", { name: "工位接线", exact: true }).click();
   });
 
   test("resizes the sidebar from the keyboard and retains its bounded width", async () => {
@@ -136,7 +172,7 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
     await page.setViewportSize({ width: 1280, height: 800 });
   });
 
-  test("keeps empty native Select options, keyboard selection and endpoint exclusion", async () => {
+  test("keeps empty native Select options and keyboard selection with same-port support", async () => {
     await page.getByRole("group", { name: "接线视图" }).getByRole("button", { name: "列表", exact: true }).click();
     await page.getByRole("button", { name: "新建接线", exact: true }).click();
     const dialog = page.getByRole("dialog", { name: "新建接线", exact: true });
@@ -151,8 +187,11 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
     await source.focus();
     await source.press("ArrowDown");
     await expect(source).toHaveValue("DUT_A.J1");
-    await expect(target.locator('option[value="DUT_A.J1"]')).toHaveJSProperty("disabled", true);
+    await expect(target.locator('option[value="DUT_A.J1"]')).toHaveJSProperty("disabled", false);
     await target.focus();
+    await target.press("ArrowDown");
+    await expect(target).toHaveValue("DUT_A.J1");
+    await expect(create).toBeDisabled();
     await target.press("ArrowDown");
     await expect(target).toHaveValue("DUT_B.J1");
     await expect(create).toBeEnabled();
@@ -192,29 +231,64 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
     });
   });
 
-  test("traps focus in a nested image dialog and Escape preserves the outer edit", async () => {
+  test("shows a hardware photo inline and discards unsaved editor changes on Escape", async () => {
+    await page.getByRole("tab", { name: "设备管理", exact: true }).click();
     const hardware = page.getByRole("tree", { name: "硬件列表" }).getByRole("treeitem", { name: /DUT_A/ });
-    await hardware.getByRole("button", { name: "编辑", exact: true }).click();
-    const outer = page.getByRole("dialog", { name: "编辑硬件", exact: true });
-    await outer.getByLabel("显示名称").fill("Unsaved keyboard edit");
-    await outer.getByRole("button", { name: "预览", exact: true }).click();
-    const inner = page.getByRole("dialog", { name: "外观图", exact: true });
-    await expect(inner).toBeVisible();
-    await expect.poll(() => inner.locator("img").evaluate((element: HTMLImageElement) => element.naturalWidth)).toBeGreaterThan(0);
-    for (const key of ["Tab", "Tab", "Tab", "Shift+Tab", "Shift+Tab"]) {
-      await page.keyboard.press(key);
-      expect(await inner.evaluate((element) => element.contains(document.activeElement))).toBe(true);
-    }
+    await hardware.click();
+    const photo = page.getByRole("img", { name: "DUT_A 外观图" });
+    await expect(photo).toBeVisible();
+    await expect.poll(() => photo.evaluate((element: HTMLImageElement) => element.naturalWidth)).toBeGreaterThan(0);
+    await page.getByRole("button", { name: "编辑", exact: true }).click();
+    const editor = page.getByRole("dialog", { name: "编辑硬件", exact: true });
+    await editor.getByLabel("显示名称").fill("Unsaved keyboard edit");
+    await expect(editor.getByRole("img", { name: "外观图" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "预览", exact: true })).toHaveCount(0);
     await page.keyboard.press("Escape");
-    await expect(inner).toBeHidden();
-    await expect(outer).toBeVisible();
-    await expect(outer.getByLabel("显示名称")).toHaveValue("Unsaved keyboard edit");
-    await page.keyboard.press("Tab");
-    expect(await outer.evaluate((element) => element.contains(document.activeElement))).toBe(true);
-    await page.keyboard.press("Escape");
-    await expect(outer).toBeHidden();
+    await expect(editor).toBeHidden();
     await expect(hardware).toContainText("DUT_A");
     await expect(hardware).not.toContainText("Unsaved keyboard edit");
+  });
+
+  test("restores the window and saved layout after restarting the desktop", async () => {
+    const node = await readNode(page, "DUT_A");
+    const savedWidths = await page.evaluate(() => Object.fromEntries(
+      Object.keys(localStorage).filter((key) => key.endsWith("-width") || key.endsWith(".width"))
+        .map((key) => [key, localStorage.getItem(key)])
+    ));
+    const dimensions = await application.evaluate(({ BrowserWindow }) => {
+      const window = BrowserWindow.getAllWindows()[0]!;
+      window.setSize(1180, 760);
+      return window.getSize();
+    });
+    await application.close();
+    const executablePath = process.env.HARDWAREHARNESS_DESKTOP_EXECUTABLE;
+    const env = Object.fromEntries(Object.entries({
+      ...process.env,
+      HARDWAREHARNESS_USER_DATA_DIR: userData,
+      HARDWAREHARNESS_GATEWAY_PORT: "0",
+      HARDWAREHARNESS_AGENT_INTEGRATION_TEST_MODE: "1"
+    }).filter((entry): entry is [string, string] => entry[1] !== undefined));
+    delete env.ELECTRON_RUN_AS_NODE;
+    application = await electron.launch({
+      ...(executablePath ? { executablePath } : {}),
+      args: executablePath ? [] : [desktopDir],
+      cwd: executablePath ? dirname(executablePath) : desktopDir,
+      env,
+      timeout: 90_000
+    });
+    page = await application.firstWindow({ timeout: 90_000 });
+    // Windows display scaling can round logical window dimensions by one pixel.
+    await expect.poll(async () => {
+      const actual = await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.getSize());
+      return Math.max(...actual.map((value, index) => Math.abs(value - dimensions[index]!)));
+    }).toBeLessThanOrEqual(1);
+    expect(await page.evaluate((keys) => Object.fromEntries(keys.map((key) => [key, localStorage.getItem(key)])), Object.keys(savedWidths))).toEqual(savedWidths);
+    await page.getByText("interaction-fixture", { exact: true }).first().click();
+    await expect(page.getByRole("tab", { name: "工位接线", exact: true })).toBeVisible();
+    expect(await readNode(page, "DUT_A")).toEqual(node);
+    await page.getByRole("tab", { name: "工位接线", exact: true }).click();
+    const separator = page.getByRole("separator", { name: "调整硬件库宽度", exact: true });
+    await expect.poll(() => separator.evaluate((element) => parseFloat((element.parentElement as HTMLElement).style.gridTemplateColumns))).toBe(Number(savedWidths["hardwareharness.wiring-library-width"]));
   });
 });
 

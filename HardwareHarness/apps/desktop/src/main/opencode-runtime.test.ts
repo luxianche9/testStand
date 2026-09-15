@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough } from "node:stream";
 import { afterEach, describe, expect, it } from "vitest";
-import { openCodeConfig, openCodeWorkspace, OpenCodeRuntimeService } from "./opencode-runtime.js";
+import { HARDWAREHARNESS_AGENT_INSTRUCTIONS, openCodeConfig, openCodeWorkspace, OpenCodeRuntimeService } from "./opencode-runtime.js";
 
 class FakeProcess extends EventEmitter {
   readonly pid = 4242;
@@ -65,6 +65,11 @@ describe("OpenCodeRuntimeService", () => {
       enabled_providers: ["openai"],
       model: "openai/test-model",
       small_model: "openai/test-model",
+      default_agent: "build",
+      agent: {
+        build: { prompt: HARDWAREHARNESS_AGENT_INSTRUCTIONS },
+        plan: { prompt: HARDWAREHARNESS_AGENT_INSTRUCTIONS }
+      },
       provider: {
         openai: {
           options: {
@@ -89,6 +94,16 @@ describe("OpenCodeRuntimeService", () => {
     expect(openCodeWorkspace("C:\\workspace\\demo")).toBe("C:\\workspace\\demo");
   });
 
+  it("provides release contracts and evidence rules to both selectable primary agents", () => {
+    const configuration = JSON.parse(openCodeConfig("http://127.0.0.1:8000/mcp", { baseUrl: "https://llm.example.test/v1", model: "test-model" }));
+    expect(configuration.agent[configuration.default_agent].prompt).toBe(HARDWAREHARNESS_AGENT_INSTRUCTIONS);
+    expect(configuration.agent.plan.prompt).toBe(HARDWAREHARNESS_AGENT_INSTRUCTIONS);
+    for (const fact of ["get_agent_context", "get_tool_contract", "read_reference", "create_workspace_file", "expectedHash", 'result_mode="envelope"', 'result_mode="data"', "passed=false", "结果未知"]) {
+      expect(HARDWAREHARNESS_AGENT_INSTRUCTIONS).toContain(fact);
+    }
+    expect(HARDWAREHARNESS_AGENT_INSTRUCTIONS).not.toMatch(/模拟|mock|simulate|simulation/i);
+  });
+
   it("starts in the current project directory with isolated XDG storage and bearer-token indirection", async () => {
     const current = await fixture("C:\\workspace\\demo");
     const started = current.service.start();
@@ -106,6 +121,8 @@ describe("OpenCodeRuntimeService", () => {
     expect(current.spawnOptions()?.env?.OPENCODE_CONFIG_CONTENT).toContain("{env:HARDWAREHARNESS_MCP_TOKEN}");
     expect(current.spawnOptions()?.env?.OPENCODE_CONFIG_CONTENT).toContain("{env:HARDWAREHARNESS_LLM_API_KEY}");
     expect(current.spawnOptions()?.env?.OPENCODE_CONFIG_CONTENT).not.toContain("llm-secret");
+    const configuration = JSON.parse(current.spawnOptions()!.env!.OPENCODE_CONFIG_CONTENT!);
+    expect(configuration.agent[configuration.default_agent].prompt).toBe(HARDWAREHARNESS_AGENT_INSTRUCTIONS);
     expect(current.spawnOptions()?.env?.XDG_DATA_HOME).toContain(join("opencode", "data"));
     expect(current.spawnArgs()).toEqual(expect.arrayContaining(["--cors", "null", "http://localhost:5173"]));
     expect(status.apiUrl).toBe("http://127.0.0.1:4096");

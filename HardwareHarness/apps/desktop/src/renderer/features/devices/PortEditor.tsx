@@ -1,19 +1,17 @@
 import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import type { Hardware, HardwarePort } from "@hardwareharness/contracts/devices";
 import { ChevronRightIcon, CircleAlertIcon, ImageIcon, PlusIcon, Trash2Icon } from "lucide-react";
-import { queryKeys } from "../../shared/query-keys.js";
 import { cn } from "../../shared/ui/cn";
 import { Badge } from "../../shared/ui/badge";
 import { Button } from "../../shared/ui/button";
-import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader } from "../../shared/ui/dialog";
 import { Input } from "../../shared/ui/input";
-import { Spinner } from "../../shared/ui/skeleton";
+import { HardwareImage } from "./HardwareImage.js";
 
 /**
  * Two-level editor for a device's ports and their pins.
  *
- * Ports are a list, pins are a nested list under each port, and the port photo button sits on the
+ * Ports are a list, pins are a nested list under each port, and the port photo sits on the
  * port's own row — a port, its pins and its picture are one thing to the operator, so they are one
  * thing here too. A port with no pins is a normal state, not an error: a fibre or coax connector is
  * wired as a whole.
@@ -27,7 +25,6 @@ export function PortEditor({ hardwareId, ports, saved, onChange, onImageChanged 
   onImageChanged: (hardware: Hardware) => void;
 }) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [preview, setPreview] = useState<{ title: string; assetId: string }>();
   const [error, setError] = useState<string>();
 
   const image = useMutation({
@@ -94,10 +91,10 @@ export function PortEditor({ hardwareId, ports, saved, onChange, onImageChanged 
                   onChange={(event) => update(port.portId, (item) => ({ ...item, name: event.target.value }))}
                 />
                 <Badge variant={port.pins.length ? "secondary" : "default"}>{port.pins.length ? `${port.pins.length} 针` : "无针脚"}</Badge>
+                {saved && port.imageAssetId && (
+                  <HardwareImage hardwareId={hardwareId} assetId={port.imageAssetId} alt={`${port.name} 端口图`} className="h-10 w-10 rounded-md object-cover" />
+                )}
                 <span className="ml-auto flex items-center gap-1">
-                  {saved && port.imageAssetId && (
-                    <Button variant="ghost" size="xs" onClick={() => setPreview({ title: `${port.name} 端口图`, assetId: port.imageAssetId! })}>预览</Button>
-                  )}
                   <Button
                     variant="ghost"
                     size="xs"
@@ -180,14 +177,6 @@ export function PortEditor({ hardwareId, ports, saved, onChange, onImageChanged 
         })}
         {!ports.length && <div className="px-2 py-4 text-center text-xs text-muted-foreground">还没有端口。点「添加端口」登记这台设备的接口。</div>}
       </div>
-
-      <PortImageModal
-        open={Boolean(preview)}
-        title={preview?.title ?? ""}
-        hardwareId={hardwareId}
-        assetId={preview?.assetId}
-        onClose={() => setPreview(undefined)}
-      />
     </div>
   );
 }
@@ -199,7 +188,6 @@ export function AppearanceImage({ hardwareId, assetId, saved, onChanged }: {
   saved: boolean;
   onChanged: (hardware: Hardware) => void;
 }) {
-  const [preview, setPreview] = useState(false);
   const [error, setError] = useState<string>();
   const image = useMutation({
     mutationFn: async (action: "import" | "remove") =>
@@ -210,49 +198,16 @@ export function AppearanceImage({ hardwareId, assetId, saved, onChanged }: {
   return (
     <div className="flex min-h-8 flex-wrap items-center gap-2">
       <span className="w-12 flex-none text-xs font-semibold text-muted-foreground">外观图</span>
-      <span className="min-w-11 flex-none text-xs text-muted-foreground/70">{assetId ? "已上传" : "未上传"}</span>
-      {assetId && <Button variant="ghost" size="xs" onClick={() => setPreview(true)}>预览</Button>}
+      {assetId
+        ? <HardwareImage hardwareId={hardwareId} assetId={assetId} alt="外观图" className="h-16 max-h-16 rounded-md" />
+        : <span className="min-w-11 flex-none text-xs text-muted-foreground/70">未上传</span>}
       <Button variant="ghost" size="xs" disabled={!saved || image.isPending} onClick={() => image.mutate("import")}>
         <ImageIcon />{assetId ? "更换" : "上传"}
       </Button>
       {assetId && <Button variant="ghost" size="xs" disabled={image.isPending} onClick={() => image.mutate("remove")}>移除</Button>}
       {error && <div className="flex w-full items-start gap-2.5 rounded-md border border-destructive/35 bg-destructive/6 px-3.5 py-2.5 text-xs break-words whitespace-pre-wrap text-destructive [&_svg]:mt-0.5 [&_svg]:flex-none"><CircleAlertIcon className="size-4" /><span>{error}</span></div>}
-      <PortImageModal open={preview} title="外观图" hardwareId={hardwareId} assetId={assetId} onClose={() => setPreview(false)} />
     </div>
   );
-}
-
-function PortImageModal({ open, title, hardwareId, assetId, onClose }: {
-  open: boolean;
-  title: string;
-  hardwareId: string;
-  assetId?: string | undefined;
-  onClose: () => void;
-}) {
-  return (
-    <Dialog open={open} onOpenChange={(value) => { if (!value) onClose(); }}>
-      <DialogContent size="lg">
-        <DialogHeader title={title} onClose={onClose} />
-        <DialogBody>
-          <div className="grid max-h-[60vh] min-h-[280px] place-items-center overflow-hidden rounded-md bg-secondary/50 [&_img]:block [&_img]:max-h-[56vh] [&_img]:max-w-full [&_img]:object-contain">
-            {assetId ? <HardwareImage hardwareId={hardwareId} assetId={assetId} /> : <span className="text-xs text-muted-foreground">无图片</span>}
-          </div>
-        </DialogBody>
-        <DialogFooter>
-          <Button onClick={onClose}>关闭</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function HardwareImage({ hardwareId, assetId, alt = "" }: { hardwareId: string; assetId: string; alt?: string }) {
-  const url = useQuery({
-    queryKey: queryKeys.hardwareImage(hardwareId, assetId),
-    queryFn: () => window.hardwareharness.devices.hardwareImageUrl(hardwareId, assetId),
-    staleTime: Infinity
-  });
-  return url.data ? <img src={url.data} alt={alt} /> : <Spinner />;
 }
 
 /** Ports and pins are identified by hand-typed ids, so a new row only needs a free default. */

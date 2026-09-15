@@ -176,23 +176,39 @@ class RunLogStore:
             "backups",
             "node_modules",
         }
-        for folder, directories, filenames in os.walk(workspace):
-            directories[:] = [name for name in directories if name not in ignored]
-            for directory in directories:
-                if (Path(folder) / directory).is_symlink():
-                    raise ValueError("Workflow snapshots cannot include symbolic directories")
-            for filename in filenames:
-                path = Path(folder) / filename
-                relative = path.relative_to(workspace)
-                if path.is_symlink() or not path.resolve().is_relative_to(workspace.resolve()):
-                    raise ValueError(
-                        "Workflow snapshots cannot include files outside the workspace"
-                    )
-                target = destination / relative
-                target.parent.mkdir(parents=True, exist_ok=True)
-                contents = path.read_bytes()
+        snapshot_roots = [workspace / "scripts"]
+        for metadata in (workspace / "pyproject.toml", workspace / "uv.lock"):
+            if metadata.is_file():
+                contents = metadata.read_bytes()
+                target = destination / metadata.name
                 target.write_bytes(contents)
-                hashes[relative.as_posix()] = hashlib.sha256(contents).hexdigest()
+                hashes[metadata.name] = hashlib.sha256(contents).hexdigest()
+        for snapshot_root in snapshot_roots:
+            if not snapshot_root.exists():
+                continue
+            for folder, directories, filenames in os.walk(snapshot_root):
+                directories[:] = [name for name in directories if name not in ignored]
+                for directory in directories:
+                    if (Path(folder) / directory).is_symlink():
+                        raise ValueError("Workflow snapshots cannot include symbolic directories")
+                for filename in filenames:
+                    path = Path(folder) / filename
+                    relative = path.relative_to(workspace)
+                    if (
+                        path.suffix.casefold() != ".py"
+                        or path.is_symlink()
+                        or not path.resolve().is_relative_to(workspace.resolve())
+                    ):
+                        if path.is_symlink():
+                            raise ValueError(
+                                "Workflow snapshots cannot include files outside the workspace"
+                            )
+                        continue
+                    target = destination / relative
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    contents = path.read_bytes()
+                    target.write_bytes(contents)
+                    hashes[relative.as_posix()] = hashlib.sha256(contents).hexdigest()
         return destination, hashes
 
     def attachment(self, run_id: str, source: Path, name: str | None = None) -> Json:

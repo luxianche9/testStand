@@ -1,0 +1,98 @@
+{
+  "status": "passed",
+  "publicTools": 45,
+  "publicOnly": true,
+  "hardwareInvoked": false,
+  "liveModelAssessed": false,
+  "independentCleanWindowsVerified": false,
+  "runtimeContext": {
+    "appVersion": "0.1.0",
+    "sdkVersion": "0.1.0",
+    "contractRevision": "2026-09-15.1",
+    "observedAt": "2026-09-15T03:06:56.835Z",
+    "project": {
+      "rootPath": "D:\\Temp\\HH 发行接口 WB7cF6\\用户工程 中文",
+      "path": "D:\\Temp\\HH 发行接口 WB7cF6\\用户工程 中文\\.hardwareharness\\project.json",
+      "dirty": false
+    },
+    "environment": {
+      "status": "ready",
+      "pythonPath": "D:\\Temp\\HH 发行接口 WB7cF6\\用户工程 中文\\.hardwareharness\\.venv\\Scripts\\python.exe",
+      "error": null,
+      "requiredSdkContractRevision": "2026-09-15.1",
+      "sdkContractRevision": "2026-09-15.1"
+    },
+    "workspacePolicy": {
+      "programKind": "python-script",
+      "pathPrefix": "scripts/",
+      "fileExtension": ".py",
+      "maxFileBytes": 4194304,
+      "entrypoint": "main(inputs)",
+      "createExclusive": true,
+      "updatesRequireExpectedHash": true,
+      "sdkFunctions": [
+        "call",
+        "acall",
+        "step",
+        "log",
+        "measurement",
+        "attachment"
+      ]
+    },
+    "capabilities": [
+      "system.read",
+      "devices.read",
+      "devices.controlServers",
+      "hardware.read",
+      "hardware.manage",
+      "hardware.executeTools",
+      "projects.read",
+      "projects.manage",
+      "wiring.read",
+      "wiring.request",
+      "applications.read",
+      "applications.manage",
+      "applications.run"
+    ],
+    "references": [
+      {
+        "referenceId": "hh-sdk",
+        "title": "HardwareHarness Python SDK",
+        "origin": "bundled",
+        "source": "hardwareharness:hh-sdk@2026-09-15.1",
+        "appVersion": "0.1.0",
+        "sdkVersion": "0.1.0",
+        "contractRevision": "2026-09-15.1",
+        "sha256": "24faad6b7fe98aa1c18173f0b9ab4d19e15c05b0850a9f3cd6285964ab19b99c"
+      },
+      {
+        "referenceId": "hh-agent-interface",
+        "title": "HardwareHarness public interface and recovery",
+        "origin": "bundled",
+        "source": "hardwareharness:hh-agent-interface@2026-09-15.1",
+        "appVersion": "0.1.0",
+        "sdkVersion": "0.1.0",
+        "contractRevision": "2026-09-15.1",
+        "sha256": "cc82e0c33609165230208eddcab7bae4febc0aa2ee7b24915865cce5af72ebd9"
+      }
+    ],
+    "catalogRevision": "d15c871bb4c178bdd33fdf2beadf42b74beab881907e326f836ebad84b5b9ddb"
+  },
+  "runId": "run_f77447f669604f6ea6ab32c7b0fbd83d",
+  "runStatus": "succeeded",
+  "businessPassed": false,
+  "events": 41,
+  "referenceLines": 124,
+  "sourceSnapshotMatched": true,
+  "attachmentPages": 3,
+  "frozenBackend": true,
+  "relocatedResources": true,
+  "machinePythonAndUvRemovedFromPath": true,
+  "projectPathContainsChineseAndSpaces": true,
+  "uvOffline": true,
+  "freshCache": true,
+  "bootstrap": "Desktop protocol only for isolated profile/project setup; task uses public MCP",
+  "backendExitCode": 0,
+  "backendStopped": true,
+  "physicalNetworkDisconnected": false
+}

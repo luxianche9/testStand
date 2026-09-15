@@ -36,7 +36,7 @@ export async function createDesktopComposition(windows: DesktopWindows): Promise
     if (workspaceChanged) {
       void reconcileWorkspace?.().catch((error) => logger.error("OpenCode project reconciliation failed", error));
     }
-    if ((event === "wiringTask" || event === "occupancyRequest") && (payload as { status?: string })?.status === "pending") windows.flashFrame(true);
+    if (event === "wiringTask" && (payload as { status?: string })?.status === "pending") windows.flashFrame(true);
   });
   const application = createPythonApplication(backend);
   const gateway = {

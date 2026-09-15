@@ -26,6 +26,13 @@ class McpCompatibilityError(Exception):
     def __init__(self, code: int, message: str, data: Any = None) -> None:
         super().__init__(f"MCP error {code}: {message}")
         self.code, self.data = code, data
+        self.category = "unavailable" if code == -32001 else "invalid_response"
+        self.details = {
+            "protocolCode": code,
+            "outcomeKnown": False,
+            "automaticRetry": False,
+            **(data if isinstance(data, dict) else {}),
+        }
 
 
 class _ClientAdapter:
@@ -52,6 +59,7 @@ class _ClientAdapter:
                 -32600,
                 f'Tool "{name}" requires task-based execution. '
                 "Use client.experimental.tasks.callToolStream() instead.",
+                {"operationStarted": False, "outcomeKnown": True},
             )
         signal = options.get("signal")
         if signal and signal.aborted:
@@ -115,7 +123,7 @@ class _ClientAdapter:
                     -32600,
                     f"Tool {name} has an output schema but did not return structured content",
                 )
-            if structured is not None:
+            if structured is not None and not result.get("isError"):
                 failure_text = schema_error(output_schema, structured, validate_formats=True)
                 if failure_text:
                     raise McpCompatibilityError(
@@ -220,6 +228,31 @@ class McpHttpTransport:
                                 **({"description": tool.description} if tool.description else {}),
                                 "inputSchema": public_schema,
                                 "kind": kind if isinstance(kind, str) else "unknown",
+                                **(
+                                    {"upstreamOutputSchema": clone(raw["outputSchema"])}
+                                    if raw.get("outputSchema")
+                                    else {}
+                                ),
+                                **(
+                                    {"annotations": clone(raw["annotations"])}
+                                    if raw.get("annotations")
+                                    else {}
+                                ),
+                                "contractMetadata": {
+                                    key: clone(value)
+                                    for key, value in raw.get("_meta", {})
+                                    .get("hardwareharness", {})
+                                    .items()
+                                    if key
+                                    in {
+                                        "kind",
+                                        "contractRevision",
+                                        "resultSemantics",
+                                        "timeoutRecovery",
+                                        "referenceIds",
+                                        "evidence",
+                                    }
+                                },
                             }
                         )
                     if not any(tool.name == "list_hardware" for tool in listed.tools):
@@ -275,6 +308,7 @@ class McpHttpTransport:
             for session in self.sessions.values()
             for tool in session.get("tools", [])
             if tool["kind"] != "internal"
+            and tool["remoteName"] != "hardwareharness_prepare_shutdown"
         ]
 
     def find_tool(self, external_name: str) -> Record:
@@ -330,14 +364,43 @@ class McpHttpTransport:
             **({"timeout": options["timeoutMs"]} if "timeoutMs" in options else {}),
             **({"signal": options["signal"]} if "signal" in options else {}),
         }
-        result = await session["client"].call_tool(
-            name,
-            request_args,
-            meta={"hardwareharness": metadata} if metadata is not None else None,
-            options=request_options,
-        )
+        try:
+            result = await session["client"].call_tool(
+                name,
+                request_args,
+                meta={"hardwareharness": metadata} if metadata is not None else None,
+                options=request_options,
+            )
+        except McpCompatibilityError as failure:
+            failure.details.update(
+                {
+                    "serverId": server_id,
+                    "toolName": name,
+                    "recovery": "Query device/service/job state before any new action. "
+                    "A timeout or invalid response does not undo a physical operation.",
+                }
+            )
+            raise
+        except (httpx.TransportError, TimeoutError) as failure:
+            raise app_error(
+                "unavailable",
+                str(failure),
+                {
+                    "serverId": server_id,
+                    "toolName": name,
+                    "outcomeKnown": False,
+                    "automaticRetry": False,
+                    "recovery": "Query device/service/job state before any new action. "
+                    "A timeout or invalid response does not undo a physical operation.",
+                },
+            ) from failure
         structured = result.get("structuredContent")
-        if validators and validators.get("output") and "structuredContent" in result:
+        if (
+            validators
+            and validators.get("output")
+            and "structuredContent" in result
+            and not result.get("isError")
+        ):
             error = schema_error(validators["output"], structured)
             if error:
                 raise app_error(
@@ -345,12 +408,23 @@ class McpHttpTransport:
                 )
         if isinstance(structured, dict) and structured.get("ok") is False:
             remote_error = structured.get("error") or {}
-            failure = app_error(
+            remote_failure = app_error(
                 remote_error.get("category", "error"),
                 remote_error.get("message", "Remote MCP tool failed"),
                 remote_error.get("details"),
             )
-            raise failure
+            raise remote_failure
+        if result.get("isError"):
+            messages = [
+                block["text"]
+                for block in result.get("content", [])
+                if block.get("type") == "text" and isinstance(block.get("text"), str)
+            ]
+            raise app_error(
+                "error",
+                "\n".join(messages) or "Remote MCP tool failed",
+                {"serverId": server_id, "toolName": name, "automaticRetry": False},
+            )
         if options.get("preserveEnvelope"):
             return result
         if isinstance(structured, dict) and "data" in structured:

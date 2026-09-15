@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import httpx
 import pytest
 
+from hardwareharness_backend.contracts.errors import AppError
 from hardwareharness_backend.contracts.validation import ValidationError
 from hardwareharness_backend.mcp_gateway import LocalMcpGateway
 from hardwareharness_backend.mcp_gateway.gateway import AGENT_INSTRUCTIONS
@@ -69,28 +70,6 @@ _CASES: list[tuple[str, dict[str, Any], str, str, list[Any]]] = [
         ["H", "P"],
     ),
     (
-        "request_hardware_occupancy",
-        {"hardwareIds": ["H"]},
-        "occupancy",
-        "request",
-        [{"hardwareIds": ["H"], "timeoutMs": 1800000}],
-    ),
-    (
-        "cancel_hardware_occupancy_request",
-        {"occupancyRequestId": "O"},
-        "occupancy",
-        "cancel_request",
-        ["O", None],
-    ),
-    (
-        "get_hardware_occupancy_request",
-        {"occupancyRequestId": "O"},
-        "occupancy",
-        "get_request",
-        ["O"],
-    ),
-    ("list_hardware_occupancy_requests", {}, "occupancy", "list_requests", [{"limit": 200}]),
-    (
         "add_managed_hardware_to_canvas",
         {"hardwareId": "H"},
         "wiring",
@@ -110,10 +89,10 @@ _CASES: list[tuple[str, dict[str, Any], str, str, list[Any]]] = [
     ("list_workspace_files", {}, "applications", "list_files", []),
     (
         "start_python_run",
-        {"entrypoint": "workflows/main.py"},
+        {"entrypoint": "scripts/main.py"},
         "applications",
         "start_run",
-        [{"entrypoint": "workflows/main.py", "inputs": {}, "inputSchema": {}, "hardwareIds": []}],
+        [{"entrypoint": "scripts/main.py", "inputs": {}, "inputSchema": {}, "hardwareIds": []}],
     ),
     ("cancel_python_run", {"runId": "R"}, "applications", "cancel_run", ["R"]),
     ("get_python_run", {"runId": "R"}, "applications", "get_run", ["R"]),
@@ -281,7 +260,7 @@ async def test_http_routes_and_tool_errors() -> None:
             result = result_body(response)
             assert result["isError"] is True
             error = result["structuredContent"]["error"]
-            assert error["category"] == "error"
+            assert error["category"] == "invalid_argument"
             assert error["validationIssues"][0]["path"] == ["runId"]
             assert json.loads(result["content"][0]["text"]) == result["structuredContent"]
             response = await client.post(
@@ -296,6 +275,30 @@ async def test_http_routes_and_tool_errors() -> None:
             assert result_body(response)["structuredContent"]["error"] == {
                 "category": "not_found",
                 "message": "Unknown MCP tool: missing",
+            }
+            app.devices.read_server_logs.side_effect = AppError(
+                "conflict",
+                "Active run",
+                {
+                    "hardwareIds": ["H"],
+                    "token": "private",
+                    "recovery": "Read get_execution_availability",
+                },
+            )
+            response = await client.post(
+                url,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": 5,
+                    "method": "tools/call",
+                    "params": {"name": "read_remote_mcp_logs", "arguments": {"serverId": "S"}},
+                },
+            )
+            recovery = result_body(response)["structuredContent"]["error"]["details"]
+            assert recovery == {
+                "hardwareIds": ["H"],
+                "token": "[REDACTED]",
+                "recovery": "Read get_execution_availability",
             }
     finally:
         await gateway.stop()
@@ -357,7 +360,7 @@ async def test_mcp_cancellation_keeps_application_operation_running() -> None:
                         "method": "tools/call",
                         "params": {
                             "name": "start_python_run",
-                            "arguments": {"entrypoint": "workflows/main.py"},
+                            "arguments": {"entrypoint": "scripts/main.py"},
                         },
                     },
                 )

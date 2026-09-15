@@ -3,6 +3,9 @@ from __future__ import annotations
 import base64
 import hashlib
 import io
+import os
+import re
+import tempfile
 from pathlib import Path
 
 from elftools.elf.elffile import ELFFile
@@ -11,12 +14,74 @@ from intelhex import IntelHex
 FLASH_START = 0x08000000
 FLASH_END = 0x08100000
 MAX_FILE_BYTES = 32 * 1024 * 1024
+ACCEPTED_FORMATS = (".bin", ".hex", ".ihex", ".elf", ".axf")
 
 
 class OperationError(Exception):
     def __init__(self, message: str, category: str = "invalid_argument"):
         super().__init__(message)
         self.category = category
+
+
+def configure_firmware_storage(config: dict) -> dict:
+    """Copy configuration and include a service-owned, content-addressed staging root."""
+    effective = dict(config)
+    root = Path(config.get("firmwareStagingRoot", Path(config["jobDirectory"]).parent / "firmware")).resolve()
+    effective["firmwareStagingRoot"] = str(root)
+    effective["firmwareRoots"] = list(dict.fromkeys([*config.get("firmwareRoots", []), str(root)]))
+    return effective
+
+
+def import_firmware(filename: str, content_base64: str, expected_sha256: str, staging_root: str) -> dict:
+    """Stage immutable bytes only. Inspection/address validation remains a separate step."""
+    if (not filename or len(filename) > 255 or filename in {".", ".."}
+            or any(ch in filename for ch in '/\\:') or any(ord(ch) < 32 for ch in filename)
+            or filename.rstrip(". ") != filename):
+        raise OperationError("filename must be a single basename, without directories, drive prefix or control characters")
+    suffix = Path(filename).suffix.lower()
+    if suffix not in ACCEPTED_FORMATS:
+        raise OperationError("Supported formats: .bin, .hex, .ihex, .elf, .axf")
+    if not re.fullmatch(r"[0-9a-fA-F]{64}", expected_sha256):
+        raise OperationError("expected_sha256 must contain exactly 64 hexadecimal characters")
+    if len(content_base64) > 4 * ((MAX_FILE_BYTES + 2) // 3):
+        raise OperationError("Firmware exceeds 32 MiB")
+    try:
+        raw = base64.b64decode(content_base64, validate=True)
+    except (ValueError, UnicodeEncodeError) as exc:
+        raise OperationError("content_base64 must be strict base64 without a data URL prefix or whitespace") from exc
+    if not raw or len(raw) > MAX_FILE_BYTES:
+        raise OperationError("Firmware must contain 1..33554432 bytes")
+    digest = hashlib.sha256(raw).hexdigest()
+    if digest != expected_sha256.lower():
+        raise OperationError("SHA-256 mismatch; no artifact was imported")
+    root = Path(staging_root).resolve()
+    root.mkdir(parents=True, exist_ok=True)
+    destination = root / (digest + suffix)
+    # Link a completed, fsynced file with create-only semantics. An existing digest
+    # can never be overwritten, and a concurrent import cannot observe partial bytes.
+    with tempfile.NamedTemporaryFile(dir=root, prefix=".import-", delete=False) as stream:
+        temporary = Path(stream.name)
+        try:
+            stream.write(raw)
+            stream.flush()
+            os.fsync(stream.fileno())
+        except BaseException:
+            stream.close()
+            temporary.unlink(missing_ok=True)
+            raise
+    try:
+        try:
+            os.link(temporary, destination)
+        except FileExistsError:
+            if (destination.is_symlink() or destination.resolve().parent != root
+                    or destination.stat().st_size != len(raw)
+                    or hashlib.sha256(destination.read_bytes()).hexdigest() != digest):
+                raise OperationError("Existing immutable artifact is corrupt; contact the service administrator", "artifact_conflict")
+    finally:
+        temporary.unlink(missing_ok=True)
+    return {"artifactId": f"sha256:{digest}:{suffix[1:]}", "filename": filename,
+            "path": str(destination), "sha256": digest, "fileBytes": len(raw), "format": suffix[1:],
+            "immutable": True, "requiresInspection": True}
 
 
 def validate_segments(segments: list[tuple[int, bytes]]) -> list[tuple[int, bytes]]:

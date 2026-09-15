@@ -56,8 +56,9 @@ def test_partial_tail_is_ignored_and_interior_damage_rejected(tmp_path: Path) ->
 def test_snapshot_skips_environment_and_generated_files(tmp_path: Path) -> None:
     workspace = tmp_path / ".hardwareharness"
     for name in [
-        "workflows/main.py",
-        "apps/demo/server.py",
+        "scripts/main.py",
+        "scripts/helper.py",
+        "scripts/readme.txt",
         "uv.lock",
         ".venv/secret.txt",
         "logs/secret.txt",
@@ -68,7 +69,7 @@ def test_snapshot_skips_environment_and_generated_files(tmp_path: Path) -> None:
         path.write_text("content", encoding="utf-8")
     store = RunLogStore(tmp_path)
     target, hashes = store.snapshot("run_1")
-    assert set(hashes) == {"workflows/main.py", "apps/demo/server.py", "uv.lock"}
+    assert set(hashes) == {"scripts/main.py", "scripts/helper.py", "uv.lock"}
     assert (target / "uv.lock").read_text() == "content"
     assert not (target / ".venv").exists()
 
@@ -76,9 +77,9 @@ def test_snapshot_skips_environment_and_generated_files(tmp_path: Path) -> None:
 def test_snapshot_rejects_symbolic_file_or_directory(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    workspace = tmp_path / ".hardwareharness"
-    workspace.mkdir()
-    (workspace / "link.py").write_text("pass", encoding="utf-8")
+    scripts = tmp_path / ".hardwareharness/scripts"
+    scripts.mkdir(parents=True)
+    (scripts / "link.py").write_text("pass", encoding="utf-8")
     original = Path.is_symlink
 
     def link(path: Path) -> bool:
@@ -87,8 +88,8 @@ def test_snapshot_rejects_symbolic_file_or_directory(
     monkeypatch.setattr(Path, "is_symlink", link)
     with pytest.raises(ValueError, match="outside"):
         RunLogStore(tmp_path).snapshot("run_1")
-    (workspace / "link.py").unlink()
-    (workspace / "link.py").mkdir()
+    (scripts / "link.py").unlink()
+    (scripts / "link.py").mkdir()
     with pytest.raises(ValueError, match="symbolic"):
         RunLogStore(tmp_path).snapshot("run_1")
 

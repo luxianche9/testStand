@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Hardware, ManagedHardware, McpServerConfig, RemoteComputer, ToolCatalogItem } from "@hardwareharness/contracts/devices";
+import type { Hardware, McpServerConfig, RemoteComputer } from "@hardwareharness/contracts/devices";
 import { RefreshCwIcon } from "lucide-react";
 import { QueryGate } from "../../../shared/layout.js";
 import { invalidateDeviceData } from "../../../shared/mutations.js";
@@ -9,7 +9,7 @@ import { useResizableWidth } from "../../../shared/resizable.js";
 import { cn } from "../../../shared/ui/cn";
 import { Button } from "../../../shared/ui/button";
 import { FeatureLayout, FeatureHeader } from "../../../shared/FeatureLayout.js";
-import { ManualInvokePanel } from "../../manual/index.js";
+import { DeviceInspector } from "./DeviceInspector.js";
 import { HardwareListTree } from "./HardwareListTree.js";
 import { RemoteComputerTree } from "./RemoteComputerTree.js";
 import { ComputerEditor } from "./editors/ComputerEditor.js";
@@ -25,7 +25,7 @@ export function DevicesPage() {
   const [serverEditor, setServerEditor] = useState<{ open: boolean; server?: McpServerConfig; computerId?: string }>({ open: false });
   const [hardwareEditor, setHardwareEditor] = useState<{ open: boolean; hardware?: Hardware }>({ open: false });
   const catalog = useDeviceCatalog();
-  const sidebar = useResizableWidth({ defaultWidth: 320, min: 240, max: 560, direction: "right" });
+  const sidebar = useResizableWidth({ storageKey: "hardwareharness.devices-sidebar-width", defaultWidth: 320, min: 240, max: 560, direction: "right" });
 
   const refreshAll = async () => invalidateDeviceData(client);
   const refreshHardware = useMutation({
@@ -61,12 +61,14 @@ export function DevicesPage() {
     onSettled: () => void refreshAll()
   });
 
-  const isOpen = (key: string) => expanded[key] ?? !key.startsWith("t:");
-  const toggle = (key: string) => setExpanded((current) => ({ ...current, [key]: !(current[key] ?? !key.startsWith("t:")) }));
+  const isOpen = (key: string) => expanded[key] ?? true;
+  const toggle = (key: string) => setExpanded((current) => ({ ...current, [key]: !(current[key] ?? true) }));
   const data = query.data;
   const hardware = catalog.data?.hardware ?? [];
-  const effectiveSelected = selected ?? (data?.computers[0] ? `c:${data.computers[0].id}` : null);
-  const invokeTarget = useMemo(() => resolveInvokeTarget(effectiveSelected, data?.servers ?? [], data?.tools ?? [], data?.hardware ?? []), [data, effectiveSelected]);
+  const firstComputer = data?.computers[0];
+  const firstPassive = hardware.find((item) => item.kind === "passive");
+  const effectiveSelected = selected
+    ?? (firstComputer ? `c:${firstComputer.id}` : firstPassive ? `l:${firstPassive.hardwareId}` : null);
 
   return <FeatureLayout
     header={
@@ -81,15 +83,12 @@ export function DevicesPage() {
         <QueryGate query={query}>{(snapshot) => <div className="grid content-start gap-3.5">
           <RemoteComputerTree
             data={snapshot}
+            hardware={hardware}
             selected={effectiveSelected}
             isOpen={isOpen}
             onSelect={setSelected}
             onToggle={toggle}
             onAddComputer={() => setComputerEditor({ open: true })}
-            onEditComputer={(computer) => setComputerEditor({ open: true, computer })}
-            onAddServer={(computerId) => setServerEditor({ open: true, computerId })}
-            onEditServer={(server) => setServerEditor({ open: true, server, computerId: server.computerId })}
-            onChanged={refreshAll}
           />
           <HardwareListTree
             hardware={hardware}
@@ -98,8 +97,6 @@ export function DevicesPage() {
             onSelect={setSelected}
             onToggle={toggle}
             onAddHardware={() => setHardwareEditor({ open: true })}
-            onEditHardware={(item) => setHardwareEditor({ open: true, hardware: item })}
-            onChanged={refreshAll}
           />
         </div>}</QueryGate>
       ),
@@ -107,32 +104,19 @@ export function DevicesPage() {
       position: "left"
     }}
   >
-    <ManualInvokePanel hardwareId={invokeTarget.hardwareId} preferredToolName={invokeTarget.toolName} />
+    {data && <DeviceInspector
+      selected={effectiveSelected}
+      snapshot={data}
+      hardware={hardware}
+      onSelect={setSelected}
+      onEditComputer={(computer) => setComputerEditor({ open: true, computer })}
+      onAddServer={(computerId) => setServerEditor({ open: true, computerId })}
+      onEditServer={(server) => setServerEditor({ open: true, server, computerId: server.computerId })}
+      onEditHardware={(item) => setHardwareEditor({ open: true, hardware: item })}
+      onChanged={refreshAll}
+    />}
     <ComputerEditor open={computerEditor.open} computer={computerEditor.computer} onClose={() => setComputerEditor({ open: false })} onChanged={refreshAll} />
     <ServerEditor open={serverEditor.open} server={serverEditor.server} computerId={serverEditor.computerId} computers={data?.computers ?? []} hardware={hardware} onClose={() => setServerEditor({ open: false })} onChanged={refreshAll} />
     <HardwareEditor open={hardwareEditor.open} hardware={hardwareEditor.hardware} onClose={() => setHardwareEditor({ open: false })} onChanged={refreshAll} />
   </FeatureLayout>;
-}
-
-export function resolveInvokeTarget(
-  selected: string | null,
-  servers: McpServerConfig[],
-  tools: ToolCatalogItem[],
-  managed: ManagedHardware[]
-): { hardwareId?: string; toolName?: string } {
-  if (!selected) return {};
-  if (selected.startsWith("t:")) {
-    const toolName = selected.slice(2);
-    const tool = tools.find((item) => item.externalName === toolName);
-    const hardwareId = managed.find((item) => item.serverId === tool?.serverId)?.hardwareId
-      ?? servers.find((item) => item.serverId === tool?.serverId)?.hardwareId;
-    return hardwareId ? { hardwareId, toolName } : {};
-  }
-  if (selected.startsWith("s:")) {
-    const serverId = selected.slice(2);
-    const hardwareId = managed.find((item) => item.serverId === serverId)?.hardwareId
-      ?? servers.find((item) => item.serverId === serverId)?.hardwareId;
-    return hardwareId ? { hardwareId } : {};
-  }
-  return {};
 }

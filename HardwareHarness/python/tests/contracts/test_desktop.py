@@ -12,7 +12,6 @@ def test_desktop_channel_names() -> None:
         "wiring",
         "applications",
         "manual",
-        "occupancy",
         "agents",
         "settings",
         "window",
@@ -23,8 +22,6 @@ def test_desktop_channel_names() -> None:
     assert HARDWAREHARNESS_EVENT_NAMES == (
         "availability",
         "execution",
-        "occupancy",
-        "occupancyRequest",
         "run",
         "nodeRun",
         "wiringTask",

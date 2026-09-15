@@ -93,9 +93,14 @@ class ProjectWiringService:
             return {"added": True, "node": node, "dirty": document["dirty"]}
 
     async def request_task(self, input: Record) -> Record:
-        port_a, port_b, pins = canonical_ports(
-            input["portA"], input["portB"], input.get("pins", [])
-        )
+        references = [js_trim(input[key]) for key in ("portA", "portB")]
+        if not all(references):
+            raise app_error("invalid_argument", "Two port references are required")
+        endpoints = [self.catalog.resolve_port(reference) for reference in references]
+        canonical = [
+            f"{item['hardware']['hardwareId']}.{item['port']['portId']}" for item in endpoints
+        ]
+        port_a, port_b, pins = canonical_ports(canonical[0], canonical[1], input.get("pins", []))
         self.catalog.validate_pins(port_a, port_b, pins)
         hardware_ids = sorted(
             {
@@ -111,7 +116,13 @@ class ProjectWiringService:
                 continue
             if existing["portA"] == port_a and existing["portB"] == port_b:
                 raise app_error(
-                    "conflict", "A pending wiring task already exists for this port pair"
+                    "conflict",
+                    "A pending wiring task already exists for this port pair",
+                    {
+                        "existingTaskId": existing["wiringTaskId"],
+                        "status": existing["status"],
+                        "recovery": "Read or cancel the existing task before requesting another.",
+                    },
                 )
         task = {
             "wiringTaskId": new_uuid(),
@@ -130,6 +141,20 @@ class ProjectWiringService:
         self._tasks[task["wiringTaskId"]] = task
         self._emit(task)
         return clone(task)
+
+    def validate_document_connections(self, wiring: Record) -> None:
+        """Validate edited same-port pins while allowing layout edits of unresolved hardware."""
+        previous = {item["connectionId"]: item for item in self.projects.wiring()["connections"]}
+        for connection in wiring["connections"]:
+            if connection["portA"] != connection["portB"]:
+                continue
+            old = previous.get(connection["connectionId"], {})
+            if all(old.get(key) == connection.get(key) for key in ("portA", "portB", "pins")):
+                continue
+            port_a, port_b, pins = canonical_ports(
+                connection["portA"], connection["portB"], connection.get("pins", [])
+            )
+            self.catalog.validate_pins(port_a, port_b, pins)
 
     async def start_task(self, wiring_task_id: str, operator_name: str = "operator") -> Record:
         async with self._lock(wiring_task_id):
@@ -152,8 +177,10 @@ class ProjectWiringService:
     ) -> Record:
         async with self._lock(wiring_task_id):
             task = self.get_task(wiring_task_id)
-            if task["status"] != "in_progress":
-                raise app_error("conflict", "Wiring task is not in progress")
+            if task["status"] not in ("pending", "in_progress"):
+                raise app_error("conflict", f"Wiring task is {task['status']}, not in progress")
+            if task["status"] == "pending":
+                task = {**task, "operatorName": "operator"}
             if outcome == "confirmed":
                 try:
                     self._apply_confirmed_wiring(task)
@@ -172,7 +199,14 @@ class ProjectWiringService:
     def get_task(self, wiring_task_id: str) -> Record:
         task = self._tasks.get(wiring_task_id)
         if task is None:
-            raise RuntimeError(f"Unknown wiringTaskId: {wiring_task_id}")
+            raise app_error(
+                "not_found",
+                f"Unknown wiringTaskId: {wiring_task_id}",
+                {
+                    "recovery": "Tasks are session-scoped. Read get_project for saved "
+                    "connections and list_wiring_tasks for current tasks."
+                },
+            )
         self._apply_lazy_timeout(task)
         return clone(task)
 
@@ -265,8 +299,13 @@ class ProjectWiringService:
 
 def canonical_ports(left: str, right: str, pins: list[Record]) -> tuple[str, str, list[Record]]:
     a, b = js_trim(left), js_trim(right)
-    if not a or not b or a == b:
-        raise RuntimeError("Two different port references are required")
+    if not a or not b:
+        raise app_error("invalid_argument", "Two port references are required")
+    if a == b:
+        if not pins or any(pin["a"] == pin["b"] for pin in pins):
+            raise app_error("invalid_argument", "Same-port wiring requires distinct pin pairs")
+        pairs = [sorted((pin["a"], pin["b"]), key=cmp_to_key(utf16_compare)) for pin in pins]
+        return a, b, [{"a": left, "b": right} for left, right in pairs]
     if utf16_compare(a, b) <= 0:
         return a, b, [{"a": pin["a"], "b": pin["b"]} for pin in pins]
     return b, a, [{"a": pin["b"], "b": pin["a"]} for pin in pins]

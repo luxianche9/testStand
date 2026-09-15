@@ -1,4 +1,4 @@
-"""Hardware calls and structured execution logging for HardwareHarness workflows."""
+"""Hardware calls and structured execution logging for HardwareHarness Python programs."""
 
 from __future__ import annotations
 
@@ -6,13 +6,15 @@ import asyncio
 import contextvars
 import functools
 import inspect
+import json
 import time
 import traceback
 import uuid
 from collections.abc import Callable
+from contextlib import suppress
 from pathlib import Path
 from types import TracebackType
-from typing import Any, ParamSpec, TypeVar, cast
+from typing import Any, Literal, ParamSpec, TypeVar, cast
 
 from . import _transport
 
@@ -23,6 +25,34 @@ _span: contextvars.ContextVar[str | None] = contextvars.ContextVar(
 )
 P = ParamSpec("P")
 R = TypeVar("R")
+__version__ = "0.1.0"
+__contract_revision__ = "2026-09-15.1"
+
+
+def _result(value: Any, mode: Literal["envelope", "data"]) -> Any:
+    """Select a business result after the runner has retained its original evidence."""
+    if mode == "envelope":
+        return value
+    if not isinstance(value, dict):
+        return value
+    if value.get("isError") is True:
+        raise _transport.HardwareHarnessError("device_error", "Hardware tool failed", value)
+    selected = value.get("structuredContent", value)
+    if selected is value and isinstance(value.get("content"), list):
+        texts = [item.get("text", "") for item in value["content"] if item.get("type") == "text"]
+        if len(texts) == 1:
+            with suppress(ValueError, TypeError):
+                selected = json.loads(texts[0])
+    if isinstance(selected, dict) and selected.get("ok") is False:
+        raise _transport.HardwareHarnessError("device_error", "Hardware tool failed", selected)
+    if isinstance(selected, dict) and selected.get("ok") is True and "data" in selected:
+        return selected["data"]
+    return selected
+
+
+def _check_result_mode(mode: str) -> None:
+    if mode not in {"envelope", "data"}:
+        raise ValueError("result_mode must be 'envelope' or 'data'")
 
 
 def _source() -> dict[str, Any]:
@@ -48,9 +78,11 @@ def call(
     arguments: dict[str, Any],
     *,
     timeout_ms: int | None = None,
+    result_mode: Literal["envelope", "data"] = "envelope",
 ) -> Any:
-    """Invoke one declared active hardware tool through the platform's existing gates."""
-    return _transport.request(
+    """Invoke a declared tool. Default preserves MCP; data selects its business value."""
+    _check_result_mode(result_mode)
+    response = _transport.request(
         "call",
         {
             "hardwareId": hardware_id,
@@ -61,6 +93,7 @@ def call(
             "source": _source(),
         },
     )
+    return _result(response, result_mode)
 
 
 async def acall(
@@ -69,9 +102,11 @@ async def acall(
     arguments: dict[str, Any],
     *,
     timeout_ms: int | None = None,
+    result_mode: Literal["envelope", "data"] = "envelope",
 ) -> Any:
     """Asynchronous equivalent of :func:`call`; no hardware request is replayed."""
-    return await asyncio.to_thread(
+    _check_result_mode(result_mode)
+    response = await asyncio.to_thread(
         _transport.request,
         "call",
         {
@@ -83,6 +118,7 @@ async def acall(
             "source": _source(),
         },
     )
+    return _result(response, result_mode)
 
 
 class _Step:

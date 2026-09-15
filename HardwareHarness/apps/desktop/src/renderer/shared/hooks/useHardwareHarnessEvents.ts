@@ -24,12 +24,6 @@ export function useHardwareHarnessEvents(client: QueryClient) {
       window.hardwareharness.events.subscribe("execution", () => {
         void c().invalidateQueries({ queryKey: queryKeys.dashboard });
       }),
-      window.hardwareharness.events.subscribe("occupancy", () => {
-        void c().invalidateQueries({ queryKey: queryKeys.dashboard });
-      }),
-      window.hardwareharness.events.subscribe("occupancyRequest", () => {
-        void c().invalidateQueries({ queryKey: queryKeys.occupancyRequests });
-      }),
       window.hardwareharness.events.subscribe("project", (payload) => {
         c().setQueryData(queryKeys.projectDocument, payload as ProjectDocument | null);
         void c().invalidateQueries({ queryKey: queryKeys.wiringTasks });
@@ -41,7 +35,6 @@ export function useHardwareHarnessEvents(client: QueryClient) {
 
     const fallback = window.setInterval(() => {
       void c().invalidateQueries({ queryKey: queryKeys.wiringTasks });
-      void c().invalidateQueries({ queryKey: queryKeys.occupancyRequests });
     }, 15_000);
 
     return () => {

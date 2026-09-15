@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -44,12 +44,6 @@ def service_fixture() -> tuple[DeviceService, dict[str, Any]]:
         ),
         disconnect=AsyncMock(),
         close=AsyncMock(),
-    )
-    service.occupancy = Mock(
-        refresh=AsyncMock(),
-        close=AsyncMock(),
-        is_held=Mock(return_value=True),
-        require_lease=Mock(return_value="L"),
     )
     return service, server
 
@@ -153,11 +147,10 @@ async def test_computer_probe_status_logs_timeout_clamp_and_remove_cache() -> No
     service.secrets.remove.assert_awaited_with("ssh:C")
     assert await service.refresh_hardware() == []
     await service.close()
-    cast(Mock, service.occupancy).close.assert_awaited_once()
     service.ssh.close.assert_awaited_once()
 
 
-async def test_tool_lease_metadata_and_faulted_hardware_refresh() -> None:
+async def test_direct_tool_metadata_and_faulted_hardware_refresh() -> None:
     service, _ = service_fixture()
     hardware = {
         "hardwareId": "H",
@@ -169,7 +162,6 @@ async def test_tool_lease_metadata_and_faulted_hardware_refresh() -> None:
     assert (await service.refresh_server("S"))["transport"]["state"] == "online"
     assert service.list_availability()[0]["message"] == "driver fault"
     assert service.list_availability()[0]["state"] == "faulted"
-    assert service.is_hardware_occupied("H")
     service.transports.list_tools.return_value = [
         {"externalName": "S__measure", "serverId": "S", "kind": "hardware"},
         {"externalName": "S__status", "serverId": "S", "kind": "service"},
@@ -179,10 +171,9 @@ async def test_tool_lease_metadata_and_faulted_hardware_refresh() -> None:
     service.transports.call_tool.assert_awaited_with(
         "S__measure",
         {"channel": 1},
-        {"timeoutMs": 500, "metadata": {"attempt": 2, "hardwareId": "H", "occupancyLeaseId": "L"}},
+        {"timeoutMs": 500, "metadata": {"attempt": 2, "hardwareId": "H"}},
     )
     await service.call_tool("S__status", {})
-    assert cast(Mock, service.occupancy).require_lease.call_count == 1
     assert options["metadata"]["hardwareId"] == "WRONG"
     with pytest.raises(RuntimeError, match="Unknown aggregated"):
         await service.call_tool("missing", {})

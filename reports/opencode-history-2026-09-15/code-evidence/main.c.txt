@@ -1,0 +1,299 @@
+#include <stdint.h>
+
+#include "stm32f407_regs.h"
+
+#define FW_NAME "STM32F407-HIL"
+#define FW_VERSION "1.0.0"
+#define FW_BUILD "b1"
+
+#ifndef UART_BAUD
+#define UART_BAUD 115200u
+#endif
+
+#define LINE_MAX 80
+
+static volatile uint32_t g_ms;
+
+void SysTick_Handler(void) {
+    g_ms++;
+}
+
+static void systick_init(void) {
+    STK_LOAD = 16000u - 1u; /* 16 MHz HSI / 1000 */
+    STK_VAL = 0u;
+    STK_CTRL = 7u;
+}
+
+static void delay_ms(uint32_t ms) {
+    uint32_t target = g_ms + ms;
+    while ((int32_t)(g_ms - target) < 0) {
+    }
+}
+
+static void uart_putc(char c) {
+    while ((USART3->SR & (1u << 7)) == 0u) {
+    }
+    USART3->DR = (uint32_t)(uint8_t)c;
+}
+
+static void uart_puts(const char *s) {
+    while (*s != '\0') {
+        uart_putc(*s++);
+    }
+}
+
+static void uart_putu(uint32_t v) {
+    char buf[11];
+    int n = 0;
+    if (v == 0u) {
+        uart_putc('0');
+        return;
+    }
+    while (v > 0u) {
+        buf[n++] = (char)('0' + (v % 10u));
+        v /= 10u;
+    }
+    while (n > 0) {
+        uart_putc(buf[--n]);
+    }
+}
+
+static int uart_rx_ready(void) {
+    return (USART3->SR & (1u << 5)) != 0u;
+}
+
+static int uart_getc(void) {
+    return (int)(USART3->DR & 0xFFu);
+}
+
+static void led_init(void) {
+    RCC_AHB1ENR |= (1u << 2); /* GPIOC */
+    GPIOC->MODER = (GPIOC->MODER & ~(3u << 6)) | (1u << 6);
+    GPIOC->OTYPER &= ~(1u << 3);
+}
+
+static void status_init(void) {
+    RCC_AHB1ENR |= (1u << 4); /* GPIOE */
+    GPIOE->MODER = (GPIOE->MODER & ~(3u << 0)) | (1u << 0);
+}
+
+static void status_set(int level) {
+    GPIOE->BSRR = level ? (1u << 0) : (1u << 16);
+}
+
+static void adc_init(void) {
+    RCC_AHB1ENR |= (1u << 0); /* GPIOA */
+    RCC_APB2ENR |= (1u << 8); /* ADC1 */
+    GPIOA->MODER |= (3u << 0); /* PA0 analog */
+    GPIOA->PUPDR &= ~(3u << 0);
+    ADC1->CR1 = 0u;
+    ADC1->CR2 = 0u;
+    ADC1->SMPR1 = (ADC1->SMPR1 & ~(7u << 0)) | (7u << 0); /* ch0 480 cycles */
+    ADC1->SQR1 = 0u;
+    ADC1->SQR3 = 0u; /* channel 0 */
+    ADC1->CR2 = (1u << 0); /* ADON */
+    delay_ms(2);
+}
+
+static uint16_t adc_read(void) {
+    ADC1->CR2 |= (1u << 30); /* SWSTART */
+    while ((ADC1->SR & (1u << 1)) == 0u) {
+    }
+    return (uint16_t)(ADC1->DR & 0xFFFu);
+}
+
+static int token_eq(const char *a, const char *b) {
+    while (*a != '\0' && *b != '\0' && *a == *b) {
+        a++;
+        b++;
+    }
+    return *a == '\0' && *b == '\0';
+}
+
+static int starts_with(const char *s, const char *prefix) {
+    while (*prefix != '\0') {
+        if (*s++ != *prefix++) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+static const char *skip_spaces(const char *s) {
+    while (*s == ' ' || *s == ',') {
+        s++;
+    }
+    return s;
+}
+
+static int parse_int(const char *s, int32_t *out) {
+    int32_t sign = 1;
+    int32_t value = 0;
+    int any = 0;
+    s = skip_spaces(s);
+    if (*s == '-') {
+        sign = -1;
+        s++;
+    }
+    while (*s >= '0' && *s <= '9') {
+        value = value * 10 + (*s - '0');
+        s++;
+        any = 1;
+    }
+    *out = sign * value;
+    return any;
+}
+
+static void emit_telemetry(uint32_t seq) {
+    uint16_t raw = adc_read();
+    uint32_t mv = ((uint32_t)raw * 3300u + 2047u) / 4095u;
+    uart_puts("TLM,");
+    uart_putu(seq);
+    uart_putc(',');
+    uart_putu(raw);
+    uart_putc(',');
+    uart_putu(mv);
+    uart_putc(',');
+    uart_putu((GPIOE->ODR & 1u) ? 1u : 0u);
+    uart_puts("\r\n");
+}
+
+static void emit_id(void) {
+    uart_puts("ID,");
+    uart_puts(FW_NAME);
+    uart_putc(',');
+    uart_puts(FW_VERSION);
+    uart_putc(',');
+    uart_puts(FW_BUILD);
+    uart_puts("\r\n");
+}
+
+static void emit_adc(void) {
+    uint16_t raw = adc_read();
+    uint32_t mv = ((uint32_t)raw * 3300u + 2047u) / 4095u;
+    uart_puts("ADC,");
+    uart_putu(raw);
+    uart_putc(',');
+    uart_putu(mv);
+    uart_puts("\r\n");
+}
+
+static uint32_t telemetry_period_ms = 1000u;
+static uint32_t telemetry_last_ms = 0u;
+static uint32_t telemetry_seq = 0u;
+
+static void handle_command(char *line) {
+    char *cmd = (char *)skip_spaces(line);
+    if (*cmd == '\0') {
+        return;
+    }
+    if (token_eq(cmd, "PING")) {
+        uart_puts("PONG\r\n");
+    } else if (token_eq(cmd, "ID?") || token_eq(cmd, "ID")) {
+        emit_id();
+    } else if (token_eq(cmd, "ADC?") || token_eq(cmd, "ADC")) {
+        emit_adc();
+    } else if (starts_with(cmd, "STAT")) {
+        const char *arg = skip_spaces(cmd + 4);
+        if (*arg == '?') {
+            uart_puts("STAT,");
+            uart_putu((GPIOE->ODR & 1u) ? 1u : 0u);
+            uart_puts("\r\n");
+        } else {
+            int32_t level = 0;
+            if (parse_int(arg, &level)) {
+                status_set(level ? 1 : 0);
+            }
+            uart_puts("STAT,");
+            uart_putu((GPIOE->ODR & 1u) ? 1u : 0u);
+            uart_puts("\r\n");
+        }
+    } else if (starts_with(cmd, "TLM")) {
+        int32_t ms = 0;
+        if (parse_int(cmd + 3, &ms) && ms >= 10 && ms <= 60000) {
+            telemetry_period_ms = (uint32_t)ms;
+        }
+        uart_puts("TLM,");
+        uart_putu(telemetry_period_ms);
+        uart_puts("\r\n");
+    } else if (starts_with(cmd, "ECHO")) {
+        const char *arg = skip_spaces(cmd + 4);
+        uart_puts("ECHO,");
+        uart_puts(arg);
+        uart_puts("\r\n");
+    } else if (token_eq(cmd, "RESET")) {
+        uart_puts("OK,RESET\r\n");
+        delay_ms(5);
+        SCB_AIRCR = 0x05FA0004u;
+        while (1) {
+        }
+    } else {
+        uart_puts("ERR,UNKNOWN\r\n");
+    }
+}
+
+int main(void) {
+    char line[LINE_MAX];
+    int len = 0;
+
+    systick_init();
+    led_init();
+    status_init();
+    /* USART3 on APB1 (PCLK1 = HSI 16 MHz), 115200 8N1 */
+    RCC_AHB1ENR |= (1u << 1);  /* GPIOB */
+    RCC_APB1ENR |= (1u << 18); /* USART3 */
+    GPIOB->MODER = (GPIOB->MODER & ~((3u << 20) | (3u << 22))) | (2u << 20) | (2u << 22);
+    GPIOB->AFR[1] = (GPIOB->AFR[1] & ~((0xFu << 8) | (0xFu << 12))) | (7u << 8) | (7u << 12);
+    GPIOB->OSPEEDR |= (3u << 20) | (3u << 22);
+    GPIOB->PUPDR = (GPIOB->PUPDR & ~((3u << 20) | (3u << 22))) | (1u << 22);
+    USART3->BRR = (16000000u + UART_BAUD / 2u) / UART_BAUD;
+    USART3->CR1 = (1u << 13) | (1u << 3) | (1u << 2);
+#ifdef UART_INVERT_TX
+    USART3->CR2 |= (1u << 14);
+#endif
+#ifdef UART_INVERT_RX
+    USART3->CR2 |= (1u << 8);
+#endif
+
+    adc_init();
+    (void)adc_read();
+    (void)adc_read();
+
+#ifdef FW_QUIET
+    for (;;) {
+        GPIOC->BSRR = (g_ms & 0x100u) ? (1u << 3) : (1u << 19);
+    }
+#endif
+
+    uart_puts("\r\n");
+    uart_puts("BOOT,");
+    uart_puts(FW_NAME);
+    uart_putc(',');
+    uart_puts(FW_VERSION);
+    uart_puts("\r\n");
+    emit_id();
+
+    telemetry_last_ms = g_ms;
+
+    for (;;) {
+        GPIOC->BSRR = (g_ms & 0x100u) ? (1u << 3) : (1u << 19);
+
+        while (uart_rx_ready()) {
+            int c = uart_getc();
+            if (c == '\r' || c == '\n') {
+                if (len > 0) {
+                    line[len] = '\0';
+                    handle_command(line);
+                    len = 0;
+                }
+            } else if (len < (LINE_MAX - 1)) {
+                line[len++] = (char)c;
+            }
+        }
+
+        if ((uint32_t)(g_ms - telemetry_last_ms) >= telemetry_period_ms) {
+            telemetry_last_ms = g_ms;
+            emit_telemetry(++telemetry_seq);
+        }
+    }
+}

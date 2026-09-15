@@ -94,6 +94,54 @@ def main() -> None:
 
         expected = {name: value for name, value in expected.items() if protected(name)}
         actual = {name: value for name, value in actual.items() if protected(name)}
+        # The user removed hardware ownership; preserve every other protected source.
+        removal_path = root / "reports/lease-removal/changes.json"
+        if hashlib.sha256(removal_path.read_bytes()).hexdigest() != (
+            "3ac9226f7b9008bedf8e96ddc13c3ff66a4e48256ab8557a45ce252a536188bc"
+        ):
+            raise SystemExit("Hardware lease removal manifest changed")
+        removal = json.loads(removal_path.read_text("utf-8"))
+        allowed = {
+            "python/src/hardwareharness_backend/devices/__init__.py",
+            "python/src/hardwareharness_backend/devices/device_service.py",
+            "python/src/hardwareharness_backend/devices/hardware_occupancy.py",
+        }
+        if set(removal["protectedChanges"]) != allowed or not removal["authorization"]:
+            raise SystemExit("Invalid hardware lease removal boundary")
+        for name, hashes in removal["protectedChanges"].items():
+            if expected.get(name) != hashes["before"]:
+                raise SystemExit(f"Hardware lease removal baseline mismatch: {name}")
+            if hashes["after"] is None:
+                expected.pop(name)
+            else:
+                expected[name] = hashes["after"]
+        # The user authorized the full public MCP/prompt optimization. Retain every
+        # preceding manifest and record only its six reviewed boundary changes.
+        interface_path = root / "reports/agent-interface/protected-changes.json"
+        if hashlib.sha256(interface_path.read_bytes()).hexdigest() != (
+            "6fd32cb88bbe4d1925e3bc683cf99c18cd52aafcb072d138750020c24ca5ad5c"
+        ):
+            raise SystemExit("Agent interface manifest changed")
+        interface = json.loads(interface_path.read_text("utf-8"))
+        interface_allowed = {
+            "apps/desktop/src/main/opencode-agent-contract.test.ts",
+            "apps/desktop/src/main/opencode-runtime.test.ts",
+            "apps/desktop/src/main/opencode-runtime.ts",
+            "python/src/hardwareharness_backend/devices/device_catalog_service.py",
+            "python/src/hardwareharness_backend/devices/mcp_client.py",
+            "python/src/hardwareharness_backend/wiring/project_wiring_service.py",
+        }
+        if (
+            set(interface["changes"]) != interface_allowed
+            or not interface["authorization"]
+            or interface["previousLeaseManifestSha256"]
+            != hashlib.sha256(removal_path.read_bytes()).hexdigest()
+        ):
+            raise SystemExit("Invalid agent interface boundary")
+        for name, hashes in interface["changes"].items():
+            if expected.get(name) != hashes["before"] or not hashes["reason"]:
+                raise SystemExit(f"Agent interface baseline mismatch: {name}")
+            expected[name] = hashes["after"]
         changed = [
             key for key in expected.keys() | actual.keys() if expected.get(key) != actual.get(key)
         ]

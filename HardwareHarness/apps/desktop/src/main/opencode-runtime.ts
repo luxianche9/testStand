@@ -5,10 +5,12 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import type { OpenCodeRuntimeStatus } from "@hardwareharness/contracts/agents";
 import type { LlmSettings } from "@hardwareharness/contracts/storage";
+import agentInstructions from "../../../../python/src/hardwareharness_backend/mcp_gateway/agent-instructions.md?raw";
 import { redactSecrets } from "./logger.js";
 
 const execFileAsync = promisify(execFile);
 const OPENCODE_VERSION = "1.18.15";
+export const HARDWAREHARNESS_AGENT_INSTRUCTIONS = agentInstructions.trim();
 
 interface GatewayControl {
   status(): { endpoint: string };
@@ -51,6 +53,11 @@ export function openCodeConfig(endpoint: string, llm: Pick<LlmSettings, "baseUrl
     enabled_providers: ["openai"],
     model: `openai/${llm.model}`,
     small_model: `openai/${llm.model}`,
+    default_agent: "build",
+    agent: {
+      build: { prompt: HARDWAREHARNESS_AGENT_INSTRUCTIONS },
+      plan: { prompt: HARDWAREHARNESS_AGENT_INSTRUCTIONS }
+    },
     provider: {
       openai: {
         options: {

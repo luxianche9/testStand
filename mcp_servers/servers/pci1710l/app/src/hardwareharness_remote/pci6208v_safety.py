@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import math
 import os
 
 from hardwareharness_remote import pci6208v_sdk as sdk
@@ -22,6 +23,8 @@ def env_safe_volts() -> float:
 
 
 def clamp_volts(volts: float) -> float:
+    if not math.isfinite(volts):
+        raise ValueError("safe_volts must be finite")
     if volts < VOLT_MIN:
         return VOLT_MIN
     if volts > VOLT_MAX:

@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 import uvicorn
-from mcp.server.fastmcp import Context, FastMCP
+from mcp.server.fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -21,6 +21,7 @@ from hardwareharness_remote import __version__
 from hardwareharness_remote.adapters import AdapterError
 from hardwareharness_remote.lifecycle import HardwareManager, iso_now
 from hardwareharness_remote.pinouts import PinoutResponse, ToolError, ToolMeta
+from hardwareharness_remote.contracts import CONTRACT_REVISION, capability_details, contract_tool
 
 log = logging.getLogger("hardwareharness_remote")
 logging.basicConfig(level=os.environ.get("HARDWAREHARNESS_LOG_LEVEL", "INFO"), format="%(asctime)s %(levelname)s [%(name)s] %(message)s")
@@ -43,34 +44,25 @@ def error(exc: Exception) -> dict[str, Any]:
     details = exc.details if isinstance(exc, AdapterError) else None
     if not isinstance(exc, AdapterError):
         log.exception("Unhandled tool error")
-    return {"ok": False, "error": {"category": category, "message": str(exc), "retryable": category in {"device_unreachable", "service_unavailable"}, "details": details}, "meta": {"timestamp": iso_now()}}
+    return {"ok": False, "error": {"category": category, "message": str(exc), "retryable": category in {"device_unreachable", "service_unavailable"}, "details": details,
+            "recovery": "Read get_hardware_info for current availability. Inspect error.details for partial effects; a failed or timed-out write does not prove no actuation. Correct invalid parameters before a new action."}, "meta": {"timestamp": iso_now()}}
 
 
-def occupancy_lease_id(ctx: Context) -> str | None:
-    meta = ctx.request_context.meta
-    hardwareharness = getattr(meta, "hardwareharness", None)
-    if hardwareharness is None:
-        hardwareharness = (getattr(meta, "model_extra", None) or {}).get("hardwareharness")
-    if isinstance(hardwareharness, dict):
-        value = hardwareharness.get("occupancyLeaseId")
-        return value if isinstance(value, str) else None
-    return None
-
-
-async def invoke(hardware_id: str, operation: str, ctx: Context, **kwargs: Any) -> dict[str, Any]:
+async def invoke(hardware_id: str, operation: str, **kwargs: Any) -> dict[str, Any]:
     try:
-        return ok(await manager.invoke(hardware_id, operation, occupancy_lease_id(ctx), **kwargs))
+        return ok(await manager.invoke(hardware_id, operation, **kwargs))
     except Exception as exc:
         return error(exc)
 
 
-@mcp.tool(annotations=DESCRIBE, meta={"hardwareharness": {"kind": "management"}})
+@contract_tool(mcp, annotations=DESCRIBE, meta={"hardwareharness": {"kind": "management"}})
 def get_server_info() -> dict[str, Any]:
     hardware = manager.list_hardware()
-    return ok({"name": config["serverId"], "version": __version__, "computerId": config.get("computerId", "REMOTE_PC_1"), "serverId": config["serverId"], "startupComplete": manager.startup_complete, "draining": manager.draining, "status": "degraded" if hardware[0]["state"] in {"unreachable", "faulted"} else "ready", "hardware": hardware})
+    return ok({"name": config["serverId"], "version": __version__, "computerId": config.get("computerId", "REMOTE_PC_1"), "serverId": config["serverId"], "startupComplete": manager.startup_complete, "draining": manager.draining, "status": "degraded" if hardware[0]["state"] in {"unreachable", "faulted"} else "ready", "hardware": hardware,
+               "contractRevision": CONTRACT_REVISION, "capabilities": capability_details(config["serverId"])})
 
 
-@mcp.tool(annotations=DESCRIBE, meta={"hardwareharness": {"kind": "management"}})
+@contract_tool(mcp, annotations=DESCRIBE, meta={"hardwareharness": {"kind": "management"}})
 def list_hardware() -> dict[str, Any]:
     data = manager.list_hardware()
     if len(data) != 1:
@@ -78,18 +70,26 @@ def list_hardware() -> dict[str, Any]:
     return ok(data)
 
 
-@mcp.tool(annotations=DESCRIBE, meta={"hardwareharness": {"kind": "management"}})
+@contract_tool(mcp, annotations=DESCRIBE, meta={"hardwareharness": {"kind": "management"}})
 def get_hardware_info(hardwareId: str) -> dict[str, Any]:
     try:
-        return ok(manager.get_hardware(hardwareId))
+        return ok({**manager.get_hardware(hardwareId), "capabilityDetails": capability_details(config["serverId"])})
     except Exception as exc:
         return error(exc)
 
 
-@mcp.tool(annotations=DESCRIBE, meta={"hardwareharness": {"kind": "management"}})
-def get_pinout(hardwareId: str) -> PinoutResponse:
+@contract_tool(mcp, annotations=DESCRIBE, meta={"hardwareharness": {"kind": "management"}})
+def get_pinout(hardwareId: str, connector_id: str | None = None, offset: int = 0, limit: int | None = None) -> PinoutResponse:
     try:
-        return PinoutResponse(ok=True, data=manager.get_pinout(hardwareId), meta=ToolMeta(timestamp=iso_now()))
+        pinout = manager.get_pinout(hardwareId)
+        if connector_id is not None and connector_id not in {item.connectorId for item in pinout.connectors}:
+            raise AdapterError("Unknown connector_id; select an exact connectorId from get_pinout", category="invalid_argument")
+        pins = tuple(pin for pin in pinout.pins if connector_id is None or pin.connectorId == connector_id)
+        page = pins[offset:offset + limit] if limit is not None else pins[offset:]
+        pinout = pinout.model_copy(update={"pins": page,
+            "connectors": tuple(item for item in pinout.connectors if connector_id is None or item.connectorId == connector_id),
+            "pagination": {"offset": offset, "total": len(pins), "nextOffset": offset + len(page) if offset + len(page) < len(pins) else None}})
+        return PinoutResponse(ok=True, data=pinout, meta=ToolMeta(timestamp=iso_now()))
     except Exception as exc:
         category = exc.category if isinstance(exc, AdapterError) else "internal"
         return PinoutResponse(ok=False, error=ToolError(category=category, message=str(exc), retryable=False, details=getattr(exc, "details", None)), meta=ToolMeta(timestamp=iso_now()))
@@ -98,47 +98,47 @@ def get_pinout(hardwareId: str) -> PinoutResponse:
 def register_hardware_tools() -> None:
     server_id = config["serverId"]
     if server_id == "PCI1710L_MCP":
-        @mcp.tool(annotations=OPERATE, meta={"hardwareharness": {"kind": "hardware"}})
-        async def pci1710l_configure_ai(hardwareId: str, ctx: Context, channel: int, signal_type: int = 0, value_range: int = 1) -> dict[str, Any]: return await invoke(hardwareId, "configure_ai", ctx, channel=channel, signal_type=signal_type, value_range=value_range)
-        @mcp.tool(annotations=READ_HARDWARE, meta={"hardwareharness": {"kind": "hardware"}})
-        async def pci1710l_read_voltage(hardwareId: str, ctx: Context, channel: int) -> dict[str, Any]: return await invoke(hardwareId, "read_voltage", ctx, channel=channel)
-        @mcp.tool(annotations=READ_HARDWARE, meta={"hardwareharness": {"kind": "hardware"}})
-        async def pci1710l_read_bit(hardwareId: str, ctx: Context, channel: int, kind: str = "DI") -> dict[str, Any]: return await invoke(hardwareId, "read_bit", ctx, channel=channel, kind=kind)
-        @mcp.tool(annotations=OPERATE, meta={"hardwareharness": {"kind": "hardware"}})
-        async def pci1710l_set_level(hardwareId: str, ctx: Context, channel: int, level: bool) -> dict[str, Any]: return await invoke(hardwareId, "set_level", ctx, channel=channel, level=level)
-        @mcp.tool(annotations=OPERATE, meta={"hardwareharness": {"kind": "hardware", "safeAction": True}})
-        async def pci1710l_safe_state(hardwareId: str, ctx: Context) -> dict[str, Any]: return await invoke(hardwareId, "safe_state", ctx)
+        @contract_tool(mcp, annotations=OPERATE, meta={"hardwareharness": {"kind": "hardware"}})
+        async def pci1710l_configure_ai(hardwareId: str, channel: int, signal_type: int = 0, value_range: int = 1) -> dict[str, Any]: return await invoke(hardwareId, "configure_ai", channel=channel, signal_type=signal_type, value_range=value_range)
+        @contract_tool(mcp, annotations=READ_HARDWARE, meta={"hardwareharness": {"kind": "hardware"}})
+        async def pci1710l_read_voltage(hardwareId: str, channel: int) -> dict[str, Any]: return await invoke(hardwareId, "read_voltage", channel=channel)
+        @contract_tool(mcp, annotations=READ_HARDWARE, meta={"hardwareharness": {"kind": "hardware"}})
+        async def pci1710l_read_bit(hardwareId: str, channel: int, kind: str = "DI") -> dict[str, Any]: return await invoke(hardwareId, "read_bit", channel=channel, kind=kind)
+        @contract_tool(mcp, annotations=OPERATE, meta={"hardwareharness": {"kind": "hardware"}})
+        async def pci1710l_set_level(hardwareId: str, channel: int, level: bool) -> dict[str, Any]: return await invoke(hardwareId, "set_level", channel=channel, level=level)
+        @contract_tool(mcp, annotations=OPERATE, meta={"hardwareharness": {"kind": "hardware", "safeAction": True}})
+        async def pci1710l_safe_state(hardwareId: str) -> dict[str, Any]: return await invoke(hardwareId, "safe_state")
     elif server_id == "PCI1762_MCP":
-        @mcp.tool(annotations=OPERATE, meta={"hardwareharness": {"kind": "hardware"}})
-        async def pci1762_set_relay(hardwareId: str, ctx: Context, channel: int, closed: bool) -> dict[str, Any]: return await invoke(hardwareId, "set_relay", ctx, channel=channel, closed=closed)
-        @mcp.tool(annotations=OPERATE, meta={"hardwareharness": {"kind": "hardware"}})
-        async def pci1762_set_bank(hardwareId: str, ctx: Context, mask: int) -> dict[str, Any]: return await invoke(hardwareId, "set_bank", ctx, mask=mask)
-        @mcp.tool(annotations=READ_HARDWARE, meta={"hardwareharness": {"kind": "hardware"}})
-        async def pci1762_read_bit(hardwareId: str, ctx: Context, channel: int, kind: str = "DI") -> dict[str, Any]: return await invoke(hardwareId, "read_bit", ctx, channel=channel, kind=kind)
-        @mcp.tool(annotations=OPERATE, meta={"hardwareharness": {"kind": "hardware", "safeAction": True}})
-        async def pci1762_safe_state(hardwareId: str, ctx: Context) -> dict[str, Any]: return await invoke(hardwareId, "safe_state", ctx)
+        @contract_tool(mcp, annotations=OPERATE, meta={"hardwareharness": {"kind": "hardware"}})
+        async def pci1762_set_relay(hardwareId: str, channel: int, closed: bool) -> dict[str, Any]: return await invoke(hardwareId, "set_relay", channel=channel, closed=closed)
+        @contract_tool(mcp, annotations=OPERATE, meta={"hardwareharness": {"kind": "hardware"}})
+        async def pci1762_set_bank(hardwareId: str, mask: int) -> dict[str, Any]: return await invoke(hardwareId, "set_bank", mask=mask)
+        @contract_tool(mcp, annotations=READ_HARDWARE, meta={"hardwareharness": {"kind": "hardware"}})
+        async def pci1762_read_bit(hardwareId: str, channel: int, kind: str = "DI") -> dict[str, Any]: return await invoke(hardwareId, "read_bit", channel=channel, kind=kind)
+        @contract_tool(mcp, annotations=OPERATE, meta={"hardwareharness": {"kind": "hardware", "safeAction": True}})
+        async def pci1762_safe_state(hardwareId: str) -> dict[str, Any]: return await invoke(hardwareId, "safe_state")
     elif server_id == "PCI6208V_MCP":
-        @mcp.tool(annotations=OPERATE, meta={"hardwareharness": {"kind": "hardware"}})
-        async def pci6208v_set_voltage(hardwareId: str, ctx: Context, channel: int, volts: float) -> dict[str, Any]: return await invoke(hardwareId, "set_voltage", ctx, channel=channel, volts=volts)
-        @mcp.tool(annotations=READ_HARDWARE, meta={"hardwareharness": {"kind": "hardware"}})
-        async def pci6208v_read_last(hardwareId: str, ctx: Context, channel: int) -> dict[str, Any]: return await invoke(hardwareId, "read_last", ctx, channel=channel)
-        @mcp.tool(annotations=OPERATE, meta={"hardwareharness": {"kind": "hardware", "safeAction": True}})
-        async def pci6208v_safe_state(hardwareId: str, ctx: Context) -> dict[str, Any]: return await invoke(hardwareId, "safe_state", ctx)
+        @contract_tool(mcp, annotations=OPERATE, meta={"hardwareharness": {"kind": "hardware"}})
+        async def pci6208v_set_voltage(hardwareId: str, channel: int, volts: float) -> dict[str, Any]: return await invoke(hardwareId, "set_voltage", channel=channel, volts=volts)
+        @contract_tool(mcp, annotations=READ_HARDWARE, meta={"hardwareharness": {"kind": "hardware"}})
+        async def pci6208v_read_last(hardwareId: str, channel: int) -> dict[str, Any]: return await invoke(hardwareId, "read_last", channel=channel)
+        @contract_tool(mcp, annotations=OPERATE, meta={"hardwareharness": {"kind": "hardware", "safeAction": True}})
+        async def pci6208v_safe_state(hardwareId: str) -> dict[str, Any]: return await invoke(hardwareId, "safe_state")
     elif server_id == "CP118U_I_MCP":
-        @mcp.tool(annotations=OPERATE, meta={"hardwareharness": {"kind": "hardware"}})
-        async def cp118u_configure_port(hardwareId: str, ctx: Context, channel: int, baud: int = 9600, data_bits: int = 8, parity: str = "N", stop_bits: int = 1, flow: int = 0) -> dict[str, Any]: return await invoke(hardwareId, "configure_port", ctx, channel=channel, baud=baud, data_bits=data_bits, parity=parity, stop_bits=stop_bits, flow=flow)
-        @mcp.tool(annotations=OPERATE, meta={"hardwareharness": {"kind": "hardware"}})
-        async def cp118u_write_text(hardwareId: str, ctx: Context, channel: int, text: str, clear_rx: bool = False) -> dict[str, Any]: return await invoke(hardwareId, "write_text", ctx, channel=channel, text=text, clear_rx=clear_rx)
-        @mcp.tool(annotations=OPERATE, meta={"hardwareharness": {"kind": "hardware"}})
-        async def cp118u_write_hex(hardwareId: str, ctx: Context, channel: int, hex_data: str, clear_rx: bool = False) -> dict[str, Any]: return await invoke(hardwareId, "write_hex", ctx, channel=channel, hex_data=hex_data, clear_rx=clear_rx)
-        @mcp.tool(annotations=READ_HARDWARE, meta={"hardwareharness": {"kind": "hardware"}})
-        async def cp118u_read_rx(hardwareId: str, ctx: Context, channel: int, timeout_ms: int = 0, max_bytes: int = 65536) -> dict[str, Any]: return await invoke(hardwareId, "read_rx", ctx, channel=channel, timeout_ms=timeout_ms, max_bytes=max_bytes)
-        @mcp.tool(annotations=OPERATE, meta={"hardwareharness": {"kind": "hardware"}})
-        async def cp118u_clear_rx(hardwareId: str, ctx: Context, channel: int) -> dict[str, Any]: return await invoke(hardwareId, "clear_rx", ctx, channel=channel)
-        @mcp.tool(annotations=OPERATE, meta={"hardwareharness": {"kind": "hardware"}})
-        async def cp118u_flush(hardwareId: str, ctx: Context, channel: int, what: str = "both") -> dict[str, Any]: return await invoke(hardwareId, "flush", ctx, channel=channel, what=what)
-        @mcp.tool(annotations=READ_HARDWARE, meta={"hardwareharness": {"kind": "hardware"}})
-        async def cp118u_get_line_status(hardwareId: str, ctx: Context, channel: int) -> dict[str, Any]: return await invoke(hardwareId, "get_line_status", ctx, channel=channel)
+        @contract_tool(mcp, annotations=OPERATE, meta={"hardwareharness": {"kind": "hardware"}})
+        async def cp118u_configure_port(hardwareId: str, channel: int, baud: int = 9600, data_bits: int = 8, parity: str = "N", stop_bits: int = 1, flow: int = 0) -> dict[str, Any]: return await invoke(hardwareId, "configure_port", channel=channel, baud=baud, data_bits=data_bits, parity=parity, stop_bits=stop_bits, flow=flow)
+        @contract_tool(mcp, annotations=OPERATE, meta={"hardwareharness": {"kind": "hardware"}})
+        async def cp118u_write_text(hardwareId: str, channel: int, text: str, clear_rx: bool = False) -> dict[str, Any]: return await invoke(hardwareId, "write_text", channel=channel, text=text, clear_rx=clear_rx)
+        @contract_tool(mcp, annotations=OPERATE, meta={"hardwareharness": {"kind": "hardware"}})
+        async def cp118u_write_hex(hardwareId: str, channel: int, hex_data: str, clear_rx: bool = False) -> dict[str, Any]: return await invoke(hardwareId, "write_hex", channel=channel, hex_data=hex_data, clear_rx=clear_rx)
+        @contract_tool(mcp, annotations=READ_HARDWARE, meta={"hardwareharness": {"kind": "hardware"}})
+        async def cp118u_read_rx(hardwareId: str, channel: int, timeout_ms: int = 0, max_bytes: int = 65536) -> dict[str, Any]: return await invoke(hardwareId, "read_rx", channel=channel, timeout_ms=timeout_ms, max_bytes=max_bytes)
+        @contract_tool(mcp, annotations=OPERATE, meta={"hardwareharness": {"kind": "hardware"}})
+        async def cp118u_clear_rx(hardwareId: str, channel: int) -> dict[str, Any]: return await invoke(hardwareId, "clear_rx", channel=channel)
+        @contract_tool(mcp, annotations=OPERATE, meta={"hardwareharness": {"kind": "hardware"}})
+        async def cp118u_flush(hardwareId: str, channel: int, what: str = "both") -> dict[str, Any]: return await invoke(hardwareId, "flush", channel=channel, what=what)
+        @contract_tool(mcp, annotations=READ_HARDWARE, meta={"hardwareharness": {"kind": "hardware"}})
+        async def cp118u_get_line_status(hardwareId: str, channel: int) -> dict[str, Any]: return await invoke(hardwareId, "get_line_status", channel=channel)
 
 
 register_hardware_tools()
@@ -151,10 +151,7 @@ async def prepare_shutdown() -> dict[str, Any]:
         runtime = manager.runtimes[item["hardwareId"]]
         try:
             async with runtime.operation_lock:
-                try:
-                    safe_result = await runtime.adapter.safe()
-                finally:
-                    manager.occupancy.clear_locked(runtime.adapter.hardware_id)
+                safe_result = await runtime.adapter.safe()
                 results.append({"hardwareId": runtime.adapter.hardware_id, "safeResult": safe_result})
         except Exception as exc:
             results.append(error(exc))
@@ -165,13 +162,8 @@ async def prepare_shutdown() -> dict[str, Any]:
     return ok(results)
 
 
-@mcp.tool(annotations=OPERATE, meta={"hardwareharness": {"kind": "internal"}})
+@contract_tool(mcp, annotations=OPERATE, meta={"hardwareharness": {"kind": "internal"}})
 async def hardwareharness_prepare_shutdown() -> dict[str, Any]: return await prepare_shutdown()
-
-
-@mcp.tool(annotations=OPERATE, meta={"hardwareharness": {"kind": "internal"}})
-async def hardwareharness_hardware_occupancy(hardwareId: str, action: str, ctx: Context, holderId: str | None = None, holderLabel: str | None = None, leaseId: str | None = None) -> dict[str, Any]:
-    return await manager.occupancy_action(hardwareId, action, holderId, holderLabel, leaseId)
 
 
 class BearerMiddleware(BaseHTTPMiddleware):

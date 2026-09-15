@@ -18,11 +18,7 @@ import {
 } from "@hardwareharness/contracts/devices";
 import { toWireError } from "@hardwareharness/contracts/errors";
 import { manualToolInvocationInputSchema } from "@hardwareharness/contracts/execution";
-import {
-  occupancyHardwareIdInputSchema,
-  occupancyRequestIdInputSchema,
-  occupancyRequestListQuerySchema
-} from "@hardwareharness/contracts/occupancy";
+
 import { runIdInputSchema, runListQuerySchema, runStartSchema, fileWriteSchema, fileCreateSchema, fileRenameSchema } from "@hardwareharness/contracts/applications";
 import { projectRootPathInputSchema, type ProjectDocument } from "@hardwareharness/contracts/projects";
 import { llmSettingsInputSchema, projectViewSchema, themeChoiceSchema, welcomeLayoutSchema } from "@hardwareharness/contracts/storage";
@@ -45,7 +41,7 @@ interface DesktopDialogsPort {
   chooseProjectFolder(): Promise<string | null>;
 }
 
-type DesktopEventName = "availability" | "execution" | "occupancy" | "occupancyRequest" | "run" | "runEvent" | "wiringTask" | "workspace" | "application" | "project" | "opencode" | "window-state";
+type DesktopEventName = "availability" | "execution" | "run" | "runEvent" | "wiringTask" | "workspace" | "application" | "project" | "opencode" | "window-state";
 
 interface DesktopWindowPort {
   publish(event: DesktopEventName, payload: unknown): void;
@@ -82,7 +78,7 @@ const trpc = initTRPC.create({
 });
 
 const emptyInput = z.void().optional();
-const eventNameSchema = z.enum(["availability", "execution", "occupancy", "occupancyRequest", "run", "runEvent", "wiringTask", "workspace", "application", "project", "opencode", "window-state"]);
+const eventNameSchema = z.enum(["availability", "execution", "run", "runEvent", "wiringTask", "workspace", "application", "project", "opencode", "window-state"]);
 
 export function createDesktopRouter(dependencies: DesktopIpcDependencies) {
   const { application, agents, settings, dialogs, windows } = dependencies;
@@ -212,11 +208,6 @@ export function createDesktopRouter(dependencies: DesktopIpcDependencies) {
       initializeWorkspace: trpc.procedure.input(z.object({ online: z.boolean().optional() }).strict().optional()).mutation(({ input }) => input === undefined
         ? application.applications.initializeWorkspace(HUMAN_REQUEST_CONTEXT)
         : application.applications.initializeWorkspace(HUMAN_REQUEST_CONTEXT, input.online === undefined ? {} : { online: input.online })),
-      listApps: trpc.procedure.input(emptyInput).query(() => application.applications.listApps(HUMAN_REQUEST_CONTEXT)),
-      createApp: trpc.procedure.input(z.object({ id: z.string().min(1), name: z.string().min(1) }).strict()).mutation(({ input }) => application.applications.createApp(HUMAN_REQUEST_CONTEXT, input.id, input.name)),
-      startApp: trpc.procedure.input(runIdInputSchema).mutation(({ input }) => application.applications.startApp(HUMAN_REQUEST_CONTEXT, input.id)),
-      stopApp: trpc.procedure.input(runIdInputSchema).mutation(({ input }) => application.applications.stopApp(HUMAN_REQUEST_CONTEXT, input.id)),
-      appLogs: trpc.procedure.input(z.object({ id: z.string().min(1), after: z.number().int().min(0).optional() }).strict()).query(({ input }) => application.applications.appLogs(HUMAN_REQUEST_CONTEXT, input.id, input.after)),
       startRun: trpc.procedure.input(runStartSchema).mutation(({ input }) => application.applications.startRun(HUMAN_REQUEST_CONTEXT, input)),
       cancelRun: trpc.procedure.input(runIdInputSchema).mutation(({ input }) => application.applications.cancelRun(HUMAN_REQUEST_CONTEXT, input.id)),
       getRun: trpc.procedure.input(runIdInputSchema).query(({ input }) => application.applications.getRun(HUMAN_REQUEST_CONTEXT, input.id)),
@@ -231,23 +222,7 @@ export function createDesktopRouter(dependencies: DesktopIpcDependencies) {
     manual: trpc.router({
       invokeTool: trpc.procedure.input(manualToolInvocationInputSchema).mutation(({ input }) => application.manual.invokeTool(HUMAN_REQUEST_CONTEXT, input))
     }),
-    occupancy: trpc.router({
-      list: trpc.procedure.input(emptyInput).query(() => application.occupancy.list(HUMAN_REQUEST_CONTEXT)),
-      acquire: trpc.procedure.input(occupancyHardwareIdInputSchema).mutation(({ input }) => application.occupancy.acquire(HUMAN_REQUEST_CONTEXT, input.hardwareId)),
-      release: trpc.procedure.input(occupancyHardwareIdInputSchema).mutation(({ input }) => application.occupancy.release(HUMAN_REQUEST_CONTEXT, input.hardwareId)),
-      listRequests: trpc.procedure.input(occupancyRequestListQuerySchema.optional()).query(({ input }) => application.occupancy.listRequests(
-        HUMAN_REQUEST_CONTEXT,
-        input === undefined ? undefined : {
-          limit: input.limit,
-          ...(input.status === undefined ? {} : { status: input.status })
-        }
-      )),
-      acquireRequest: trpc.procedure.input(occupancyRequestIdInputSchema).mutation(({ input }) => application.occupancy.acquireRequest(HUMAN_REQUEST_CONTEXT, input.id)),
-      rejectRequest: trpc.procedure.input(z.object({ id: z.string().min(1), message: z.string().optional() }).strict())
-        .mutation(({ input }) => application.occupancy.rejectRequest(HUMAN_REQUEST_CONTEXT, input.id, input.message)),
-      cancelRequest: trpc.procedure.input(z.object({ id: z.string().min(1), message: z.string().optional() }).strict())
-        .mutation(({ input }) => application.occupancy.cancelRequest(HUMAN_REQUEST_CONTEXT, input.id, input.message))
-    }),
+
     agents: trpc.router({
       rotateGatewayToken: trpc.procedure.input(emptyInput).mutation(() => agents.rotateGatewayToken()),
       status: trpc.procedure.input(z.object({ agent: agentKindSchema }).strict()).query(({ input }) => agents.status(input.agent)),

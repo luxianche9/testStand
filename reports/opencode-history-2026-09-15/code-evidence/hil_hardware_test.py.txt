@@ -1,0 +1,324 @@
+"""STM32F407 hardware-in-the-loop workflow: flash, stimulate, measure, verify.
+
+The DUT is a 野火 STM32F407 霸天虎 V2. A FireDAP probe programs it over SWD, a
+CP-118U-I serial port carries the firmware command/telemetry protocol, a
+PCI-6208V drives the ADC input and a PCI-1710L reads the digital output and an
+independent analog reference. Every hardware step runs inside the platform Run
+and keeps its own occupancy lease.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import time
+from pathlib import Path
+
+from hardwareharness import attachment, log, measurement, step
+from hardwareharness import call as _raw_call
+
+
+def _unwrap(result: object) -> object:
+    """Workflow runs receive the full MCP envelope; return the tool's data payload."""
+    if isinstance(result, dict):
+        structured = result.get("structuredContent")
+        if isinstance(structured, dict):
+            return structured.get("data", structured)
+        if "data" in result:
+            return result["data"]
+    return result
+
+
+def call(hardware_id: str, tool_name: str, arguments: dict, **kwargs: object) -> object:
+    """Call a hardware tool and return its unwrapped data payload."""
+    return _unwrap(_raw_call(hardware_id, tool_name, arguments, **kwargs))
+
+FIREDAP = "LOCAL_MCP.FIREDAP_0"
+SERIAL = "PC1_MCP.CP118U_I_CARD_0"
+AO = "PC1_MCP.PCI6208V_CARD_0"
+DAQ = "PC1_MCP.PCI1710L_CARD_0"
+
+T_INSPECT = "FIREDAP_MCP__firedap_inspect_firmware"
+T_FLASH = "FIREDAP_MCP__firedap_flash"
+T_WAIT = "FIREDAP_MCP__firedap_wait_job"
+T_TARGET = "FIREDAP_MCP__firedap_target_info"
+
+T_PORT = "CP118U_I_MCP__cp118u_configure_port"
+T_WRITE = "CP118U_I_MCP__cp118u_write_text"
+T_READ = "CP118U_I_MCP__cp118u_read_rx"
+T_CLEAR = "CP118U_I_MCP__cp118u_clear_rx"
+
+T_SET_V = "PCI6208V_MCP__pci6208v_set_voltage"
+T_AO_SAFE = "PCI6208V_MCP__pci6208v_safe_state"
+
+T_AI_CFG = "PCI1710L_MCP__pci1710l_configure_ai"
+T_READ_V = "PCI1710L_MCP__pci1710l_read_voltage"
+T_READ_BIT = "PCI1710L_MCP__pci1710l_read_bit"
+T_DO_SAFE = "PCI1710L_MCP__pci1710l_safe_state"
+
+CHANNEL = 1
+AO_CHANNEL = 0
+AI_CHANNEL = 0
+DI_CHANNEL = 0
+BAUD = 115200
+WIDE_RANGE = 1  # PCI-1710L value_range enum: +/-10 V
+FIRMWARE_BASE = 0x08000000
+DEFAULT_FIRMWARE = (
+    r"E:\Project\hardwareHarness\examples\stm32_example1\firmware\build\hil_demo.bin"
+)
+
+
+def _as_int(inputs: dict[str, object], key: str, default: int, low: int, high: int) -> int:
+    value = int(str(inputs.get(key, default)))
+    if value < low or value > high:
+        raise ValueError(f"{key} must be {low}..{high}, got {value}")
+    return value
+
+
+def _parse_scan(raw: object) -> list[float]:
+    voltages: list[float] = []
+    for part in str(raw).replace(";", ",").split(","):
+        token = part.strip()
+        if token:
+            voltages.append(float(token))
+    if not voltages:
+        raise ValueError("scan_volts must contain at least one voltage")
+    for volts in voltages:
+        if volts < 0.0 or volts > 3.0:
+            raise ValueError(f"scan voltage {volts} is outside the protected 0..3.0 V range")
+    return voltages
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(65536), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _line_with_prefix(text: str, prefix: str) -> str:
+    for line in text.splitlines():
+        candidate = line.strip()
+        if candidate.startswith(prefix):
+            return candidate
+    return ""
+
+
+def _wait_job(hardware_id: str, job_id: str, timeout_s: float) -> dict[str, object]:
+    deadline = time.monotonic() + timeout_s
+    job: dict[str, object] = {}
+    while True:
+        job = call(
+            hardware_id,
+            T_WAIT,
+            {"job_id": job_id, "timeout_seconds": 60},
+            timeout_ms=70000,
+        )
+        if job.get("state") != "running" or time.monotonic() >= deadline:
+            return job
+        time.sleep(0.2)
+
+
+def _read_until(needle: str, timeout_s: float) -> str:
+    deadline = time.monotonic() + timeout_s
+    text = ""
+    while time.monotonic() < deadline:
+        response = call(SERIAL, T_READ, {"channel": CHANNEL, "timeout_ms": 0, "max_bytes": 65536})
+        text = str(response.get("text", ""))
+        if needle in text:
+            return text
+        time.sleep(0.1)
+    return text
+
+
+def _fit(points: list[dict[str, int]]) -> tuple[float, float]:
+    count = len(points)
+    if count < 2:
+        return 1.0, 0.0
+    mean_x = sum(point["set_mv"] for point in points) / count
+    mean_y = sum(point["uart_mv"] for point in points) / count
+    denominator = sum((point["set_mv"] - mean_x) ** 2 for point in points)
+    if denominator == 0:
+        return 1.0, float(mean_y)
+    slope = sum(
+        (point["set_mv"] - mean_x) * (point["uart_mv"] - mean_y) for point in points
+    ) / denominator
+    return slope, mean_y - slope * mean_x
+
+
+def main(inputs: dict[str, object]) -> dict[str, object]:
+    firmware = Path(str(inputs.get("firmware", DEFAULT_FIRMWARE))).expanduser()
+    if not firmware.is_file():
+        raise ValueError(f"Firmware file not found: {firmware}")
+    settle_ms = _as_int(inputs, "settle_ms", 200, 50, 5000)
+    tolerance_mv = _as_int(inputs, "tolerance_mv", 250, 10, 2000)
+    telemetry_ms = _as_int(inputs, "telemetry_ms", 200, 10, 60000)
+    scan_volts = _parse_scan(inputs.get("scan_volts", "0,0.5,1.0,1.5,2.0,2.5,3.0"))
+    base_address = FIRMWARE_BASE if firmware.suffix.lower() == ".bin" else None
+
+    with step("校验固件"):
+        digest = _sha256(firmware)
+        inspect_args: dict[str, object] = {"path": str(firmware)}
+        if base_address is not None:
+            inspect_args["base_address"] = base_address
+        reported = call(FIREDAP, T_INSPECT, inspect_args)
+        if str(reported.get("sha256", "")).lower() != digest:
+            raise RuntimeError("Firmware SHA-256 changed between inspect and flash")
+        log("固件校验通过", fields={"sha256": digest, "bytes": reported.get("programBytes")})
+        measurement("firmware_program_bytes", int(reported.get("programBytes", 0)), unit="bytes")
+
+    with step("烧录并校验"):
+        flash_args: dict[str, object] = {
+            "path": str(firmware),
+            "expected_sha256": digest,
+            "reset_after": True,
+        }
+        if base_address is not None:
+            flash_args["base_address"] = base_address
+        started = call(FIREDAP, T_FLASH, flash_args)
+        job = _wait_job(FIREDAP, str(started["jobId"]), 120.0)
+        if job.get("state") != "succeeded":
+            raise RuntimeError(f"Flash job {job.get('state')}: {job.get('error')}")
+        result = job.get("result") or {}
+        if not result.get("verified"):
+            raise RuntimeError("Read-back verification did not report verified=true")
+        measurement("flash_verified_bytes", int(result.get("verifiedBytes", 0)), unit="bytes")
+        log("固件已烧录并逐字节校验", fields={"uid": result.get("uid")})
+
+    with step("读取目标身份"):
+        started = call(FIREDAP, T_TARGET, {})
+        job = _wait_job(FIREDAP, str(started["jobId"]), 60.0)
+        if job.get("state") != "succeeded":
+            raise RuntimeError("Target identity read did not succeed")
+        target = job.get("result") or {}
+        log(
+            "目标芯片已识别",
+            fields={"target": target.get("target"), "deviceId": target.get("deviceId")},
+        )
+
+    with step("配置串口并握手"):
+        call(
+            SERIAL,
+            T_PORT,
+            {
+                "channel": CHANNEL,
+                "baud": BAUD,
+                "data_bits": 8,
+                "parity": "N",
+                "stop_bits": 1,
+                "flow": 0,
+            },
+        )
+        call(SERIAL, T_CLEAR, {"channel": CHANNEL})
+        time.sleep(0.3)
+        call(SERIAL, T_WRITE, {"channel": CHANNEL, "text": "PING\r\n"})
+        handshake = _read_until("PONG", 3.0)
+        if "PONG" not in handshake:
+            raise RuntimeError(f"No PONG from firmware; saw {handshake!r}")
+        log("串口握手成功", fields={"response": _line_with_prefix(handshake, "PONG")})
+
+    with step("读取固件身份"):
+        call(SERIAL, T_CLEAR, {"channel": CHANNEL})
+        call(SERIAL, T_WRITE, {"channel": CHANNEL, "text": "ID?\r\n"})
+        identity = _read_until("ID,", 3.0)
+        fields = _line_with_prefix(identity, "ID,").split(",")
+        if len(fields) < 2:
+            raise RuntimeError(f"No ID response from firmware; saw {identity!r}")
+        log("固件身份匹配", fields={"id": fields[1:], "expected": "STM32F407-HIL"})
+        if fields[1] != "STM32F407-HIL":
+            raise RuntimeError(f"Unexpected firmware identity {fields[1]!r}")
+
+    with step("启用遥测"):
+        call(SERIAL, T_WRITE, {"channel": CHANNEL, "text": f"TLM {telemetry_ms}\r\n"})
+        log("周期遥测已启用", fields={"period_ms": telemetry_ms})
+
+    with step("配置模拟采集"):
+        call(DAQ, T_AI_CFG, {"channel": AI_CHANNEL, "signal_type": 0, "value_range": WIDE_RANGE})
+
+    sweep: list[dict[str, int]] = []
+    with step("模拟输入扫描"):
+        for volts in scan_volts:
+            call(AO, T_SET_V, {"channel": AO_CHANNEL, "volts": float(volts)})
+            time.sleep(settle_ms / 1000.0)
+            call(SERIAL, T_CLEAR, {"channel": CHANNEL})
+            call(SERIAL, T_WRITE, {"channel": CHANNEL, "text": "ADC?\r\n"})
+            adc_text = _read_until("ADC,", 1.5)
+            adc_fields = _line_with_prefix(adc_text, "ADC,").split(",")
+            if len(adc_fields) < 3:
+                raise RuntimeError(f"No ADC response at {volts} V; saw {adc_text!r}")
+            reference = float(call(DAQ, T_READ_V, {"channel": AI_CHANNEL}).get("volts", 0.0))
+            point = {
+                "set_mv": round(volts * 1000),
+                "uart_raw": int(adc_fields[1]),
+                "uart_mv": int(adc_fields[2]),
+                "reference_mv": round(reference * 1000),
+            }
+            sweep.append(point)
+            measurement("stm32_adc_mv", point["uart_mv"], unit="mV")
+            measurement("pci1710l_ai_mv", point["reference_mv"], unit="mV")
+            log("扫描点", fields=point)
+        call(AO, T_AO_SAFE, {})
+
+    with step("数字输出回读"):
+        digital: list[dict[str, int]] = []
+        for level in (1, 0):
+            call(SERIAL, T_CLEAR, {"channel": CHANNEL})
+            call(SERIAL, T_WRITE, {"channel": CHANNEL, "text": f"STAT {level}\r\n"})
+            time.sleep(0.5)
+            di = call(DAQ, T_READ_BIT, {"channel": DI_CHANNEL, "kind": "DI"})
+            readback = bool(di.get("value"))
+            digital.append({"set": level, "read": int(readback)})
+            log("数字回读", fields={"set": level, "read": int(readback)})
+        call(DAQ, T_DO_SAFE, {})
+        call(AO, T_AO_SAFE, {})
+
+    with step("分析传递特性"):
+        slope, intercept = _fit(sweep)
+        max_error_mv = max(abs(point["uart_mv"] - point["set_mv"]) for point in sweep)
+        reference_error_mv = max(
+            abs(point["reference_mv"] - point["set_mv"]) for point in sweep
+        )
+        monotonic = all(
+            sweep[index]["uart_mv"] <= sweep[index + 1]["uart_mv"]
+            for index in range(len(sweep) - 1)
+        )
+        within_tolerance = max_error_mv <= tolerance_mv
+        digital_ok = all(point["set"] == point["read"] for point in digital)
+        gain_ok = abs(slope - 1.0) <= 0.1
+        passed = within_tolerance and monotonic and digital_ok and gain_ok
+        measurement("adc_gain", round(slope, 4), unit="mV/mV")
+        measurement("adc_max_error_mv", max_error_mv, unit="mV")
+        measurement("reference_max_error_mv", reference_error_mv, unit="mV")
+        log(
+            "判定完成",
+            fields={
+                "passed": passed,
+                "gain": round(slope, 4),
+                "intercept_mv": round(intercept),
+                "monotonic": monotonic,
+                "within_tolerance": within_tolerance,
+                "digital_ok": digital_ok,
+            },
+        )
+
+    report = Path("hil_sweep.csv")
+    lines = ["set_mv,uart_raw,uart_mv,reference_mv"]
+    lines += [
+        f"{point['set_mv']},{point['uart_raw']},{point['uart_mv']},{point['reference_mv']}"
+        for point in sweep
+    ]
+    report.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    attachment(report, name="hil_sweep.csv", media_type="text/csv")
+    report.unlink()
+
+    return {
+        "passed": passed,
+        "firmware_sha256": digest,
+        "firmware_id": fields[1],
+        "gain": round(slope, 4),
+        "max_error_mv": max_error_mv,
+        "tolerance_mv": tolerance_mv,
+        "monotonic": monotonic,
+        "digital_readback": digital,
+        "sweep": sweep,
+    }

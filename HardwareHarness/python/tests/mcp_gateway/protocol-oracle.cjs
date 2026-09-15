@@ -27,7 +27,7 @@ function load(filename) {
 }
 async function main() {
   const facade = new Proxy({}, {get: (_, name) => name === 'listTools' ? () => [] : () => ({value: 3})});
-  const app = {authorizer: {isAllowed: () => true, authorize: () => {}}, devices: facade, wiring: facade, occupancy: facade, orchestration: facade};
+  const app = {authorizer: {isAllowed: () => true, authorize: () => {}}, devices: facade, wiring: facade, orchestration: facade};
   const {LocalMcpGateway} = load(path.join(root, 'packages/mcp-gateway/src/gateway.ts'));
   const gateway = new LocalMcpGateway(app, {ensureToken: async () => 'secret', set: async () => {}}, 0);
   await gateway.start();

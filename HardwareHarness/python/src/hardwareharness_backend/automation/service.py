@@ -21,7 +21,7 @@ from jsonschema import Draft202012Validator, SchemaError, ValidationError
 from hardwareharness_backend.contracts.errors import app_error, to_wire_error
 
 from .logs import Json, RunLogStore, redact, safe_child, timestamp
-from .processes import ProcessJob, terminate_tree
+from .processes import ProcessJob, create_external_process, terminate_tree
 
 Invoke = Callable[[str, str, Json, int], Awaitable[Any]]
 Acquire = Callable[[list[str], Json], Awaitable[Callable[[], None]]]
@@ -152,18 +152,20 @@ class AutomationService:
             "inputSchema",
             "hardwareIds",
             "name",
-            "applicationId",
-            "actionId",
         }
         if set(raw) - allowed:
             raise app_error("invalid_argument", "Unexpected workflow launch fields")
-        for key in ("name", "applicationId", "actionId"):
-            if key in raw and (not isinstance(raw[key], str) or (key == "name" and not raw[key])):
+        for key in ("name",):
+            if key in raw and (not isinstance(raw[key], str) or not raw[key]):
                 raise app_error("invalid_argument", f"Invalid workflow {key}")
         entrypoint = raw.get("entrypoint")
-        if not isinstance(entrypoint, str) or not entrypoint.endswith(".py"):
+        if (
+            not isinstance(entrypoint, str)
+            or not entrypoint.startswith("scripts/")
+            or not entrypoint.endswith(".py")
+        ):
             raise app_error(
-                "invalid_argument", "Workflow entrypoint must be a relative Python path"
+                "invalid_argument", "Python entrypoint must be a .py file under scripts/"
             )
         try:
             source = safe_child(store.root / ".hardwareharness", entrypoint)
@@ -203,7 +205,6 @@ class AutomationService:
             "status": "running",
             "startedAt": timestamp(),
             "eventCount": 0,
-            **{key: raw[key] for key in ("applicationId", "actionId") if key in raw},
         }
         python = await self.python_provider() if self.python_provider else sys.executable
         async with self._lifecycle:
@@ -252,7 +253,7 @@ class AutomationService:
             options: Json = (
                 {"creationflags": 0x08000200} if os.name == "nt" else {"start_new_session": True}
             )
-            run.process = await asyncio.create_subprocess_exec(
+            run.process = await create_external_process(
                 python,
                 "-u",
                 "-m",
@@ -395,7 +396,7 @@ class AutomationService:
     async def list_runs(self, query: Json | None = None) -> list[Json]:
         values = self._store().list()
         query = query or {}
-        for key in ("status", "applicationId"):
+        for key in ("status",):
             if query.get(key):
                 values = [item for item in values if item.get(key) == query[key]]
         if query.get("statuses"):

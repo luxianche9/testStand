@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import json
 import sys
-import time
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -23,7 +22,8 @@ def ok(data: object) -> dict:
 
 def error(exc: Exception) -> dict:
     return {"ok": False, "error": {"category": getattr(exc, "category", "internal"),
-            "message": str(exc), "retryable": False}, "meta": {"timestamp": now()}}
+            "message": str(exc), "retryable": False,
+            "recovery": "For a submitted action, query firedap_get_job with its original jobId; never infer no effect from timeout/failure. For invalid firmware paths use firedap_import_firmware then firedap_inspect_firmware. Correct invalid inputs before submission."}, "meta": {"timestamp": now()}}
 
 
 async def run_worker(request: dict, timeout: float) -> dict:
@@ -55,13 +55,12 @@ async def _run_worker_in_directory(request: dict, timeout: float, workdir: str) 
 
 
 class Runtime:
-    """Lease metadata stays responsive while a single non-interruptible job runs."""
+    """Run one hardware job at a time while keeping job status responsive."""
 
     def __init__(self, config: dict, runner=run_worker):
         self.config = config
         self.runner = runner
         self.lock = asyncio.Lock()
-        self.lease: dict | None = None
         self.jobs: dict[str, dict] = {}
         self.task: asyncio.Task | None = None
         self.draining = False
@@ -76,48 +75,6 @@ class Runtime:
         if hardware_id != self.config["hardwareId"]:
             raise OperationError("Unknown hardwareId")
 
-    def expire(self) -> None:
-        if self.lease and self.lease["deadline"] <= time.monotonic() and not self.busy:
-            self.lease = None
-
-    def status(self) -> dict:
-        self.expire()
-        if self.lease is None:
-            return {"state": "unoccupied"}
-        return {"state": "occupied", **{k: self.lease[k] for k in ("holderId", "holderLabel", "acquiredAt", "expiresAt")}}
-
-    async def occupancy(self, hardware_id: str, action: str, holder_id=None, holder_label=None, lease_id=None) -> dict:
-        self.check_id(hardware_id)
-        async with self.lock:
-            self.expire()
-            same = self.lease and self.lease["holderId"] == holder_id and self.lease["leaseId"] == lease_id
-            if action == "acquire":
-                if self.draining:
-                    raise OperationError("Service is draining", "service_unavailable")
-                if not all(isinstance(x, str) and x for x in (holder_id, holder_label, lease_id)):
-                    raise OperationError("acquire requires holderId, holderLabel and leaseId")
-                if (self.lease and not same) or (self.busy and not same):
-                    raise OperationError("FireDAP is occupied or completing a hardware job", "conflict")
-                if not self.lease:
-                    self.lease = {"holderId": holder_id, "holderLabel": holder_label,
-                                  "leaseId": lease_id, "acquiredAt": now()}
-                self.renew()
-            elif action == "heartbeat":
-                if same:
-                    self.renew()
-            elif action == "release":
-                if same:
-                    if self.busy:
-                        raise OperationError("Wait for the running job before releasing FireDAP", "conflict")
-                    self.lease = None
-            elif action != "status":
-                raise OperationError("Unknown occupancy action")
-            return self.status()
-
-    def renew(self) -> None:
-        assert self.lease is not None
-        self.lease["deadline"] = time.monotonic() + 15
-        self.lease["expiresAt"] = datetime.fromtimestamp(time.time() + 15, timezone.utc).isoformat()
 
     async def discover(self) -> dict:
         # USB enumeration is isolated too; a disconnected HID backend cannot hang the MCP loop.
@@ -135,19 +92,16 @@ class Runtime:
                 "health": "job running" if self.busy else "CMSIS-DAP enumerated; target checked per operation" if self.probe_present else "Configured FireDAP is not connected",
                 "lastError": self.last_error}
 
-    async def start_job(self, hardware_id: str, lease_id: str | None, operation: str,
+    async def start_job(self, hardware_id: str, operation: str,
                         path: str | None = None, base_address: int | None = None,
                         expected_sha256: str | None = None, reset_after=True,
                         read_address: int | None = None, read_length: int | None = None) -> dict:
         self.check_id(hardware_id)
         async with self.lock:
-            self.expire()
             if self.draining:
                 raise OperationError("Service is draining", "service_unavailable")
             if self.busy:
                 raise OperationError("A hardware job is already running", "conflict")
-            if not self.lease or not lease_id or self.lease["leaseId"] != lease_id:
-                raise OperationError("A current HardwareHarness occupancy lease is required", "occupancy_required")
             request = {"operation": operation, "config": {k: self.config[k] for k in ("probeSerial", "packPath", "frequencyHz")},
                        "resetAfter": reset_after}
             summary = None
@@ -163,7 +117,7 @@ class Runtime:
             elif operation not in {"target_info", "reset"}:
                 raise OperationError("Unknown hardware operation")
             job_id = str(uuid4())
-            job = {"jobId": job_id, "operation": operation, "state": "running", "startedAt": now(), "firmware": summary}
+            job = {"jobId": job_id, "operation": operation, "state": "running", "startedAt": now(), "firmware": summary, "revision": 1}
             self.jobs[job_id] = job
             while len(self.jobs) > 100:
                 self.jobs.pop(next(iter(self.jobs)))
@@ -182,6 +136,7 @@ class Runtime:
             self.last_error = {"category": job["error"]["category"], "message": str(exc), "at": now()}
         finally:
             job["finishedAt"] = now()
+            job["revision"] = 2
             directory = Path(self.config["jobDirectory"])
             try:
                 directory.mkdir(parents=True, exist_ok=True)
@@ -194,7 +149,7 @@ class Runtime:
 
     def get_job(self, job_id: str) -> dict:
         if job_id not in self.jobs:
-            raise OperationError("Unknown job ID for this server session")
+            raise OperationError("Unknown job ID for this server session (service restart or 100-job retention may have removed it); original target effects are unknown", "job_not_found")
         return dict(self.jobs[job_id])
 
     async def shutdown(self) -> dict:
@@ -202,5 +157,4 @@ class Runtime:
             if self.busy:
                 raise OperationError("Hardware job is running; safe shutdown refused until it finishes", "conflict")
             self.draining = True
-            self.lease = None
             return {"safe": True, "draining": True}

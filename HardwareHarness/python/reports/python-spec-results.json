@@ -5,26 +5,26 @@
     "scripts/build.py": "bca94008469013921be658f0df6c3cfd741dabd7a4d8204da4b04ddd136d1f2b",
     "scripts/build_project_runtime.py": "c50cb24193861ca3d3d6411ff41e60420cd15429968ffecc35f11f0391974892",
     "scripts/check_coverage.py": "97e74657924a1e8d0348a512749cd2bc5816fac7e44480671634da3f5219ac39",
-    "scripts/check_specs.py": "1413302d6497ba8f94ba2c50ab4df118080ea96907e5d40f5bb959bb76a57492",
+    "scripts/check_specs.py": "e694ec96f5d298507e7685d86e37ca1fcb85a7f701bde2086fb5da2760b42b31",
     "scripts/frozen_entry.py": "4b17dfc8d4ea5eef2f36589627852e8909263bffe2b1404a6a22f0eade1484a3",
     "scripts/prepare_icu.py": "4a5be1c868fafd14527806998ac234d6809db23dec000c4c29a7a92a6173c335",
-    "scripts/protected_baseline.py": "680819f94de459432523ca120085c84490cdd41433fa668f5058e33d14f75120",
-    "scripts/smoke_project_runtime.py": "e1a4262863d035ce0f9c9ab598f21979e5bb13aca6e73331544d6c305415d5e1",
+    "scripts/protected_baseline.py": "51d205300ac150e765129c75faef8b6fb8d3d0e997e5764ae0f4a3d26c7bd785",
+    "scripts/smoke_project_runtime.py": "979fc4285223220ebb15676faaafcd2981a4fe75b200f9fbbef40e438bd4c0d5",
     "scripts/verify.py": "a16bf0f9983d4e3401d4ac6b35833621df878f43a7756166e81350389c29847f",
-    "src/hardwareharness/__init__.py": "979fcd9732224f446fc4588689c228b9d55ee50ba974212021fd57236a266e3e",
+    "src/hardwareharness/__init__.py": "317732bede063764542f4764cd524daad5eed5393314a516ea99093cd58d60e3",
     "src/hardwareharness/_transport.py": "1e6d9e80580308ee0ec21ee21adc9d94555ba1cb0e80b3cdcf32730c4b0b0cf4",
     "src/hardwareharness/_worker.py": "d1c8c0a9dbc07915e859d063b978e1c301458059fdf016ef631a4b2ba26033c9",
     "src/hardwareharness_backend/__init__.py": "89c4bb42f5d197c8b455f2c0090aaa89b034837275c9738e267a63e2d0f60789",
-    "src/hardwareharness_backend/application/__init__.py": "609b438053f22d48ff73122f77dafb9503aef2cc1b93d86927bf28f2a6340b02",
-    "src/hardwareharness_backend/application/applications.py": "9ec1a6a6c32cd3a93e1a15edd9fa7c28e388f38d4537832cf8695d6050e8d237",
-    "src/hardwareharness_backend/application/authorization.py": "5035fdce4524c592d3c8d44b6187ba20e5c2153365fb6732100ef812030989b3",
-    "src/hardwareharness_backend/application/control.py": "0edb4355bda33bcabada0f0ac62f7f213122634202cf759118a8c4dd9a4f0706",
-    "src/hardwareharness_backend/application/execution.py": "3e2fb295e7cac59b7299d3a77af7210766fa9d921419d1664a7f119d64223c17",
-    "src/hardwareharness_backend/application/services.py": "a3d6e8ed612fde257dd46d1a6a3c4b6c81dcb19e0a12afcb8b4157cf824a7529",
+    "src/hardwareharness_backend/application/__init__.py": "59351d756cbb6502bbad69ab00d22a09f73b08b60fdff0730dbd0f31c96af1e4",
+    "src/hardwareharness_backend/application/applications.py": "65ad14149834d9a8c0ee944272af70012334eb62fa110fe0ad6462020f3398e4",
+    "src/hardwareharness_backend/application/authorization.py": "5be8a4765006888d6a7d44ca1fea5935acfde4bbf57b1922bd735f0103e6e2f4",
+    "src/hardwareharness_backend/application/control.py": "0ffba0b742715c95384ae10e092f9dba7787f4ecc9454ace9926d8addfaa83c9",
+    "src/hardwareharness_backend/application/execution.py": "536e10b05fb1a840dacca25db663b510b62fd3ba4becd426f1a8f76c7c62558d",
+    "src/hardwareharness_backend/application/services.py": "0e1b6de20ef75997bfe345b41f325c10e5aedbb14b2a0132921ca9f67a071b98",
     "src/hardwareharness_backend/automation/__init__.py": "84f5dd7a2c6f8f2070a65b2d127e28cc3fb0d2299867ea90f810628766b5c024",
-    "src/hardwareharness_backend/automation/logs.py": "82d3d77be1f65c44dba6cdf3859815ec67c26fcf9f4e7e69e69d65ae6dd7a7e8",
-    "src/hardwareharness_backend/automation/processes.py": "d3fcba5abeadf84f5e145023c120e92aaf6fd0ebdbbd4069b0d050c2ab6f604e",
-    "src/hardwareharness_backend/automation/service.py": "0dee779fb485fbbe95d9545dddfc33806bf0295a6e214c6f9ac0f8be4b8b7f8e",
+    "src/hardwareharness_backend/automation/logs.py": "08e1fe3f3f5b6c6d2531122c0e0c78ab489396f7846133ef1818d36811fdb3e1",
+    "src/hardwareharness_backend/automation/processes.py": "71ec67352144c8489e2a0a300706f1e3229a1d3f0f399a697d67b8513274e71b",
+    "src/hardwareharness_backend/automation/service.py": "ac851d24e6eac16d05376c2da11599fd819910b52a0e4123d869e39aaf5fb9cc",
     "src/hardwareharness_backend/compat/__init__.py": "6020036321b156c74c52f6e16352a66f77a1d04e4983cdfed0ec9a953a897af7",
     "src/hardwareharness_backend/compat/cancellation.py": "27276c173f066204c037adb4d37995ecc56b1e981249b9dca81c0871caf1b15d",
     "src/hardwareharness_backend/compat/collation.py": "6981f88a3ee20f287f1816799f0cdf96b38ffa72cf2926bf8516b26c416e57ad",
@@ -32,24 +32,22 @@
     "src/hardwareharness_backend/compat/filesystem.py": "3792c1326a22d4701249a18de66eb28269c8cb13f79cd31d356c9b27048e1817",
     "src/hardwareharness_backend/compat/json_syntax.py": "c81ff2d186b953f7541e2a784d0e97207e4fef65f1f262cb6986122800e5b794",
     "src/hardwareharness_backend/contracts/__init__.py": "275d01db31714006c01533a7b60603e25deafa54fc961f43ee769cee53fb5213",
-    "src/hardwareharness_backend/contracts/agents.py": "4c576c7e7abb00b409a810c3542be83873f6017e04a4b217dcfe30e2e8b6a2d7",
-    "src/hardwareharness_backend/contracts/desktop.py": "1de79eac576bfa3a46f0af64ddd63384f010454363c9c4afe51fc5f72bcb1710",
+    "src/hardwareharness_backend/contracts/agents.py": "5991367c651ba1f012f2ce8cc178608f8385c6b2a0a89ecbfca56654c217e974",
+    "src/hardwareharness_backend/contracts/desktop.py": "463cc424f8d5a0c594966134fb98e29f11b41e35542327e84c53e5cbe7c2b3cc",
     "src/hardwareharness_backend/contracts/devices.py": "c2726994a297e0292f0a81ba9fa1f4fad24362d85456ff27445cd602dea87b3b",
-    "src/hardwareharness_backend/contracts/errors.py": "7caf224d934624d7a6fec40a4255e5a2815147310a84c2953bb5853222d540a8",
+    "src/hardwareharness_backend/contracts/errors.py": "ec690e3a6ef2f62e55fa1b7df33219dee61435d459a813178db0a6af7f83409c",
     "src/hardwareharness_backend/contracts/execution.py": "c5fc3d9397af77088f0fdd16de5ebc78a589994fa70c2de41480a3586653620a",
-    "src/hardwareharness_backend/contracts/occupancy.py": "355fa6ce2e6d38c268d575bceb84c37ccd1aa9ef65b2f3834ebe79eef15f7246",
     "src/hardwareharness_backend/contracts/projects.py": "42dc6799888fe8b467ac3012bd965f3e57dcd63f9518acfb414df822f83e9ce1",
     "src/hardwareharness_backend/contracts/storage.py": "4edc411585b990da64ca3d9d83d06939ab7b689cd3db4e0de3e9578ef30ff44d",
     "src/hardwareharness_backend/contracts/validation.py": "0a326f610ffcba1cdce1b67bfba10ea0d17042a6b28bdce48dec5144d58b9feb",
     "src/hardwareharness_backend/contracts/wiring.py": "54c545ed07e1dd1b0e4f37a96f210f0db4ffd7655dc4d161a56a1ebbfee40ea1",
-    "src/hardwareharness_backend/devices/__init__.py": "7529a42c984dd178c9a1f7e263ee64c6b4ae2b11142e91872784a6016168564b",
-    "src/hardwareharness_backend/devices/device_catalog_service.py": "1174a1eab186bbcb3964ee7da619c6bfe41eaa77ad810c3b8a4443a0c5c266e9",
-    "src/hardwareharness_backend/devices/device_service.py": "31f2aeb8140e1c548c5032e6460d161bc022feb1447546b51c0982d267c5fc99",
+    "src/hardwareharness_backend/devices/__init__.py": "967c9fac16af7603f32b181aadc10e24951816dc74b08d93c5200cb1544df49d",
+    "src/hardwareharness_backend/devices/device_catalog_service.py": "21958c00fffa2ebbce84534cf20ac3b3b22365afd48d8217d2a04f33cc038801",
+    "src/hardwareharness_backend/devices/device_service.py": "d3add29efedee5442696133194df9000f6aff4282c059a3227808de7e87371a1",
     "src/hardwareharness_backend/devices/device_store.py": "ff2f04275ed65484a46ccac44b5b1a36d43320cd40fc5ba492e8ef341fca5e9c",
     "src/hardwareharness_backend/devices/device_transport.py": "8183f53d148367c3ffdd140d72f22952e217f7c20bc5bb6cec4474726b0ddb2b",
-    "src/hardwareharness_backend/devices/hardware_occupancy.py": "078e3676403648246c86f099fe4cf7df73d79cef3ccbcd71306a0c9ceab5a67b",
     "src/hardwareharness_backend/devices/local_shell.py": "fcbf64348189663ad5370dfd94d4e0e03ad01076816e4476da5aa9978061965f",
-    "src/hardwareharness_backend/devices/mcp_client.py": "1619b3414b5f2fdd24fdf6b4e9202462c4f14e75e00ae3244b59479de38e2bf3",
+    "src/hardwareharness_backend/devices/mcp_client.py": "24174c78576a13bf97c3c3060332b44e2f62d193c1f6f73397cd745574982604",
     "src/hardwareharness_backend/devices/mcp_transport.py": "e4a8726de0609710cf080142657b63274df2c2fca52e5d48a1a0589b3d3b77b5",
     "src/hardwareharness_backend/devices/remote_shell.py": "e12ee02b3eed88e58d463425fb3e6f3d50f869a8877513506d0bfc05eec58df9",
     "src/hardwareharness_backend/devices/schema_validation.py": "eb994eb86e6d756af1ee21a8720db669ea083b1d7a2f07896b95a71b055dbfa6",
@@ -60,34 +58,38 @@
     "src/hardwareharness_backend/host/migrations.py": "90a5bf4ab5a6b6859ddfaeb46b79bbc3ea60aa4a35ef61ab4af65cbdb78afe57",
     "src/hardwareharness_backend/host/register_firedap.py": "e70c03eb270c6abc27b7c50225d25ac7f7856455a83549be77bf8474ea41f6f6",
     "src/hardwareharness_backend/host/rpc.py": "8ce72fe05c4ac2caaafd98c151f66f17795b0cf3b38813fc2a584ed79c4d5f12",
-    "src/hardwareharness_backend/host/runtime.py": "f66cfc977f93e48175c6036fe711371c50e813de2132aacf8cede5a7387fdecf",
+    "src/hardwareharness_backend/host/runtime.py": "dd9b8b5b905150119c44e88522421a5e933c9b09132e25f7c19f19c2172ff943",
     "src/hardwareharness_backend/mcp_gateway/__init__.py": "b24075a4fe3925da7c158fdcf4b3e8e48c2fd076ce77d3f723f7648874649ead",
-    "src/hardwareharness_backend/mcp_gateway/builtin_tools.json": "6b9f5a37eba4eb6982cd904d28f4aa7c4aa8eb1c389c854cd10160f3a52e2738",
-    "src/hardwareharness_backend/mcp_gateway/gateway.py": "6416b3cc18cf8e7ce9b127b5f1435e488fa90c898d691902511ffb69d4015709",
-    "src/hardwareharness_backend/mcp_gateway/project_tools.json": "9d893e4863df4a10e353338bd5013682986e6dc6f6059b3ab14b27f6ad5774fb",
-    "src/hardwareharness_backend/mcp_gateway/tool_registry.py": "0791f01097b5c2457dbb31ab4e9e226a7f7b24db058035ec1ae6f6b484f2b5fe",
+    "src/hardwareharness_backend/mcp_gateway/agent_instructions.py": "1bf36b5498916e995ac3295800aef591de4e63be651406c8da38149043d5e2b6",
+    "src/hardwareharness_backend/mcp_gateway/agent_services.py": "b7a8dea38a942c04f2f3ed72ab0483d99236600b5655d98c526c36ee0b167b53",
+    "src/hardwareharness_backend/mcp_gateway/builtin_tools.json": "6997c6f7d06236fd87abaf28f469d2f42d3f334b87c6d550555ff4925e77e08c",
+    "src/hardwareharness_backend/mcp_gateway/contract_tools.py": "79d4e35b784d50a11d516a45f9fdaabfc7059b3b9869a24157a7a527f3c560a7",
+    "src/hardwareharness_backend/mcp_gateway/gateway.py": "348f5f8da13bd61a6681239d714a9ec8545df7a94edae2009466bddebeaf21ef",
+    "src/hardwareharness_backend/mcp_gateway/project_tools.json": "c79a77a3581c3069f5b6522589ac9416b052b685d4069cab0b9546c8a510e6e1",
+    "src/hardwareharness_backend/mcp_gateway/public_contracts.py": "2589ef63c4e6d52ddff4699a30fbb2ef6d86aa78fef5ab371efef69fd9419714",
+    "src/hardwareharness_backend/mcp_gateway/tool_registry.py": "6baea0b51695c00b9a0b5a5003035792a122f7e67eef56bbd1bce74d2640cd19",
     "src/hardwareharness_backend/projects/__init__.py": "a2fcd8ee48642fb6cc3e81a80946eaa1b2df36ae879ba7fef789a4b44062d59c",
     "src/hardwareharness_backend/projects/migration.py": "b698b455ffa7293be5350b791dcb97b8c2596a629735a384e35be5617679dbdc",
-    "src/hardwareharness_backend/projects/project_service.py": "940495f9fde4d751fbea033835f167ba4a898ecec5767238194f9fb2682ebddf",
+    "src/hardwareharness_backend/projects/project_service.py": "4db0b535c45be39b9d4b8058e9f455199326abb4a5c1e66f9b17c9672886ef72",
     "src/hardwareharness_backend/storage/__init__.py": "2462acdc468f7b89c1ff29c91e5b8b2d89af63ba88e792d8d3ee0abc370a88c9",
     "src/hardwareharness_backend/storage/file_storage.py": "cfe72796e5eebb45cb43667b58e4b5da38c632f079304bcf9612ae6678a5854a",
     "src/hardwareharness_backend/storage/secrets.py": "41ade01dc82a63cfa0c81e8f789efb81652aad71743609026ad088a0ccafc181",
     "src/hardwareharness_backend/storage/serialized_writer.py": "5289ec8e468e6ffabcc9b908b5b3877b05565871db021c78f679bd2d2591f0f4",
     "src/hardwareharness_backend/storage/settings_store.py": "87d822dda3b3d9c7968a42010a1e800876c2182841a504e907854928d61035fe",
     "src/hardwareharness_backend/wiring/__init__.py": "ff7bf45ac922502d637c5baa2433bd60c0a8a9c82969550592eaaa412166f808",
-    "src/hardwareharness_backend/wiring/project_wiring_service.py": "7555c53f0feb158410f746ebd3cbaa8a30b3da784efe9cce65da361731aecd0c",
-    "src/hardwareharness_backend/workspace/__init__.py": "a4c7f5dece2a13929e71109823368db888de4dc48e19411374ea7881d13c8cce",
-    "src/hardwareharness_backend/workspace/apps.py": "23db0f6392f0f3773f789979ca6eec6223f86dd832bbf3e1a304ad66655a6c5a",
-    "src/hardwareharness_backend/workspace/environment.py": "daf1ebf14f41cff6ffa6a1cc467717f1c176811967af8ff5f533ee8cf4b68576",
-    "src/hardwareharness_backend/workspace/files.py": "d4525edca6eff83fb196d96a8e5e4e66dd8e10af59dbc6b3449189eeb5ea5509",
-    "tests/application/test_application.py": "694dac17ee65bf5731eee073f48c5e152d2c64f0799681d6dcbb73f8c163b73f",
-    "tests/application/test_applications.py": "49e673fe69083507db33d7875a3d333190f1e7e944e321ad4189d988f41eb7b5",
+    "src/hardwareharness_backend/wiring/project_wiring_service.py": "4805e492304a61ec250da49099f247974952f8d0f2e1e8fc9419b4a933bda019",
+    "src/hardwareharness_backend/workspace/__init__.py": "de3d4bc17dd950e2fcae6b92fc1e89043d6580f009a8116e7200f842834456aa",
+    "src/hardwareharness_backend/workspace/environment.py": "0895927aa9fd7eaab5f12831ee131fa0b82da2d637c93efee4f22f9138ab4899",
+    "src/hardwareharness_backend/workspace/files.py": "d4b37eaba010cc80369d392e76a598bea72442033cfc533062372a9418b8a862",
+    "src/hardwareharness_backend/workspace/references.py": "5916b7c982137548a15411e78051827a69f769cecbd59c4ff590bda38777aadb",
+    "tests/application/test_application.py": "1f37350b8c64b14821908c1ce8850b3a6cb312fd16f09c84aa8bed446424ef92",
+    "tests/application/test_applications.py": "ac7ebe831083953f5fba36088da7ee29ac3b8383efc1288d9f07f7b84cb8f9c1",
     "tests/application/test_project_services.py": "f3d47e0495debe065451612b690b8a96d03fbd52061cf3d6fcdc09e23cc2879b",
-    "tests/application/test_regressions.py": "8815d35ae9968887a20c72f004596cdf0f59367e8ee29c3efb4c77aed3c9292b",
-    "tests/automation/test_logs.py": "2ed322612603698fd3471d9dc19ce447e4fecdf02d7727730a7ba384a0e0eee9",
-    "tests/automation/test_processes.py": "fb1949d76ebeabcd8ff4fe9eb8644a25d1004eb413cdcacecc619834ee0be640",
-    "tests/automation/test_runtime_gates.py": "bfb7654bf9ed6ed495331ac91eb6475c59a7892b4d31a1490ddac273028bc003",
-    "tests/automation/test_service.py": "1c06a6550982385ef9168aaac855769078a01c88136bf17154752c626897c236",
+    "tests/application/test_regressions.py": "d0a2226f523f6e6863e433a0bfaad94bdcf7668c4648855a952b5ab34ae77c86",
+    "tests/automation/test_logs.py": "77f2b781936c43024fef591e4b624798c78a9f3c346d3891c5f8e7e66d18cb9c",
+    "tests/automation/test_processes.py": "485e103f0c8fb1becd927e14fb8c011161b64d0caabcd73086fb56406f24573c",
+    "tests/automation/test_runtime_gates.py": "758d3907d66d268853986d213202dbd34d8cd3f8fc1bc37a7371d564099dacf5",
+    "tests/automation/test_service.py": "a7552c0ea52bd9a668a912d2eb1f1b47a9027e49250132aef816a478ee2b19bf",
     "tests/compat/fs-golden.json": "b39128ea317df07247e0edf076c14b114d79252eae2ba98d4c4bb3cad371bd8f",
     "tests/compat/json_parse_cases.json": "4ca4017c93d86503107e3ba8828b66fa64593e8b8ec05af3467540e0ba5e668a",
     "tests/compat/test_compat.py": "c8f9151a4aed3e525019e1fbe0529c0a6f5a9ec8c82bccb748d7530c6932e4b3",
@@ -96,20 +98,20 @@
     "tests/conftest.py": "c802e3afde00197dcc45a9a23fe6ba23bcb407bf34bad0880ba32a23a6c03f6b",
     "tests/contracts/contracts-golden.json": "5b7e6305ca2f509019e65f3a2b65a42133fe5b859cb3371932911e8099475e71",
     "tests/contracts/test_contracts.py": "2786011538418ed77977d6f2a788ea2237777766e4a2f3681d64c8298d9a06d2",
-    "tests/contracts/test_desktop.py": "af76e1dc695d478fcef2b6bc173f85fa4b5c3707afd187aa85a39d07ec131aa4",
-    "tests/contracts/test_differential.py": "2aa0cf83e5b4363e8f0b923a3adad370e1808a9c17233069b4bea2c1ff6f2e31",
+    "tests/contracts/test_desktop.py": "f21aefccb0306f686e00a683786867017b0d55e4aad6c9e006f4d56709cf6cef",
+    "tests/contracts/test_differential.py": "9e90328b14a869ce6816707fa6ceb2fd04194246574ff09101e73f9c3cbf3350",
     "tests/devices/ajv_cases.json": "3ec85988e6a646b87db87e9c5734a463c2c29b62565ddaf44e15e757c5ffa54b",
     "tests/devices/test_development_merge.py": "e40174992d96b1c9a98538bf210f998880da134dc4f0cb4d94948bc50a029f38",
     "tests/devices/test_device_store.py": "d43716e6f6fa104460b89aef03eca5f5bbafcff7b7fdd0136d96c5ae2906be94",
-    "tests/devices/test_devices.py": "bb1f9c6d1019db5de842dffe96fd1af593847522af7fe48bbba17b54b9665434",
+    "tests/devices/test_devices.py": "ec9fa037ce77ad5956799788434059fff21b125eb18fd4d01b0c9d7a27e41332",
     "tests/devices/test_file_boundaries.py": "d26fe1a396039eb75da0f2892b3cdbaf9a21c9d368889083623f39b00536b3a1",
-    "tests/devices/test_regressions.py": "ebd6897a39c4995056a8f4962b62d6be0f80075c70c8362fa0dfe0bf62e9e65f",
+    "tests/devices/test_regressions.py": "8a416dc99916c6bdfcc06d3b248be7196d6746ac45306923fa1dade4be9e87f1",
     "tests/devices/test_schema_validation.py": "c722bfcd1cf485957872c1a3e6292b4e8c5b00f59d04b3e41424496f35cb9bbc",
     "tests/devices/test_sdk_envelope.py": "b2e499534059264617fe6197c93d75932bc246ac589093c34461e8ea5105440b",
-    "tests/devices/test_service_boundaries.py": "1023a4e917bf4b8ff365ee36e3ff66f1bd48d14d750726677b5ac5507a7129bb",
+    "tests/devices/test_service_boundaries.py": "7db3f856c4f0c021f39d0274fef714a6bcbd5ae9422ecaddc742f44094f75327",
     "tests/devices/test_sse.py": "f7924b338d81578131b686961e4b5fdc8370275c1f98fa4350e269e5692fe046",
-    "tests/devices/test_transports.py": "970536728b413f0fc12e4805d8bbeff91753eb926a946e9b39afb369722dedb4",
-    "tests/host/applications-facade-calls.json": "f3f2186283f3580dde4531a7b21087fe1e11e83d11bf874ba1dec48e93d21393",
+    "tests/devices/test_transports.py": "8c43bfd1fac89d18bcab1ebe4b3df9893767d6f25b0710a2d1fee7f8d7c176ad",
+    "tests/host/applications-facade-calls.json": "d54c8bda5b798f353c90f8e623d983c9fc80ede4ec0f3351e10d915a01b166e5",
     "tests/host/facade-calls.json": "d32ae0987e73b41513a9423dc79558c0e6de2fcf1a886a5ebd4e5f25a9af6a34",
     "tests/host/test_codec.py": "d31ba211648f38e7932e66fdb5994e0070a8fba24d7d121c978383951f79ae4e",
     "tests/host/test_facade_routes.py": "cd8f6ab7be0ade8c31bd5650d2968356b1cfa37931152ff90baa65686116ad98",
@@ -118,26 +120,32 @@
     "tests/host/test_process.py": "ad4155947c660ecb642e4f63ac56de208d026ac89f2f36d4249d4d465d8af4bf",
     "tests/host/test_rpc.py": "48b59471ef13179d8e43e2ad0806ae67e389b154a9446973ce7fc0d356e0b573",
     "tests/mcp_gateway/protocol-golden.json": "83c890d5afbf49189dbde90ce617e77fbedaa19c61693adcad1ae3e5c69b7d74",
-    "tests/mcp_gateway/test_agent_instructions.py": "be251c3b3f3ec44857a6ed1509c8c8ae5c4c879a55d78df82281852e33375d4e",
-    "tests/mcp_gateway/test_application_options.py": "c4fbc67ecabb62380325f9662df2f1b5f8b7adecbd823d4d071554e8fdc99001",
-    "tests/mcp_gateway/test_boundaries.py": "6728420982f6db49207879f564542bea98b5b738e7555d3c5a5b0a1888ea3f1b",
+    "tests/mcp_gateway/test_agent_instructions.py": "1dad2bb1b325e8bfa77519d397a3c089fe4f0223dd1a7030042c77d2c861e7de",
+    "tests/mcp_gateway/test_agent_recovery.py": "b05ba67599a56a0e2c5a4b8efaec4f08ec0978542e89efb3ebea5b171992b6ee",
+    "tests/mcp_gateway/test_agent_services.py": "aaf9ebb5dc9b9843cea137310e50aa21e6310448481931b5e54183aa3cf91557",
+    "tests/mcp_gateway/test_application_options.py": "ba453cf1a640d6f921564292b70a639d76bc5f69b64b2e584ea1f9229850e5e4",
+    "tests/mcp_gateway/test_boundaries.py": "f379330489a7defec5dbdc7085e915c96356e8c4ce48b48e104e1d6b6b9277ed",
     "tests/mcp_gateway/test_development_projects.py": "77874a5e2d49e369c2d768010249fe1fb16f9d7a7995858900f493744eaeaff8",
-    "tests/mcp_gateway/test_gateway.py": "1a44b9a540389c7e742ee25dd9cea49c310688cafcbabbdb87215b646ce62da0",
-    "tests/mcp_gateway/test_protocol_golden.py": "1dc83e4c3df71cbc165d894af10a617b887c32fd2957241340d835501149952c",
-    "tests/projects/test_projects.py": "47b88b66f26af98610ab7874335f68822db7ba431f8eba880a5ecbc4f1fe9d80",
+    "tests/mcp_gateway/test_gateway.py": "642d87cfc32ef50a335d840253b0b087321417756fa6d766edc95352b9e2e9d8",
+    "tests/mcp_gateway/test_protocol_golden.py": "cd2a00dbd0d0b33c81e3757483acd4374bf6ab56691e2c97b182af097b5184c9",
+    "tests/mcp_gateway/test_public_contracts.py": "fcab2f4987b8a2cddf9708b1174e99822a2dbd4a8c7780dbefc394427a2c9151",
+    "tests/projects/test_projects.py": "8330503aef53b5c2faf9f6efeb582b1a61c55228c75ae58218c2647daea1a711",
     "tests/projects/test_v4_conversion.py": "5f4f8ff0bfa9751600e57faa7711bfcd28ae01dd9a78eebbc7f66aec365db9c9",
-    "tests/sdk/test_sdk.py": "a1cfe90906a88475228f95b4c7acc3ac0a977df2837bb67da99099f04c550fee",
-    "tests/sdk/test_transport_worker.py": "4152b46dfa6fbaae7fcf3b36f3cacec0d3a03b85ba53e2fcfbca58fd53b6cb45",
+    "tests/sdk/test_sdk.py": "60ad77a2faa14cf60274703502fb1fa0c63f12174ca645a443b4b59b385e6ff6",
+    "tests/sdk/test_transport_worker.py": "d248dfd6e645db47f7f02b7b2a344d9efe8ead3ddb677a5350f6a1507e2c2541",
     "tests/storage/storage-golden.json": "80c1c842c997d85f645e85daa1df4c69d5b482b6f642e5499b3b553945cd065b",
     "tests/storage/test_storage.py": "4693be75cd7b3306485e2e97a3eece9fcb20386b0b3ccefd5f7ffbdbcc502951",
     "tests/test_specification_evidence.py": "c257da697ed8c941deade9e9d29f72dd4da6e5ebfb96d90c0d838a54c39ecc91",
-    "tests/wiring/test_wiring.py": "ee932c160342efe0ab374bee1adccf6fd1251a79fb9cddaef80e6bedbc492915",
-    "tests/wiring/test_wiring_runtime_golden.py": "4e3640b05ab7e981154363bd68f3408dda7ea5f7ae4c5387a37c4947e9a8c93d",
+    "tests/wiring/test_release_endpoints.py": "74e7ff10ad0cf767cb407688738d79eb65148d2bd49ab6cc426e3f6e9847da1f",
+    "tests/wiring/test_single_step_wiring.py": "0dbac274cbdf499acd6f4c93f52fd1bd8d3ac96a49ceb4b83e1ec5bdb371b3a8",
+    "tests/wiring/test_wiring.py": "a472fcde3d5611fe07306b16a999132f8253e46f3dbad5901e9c559b4e108a2d",
+    "tests/wiring/test_wiring_runtime_golden.py": "eb7e590f3eb834a248c5334e3b80a7c5b5f10c09c3c9867a4da815aa93f02def",
     "tests/wiring/wiring-golden.json": "444dc281b81eb6f34a86eeaf3750e96e62720e0b098973c2c0686486791f2db1",
-    "tests/workspace/test_apps.py": "2e4553cf215ac23ce7f618167ea109f924ede83e297ec67047245ff4c0ec7f51",
-    "tests/workspace/test_environment.py": "767b7dbede4e0220e800f9f1c30a2f83dfc23f2880d6e7677383d703137fedea",
+    "tests/workspace/test_environment.py": "ff53b28efc3f0a0bc5c2986cc659bfb0db83e66e6fac00b4b78537fcaf9fb63d",
     "tests/workspace/test_environment_launch_race.py": "224a89dcc680778f28bc6269f53fe053a2659f13ea9cf17ff4cddf851df21fbc",
-    "tests/workspace/test_workspace.py": "251dc4a8a821fd43eb285f9fd639f7f95fca3e2fdf2fd164019c80e97c4ea863",
+    "tests/workspace/test_reference_boundaries.py": "5562b591df7fe88ccf16346ac91e84bf3882bb6d9f92434f499fe03973ccd0aa",
+    "tests/workspace/test_references.py": "c315fe4771bd7b3e0b99d19bbba194251430c42edf5e9d9ae3cfa0e1c8c08c09",
+    "tests/workspace/test_workspace.py": "a71cab9d431d8757bd6500b383cf6432fb697ebe7e860e9a5a42619ee25fd41b",
     "uv.lock": "18b737b45a9d21787a5a2386db08132a09baaea474030f5ea84af96dbbc97375"
   },
   "sourceHashesAfter": {
@@ -145,26 +153,26 @@
     "scripts/build.py": "bca94008469013921be658f0df6c3cfd741dabd7a4d8204da4b04ddd136d1f2b",
     "scripts/build_project_runtime.py": "c50cb24193861ca3d3d6411ff41e60420cd15429968ffecc35f11f0391974892",
     "scripts/check_coverage.py": "97e74657924a1e8d0348a512749cd2bc5816fac7e44480671634da3f5219ac39",
-    "scripts/check_specs.py": "1413302d6497ba8f94ba2c50ab4df118080ea96907e5d40f5bb959bb76a57492",
+    "scripts/check_specs.py": "e694ec96f5d298507e7685d86e37ca1fcb85a7f701bde2086fb5da2760b42b31",
     "scripts/frozen_entry.py": "4b17dfc8d4ea5eef2f36589627852e8909263bffe2b1404a6a22f0eade1484a3",
     "scripts/prepare_icu.py": "4a5be1c868fafd14527806998ac234d6809db23dec000c4c29a7a92a6173c335",
-    "scripts/protected_baseline.py": "680819f94de459432523ca120085c84490cdd41433fa668f5058e33d14f75120",
-    "scripts/smoke_project_runtime.py": "e1a4262863d035ce0f9c9ab598f21979e5bb13aca6e73331544d6c305415d5e1",
+    "scripts/protected_baseline.py": "51d205300ac150e765129c75faef8b6fb8d3d0e997e5764ae0f4a3d26c7bd785",
+    "scripts/smoke_project_runtime.py": "979fc4285223220ebb15676faaafcd2981a4fe75b200f9fbbef40e438bd4c0d5",
     "scripts/verify.py": "a16bf0f9983d4e3401d4ac6b35833621df878f43a7756166e81350389c29847f",
-    "src/hardwareharness/__init__.py": "979fcd9732224f446fc4588689c228b9d55ee50ba974212021fd57236a266e3e",
+    "src/hardwareharness/__init__.py": "317732bede063764542f4764cd524daad5eed5393314a516ea99093cd58d60e3",
     "src/hardwareharness/_transport.py": "1e6d9e80580308ee0ec21ee21adc9d94555ba1cb0e80b3cdcf32730c4b0b0cf4",
     "src/hardwareharness/_worker.py": "d1c8c0a9dbc07915e859d063b978e1c301458059fdf016ef631a4b2ba26033c9",
     "src/hardwareharness_backend/__init__.py": "89c4bb42f5d197c8b455f2c0090aaa89b034837275c9738e267a63e2d0f60789",
-    "src/hardwareharness_backend/application/__init__.py": "609b438053f22d48ff73122f77dafb9503aef2cc1b93d86927bf28f2a6340b02",
-    "src/hardwareharness_backend/application/applications.py": "9ec1a6a6c32cd3a93e1a15edd9fa7c28e388f38d4537832cf8695d6050e8d237",
-    "src/hardwareharness_backend/application/authorization.py": "5035fdce4524c592d3c8d44b6187ba20e5c2153365fb6732100ef812030989b3",
-    "src/hardwareharness_backend/application/control.py": "0edb4355bda33bcabada0f0ac62f7f213122634202cf759118a8c4dd9a4f0706",
-    "src/hardwareharness_backend/application/execution.py": "3e2fb295e7cac59b7299d3a77af7210766fa9d921419d1664a7f119d64223c17",
-    "src/hardwareharness_backend/application/services.py": "a3d6e8ed612fde257dd46d1a6a3c4b6c81dcb19e0a12afcb8b4157cf824a7529",
+    "src/hardwareharness_backend/application/__init__.py": "59351d756cbb6502bbad69ab00d22a09f73b08b60fdff0730dbd0f31c96af1e4",
+    "src/hardwareharness_backend/application/applications.py": "65ad14149834d9a8c0ee944272af70012334eb62fa110fe0ad6462020f3398e4",
+    "src/hardwareharness_backend/application/authorization.py": "5be8a4765006888d6a7d44ca1fea5935acfde4bbf57b1922bd735f0103e6e2f4",
+    "src/hardwareharness_backend/application/control.py": "0ffba0b742715c95384ae10e092f9dba7787f4ecc9454ace9926d8addfaa83c9",
+    "src/hardwareharness_backend/application/execution.py": "536e10b05fb1a840dacca25db663b510b62fd3ba4becd426f1a8f76c7c62558d",
+    "src/hardwareharness_backend/application/services.py": "0e1b6de20ef75997bfe345b41f325c10e5aedbb14b2a0132921ca9f67a071b98",
     "src/hardwareharness_backend/automation/__init__.py": "84f5dd7a2c6f8f2070a65b2d127e28cc3fb0d2299867ea90f810628766b5c024",
-    "src/hardwareharness_backend/automation/logs.py": "82d3d77be1f65c44dba6cdf3859815ec67c26fcf9f4e7e69e69d65ae6dd7a7e8",
-    "src/hardwareharness_backend/automation/processes.py": "d3fcba5abeadf84f5e145023c120e92aaf6fd0ebdbbd4069b0d050c2ab6f604e",
-    "src/hardwareharness_backend/automation/service.py": "0dee779fb485fbbe95d9545dddfc33806bf0295a6e214c6f9ac0f8be4b8b7f8e",
+    "src/hardwareharness_backend/automation/logs.py": "08e1fe3f3f5b6c6d2531122c0e0c78ab489396f7846133ef1818d36811fdb3e1",
+    "src/hardwareharness_backend/automation/processes.py": "71ec67352144c8489e2a0a300706f1e3229a1d3f0f399a697d67b8513274e71b",
+    "src/hardwareharness_backend/automation/service.py": "ac851d24e6eac16d05376c2da11599fd819910b52a0e4123d869e39aaf5fb9cc",
     "src/hardwareharness_backend/compat/__init__.py": "6020036321b156c74c52f6e16352a66f77a1d04e4983cdfed0ec9a953a897af7",
     "src/hardwareharness_backend/compat/cancellation.py": "27276c173f066204c037adb4d37995ecc56b1e981249b9dca81c0871caf1b15d",
     "src/hardwareharness_backend/compat/collation.py": "6981f88a3ee20f287f1816799f0cdf96b38ffa72cf2926bf8516b26c416e57ad",
@@ -172,24 +180,22 @@
     "src/hardwareharness_backend/compat/filesystem.py": "3792c1326a22d4701249a18de66eb28269c8cb13f79cd31d356c9b27048e1817",
     "src/hardwareharness_backend/compat/json_syntax.py": "c81ff2d186b953f7541e2a784d0e97207e4fef65f1f262cb6986122800e5b794",
     "src/hardwareharness_backend/contracts/__init__.py": "275d01db31714006c01533a7b60603e25deafa54fc961f43ee769cee53fb5213",
-    "src/hardwareharness_backend/contracts/agents.py": "4c576c7e7abb00b409a810c3542be83873f6017e04a4b217dcfe30e2e8b6a2d7",
-    "src/hardwareharness_backend/contracts/desktop.py": "1de79eac576bfa3a46f0af64ddd63384f010454363c9c4afe51fc5f72bcb1710",
+    "src/hardwareharness_backend/contracts/agents.py": "5991367c651ba1f012f2ce8cc178608f8385c6b2a0a89ecbfca56654c217e974",
+    "src/hardwareharness_backend/contracts/desktop.py": "463cc424f8d5a0c594966134fb98e29f11b41e35542327e84c53e5cbe7c2b3cc",
     "src/hardwareharness_backend/contracts/devices.py": "c2726994a297e0292f0a81ba9fa1f4fad24362d85456ff27445cd602dea87b3b",
-    "src/hardwareharness_backend/contracts/errors.py": "7caf224d934624d7a6fec40a4255e5a2815147310a84c2953bb5853222d540a8",
+    "src/hardwareharness_backend/contracts/errors.py": "ec690e3a6ef2f62e55fa1b7df33219dee61435d459a813178db0a6af7f83409c",
     "src/hardwareharness_backend/contracts/execution.py": "c5fc3d9397af77088f0fdd16de5ebc78a589994fa70c2de41480a3586653620a",
-    "src/hardwareharness_backend/contracts/occupancy.py": "355fa6ce2e6d38c268d575bceb84c37ccd1aa9ef65b2f3834ebe79eef15f7246",
     "src/hardwareharness_backend/contracts/projects.py": "42dc6799888fe8b467ac3012bd965f3e57dcd63f9518acfb414df822f83e9ce1",
     "src/hardwareharness_backend/contracts/storage.py": "4edc411585b990da64ca3d9d83d06939ab7b689cd3db4e0de3e9578ef30ff44d",
     "src/hardwareharness_backend/contracts/validation.py": "0a326f610ffcba1cdce1b67bfba10ea0d17042a6b28bdce48dec5144d58b9feb",
     "src/hardwareharness_backend/contracts/wiring.py": "54c545ed07e1dd1b0e4f37a96f210f0db4ffd7655dc4d161a56a1ebbfee40ea1",
-    "src/hardwareharness_backend/devices/__init__.py": "7529a42c984dd178c9a1f7e263ee64c6b4ae2b11142e91872784a6016168564b",
-    "src/hardwareharness_backend/devices/device_catalog_service.py": "1174a1eab186bbcb3964ee7da619c6bfe41eaa77ad810c3b8a4443a0c5c266e9",
-    "src/hardwareharness_backend/devices/device_service.py": "31f2aeb8140e1c548c5032e6460d161bc022feb1447546b51c0982d267c5fc99",
+    "src/hardwareharness_backend/devices/__init__.py": "967c9fac16af7603f32b181aadc10e24951816dc74b08d93c5200cb1544df49d",
+    "src/hardwareharness_backend/devices/device_catalog_service.py": "21958c00fffa2ebbce84534cf20ac3b3b22365afd48d8217d2a04f33cc038801",
+    "src/hardwareharness_backend/devices/device_service.py": "d3add29efedee5442696133194df9000f6aff4282c059a3227808de7e87371a1",
     "src/hardwareharness_backend/devices/device_store.py": "ff2f04275ed65484a46ccac44b5b1a36d43320cd40fc5ba492e8ef341fca5e9c",
     "src/hardwareharness_backend/devices/device_transport.py": "8183f53d148367c3ffdd140d72f22952e217f7c20bc5bb6cec4474726b0ddb2b",
-    "src/hardwareharness_backend/devices/hardware_occupancy.py": "078e3676403648246c86f099fe4cf7df73d79cef3ccbcd71306a0c9ceab5a67b",
     "src/hardwareharness_backend/devices/local_shell.py": "fcbf64348189663ad5370dfd94d4e0e03ad01076816e4476da5aa9978061965f",
-    "src/hardwareharness_backend/devices/mcp_client.py": "1619b3414b5f2fdd24fdf6b4e9202462c4f14e75e00ae3244b59479de38e2bf3",
+    "src/hardwareharness_backend/devices/mcp_client.py": "24174c78576a13bf97c3c3060332b44e2f62d193c1f6f73397cd745574982604",
     "src/hardwareharness_backend/devices/mcp_transport.py": "e4a8726de0609710cf080142657b63274df2c2fca52e5d48a1a0589b3d3b77b5",
     "src/hardwareharness_backend/devices/remote_shell.py": "e12ee02b3eed88e58d463425fb3e6f3d50f869a8877513506d0bfc05eec58df9",
     "src/hardwareharness_backend/devices/schema_validation.py": "eb994eb86e6d756af1ee21a8720db669ea083b1d7a2f07896b95a71b055dbfa6",
@@ -200,34 +206,38 @@
     "src/hardwareharness_backend/host/migrations.py": "90a5bf4ab5a6b6859ddfaeb46b79bbc3ea60aa4a35ef61ab4af65cbdb78afe57",
     "src/hardwareharness_backend/host/register_firedap.py": "e70c03eb270c6abc27b7c50225d25ac7f7856455a83549be77bf8474ea41f6f6",
     "src/hardwareharness_backend/host/rpc.py": "8ce72fe05c4ac2caaafd98c151f66f17795b0cf3b38813fc2a584ed79c4d5f12",
-    "src/hardwareharness_backend/host/runtime.py": "f66cfc977f93e48175c6036fe711371c50e813de2132aacf8cede5a7387fdecf",
+    "src/hardwareharness_backend/host/runtime.py": "dd9b8b5b905150119c44e88522421a5e933c9b09132e25f7c19f19c2172ff943",
     "src/hardwareharness_backend/mcp_gateway/__init__.py": "b24075a4fe3925da7c158fdcf4b3e8e48c2fd076ce77d3f723f7648874649ead",
-    "src/hardwareharness_backend/mcp_gateway/builtin_tools.json": "6b9f5a37eba4eb6982cd904d28f4aa7c4aa8eb1c389c854cd10160f3a52e2738",
-    "src/hardwareharness_backend/mcp_gateway/gateway.py": "6416b3cc18cf8e7ce9b127b5f1435e488fa90c898d691902511ffb69d4015709",
-    "src/hardwareharness_backend/mcp_gateway/project_tools.json": "9d893e4863df4a10e353338bd5013682986e6dc6f6059b3ab14b27f6ad5774fb",
-    "src/hardwareharness_backend/mcp_gateway/tool_registry.py": "0791f01097b5c2457dbb31ab4e9e226a7f7b24db058035ec1ae6f6b484f2b5fe",
+    "src/hardwareharness_backend/mcp_gateway/agent_instructions.py": "1bf36b5498916e995ac3295800aef591de4e63be651406c8da38149043d5e2b6",
+    "src/hardwareharness_backend/mcp_gateway/agent_services.py": "b7a8dea38a942c04f2f3ed72ab0483d99236600b5655d98c526c36ee0b167b53",
+    "src/hardwareharness_backend/mcp_gateway/builtin_tools.json": "6997c6f7d06236fd87abaf28f469d2f42d3f334b87c6d550555ff4925e77e08c",
+    "src/hardwareharness_backend/mcp_gateway/contract_tools.py": "79d4e35b784d50a11d516a45f9fdaabfc7059b3b9869a24157a7a527f3c560a7",
+    "src/hardwareharness_backend/mcp_gateway/gateway.py": "348f5f8da13bd61a6681239d714a9ec8545df7a94edae2009466bddebeaf21ef",
+    "src/hardwareharness_backend/mcp_gateway/project_tools.json": "c79a77a3581c3069f5b6522589ac9416b052b685d4069cab0b9546c8a510e6e1",
+    "src/hardwareharness_backend/mcp_gateway/public_contracts.py": "2589ef63c4e6d52ddff4699a30fbb2ef6d86aa78fef5ab371efef69fd9419714",
+    "src/hardwareharness_backend/mcp_gateway/tool_registry.py": "6baea0b51695c00b9a0b5a5003035792a122f7e67eef56bbd1bce74d2640cd19",
     "src/hardwareharness_backend/projects/__init__.py": "a2fcd8ee48642fb6cc3e81a80946eaa1b2df36ae879ba7fef789a4b44062d59c",
     "src/hardwareharness_backend/projects/migration.py": "b698b455ffa7293be5350b791dcb97b8c2596a629735a384e35be5617679dbdc",
-    "src/hardwareharness_backend/projects/project_service.py": "940495f9fde4d751fbea033835f167ba4a898ecec5767238194f9fb2682ebddf",
+    "src/hardwareharness_backend/projects/project_service.py": "4db0b535c45be39b9d4b8058e9f455199326abb4a5c1e66f9b17c9672886ef72",
     "src/hardwareharness_backend/storage/__init__.py": "2462acdc468f7b89c1ff29c91e5b8b2d89af63ba88e792d8d3ee0abc370a88c9",
     "src/hardwareharness_backend/storage/file_storage.py": "cfe72796e5eebb45cb43667b58e4b5da38c632f079304bcf9612ae6678a5854a",
     "src/hardwareharness_backend/storage/secrets.py": "41ade01dc82a63cfa0c81e8f789efb81652aad71743609026ad088a0ccafc181",
     "src/hardwareharness_backend/storage/serialized_writer.py": "5289ec8e468e6ffabcc9b908b5b3877b05565871db021c78f679bd2d2591f0f4",
     "src/hardwareharness_backend/storage/settings_store.py": "87d822dda3b3d9c7968a42010a1e800876c2182841a504e907854928d61035fe",
     "src/hardwareharness_backend/wiring/__init__.py": "ff7bf45ac922502d637c5baa2433bd60c0a8a9c82969550592eaaa412166f808",
-    "src/hardwareharness_backend/wiring/project_wiring_service.py": "7555c53f0feb158410f746ebd3cbaa8a30b3da784efe9cce65da361731aecd0c",
-    "src/hardwareharness_backend/workspace/__init__.py": "a4c7f5dece2a13929e71109823368db888de4dc48e19411374ea7881d13c8cce",
-    "src/hardwareharness_backend/workspace/apps.py": "23db0f6392f0f3773f789979ca6eec6223f86dd832bbf3e1a304ad66655a6c5a",
-    "src/hardwareharness_backend/workspace/environment.py": "daf1ebf14f41cff6ffa6a1cc467717f1c176811967af8ff5f533ee8cf4b68576",
-    "src/hardwareharness_backend/workspace/files.py": "d4525edca6eff83fb196d96a8e5e4e66dd8e10af59dbc6b3449189eeb5ea5509",
-    "tests/application/test_application.py": "694dac17ee65bf5731eee073f48c5e152d2c64f0799681d6dcbb73f8c163b73f",
-    "tests/application/test_applications.py": "49e673fe69083507db33d7875a3d333190f1e7e944e321ad4189d988f41eb7b5",
+    "src/hardwareharness_backend/wiring/project_wiring_service.py": "4805e492304a61ec250da49099f247974952f8d0f2e1e8fc9419b4a933bda019",
+    "src/hardwareharness_backend/workspace/__init__.py": "de3d4bc17dd950e2fcae6b92fc1e89043d6580f009a8116e7200f842834456aa",
+    "src/hardwareharness_backend/workspace/environment.py": "0895927aa9fd7eaab5f12831ee131fa0b82da2d637c93efee4f22f9138ab4899",
+    "src/hardwareharness_backend/workspace/files.py": "d4b37eaba010cc80369d392e76a598bea72442033cfc533062372a9418b8a862",
+    "src/hardwareharness_backend/workspace/references.py": "5916b7c982137548a15411e78051827a69f769cecbd59c4ff590bda38777aadb",
+    "tests/application/test_application.py": "1f37350b8c64b14821908c1ce8850b3a6cb312fd16f09c84aa8bed446424ef92",
+    "tests/application/test_applications.py": "ac7ebe831083953f5fba36088da7ee29ac3b8383efc1288d9f07f7b84cb8f9c1",
     "tests/application/test_project_services.py": "f3d47e0495debe065451612b690b8a96d03fbd52061cf3d6fcdc09e23cc2879b",
-    "tests/application/test_regressions.py": "8815d35ae9968887a20c72f004596cdf0f59367e8ee29c3efb4c77aed3c9292b",
-    "tests/automation/test_logs.py": "2ed322612603698fd3471d9dc19ce447e4fecdf02d7727730a7ba384a0e0eee9",
-    "tests/automation/test_processes.py": "fb1949d76ebeabcd8ff4fe9eb8644a25d1004eb413cdcacecc619834ee0be640",
-    "tests/automation/test_runtime_gates.py": "bfb7654bf9ed6ed495331ac91eb6475c59a7892b4d31a1490ddac273028bc003",
-    "tests/automation/test_service.py": "1c06a6550982385ef9168aaac855769078a01c88136bf17154752c626897c236",
+    "tests/application/test_regressions.py": "d0a2226f523f6e6863e433a0bfaad94bdcf7668c4648855a952b5ab34ae77c86",
+    "tests/automation/test_logs.py": "77f2b781936c43024fef591e4b624798c78a9f3c346d3891c5f8e7e66d18cb9c",
+    "tests/automation/test_processes.py": "485e103f0c8fb1becd927e14fb8c011161b64d0caabcd73086fb56406f24573c",
+    "tests/automation/test_runtime_gates.py": "758d3907d66d268853986d213202dbd34d8cd3f8fc1bc37a7371d564099dacf5",
+    "tests/automation/test_service.py": "a7552c0ea52bd9a668a912d2eb1f1b47a9027e49250132aef816a478ee2b19bf",
     "tests/compat/fs-golden.json": "b39128ea317df07247e0edf076c14b114d79252eae2ba98d4c4bb3cad371bd8f",
     "tests/compat/json_parse_cases.json": "4ca4017c93d86503107e3ba8828b66fa64593e8b8ec05af3467540e0ba5e668a",
     "tests/compat/test_compat.py": "c8f9151a4aed3e525019e1fbe0529c0a6f5a9ec8c82bccb748d7530c6932e4b3",
@@ -236,20 +246,20 @@
     "tests/conftest.py": "c802e3afde00197dcc45a9a23fe6ba23bcb407bf34bad0880ba32a23a6c03f6b",
     "tests/contracts/contracts-golden.json": "5b7e6305ca2f509019e65f3a2b65a42133fe5b859cb3371932911e8099475e71",
     "tests/contracts/test_contracts.py": "2786011538418ed77977d6f2a788ea2237777766e4a2f3681d64c8298d9a06d2",
-    "tests/contracts/test_desktop.py": "af76e1dc695d478fcef2b6bc173f85fa4b5c3707afd187aa85a39d07ec131aa4",
-    "tests/contracts/test_differential.py": "2aa0cf83e5b4363e8f0b923a3adad370e1808a9c17233069b4bea2c1ff6f2e31",
+    "tests/contracts/test_desktop.py": "f21aefccb0306f686e00a683786867017b0d55e4aad6c9e006f4d56709cf6cef",
+    "tests/contracts/test_differential.py": "9e90328b14a869ce6816707fa6ceb2fd04194246574ff09101e73f9c3cbf3350",
     "tests/devices/ajv_cases.json": "3ec85988e6a646b87db87e9c5734a463c2c29b62565ddaf44e15e757c5ffa54b",
     "tests/devices/test_development_merge.py": "e40174992d96b1c9a98538bf210f998880da134dc4f0cb4d94948bc50a029f38",
     "tests/devices/test_device_store.py": "d43716e6f6fa104460b89aef03eca5f5bbafcff7b7fdd0136d96c5ae2906be94",
-    "tests/devices/test_devices.py": "bb1f9c6d1019db5de842dffe96fd1af593847522af7fe48bbba17b54b9665434",
+    "tests/devices/test_devices.py": "ec9fa037ce77ad5956799788434059fff21b125eb18fd4d01b0c9d7a27e41332",
     "tests/devices/test_file_boundaries.py": "d26fe1a396039eb75da0f2892b3cdbaf9a21c9d368889083623f39b00536b3a1",
-    "tests/devices/test_regressions.py": "ebd6897a39c4995056a8f4962b62d6be0f80075c70c8362fa0dfe0bf62e9e65f",
+    "tests/devices/test_regressions.py": "8a416dc99916c6bdfcc06d3b248be7196d6746ac45306923fa1dade4be9e87f1",
     "tests/devices/test_schema_validation.py": "c722bfcd1cf485957872c1a3e6292b4e8c5b00f59d04b3e41424496f35cb9bbc",
     "tests/devices/test_sdk_envelope.py": "b2e499534059264617fe6197c93d75932bc246ac589093c34461e8ea5105440b",
-    "tests/devices/test_service_boundaries.py": "1023a4e917bf4b8ff365ee36e3ff66f1bd48d14d750726677b5ac5507a7129bb",
+    "tests/devices/test_service_boundaries.py": "7db3f856c4f0c021f39d0274fef714a6bcbd5ae9422ecaddc742f44094f75327",
     "tests/devices/test_sse.py": "f7924b338d81578131b686961e4b5fdc8370275c1f98fa4350e269e5692fe046",
-    "tests/devices/test_transports.py": "970536728b413f0fc12e4805d8bbeff91753eb926a946e9b39afb369722dedb4",
-    "tests/host/applications-facade-calls.json": "f3f2186283f3580dde4531a7b21087fe1e11e83d11bf874ba1dec48e93d21393",
+    "tests/devices/test_transports.py": "8c43bfd1fac89d18bcab1ebe4b3df9893767d6f25b0710a2d1fee7f8d7c176ad",
+    "tests/host/applications-facade-calls.json": "d54c8bda5b798f353c90f8e623d983c9fc80ede4ec0f3351e10d915a01b166e5",
     "tests/host/facade-calls.json": "d32ae0987e73b41513a9423dc79558c0e6de2fcf1a886a5ebd4e5f25a9af6a34",
     "tests/host/test_codec.py": "d31ba211648f38e7932e66fdb5994e0070a8fba24d7d121c978383951f79ae4e",
     "tests/host/test_facade_routes.py": "cd8f6ab7be0ade8c31bd5650d2968356b1cfa37931152ff90baa65686116ad98",
@@ -258,26 +268,32 @@
     "tests/host/test_process.py": "ad4155947c660ecb642e4f63ac56de208d026ac89f2f36d4249d4d465d8af4bf",
     "tests/host/test_rpc.py": "48b59471ef13179d8e43e2ad0806ae67e389b154a9446973ce7fc0d356e0b573",
     "tests/mcp_gateway/protocol-golden.json": "83c890d5afbf49189dbde90ce617e77fbedaa19c61693adcad1ae3e5c69b7d74",
-    "tests/mcp_gateway/test_agent_instructions.py": "be251c3b3f3ec44857a6ed1509c8c8ae5c4c879a55d78df82281852e33375d4e",
-    "tests/mcp_gateway/test_application_options.py": "c4fbc67ecabb62380325f9662df2f1b5f8b7adecbd823d4d071554e8fdc99001",
-    "tests/mcp_gateway/test_boundaries.py": "6728420982f6db49207879f564542bea98b5b738e7555d3c5a5b0a1888ea3f1b",
+    "tests/mcp_gateway/test_agent_instructions.py": "1dad2bb1b325e8bfa77519d397a3c089fe4f0223dd1a7030042c77d2c861e7de",
+    "tests/mcp_gateway/test_agent_recovery.py": "b05ba67599a56a0e2c5a4b8efaec4f08ec0978542e89efb3ebea5b171992b6ee",
+    "tests/mcp_gateway/test_agent_services.py": "aaf9ebb5dc9b9843cea137310e50aa21e6310448481931b5e54183aa3cf91557",
+    "tests/mcp_gateway/test_application_options.py": "ba453cf1a640d6f921564292b70a639d76bc5f69b64b2e584ea1f9229850e5e4",
+    "tests/mcp_gateway/test_boundaries.py": "f379330489a7defec5dbdc7085e915c96356e8c4ce48b48e104e1d6b6b9277ed",
     "tests/mcp_gateway/test_development_projects.py": "77874a5e2d49e369c2d768010249fe1fb16f9d7a7995858900f493744eaeaff8",
-    "tests/mcp_gateway/test_gateway.py": "1a44b9a540389c7e742ee25dd9cea49c310688cafcbabbdb87215b646ce62da0",
-    "tests/mcp_gateway/test_protocol_golden.py": "1dc83e4c3df71cbc165d894af10a617b887c32fd2957241340d835501149952c",
-    "tests/projects/test_projects.py": "47b88b66f26af98610ab7874335f68822db7ba431f8eba880a5ecbc4f1fe9d80",
+    "tests/mcp_gateway/test_gateway.py": "642d87cfc32ef50a335d840253b0b087321417756fa6d766edc95352b9e2e9d8",
+    "tests/mcp_gateway/test_protocol_golden.py": "cd2a00dbd0d0b33c81e3757483acd4374bf6ab56691e2c97b182af097b5184c9",
+    "tests/mcp_gateway/test_public_contracts.py": "fcab2f4987b8a2cddf9708b1174e99822a2dbd4a8c7780dbefc394427a2c9151",
+    "tests/projects/test_projects.py": "8330503aef53b5c2faf9f6efeb582b1a61c55228c75ae58218c2647daea1a711",
     "tests/projects/test_v4_conversion.py": "5f4f8ff0bfa9751600e57faa7711bfcd28ae01dd9a78eebbc7f66aec365db9c9",
-    "tests/sdk/test_sdk.py": "a1cfe90906a88475228f95b4c7acc3ac0a977df2837bb67da99099f04c550fee",
-    "tests/sdk/test_transport_worker.py": "4152b46dfa6fbaae7fcf3b36f3cacec0d3a03b85ba53e2fcfbca58fd53b6cb45",
+    "tests/sdk/test_sdk.py": "60ad77a2faa14cf60274703502fb1fa0c63f12174ca645a443b4b59b385e6ff6",
+    "tests/sdk/test_transport_worker.py": "d248dfd6e645db47f7f02b7b2a344d9efe8ead3ddb677a5350f6a1507e2c2541",
     "tests/storage/storage-golden.json": "80c1c842c997d85f645e85daa1df4c69d5b482b6f642e5499b3b553945cd065b",
     "tests/storage/test_storage.py": "4693be75cd7b3306485e2e97a3eece9fcb20386b0b3ccefd5f7ffbdbcc502951",
     "tests/test_specification_evidence.py": "c257da697ed8c941deade9e9d29f72dd4da6e5ebfb96d90c0d838a54c39ecc91",
-    "tests/wiring/test_wiring.py": "ee932c160342efe0ab374bee1adccf6fd1251a79fb9cddaef80e6bedbc492915",
-    "tests/wiring/test_wiring_runtime_golden.py": "4e3640b05ab7e981154363bd68f3408dda7ea5f7ae4c5387a37c4947e9a8c93d",
+    "tests/wiring/test_release_endpoints.py": "74e7ff10ad0cf767cb407688738d79eb65148d2bd49ab6cc426e3f6e9847da1f",
+    "tests/wiring/test_single_step_wiring.py": "0dbac274cbdf499acd6f4c93f52fd1bd8d3ac96a49ceb4b83e1ec5bdb371b3a8",
+    "tests/wiring/test_wiring.py": "a472fcde3d5611fe07306b16a999132f8253e46f3dbad5901e9c559b4e108a2d",
+    "tests/wiring/test_wiring_runtime_golden.py": "eb7e590f3eb834a248c5334e3b80a7c5b5f10c09c3c9867a4da815aa93f02def",
     "tests/wiring/wiring-golden.json": "444dc281b81eb6f34a86eeaf3750e96e62720e0b098973c2c0686486791f2db1",
-    "tests/workspace/test_apps.py": "2e4553cf215ac23ce7f618167ea109f924ede83e297ec67047245ff4c0ec7f51",
-    "tests/workspace/test_environment.py": "767b7dbede4e0220e800f9f1c30a2f83dfc23f2880d6e7677383d703137fedea",
+    "tests/workspace/test_environment.py": "ff53b28efc3f0a0bc5c2986cc659bfb0db83e66e6fac00b4b78537fcaf9fb63d",
     "tests/workspace/test_environment_launch_race.py": "224a89dcc680778f28bc6269f53fe053a2659f13ea9cf17ff4cddf851df21fbc",
-    "tests/workspace/test_workspace.py": "251dc4a8a821fd43eb285f9fd639f7f95fca3e2fdf2fd164019c80e97c4ea863",
+    "tests/workspace/test_reference_boundaries.py": "5562b591df7fe88ccf16346ac91e84bf3882bb6d9f92434f499fe03973ccd0aa",
+    "tests/workspace/test_references.py": "c315fe4771bd7b3e0b99d19bbba194251430c42edf5e9d9ae3cfa0e1c8c08c09",
+    "tests/workspace/test_workspace.py": "a71cab9d431d8757bd6500b383cf6432fb697ebe7e860e9a5a42619ee25fd41b",
     "uv.lock": "18b737b45a9d21787a5a2386db08132a09baaea474030f5ea84af96dbbc97375"
   },
   "tests": [
@@ -401,28 +417,7 @@
       "outcome": "passed"
     },
     {
-      "nodeid": "tests/application/test_application.py::test_agent_occupancy_request_only",
-      "tsCases": [
-        "packages/application/src/hardware-occupancy-application.test.ts::allows AI to request occupancy but never to acquire or release it"
-      ],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/application/test_application.py::test_batch_rollback",
-      "tsCases": [
-        "packages/application/src/hardware-occupancy-application.test.ts::rolls back only leases gained by the current batch attempt"
-      ],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/application/test_application.py::test_batch_confirmation_busy",
-      "tsCases": [
-        "packages/application/src/hardware-occupancy-application.test.ts::confirms a successful batch and blocks release while hardware executes"
-      ],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/application/test_applications.py::test_hardware_claims_are_atomic_and_never_acquire_occupancy",
+      "nodeid": "tests/application/test_applications.py::test_hardware_execution_is_atomic_without_manual_setup",
       "tsCases": [],
       "outcome": "passed"
     },
@@ -433,11 +428,6 @@
     },
     {
       "nodeid": "tests/application/test_applications.py::test_hardware_gates_before_remote_send[server]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/application/test_applications.py::test_hardware_gates_before_remote_send[lease]",
       "tsCases": [],
       "outcome": "passed"
     },
@@ -482,7 +472,7 @@
       "outcome": "passed"
     },
     {
-      "nodeid": "tests/application/test_applications.py::test_syntax_and_nonpython_diagnostics_do_not_prepare_environment",
+      "nodeid": "tests/application/test_applications.py::test_syntax_diagnostics_do_not_prepare_environment",
       "tsCases": [],
       "outcome": "passed"
     },
@@ -527,7 +517,7 @@
       "outcome": "passed"
     },
     {
-      "nodeid": "tests/application/test_applications.py::test_app_service_and_environment_facades",
+      "nodeid": "tests/application/test_applications.py::test_environment_facade",
       "tsCases": [],
       "outcome": "passed"
     },
@@ -622,31 +612,6 @@
       "tsCases": [
         "packages/application/src/project-services.test.ts::refuses pin pairs that name a pin the port does not have"
       ],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/application/test_regressions.py::test_expired_occupancy_never_confirms[get]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/application/test_regressions.py::test_expired_occupancy_never_confirms[acquire]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/application/test_regressions.py::test_expired_occupancy_never_confirms[reject]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/application/test_regressions.py::test_expired_occupancy_never_confirms[reconcile]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/application/test_regressions.py::test_occupancy_request_lifecycle_and_facade",
-      "tsCases": [],
       "outcome": "passed"
     },
     {
@@ -760,6 +725,26 @@
       "outcome": "passed"
     },
     {
+      "nodeid": "tests/automation/test_processes.py::test_frozen_child_dll_directory_is_cleared_and_parent_restored[bundle\\\\_internal-False-False]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/automation/test_processes.py::test_frozen_child_dll_directory_is_cleared_and_parent_restored[None-False-False]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/automation/test_processes.py::test_frozen_child_dll_directory_is_cleared_and_parent_restored[bundle\\\\_internal-True-False]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/automation/test_processes.py::test_frozen_child_dll_directory_is_cleared_and_parent_restored[bundle\\\\_internal-False-True]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
       "nodeid": "tests/automation/test_runtime_gates.py::test_hardware_start_is_durable_before_callback",
       "tsCases": [],
       "outcome": "passed"
@@ -785,7 +770,7 @@
       "outcome": "passed"
     },
     {
-      "nodeid": "tests/automation/test_runtime_gates.py::test_worker_surface_rejects_invalid_operations[occupancy.acquire-data0]",
+      "nodeid": "tests/automation/test_runtime_gates.py::test_worker_surface_rejects_invalid_operations[unsupported.method-data0]",
       "tsCases": [],
       "outcome": "passed"
     },
@@ -990,17 +975,7 @@
       "outcome": "passed"
     },
     {
-      "nodeid": "tests/automation/test_runtime_gates.py::test_launch_metadata_is_strict[name-]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/automation/test_runtime_gates.py::test_launch_metadata_is_strict[applicationId-None]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/automation/test_runtime_gates.py::test_launch_metadata_is_strict[actionId-5]",
+      "nodeid": "tests/automation/test_runtime_gates.py::test_launch_metadata_is_strict",
       "tsCases": [],
       "outcome": "passed"
     },
@@ -2302,26 +2277,6 @@
       "outcome": "passed"
     },
     {
-      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[occupancy-requestHardwareOccupancyInput-97]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[occupancy-requestHardwareOccupancyInput-98]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[occupancy-requestHardwareOccupancyInput-99]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[occupancy-occupancyRequestListQuery-100]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
       "nodeid": "tests/contracts/test_differential.py::test_original_zod_golden[execution-manualToolInvocationInput-101]",
       "tsCases": [],
       "outcome": "passed"
@@ -3040,13 +2995,6 @@
       "outcome": "passed"
     },
     {
-      "nodeid": "tests/devices/test_devices.py::test_lease_lost",
-      "tsCases": [
-        "packages/devices/src/hardware-occupancy.test.ts::acquires a per-hardware lease and reports loss when remote ownership changes"
-      ],
-      "outcome": "passed"
-    },
-    {
       "nodeid": "tests/devices/test_file_boundaries.py::test_image_filesystem_failures_use_node_messages",
       "tsCases": [],
       "outcome": "passed"
@@ -3087,37 +3035,7 @@
       "outcome": "passed"
     },
     {
-      "nodeid": "tests/devices/test_regressions.py::test_invalid_remote_expiry_never_grants_lease[not-a-timestamp]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/devices/test_regressions.py::test_invalid_remote_expiry_never_grants_lease[]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/devices/test_regressions.py::test_invalid_remote_expiry_never_grants_lease[None]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/devices/test_regressions.py::test_invalid_remote_expiry_never_grants_lease[123]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/devices/test_regressions.py::test_valid_epoch_lease_can_be_reported_but_cannot_be_used",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
       "nodeid": "tests/devices/test_regressions.py::test_ssh_output_cap_is_utf8_bytes",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/devices/test_regressions.py::test_lease_heartbeat_release_and_expiry",
       "tsCases": [],
       "outcome": "passed"
     },
@@ -3432,7 +3350,7 @@
       "outcome": "passed"
     },
     {
-      "nodeid": "tests/devices/test_service_boundaries.py::test_tool_lease_metadata_and_faulted_hardware_refresh",
+      "nodeid": "tests/devices/test_service_boundaries.py::test_direct_tool_metadata_and_faulted_hardware_refresh",
       "tsCases": [],
       "outcome": "passed"
     },
@@ -3767,31 +3685,6 @@
       "outcome": "passed"
     },
     {
-      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[applications.listApps]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[applications.createApp]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[applications.startApp]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[applications.stopApp]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[applications.appLogs]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
       "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[applications.startRun]",
       "tsCases": [],
       "outcome": "passed"
@@ -3843,41 +3736,6 @@
     },
     {
       "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[manual.invokeTool]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[occupancy.list]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[occupancy.acquire]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[occupancy.release]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[occupancy.listRequests]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[occupancy.acquireRequest]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[occupancy.rejectRequest]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/host/test_facade_routes.py::test_desktop_arguments_bind_to_python_controller[occupancy.cancelRequest]",
       "tsCases": [],
       "outcome": "passed"
     },
@@ -4061,7 +3919,52 @@
       "outcome": "passed"
     },
     {
-      "nodeid": "tests/mcp_gateway/test_agent_instructions.py::test_initialize_teaches_agent_application_workflow_and_sdk_boundaries",
+      "nodeid": "tests/mcp_gateway/test_agent_instructions.py::test_initialize_teaches_agent_python_program_and_sdk_boundaries",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_agent_recovery.py::test_waiting_for_service_uses_cached_status_and_never_replays_lifecycle",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_agent_recovery.py::test_run_source_tampering_is_reported_instead_of_misattributed_to_original_run",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_agent_recovery.py::test_event_artifact_roundtrip_and_stale_reference_failures",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_agent_services.py::test_new_tool_contracts_have_descriptions_output_schemas_and_bounded_inputs",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_agent_services.py::test_context_without_project_and_document_reads_use_only_bundled_contract",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_agent_services.py::test_public_script_create_run_wait_sources_and_artifact_roundtrip",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_agent_services.py::test_compact_large_result_keeps_full_json_evidence",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_agent_services.py::test_effective_availability_accounts_for_holders_and_disabled_server",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_agent_services.py::test_wait_is_bounded_and_detects_existing_wiring_change",
       "tsCases": [],
       "outcome": "passed"
     },
@@ -4162,26 +4065,6 @@
     },
     {
       "nodeid": "tests/mcp_gateway/test_boundaries.py::test_all_builtin_routes_and_defaults[remove_hardware_image]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/mcp_gateway/test_boundaries.py::test_all_builtin_routes_and_defaults[request_hardware_occupancy]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/mcp_gateway/test_boundaries.py::test_all_builtin_routes_and_defaults[cancel_hardware_occupancy_request]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/mcp_gateway/test_boundaries.py::test_all_builtin_routes_and_defaults[get_hardware_occupancy_request]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/mcp_gateway/test_boundaries.py::test_all_builtin_routes_and_defaults[list_hardware_occupancy_requests]",
       "tsCases": [],
       "outcome": "passed"
     },
@@ -4456,6 +4339,91 @@
       "outcome": "passed"
     },
     {
+      "nodeid": "tests/mcp_gateway/test_public_contracts.py::test_every_builtin_has_a_valid_described_contract",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_public_contracts.py::test_gateway_and_sdk_shapes_keep_referenced_data_and_media_distinct",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_public_contracts.py::test_error_only_remote_result_cannot_be_reported_as_success",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_public_contracts.py::test_only_platform_metadata_reads_bypass_active_run[FIREDAP_MCP-firedap_get_job-True]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_public_contracts.py::test_only_platform_metadata_reads_bypass_active_run[FIREDAP_MCP-firedap_wait_job-True]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_public_contracts.py::test_only_platform_metadata_reads_bypass_active_run[PCI6208V_MCP-get_hardware_info-True]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_public_contracts.py::test_only_platform_metadata_reads_bypass_active_run[PCI6208V_MCP-pci6208v_set_voltage-False]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_public_contracts.py::test_only_platform_metadata_reads_bypass_active_run[THIRD_PARTY-get_hardware_info-False]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_public_contracts.py::test_firmware_transfer_does_not_require_large_model_payload",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_public_contracts.py::test_contract_discovery_obeys_authorization_and_exact_names",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_public_contracts.py::test_nested_reference_documents_survive_gateway_sdk_and_error_schemas[upstream0-value0]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_public_contracts.py::test_nested_reference_documents_survive_gateway_sdk_and_error_schemas[upstream1-value1]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_public_contracts.py::test_nested_reference_documents_survive_gateway_sdk_and_error_schemas[upstream2-3]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_public_contracts.py::test_root_reference_to_union_and_optional_data_are_preserved",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_public_contracts.py::test_contract_sdk_name_can_be_called_through_actual_application",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_public_contracts.py::test_registry_context_structured_endpoints_and_firmware_execute",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/mcp_gateway/test_public_contracts.py::test_all_public_builtin_schemas_allow_recoverable_errors_and_interrupted_runs",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
       "nodeid": "tests/projects/test_projects.py::test_no_project",
       "tsCases": [
         "packages/projects/src/project-service.test.ts::ProjectService folder projects::starts without an active project and reports requires_project for project operations"
@@ -4512,6 +4480,16 @@
     },
     {
       "nodeid": "tests/projects/test_projects.py::test_project_directory_occupied_by_file_matches_electron",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/projects/test_projects.py::test_layout_survives_restart_without_saving_pending_connections",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/projects/test_projects.py::test_layout_does_not_replace_a_damaged_project",
       "tsCases": [],
       "outcome": "passed"
     },
@@ -4587,6 +4565,51 @@
     },
     {
       "nodeid": "tests/sdk/test_sdk.py::test_source_when_python_frames_are_unavailable",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/sdk/test_sdk.py::test_data_mode_selects_data_but_preserves_default_and_media[False]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/sdk/test_sdk.py::test_data_mode_selects_data_but_preserves_default_and_media[True]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/sdk/test_sdk.py::test_data_mode_handles_actual_result_shapes[envelope0-expected0]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/sdk/test_sdk.py::test_data_mode_handles_actual_result_shapes[envelope1-expected1]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/sdk/test_sdk.py::test_data_mode_handles_actual_result_shapes[envelope2-expected2]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/sdk/test_sdk.py::test_data_mode_never_treats_error_envelope_as_business_success[envelope0]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/sdk/test_sdk.py::test_data_mode_never_treats_error_envelope_as_business_success[envelope1]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/sdk/test_sdk.py::test_data_mode_never_treats_error_envelope_as_business_success[envelope2]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/sdk/test_sdk.py::test_invalid_result_mode_fails_before_transport",
       "tsCases": [],
       "outcome": "passed"
     },
@@ -4839,6 +4862,76 @@
       "outcome": "passed"
     },
     {
+      "nodeid": "tests/wiring/test_release_endpoints.py::test_alias_resolution_preserves_canonical_ids_and_rejects_ambiguity",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/wiring/test_release_endpoints.py::test_same_port_loopback_keeps_real_identity_and_persists_after_confirmation",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/wiring/test_release_endpoints.py::test_same_port_rejects_invalid_and_reversed_duplicate_pins[pins0]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/wiring/test_release_endpoints.py::test_same_port_rejects_invalid_and_reversed_duplicate_pins[pins1]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/wiring/test_release_endpoints.py::test_same_port_rejects_invalid_and_reversed_duplicate_pins[pins2]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/wiring/test_release_endpoints.py::test_same_port_rejects_invalid_and_reversed_duplicate_pins[pins3]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/wiring/test_single_step_wiring.py::test_direct_completion_saves_same_port_pins_and_history",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/wiring/test_single_step_wiring.py::test_invalid_same_port_pins_rejected_in_tasks_and_document[pins0]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/wiring/test_single_step_wiring.py::test_invalid_same_port_pins_rejected_in_tasks_and_document[pins1]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/wiring/test_single_step_wiring.py::test_invalid_same_port_pins_rejected_in_tasks_and_document[pins2]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/wiring/test_single_step_wiring.py::test_invalid_same_port_pins_rejected_in_tasks_and_document[pins3]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/wiring/test_single_step_wiring.py::test_completion_is_serialized_and_terminal_tasks_cannot_be_confirmed",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/wiring/test_single_step_wiring.py::test_expired_task_cannot_update_wiring",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/wiring/test_single_step_wiring.py::test_pending_task_can_be_rejected_without_starting",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
       "nodeid": "tests/wiring/test_wiring.py::test_canvas",
       "tsCases": [
         "packages/wiring/src/project-wiring-agent.test.ts::Agent canvas permissions::adds a managed node without changing physical connections"
@@ -4901,181 +4994,6 @@
       "outcome": "passed"
     },
     {
-      "nodeid": "tests/workspace/test_apps.py::test_template_is_opt_in_and_never_overwrites",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/workspace/test_apps.py::test_app_ids_are_path_safe[../escape]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/workspace/test_apps.py::test_app_ids_are_path_safe[foo/bar]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/workspace/test_apps.py::test_app_ids_are_path_safe[.]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/workspace/test_apps.py::test_app_ids_are_path_safe[COM1]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/workspace/test_apps.py::test_app_ids_are_path_safe[a b]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/workspace/test_apps.py::test_each_action_creates_separate_run_with_hidden_hardware_declaration",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/workspace/test_apps.py::test_manifest_rejects_path_escape_and_duplicate_actions",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/workspace/test_apps.py::test_preview_requires_host_cookie_origin_and_scopes_run_access",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/workspace/test_apps.py::test_stop_cancels_only_app_owned_runs",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/workspace/test_apps.py::test_completed_preview_stream_drains_all_pages_on_reconnect[0-0]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/workspace/test_apps.py::test_completed_preview_stream_drains_all_pages_on_reconnect[500-0]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/workspace/test_apps.py::test_completed_preview_stream_drains_all_pages_on_reconnect[501-0]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/workspace/test_apps.py::test_completed_preview_stream_drains_all_pages_on_reconnect[1201-0]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/workspace/test_apps.py::test_completed_preview_stream_drains_all_pages_on_reconnect[1201-600]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/workspace/test_apps.py::test_preview_stream_drains_events_persisted_during_terminal_status_read",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/workspace/test_apps.py::test_real_app_process_proxy_logs_and_shutdown",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/workspace/test_apps.py::test_app_exits_unexpectedly_then_restart_and_failed_start",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/workspace/test_apps.py::test_invalid_manifest_reports_actionable_validation[None-name]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/workspace/test_apps.py::test_invalid_manifest_reports_actionable_validation[value1-name]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/workspace/test_apps.py::test_invalid_manifest_reports_actionable_validation[value2-relative]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/workspace/test_apps.py::test_invalid_manifest_reports_actionable_validation[value3-ASGI]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/workspace/test_apps.py::test_invalid_manifest_reports_actionable_validation[value4-actions]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/workspace/test_apps.py::test_invalid_manifest_reports_actionable_validation[value5-ID]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/workspace/test_apps.py::test_invalid_manifest_reports_actionable_validation[value6-Python]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/workspace/test_apps.py::test_invalid_manifest_reports_actionable_validation[value7-schema]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/workspace/test_apps.py::test_invalid_manifest_reports_actionable_validation[value8-hardwareIds]",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/workspace/test_apps.py::test_missing_or_broken_manifest_and_empty_name",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/workspace/test_apps.py::test_preview_api_errors_cancel_and_proxy_failure",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/workspace/test_apps.py::test_close_during_environment_preparation_prevents_process_launch",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/workspace/test_apps.py::test_stopped_preview_cannot_launch_a_new_action",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/workspace/test_apps.py::test_preview_start_failure_closes_listener_client_and_app_process",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/workspace/test_apps.py::test_output_disk_failure_stops_app_and_owned_runs",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/workspace/test_apps.py::test_preview_close_releases_resources_after_server_task_failure",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
-      "nodeid": "tests/workspace/test_apps.py::test_logging_failure_after_start_stops_service_proactively",
-      "tsCases": [],
-      "outcome": "passed"
-    },
-    {
       "nodeid": "tests/workspace/test_environment.py::test_scaffold_does_not_replace_existing_project_code",
       "tsCases": [],
       "outcome": "passed"
@@ -5101,7 +5019,12 @@
       "outcome": "passed"
     },
     {
-      "nodeid": "tests/workspace/test_environment.py::test_default_project_pins_sdk_and_web_dependencies",
+      "nodeid": "tests/workspace/test_environment.py::test_default_project_pins_sdk_and_python_tools",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_environment.py::test_old_sdk_contract_is_refreshed_without_changing_user_dependency_pins",
       "tsCases": [],
       "outcome": "passed"
     },
@@ -5166,7 +5089,262 @@
       "outcome": "passed"
     },
     {
+      "nodeid": "tests/workspace/test_reference_boundaries.py::test_corrupt_registry_is_a_structured_error_and_is_not_replaced[{]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_reference_boundaries.py::test_corrupt_registry_is_a_structured_error_and_is_not_replaced[\\xff]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_reference_boundaries.py::test_corrupt_registry_is_a_structured_error_and_is_not_replaced[[]]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_reference_boundaries.py::test_corrupt_registry_is_a_structured_error_and_is_not_replaced[\"wrong shape\"]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_reference_boundaries.py::test_corrupt_registry_is_a_structured_error_and_is_not_replaced[null]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_reference_boundaries.py::test_oversize_registry_is_rejected_before_loading_json",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_reference_boundaries.py::test_registry_entry_must_be_a_record[None]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_reference_boundaries.py::test_registry_entry_must_be_a_record[not a record]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_reference_boundaries.py::test_registry_entry_must_be_a_record[5]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_reference_boundaries.py::test_registry_entry_must_be_a_record[entry3]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_reference_boundaries.py::test_registry_hash_cannot_redirect_document_access[None]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_reference_boundaries.py::test_registry_hash_cannot_redirect_document_access[5]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_reference_boundaries.py::test_registry_hash_cannot_redirect_document_access[]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_reference_boundaries.py::test_registry_hash_cannot_redirect_document_access[000000000000000000000000000000000000000000000000000000000000000]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_reference_boundaries.py::test_registry_hash_cannot_redirect_document_access[AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_reference_boundaries.py::test_registry_hash_cannot_redirect_document_access[../outside]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_reference_boundaries.py::test_registry_cannot_create_an_escaped_reference_identifier",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_reference_boundaries.py::test_registered_evidence_cannot_silently_become_missing_or_different[missing]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_reference_boundaries.py::test_registered_evidence_cannot_silently_become_missing_or_different[invalid_utf8]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_reference_boundaries.py::test_registered_evidence_cannot_silently_become_missing_or_different[tampered]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_reference_boundaries.py::test_registered_evidence_cannot_silently_become_missing_or_different[oversize]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_reference_boundaries.py::test_reserved_and_malformed_ids_fail_without_creating_registry[hh-agent-interface]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_reference_boundaries.py::test_reserved_and_malformed_ids_fail_without_creating_registry[]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_reference_boundaries.py::test_reserved_and_malformed_ids_fail_without_creating_registry[../board]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_reference_boundaries.py::test_reserved_and_malformed_ids_fail_without_creating_registry[_board]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_reference_boundaries.py::test_reserved_and_malformed_ids_fail_without_creating_registry[xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_reference_boundaries.py::test_register_requires_an_open_project",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_reference_boundaries.py::test_bad_source_is_rejected_without_publishing_an_entry[missing]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_reference_boundaries.py::test_bad_source_is_rejected_without_publishing_an_entry[directory]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_reference_boundaries.py::test_bad_source_is_rejected_without_publishing_an_entry[pdf]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_reference_boundaries.py::test_bad_source_is_rejected_without_publishing_an_entry[invalid_utf8]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_reference_boundaries.py::test_bad_source_is_rejected_without_publishing_an_entry[binary_nul]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_reference_boundaries.py::test_bad_source_is_rejected_without_publishing_an_entry[oversize]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_reference_boundaries.py::test_source_links_cannot_escape_or_alias_managed_evidence[outside_project]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_reference_boundaries.py::test_source_links_cannot_escape_or_alias_managed_evidence[managed_logs]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_reference_boundaries.py::test_stale_expected_hash_cannot_recreate_a_deleted_registration",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_reference_boundaries.py::test_hardware_reference_metadata_survives_search_without_exposing_full_text",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_references.py::test_bundled_docs_are_available_without_project_and_paginate",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_references.py::test_scaffold_preserves_user_guide_and_publishes_versioned_release",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_references.py::test_register_copies_evidence_requires_current_hash_and_paginates_long_lines",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_references.py::test_reference_import_is_confined_to_supported_user_files[../outside.txt]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_references.py::test_reference_import_is_confined_to_supported_user_files[C:/Windows/system.ini]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_references.py::test_reference_import_is_confined_to_supported_user_files[.hardwareharness/logs/x.txt]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_references.py::test_reference_import_is_confined_to_supported_user_files[x.pdf]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_references.py::test_bundled_id_cannot_be_overwritten",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
       "nodeid": "tests/workspace/test_workspace.py::test_files_are_relative_to_hidden_workspace_and_preserve_user_files",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_workspace.py::test_workspace_only_accepts_python_scripts[outside.py-file]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_workspace.py::test_workspace_only_accepts_python_scripts[scripts/readme.txt-file]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_workspace.py::test_workspace_only_accepts_python_scripts[scripts/page.html-file]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_workspace.py::test_workspace_only_accepts_python_scripts[apps/demo/server.py-file]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_workspace.py::test_workspace_only_accepts_python_scripts[workflows/legacy.py-file]",
+      "tsCases": [],
+      "outcome": "passed"
+    },
+    {
+      "nodeid": "tests/workspace/test_workspace.py::test_workspace_only_accepts_python_scripts[docs-directory]",
       "tsCases": [],
       "outcome": "passed"
     },

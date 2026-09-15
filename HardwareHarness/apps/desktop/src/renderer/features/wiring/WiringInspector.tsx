@@ -66,7 +66,7 @@ function ConnectionRow({ connection, hardware, onRemove, removing, onEdit }: {
       >
         <span className="grid min-w-0 gap-1">
           <strong className="truncate">{connectionLabel(connection, hardware)}</strong>
-          <small className="text-[11px] text-muted-foreground">{pinCountText(connection)}</small>
+          <small className="text-[11px] text-muted-foreground">{pinCountText(connection)}{connection.portA === connection.portB ? " · 同端口接线" : ""}</small>
         </span>
         <span className="text-xs text-muted-foreground">{open ? "收起" : "展开"}</span>
       </button>
@@ -105,7 +105,7 @@ function ConnectionPins({ connection, hardware, drawer, bordered }: {
     <div className={wrapClass}>
       <div className="grid gap-1.5">
         {connection.pins.map((pin) => (
-          <div key={`${pin.a}-${pin.b}`} className="grid grid-cols-[auto_minmax(0,1fr)_42px_minmax(0,1fr)] items-center gap-2 rounded-xl bg-secondary/60 p-2.5 shadow-sm ring-1 ring-border">
+          <div key={`${pin.a}-${pin.b}`} className="grid grid-cols-[minmax(0,1fr)_42px_minmax(0,1fr)] items-center gap-2 rounded-xl bg-secondary/60 p-2.5 shadow-sm ring-1 ring-border">
             <span className="grid min-w-0 gap-0.5">
               <strong className="truncate text-[11px] font-medium">{pinText(a.port, pin.a)}</strong>
               <small className="truncate font-mono text-[9px] text-muted-foreground">{a.port?.name ?? connection.portA}</small>

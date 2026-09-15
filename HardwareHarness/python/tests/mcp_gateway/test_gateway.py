@@ -271,11 +271,11 @@ async def test_tool_routes() -> None:
     await gateway.invoke_tool(
         "request_wiring_task", {"portA": "A.J1", "portB": "B.J1", "action": "connect"}
     )
-    await gateway.invoke_tool("start_python_run", {"entrypoint": "workflows/main.py"})
+    await gateway.invoke_tool("start_python_run", {"entrypoint": "scripts/main.py"})
     await gateway.invoke_tool("S1.measure", {"voltage": 5})
     assert wiring.request_task.call_args.args[0]["requestedBy"] == "agent"
     orchestration.start_run.assert_awaited_once_with(
-        {"entrypoint": "workflows/main.py", "inputs": {}, "inputSchema": {}, "hardwareIds": []}
+        {"entrypoint": "scripts/main.py", "inputs": {}, "inputSchema": {}, "hardwareIds": []}
     )
     devices.call_aggregated_tool.assert_awaited_once_with("S1.measure", {"voltage": 5})
 

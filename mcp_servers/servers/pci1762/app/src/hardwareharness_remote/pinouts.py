@@ -59,6 +59,9 @@ class Pinout(BaseModel):
     modeSelection: str | None = None
     modes: tuple[ModeDefinition, ...] = ()
     sources: tuple[str, ...]
+    pagination: dict[str, int | None] | None = None
+    connectorView: str = "unknown; verify the connector view in the cited manufacturer manual"
+    hardwareRevision: str = "unknown"
 
 
 class ToolMeta(BaseModel):

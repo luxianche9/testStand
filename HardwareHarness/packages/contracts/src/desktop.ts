@@ -1,7 +1,7 @@
 import type { AgentIntegrationPreview, AgentIntegrationStatus, AgentKind, AgentToolInfo, McpGatewayStatus, OpenCodeRuntimeStatus } from "./agents.js";
 import type { ComputerStatus, DeviceBundleApplyInput, DeviceBundleExport, DeviceBundleImport, DeviceBundleKind, DeviceBundlePreview, Hardware, HardwareAvailability, HardwareImageTarget, ManagedHardware, McpServerConfig, RemoteComputer, RemoteServiceLog, ServerStatus, ToolCatalogItem } from "./devices.js";
 import type { ExecutionActivity, ManualToolInvocationInput, ManualToolInvocationResult } from "./execution.js";
-import type { HardwareOccupancyRequest, HardwareOccupancyRequestStatus, HardwareOccupancyStatus } from "./occupancy.js";
+
 import type { LlmSettings, LlmSettingsInput, ProjectView, ThemeChoice, WelcomeLayout } from "./storage.js";
 import type { HardwareHarnessApplicationsApi } from "./applications.js";
 import type { ProjectDocument, ProjectFolderSelection, RecentProjectSummary } from "./projects.js";
@@ -16,7 +16,7 @@ export interface DashboardSnapshot {
   tools: ToolCatalogItem[];
   gateway: McpGatewayStatus;
   execution: ExecutionActivity;
-  occupancy: HardwareOccupancyStatus[];
+
   availability?: HardwareAvailability[];
 }
 
@@ -53,11 +53,6 @@ export const HARDWAREHARNESS_IPC = {
     search: "hardwareharness:applications:search",
     diagnostics: "hardwareharness:applications:diagnostics",
     initializeWorkspace: "hardwareharness:applications:initializeWorkspace",
-    listApps: "hardwareharness:applications:listApps",
-    createApp: "hardwareharness:applications:createApp",
-    startApp: "hardwareharness:applications:startApp",
-    stopApp: "hardwareharness:applications:stopApp",
-    appLogs: "hardwareharness:applications:appLogs",
     startRun: "hardwareharness:applications:startRun",
     cancelRun: "hardwareharness:applications:cancelRun",
     getRun: "hardwareharness:applications:getRun",
@@ -72,11 +67,7 @@ export const HARDWAREHARNESS_IPC = {
   manual: {
     invokeTool: "hardwareharness:manual:invoke-tool"
   },
-  occupancy: {
-    list: "hardwareharness:occupancy:list", acquire: "hardwareharness:occupancy:acquire", release: "hardwareharness:occupancy:release",
-    listRequests: "hardwareharness:occupancy:list-requests", acquireRequest: "hardwareharness:occupancy:acquire-request",
-    rejectRequest: "hardwareharness:occupancy:reject-request", cancelRequest: "hardwareharness:occupancy:cancel-request"
-  },
+
   agents: {
     rotateGatewayToken: "hardwareharness:agents:rotate-gateway-token", status: "hardwareharness:agents:status",
     preview: "hardwareharness:agents:preview", install: "hardwareharness:agents:install", remove: "hardwareharness:agents:remove", test: "hardwareharness:agents:test", listTools: "hardwareharness:agents:list-tools",
@@ -92,7 +83,7 @@ export const HARDWAREHARNESS_IPC = {
   }
 } as const;
 
-export type HardwareHarnessEventName = "availability" | "execution" | "occupancy" | "occupancyRequest" | "run" | "runEvent" | "wiringTask" | "workspace" | "application" | "project" | "opencode" | "window-state";
+export type HardwareHarnessEventName = "availability" | "execution" | "run" | "runEvent" | "wiringTask" | "workspace" | "project" | "opencode" | "window-state";
 
 export interface HardwareHarnessSystemApi {
   dashboard(): Promise<DashboardSnapshot>;
@@ -147,16 +138,6 @@ export interface HardwareHarnessManualApi {
   invokeTool(input: ManualToolInvocationInput): Promise<ManualToolInvocationResult>;
 }
 
-export interface HardwareHarnessOccupancyApi {
-  list(): Promise<HardwareOccupancyStatus[]>;
-  acquire(hardwareId: string): Promise<HardwareOccupancyStatus>;
-  release(hardwareId: string): Promise<HardwareOccupancyStatus>;
-  listRequests(input?: { status?: HardwareOccupancyRequestStatus; limit?: number }): Promise<HardwareOccupancyRequest[]>;
-  acquireRequest(occupancyRequestId: string): Promise<HardwareOccupancyRequest>;
-  rejectRequest(occupancyRequestId: string, message?: string): Promise<HardwareOccupancyRequest>;
-  cancelRequest(occupancyRequestId: string, message?: string): Promise<HardwareOccupancyRequest>;
-}
-
 export interface HardwareHarnessAgentsApi {
   rotateGatewayToken(): Promise<AgentIntegrationStatus>;
   status(agent: AgentKind): Promise<AgentIntegrationStatus>;
@@ -199,7 +180,7 @@ export interface HardwareHarnessApi {
   wiring: HardwareHarnessWiringApi;
   applications: HardwareHarnessApplicationsApi;
   manual: HardwareHarnessManualApi;
-  occupancy: HardwareHarnessOccupancyApi;
+
   agents: HardwareHarnessAgentsApi;
   settings: HardwareHarnessSettingsApi;
   window: HardwareHarnessWindowApi;

@@ -760,15 +760,15 @@
     "pythonAssertions": {
       "tests/devices/test_devices.py::test_server_isolation": [
         {
-          "line": 96,
+          "line": 94,
           "source": "assert len(statuses) == 3"
         },
         {
-          "line": 97,
+          "line": 95,
           "source": "assert (\n        next(s for s in statuses if s[\"serverId\"] == \"PCI1762_MCP\")[\"transport\"][\"state\"]\n        == \"offline\"\n    )"
         },
         {
-          "line": 101,
+          "line": 99,
           "source": "assert [s[\"serverId\"] for s in statuses if s[\"transport\"][\"state\"] == \"online\"] == [\n        \"PCI1710L_MCP\",\n        \"PCI6208V_MCP\",\n    ]"
         }
       ]
@@ -797,15 +797,15 @@
     "pythonAssertions": {
       "tests/devices/test_devices.py::test_error_status": [
         {
-          "line": 112,
+          "line": 110,
           "source": "assert status[\"transport\"][\"state\"] == \"offline\""
         },
         {
-          "line": 113,
+          "line": 111,
           "source": "assert \"vendor SDK hung\" in status[\"transport\"][\"message\"]"
         },
         {
-          "line": 114,
+          "line": 112,
           "source": "assert status[\"service\"][\"serviceState\"] == \"unknown\""
         }
       ]
@@ -830,11 +830,11 @@
     "pythonAssertions": {
       "tests/devices/test_devices.py::test_unknown_server": [
         {
-          "line": 122,
+          "line": 120,
           "source": "assert status[\"service\"][\"state\"] == \"error\""
         },
         {
-          "line": 123,
+          "line": 121,
           "source": "assert status[\"transport\"][\"state\"] == \"error\""
         }
       ]
@@ -871,15 +871,15 @@
     "pythonAssertions": {
       "tests/devices/test_devices.py::test_lifecycle_shell[powershell]": [
         {
-          "line": 154,
+          "line": 152,
           "source": "assert command.startswith(\"powershell -NoProfile -NonInteractive -EncodedCommand \")"
         },
         {
-          "line": 155,
+          "line": 153,
           "source": "assert \"status.ps1\" in base64.b64decode(command.split()[-1]).decode(\"utf-16le\")"
         },
         {
-          "line": 157,
+          "line": 155,
           "source": "assert command.startswith(\"sh -lc \") and \"/status.sh\" in command"
         }
       ]
@@ -916,15 +916,15 @@
     "pythonAssertions": {
       "tests/devices/test_devices.py::test_lifecycle_shell[posix]": [
         {
-          "line": 154,
+          "line": 152,
           "source": "assert command.startswith(\"powershell -NoProfile -NonInteractive -EncodedCommand \")"
         },
         {
-          "line": 155,
+          "line": 153,
           "source": "assert \"status.ps1\" in base64.b64decode(command.split()[-1]).decode(\"utf-16le\")"
         },
         {
-          "line": 157,
+          "line": 155,
           "source": "assert command.startswith(\"sh -lc \") and \"/status.sh\" in command"
         }
       ]
@@ -1361,10 +1361,8 @@
   },
   {
     "typescript": "packages/devices/src/hardware-occupancy.test.ts::HardwareOccupancyManager::acquires a per-hardware lease and reports loss when remote ownership changes",
-    "python": [
-      "tests/devices/test_devices.py::test_lease_lost"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "User requested removal of all hardware leases, manual acquisition and AI occupancy requests on 2026-09-15 for single-user development.",
     "originalAssertions": [
       {
         "line": 24,
@@ -1382,31 +1380,7 @@
         "line": 30,
         "source": "expect(() => manager.requireLease(\"H1\")).toThrow(/must be occupied/);"
       }
-    ],
-    "pythonAssertions": {
-      "tests/devices/test_devices.py::test_lease_lost": [
-        {
-          "line": 335,
-          "source": "assert (await manager.acquire(\"H1\"))[\"state\"] == \"occupied_by_self\""
-        },
-        {
-          "line": 336,
-          "source": "assert isinstance(manager.require_lease(\"H1\"), str)"
-        },
-        {
-          "line": 344,
-          "source": "assert lost.call_args.args[0] == \"H1\""
-        },
-        {
-          "line": 345,
-          "source": "assert \"no longer owned\" in lost.call_args.args[1]"
-        },
-        {
-          "line": 346,
-          "source": "pytest.raises(Exception, match=\"must be occupied\")"
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "packages/devices/src/mcp-client.test.ts::McpHttpTransport one-Server-one-hardware contract::rejects a zero list_hardware response",
@@ -1423,7 +1397,7 @@
     "pythonAssertions": {
       "tests/devices/test_devices.py::test_single_hardware[response0]": [
         {
-          "line": 206,
+          "line": 204,
           "source": "pytest.raises(Exception, match=\"violates one-Server-one-hardware\")"
         }
       ]
@@ -1444,7 +1418,7 @@
     "pythonAssertions": {
       "tests/devices/test_devices.py::test_single_hardware[response1]": [
         {
-          "line": 206,
+          "line": 204,
           "source": "pytest.raises(Exception, match=\"violates one-Server-one-hardware\")"
         }
       ]
@@ -1465,7 +1439,7 @@
     "pythonAssertions": {
       "tests/devices/test_devices.py::test_single_hardware[response2]": [
         {
-          "line": 206,
+          "line": 204,
           "source": "pytest.raises(Exception, match=\"violates one-Server-one-hardware\")"
         }
       ]
@@ -1486,7 +1460,7 @@
     "pythonAssertions": {
       "tests/devices/test_devices.py::test_hardware_identity": [
         {
-          "line": 212,
+          "line": 210,
           "source": "pytest.raises(Exception, match=\"expected \" + server()[\"hardwareId\"])"
         }
       ]
@@ -1507,7 +1481,7 @@
     "pythonAssertions": {
       "tests/devices/test_devices.py::test_ignored_identity": [
         {
-          "line": 222,
+          "line": 220,
           "source": "assert result[\"hardwareId\"] == server()[\"hardwareId\"]"
         }
       ]
@@ -1528,15 +1502,15 @@
     "pythonAssertions": {
       "tests/devices/test_devices.py::test_owning_computer": [
         {
-          "line": 228,
+          "line": 226,
           "source": "assert result[\"hardwareId\"] == server()[\"hardwareId\"]"
         },
         {
-          "line": 229,
+          "line": 227,
           "source": "assert result[\"computerId\"] == server()[\"computerId\"]"
         },
         {
-          "line": 230,
+          "line": 228,
           "source": "assert result[\"serverId\"] == server()[\"serverId\"]"
         }
       ]
@@ -1561,11 +1535,11 @@
     "pythonAssertions": {
       "tests/devices/test_devices.py::test_input_schema": [
         {
-          "line": 266,
+          "line": 264,
           "source": "assert getattr(failure.value, \"category\", None) == \"invalid_argument\""
         },
         {
-          "line": 259,
+          "line": 257,
           "source": "pytest.raises(Exception, match=\"Invalid input\")"
         }
       ]
@@ -1590,7 +1564,7 @@
     "pythonAssertions": {
       "tests/devices/test_devices.py::test_call_metadata": [
         {
-          "line": 282,
+          "line": 280,
           "source": "assert await pool.call_remote(\n        server()[\"serverId\"], \"read_channel\", {\"channel\": 2}, {\"metadata\": metadata}\n    ) == {\"value\": 1}"
         }
       ]
@@ -1611,7 +1585,7 @@
     "pythonAssertions": {
       "tests/devices/test_devices.py::test_untrusted_state": [
         {
-          "line": 295,
+          "line": 293,
           "source": "pytest.raises(ValidationError)"
         }
       ]
@@ -1632,7 +1606,7 @@
     "pythonAssertions": {
       "tests/devices/test_devices.py::test_powershell": [
         {
-          "line": 163,
+          "line": 161,
           "source": "assert base64.b64decode(command.split()[-1]).decode(\"utf-16le\") == \"Write-Output '测试'\""
         }
       ]
@@ -1661,15 +1635,15 @@
     "pythonAssertions": {
       "tests/devices/test_devices.py::test_posix": [
         {
-          "line": 169,
+          "line": 167,
           "source": "assert shell.command(shell.probe_command()).startswith(\"sh -lc \")"
         },
         {
-          "line": 170,
+          "line": 168,
           "source": "assert \"'/var/log/hardware harness'/*.log\" in shell.read_logs_command(\n        \"/var/log/hardware harness\", 25\n    )"
         },
         {
-          "line": 173,
+          "line": 171,
           "source": "assert \"Get-ChildItem\" not in shell.read_logs_command(\"/var/log/hardware harness\", 25)"
         }
       ]
@@ -1792,11 +1766,11 @@
     "pythonAssertions": {
       "tests/application/test_application.py::test_capability_matrix": [
         {
-          "line": 109,
+          "line": 106,
           "source": "assert {cap: authorizer.is_allowed(AGENT, cap) for cap in CAPABILITIES} == {\n        cap: cap in AGENT_ALLOWED for cap in CAPABILITIES\n    }"
         },
         {
-          "line": 112,
+          "line": 109,
           "source": "assert authorizer.allowed_capabilities(HUMAN) == list(CAPABILITIES)"
         }
       ]
@@ -1825,7 +1799,7 @@
     "pythonAssertions": {
       "tests/application/test_application.py::test_agent_allowed": [
         {
-          "line": 126,
+          "line": 123,
           "source": "assert wiring.request_task.call_args.args[0][\"requestedBy\"] == \"agent\""
         }
       ]
@@ -1886,11 +1860,11 @@
     "pythonAssertions": {
       "tests/application/test_application.py::test_agent_denied": [
         {
-          "line": 148,
+          "line": 145,
           "source": "assert getattr(caught.value, \"category\", None) == \"permission_denied\""
         },
         {
-          "line": 146,
+          "line": 143,
           "source": "pytest.raises(Exception)"
         }
       ]
@@ -1943,19 +1917,19 @@
     "pythonAssertions": {
       "tests/application/test_application.py::test_disjoint_leases": [
         {
-          "line": 200,
+          "line": 197,
           "source": "assert (\n        current[\"state\"] == \"run\"\n        and current[\"runId\"] == \"RUN1\"\n        and current[\"hardwareIds\"] == [\"HW1\"]\n    )"
         },
         {
-          "line": 205,
+          "line": 202,
           "source": "assert [\n        (item[\"state\"], item.get(\"hardwareId\"), item.get(\"hardwareIds\"))\n        for item in current[\"activities\"]\n    ] == [(\"manual\", \"HW2\", None), (\"run\", None, [\"HW1\"])]"
         },
         {
-          "line": 212,
+          "line": 209,
           "source": "assert execution.current() == {\"state\": \"idle\"}"
         },
         {
-          "line": 213,
+          "line": 210,
           "source": "assert states == [\"manual\", \"run\", \"manual\", \"idle\"]"
         }
       ]
@@ -1980,19 +1954,19 @@
     "pythonAssertions": {
       "tests/application/test_application.py::test_atomic_lease": [
         {
-          "line": 238,
+          "line": 235,
           "source": "assert getattr(caught.value, \"category\", None) == \"conflict\""
         },
         {
-          "line": 239,
+          "line": 236,
           "source": "assert getattr(caught.value, \"details\", {})[\"hardwareIds\"] == [\"HW2\"]"
         },
         {
-          "line": 250,
+          "line": 247,
           "source": "assert execution.current() == {\"state\": \"idle\"}"
         },
         {
-          "line": 229,
+          "line": 226,
           "source": "pytest.raises(Exception)"
         }
       ]
@@ -2017,11 +1991,11 @@
     "pythonAssertions": {
       "tests/application/test_application.py::test_stale_release": [
         {
-          "line": 277,
+          "line": 274,
           "source": "assert execution.current()[\"state\"] == \"manual\" and execution.current()[\"hardwareId\"] == \"HW1\""
         },
         {
-          "line": 279,
+          "line": 276,
           "source": "assert execution.current() == {\"state\": \"idle\"}"
         }
       ]
@@ -2054,23 +2028,23 @@
     "pythonAssertions": {
       "tests/application/test_application.py::test_manual_metadata": [
         {
-          "line": 330,
+          "line": 327,
           "source": "assert name == TOOL[\"externalName\"] and args == {\"hardwareId\": \"spoofed\", \"value\": 3.5}"
         },
         {
-          "line": 331,
+          "line": 328,
           "source": "assert options[\"timeoutMs\"] == 30000 and options[\"metadata\"] == {\"hardwareId\": \"HW1\"}"
         },
         {
-          "line": 332,
+          "line": 329,
           "source": "assert hasattr(options[\"signal\"], \"aborted\")"
         },
         {
-          "line": 333,
+          "line": 330,
           "source": "assert (\n        result[\"hardwareId\"] == \"HW1\"\n        and result[\"toolName\"] == TOOL[\"externalName\"]\n        and result[\"output\"] == {\"accepted\": True}\n    )"
         },
         {
-          "line": 338,
+          "line": 335,
           "source": "assert result[\"durationMs\"] >= 0 and result[\"completedAt\"] >= result[\"startedAt\"]"
         }
       ]
@@ -2095,11 +2069,11 @@
     "pythonAssertions": {
       "tests/application/test_application.py::test_manual_invalid[overrides0-invalid_argument]": [
         {
-          "line": 394,
+          "line": 391,
           "source": "assert getattr(caught.value, \"category\", None) == category"
         },
         {
-          "line": 392,
+          "line": 389,
           "source": "pytest.raises(Exception)"
         }
       ]
@@ -2124,11 +2098,11 @@
     "pythonAssertions": {
       "tests/application/test_application.py::test_manual_invalid[overrides1-unavailable]": [
         {
-          "line": 394,
+          "line": 391,
           "source": "assert getattr(caught.value, \"category\", None) == category"
         },
         {
-          "line": 392,
+          "line": 389,
           "source": "pytest.raises(Exception)"
         }
       ]
@@ -2153,11 +2127,11 @@
     "pythonAssertions": {
       "tests/application/test_application.py::test_manual_invalid[overrides2-invalid_argument]": [
         {
-          "line": 394,
+          "line": 391,
           "source": "assert getattr(caught.value, \"category\", None) == category"
         },
         {
-          "line": 392,
+          "line": 389,
           "source": "pytest.raises(Exception)"
         }
       ]
@@ -2182,11 +2156,11 @@
     "pythonAssertions": {
       "tests/application/test_application.py::test_manual_invalid[overrides3-unavailable]": [
         {
-          "line": 394,
+          "line": 391,
           "source": "assert getattr(caught.value, \"category\", None) == category"
         },
         {
-          "line": 392,
+          "line": 389,
           "source": "pytest.raises(Exception)"
         }
       ]
@@ -2211,11 +2185,11 @@
     "pythonAssertions": {
       "tests/application/test_application.py::test_manual_invalid[overrides4-unavailable]": [
         {
-          "line": 394,
+          "line": 391,
           "source": "assert getattr(caught.value, \"category\", None) == category"
         },
         {
-          "line": 392,
+          "line": 389,
           "source": "pytest.raises(Exception)"
         }
       ]
@@ -2240,15 +2214,15 @@
     "pythonAssertions": {
       "tests/application/test_application.py::test_management_tool_offline": [
         {
-          "line": 415,
+          "line": 412,
           "source": "assert call.call_args.args[0] == tool[\"externalName\"] and call.call_args.args[1] == {}"
         },
         {
-          "line": 416,
+          "line": 413,
           "source": "assert call.call_args.args[2][\"timeoutMs\"] == 30000 and call.call_args.args[2][\"metadata\"] == {\n        \"hardwareId\": \"HW1\"\n    }"
         },
         {
-          "line": 419,
+          "line": 416,
           "source": "assert result[\"hardwareId\"] == \"HW1\" and result[\"toolName\"] == tool[\"externalName\"]"
         }
       ]
@@ -2273,11 +2247,11 @@
     "pythonAssertions": {
       "tests/application/test_application.py::test_manual_remote_error": [
         {
-          "line": 431,
+          "line": 428,
           "source": "assert caught.value is error and execution.current() == {\"state\": \"idle\"}"
         },
         {
-          "line": 429,
+          "line": 426,
           "source": "pytest.raises(Exception)"
         }
       ]
@@ -2310,27 +2284,27 @@
     "pythonAssertions": {
       "tests/application/test_application.py::test_manual_shutdown": [
         {
-          "line": 446,
+          "line": 443,
           "source": "assert execution.current()[\"state\"] == \"manual\""
         },
         {
-          "line": 464,
+          "line": 461,
           "source": "assert getattr(caught.value, \"category\", None) == \"conflict\""
         },
         {
-          "line": 469,
+          "line": 466,
           "source": "assert getattr(aborted.value, \"name\", None) == \"AbortError\""
         },
         {
-          "line": 470,
+          "line": 467,
           "source": "assert execution.current() == {\"state\": \"idle\"}"
         },
         {
-          "line": 455,
+          "line": 452,
           "source": "pytest.raises(Exception)"
         },
         {
-          "line": 467,
+          "line": 464,
           "source": "pytest.raises(Exception)"
         }
       ]
@@ -2355,11 +2329,11 @@
     "pythonAssertions": {
       "tests/application/test_application.py::test_run_blocks_manual": [
         {
-          "line": 489,
+          "line": 486,
           "source": "assert getattr(caught.value, \"category\", None) == \"conflict\""
         },
         {
-          "line": 487,
+          "line": 484,
           "source": "pytest.raises(Exception)"
         }
       ]
@@ -2367,10 +2341,8 @@
   },
   {
     "typescript": "packages/application/src/hardware-occupancy-application.test.ts::HardwareOccupancyApplication::allows AI to request occupancy but never to acquire or release it",
-    "python": [
-      "tests/application/test_application.py::test_agent_occupancy_request_only"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "User requested removal of all hardware leases, manual acquisition and AI occupancy requests on 2026-09-15 for single-user development.",
     "originalAssertions": [
       {
         "line": 37,
@@ -2384,30 +2356,12 @@
         "line": 39,
         "source": "await expect(application.release(AGENT_REQUEST_CONTEXT, \"H1\")).rejects.toMatchObject({ category: \"permission_denied\" });"
       }
-    ],
-    "pythonAssertions": {
-      "tests/application/test_application.py::test_agent_occupancy_request_only": [
-        {
-          "line": 535,
-          "source": "assert request[\"hardwareIds\"] == [\"H1\", \"H2\"]"
-        },
-        {
-          "line": 539,
-          "source": "assert getattr(caught.value, \"category\", None) == \"permission_denied\""
-        },
-        {
-          "line": 537,
-          "source": "pytest.raises(Exception)"
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "packages/application/src/hardware-occupancy-application.test.ts::HardwareOccupancyApplication::rolls back only leases gained by the current batch attempt",
-    "python": [
-      "tests/application/test_application.py::test_batch_rollback"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "User requested removal of all hardware leases, manual acquisition and AI occupancy requests on 2026-09-15 for single-user development.",
     "originalAssertions": [
       {
         "line": 45,
@@ -2429,34 +2383,12 @@
         "line": 49,
         "source": "expect(application.getRequest(HUMAN_REQUEST_CONTEXT, request.occupancyRequestId)).toMatchObject({ status: \"pending\", message: expect.stringContaining(\"remote conflict\") });"
       }
-    ],
-    "pythonAssertions": {
-      "tests/application/test_application.py::test_batch_rollback": [
-        {
-          "line": 551,
-          "source": "assert getattr(caught.value, \"category\", None) == \"conflict\""
-        },
-        {
-          "line": 552,
-          "source": "assert acquired == [\"H2\"] and released == [\"H2\"] and \"H1\" in held"
-        },
-        {
-          "line": 554,
-          "source": "assert current[\"status\"] == \"pending\" and \"remote conflict\" in current[\"message\"]"
-        },
-        {
-          "line": 549,
-          "source": "pytest.raises(Exception)"
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "packages/application/src/hardware-occupancy-application.test.ts::HardwareOccupancyApplication::confirms a successful batch and blocks release while hardware executes",
-    "python": [
-      "tests/application/test_application.py::test_batch_confirmation_busy"
-    ],
-    "passed": true,
+    "status": "retired",
+    "reason": "User requested removal of all hardware leases, manual acquisition and AI occupancy requests on 2026-09-15 for single-user development.",
     "originalAssertions": [
       {
         "line": 55,
@@ -2466,23 +2398,7 @@
         "line": 56,
         "source": "await expect(application.release(HUMAN_REQUEST_CONTEXT, \"H1\")).rejects.toMatchObject({ category: \"conflict\" });"
       }
-    ],
-    "pythonAssertions": {
-      "tests/application/test_application.py::test_batch_confirmation_busy": [
-        {
-          "line": 564,
-          "source": "assert (await application.acquire_request(HUMAN, request[\"occupancyRequestId\"]))[\n        \"status\"\n    ] == \"confirmed\""
-        },
-        {
-          "line": 569,
-          "source": "assert getattr(caught.value, \"category\", None) == \"conflict\""
-        },
-        {
-          "line": 567,
-          "source": "pytest.raises(Exception)"
-        }
-      ]
-    }
+    ]
   },
   {
     "typescript": "packages/application/src/project-services.test.ts::project-oriented services::keeps the wiring canvas documentary while the operator processes a task",

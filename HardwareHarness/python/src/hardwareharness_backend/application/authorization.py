@@ -16,8 +16,6 @@ _AGENT_CAPABILITIES = {
     "hardware.read",
     "hardware.manage",
     "hardware.executeTools",
-    "hardware.readOccupancy",
-    "hardware.requestOccupancy",
     "projects.read",
     "projects.manage",
     "wiring.read",

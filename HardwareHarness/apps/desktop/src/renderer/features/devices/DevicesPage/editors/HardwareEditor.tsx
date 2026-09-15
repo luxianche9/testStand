@@ -21,7 +21,7 @@ const hardwareEditorSchema = z.object({
 type HardwareEditorValues = z.infer<typeof hardwareEditorSchema>;
 const blankHardware: HardwareEditorValues = { hardwareId: "DUT_1", label: "被测对象" };
 
-/** DUTs, fixtures and breakout boards: no MCP Server, no lease, just ports and photos. */
+/** DUTs, fixtures and breakout boards: no MCP Server, just ports and photos. */
 export function HardwareEditor({ open, hardware, onClose, onChanged }: {
   open: boolean;
   hardware?: Hardware | undefined;

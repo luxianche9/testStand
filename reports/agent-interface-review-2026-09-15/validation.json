@@ -1,0 +1,27 @@
+{
+  "validated_at": "2026-09-15T10:19:45.841124+08:00",
+  "public_tool_entries": 83,
+  "internal_tools": 5,
+  "descriptions_complete": true,
+  "local_file_links_exist": true,
+  "runtime_tools_list_verified": false,
+  "packaged_agent_evaluation_run": false,
+  "product_code_modified": false,
+  "source_sha256": {
+    "HardwareHarness/python/src/hardwareharness_backend/mcp_gateway/project_tools.json": "ab804960d0f1669f1155499f528ac216ffc4dccf00c2f74d20f6c7383ba46998",
+    "HardwareHarness/python/src/hardwareharness_backend/mcp_gateway/builtin_tools.json": "f16a4c2f996253a91289ff7284f09834c788511673e8ca8a4dcc254e3801c5d8",
+    "mcp_servers/servers/cp118u_i/app/src/hardwareharness_remote/server.py": "1d8f59399c26422200ccd3ea2c72e6180825e39bde54563ae3ece3cf5640197f",
+    "mcp_servers/servers/pci1710l/app/src/hardwareharness_remote/server.py": "1d8f59399c26422200ccd3ea2c72e6180825e39bde54563ae3ece3cf5640197f",
+    "mcp_servers/servers/pci6208v/app/src/hardwareharness_remote/server.py": "1d8f59399c26422200ccd3ea2c72e6180825e39bde54563ae3ece3cf5640197f",
+    "mcp_servers/servers/pci1762/app/src/hardwareharness_remote/server.py": "1d8f59399c26422200ccd3ea2c72e6180825e39bde54563ae3ece3cf5640197f",
+    "mcp_servers/servers/firedap/app/src/hardwareharness_firedap/server.py": "f91a3d367cca4fb8f80aa0b57298e91691f92b96a110f66a889c3ecf25d0d066",
+    "HardwareHarness/python/src/hardwareharness_backend/mcp_gateway/tool_registry.py": "019865cf602d208f8309d719233ee15f8370796492ef43c0535f03f691fc1542",
+    "HardwareHarness/python/src/hardwareharness_backend/mcp_gateway/gateway.py": "719178fe6f05fbfea60b6a3e3ca353b8fd1b02c6c9ec85e937911ad2f44d3f6a",
+    "HardwareHarness/python/src/hardwareharness_backend/devices/mcp_client.py": "1619b3414b5f2fdd24fdf6b4e9202462c4f14e75e00ae3244b59479de38e2bf3",
+    "HardwareHarness/python/src/hardwareharness_backend/workspace/environment.py": "e41dbb8787f426f873249a9f4b306f982ffe5950f3b8553a7af5d0116d7e40ae",
+    "HardwareHarness/python/src/hardwareharness_backend/workspace/files.py": "2db7121c54a54fab09990acbc797eb568ec216ff6cf43a4ce61463e28da1391b",
+    "HardwareHarness/python/src/hardwareharness_backend/application/applications.py": "65ad14149834d9a8c0ee944272af70012334eb62fa110fe0ad6462020f3398e4",
+    "HardwareHarness/apps/desktop/src/main/opencode-runtime.ts": "38cf6e7bbd7f4964ef10223ec53e2a2cd9fff88fcbdd8de1e00b4f020af75bac",
+    "HardwareHarness/python/src/hardwareharness_backend/workspace/templates/sdk-guide.md": "51fa9361544affd6cfb7350f09405684f7d8cbea045c3e4facc652c725d7991c"
+  }
+}

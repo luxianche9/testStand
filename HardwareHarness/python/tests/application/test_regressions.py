@@ -20,73 +20,13 @@ from hardwareharness_backend.application import (
     ProjectsApplication,
     SystemApplication,
     WiringApplication,
-    control,
 )
 from hardwareharness_backend.compat.cancellation import AbortError
 from hardwareharness_backend.contracts.agents import CAPABILITIES
 
-from .test_application import HARDWARE, invocation, manual_fixture, occupancy_fixture
+from .test_application import HARDWARE, invocation, manual_fixture
 
 Json = dict[str, Any]
-
-
-@pytest.mark.parametrize("operation", ["get", "acquire", "reject", "reconcile"])
-async def test_expired_occupancy_never_confirms(
-    operation: str, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    application, held, acquired, _ = occupancy_fixture()
-    now = 1000000
-    monkeypatch.setattr(control, "now_ms", lambda: now)
-    notifications: list[str] = []
-    application.set_notifier(lambda request: notifications.append(request["status"]))
-    request = application.request(AGENT, {"hardwareIds": ["H2"], "timeoutMs": 1000})
-    request_id = request["occupancyRequestId"]
-    now += 1000
-    if operation == "get":
-        assert application.get_request(HUMAN, request_id)["status"] == "timed_out"
-    elif operation == "acquire":
-        with pytest.raises(Exception, match="timed_out, not pending"):
-            await application.acquire_request(HUMAN, request_id)
-    elif operation == "reject":
-        with pytest.raises(Exception, match="timed_out, not pending"):
-            application.reject_request(HUMAN, request_id)
-    else:
-        application.reconcile([{"hardwareId": "H2", "state": "occupied_by_self"}])
-    assert application.get_request(HUMAN, request_id)["status"] == "timed_out"
-    assert acquired == [] and held == {"H1"}
-    assert notifications == ["pending", "timed_out"]
-
-
-async def test_occupancy_request_lifecycle_and_facade(monkeypatch: pytest.MonkeyPatch) -> None:
-    application, held, _, released = occupancy_fixture()
-    monkeypatch.setattr(application.devices.occupancy, "list", Mock(return_value=[]))
-    monkeypatch.setattr(application.devices.occupancy, "refresh_all", AsyncMock(return_value=[]))
-    assert application.list(HUMAN) == []
-    assert await application.refresh(HUMAN) == []
-    assert (await application.acquire(HUMAN, "H2"))["state"] == "occupied_by_self"
-    assert (await application.release(HUMAN, "H2"))["state"] == "unoccupied"
-    assert "H2" not in held and released == ["H2"]
-    request = application.request(
-        HUMAN, {"hardwareIds": ["H2", "H2"], "reason": "  reason  ", "requestedBy": "explicit"}
-    )
-    assert request["reason"] == "reason" and request["requestedBy"] == "explicit"
-    assert request["hardwareIds"] == ["H2"]
-    assert len(application.list_requests(HUMAN, {"status": "pending", "limit": 1})) == 1
-    cancelled = application.cancel_request(AGENT, request["occupancyRequestId"], "cancel")
-    assert cancelled["status"] == "cancelled"
-    assert application.cancel_request(AGENT, request["occupancyRequestId"]) == cancelled
-    rejected = application.request(AGENT, {"hardwareIds": ["H3"]})
-    assert (
-        application.reject_request(HUMAN, rejected["occupancyRequestId"], "no")["status"]
-        == "rejected"
-    )
-    confirmed = application.request(AGENT, {"hardwareIds": ["H1"]})
-    application.reconcile([{"hardwareId": "H1", "state": "occupied_by_self"}])
-    assert application.get_request(HUMAN, confirmed["occupancyRequestId"])["status"] == "confirmed"
-    with pytest.raises(Exception, match="Unknown managed hardware"):
-        application.request(AGENT, {"hardwareIds": ["missing"]})
-    with pytest.raises(Exception, match="Unknown occupancy request"):
-        application.get_request(HUMAN, "missing")
 
 
 async def test_manual_hardware_abort_is_scoped() -> None:
@@ -300,9 +240,9 @@ async def test_wiring_orchestration_and_dashboard_facades() -> None:
         get_task=Mock(return_value={"id": "W"}),
         list_tasks=Mock(return_value=[]),
     )
-    projects = Mock(update_wiring=Mock(return_value={"dirty": True}))
+    projects = Mock(update_wiring_with_layout=AsyncMock(return_value={"dirty": True}))
     app = WiringApplication(authorizer, projects, wiring)
-    assert app.update_document(HUMAN, {}) == {"dirty": True}
+    assert await app.update_document(HUMAN, {}) == {"dirty": True}
     assert await app.add_managed_hardware_to_canvas(AGENT, "H") == {"added": True}
     await app.request_task(
         HUMAN, {"portA": "A", "portB": "B", "action": "connect", "timeoutMs": 1000}
@@ -326,7 +266,6 @@ async def test_wiring_orchestration_and_dashboard_facades() -> None:
         "list_availability",
     ]:
         getattr(devices, name).return_value = [name]
-    devices.occupancy.list.return_value = ["occupancy"]
     dashboard = SystemApplication(
         authorizer, devices, Mock(gateway_status=lambda: {"running": True}), ExecutionCoordinator()
     ).dashboard(HUMAN)
@@ -338,7 +277,6 @@ async def test_wiring_orchestration_and_dashboard_facades() -> None:
         "hardware": ["list_hardware"],
         "tools": ["list_tools"],
         "availability": ["list_availability"],
-        "occupancy": ["occupancy"],
         "gateway": {"running": True},
         "execution": {"state": "idle"},
     }

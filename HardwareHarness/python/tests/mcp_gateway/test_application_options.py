@@ -24,10 +24,10 @@ async def test_agent_dependency_installation_requires_explicit_online(
         "data": {"status": "ready"},
     }
     app.applications.initialize_workspace.assert_awaited_once_with(context, {"online": online})
-    assert tool.tool["inputSchema"]["properties"]["online"] == {
-        "type": "boolean",
-        "default": False,
-    }
+    online_schema = tool.tool["inputSchema"]["properties"]["online"]
+    assert online_schema["type"] == "boolean"
+    assert online_schema["default"] is False
+    assert "index access" in online_schema["description"]
 
 
 @pytest.mark.parametrize("value", [{"online": "true"}, {"online": 1}, {"unknown": True}])

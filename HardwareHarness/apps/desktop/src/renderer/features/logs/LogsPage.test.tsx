@@ -19,7 +19,7 @@ const subscribe = vi.fn(() => () => undefined);
 const passedRun: RunRecord = {
   runId: "RUN1",
   name: "Persisted fixture Run",
-  entrypoint: "workflows/main.py", hardwareIds: [], sourcePath: "snapshot", eventCount: 2,
+  entrypoint: "scripts/main.py", hardwareIds: [], sourcePath: "snapshot", eventCount: 2,
   status: "succeeded",
   inputs: {},
   startedAt: "2026-08-18T05:51:08.000Z",

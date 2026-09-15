@@ -19,6 +19,7 @@ class ProjectService:
         self._path: str | None = None
         self._file: Record | None = None
         self._dirty = False
+        self._write_lock = asyncio.Lock()
 
     async def initialize(self) -> None:
         self._clear_current()
@@ -92,6 +93,10 @@ class ProjectService:
         return self._require_document()
 
     async def save(self) -> Record:
+        async with self._write_lock:
+            return await self._save()
+
+    async def _save(self) -> Record:
         path = self._require_document()["path"]
         next_value = parse_project_file({**self._require_file(), "updatedAt": utc_now_iso()})
         await atomic_json(path, next_value)
@@ -164,8 +169,51 @@ class ProjectService:
         self._dirty = True
         return self._require_document()
 
+    async def update_wiring_with_layout(self, wiring: Record) -> Record:
+        """Save changed geometry on existing disk nodes without committing structural edits."""
+        async with self._write_lock:
+            current = self._require_document()
+            next_wiring = parse_project_wiring(wiring)
+            previous = {node["hardwareId"]: node for node in current["file"]["wiring"]["nodes"]}
+            layout_keys = ("x", "y", "width", "height", "showImage", "portPositions")
+            changes = {
+                node["hardwareId"]: {
+                    key: node[key]
+                    for key in layout_keys
+                    if key in node and node.get(key) != previous[node["hardwareId"]].get(key)
+                }
+                for node in next_wiring["nodes"]
+                if node["hardwareId"] in previous
+            }
+            changes = {identifier: patch for identifier, patch in changes.items() if patch}
+            if not changes:
+                return self.update_wiring(next_wiring)
+            saved = parse_project_file(await read_json(current["path"]))
+            if saved["projectId"] != current["file"]["projectId"]:
+                raise app_error("conflict", "Project changed on disk; reopen it before editing.")
+            saved_nodes = [
+                {**node, **changes.get(node["hardwareId"], {})} for node in saved["wiring"]["nodes"]
+            ]
+            if saved_nodes != saved["wiring"]["nodes"]:
+                saved = parse_project_file(
+                    {
+                        **saved,
+                        "wiring": {**saved["wiring"], "nodes": saved_nodes},
+                        "updatedAt": utc_now_iso(),
+                    }
+                )
+                await atomic_json(current["path"], saved)
+            # A project switch during disk I/O must not update the newly opened project.
+            if self.current() != current:
+                raise app_error(
+                    "conflict", "Project changed while saving its layout; retry the edit."
+                )
+            self.update_wiring(next_wiring)
+            self._dirty = next_wiring != saved["wiring"]
+            return self._require_document()
+
     async def close(self) -> None:
-        """Only explicit save owns the disk."""
+        """Structural edits are written only by explicit save."""
 
     def _require_file(self) -> Record:
         if self._file is None:

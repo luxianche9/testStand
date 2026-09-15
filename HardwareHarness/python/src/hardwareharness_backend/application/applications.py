@@ -9,7 +9,6 @@ from hardwareharness_backend.contracts.errors import app_error
 from hardwareharness_backend.contracts.validation import boolean, obj, parse_record
 from hardwareharness_backend.devices import DeviceCatalogService, DeviceService
 from hardwareharness_backend.projects import ProjectService
-from hardwareharness_backend.workspace.apps import AppsService
 from hardwareharness_backend.workspace.environment import EnvironmentManager
 from hardwareharness_backend.workspace.files import WorkspaceService
 
@@ -32,7 +31,6 @@ class ApplicationsApplication:
         self.authorizer, self.projects, self.devices = authorizer, projects, devices
         self.catalog, self.execution, self.notifier = catalog, execution, notifier
         self.environment = EnvironmentManager(busy=self._busy)
-        self.apps: AppsService | None = None
         self._closed = False
         self.runner = self._new_runner()
 
@@ -56,7 +54,7 @@ class ApplicationsApplication:
         return root
 
     def _busy(self) -> bool:
-        return bool(self.runner.active or (self.apps and self.apps.busy))
+        return bool(self.runner.active)
 
     async def _python(self) -> str:
         return await self.environment.python(self._root())
@@ -75,13 +73,12 @@ class ApplicationsApplication:
             for server in self.devices.list_servers()
         ):
             raise app_error("unavailable", f"Hardware server is unavailable: {hardware_id}")
-        self.devices.occupancy.require_lease(hardware_id)
         return hardware
 
     async def _acquire(self, hardware_ids: list[str], run: Json) -> Callable[[], None]:
         for hardware_id in hardware_ids:
             self._hardware(hardware_id)
-        lease = self.execution.acquire(
+        handle = self.execution.acquire(
             {
                 "state": "run",
                 "runId": run["runId"],
@@ -89,7 +86,7 @@ class ApplicationsApplication:
                 "startedAt": run["startedAt"],
             }
         )
-        return lease.release
+        return handle.release
 
     async def _invoke(
         self, hardware_id: str, tool_name: str, arguments: Json, timeout_ms: int
@@ -126,11 +123,6 @@ class ApplicationsApplication:
     def _workspace(self) -> WorkspaceService:
         return WorkspaceService(self._root())
 
-    def _apps(self) -> AppsService:
-        if self.apps is None:
-            self.apps = AppsService(self._root(), self.runner, self.environment)
-        return self.apps
-
     def _authorize(self, context: Json, action: str = "read") -> None:
         self.authorizer.authorize(context, f"applications.{action}")
         if self._closed:
@@ -138,7 +130,7 @@ class ApplicationsApplication:
 
     def _write_guard(self, path: str) -> None:
         if path.casefold() in {"pyproject.toml", "uv.lock"} and self._busy():
-            raise app_error("conflict", "Stop applications and runs before changing dependencies")
+            raise app_error("conflict", "Stop Python runs before changing dependencies")
 
     def list_files(self, context: Json) -> list[Json]:
         self._authorize(context)
@@ -190,27 +182,6 @@ class ApplicationsApplication:
             {} if options is None else options,
         )
         return await self.environment.prepare(self._root(), online=parsed["online"])
-
-    def list_apps(self, context: Json) -> list[Json]:
-        self._authorize(context)
-        return self._apps().list_apps()
-
-    def create_app(self, context: Json, id: str, name: str) -> Json:
-        self._authorize(context, "manage")
-        self.environment.scaffold(self._root())
-        return self._apps().create_app(id, name)
-
-    async def start_app(self, context: Json, id: str) -> Json:
-        self._authorize(context, "run")
-        return await self._apps().start(id)
-
-    async def stop_app(self, context: Json, id: str) -> Json:
-        self._authorize(context, "run")
-        return await self._apps().stop(id)
-
-    def app_logs(self, context: Json, id: str, after: int = 0) -> list[Json]:
-        self._authorize(context)
-        return self._apps().logs(id, after)
 
     async def start_run(self, context: Json, input: Json) -> Json:
         self._authorize(context, "run")
@@ -269,9 +240,6 @@ class ApplicationsApplication:
     async def close(self) -> None:
         self._closed = True
         await self.environment.cancel_pending()
-        if self.apps is not None:
-            await self.apps.close()
-            self.apps = None
         await self.runner.close()
 
     def resume(self) -> None:

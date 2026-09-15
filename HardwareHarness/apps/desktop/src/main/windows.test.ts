@@ -1,4 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const electron = vi.hoisted(() => ({
   created: [] as unknown[],
@@ -32,6 +35,8 @@ vi.mock("electron", () => ({
       minimize: vi.fn(),
       close: vi.fn(),
       isMaximized: vi.fn(() => false),
+      isMinimized: vi.fn(() => false),
+      getNormalBounds: vi.fn(() => ({ width: 1480, height: 920 })),
       maximize: vi.fn(),
       unmaximize: vi.fn(),
       setBackgroundColor: vi.fn()
@@ -44,7 +49,10 @@ vi.mock("electron", () => ({
 import { DesktopWindows } from "./windows.js";
 
 interface MockWindow {
-  options: { webPreferences: Record<string, unknown> };
+  options: { width: number; height: number; webPreferences: Record<string, unknown> };
+  windowHandlers: Map<string, (...args: unknown[]) => void>;
+  isMaximized: ReturnType<typeof vi.fn>;
+  maximize: ReturnType<typeof vi.fn>;
   webContents: {
     setWindowOpenHandler: ReturnType<typeof vi.fn>;
     session: {
@@ -97,5 +105,27 @@ describe("DesktopWindows security", () => {
 
     expect(electron.nativeTheme.themeSource).toBe("dark");
     expect(window.loadURL).toHaveBeenCalledWith("http://127.0.0.1:4173/");
+  });
+
+  it("restores normal window dimensions and maximization across instances", () => {
+    const root = mkdtempSync(join(tmpdir(), "hardwareharness-window-state-"));
+    try {
+      const options = { statePath: join(root, "window.json"), theme: "light" as const, connectionInfo: () => undefined };
+      const windows = new DesktopWindows();
+      windows.create(options);
+      const first = electron.created[0] as MockWindow;
+      first.windowHandlers.get("resize")?.();
+      windows.saveState();
+      new DesktopWindows().create(options);
+      const second = electron.created[1] as MockWindow;
+      expect(second.options).toMatchObject({ width: 1480, height: 920 });
+      second.isMaximized.mockReturnValue(true);
+      second.windowHandlers.get("maximize")?.();
+      new DesktopWindows().create(options);
+      const restored = electron.created[2] as MockWindow;
+      expect(restored.options).toMatchObject({ width: 1480, height: 920 });
+      restored.windowHandlers.get("ready-to-show")?.();
+      expect(restored.maximize).toHaveBeenCalledOnce();
+    } finally { rmSync(root, { recursive: true, force: true }); }
   });
 });

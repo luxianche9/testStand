@@ -4,21 +4,19 @@ import type { ProjectDocument, ProjectFolderSelection } from "@hardwareharness/c
 import type { ProjectView } from "@hardwareharness/contracts/storage";
 import { Spinner } from "../shared/ui/skeleton";
 import { ToastProvider, useToast } from "../shared/ui/toast";
-import { useDashboard, useDeviceCatalog, useOccupancyRequests, useProjectDocument, useWiringTasks } from "../shared/queries.js";
+import { useDashboard, useDeviceCatalog, useProjectDocument, useWiringTasks } from "../shared/queries.js";
 import { useTheme } from "../shared/theme.js";
 import { ErrorBoundary } from "../shared/ErrorBoundary.js";
 import { errorMessage } from "../shared/errors.js";
 import { queryKeys } from "../shared/query-keys.js";
-import { invalidateWiringData } from "../shared/mutations.js";
 import { useHardwareHarnessEvents } from "../shared/hooks/useHardwareHarnessEvents.js";
 import { useKeyboardShortcut } from "../shared/hooks/useKeyboardShortcut.js";
 import { useDirtyGuard } from "../shared/hooks/useDirtyGuard.js";
 import { appNavigationReducer, initialAppNavigation, isProjectView, type AppPage } from "./app-navigation.js";
 import { readAssistantOpen, writeAssistantOpen } from "./assistant-preference.js";
 import { TitleBar } from "./TitleBar.js";
-import { MailboxDropdown } from "./MailboxDropdown.js";
-import { OccupancyAlertModal } from "./OccupancyAlertModal.js";
-import { WiringAlertModal } from "./WiringAlertModal.js";
+import { WiringTaskInbox } from "./WiringTaskInbox.js";
+import { isTaskActionable } from "../features/wiring/wiring-model.js";
 import { DirtyDialog } from "./DirtyDialog.js";
 import { InitializeDialog } from "./InitializeDialog.js";
 import { useReducer } from "react";
@@ -53,7 +51,6 @@ function AppShell() {
   const setError = useCallback((message?: string) => { if (message) toast.error(message); }, [toast]);
 
   const wiringTasks = useWiringTasks();
-  const occupancyRequests = useOccupancyRequests();
   const catalog = useDeviceCatalog();
 
   useHardwareHarnessEvents(client);
@@ -64,7 +61,6 @@ function AppShell() {
     await Promise.all([
       client.invalidateQueries({ queryKey: queryKeys.recentProjects }),
       client.invalidateQueries({ queryKey: queryKeys.wiringTasks }),
-      client.invalidateQueries({ queryKey: queryKeys.occupancyRequests }),
       client.invalidateQueries({ queryKey: queryKeys.openCodeStatus })
     ]);
   }, [client]);
@@ -140,38 +136,10 @@ function AppShell() {
   const currentProject = project.data ?? null;
   const busy = save.isPending;
   const taskList = wiringTasks.data ?? [];
-  const occupancyRequestList = occupancyRequests.data ?? [];
   const hardwareList = catalog.data?.hardware ?? [];
-  const pendingTasks = currentProject ? taskList.filter((task) => task.status === "pending") : [];
-  const pendingOccupancyRequests = occupancyRequestList.filter((request) => request.status === "pending");
-
-  const occupancyDecision = useMutation({
-    mutationFn: ({ id, action }: { id: string; action: "acquire" | "reject" }) => action === "acquire"
-      ? window.hardwareharness.occupancy.acquireRequest(id)
-      : window.hardwareharness.occupancy.rejectRequest(id, "人工拒绝了硬件占用请求"),
-    onSuccess: () => {
-      void client.invalidateQueries({ queryKey: queryKeys.occupancyRequests });
-      void client.invalidateQueries({ queryKey: queryKeys.dashboard });
-    },
-    onError: (reason) => setError(errorMessage(reason))
-  });
+  const pendingTasks = currentProject ? taskList.filter(isTaskActionable) : [];
 
   const page = navigation.page;
-
-  const goToWiringTasks = async () => {
-    const nextTask = pendingTasks[0];
-    switchPage("wiring");
-    if (!nextTask) return;
-    setError(undefined);
-    try {
-      await window.hardwareharness.wiring.startTask(nextTask.wiringTaskId, "operator");
-    } catch (reason) {
-      const latest = await window.hardwareharness.wiring.getTask(nextTask.wiringTaskId).catch(() => undefined);
-      if (latest?.status !== "in_progress") setError(errorMessage(reason));
-    } finally {
-      await invalidateWiringData(client);
-    }
-  };
 
   return (
     <div className="flex h-full flex-col">
@@ -181,7 +149,7 @@ function AppShell() {
         project={currentProject}
         assistantOpen={assistantOpen}
         busy={busy}
-        pendingTaskCount={pendingTasks.length + pendingOccupancyRequests.length}
+        pendingTaskCount={pendingTasks.length}
         wiringLogOpen={wiringLogOpen}
         onToggleWiringLog={() => setWiringLogOpen((open) => !open)}
         onNavigate={switchPage}
@@ -206,26 +174,13 @@ function AppShell() {
         )}
       </div>
 
-      {wiringLogOpen && (
-        <MailboxDropdown
+      <WiringTaskInbox
+          key={currentProject?.rootPath ?? "no-project"}
           tasks={currentProject ? taskList : []}
-          occupancyRequests={occupancyRequestList}
           hardware={hardwareList}
-          busyRequestId={occupancyDecision.isPending ? occupancyDecision.variables?.id : undefined}
-          onOccupancyAction={(id, action) => occupancyDecision.mutate({ id, action })}
-          onClose={() => setWiringLogOpen(false)}
+          mailboxOpen={wiringLogOpen}
+          onCloseMailbox={() => setWiringLogOpen(false)}
         />
-      )}
-      {!wiringLogOpen && pendingOccupancyRequests.length > 0 && (
-        <OccupancyAlertModal
-          requests={pendingOccupancyRequests}
-          busyRequestId={occupancyDecision.isPending ? occupancyDecision.variables?.id : undefined}
-          onAction={(id, action) => occupancyDecision.mutate({ id, action })}
-        />
-      )}
-      {!wiringLogOpen && pendingOccupancyRequests.length === 0 && page !== "wiring" && pendingTasks.length > 0 && (
-        <WiringAlertModal tasks={pendingTasks} hardware={hardwareList} onGoWiring={() => void goToWiringTasks()} />
-      )}
 
       <DirtyDialog
         pending={dirtyGuard.pending}

@@ -15,6 +15,9 @@ dependencies = [
 [project.scripts]
 hardwareharness-remote = "hardwareharness_remote.server:main"
 
+[project.optional-dependencies]
+test = ["pytest>=8", "pytest-asyncio>=0.23", "jsonschema>=4.20"]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 

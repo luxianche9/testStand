@@ -144,7 +144,9 @@ export function EditPinsModal({ connection, hardware, onClose, onSave }: {
     setPins(connection ? connection.pins.map((pin) => ({ ...pin })) : []);
   }, [connection]);
 
+  const samePort = Boolean(connection && connection.portA === connection.portB);
   const invalid = pins.some((pin) => !pin.a || !pin.b);
+  const invalidSamePort = samePort && (!pins.length || pins.some((pin) => pin.a === pin.b));
 
   return (
     <Dialog open={Boolean(connection)} onOpenChange={(open) => { if (!open) onClose(); }}>
@@ -154,10 +156,11 @@ export function EditPinsModal({ connection, hardware, onClose, onSave }: {
           <ConnectionHead a={a} b={b} refA={connection?.portA} refB={connection?.portB} />
           <PinPairEditor a={a} b={b} pins={pins} onChange={setPins} />
           {invalid && <FormAlert>每一对针脚的两端都要选定。</FormAlert>}
+          {invalidSamePort && <FormAlert>同一端口接线需要至少一对不同的针脚。</FormAlert>}
         </DialogBody>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>取消</Button>
-          <Button disabled={!connection || invalid} onClick={() => onSave(connection!.connectionId, pins)}>保存针脚</Button>
+          <Button disabled={!connection || invalid || invalidSamePort} onClick={() => onSave(connection!.connectionId, pins)}>保存针脚</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -182,8 +185,10 @@ export function ListCreateConnectionModal({ open, hardware, existing, onClose, o
   }, [open]);
 
   const ready = Boolean(a?.port && b?.port);
+  const samePort = ready && portA === portB;
   const duplicate = ready && existing.some((item) => sortedPair(item.portA, item.portB) === sortedPair(portA, portB));
   const invalid = pins.some((pin) => !pin.a || !pin.b);
+  const invalidSamePort = samePort && (!pins.length || pins.some((pin) => pin.a === pin.b));
 
   const pick = (side: "a" | "b") => (event: ChangeEvent<HTMLSelectElement>) => {
     const value = event.target.value;
@@ -192,7 +197,7 @@ export function ListCreateConnectionModal({ open, hardware, existing, onClose, o
     if (side === "a") setPortA(value); else setPortB(value);
     const ra = nextA ? resolvePortRef(nextA, hardware) : undefined;
     const rb = nextB ? resolvePortRef(nextB, hardware) : undefined;
-    setPins(straightThrough(ra?.port, rb?.port));
+    setPins(nextA && nextA === nextB ? [{ a: "", b: "" }] : straightThrough(ra?.port, rb?.port));
   };
 
   return (
@@ -201,18 +206,20 @@ export function ListCreateConnectionModal({ open, hardware, existing, onClose, o
         <DialogHeader title="新建接线" onClose={onClose} />
         <DialogBody>
           <div className="grid grid-cols-[minmax(0,1fr)_28px_minmax(0,1fr)] items-end gap-2.5 pb-2.5">
-            <PortPicker label="起点端口" value={portA} hardware={hardware} exclude={portB} onChange={pick("a")} />
+            <PortPicker label="起点端口" value={portA} hardware={hardware} onChange={pick("a")} />
             <i className="grid place-items-center self-center not-italic text-ring">↔</i>
-            <PortPicker label="终点端口" value={portB} hardware={hardware} exclude={portA} onChange={pick("b")} />
+            <PortPicker label="终点端口" value={portB} hardware={hardware} onChange={pick("b")} />
           </div>
           {ready && <PinPairEditor a={a} b={b} pins={pins} onChange={setPins} />}
+          {samePort && <p className="text-xs text-muted-foreground">同一端口接线仅在列表中显示。</p>}
+          {invalidSamePort && <FormAlert>同一端口接线需要至少一对不同的针脚。</FormAlert>}
           <p className="mt-3 text-xs leading-relaxed text-muted-foreground">这里记录的是「线已经接好了」。要让操作员去接线，请通过 MCP 创建接线待办。</p>
           {duplicate && <FormAlert>这两个端口已经连接。</FormAlert>}
           {invalid && <FormAlert>每一对针脚的两端都要选定。</FormAlert>}
         </DialogBody>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>取消</Button>
-          <Button disabled={!ready || duplicate || invalid} onClick={() => onCreate(portA, portB, pins)}>创建接线</Button>
+          <Button disabled={!ready || duplicate || invalid || invalidSamePort} onClick={() => onCreate(portA, portB, pins)}>创建接线</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -220,8 +227,8 @@ export function ListCreateConnectionModal({ open, hardware, existing, onClose, o
 }
 
 /** All ports of every registered device, grouped by device, as options for one end of a cable. */
-function PortPicker({ label, value, hardware, exclude, onChange }: {
-  label: string; value: string; hardware: Hardware[]; exclude: string;
+function PortPicker({ label, value, hardware, onChange }: {
+  label: string; value: string; hardware: Hardware[];
   onChange: (event: ChangeEvent<HTMLSelectElement>) => void;
 }) {
   return (
@@ -233,7 +240,7 @@ function PortPicker({ label, value, hardware, exclude, onChange }: {
           <optgroup key={item.hardwareId} label={item.label}>
             {item.ports.map((port) => {
               const ref = `${item.hardwareId}.${port.portId}`;
-              return <option key={port.portId} value={ref} disabled={ref === exclude}>{port.name}（{port.pins.length} 针）</option>;
+              return <option key={port.portId} value={ref}>{port.name}（{port.pins.length} 针）</option>;
             })}
           </optgroup>
         ))}

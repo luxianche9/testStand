@@ -106,6 +106,15 @@ def main() -> None:
         raise SystemExit("Approved specification retirement manifest changed")
     retirements = json.loads((root / "reports/retired-specifications.json").read_text("utf-8"))
     retired = {item["typescript"]: item["reason"] for item in retirements["cases"]}
+    removal_path = root.parent / "reports/lease-removal/changes.json"
+    if hashlib.sha256(removal_path.read_bytes()).hexdigest() != (
+        "3ac9226f7b9008bedf8e96ddc13c3ff66a4e48256ab8557a45ce252a536188bc"
+    ):
+        raise SystemExit("Hardware lease removal manifest changed")
+    removal = json.loads(removal_path.read_text("utf-8"))
+    retired.update(
+        {item["typescript"]: item["reason"] for item in removal["retiredSpecifications"]}
+    )
     if any(not value for value in retired.values()):
         raise SystemExit("Retired specifications require explicit reasons")
     seen_retired: set[str] = set()
@@ -178,7 +187,7 @@ def main() -> None:
         raise SystemExit("Retirement manifest contains unknown original specifications")
     print(
         f"{len(output) - len(retired)} retained specifications pass; "
-        f"{len(retired)} approved node/legacy specifications retired; fixed evidence verified"
+        f"{len(retired)} removed-feature specifications retired; fixed evidence verified"
     )
 
 
