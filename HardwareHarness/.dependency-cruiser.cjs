@@ -40,7 +40,7 @@ module.exports = {
       from: { path: "^apps/desktop/src/" },
       to: { path: "^packages/(?:application|devices|projects|wiring|orchestration|storage|mcp-gateway)/src/" }
     },
-    ...["agent", "devices", "projects", "wiring", "applications"].map((feature) => ({
+    ...["agent", "devices", "projects", "wiring", "manual", "settings"].map((feature) => ({
       name: `renderer-${feature}-feature-isolated`,
       severity: "error",
       from: { path: `^apps/desktop/src/renderer/features/${feature}/` },

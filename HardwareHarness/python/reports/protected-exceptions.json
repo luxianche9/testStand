@@ -1,7 +1,0 @@
-{
-  "apps/desktop/src/renderer/features/logs/LogsPage.tsx": {
-    "before": "756c598e69f50720866c531bfc988c942e492924b7315200e6568228c415ad39",
-    "after": "2dd9787068102245b3dc23579cbd5933ba3edf6e7505e3f659f17ff89591f88d",
-    "reason": "User explicitly authorized only the pre-existing hooks lint fix on 2026-09-10; move the empty array default inside useMemo. No styling or UI behavior changes."
-  }
-}

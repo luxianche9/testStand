@@ -74,7 +74,7 @@ export function WelcomePage({ onOpened }: { onOpened: (rootPath: string) => Prom
         <div className="mb-8 flex items-start justify-between gap-6">
           <div>
             <h1 className="m-0 text-[22px] font-bold tracking-tight">欢迎使用 HardwareHarness</h1>
-            <p className="mt-1.5 mb-0 text-sm text-muted-foreground">硬件测试编排平台 — 选择一个项目开始工作</p>
+            <p className="mt-1.5 mb-0 text-sm text-muted-foreground">硬件设备与接线工作台 — 选择一个项目开始工作</p>
           </div>
           <Button variant="default" className="mt-0.5 shrink-0" disabled={busy} onClick={() => choose.mutate()}>
             <FolderOpenIcon size={15} />

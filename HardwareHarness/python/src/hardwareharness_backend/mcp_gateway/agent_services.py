@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import base64
 import hashlib
 import json
 import time
@@ -70,7 +69,6 @@ def _tool(
     }
 
 
-_RUN_ID = _field("string", "Run ID returned by start_python_run or list_python_runs.", minLength=1)
 _OFFSET = _field(
     "integer", "Zero-based result row offset; continue using nextOffset.", minimum=0, default=0
 )
@@ -106,14 +104,13 @@ _READ_REFERENCE_INPUT = _object(
 AGENT_TOOL_DEFINITIONS = [
     _tool(
         "get_agent_context",
-        "Read installed HH/SDK versions, current project/environment, script policy, effective "
+        "Read installed HH version, current project, effective "
         "capabilities and reference index. Works with no open project; does not initialize it.",
         "system.read",
         _object({}),
         _object(
             {
                 "appVersion": _field("string", "Installed backend release version."),
-                "sdkVersion": _field("string", "SDK version bundled with this release."),
                 "contractRevision": _field("string", "Version of the public release contract."),
                 "catalogRevision": _field(
                     "string", "Digest of the actor's current public tool catalog."
@@ -123,10 +120,6 @@ AGENT_TOOL_DEFINITIONS = [
                     "type": ["object", "null"],
                     "description": "Current user project or null.",
                 },
-                "environment": _field(
-                    "object", "Project Python status; no preparation is triggered."
-                ),
-                "workspacePolicy": _field("object", "Supported file paths, formats and SDK APIs."),
                 "capabilities": _field(
                     "array",
                     "Capabilities authorized for this actor.",
@@ -138,12 +131,9 @@ AGENT_TOOL_DEFINITIONS = [
             },
             [
                 "appVersion",
-                "sdkVersion",
                 "contractRevision",
                 "observedAt",
                 "project",
-                "environment",
-                "workspacePolicy",
                 "capabilities",
                 "references",
             ],
@@ -153,7 +143,7 @@ AGENT_TOOL_DEFINITIONS = [
         "read_reference",
         "List, read or search bundled/user references without installation source access. "
         "Omit referenceId/query for index. Pagination returns original line/column and nextOffset.",
-        "applications.read",
+        "references.read",
         _READ_REFERENCE_INPUT,
         _object(
             {
@@ -185,7 +175,7 @@ AGENT_TOOL_DEFINITIONS = [
         "register_reference",
         "Copy a project UTF-8 .md/.txt/.json/.csv reference (max 4 MiB) into managed reference "
         "storage. IDs are unique; updating requires the existing sha256 as expectedHash.",
-        "applications.manage",
+        "references.manage",
         _object(
             {
                 "referenceId": _field(
@@ -216,34 +206,6 @@ AGENT_TOOL_DEFINITIONS = [
         mutates=True,
     ),
     _tool(
-        "create_workspace_file",
-        "Exclusively create a UTF-8 Python script under scripts/ (relative to .hardwareharness; "
-        "max 4 MiB). Creates parents. Existing files fail with conflict; update with expectedHash.",
-        "applications.manage",
-        _object(
-            {
-                "path": _field(
-                    "string",
-                    "Relative scripts/*.py path; forward slashes; no traversal.",
-                    minLength=1,
-                ),
-                "content": _field(
-                    "string", "Exact UTF-8 Python source. Define main(inputs) to run."
-                ),
-            },
-            ["path", "content"],
-        ),
-        _object(
-            {
-                "path": _field("string", "Created workspace-relative Python path."),
-                "content": _field("string", "Saved source text."),
-                "hash": _field("string", "SHA-256 for the next optimistic update."),
-            },
-            ["path", "content", "hash"],
-        ),
-        mutates=True,
-    ),
-    _tool(
         "get_execution_availability",
         "Combine cached device availability and current execution holders for selected hardware. "
         "Returns busy reasons and observation times; no reservation or new device check.",
@@ -266,7 +228,7 @@ AGENT_TOOL_DEFINITIONS = [
                     "Effective availability records and their source observation.",
                     items=_ANY_OBJECT,
                 ),
-                "execution": _field("object", "Current execution holder state; idle/run/manual."),
+                "execution": _field("object", "Current execution holder state; idle/manual."),
                 "isReservation": _field(
                     "boolean", "Always false; calls revalidate at execution.", const=False
                 ),
@@ -275,137 +237,14 @@ AGENT_TOOL_DEFINITIONS = [
         ),
     ),
     _tool(
-        "get_python_run_summary",
-        "Read compact Run status, business result, source/artifact references and a bounded event "
-        "page. Process succeeded does not imply passed. Continue with nextAfter to poll.",
-        "applications.read",
-        _object(
-            {
-                "runId": _RUN_ID,
-                "after": _field(
-                    "integer", "Only events after this sequence; initial 0.", minimum=0, default=0
-                ),
-                "limit": _field(
-                    "integer", "Maximum event rows (1–200).", minimum=1, maximum=200, default=50
-                ),
-            },
-            ["runId"],
-        ),
-        _object(
-            {
-                "run": _field(
-                    "object", "Saved Run status/result; large fields use artifact references."
-                ),
-                "events": _field(
-                    "array",
-                    "Bounded event summaries with stable sequence numbers.",
-                    items=_ANY_OBJECT,
-                ),
-                "artifacts": _field(
-                    "array",
-                    "Artifact references across this Run's saved events.",
-                    items=_ANY_OBJECT,
-                ),
-                "sources": _field(
-                    "array", "Immutable source snapshot paths and hashes.", items=_ANY_OBJECT
-                ),
-                "nextAfter": _field("integer", "Last event sequence delivered, for continuation."),
-                "hasMore": _field("boolean", "More event rows were present at read time."),
-            },
-            ["run", "events", "artifacts", "sources", "nextAfter", "hasMore"],
-        ),
-    ),
-    _tool(
-        "read_python_run_source",
-        "Read a bounded text page from an immutable Run source snapshot, restricted to paths in "
-        "that Run's sources/sourceHashes. offset/limit count Unicode characters, not bytes.",
-        "applications.read",
-        _object(
-            {
-                "runId": _RUN_ID,
-                "path": _field(
-                    "string", "Exact source path from Run sources or sourceHashes.", minLength=1
-                ),
-                "offset": _field("integer", "Zero-based character offset.", minimum=0, default=0),
-                "limit": _field(
-                    "integer",
-                    "Maximum characters (1–16000).",
-                    minimum=1,
-                    maximum=16000,
-                    default=8000,
-                ),
-            },
-            ["runId", "path"],
-        ),
-        _object(
-            {
-                **_PAGE_PROPERTIES,
-                "path": _field("string", "Source snapshot path."),
-                "content": _field("string", "Source page; never live workspace code."),
-                "hash": _field("string", "Full source SHA-256."),
-            },
-            ["path", "content", "hash", "offset", "total", "nextOffset", "hasMore"],
-        ),
-    ),
-    _tool(
-        "read_python_run_artifact",
-        "Read base64 byte pages from a Run artifact reference; preserves raw media "
-        "and JSON evidence. Special IDs run-result and event:<sequence> expose saved JSON records.",
-        "applications.read",
-        _object(
-            {
-                "runId": _RUN_ID,
-                "artifactId": _field(
-                    "string",
-                    "Opaque path from Run artifacts, run-result, or event:<sequence>.",
-                    minLength=1,
-                ),
-                "offset": _field("integer", "Zero-based byte offset.", minimum=0, default=0),
-                "limit": _field(
-                    "integer", "Maximum bytes (1–65536).", minimum=1, maximum=65536, default=32768
-                ),
-            },
-            ["runId", "artifactId"],
-        ),
-        _object(
-            {
-                **_PAGE_PROPERTIES,
-                "artifactId": _field("string", "Original reference ID for the next page."),
-                "name": _field("string", "Artifact filename."),
-                "mediaType": _field("string", "MIME type; no content is executed."),
-                "sha256": _field("string", "SHA-256 of the complete artifact bytes."),
-                "encoding": _field("string", "Content encoding.", const="base64"),
-                "contentBase64": _field(
-                    "string", "Base64 of this byte page; decode before concatenation."
-                ),
-            },
-            [
-                "artifactId",
-                "name",
-                "mediaType",
-                "sha256",
-                "encoding",
-                "contentBase64",
-                "offset",
-                "total",
-                "nextOffset",
-                "hasMore",
-            ],
-        ),
-    ),
-    _tool(
         "wait_for_status",
-        "Observe an existing Run, wiring task or service for at most 30 seconds, returning on "
+        "Observe an existing wiring task or service for at most 30 seconds, returning on "
         "change/terminal state. Reuse revision to wait again. Timeout never replays an action.",
         "system.read",
         _object(
             {
-                "kind": _field(
-                    "string", "Existing object type.", enum=["run", "wiring", "service"]
-                ),
-                "id": _field(
-                    "string", "runId, wiringTaskId or serverId matching kind.", minLength=1
-                ),
+                "kind": _field("string", "Existing object type.", enum=["wiring", "service"]),
+                "id": _field("string", "wiringTaskId or serverId matching kind.", minLength=1),
                 "revision": _field(
                     "string", "Opaque revision from the preceding wait; omit for first wait."
                 ),
@@ -427,12 +266,12 @@ AGENT_TOOL_DEFINITIONS = [
                 "changed": _field(
                     "boolean", "State changed relative to supplied/initial revision."
                 ),
-                "terminal": _field("boolean", "Run/wiring terminal or service observation stable."),
+                "terminal": _field("boolean", "Wiring terminal or service observation stable."),
                 "timedOut": _field(
                     "boolean", "Wait expired without change/terminal; action status is separate."
                 ),
                 "observedAt": _field("string", "UTC observation time."),
-                "status": _field("object", "Current Run/wiring/service status."),
+                "status": _field("object", "Current Wiring/service status."),
             },
             ["kind", "id", "revision", "changed", "terminal", "timedOut", "observedAt", "status"],
         ),
@@ -460,37 +299,10 @@ AGENT_ARGUMENT_SCHEMAS: dict[str, Schema] = {
         },
         strict=True,
     ),
-    "create_workspace_file": obj({"path": string(1), "content": string()}, strict=True),
     "get_execution_availability": obj({"hardwareIds": array(string(1)).default([])}, strict=True),
-    "get_python_run_summary": obj(
-        {
-            "runId": string(1),
-            "after": number(0, integer=True).default(0),
-            "limit": number(1, 200, integer=True).default(50),
-        },
-        strict=True,
-    ),
-    "read_python_run_source": obj(
-        {
-            "runId": string(1),
-            "path": string(1),
-            "offset": number(0, integer=True).default(0),
-            "limit": number(1, 16000, integer=True).default(8000),
-        },
-        strict=True,
-    ),
-    "read_python_run_artifact": obj(
-        {
-            "runId": string(1),
-            "artifactId": string(1),
-            "offset": number(0, integer=True).default(0),
-            "limit": number(1, 65536, integer=True).default(32768),
-        },
-        strict=True,
-    ),
     "wait_for_status": obj(
         {
-            "kind": enum("run", "wiring", "service"),
+            "kind": enum("wiring", "service"),
             "id": string(1),
             "revision": string().optional(),
             "timeoutMs": number(0, 30000, integer=True).default(10000),
@@ -507,64 +319,6 @@ def _root(app: Any, context: Json) -> str | None:
 
 def _encoded(value: Any) -> bytes:
     return json.dumps(value, ensure_ascii=False, allow_nan=False, separators=(",", ":")).encode()
-
-
-def _compact(value: Any, artifact_id: str, budget: int = 4000) -> Any:
-    data = _encoded(value)
-    if len(data) <= budget:
-        return value
-    return {
-        "truncated": True,
-        "size": len(data),
-        "sha256": hashlib.sha256(data).hexdigest(),
-        "artifactId": artifact_id,
-    }
-
-
-def _artifact_refs(value: Any) -> list[Json]:
-    if isinstance(value, dict):
-        if all(key in value for key in ("path", "sha256", "size")):
-            return [{**value, "artifactId": value["path"]}]
-        return [ref for item in value.values() for ref in _artifact_refs(item)]
-    if isinstance(value, list):
-        return [ref for item in value for ref in _artifact_refs(item)]
-    return []
-
-
-async def _summary(app: Any, context: Json, value: Json) -> Json:
-    detail = await app.applications.get_run(context, value["runId"])
-    record = detail["run"]
-    events = await app.applications.run_events(
-        context, value["runId"], value["after"], value["limit"]
-    )
-    next_after = events[-1]["sequence"] if events else value["after"]
-    compact = {
-        key: _compact(item, "run-result") if key == "result" else item
-        for key, item in record.items()
-        if key != "sourceHashes"
-    }
-    # Attachments can appear late in a Run, beyond the event preview's first page.
-    artifacts: dict[str, Json] = {}
-    artifact_after = 0
-    while batch := await app.applications.run_events(context, value["runId"], artifact_after, 1000):
-        artifacts.update({item["artifactId"]: item for item in _artifact_refs(batch)})
-        artifact_after = batch[-1]["sequence"]
-        if artifact_after >= record.get("eventCount", 0):
-            break
-    return {
-        "run": compact,
-        "events": [
-            {**event, "data": _compact(event.get("data"), f"event:{event['sequence']}", 1000)}
-            for event in events
-        ],
-        "artifacts": list(artifacts.values()),
-        "sources": [
-            {"path": path, "sha256": digest}
-            for path, digest in record.get("sourceHashes", {}).items()
-        ],
-        "nextAfter": next_after,
-        "hasMore": next_after < record.get("eventCount", 0),
-    }
 
 
 def _revision(value: Any) -> str:
@@ -587,15 +341,7 @@ async def _wait(app: Any, context: Json, value: Json) -> Json:
     deadline = time.monotonic() + value["timeoutMs"] / 1000
     baseline = value.get("revision")
     while True:
-        if kind == "run":
-            status = (await app.applications.get_run(context, identifier))["run"]
-            terminal = status["status"] not in {"running", "cancelling"}
-            status = {
-                key: _compact(item, "run-result") if key == "result" else item
-                for key, item in status.items()
-                if key != "sourceHashes"
-            }
-        elif kind == "wiring":
+        if kind == "wiring":
             status = app.wiring.get_task(context, identifier)
             terminal = status["status"] not in {"pending", "in_progress"}
         else:
@@ -646,19 +392,6 @@ async def invoke_agent_tool(app: Any, context: Json, name: str, value: Json) -> 
             }
             if document
             else None,
-            "environment": app.applications.environment.info(root)
-            if root
-            else {"status": "no_project"},
-            "workspacePolicy": {
-                "programKind": "python-script",
-                "pathPrefix": "scripts/",
-                "fileExtension": ".py",
-                "maxFileBytes": 4 * 1024 * 1024,
-                "entrypoint": "main(inputs)",
-                "createExclusive": True,
-                "updatesRequireExpectedHash": True,
-                "sdkFunctions": ["call", "acall", "step", "log", "measurement", "attachment"],
-            },
             "capabilities": app.authorizer.allowed_capabilities(context),
             "references": ReferenceService(root).index(),
         }
@@ -668,9 +401,6 @@ async def invoke_agent_tool(app: Any, context: Json, name: str, value: Json) -> 
         if value.get("hardwareId"):
             app.devices.get_hardware(context, value["hardwareId"])
         return ReferenceService(_root(app, context)).register(value)
-    if name == "create_workspace_file":
-        app.applications.create_file(context, {**value, "kind": "file"})
-        return app.applications.read_file(context, value["path"])
     if name == "get_execution_availability":
         dashboard = app.system.dashboard(context)
         catalog = app.devices.list_hardware(context)
@@ -724,68 +454,6 @@ async def invoke_agent_tool(app: Any, context: Json, name: str, value: Json) -> 
             "hardware": hardware,
             "execution": dashboard["execution"],
             "isReservation": False,
-        }
-    if name == "get_python_run_summary":
-        return await _summary(app, context, value)
-    if name == "read_python_run_source":
-        record = (await app.applications.get_run(context, value["runId"]))["run"]
-        if value["path"] not in record.get("sourceHashes", {}):
-            raise app_error("not_found", "Source path is not in this Run's source snapshot")
-        source = await app.applications.read_run_source(context, value["runId"], value["path"])
-        if source["hash"] != record["sourceHashes"][value["path"]]:
-            raise app_error(
-                "conflict", "Saved source hash differs from the Run's original snapshot"
-            )
-        offset, limit, content = value["offset"], value["limit"], source["content"]
-        page = content[offset : offset + limit]
-        end = offset + len(page)
-        return {
-            **source,
-            "content": page,
-            "offset": offset,
-            "total": len(content),
-            "nextOffset": end if end < len(content) else None,
-            "hasMore": end < len(content),
-        }
-    if name == "read_python_run_artifact":
-        artifact_id = value["artifactId"]
-        if artifact_id == "run-result":
-            record = (await app.applications.get_run(context, value["runId"]))["run"]
-            data, filename, media = (
-                _encoded(record.get("result")),
-                "run-result.json",
-                "application/json",
-            )
-        elif artifact_id.startswith("event:"):
-            try:
-                sequence = int(artifact_id.removeprefix("event:"))
-            except ValueError as error:
-                raise app_error(
-                    "invalid_argument", "Event artifact must use event:<sequence>"
-                ) from error
-            rows = await app.applications.run_events(context, value["runId"], sequence - 1, 1)
-            if not rows or rows[0]["sequence"] != sequence:
-                raise app_error("not_found", "Event artifact does not exist")
-            data, filename, media = _encoded(rows[0]), f"event-{sequence}.json", "application/json"
-        else:
-            result = await app.applications.read_run_attachment(
-                context, value["runId"], artifact_id
-            )
-            data, filename, media = result["content"], result["name"], result["mediaType"]
-        offset, limit = value["offset"], value["limit"]
-        page = data[offset : offset + limit]
-        end = offset + len(page)
-        return {
-            "artifactId": artifact_id,
-            "name": filename,
-            "mediaType": media,
-            "sha256": hashlib.sha256(data).hexdigest(),
-            "encoding": "base64",
-            "contentBase64": base64.b64encode(page).decode(),
-            "offset": offset,
-            "total": len(data),
-            "nextOffset": end if end < len(data) else None,
-            "hasMore": end < len(data),
         }
     if name == "wait_for_status":
         return await _wait(app, context, value)

@@ -11,8 +11,6 @@ from types import SimpleNamespace
 from typing import Any
 
 from hardwareharness_backend.application import (
-    ApplicationsApplication,
-    DefaultAuthorizer,
     ExecutionCoordinator,
     HardwareHarnessApplication,
 )
@@ -93,27 +91,6 @@ APPLICATION_METHODS = {
             "listTasks",
         ]
     ),
-    "applications": {
-        "clearCompletedRuns",
-        "renameFile",
-        "search",
-        "deleteRun",
-        "startRun",
-        "createFile",
-        "initializeWorkspace",
-        "cancelRun",
-        "listFiles",
-        "writeFile",
-        "exportRun",
-        "getRun",
-        "deleteFile",
-        "listRuns",
-        "diagnostics",
-        "runEvents",
-        "readRunSource",
-        "readRunAttachment",
-        "readFile",
-    },
     "manual": {"invokeTool"},
 }
 
@@ -127,7 +104,6 @@ class Services:
     devices: DeviceService
     projects: ProjectService
     wiring: ProjectWiringService
-    applications: ApplicationsApplication
     application: HardwareHarnessApplication
     gateway: LocalMcpGateway
 
@@ -138,7 +114,6 @@ class HostRuntime:
         self.services: Services | None = None
         self.generation = 0
         self._shutdown: asyncio.Task[None] | None = None
-        self._background: set[asyncio.Task[Any]] = set()
 
     def require_services(self) -> Services:
         if self.services is None:
@@ -167,14 +142,6 @@ class HostRuntime:
         wiring = ProjectWiringService(projects, catalog)
         await wiring.initialize()
         execution = ExecutionCoordinator()
-        applications = ApplicationsApplication(
-            DefaultAuthorizer(),
-            projects,
-            devices,
-            catalog,
-            execution,
-            self.publish,
-        )
         gateway: LocalMcpGateway
         application = HardwareHarnessApplication(
             {
@@ -182,7 +149,6 @@ class HostRuntime:
                 "catalog": catalog,
                 "projects": projects,
                 "wiring": wiring,
-                "applications": applications,
                 "execution": execution,
                 "system": SimpleNamespace(gateway_status=lambda: gateway.status()),
             }
@@ -208,7 +174,6 @@ class HostRuntime:
             devices,
             projects,
             wiring,
-            applications,
             application,
             gateway,
         )

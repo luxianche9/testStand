@@ -59,10 +59,8 @@ export const CAPABILITIES = [
   "wiring.read",
   "wiring.request",
   "wiring.confirm",
-  "applications.read",
-  "applications.manage",
-  "applications.run",
-  "applications.logs.manage"
+  "references.read",
+  "references.manage",
 ] as const;
 
 export type Capability = typeof CAPABILITIES[number];

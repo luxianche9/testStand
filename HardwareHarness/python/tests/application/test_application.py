@@ -32,9 +32,8 @@ AGENT_ALLOWED = {
     "projects.manage",
     "wiring.read",
     "wiring.request",
-    "applications.read",
-    "applications.manage",
-    "applications.run",
+    "references.read",
+    "references.manage",
 }
 HARDWARE: Json = {
     "formatVersion": 2,
@@ -58,7 +57,7 @@ TOOL: Json = {
 }
 
 
-def make_app() -> tuple[HardwareHarnessApplication, Mock, Mock, Mock]:
+def make_app() -> tuple[HardwareHarnessApplication, Mock, Mock]:
     devices = Mock(
         save_computer=AsyncMock(),
         remove_server=AsyncMock(),
@@ -71,30 +70,16 @@ def make_app() -> tuple[HardwareHarnessApplication, Mock, Mock, Mock]:
     ]
     devices.list_servers.return_value = [{"serverId": "S1", "hardwareId": "H1", "enabled": True}]
     wiring = Mock(request_task=AsyncMock(), start_task=AsyncMock())
-    orchestration = Mock(
-        start_run=AsyncMock(), delete_run=AsyncMock(), respond_operator_decision=AsyncMock()
-    )
-    from hardwareharness_backend.application import (
-        ApplicationsApplication,
-        DefaultAuthorizer,
-        ExecutionCoordinator,
-    )
-
-    applications = ApplicationsApplication(
-        DefaultAuthorizer(), Mock(), devices, Mock(), ExecutionCoordinator()
-    )
-    applications.runner = orchestration
     app = HardwareHarnessApplication(
         {
             "devices": devices,
             "catalog": Mock(),
             "projects": Mock(),
             "wiring": wiring,
-            "applications": applications,
             "system": Mock(),
         }
     )
-    return app, devices, wiring, orchestration
+    return app, devices, wiring
 
 
 @pytest.mark.ts_case(
@@ -114,14 +99,12 @@ def test_capability_matrix() -> None:
     "tools and wiring requests"
 )
 async def test_agent_allowed() -> None:
-    app, devices, wiring, orchestration = make_app()
+    app, devices, wiring = make_app()
     await app.wiring.request_task(
         AGENT, {"portA": "A.J1", "portB": "B.J1", "action": "connect", "pins": []}
     )
-    await app.applications.start_run(AGENT, {})
     await app.devices.call_tool(AGENT, "S1.measure", {})
     assert wiring.request_task.call_args.args[0]["requestedBy"] == "agent"
-    orchestration.start_run.assert_called_once()
     devices.call_aggregated_tool.assert_called_once_with("S1.measure", {})
 
 
@@ -130,14 +113,13 @@ async def test_agent_allowed() -> None:
     "management, arbitrary SSH, force-stop and human confirmations"
 )
 async def test_agent_denied() -> None:
-    app, devices, wiring, orchestration = make_app()
+    app, devices, wiring = make_app()
     operations = [
         app.devices.save_computer(AGENT, {"id": "PC1"}),
         app.devices.remove_server(AGENT, "S1"),
         app.devices.execute_ssh(AGENT, "PC1", "whoami"),
         app.devices.server_action(AGENT, "S1", "force-stop"),
         app.wiring.start_task(AGENT, "WT"),
-        app.applications.delete_run(AGENT, "R"),
     ]
     for operation in operations:
         with pytest.raises(Exception) as caught:
@@ -153,7 +135,7 @@ async def test_agent_denied() -> None:
     "infrastructure and confirm operator work"
 )
 async def test_human_allowed() -> None:
-    app, devices, wiring, orchestration = make_app()
+    app, devices, wiring = make_app()
     await app.devices.save_computer(
         HUMAN,
         {
@@ -187,27 +169,23 @@ def test_disjoint_leases() -> None:
     )
     run = execution.acquire(
         {
-            "state": "run",
-            "runId": "RUN1",
-            "hardwareIds": ["HW1"],
+            "state": "manual",
+            "toolName": "write",
+            "hardwareId": "HW1",
             "startedAt": "2026-08-15T00:00:01.000Z",
         }
     )
     current = execution.current()
-    assert (
-        current["state"] == "run"
-        and current["runId"] == "RUN1"
-        and current["hardwareIds"] == ["HW1"]
-    )
+    assert current["state"] == "manual" and current["hardwareId"] == "HW2"
     assert [
         (item["state"], item.get("hardwareId"), item.get("hardwareIds"))
         for item in current["activities"]
-    ] == [("manual", "HW2", None), ("run", None, ["HW1"])]
+    ] == [("manual", "HW2", None), ("manual", "HW1", None)]
     run.release()
     manual.release()
     manual.release()
     assert execution.current() == {"state": "idle"}
-    assert states == ["manual", "run", "manual", "idle"]
+    assert states == ["manual", "manual", "manual", "idle"]
 
 
 @pytest.mark.ts_case(
@@ -226,9 +204,9 @@ def test_atomic_lease() -> None:
     with pytest.raises(Exception) as caught:
         execution.acquire(
             {
-                "state": "run",
-                "runId": "RUN1",
-                "hardwareIds": ["HW2", "HW1", "HW1"],
+                "state": "manual",
+                "toolName": "write",
+                "hardwareId": "HW2",
                 "startedAt": "2026-08-15T00:00:01.000Z",
             }
         )
@@ -255,9 +233,9 @@ def test_stale_release() -> None:
     execution = ExecutionCoordinator()
     old = execution.acquire(
         {
-            "state": "run",
-            "runId": "RUN1",
-            "hardwareIds": ["HW1"],
+            "state": "manual",
+            "toolName": "write",
+            "hardwareId": "HW1",
             "startedAt": "2026-08-15T00:00:00.000Z",
         }
     )
@@ -443,18 +421,18 @@ async def test_manual_shutdown() -> None:
     assert execution.current()["state"] == "manual"
     disjoint = execution.acquire(
         {
-            "state": "run",
-            "runId": "RUN2",
-            "hardwareIds": ["HW2"],
+            "state": "manual",
+            "toolName": "write",
+            "hardwareId": "HW2",
             "startedAt": "2026-01-01T00:00:00.000Z",
         }
     )
     with pytest.raises(Exception) as caught:
         execution.acquire(
             {
-                "state": "run",
-                "runId": "RUN1",
-                "hardwareIds": ["HW1"],
+                "state": "manual",
+                "toolName": "write",
+                "hardwareId": "HW1",
                 "startedAt": "2026-01-01T00:00:00.000Z",
             }
         )
@@ -471,13 +449,13 @@ async def test_manual_shutdown() -> None:
     "packages/application/src/execution-control.test.ts::rejects a valid manual "
     "call while a Run lease is active"
 )
-async def test_run_blocks_manual() -> None:
+async def test_concurrent_call_blocks_manual() -> None:
     manual, execution, call = manual_fixture()
     lease = execution.acquire(
         {
-            "state": "run",
-            "runId": "RUN1",
-            "hardwareIds": ["HW1"],
+            "state": "manual",
+            "toolName": "write",
+            "hardwareId": "HW1",
             "startedAt": "2026-01-01T00:00:00.000Z",
         }
     )

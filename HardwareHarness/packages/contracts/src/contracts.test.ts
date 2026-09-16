@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { agentKindInputSchema } from "./agents.js";
 import { appError, toWireError } from "./errors.js";
 import { assetIdInputSchema, computerIdInputSchema, deviceBundleIdInputSchema, hardwareIdInputSchema, hardwareSchema, managedHardwareSchema, mcpServerSchema, remoteComputerSchema, serverIdInputSchema } from "./devices.js";
-import { runIdInputSchema, runStartSchema } from "./applications.js";
 import { projectFileSchema, projectRootPathInputSchema } from "./projects.js";
 import { wiringTaskIdInputSchema } from "./wiring.js";
 
@@ -32,13 +31,8 @@ describe("public contracts", () => {
     expect(projectFileSchema.safeParse({ ...project, formatVersion: 3 }).success).toBe(false);
   });
 
-  it("validates Python launches without exposing runtime context", () => {
-    expect(runStartSchema.parse({ entrypoint: "scripts/main.py" })).toEqual({ entrypoint: "scripts/main.py", inputs: {}, hardwareIds: [] });
-    expect(runStartSchema.safeParse({ entrypoint: "scripts/main.py", context: {} }).success).toBe(false);
-  });
-
   it("uses strict named id inputs for IPC procedures", () => {
-    const schemas = [computerIdInputSchema, serverIdInputSchema, hardwareIdInputSchema, assetIdInputSchema, deviceBundleIdInputSchema, projectRootPathInputSchema, wiringTaskIdInputSchema, runIdInputSchema];
+    const schemas = [computerIdInputSchema, serverIdInputSchema, hardwareIdInputSchema, assetIdInputSchema, deviceBundleIdInputSchema, projectRootPathInputSchema, wiringTaskIdInputSchema];
     for (const schema of schemas) {
       expect(schema.parse({ id: "ID" })).toEqual({ id: "ID" });
       expect(schema.safeParse({ id: "ID", extra: true }).success).toBe(false);

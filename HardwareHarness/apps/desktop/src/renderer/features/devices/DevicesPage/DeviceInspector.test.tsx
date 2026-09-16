@@ -11,7 +11,7 @@ import { queryKeys } from "../../../shared/query-keys.js";
 import { DeviceInspector } from "./DeviceInspector.js";
 import { HardwareListTree } from "./HardwareListTree.js";
 import { RemoteComputerTree } from "./RemoteComputerTree.js";
-import { HardwareLibrary } from "../../wiring/WiringCanvas.js";
+import { HardwareLibrary } from "../../wiring/index.js";
 
 const snapshot: DashboardSnapshot = {
   computers: [{ id: "LOCAL_FIXTURE", label: "Local fixture", address: "127.0.0.1", ssh: { port: 22, username: "fixture", shell: "powershell" } }],

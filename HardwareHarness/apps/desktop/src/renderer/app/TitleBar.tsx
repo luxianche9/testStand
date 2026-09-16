@@ -3,13 +3,11 @@ import {
   BotIcon,
   CableIcon,
   ChevronDownIcon,
-  ClipboardClockIcon,
   FolderIcon,
   InboxIcon,
   Maximize2Icon,
   MinusIcon,
   Minimize2Icon,
-  Repeat2Icon,
   ServerIcon,
   SettingsIcon,
   XIcon
@@ -172,8 +170,6 @@ function TitleBarAction({ label, ariaLabel, icon, active, pressed, badge, onClic
 const PROJECT_VIEWS: { view: ProjectView; label: string; icon: ReactNode }[] = [
   { view: "manual", label: "设备管理", icon: <ServerIcon className="size-[15px]" /> },
   { view: "wiring", label: "工位接线", icon: <CableIcon className="size-[15px]" /> },
-  { view: "applications", label: "动作编排", icon: <Repeat2Icon className="size-[15px]" /> },
-  { view: "logs", label: "运行日志", icon: <ClipboardClockIcon className="size-[15px]" /> }
 ];
 
 function isProjectViewPage(page: AppPage): page is ProjectView {

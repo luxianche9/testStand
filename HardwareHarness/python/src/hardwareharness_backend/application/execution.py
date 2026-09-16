@@ -29,17 +29,11 @@ class _Holder:
 
 
 def _key(activity: Json) -> str:
-    return (
-        f"manual:{activity['hardwareId']}:{activity['startedAt']}"
-        if activity["state"] == "manual"
-        else f"run:{activity['runId']}"
-    )
+    return f"manual:{activity['hardwareId']}:{activity['startedAt']}"
 
 
 def _hardware_ids(activity: Json) -> list[str]:
-    return (
-        [activity["hardwareId"]] if activity["state"] == "manual" else list(activity["hardwareIds"])
-    )
+    return [activity["hardwareId"]]
 
 
 class ExecutionCoordinator:
@@ -61,9 +55,7 @@ class ExecutionCoordinator:
         )
         if not activities:
             return {"state": "idle"}
-        representative = clone(
-            next((activity for activity in activities if activity["state"] == "run"), activities[0])
-        )
+        representative = clone(activities[0])
         if len(activities) > 1:
             representative["activities"] = clone(activities)
         return representative
@@ -71,17 +63,8 @@ class ExecutionCoordinator:
     def set_notifier(self, notifier: Callable[[Json], None]) -> None:
         self.notifier = notifier
 
-    def is_hardware_busy(self, hardware_id: str) -> bool:
-        return any(
-            hardware_id in _hardware_ids(holder.activity) for holder in self.holders.values()
-        )
-
     def acquire(self, activity: Json) -> ExecutionHandle:
         normalized = clone(activity)
-        if normalized["state"] != "manual":
-            normalized["hardwareIds"] = sorted(
-                set(normalized["hardwareIds"]), key=cmp_to_key(utf16_compare)
-            )
         hardware_ids = _hardware_ids(normalized)
         conflicts = [
             (hardware_id, self.holders[self.hardware_holders[hardware_id][0]].activity)

@@ -77,13 +77,13 @@ test.describe.serial("HardwareHarness folder project desktop", () => {
     await expect(page.getByRole("heading", { name: "最近项目" })).toBeVisible();
     await page.getByText("project-a", { exact: true }).first().click();
     await expect(page.getByRole("tab", { name: "工位接线", exact: true })).toBeVisible();
-    await expect(page.getByRole("tab", { name: "动作编排", exact: true })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "动作编排", exact: true })).toHaveCount(0);
     await expect(page.getByRole("tab", { name: "设备管理", exact: true })).toBeVisible();
-    await expect(page.getByRole("tab", { name: "运行日志", exact: true })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "运行日志", exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "打开 AI 侧栏" })).toBeVisible();
   });
 
-  test("registers hardware and keeps wiring intact and exposes the Python workspace", async () => {
+  test("registers hardware and keeps wiring intact", async () => {
     const result = await page.evaluate(async () => {
       for (const hardwareId of ["DUT_A", "DUT_B"]) {
         await window.hardwareharness.devices.saveHardware({
@@ -121,11 +121,6 @@ test.describe.serial("HardwareHarness folder project desktop", () => {
     await expect(page.getByRole("button", { name: "信箱" })).toBeVisible();
     await page.screenshot({ path: resolve(artifactDir, "project-wiring.png") });
 
-    await page.getByRole("tab", { name: "动作编排", exact: true }).click();
-    await expect(page.getByRole("button", { name: "运行", exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "终端", exact: true })).toBeVisible();
-    await expect(page.getByRole("listbox", { name: "Python 脚本列表" })).toBeVisible();
-    await page.screenshot({ path: resolve(artifactDir, "project-applications.png") });
   });
 
   test("processes consecutive Agent wiring requests through clickable confirmations", async () => {
@@ -208,7 +203,9 @@ test.describe.serial("HardwareHarness folder project desktop", () => {
     await client.connect(transport);
     const names = (await client.listTools()).tools.map((tool) => tool.name);
     expect(names).toContain("request_wiring_task");
-    const task = await client.callTool({ name: "list_applications", arguments: {} });
+    expect(names).not.toContain("list_test_flows");
+    expect(names).not.toContain("start_python_run");
+    const task = await client.callTool({ name: "request_wiring_task", arguments: { portA: "A.J1", portB: "B.J1", action: "connect" } });
     expect(task.isError).toBeTruthy();
     await client.close();
     expect(rendererErrors).toEqual([]);

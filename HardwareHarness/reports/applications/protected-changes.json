@@ -1,9 +1,0 @@
-{
-  "changes": {
-    "python/src/hardwareharness_backend/devices/mcp_client.py": {
-      "before": "0dc4ada0e3c529996096b3d950815648969515118ae267254ee862873b248836",
-      "after": "1619b3414b5f2fdd24fdf6b4e9202462c4f14e75e00ae3244b59479de38e2bf3",
-      "reason": "SDK-only opt-in full MCP envelope; manual/Agent direct call default and errors unchanged"
-    }
-  }
-}

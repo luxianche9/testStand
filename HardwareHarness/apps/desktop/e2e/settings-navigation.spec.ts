@@ -27,17 +27,10 @@ test("settings returns to the page that opened it", async () => {
     await expect(page.getByText("硬件库", { exact: true })).toBeVisible();
     await openSettingsAndReturn(page, () => expect(page.getByText("硬件库", { exact: true })).toBeVisible());
 
-    await page.getByRole("tab", { name: "动作编排" }).click();
-    await expect(page.getByRole("listbox", { name: "Python 脚本列表" })).toBeVisible();
-    await openSettingsAndReturn(page, () => expect(page.getByRole("listbox", { name: "Python 脚本列表" })).toBeVisible());
-
     await page.getByRole("tab", { name: "设备管理" }).click();
     await expect(page.getByRole("heading", { name: "设备管理" })).toBeVisible();
     await openSettingsAndReturn(page, () => expect(page.getByRole("heading", { name: "设备管理" })).toBeVisible());
 
-    await page.getByRole("tab", { name: "运行日志" }).click();
-    await expect(page.getByRole("heading", { name: "运行日志" })).toBeVisible();
-    await openSettingsAndReturn(page, () => expect(page.getByRole("heading", { name: "运行日志" })).toBeVisible());
   } finally {
     await application.close().catch(() => undefined);
     await rm(userDataDir, { recursive: true, force: true });

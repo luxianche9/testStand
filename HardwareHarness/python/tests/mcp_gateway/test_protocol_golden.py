@@ -55,7 +55,7 @@ async def test_unmodified_ts_gateway_protocol_golden(case: dict[str, Any]) -> No
                 replacement = {
                     item.tool["name"]
                     for item in BUILTIN_TOOL_DEFINITIONS
-                    if item.capability.startswith("applications.")
+                    if item.capability.startswith("references.")
                 }
                 replacement.update(
                     {

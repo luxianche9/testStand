@@ -91,12 +91,10 @@ async def test_project_notifier_runs_after_session_initialization() -> None:
         save=AsyncMock(return_value={"dirty": False}),
     )
     wiring = Mock(initialize=AsyncMock(), close=AsyncMock())
-    orchestration = Mock(initialize=AsyncMock(), close=AsyncMock())
-    app = ProjectsApplication(DefaultAuthorizer(), projects, wiring, orchestration)
+    app = ProjectsApplication(DefaultAuthorizer(), projects, wiring)
     events: list[tuple[Any, bool]] = []
 
     def notify(value: Any, changed: bool) -> None:
-        orchestration.close.assert_awaited()
         wiring.initialize.assert_awaited()
         events.append((value, changed))
 

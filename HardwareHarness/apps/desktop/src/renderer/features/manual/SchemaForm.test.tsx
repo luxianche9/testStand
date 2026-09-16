@@ -7,6 +7,12 @@ import { SchemaArgumentsForm } from "./SchemaForm.js";
 afterEach(() => cleanup());
 
 describe("SchemaArgumentsForm JSON fallback", () => {
+  it("preserves declared hardwareId values for flow inputs", () => {
+    const onChange = vi.fn();
+    render(<SchemaArgumentsForm preserveHardwareId schema={{ type: "object" }} value={{}} onChange={onChange} />);
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: '{"hardwareId":"DUT_A","count":3}' } });
+    expect(onChange).toHaveBeenLastCalledWith({ hardwareId: "DUT_A", count: 3 });
+  });
   it("blocks stale values while the JSON editor is invalid", async () => {
     const onChange = vi.fn();
     const onValidityChange = vi.fn();

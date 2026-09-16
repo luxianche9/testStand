@@ -425,8 +425,6 @@ class McpHttpTransport:
                 "\n".join(messages) or "Remote MCP tool failed",
                 {"serverId": server_id, "toolName": name, "automaticRetry": False},
             )
-        if options.get("preserveEnvelope"):
-            return result
         if isinstance(structured, dict) and "data" in structured:
             return structured["data"]
         return result.get("structuredContent", result.get("content"))

@@ -11,7 +11,7 @@ import { QueryGate } from "../../shared/layout.js";
 import { errorMessage } from "../../shared/errors.js";
 import { queryKeys } from "../../shared/query-keys.js";
 import type { ThemeChoice } from "@hardwareharness/contracts/storage";
-import { AgentIntegrationPage } from "../agent/AgentIntegrationPage.js";
+import { AgentIntegrationPage } from "./AgentIntegrationPage.js";
 
 type SettingsSection = "appearance" | "model" | "agents";
 

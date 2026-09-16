@@ -23,10 +23,50 @@ from hardwareharness_backend.application import (
 )
 from hardwareharness_backend.compat.cancellation import AbortError
 from hardwareharness_backend.contracts.agents import CAPABILITIES
+from hardwareharness_backend.contracts.errors import AppError
 
-from .test_application import HARDWARE, invocation, manual_fixture
+from .test_application import HARDWARE, invocation, make_app, manual_fixture
 
 Json = dict[str, Any]
+
+
+async def test_shutdown_cancels_agent_hardware_call_and_rejects_new_work() -> None:
+    app, devices, _ = make_app()
+    started = asyncio.Event()
+
+    async def call(*args: Any) -> None:
+        started.set()
+        await asyncio.Event().wait()
+
+    devices.call_aggregated_tool.side_effect = call
+    pending = asyncio.create_task(app.devices.call_tool(AGENT, "S1.measure", {}))
+    await asyncio.wait_for(started.wait(), 1)
+    assert app.devices.execution.current()["hardwareId"] == "H1"
+    await app.devices.close_calls()
+    with pytest.raises(AppError) as cancelled:
+        await pending
+    assert cancelled.value.category == "cancelled"
+    assert cancelled.value.details == {
+        "outcomeKnown": False,
+        "automaticRetry": False,
+        "toolName": "S1.measure",
+    }
+    assert app.devices.execution.current() == {"state": "idle"}
+    assert not app.devices.active
+    with pytest.raises(AppError, match="shutting down"):
+        await app.devices.call_tool(AGENT, "S1.measure", {})
+    devices.call_aggregated_tool.assert_awaited_once()
+
+
+async def test_project_shutdown_rejects_future_switches() -> None:
+    projects = Mock(close=AsyncMock(), open_folder=AsyncMock())
+    wiring = Mock(close=AsyncMock())
+    app = ProjectsApplication(DefaultAuthorizer(), projects, wiring)
+    await app.close()
+    with pytest.raises(AppError, match="shutting down"):
+        await app.open_folder(HUMAN, "project")
+    projects.open_folder.assert_not_called()
+    wiring.close.assert_awaited_once()
 
 
 async def test_manual_hardware_abort_is_scoped() -> None:
@@ -191,18 +231,12 @@ async def test_project_switch_reinitializes_on_success_and_failure() -> None:
         clear_session=sync("wiring.clear"),
         initialize=asynchronous("wiring.initialize"),
     )
-    orchestration = Mock(
-        close=asynchronous("orchestration.close"),
-        clear_session=sync("orchestration.clear"),
-        initialize=asynchronous("orchestration.initialize"),
-    )
-    app = ProjectsApplication(DefaultAuthorizer(), projects, wiring, orchestration)
+    app = ProjectsApplication(DefaultAuthorizer(), projects, wiring)
     assert app.document(HUMAN) == {"dirty": False}
     assert await app.inspect_folder(HUMAN, "path") == {"status": "ready"}
     trace.clear()
     assert await app.initialize_folder(HUMAN, "path") == {"dirty": False}
     assert trace == [
-        "orchestration.close",
         "wiring.close",
         "wiring.clear",
         "initializeFolder",
@@ -218,14 +252,13 @@ async def test_project_switch_reinitializes_on_success_and_failure() -> None:
     with pytest.raises(ValueError, match="bad project"):
         await app.open_folder(HUMAN, "path")
     assert trace == [
-        "orchestration.close",
         "wiring.close",
         "wiring.clear",
         "wiring.initialize",
     ]
     trace.clear()
     await app.close()
-    assert trace == ["orchestration.close", "wiring.close", "project.close"]
+    assert trace == ["wiring.close", "project.close"]
 
 
 async def test_wiring_orchestration_and_dashboard_facades() -> None:

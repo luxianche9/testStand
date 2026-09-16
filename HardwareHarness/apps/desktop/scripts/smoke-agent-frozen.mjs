@@ -1,17 +1,16 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { createHash, randomUUID } from "node:crypto";
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { cp, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { basename, dirname, join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { createInterface } from "node:readline";
 import { verifyAgentInterface } from "./agent-release-smoke.mjs";
 
-const [backendInput, runtimeInput, reportInput, sdkWheelInput] = process.argv.slice(2);
-assert.ok(backendInput && runtimeInput && reportInput, "Usage: node smoke-agent-frozen.mjs <frozen-backend-directory> <project-runtime-directory> <report.json> [updated-sdk.whl]");
+const [backendInput, reportInput] = process.argv.slice(2);
+assert.ok(backendInput && reportInput, "Usage: node smoke-agent-frozen.mjs <frozen-backend-directory> <report.json>");
 const root = await mkdtemp(join(tmpdir(), "HH 发行接口 "));
 const backend = join(root, "resources", "backend");
-const runtime = join(root, "resources", "project-runtime");
 const project = join(root, "用户工程 中文");
 const token = randomUUID();
 let child;
@@ -19,17 +18,6 @@ let host;
 let report;
 try {
   await cp(resolve(backendInput), backend, { recursive: true });
-  await cp(resolve(runtimeInput), runtime, { recursive: true });
-  if (sdkWheelInput) {
-    const filename = basename(sdkWheelInput);
-    assert.match(filename, /^hardwareharness-[\w.]+-py3-none-any\.whl$/);
-    const bytes = await readFile(resolve(sdkWheelInput));
-    await writeFile(join(runtime, "wheels", filename), bytes);
-    const manifestPath = join(runtime, "manifest.json");
-    const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
-    manifest.files[`wheels/${filename}`] = createHash("sha256").update(bytes).digest("hex");
-    await writeFile(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
-  }
   await mkdir(project);
   const env = { ...process.env };
   for (const key of Object.keys(env)) {
@@ -38,7 +26,7 @@ try {
   Object.assign(env, {
     PATH: join(process.env.SYSTEMROOT ?? "C:\\Windows", "System32"),
     UV_OFFLINE: "1", UV_CACHE_DIR: join(root, "empty-cache"), UV_PYTHON_DOWNLOADS: "never",
-    HARDWAREHARNESS_PROJECT_RUNTIME: runtime, PYTHONUTF8: "1"
+    PYTHONUTF8: "1"
   });
   child = spawn(join(backend, "hardwareharness-backend.exe"), [], {
     cwd: root, env, windowsHide: true, stdio: ["pipe", "pipe", "pipe"]
@@ -49,11 +37,10 @@ try {
     userData: join(root, "profile"), gatewayPort: 0, locale: "zh-CN",
     integrationTestMode: true, gatewayTestToken: token
   });
-  console.log("Frozen smoke: backend initialized; preparing offline workspace");
+  console.log("Frozen smoke: backend initialized; opening isolated project");
   const human = { actor: "human", source: "desktop" };
   await host.call("application.projects.initializeFolder", { args: [human, project] });
-  await host.call("application.applications.initializeWorkspace", { args: [human, { online: false }] });
-  console.log("Frozen smoke: offline workspace ready; checking public MCP interface");
+  console.log("Frozen smoke: project ready; checking public MCP interface");
   report = await verifyAgentInterface(host.state().gateway.endpoint, token);
   await host.call("backend.shutdown");
   child.stdin.end();
@@ -68,7 +55,7 @@ try {
   };
   await mkdir(dirname(resolve(reportInput)), { recursive: true });
   await writeFile(resolve(reportInput), JSON.stringify(report, null, 2) + "\n");
-  console.log(JSON.stringify({ status: report.status, report: resolve(reportInput), tools: report.publicTools, events: report.events, hardwareInvoked: false }));
+  console.log(JSON.stringify({ status: report.status, report: resolve(reportInput), tools: report.publicTools, hardwareInvoked: false }));
 } finally {
   if (child && child.exitCode === null) {
     child.stdin.end();

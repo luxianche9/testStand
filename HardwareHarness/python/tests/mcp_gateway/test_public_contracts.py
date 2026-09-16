@@ -17,8 +17,6 @@ from hardwareharness_backend.mcp_gateway.contract_tools import import_firmware
 from hardwareharness_backend.mcp_gateway.public_contracts import (
     normalized_output_schema,
     public_remote_tool,
-    sdk_data_schema,
-    sdk_envelope_schema,
     with_error_schema,
 )
 from hardwareharness_backend.mcp_gateway.tool_registry import BUILTIN_TOOL_DEFINITIONS, ToolRegistry
@@ -69,12 +67,6 @@ def test_gateway_and_sdk_shapes_keep_referenced_data_and_media_distinct() -> Non
     schema = normalized_output_schema(upstream)
     Draft202012Validator(schema).validate({"ok": True, "data": {"volts": 1.2}})
     assert not Draft202012Validator(schema).is_valid({"ok": True, "data": {"volts": "1.2"}})
-    envelope = {
-        "content": [{"type": "image", "mimeType": "image/png", "data": "YQ=="}],
-        "structuredContent": {"ok": True, "data": {"volts": 1.2}},
-        "isError": False,
-    }
-    Draft202012Validator(sdk_envelope_schema(upstream)).validate(envelope)
     tool = public_remote_tool(
         {
             "externalName": "S__read",
@@ -89,7 +81,7 @@ def test_gateway_and_sdk_shapes_keep_referenced_data_and_media_distinct() -> Non
     )
     assert "execution" not in tool
     assert tool["annotations"]["readOnlyHint"] is True
-    assert tool["_meta"]["hardwareharness"]["sdkToolName"] == "S__read"
+    assert tool["_meta"]["hardwareharness"]["toolName"] == "S__read"
     assert tool["_meta"]["hardwareharness"]["remoteToolName"] == "read"
 
 
@@ -122,7 +114,7 @@ async def test_error_only_remote_result_cannot_be_reported_as_success() -> None:
         ("THIRD_PARTY", "get_hardware_info", False),
     ],
 )
-async def test_only_platform_metadata_reads_bypass_active_run(
+async def test_only_platform_metadata_reads_bypass_active_call(
     server_id: str,
     tool_name: str,
     allowed: bool,
@@ -130,7 +122,12 @@ async def test_only_platform_metadata_reads_bypass_active_run(
     name = f"{server_id}__{tool_name}"
     execution = ExecutionCoordinator()
     handle = execution.acquire(
-        {"state": "run", "runId": "R", "hardwareIds": ["H"], "startedAt": "2026-09-15T00:00:00Z"}
+        {
+            "state": "manual",
+            "toolName": "write",
+            "hardwareId": "H",
+            "startedAt": "2026-09-15T00:00:00Z",
+        }
     )
     service = Mock(
         list_tools=Mock(
@@ -151,7 +148,7 @@ async def test_only_platform_metadata_reads_bypass_active_run(
     try:
         if allowed:
             assert await app.call_tool(CONTEXT, name, {}) == {"status": "running"}
-            assert execution.current()["runId"] == "R"
+            assert execution.current()["hardwareId"] == "H"
         else:
             with pytest.raises(AppError) as caught:
                 await app.call_tool(CONTEXT, name, {})
@@ -192,12 +189,12 @@ async def test_firmware_transfer_does_not_require_large_model_payload(tmp_path: 
 async def test_contract_discovery_obeys_authorization_and_exact_names() -> None:
     app = Mock(authorizer=DefaultAuthorizer(), devices=Mock(list_tools=Mock(return_value=[])))
     registry = ToolRegistry(app)
-    result = await registry.invoke(CONTEXT, "get_tool_contract", {"query": "workspace", "limit": 1})
+    result = await registry.invoke(CONTEXT, "get_tool_contract", {"query": "hardware", "limit": 1})
     assert result["data"]["hasMore"]
     name = result["data"]["items"][0]["name"]
     contract = await registry.invoke(CONTEXT, "get_tool_contract", {"toolName": name})
     assert contract["data"]["tool"]["name"] == name
-    assert contract["data"]["referenceId"] == "hh-sdk"
+    assert contract["data"]["referenceId"] == "hh-agent-interface"
     with pytest.raises(AppError, match="Unknown authorized"):
         await registry.invoke(CONTEXT, "get_tool_contract", {"toolName": "missing"})
 
@@ -262,10 +259,6 @@ def test_nested_reference_documents_survive_gateway_sdk_and_error_schemas(
     validator.validate(error)
     assert not validator.is_valid({"ok": True, "error": error["error"]})
     assert not validator.is_valid({"ok": False, "data": value})
-    structured = {"ok": True, "data": value} if "ok" in upstream.get("properties", {}) else value
-    envelope: Json = {"content": [], "structuredContent": structured, "isError": False}
-    Draft202012Validator(sdk_envelope_schema(upstream)).validate(envelope)
-    Draft202012Validator(sdk_data_schema(upstream)).validate(value)
 
 
 def test_root_reference_to_union_and_optional_data_are_preserved() -> None:
@@ -290,31 +283,13 @@ def test_root_reference_to_union_and_optional_data_are_preserved() -> None:
     assert not validator.is_valid({"ok": True, "data": {"ok": False}})
     # SDK does not unwrap plain untagged data dictionaries, while the gateway does.
     plain = {"type": "object", "properties": {"data": {"type": "integer"}}, "required": ["data"]}
-    Draft202012Validator(sdk_data_schema(plain)).validate({"data": 2})
     Draft202012Validator(normalized_output_schema(plain)).validate({"ok": True, "data": 2})
-
-
-async def test_contract_sdk_name_can_be_called_through_actual_application(tmp_path: Path) -> None:
-    from ..application.test_applications import fixture
-
-    applications, service = await fixture(tmp_path)
-    service.list_tools.return_value[0].update(remoteName="call", inputSchema={"type": "object"})
-    app = Mock(
-        authorizer=DefaultAuthorizer(),
-        devices=Mock(list_tools=Mock(side_effect=lambda context: service.list_tools())),
-    )
-    contract = await ToolRegistry(app).invoke(CONTEXT, "get_tool_contract", {"toolName": "S__call"})
-    sdk_name = contract["data"]["sdk"]["toolName"]
-    assert sdk_name == "S__call" and "'S__call'" in contract["data"]["sdk"]["example"]
-    await applications._invoke("H", sdk_name, {}, 1000)
-    service.call_tool.assert_awaited_once()
-    await applications.close()
 
 
 async def test_registry_context_structured_endpoints_and_firmware_execute(tmp_path: Path) -> None:
     from .test_gateway import application
 
-    app, devices, wiring, _ = application()
+    app, devices, wiring = application()
     app.projects.projects.current.return_value = {
         "rootPath": str(tmp_path),
         "path": str(tmp_path / "project.json"),
@@ -362,10 +337,10 @@ async def test_registry_context_structured_endpoints_and_firmware_execute(tmp_pa
     devices.call_aggregated_tool.assert_awaited_once()
 
 
-async def test_all_public_builtin_schemas_allow_recoverable_errors_and_interrupted_runs() -> None:
+async def test_all_public_builtin_schemas_allow_recoverable_errors() -> None:
     from .test_gateway import application
 
-    app, _, _, runner = application()
+    app, _, _ = application()
     registry = ToolRegistry(app)
     error = {
         "ok": False,
@@ -373,10 +348,3 @@ async def test_all_public_builtin_schemas_allow_recoverable_errors_and_interrupt
     }
     for tool in registry.list_builtin(CONTEXT):
         Draft202012Validator(tool["outputSchema"]).validate(error)
-    runner.list_runs = AsyncMock(return_value=[{"runId": "R", "status": "interrupted"}])
-    result = await registry.invoke(CONTEXT, "list_python_runs", {"status": "interrupted"})
-    tool = next(
-        item for item in registry.list_builtin(CONTEXT) if item["name"] == "list_python_runs"
-    )
-    Draft202012Validator(tool["outputSchema"]).validate(result)
-    assert runner.list_runs.call_args.args[0]["status"] == "interrupted"

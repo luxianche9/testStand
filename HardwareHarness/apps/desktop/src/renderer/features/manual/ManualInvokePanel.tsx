@@ -23,7 +23,6 @@ export function ManualInvokePanel({ hardwareId }: { hardwareId: string }) {
   }, [dashboard.data, hardwareId]);
 
   const availability = availabilityFor(hardwareId, dashboard.data?.availability ?? []);
-  const runBusy = isHardwareExecuting(dashboard.data?.execution, hardwareId, "run");
 
   useEffect(() => {
     const refresh = () => { void client.invalidateQueries({ queryKey: queryKeys.dashboard }); };
@@ -37,7 +36,6 @@ export function ManualInvokePanel({ hardwareId }: { hardwareId: string }) {
       <h3 className="m-0 text-sm font-semibold">MCP 工具</h3>
       <Badge variant={badgeVariantFromTone(availabilityTone(availability))}>{availability}</Badge>
     </header>
-    {runBusy && <div className={alertClass}><CircleAlertIcon className="size-4" /><span>自动测试 Run 正在使用此硬件，手动调用已禁用。</span></div>}
     {availability !== "available" && <div className="flex items-start gap-1.5 text-[11px] leading-normal text-muted-foreground"><CircleAlertIcon className="mt-0.5 size-3.5 flex-none" /><span>硬件当前为 {availability}，恢复在线后才能执行硬件工具。</span></div>}
     {availability === "available" && !tools.length && <p className="m-0 text-xs text-muted-foreground">该 Server 尚未暴露可用的 MCP 工具。MCP 在线后会自动列出。</p>}
     {!tools.length && availability !== "available" && <p className="m-0 text-xs text-muted-foreground">MCP 在线后会列出该 Server 暴露的工具。</p>}
@@ -48,18 +46,16 @@ export function ManualInvokePanel({ hardwareId }: { hardwareId: string }) {
           tool={tool}
           hardwareId={hardwareId}
           availability={availability}
-          runBusy={runBusy}
         />
       ))}
     </div>
   </section>;
 }
 
-function McpToolOperation({ tool, hardwareId, availability, runBusy }: {
+function McpToolOperation({ tool, hardwareId, availability }: {
   tool: ToolCatalogItem;
   hardwareId: string;
   availability: HardwareAvailability["state"];
-  runBusy: boolean;
 }) {
   const client = useQueryClient();
   const dashboard = useDashboard();
@@ -110,7 +106,7 @@ function McpToolOperation({ tool, hardwareId, availability, runBusy }: {
       <SchemaArgumentsForm schema={displaySchema} value={argumentsValue} onChange={setArgumentsValue} onValidityChange={setFormValid} />
       {validation.errors.length > 0 && <div className="flex flex-col gap-1.5 rounded-md border border-destructive/50 p-2.5"><strong className="text-xs">参数校验</strong>{validation.errors.map((message, index) => <div key={index} className="grid grid-cols-[auto_1fr] gap-1.5 text-[11px]"><code className="text-destructive">input</code><span>{message}</span></div>)}</div>}
       <div className="flex items-center gap-2.5">
-        <Button disabled={!hardwareReady || !formValid || !validation.valid || runBusy || manualBusy || invoke.isPending} onClick={() => invoke.mutate()}>
+        <Button disabled={!hardwareReady || !formValid || !validation.valid || manualBusy || invoke.isPending} onClick={() => invoke.mutate()}>
           <PlayIcon />{invoke.isPending ? "正在执行…" : "执行一次"}
         </Button>
         <span className="text-[11px] text-muted-foreground">超时 30 秒 · 硬件上下文由 HardwareHarness 通过协议元数据传递</span>

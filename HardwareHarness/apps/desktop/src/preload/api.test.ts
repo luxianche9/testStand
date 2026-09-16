@@ -23,11 +23,6 @@ describe("preload API", () => {
     void api.projects.save(); void api.projects.leave(); void api.projects.listRecent(); void api.projects.forgetRecent("C:\\project");
     void api.wiring.update({ nodes: [], connections: [] }); void api.wiring.requestTask({ portA: "A.P", portB: "B.P", action: "connect" });
     void api.wiring.startTask("W"); void api.wiring.completeTask("W", "confirmed"); void api.wiring.cancelTask("W"); void api.wiring.getTask("W"); void api.wiring.listTasks();
-    void api.applications.listFiles(); void api.applications.readFile("a.py"); void api.applications.writeFile({ path: "a.py", content: "", expectedHash: "h" });
-    void api.applications.createFile({ path: "a.py", kind: "file" }); void api.applications.renameFile({ path: "a.py", target: "b.py" }); void api.applications.deleteFile("b.py");
-    void api.applications.search("x"); void api.applications.diagnostics("a.py"); void api.applications.initializeWorkspace();
-    void api.applications.startRun({ entrypoint: "a.py" }); void api.applications.cancelRun("R"); void api.applications.getRun("R"); void api.applications.listRuns();
-    void api.applications.runEvents("R"); void api.applications.exportRun("R"); void api.applications.deleteRun("R"); void api.applications.clearCompletedRuns(); void api.applications.readRunSource("R", "a.py"); void api.applications.readRunAttachment("R", "a.csv");
     void api.manual.invokeTool({ hardwareId: "H", toolName: "S__write", arguments: { value: 1 } });
     void api.agents.rotateGatewayToken(); void api.agents.status("codex"); void api.agents.preview("codex"); void api.agents.install("codex");
     void api.agents.remove("codex"); void api.agents.test("codex"); void api.agents.listTools(); void api.agents.openCodeStatus(); void api.agents.startOpenCode(); void api.agents.stopOpenCode(); void api.agents.restartOpenCode();
@@ -41,7 +36,7 @@ describe("preload API", () => {
     expect(new Set(calls.map((call) => call.replace(/\.(query|mutate|subscribe)$/, ""))))
       .toEqual(new Set([...flattenProcedurePaths(HARDWAREHARNESS_IPC), "events.subscribe"]));
     expect(unsubscribe).toHaveBeenCalledOnce();
-    expect(Object.keys(api)).toEqual(["system", "devices", "projects", "wiring", "applications", "manual", "agents", "settings", "window", "events"]);
+    expect(Object.keys(api)).toEqual(["system", "devices", "projects", "wiring", "manual", "agents", "settings", "window", "events"]);
   });
 
   it("restores the domain error category from a tRPC client error", async () => {
@@ -53,14 +48,6 @@ describe("preload API", () => {
     await expect(api.system.dashboard()).rejects.toMatchObject({ name: "AppError", category: "requires_project", message: "Project required" });
   });
 
-  it("preserves explicit network permission when preparing the Python environment", async () => {
-    const mutate = vi.fn(async () => ({ status: "ready" }));
-    const client = { applications: { initializeWorkspace: { mutate } } } as unknown as DesktopTrpcClient;
-    const api = createHardwareHarnessApi(client);
-    await api.applications.initializeWorkspace();
-    await api.applications.initializeWorkspace({ online: true });
-    expect(mutate.mock.calls).toEqual([[undefined], [{ online: true }]]);
-  });
 });
 
 function createRecordingClient(calls: string[], unsubscribe: () => void): DesktopTrpcClient {

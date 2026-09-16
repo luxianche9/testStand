@@ -3,7 +3,6 @@ import type { ComputerStatus, DeviceBundleApplyInput, DeviceBundleExport, Device
 import type { ExecutionActivity, ManualToolInvocationInput, ManualToolInvocationResult } from "./execution.js";
 
 import type { LlmSettings, LlmSettingsInput, ProjectView, ThemeChoice, WelcomeLayout } from "./storage.js";
-import type { HardwareHarnessApplicationsApi } from "./applications.js";
 import type { ProjectDocument, ProjectFolderSelection, RecentProjectSummary } from "./projects.js";
 import type { ProjectWiring, RequestWiringTaskInput, WiringOutcome, WiringTask, WiringTaskStatus } from "./wiring.js";
 
@@ -43,27 +42,6 @@ export const HARDWAREHARNESS_IPC = {
     update: "hardwareharness:wiring:update", requestTask: "hardwareharness:wiring:request-task", startTask: "hardwareharness:wiring:start-task",
     completeTask: "hardwareharness:wiring:complete-task", cancelTask: "hardwareharness:wiring:cancel-task", getTask: "hardwareharness:wiring:get-task", listTasks: "hardwareharness:wiring:list-tasks"
   },
-  applications: {
-    listFiles: "hardwareharness:applications:listFiles",
-    readFile: "hardwareharness:applications:readFile",
-    writeFile: "hardwareharness:applications:writeFile",
-    createFile: "hardwareharness:applications:createFile",
-    renameFile: "hardwareharness:applications:renameFile",
-    deleteFile: "hardwareharness:applications:deleteFile",
-    search: "hardwareharness:applications:search",
-    diagnostics: "hardwareharness:applications:diagnostics",
-    initializeWorkspace: "hardwareharness:applications:initializeWorkspace",
-    startRun: "hardwareharness:applications:startRun",
-    cancelRun: "hardwareharness:applications:cancelRun",
-    getRun: "hardwareharness:applications:getRun",
-    listRuns: "hardwareharness:applications:listRuns",
-    runEvents: "hardwareharness:applications:runEvents",
-    exportRun: "hardwareharness:applications:exportRun",
-    deleteRun: "hardwareharness:applications:deleteRun",
-    clearCompletedRuns: "hardwareharness:applications:clearCompletedRuns",
-    readRunAttachment: "hardwareharness:applications:readRunAttachment",
-    readRunSource: "hardwareharness:applications:readRunSource",
-  },
   manual: {
     invokeTool: "hardwareharness:manual:invoke-tool"
   },
@@ -83,7 +61,7 @@ export const HARDWAREHARNESS_IPC = {
   }
 } as const;
 
-export type HardwareHarnessEventName = "availability" | "execution" | "run" | "runEvent" | "wiringTask" | "workspace" | "project" | "opencode" | "window-state";
+export type HardwareHarnessEventName = "availability" | "execution" | "wiringTask" | "workspace" | "project" | "opencode" | "window-state";
 
 export interface HardwareHarnessSystemApi {
   dashboard(): Promise<DashboardSnapshot>;
@@ -178,7 +156,6 @@ export interface HardwareHarnessApi {
   devices: HardwareHarnessDevicesApi;
   projects: HardwareHarnessProjectsApi;
   wiring: HardwareHarnessWiringApi;
-  applications: HardwareHarnessApplicationsApi;
   manual: HardwareHarnessManualApi;
 
   agents: HardwareHarnessAgentsApi;

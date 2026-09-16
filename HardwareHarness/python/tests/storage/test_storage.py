@@ -68,7 +68,7 @@ async def test_serialized_settings(tmp_path: Path) -> None:
     blocked.set()
     await asyncio.gather(first, second)
     assert store.get()["theme"] == persisted["theme"] == "dark"
-    assert store.get()["projectView"] == persisted["projectView"] == "logs"
+    assert store.get()["projectView"] == persisted["projectView"] == "wiring"
 
 
 @pytest.mark.ts_case(

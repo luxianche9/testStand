@@ -258,6 +258,7 @@ export function OpenCodeComposer({
     composer.setText(current ? `${current}${current.endsWith("\n") ? "" : "\n"}${text}` : text);
   }, [aui]);
 
+
   const commandFromText = useCallback((text: string) => {
     return parseOpenCodeCommand(text, catalog.commands);
   }, [catalog.commands]);

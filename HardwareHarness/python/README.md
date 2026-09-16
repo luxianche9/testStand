@@ -1,52 +1,33 @@
-# HardwareHarness Python backend
+﻿# HardwareHarness Python backend
 
-This directory ports the eight TypeScript domain packages. The seven TypeScript business
-implementations have been removed; contracts remain for desktop types and validation.
-Historical Git sources, assertion inventories and saved golden fixtures remain the test oracle.
-Oracle generators require an explicit historical checkout (`--reference-root`). The desktop uses a private bidirectional stdio
-JSON-RPC connection; the existing external MCP endpoint remains Streamable HTTP.
+The Python backend owns devices, projects, wiring, reference documents and the public MCP gateway.
+Electron calls it through a private bidirectional stdio JSON-RPC connection. External Agents use
+Streamable HTTP MCP. The retired test-flow editor, Python script runner, run logs and bundled SDK
+are no longer part of the backend or Windows package.
 
-Final implementation, verification evidence, compatibility notes, approved deviations,
-and installer hashes from the port are indexed in [the original delivery report](reports/implementation.md).
-The subsequent TS removal and shadcn update are recorded in [the current report](../reports/shadcn/implementation.md).
+From the application workspace (`HardwareHarness`):
 
 ```powershell
-uv sync --frozen
-uv run python scripts/prepare_icu.py
-uv run ruff check src tests scripts
-uv run ruff format --check src tests scripts
-uv run mypy --strict
-uv run pytest --cov --cov-report=json:reports/python-coverage.json
-uv run python scripts/protected_baseline.py check
-uv run pyinstaller --noconfirm backend.spec
+pnpm python:setup
+pnpm verify:python
+pnpm build:python
 ```
 
-From the `hardwareHarness` workspace root, `pnpm python:setup` restores the locked Python
-environment and ICU binary. `pnpm verify:python` runs lint, formatting, strict typing,
-pytest branch coverage, all 117 package and three legacy migration specification mappings,
-the original eight-package coverage floors and protected
-file hashes. `pnpm verify` keeps the TypeScript gates; `pnpm verify:full` runs both and
-Electron E2E. `pnpm package:win` builds the backend, production app and x64 NSIS installer.
+`verify:python` runs Ruff lint/format, strict mypy, all pytest tests, and per-package line/branch
+coverage checks. `coverage-baseline.json` retains the previous thresholds for supported packages;
+reference storage requires 90% line and branch coverage. Coverage output is written to
+`../output/verification/`, which is ignored by Git. Verification does not require historical delivery
+reports. Contract golden fixtures remain under `tests/` alongside current API and migration tests.
 
-Development uses `.venv/Scripts/python.exe`. The Windows package contains the complete
-`dist/hardwareharness-backend` directory under `resources/backend`, including ICU 74.2 and its
-license. The executable keeps console streams enabled; Electron spawns it with a hidden
-window. No Python, uv, network access, or writable installation directory is needed at runtime.
+The package contains `dist/hardwareharness-backend` under `resources/backend`, including ICU and its
+license. Electron starts the backend with a hidden window and dedicated stdin/stdout pipes.
+No user-script Python runtime, SDK wheel or uv executable is shipped.
 
-For a frozen smoke run, set `HARDWAREHARNESS_BACKEND_EXECUTABLE` to the absolute backend executable
-and `HARDWAREHARNESS_BACKEND_ISOLATED_ENV=1`, then run `uv run pytest tests/host/test_process.py`.
-For installed Electron, set `HARDWAREHARNESS_DESKTOP_EXECUTABLE` and run the desktop Playwright
-`e2e/python-backend.spec.ts`; the app's PATH contains only Windows System32 in that mode.
-These checks isolate runtime dependencies on this Windows host; they are not a substitute
-for an independent clean Windows VM acceptance run.
+For a frozen backend smoke check, set `HARDWAREHARNESS_BACKEND_EXECUTABLE` and
+`HARDWAREHARNESS_BACKEND_ISOLATED_ENV=1`, then run `uv run pytest tests/host/test_process.py`.
+For installed Electron, set `HARDWAREHARNESS_DESKTOP_EXECUTABLE` and run
+`e2e/python-backend.spec.ts`. These are local Windows checks, not an independent clean-VM acceptance.
 
-`reports/protected-files.json` and `reports/protected-exceptions.json` preserve the original
-renderer freeze and authorized LogsPage lint correction as historical evidence.
-For the authorized shadcn stage, `reports/stage-protected-files.json` protects Python business
-sources, renderer pure TypeScript logic, OpenCode main files and dependency pins/patches.
-TSX presentation changes are checked by diff review and component/Electron interaction tests.
-
-Domain JSON continues to use camelCase. The process envelope uses an unambiguous tagged
-codec for bytes, undefined, dates and special numbers. Ciphertext files stay owned by Python,
-while Electron safeStorage handles encryption through synchronous reverse calls completed
-by a dedicated Python pipe reader thread. Credentials and protocol payloads are not logged.
+Domain JSON uses camelCase. The process codec preserves bytes, undefined, dates and special numbers.
+Python owns ciphertext files; Electron safeStorage performs encryption via reverse calls on a
+separate pipe reader. User project files and historical backups are preserved during feature removal.

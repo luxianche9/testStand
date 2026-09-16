@@ -7,11 +7,12 @@ import { childSchema, initialSchemaValue, requiresJsonFallback, schemaProperties
 
 type JsonValidityReporter = (path: string, valid: boolean) => void;
 
-export function SchemaArgumentsForm({ schema, value, onChange, onValidityChange }: {
+export function SchemaArgumentsForm({ schema, value, onChange, onValidityChange, preserveHardwareId = false }: {
   schema: JsonSchema;
   value: Record<string, unknown>;
   onChange: (value: Record<string, unknown>) => void;
   onValidityChange?: (valid: boolean) => void;
+  preserveHardwareId?: boolean;
 }) {
   const [invalidJsonPaths, setInvalidJsonPaths] = useState<Set<string>>(() => new Set());
   const reportJsonValidity = useCallback<JsonValidityReporter>((path, valid) => {
@@ -35,6 +36,7 @@ export function SchemaArgumentsForm({ schema, value, onChange, onValidityChange 
       validateParsed={(parsed) => isRecord(parsed) ? undefined : "工具参数必须是 JSON object"}
       onChange={(parsed) => {
         if (!isRecord(parsed)) return;
+        if (preserveHardwareId) { onChange(parsed); return; }
         const { hardwareId: _injected, ...argumentsValue } = parsed;
         onChange(argumentsValue);
       }}

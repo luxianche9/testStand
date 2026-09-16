@@ -1,0 +1,10 @@
+{
+  "application": { "lines": [449, 669], "branches": [117, 136] },
+  "contracts": { "lines": [516, 574], "branches": [34, 42] },
+  "devices": { "lines": [755, 1184], "branches": [283, 393] },
+  "mcp-gateway": { "lines": [596, 644], "branches": [114, 145] },
+  "projects": { "lines": [222, 240], "branches": [47, 66] },
+  "storage": { "lines": [339, 364], "branches": [112, 135] },
+  "wiring": { "lines": [155, 201], "branches": [40, 61] },
+  "workspace": { "lines": [90, 100], "branches": [90, 100] }
+}

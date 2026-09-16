@@ -1,4 +1,11 @@
 @layer components {
+  .flow-workspace-layout { display: grid; }
+  @media (max-width: 1023px) {
+    .flow-workspace-layout { display: flex; }
+    .flow-navigation { display: none; width: 224px; flex-shrink: 0; }
+    .flow-navigation-resize { display: none; }
+    .flow-workspace-layout[data-navigation-open="true"] .flow-navigation { display: block; }
+  }
   .tf-agent-sidebar {
     --tf-agent-sidebar-width: 420px;
     position: relative;
@@ -20,6 +27,17 @@
     width: 10px;
     cursor: col-resize;
     touch-action: none;
+  }
+
+  @media (max-width: 1023px) {
+    .tf-agent-sidebar {
+      position: fixed;
+      z-index: 80;
+      top: 40px;
+      right: 0;
+      bottom: 0;
+      box-shadow: -16px 0 40px rgb(0 0 0 / 0.18);
+    }
   }
 
   .tf-agent-resize-handle::after {

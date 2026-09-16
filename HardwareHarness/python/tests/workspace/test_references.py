@@ -1,37 +1,23 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pytest
 
 from hardwareharness_backend.contracts.errors import AppError
-from hardwareharness_backend.workspace.environment import EnvironmentManager
 from hardwareharness_backend.workspace.references import ReferenceService
 
 
 def test_bundled_docs_are_available_without_project_and_paginate() -> None:
     service = ReferenceService()
     index = service.read({"limit": 1})
-    assert index["references"][0]["referenceId"] == "hh-sdk"
-    assert index["hasMore"] and index["nextOffset"] == 1
-    page = service.read({"referenceId": "hh-sdk", "limit": 1})
+    assert index["references"][0]["referenceId"] == "hh-agent-interface"
+    assert not index["hasMore"] and index["nextOffset"] is None
+    page = service.read({"referenceId": "hh-agent-interface", "limit": 1})
     assert page["lines"][0]["line"] == 1
-    assert page["sources"][0]["contractRevision"] == "2026-09-15.1"
-    assert service.read({"query": "result_mode"})["total"] > 0
-    assert service.read({"referenceId": "hh-sdk", "query": "mock"})["total"] == 0
-
-
-def test_scaffold_preserves_user_guide_and_publishes_versioned_release(tmp_path: Path) -> None:
-    docs = tmp_path / ".hardwareharness/docs"
-    docs.mkdir(parents=True)
-    guide = docs / "hardwareharness-sdk.md"
-    guide.write_text("User notes", encoding="utf-8")
-    EnvironmentManager().scaffold(str(tmp_path))
-    assert guide.read_text("utf-8") == "User notes"
-    index = json.loads((docs / "hardwareharness-reference-index.json").read_text("utf-8"))
-    assert index["contractRevision"] == "2026-09-15.1"
-    assert "result_mode" in (docs / index["sdkGuide"]).read_text("utf-8")
+    assert page["sources"][0]["contractRevision"] == "2026-09-16.2"
+    assert service.read({"query": "get_tool_contract"})["total"] > 0
+    assert service.read({"referenceId": "hh-agent-interface", "query": "mock"})["total"] == 0
 
 
 def test_register_copies_evidence_requires_current_hash_and_paginates_long_lines(
@@ -70,5 +56,5 @@ def test_reference_import_is_confined_to_supported_user_files(tmp_path: Path, pa
 def test_bundled_id_cannot_be_overwritten(tmp_path: Path) -> None:
     with pytest.raises(AppError, match="referenceId"):
         ReferenceService(str(tmp_path)).register(
-            {"referenceId": "hh-sdk", "title": "wrong", "path": "x.md"}
+            {"referenceId": "hh-agent-interface", "title": "wrong", "path": "x.md"}
         )

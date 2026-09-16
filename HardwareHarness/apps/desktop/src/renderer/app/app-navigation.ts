@@ -46,5 +46,5 @@ export function appNavigationReducer(state: AppNavigationState, action: AppNavig
 }
 
 export function isProjectView(page: AppPage): page is ProjectView {
-  return page === "wiring" || page === "applications" || page === "manual" || page === "logs";
+  return page === "wiring" || page === "manual";
 }

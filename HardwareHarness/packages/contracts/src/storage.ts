@@ -4,7 +4,7 @@ export const themeChoiceSchema = z.enum(["system", "light", "dark"]);
 export type ThemeChoice = z.infer<typeof themeChoiceSchema>;
 export const welcomeLayoutSchema = z.enum(["grid", "list"]);
 export type WelcomeLayout = z.infer<typeof welcomeLayoutSchema>;
-export const projectViewSchema = z.preprocess((value) => value === "orchestration" ? "applications" : value, z.enum(["wiring", "applications", "manual", "logs"]).catch("wiring"));
+export const projectViewSchema = z.enum(["wiring", "manual"]).catch("wiring");
 export type ProjectView = z.infer<typeof projectViewSchema>;
 
 export const userSettingsSchema = z.object({

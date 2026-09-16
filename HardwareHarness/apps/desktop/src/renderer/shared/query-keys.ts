@@ -5,8 +5,6 @@ export const queryKeys = {
   recentProjects: ["recent-projects"] as const,
   wiringTasks: ["wiring-tasks"] as const,
 
-  runLogs: ["run-logs"] as const,
-  runLogList: (projectId: string | undefined, query: unknown) => ["run-logs", projectId, query] as const,
   openCodeStatus: ["opencode-status"] as const,
   llmSettings: ["llm-settings"] as const,
   agentTools: ["agent-tools"] as const,

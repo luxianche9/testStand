@@ -1,14 +1,14 @@
-"""Contracts for the normalized public gateway and the compatible Python SDK."""
+"""Contracts for the normalized public MCP gateway."""
 
 from __future__ import annotations
 
 from typing import Any
 from urllib.parse import urldefrag, urljoin
 
+from hardwareharness_backend import CONTRACT_REVISION as CONTRACT_REVISION
 from hardwareharness_backend.compat import clone
 
 Record = dict[str, Any]
-CONTRACT_REVISION = "2026-09-15.1"
 
 
 def success_schema(data: Record | bool) -> Record:
@@ -112,7 +112,7 @@ def _embedded_schema(upstream: Record) -> Record:
     return result
 
 
-def _payload_schema(upstream: Record, *, sdk: bool = False) -> Record:
+def _payload_schema(upstream: Record) -> Record:
     embedded = _embedded_schema(upstream)
     prefix = "#/$defs/HHUpstream"
 
@@ -144,8 +144,6 @@ def _payload_schema(upstream: Record, *, sdk: bool = False) -> Record:
         original = {"$ref": path}
         if "data" in properties:
             data = {"$ref": f"{path}/properties/data"}
-            if sdk and properties.get("ok", {}).get("const") is not True:
-                return {"anyOf": [data, original]}
             return data if "data" in schema.get("required", []) else {"anyOf": [data, original]}
         return original
 
@@ -163,11 +161,6 @@ def normalized_output_schema(upstream: Record | None) -> Record:
     return result
 
 
-def sdk_data_schema(upstream: Record | None) -> Record:
-    """Standalone schema for SDK result_mode=data, retaining its reference document."""
-    return _payload_schema(upstream, sdk=True) if upstream else {}
-
-
 def public_remote_tool(tool: Record) -> Record:
     result = {
         "name": tool["externalName"],
@@ -181,29 +174,13 @@ def public_remote_tool(tool: Record) -> Record:
                 **clone(tool.get("contractMetadata", {})),
                 "contractRevision": CONTRACT_REVISION,
                 "serverId": tool["serverId"],
-                "sdkToolName": tool["externalName"],
+                "toolName": tool["externalName"],
                 "remoteToolName": tool["remoteName"],
                 "kind": tool.get("kind", "unknown"),
                 "resultMode": "data",
-                "sdkDefaultResultMode": "envelope",
             }
         },
     }
     if tool.get("annotations"):
         result["annotations"] = clone(tool["annotations"])
-    return result
-
-
-def sdk_envelope_schema(upstream: Record | None) -> Record:
-    result = {
-        "type": "object",
-        "properties": {
-            "content": {"type": "array", "items": {"type": "object"}},
-            "structuredContent": {"$ref": "#/$defs/HHUpstream"} if upstream else {"type": "object"},
-            "isError": {"type": "boolean"},
-        },
-        "required": ["content"],
-    }
-    if upstream:
-        result["$defs"] = {"HHUpstream": _embedded_schema(upstream)}
     return result

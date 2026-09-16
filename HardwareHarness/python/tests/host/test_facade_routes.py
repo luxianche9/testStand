@@ -14,9 +14,6 @@ from unittest.mock import MagicMock, create_autospec
 import pytest
 
 from hardwareharness_backend.application import (
-    ApplicationsApplication,
-    DefaultAuthorizer,
-    ExecutionCoordinator,
     HardwareHarnessApplication,
 )
 from hardwareharness_backend.compat import UNDEFINED
@@ -37,7 +34,7 @@ def restore(value: Any) -> Any:
 
 
 CASES = restore(
-    json.loads(Path(__file__).with_name("applications-facade-calls.json").read_text("utf-8"))
+    json.loads(Path(__file__).with_name("desktop-facade-calls.json").read_text("utf-8"))
 )
 CASES.append(
     {
@@ -51,16 +48,8 @@ CASES.append(
 @pytest.mark.parametrize("case", CASES, ids=[case["path"] for case in CASES])
 async def test_desktop_arguments_bind_to_python_controller(case: dict[str, Any]) -> None:
     dependencies: dict[str, Any] = {
-        name: MagicMock()
-        for name in ("devices", "catalog", "projects", "wiring", "applications", "system")
+        name: MagicMock() for name in ("devices", "catalog", "projects", "wiring", "system")
     }
-    dependencies["applications"] = ApplicationsApplication(
-        DefaultAuthorizer(),
-        dependencies["projects"],
-        dependencies["devices"],
-        dependencies["catalog"],
-        ExecutionCoordinator(),
-    )
     application = HardwareHarnessApplication(dependencies)
     _, namespace, method = case["method"].split(".")
     name = re.sub(r"(?<!^)(?=[A-Z])", "_", method).lower()

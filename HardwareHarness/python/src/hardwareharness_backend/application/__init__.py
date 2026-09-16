@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from .applications import ApplicationsApplication as ApplicationsApplication
 from .authorization import (
     AGENT_REQUEST_CONTEXT as AGENT_REQUEST_CONTEXT,
 )
@@ -49,12 +48,10 @@ class HardwareHarnessApplication:
         self.devices = DevicesApplication(
             self.authorizer, dependencies["devices"], dependencies["catalog"], execution
         )
-        self.applications = dependencies["applications"]
         self.projects = ProjectsApplication(
             self.authorizer,
             dependencies["projects"],
             dependencies["wiring"],
-            self.applications,
         )
         self.wiring = WiringApplication(
             self.authorizer, dependencies["projects"], dependencies["wiring"]

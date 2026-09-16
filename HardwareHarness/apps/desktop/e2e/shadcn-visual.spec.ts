@@ -7,7 +7,7 @@ import { _electron as electron, expect, test, type Page } from "@playwright/test
 const desktopDir = resolve(import.meta.dirname, "..");
 const workspace = resolve(desktopDir, "../..");
 const phase = process.env.HARDWAREHARNESS_VISUAL_PHASE ?? "after";
-const artifactRoot = resolve(workspace, "reports/applications/visual", phase);
+const artifactRoot = resolve(workspace, "output/visual", phase);
 const sizes = [{ width: 960, height: 600 }, { width: 1280, height: 800 }, { width: 1600, height: 1000 }];
 let referenceServer: Server | undefined;
 let referenceUrl: string | undefined;
@@ -36,11 +36,11 @@ test.afterAll(async () => {
   if (referenceServer) await new Promise<void>((resolveClose) => referenceServer!.close(() => resolveClose()));
 });
 
-async function navigateProject(page: Page, view: "设备管理" | "工位接线" | "动作编排" | "运行日志"): Promise<void> {
+async function navigateProject(page: Page, view: "设备管理" | "工位接线"): Promise<void> {
   // The existing compact navigation hides its text below 1100px; order is unchanged.
   const tabs = page.getByRole("tablist", { name: "项目子页面" }).getByRole("tab");
-  await expect(tabs).toHaveCount(4);
-  await tabs.nth(["设备管理", "工位接线", "动作编排", "运行日志"].indexOf(view)).click();
+  await expect(tabs).toHaveCount(2);
+  await tabs.nth(["设备管理", "工位接线"].indexOf(view)).click();
 }
 
 async function capture(page: Page, group: string, name: string): Promise<void> {
@@ -109,7 +109,6 @@ for (const theme of ["light", "dark", "system"] as const) {
           const pending = await window.hardwareharness.wiring.requestTask({ portA: "DUT_A.J1", portB: "DUT_B.J1", action: "connect", pins: [{ a: "1", b: "1" }] });
           await window.hardwareharness.wiring.startTask(pending.wiringTaskId);
           await window.hardwareharness.wiring.completeTask(pending.wiringTaskId, "confirmed");
-          await window.hardwareharness.applications.createFile({ path: "scripts/visual.py", kind: "file", content: "def main(inputs):\n    return inputs\n" });
           await window.hardwareharness.projects.save();
           await window.hardwareharness.projects.leave();
         }, { theme, projectRoot });
@@ -124,12 +123,6 @@ for (const theme of ["light", "dark", "system"] as const) {
         await navigateProject(page, "设备管理");
         await expect(page.getByRole("treeitem", { name: /DUT_A/ })).toBeVisible();
         await capture(page, group, "devices");
-        await navigateProject(page, "动作编排");
-        await expect(page.getByRole("listbox", { name: "Python 脚本列表" })).toBeVisible();
-        await capture(page, group, "applications");
-        await navigateProject(page, "运行日志");
-        await expect(page.getByRole("heading", { name: "运行日志", exact: true })).toBeVisible();
-        await capture(page, group, "logs");
         await page.locator("button").filter({ hasText: /^设置$/ }).click();
         await expect(page.getByRole("heading", { name: "外观", exact: true })).toBeVisible();
         await capture(page, group, "settings-appearance");
@@ -148,7 +141,9 @@ for (const theme of ["light", "dark", "system"] as const) {
         await page.evaluate(async () => {
           const current = await window.hardwareharness.projects.current();
           if (!current) throw new Error("Project missing");
-          await window.hardwareharness.wiring.update({ ...current.file.wiring, nodes: current.file.wiring.nodes.map((node) => ({ ...node, x: node.x + 1 })) });
+          // Geometry is saved immediately; a structural edit exercises the dirty-document guard.
+          const changed = await window.hardwareharness.wiring.update({ ...current.file.wiring, connections: [] });
+          if (!changed.dirty) throw new Error("Expected unsaved structural wiring change");
         });
         await page.getByRole("button", { name: "项目文件夹菜单", exact: true }).click();
         await page.getByRole("menuitem", { name: "退出", exact: true }).click();

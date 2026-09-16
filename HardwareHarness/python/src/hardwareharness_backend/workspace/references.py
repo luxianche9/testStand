@@ -9,8 +9,7 @@ from importlib.resources import files
 from pathlib import Path
 from typing import Any
 
-from hardwareharness import __contract_revision__
-from hardwareharness import __version__ as sdk_version
+from hardwareharness_backend import CONTRACT_REVISION
 from hardwareharness_backend import __version__ as app_version
 from hardwareharness_backend.contracts.errors import AppError
 
@@ -19,7 +18,6 @@ from .files import MAX_FILE_BYTES, atomic_write, source_path
 Json = dict[str, Any]
 _ID = re.compile(r"[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}\Z")
 _BUNDLED = {
-    "hh-sdk": ("HardwareHarness Python SDK", "sdk-guide.md"),
     "hh-agent-interface": ("HardwareHarness public interface and recovery", "agent-interface.md"),
 }
 
@@ -27,8 +25,7 @@ _BUNDLED = {
 def versions() -> Json:
     return {
         "appVersion": app_version,
-        "sdkVersion": sdk_version,
-        "contractRevision": __contract_revision__,
+        "contractRevision": CONTRACT_REVISION,
     }
 
 
@@ -39,7 +36,7 @@ def bundled_reference(reference_id: str) -> Json:
         "referenceId": reference_id,
         "title": title,
         "origin": "bundled",
-        "source": f"hardwareharness:{reference_id}@{__contract_revision__}",
+        "source": f"hardwareharness:{reference_id}@{CONTRACT_REVISION}",
         **versions(),
         "sha256": hashlib.sha256(content.encode()).hexdigest(),
         "content": content,

@@ -49,7 +49,7 @@ async def test_atomic_settings_and_encrypted_deterministic_secrets(tmp_path: Pat
     actual = settings.get()
     assert actual["formatVersion"] == 1
     assert actual["theme"] == "dark"
-    assert actual["projectView"] == "applications"
+    assert actual["projectView"] == "wiring"
     secrets = SecretStore(tmp_path / "secrets.json", Protector())
     await secrets.initialize()
     await secrets.set("ssh:PC1", {"kind": "password", "password": "plain-secret"})

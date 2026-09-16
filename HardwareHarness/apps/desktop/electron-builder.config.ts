@@ -16,7 +16,6 @@ const config: Configuration = {
   },
   files: ["out/**/*", "package.json"],
   extraResources: [
-    { from: resolve(desktopDir, "../../python/dist/project-runtime-v1"), to: "project-runtime" },
     {
       from: resolve(desktopDir, "../../docs/shadcn"),
       to: "third-party/shadcn",

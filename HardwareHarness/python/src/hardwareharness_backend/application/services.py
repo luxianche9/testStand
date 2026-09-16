@@ -12,7 +12,6 @@ from hardwareharness_backend.contracts.devices import (
 )
 from hardwareharness_backend.contracts.errors import app_error
 
-from .applications import ApplicationsApplication
 from .authorization import Authorizer, Json
 from .execution import ExecutionCoordinator
 
@@ -298,16 +297,14 @@ class ProjectsApplication:
         authorizer: Authorizer,
         projects: ProjectService,
         wiring: ProjectWiringService,
-        applications: ApplicationsApplication,
     ) -> None:
         self._notifier: Callable[[Json | None, bool], None] | None = None
         self._transition = asyncio.Lock()
         self._closed = False
-        self.authorizer, self.projects, self.wiring, self.applications = (
+        self.authorizer, self.projects, self.wiring = (
             authorizer,
             projects,
             wiring,
-            applications,
         )
 
     def set_notifier(self, notifier: Callable[[Json | None, bool], None]) -> None:
@@ -351,7 +348,6 @@ class ProjectsApplication:
     async def close(self) -> None:
         self._closed = True
         async with self._transition:
-            await self.applications.close()
             await self.wiring.close()
             await self.projects.close()
 
@@ -362,21 +358,16 @@ class ProjectsApplication:
             return await self._switch_locked(action)
 
     async def _switch_locked(self, action: Callable[[], Awaitable[T]]) -> T:
-        await self.applications.close()
         await self.wiring.close()
         self.wiring.clear_session()
         try:
             result = await action()
             await self.wiring.initialize()
-            if not self._closed:
-                self.applications.resume()
             if self._notifier:
                 self._notifier(self.projects.current(), True)
             return result
         except Exception:
             await self.wiring.initialize()
-            if not self._closed:
-                self.applications.resume()
             raise
 
 

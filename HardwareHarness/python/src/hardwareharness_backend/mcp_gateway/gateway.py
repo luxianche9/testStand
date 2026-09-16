@@ -16,7 +16,6 @@ from mcp.shared.version import SUPPORTED_PROTOCOL_VERSIONS as SDK_PROTOCOL_VERSI
 from pydantic import ValidationError
 from starlette.types import Receive, Scope, Send
 
-from hardwareharness_backend.automation.logs import redact
 from hardwareharness_backend.compat import (
     UNDEFINED,
     json_parse,
@@ -35,6 +34,7 @@ from hardwareharness_backend.contracts.validation import (
 )
 
 from .agent_instructions import AGENT_INSTRUCTIONS as AGENT_INSTRUCTIONS
+from .redaction import redact
 from .tool_registry import ToolRegistry
 
 Record = dict[str, Any]

@@ -1,4 +1,4 @@
-﻿param([switch]$KeepInstall)
+param([switch]$KeepInstall)
 
 $ErrorActionPreference = 'Stop'
 $workspace = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
@@ -21,7 +21,7 @@ if ($existingProcesses) { throw 'An existing HardwareHarness process must be pre
 $installer = Join-Path $distRoot 'HardwareHarness-0.1.0-windows-x64.exe'
 $process = Start-Process -FilePath $installer -ArgumentList "/S /D=$installTarget" -WindowStyle Hidden -PassThru -Wait
 if ($process.ExitCode -ne 0) { throw "Installer failed: $($process.ExitCode)" }
-$payloadReport = Join-Path $workspace 'reports/applications/packaging/backend-payload.json'
+$payloadReport = Join-Path $workspace 'output/packaging/backend-payload.json'
 if (Test-Path -LiteralPath $payloadReport) {
   $payload = Get-Content -LiteralPath $payloadReport -Raw | ConvertFrom-Json
   $installedBackend = Join-Path $installTarget 'resources/backend'
@@ -60,7 +60,7 @@ try {
     & pnpm.cmd exec playwright test e2e/python-backend.spec.ts
     if ($LASTEXITCODE -ne 0) { throw 'Installed Electron acceptance failed' }
     & node.exe scripts/smoke-packaged.mjs
-    if ($LASTEXITCODE -ne 0) { throw 'Installed applications and Agent acceptance failed' }
+    if ($LASTEXITCODE -ne 0) { throw 'Installed desktop and Agent acceptance failed' }
   } finally { Pop-Location }
 } finally {
   Set-Acl -LiteralPath $installTarget -AclObject $originalAcl

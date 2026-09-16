@@ -34,7 +34,6 @@ const environment = {
   PATH: join(process.env.SYSTEMROOT ?? "C:\\Windows", "System32")
 };
 delete environment.ELECTRON_RUN_AS_NODE;
-delete environment.HARDWAREHARNESS_PROJECT_RUNTIME;
 delete environment.HARDWAREHARNESS_BACKEND_EXECUTABLE;
 delete environment.PYTHONPATH;
 
@@ -57,14 +56,6 @@ try {
   await page.getByRole("heading", { name: "最近项目" }).waitFor();
   await mkdir(projectRoot);
   await page.evaluate((rootPath) => window.hardwareharness.projects.initializeFolder(rootPath), projectRoot);
-  await page.evaluate(async () => {
-    await window.hardwareharness.applications.initializeWorkspace();
-    await window.hardwareharness.applications.createFile({
-      path: "scripts/sample.py",
-      kind: "file",
-      content: "from hardwareharness import measurement, step\n\ndef main(inputs):\n    with step('packaged smoke'):\n        measurement('value', inputs.get('value', 1), unit='count')\n    return {'value': inputs.get('value', 1)}\n"
-    });
-  });
   await page.evaluate(() => window.hardwareharness.settings.saveLlm({
     baseUrl: "https://api.openai.com/v1",
     model: "gpt-4.1",
@@ -74,9 +65,8 @@ try {
   await page.evaluate(() => localStorage.setItem("hardwareharness.assistant-open", "true"));
   await page.reload();
   await page.getByText(projectName, { exact: true }).first().click();
-  await verifyPrograms(page);
   const agentReport = await verifyAgentInterface(`http://127.0.0.1:${gatewayPort}/mcp`, gatewayTestToken);
-  const agentReportPath = resolve(workspaceDir, "reports/applications/packaging/agent-interface.json");
+  const agentReportPath = resolve(workspaceDir, "output/packaging/agent-interface.json");
   await mkdir(dirname(agentReportPath), { recursive: true });
   await writeFile(agentReportPath, JSON.stringify(agentReport, null, 2) + "\n");
   await verifyAgentUi(page);
@@ -130,43 +120,6 @@ async function launchPackaged() {
     app.on("browser-window-created", (_event, window) => hide(window));
   });
   return instance;
-}
-
-async function verifyPrograms(page) {
-  await page.getByRole("tab", { name: "动作编排", exact: true }).click();
-  await page.getByText(".hardwareharness/scripts", { exact: true }).waitFor();
-  await page.getByRole("treeitem", { name: "sample.py", exact: true }).click();
-  for (let index = 0; index < 2; index++) {
-    await page.getByRole("button", { name: "运行脚本", exact: true }).click();
-    await page.getByLabel("程序输入 JSON").fill(JSON.stringify({ value: index + 1 }));
-    await page.getByRole("button", { name: "运行", exact: true }).click();
-    await poll(async () => {
-      const runs = await page.evaluate(() => window.hardwareharness.applications.listRuns());
-      return runs.length === index + 1 && runs.every((run) => run.status === "succeeded");
-    }, 30_000).catch(async (error) => {
-      const diagnostic = await page.evaluate(async () => {
-        const runs = await window.hardwareharness.applications.listRuns();
-        return { runs: await Promise.all(runs.map((run) => window.hardwareharness.applications.getRun(run.runId))) };
-      });
-      const report = resolve(workspaceDir, "reports/applications/packaging/failed-programs-smoke.json");
-      await mkdir(dirname(report), { recursive: true });
-      await writeFile(report, JSON.stringify(diagnostic, null, 2) + "\n");
-      throw new Error(`${error.message}; diagnostics: ${report}`);
-    });
-  }
-  const runs = await page.evaluate(() => window.hardwareharness.applications.listRuns());
-  assert.equal(runs.length, 2);
-  assert.equal(new Set(runs.map((run) => run.runId)).size, 2);
-  assert.ok(runs.every((run) => run.status === "succeeded" && run.entrypoint === "scripts/sample.py"));
-  const details = await page.evaluate((ids) => Promise.all(ids.map((id) => window.hardwareharness.applications.getRun(id))), runs.map((run) => run.runId));
-  assert.ok(details.every((detail) => detail.events.some((event) => event.type === "measurement")));
-  assert.equal(await page.locator('iframe[title="应用 Web 预览"]').count(), 0);
-  const reportDir = resolve(workspaceDir, "reports/applications/packaging");
-  await mkdir(reportDir, { recursive: true });
-  await writeFile(join(reportDir, "packaged-programs.json"), JSON.stringify({
-    executablePath, runs, measurementEventsRecorded: true, webPreviewAbsent: true,
-    hiddenWindow: true
-  }, null, 2) + "\n");
 }
 
 function collectRendererErrors(page) {
@@ -278,7 +231,7 @@ while ($true) {
       for (const role of ["electron", "backend", "uv", "worker", "opencode"]) {
         assert.ok([...tracked.values()].some((item) => item.role === role), `Missing process audit role: ${role}`);
       }
-      const report = resolve(workspaceDir, "reports/applications/packaging/process-cleanup.json");
+      const report = resolve(workspaceDir, "output/packaging/process-cleanup.json");
       await mkdir(dirname(report), { recursive: true });
       await writeFile(report, JSON.stringify({ executablePath, roots: [...roots], sampleCount,
         tracked: [...tracked.values()], remaining: [], allObservedDescendantsExited: true }, null, 2) + "\n");

@@ -1,7 +1,7 @@
-"""Lock each translated package's line and branch floors to the original TS baseline.
+"""Enforce retained package line and branch floors independently of generated reports.
 
 Different coverage engines count different constructs; passing these floors complements
-the assertion mapping and differential fixtures, and does not prove semantic equivalence.
+the behavioral tests and differential fixtures, and does not prove semantic equivalence.
 """
 
 from __future__ import annotations
@@ -12,12 +12,9 @@ from typing import Any
 
 
 def main() -> None:
-    reports = Path(__file__).resolve().parents[1] / "reports"
-    baseline = json.loads((reports / "coverage-baseline-by-package.json").read_text("utf-8"))
-    # Keep historical floors immutable. Only the removed node engine is retired.
-    baseline = {name: value for name, value in baseline.items() if name != "orchestration"}
-    for name in ("automation", "hardwareharness", "workspace"):
-        baseline[name] = {"lines": [90, 100], "branches": [90, 100]}
+    root = Path(__file__).resolve().parents[1]
+    reports = root.parent / "output/verification"
+    baseline = json.loads((root / "coverage-baseline.json").read_text("utf-8"))
     coverage = json.loads((reports / "python-coverage.json").read_text("utf-8"))
     output: dict[str, Any] = {}
     failures = []
@@ -40,7 +37,7 @@ def main() -> None:
                 sum(s["num_branches"] for s in summaries),
             ],
         }
-        output[package] = {"typescript": original, "python": translated}
+        output[package] = {"minimum": original, "python": translated}
         for metric, (covered, total) in translated.items():
             ts_covered, ts_total = original[metric]
             percent = covered / total if total else 1
@@ -51,7 +48,7 @@ def main() -> None:
     )
     if failures:
         raise SystemExit("Coverage regressions:\n" + "\n".join(failures))
-    print("Retained packages meet original floors; SDK, automation and workspace meet 90%")
+    print("Retained packages meet original floors; reference workspace meets 90%")
 
 
 if __name__ == "__main__":

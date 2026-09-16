@@ -62,27 +62,6 @@ export function createHardwareHarnessApi(client: DesktopTrpcClient): HardwareHar
       getTask: (id) => call(client.wiring.getTask.query({ id })),
       listTasks: (input) => call(client.wiring.listTasks.query(input))
     },
-    applications: {
-      listFiles: () => call(client.applications.listFiles.query()),
-      readFile: (path) => call(client.applications.readFile.query({ path })),
-      writeFile: (input) => call(client.applications.writeFile.mutate(input)),
-      createFile: (input) => call(client.applications.createFile.mutate(input)),
-      renameFile: (input) => call(client.applications.renameFile.mutate(input)),
-      deleteFile: (path) => call(client.applications.deleteFile.mutate({ path })),
-      search: (query) => call(client.applications.search.query({ query })),
-      diagnostics: (path, content) => call(client.applications.diagnostics.query({ path, content })),
-      initializeWorkspace: (options) => call(client.applications.initializeWorkspace.mutate(options)),
-      startRun: (input) => call(client.applications.startRun.mutate(input)),
-      cancelRun: (id) => call(client.applications.cancelRun.mutate({ id })),
-      getRun: (id) => call(client.applications.getRun.query({ id })),
-      listRuns: (input) => call(client.applications.listRuns.query(input)),
-      runEvents: (id, after, limit) => call(client.applications.runEvents.query({ id, after, limit })),
-      exportRun: (id) => call(client.applications.exportRun.query({ id })),
-      deleteRun: (id) => call(client.applications.deleteRun.mutate({ id })),
-      clearCompletedRuns: () => call(client.applications.clearCompletedRuns.mutate()),
-      readRunAttachment: (id, path) => call(client.applications.readRunAttachment.query({ id, path })),
-      readRunSource: (id, path) => call(client.applications.readRunSource.query({ id, path }))
-    },
     manual: {
       invokeTool: (input) => call(client.manual.invokeTool.mutate(input))
     },

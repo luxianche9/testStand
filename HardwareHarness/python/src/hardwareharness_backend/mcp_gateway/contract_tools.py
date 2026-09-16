@@ -13,8 +13,6 @@ from hardwareharness_backend.contracts.validation import number, obj, string
 
 from .public_contracts import (
     CONTRACT_REVISION,
-    sdk_data_schema,
-    sdk_envelope_schema,
     success_schema,
 )
 
@@ -79,8 +77,8 @@ def _definition(
 CONTRACT_TOOL_DEFINITIONS = [
     _definition(
         "get_tool_contract",
-        "Read one exact public tool contract, including gateway/SDK result shapes and recovery. "
-        "Omit toolName to search/page the catalog. Copy SDK names from this contract.",
+        "Read one exact public tool contract, including gateway result shapes and recovery. "
+        "Omit toolName to search/page the catalog. Copy tool names from this contract.",
         {
             "toolName": {
                 "type": "string",
@@ -211,31 +209,8 @@ def read_tool_contract(registry: Any, context: Record, arguments: Record) -> Rec
             },
             "automaticActionReplay": False,
         },
-        "referenceId": "hh-sdk",
+        "referenceId": "hh-agent-interface",
     }
-    if registry.application.authorizer.is_allowed(context, "hardware.executeTools"):
-        remote = next(
-            (
-                t
-                for t in registry.application.devices.list_tools(context)
-                if t["externalName"] == name
-            ),
-            None,
-        )
-        if remote:
-            result["sdk"] = {
-                "toolName": remote["externalName"],
-                "remoteToolName": remote["remoteName"],
-                "serverId": remote["serverId"],
-                "hardwareIdSource": "list_mcp_servers: matching serverId.hardwareId",
-                "defaultResultMode": "envelope",
-                "resultModes": ["envelope", "data"],
-                "envelopeSchema": sdk_envelope_schema(remote.get("upstreamOutputSchema")),
-                "dataSchema": sdk_data_schema(remote.get("upstreamOutputSchema")),
-                "example": f"result = call(hardware_id, {remote['externalName']!r}, "
-                "arguments, result_mode='data')",
-                "media": "Envelope mode retains MCP images, resources and other content blocks.",
-            }
     return result
 
 

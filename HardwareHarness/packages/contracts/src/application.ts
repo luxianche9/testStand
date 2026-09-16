@@ -3,7 +3,6 @@ import type { DashboardSnapshot } from "./desktop.js";
 import type { ConnectionStatus, Hardware, ManagedHardware, McpServerConfig, RemoteComputer, RemoteServiceLog, ServerStatus, StoredHardwareDefinition, ToolCatalogItem } from "./devices.js";
 import type { ManualToolInvocationInput, ManualToolInvocationResult } from "./execution.js";
 
-import type { HardwareHarnessApplicationsApi } from "./applications.js";
 import type { ProjectDocument, ProjectFolderSelection, RecentProjectSummary } from "./projects.js";
 import type { ProjectCanvasNode, ProjectWiring, RequestWiringTaskInput, WiringTask, WiringTaskStatus } from "./wiring.js";
 
@@ -74,9 +73,6 @@ export interface BackendApplication {
     cancelTask(context: RequestContext, wiringTaskId: string, message?: string): Promise<WiringTask>;
     getTask(context: RequestContext, wiringTaskId: string): WiringTask;
     listTasks(context: RequestContext, input?: { status?: WiringTaskStatus; limit?: number }): WiringTask[];
-  };
-  readonly applications: {
-    [K in keyof HardwareHarnessApplicationsApi]: HardwareHarnessApplicationsApi[K] extends (...args: infer A) => infer R ? (context: RequestContext, ...args: A) => R : never;
   };
   readonly manual: {
     invokeTool(context: RequestContext, raw: ManualToolInvocationInput): Promise<ManualToolInvocationResult>;

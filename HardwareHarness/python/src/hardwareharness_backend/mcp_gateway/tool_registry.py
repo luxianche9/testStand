@@ -14,16 +14,12 @@ from hardwareharness_backend.contracts.errors import app_error
 from hardwareharness_backend.contracts.validation import (
     Schema,
     array,
-    boolean,
     custom_issue,
-    enum,
     number,
     obj,
     parse_record,
-    record,
     string,
     union,
-    unknown,
 )
 from hardwareharness_backend.contracts.wiring import (
     pin_pair_schema,
@@ -116,44 +112,6 @@ _ARGUMENT_SCHEMAS: dict[str, Schema] = {
         {
             "status": wiring_task_status_schema.optional(),
             "limit": number(1, 500, integer=True).default(100),
-        },
-        strict=True,
-    ),
-    "list_workspace_files": obj({}, strict=True),
-    "read_workspace_file": obj({"path": string(1)}, strict=True),
-    "write_workspace_file": obj(
-        {"path": string(1), "content": string(), "expectedHash": string()}, strict=True
-    ),
-    "initialize_workspace": obj({"online": boolean().default(False)}, strict=True),
-    "validate_python_file": obj({"path": string(1)}, strict=True),
-    "start_python_run": obj(
-        {
-            "entrypoint": string(1),
-            "inputs": record(unknown()).default({}),
-            "inputSchema": record(unknown()).default({}),
-            "hardwareIds": array(string(1)).default([]),
-            "name": string(1).optional(),
-        },
-        strict=True,
-    ),
-    "cancel_python_run": obj({"runId": string(1)}, strict=True),
-    "get_python_run": obj({"runId": string(1)}, strict=True),
-    "list_python_runs": obj(
-        {
-            "limit": number(1, 10000, integer=True).default(100),
-            "search": string().optional(),
-            "offset": number(0, None, integer=True).default(0),
-            "status": enum(
-                "running", "cancelling", "succeeded", "failed", "cancelled", "interrupted"
-            ).optional(),
-        },
-        strict=True,
-    ),
-    "get_python_run_events": obj(
-        {
-            "runId": string(1),
-            "after": number(0, None, integer=True).default(0),
-            "limit": number(1, 1000, integer=True).default(500),
         },
         strict=True,
     ),
@@ -291,11 +249,7 @@ def _handler_arguments(
         return (app.projects.document if name == "get_project" else app.projects.save_project), [
             context
         ]
-    devices, wiring, applications = (
-        app.devices,
-        app.wiring,
-        app.applications,
-    )
+    devices, wiring = app.devices, app.wiring
     mapping: dict[str, tuple[Any, list[Any]]] = {
         "list_remote_computers": (devices.list_computers, []),
         "get_remote_computer_status": (devices.get_computer_status, [value.get("computerId")]),
@@ -325,19 +279,6 @@ def _handler_arguments(
         ),
         "get_wiring_task": (wiring.get_task, [value.get("wiringTaskId")]),
         "list_wiring_tasks": (wiring.list_tasks, [value]),
-        "list_workspace_files": (applications.list_files, []),
-        "read_workspace_file": (applications.read_file, [value.get("path")]),
-        "write_workspace_file": (applications.write_file, [value]),
-        "initialize_workspace": (applications.initialize_workspace, [value]),
-        "validate_python_file": (applications.diagnostics, [value.get("path")]),
-        "start_python_run": (applications.start_run, [value]),
-        "cancel_python_run": (applications.cancel_run, [value.get("runId")]),
-        "get_python_run": (applications.get_run, [value.get("runId")]),
-        "list_python_runs": (applications.list_runs, [value]),
-        "get_python_run_events": (
-            applications.run_events,
-            [value.get("runId"), value.get("after"), value.get("limit")],
-        ),
     }
     if name in {
         "start_remote_mcp_service",

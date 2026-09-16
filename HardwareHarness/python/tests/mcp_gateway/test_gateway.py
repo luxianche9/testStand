@@ -16,7 +16,7 @@ from hardwareharness_backend.mcp_gateway import LocalMcpGateway
 PREFIX = "packages/mcp-gateway/src/gateway.test.ts::"
 
 
-def application(overrides: dict[str, Any] | None = None) -> tuple[Any, Any, Any, Any]:
+def application(overrides: dict[str, Any] | None = None) -> tuple[Any, Any, Any]:
     devices = Mock(
         store=Mock(
             put_image_bytes=AsyncMock(return_value={}),
@@ -54,33 +54,16 @@ def application(overrides: dict[str, Any] | None = None) -> tuple[Any, Any, Any,
         list_tasks=Mock(return_value=[]),
         cancel_task=AsyncMock(),
     )
-    orchestration = Mock(
-        get_task=Mock(return_value={"taskId": "TASK"}),
-        start_run=AsyncMock(return_value={"run": {"runId": "RUN"}, "nodeRuns": [], "events": []}),
-        cancel_run=AsyncMock(),
-        get_run=AsyncMock(return_value={}),
-    )
-    from hardwareharness_backend.application import (
-        ApplicationsApplication,
-        DefaultAuthorizer,
-        ExecutionCoordinator,
-    )
-
-    applications = ApplicationsApplication(
-        DefaultAuthorizer(), Mock(), devices, Mock(), ExecutionCoordinator()
-    )
-    applications.runner = orchestration
     app = HardwareHarnessApplication(
         {
             "devices": devices,
             "catalog": catalog,
             "projects": projects,
             "wiring": wiring,
-            "applications": applications,
             "system": {"gateway_status": lambda: {"running": False}},
         }
     )
-    return app, devices, wiring, orchestration
+    return app, devices, wiring
 
 
 def secrets(initial: str = "test-token") -> Any:
@@ -162,7 +145,7 @@ async def test_port_fallback() -> None:
     PREFIX + "maintains a stateful session and exposes only authorized Agent tools"
 )
 async def test_stateful_session() -> None:
-    app, _, _, _ = application()
+    app, _, _ = application()
     app.authorizer.authorize = Mock(wraps=app.authorizer.authorize)
     gateway = LocalMcpGateway(app, secrets(), 0)
     await gateway.start()
@@ -200,7 +183,7 @@ async def test_stateful_session() -> None:
             headers,
             json.dumps({"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}),
         )
-        for name in ["request_wiring_task", "start_python_run", "save_hardware_definition"]:
+        for name in ["request_wiring_task", "request_wiring_task", "save_hardware_definition"]:
             assert name in tools.text
         for name in [
             "save_remote_computer",
@@ -219,14 +202,14 @@ async def test_stateful_session() -> None:
                     "jsonrpc": "2.0",
                     "id": 3,
                     "method": "tools/call",
-                    "params": {"name": "get_python_run", "arguments": {"runId": "R"}},
+                    "params": {"name": "read_reference", "arguments": {}},
                 }
             ),
         )
         contexts = [
             call.args[0]
             for call in app.authorizer.authorize.call_args_list
-            if call.args[1] == "applications.read"
+            if call.args[1] == "references.read"
         ]
         assert contexts
         assert {key: contexts[0][key] for key in ["actor", "source", "subjectId"]} == {
@@ -266,17 +249,13 @@ async def test_tool_routes() -> None:
         "inputSchema": {"type": "object"},
         "kind": "hardware",
     }
-    app, devices, wiring, orchestration = application({"list_tools": Mock(return_value=[remote])})
+    app, devices, wiring = application({"list_tools": Mock(return_value=[remote])})
     gateway = LocalMcpGateway(app, secrets())
     await gateway.invoke_tool(
         "request_wiring_task", {"portA": "A.J1", "portB": "B.J1", "action": "connect"}
     )
-    await gateway.invoke_tool("start_python_run", {"entrypoint": "scripts/main.py"})
     await gateway.invoke_tool("S1.measure", {"voltage": 5})
     assert wiring.request_task.call_args.args[0]["requestedBy"] == "agent"
-    orchestration.start_run.assert_awaited_once_with(
-        {"entrypoint": "scripts/main.py", "inputs": {}, "inputSchema": {}, "hardwareIds": []}
-    )
     devices.call_aggregated_tool.assert_awaited_once_with("S1.measure", {"voltage": 5})
 
 
@@ -302,7 +281,7 @@ def test_tool_schemas() -> None:
 @pytest.mark.ts_case(PREFIX + "rejects a remote tool name that collides with a builtin")
 def test_duplicate_tool() -> None:
     remote = {
-        "externalName": "get_python_run",
+        "externalName": "read_reference",
         "remoteName": "duplicate",
         "serverId": "S1",
         "inputSchema": {"type": "object"},

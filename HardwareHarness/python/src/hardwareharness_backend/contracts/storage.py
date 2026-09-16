@@ -14,7 +14,7 @@ from hardwareharness_backend.contracts.validation import (
 
 theme_choice_schema = enum("system", "light", "dark")
 welcome_layout_schema = enum("grid", "list")
-project_view_schema = enum("wiring", "applications", "manual", "logs").catch("wiring")
+project_view_schema = enum("wiring", "manual").catch("wiring")
 user_settings_schema = obj(
     {
         "formatVersion": literal(1).default(1),

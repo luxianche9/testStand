@@ -86,16 +86,6 @@ _CASES: list[tuple[str, dict[str, Any], str, str, list[Any]]] = [
     ("cancel_wiring_task", {"wiringTaskId": "W"}, "wiring", "cancel_task", ["W", None]),
     ("get_wiring_task", {"wiringTaskId": "W"}, "wiring", "get_task", ["W"]),
     ("list_wiring_tasks", {}, "wiring", "list_tasks", [{"limit": 100}]),
-    ("list_workspace_files", {}, "applications", "list_files", []),
-    (
-        "start_python_run",
-        {"entrypoint": "scripts/main.py"},
-        "applications",
-        "start_run",
-        [{"entrypoint": "scripts/main.py", "inputs": {}, "inputSchema": {}, "hardwareIds": []}],
-    ),
-    ("cancel_python_run", {"runId": "R"}, "applications", "cancel_run", ["R"]),
-    ("get_python_run", {"runId": "R"}, "applications", "get_run", ["R"]),
 ]
 
 
@@ -207,7 +197,7 @@ def result_body(response: httpx.Response) -> Any:
 
 async def test_http_routes_and_tool_errors() -> None:
     gateway, app = make_gateway()
-    app.applications.get_run.return_value = _TASK
+    app.wiring.get_task.return_value = _TASK
     await gateway.start()
     try:
         async with httpx.AsyncClient(headers=_HEADERS) as client:
@@ -234,7 +224,7 @@ async def test_http_routes_and_tool_errors() -> None:
                     "jsonrpc": "2.0",
                     "id": 4,
                     "method": "tools/call",
-                    "params": {"name": "get_python_run", "arguments": {"runId": "R"}},
+                    "params": {"name": "get_wiring_task", "arguments": {"wiringTaskId": "W"}},
                 },
             )
             assert result_body(success) == {
@@ -254,14 +244,14 @@ async def test_http_routes_and_tool_errors() -> None:
                     "jsonrpc": "2.0",
                     "id": 2,
                     "method": "tools/call",
-                    "params": {"name": "get_python_run", "arguments": {}},
+                    "params": {"name": "get_wiring_task", "arguments": {}},
                 },
             )
             result = result_body(response)
             assert result["isError"] is True
             error = result["structuredContent"]["error"]
             assert error["category"] == "invalid_argument"
-            assert error["validationIssues"][0]["path"] == ["runId"]
+            assert error["validationIssues"][0]["path"] == ["wiringTaskId"]
             assert json.loads(result["content"][0]["text"]) == result["structuredContent"]
             response = await client.post(
                 url,
@@ -343,7 +333,7 @@ async def test_mcp_cancellation_keeps_application_operation_running() -> None:
         completed.set()
         return {"runId": "R"}
 
-    app.applications.start_run = run
+    app.wiring.request_task = run
     await gateway.start()
     try:
         async with httpx.AsyncClient(headers=_HEADERS) as client:
@@ -359,8 +349,8 @@ async def test_mcp_cancellation_keeps_application_operation_running() -> None:
                         "id": 2,
                         "method": "tools/call",
                         "params": {
-                            "name": "start_python_run",
-                            "arguments": {"entrypoint": "scripts/main.py"},
+                            "name": "request_wiring_task",
+                            "arguments": {"portA": "A.J", "portB": "B.J", "action": "connect"},
                         },
                     },
                 )
