@@ -22,6 +22,9 @@ _AGENT_CAPABILITIES = {
     "wiring.request",
     "references.read",
     "references.manage",
+    "testing.read",
+    "testing.manage",
+    "testing.execute",
 }
 
 

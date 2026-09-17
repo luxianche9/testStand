@@ -48,6 +48,11 @@
       "hardwareharness-source": "./src/desktop.ts",
       "types": "./dist/desktop.d.ts",
       "default": "./dist/desktop.js"
+    },
+    "./testing": {
+      "hardwareharness-source": "./src/testing.ts",
+      "types": "./dist/testing.d.ts",
+      "default": "./dist/testing.js"
     }
   },
   "typesVersions": {
@@ -78,6 +83,9 @@
       ],
       "desktop": [
         "./dist/desktop.d.ts"
+      ],
+      "testing": [
+        "./dist/testing.d.ts"
       ]
     }
   },

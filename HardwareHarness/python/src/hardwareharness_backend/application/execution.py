@@ -29,10 +29,14 @@ class _Holder:
 
 
 def _key(activity: Json) -> str:
+    if activity.get("state") == "run":
+        return f"run:{activity.get('runId', '')}:{activity['startedAt']}"
     return f"manual:{activity['hardwareId']}:{activity['startedAt']}"
 
 
 def _hardware_ids(activity: Json) -> list[str]:
+    if activity.get("state") == "run":
+        return list(dict.fromkeys(activity.get("hardwareIds", [])))
     return [activity["hardwareId"]]
 
 

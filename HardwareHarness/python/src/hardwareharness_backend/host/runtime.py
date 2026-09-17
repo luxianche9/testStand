@@ -29,6 +29,9 @@ from hardwareharness_backend.host.rpc import DesktopSecretProtector, StdioRpc
 from hardwareharness_backend.mcp_gateway import LocalMcpGateway
 from hardwareharness_backend.projects import ProjectService
 from hardwareharness_backend.storage import SecretStore, SettingsStore
+from hardwareharness_backend.testing import TestEngine, TestPlanStore
+from hardwareharness_backend.testing.plugins import load_plugins
+from hardwareharness_backend.testing.resolver import DeviceToolResolver
 from hardwareharness_backend.wiring import ProjectWiringService
 
 LLM_SECRET = "opencode.llm.api-key"
@@ -92,6 +95,27 @@ APPLICATION_METHODS = {
         ]
     ),
     "manual": {"invokeTool"},
+    "testing": set(
+        [
+            "listPlans",
+            "loadPlan",
+            "createPlan",
+            "savePlan",
+            "deletePlan",
+            "applyPlanOperations",
+            "validatePlan",
+            "listStepCatalog",
+            "listDeviceTools",
+            "startRun",
+            "pauseRun",
+            "resumeRun",
+            "abortRun",
+            "currentRun",
+            "getRun",
+            "readRunResults",
+            "waitForRun",
+        ]
+    ),
 }
 
 
@@ -142,6 +166,18 @@ class HostRuntime:
         wiring = ProjectWiringService(projects, catalog)
         await wiring.initialize()
         execution = ExecutionCoordinator()
+        test_step_plugins = load_plugins("hardwareharness.test_steps")
+        result_listeners = load_plugins("hardwareharness.result_listeners")
+        test_resolver = DeviceToolResolver(devices, catalog)
+        test_plan_store = TestPlanStore(projects, test_resolver, test_step_plugins)
+        test_engine = TestEngine(
+            projects,
+            devices,
+            test_resolver,
+            execution,
+            test_step_plugins,
+            result_listeners,
+        )
         gateway: LocalMcpGateway
         application = HardwareHarnessApplication(
             {
@@ -151,6 +187,10 @@ class HostRuntime:
                 "wiring": wiring,
                 "execution": execution,
                 "system": SimpleNamespace(gateway_status=lambda: gateway.status()),
+                "test_resolver": test_resolver,
+                "test_plan_store": test_plan_store,
+                "test_engine": test_engine,
+                "test_step_plugins": test_step_plugins,
             }
         )
         gateway = LocalMcpGateway(application, secrets, options.get("gatewayPort", 8000))
@@ -158,6 +198,8 @@ class HostRuntime:
         wiring.set_notifier(lambda task: self.publish("wiringTask", task))
         wiring.set_project_notifier(lambda: self.publish("project", projects.current()))
         execution.set_notifier(lambda activity: self.publish("execution", activity))
+        application.testing.set_plan_notifier(lambda event: self.publish("testPlan", event))
+        test_engine.set_notifier(lambda event: self.publish("testRun", event))
         test_token = options.get("gatewayTestToken")
         if (
             options.get("integrationTestMode")
@@ -321,6 +363,7 @@ class HostRuntime:
         await services.gateway.stop()
         await services.application.devices.close_calls()
         await services.application.manual.close()
+        await services.application.testing.close()
         await services.application.projects.close()
         await services.devices.close()
         await services.transports.close()

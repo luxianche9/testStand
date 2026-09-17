@@ -37,10 +37,10 @@ test.afterAll(async () => {
 });
 
 async function navigateProject(page: Page, view: "设备管理" | "工位接线"): Promise<void> {
-  // The existing compact navigation hides its text below 1100px; order is unchanged.
-  const tabs = page.getByRole("tablist", { name: "项目子页面" }).getByRole("tab");
-  await expect(tabs).toHaveCount(2);
-  await tabs.nth(["设备管理", "工位接线"].indexOf(view)).click();
+  // Compact navigation can hide visible text, but each tab retains its accessible name.
+  const tablist = page.getByRole("tablist", { name: "项目子页面" });
+  await expect(tablist.getByRole("tab")).toHaveCount(3);
+  await tablist.getByRole("tab", { name: view }).click();
 }
 
 async function capture(page: Page, group: string, name: string): Promise<void> {

@@ -178,6 +178,79 @@ test.describe.serial("HardwareHarness folder project desktop", () => {
     await page.screenshot({ path: resolve(artifactDir, "assistant-sidebar-dark.png") });
   });
 
+  test("lets the Agent MCP create, edit, validate and control a test plan", async () => {
+    const client = await connectGateway();
+    try {
+      const names = (await client.listTools()).tools.map((tool) => tool.name);
+      expect(names).toEqual(expect.arrayContaining([
+        "create_test_plan", "apply_test_plan_operations", "validate_test_plan",
+        "start_test_run", "pause_test_run", "resume_test_run", "abort_test_run",
+        "wait_for_test_run", "read_test_run_results"
+      ]));
+      const created = mcpData(await client.callTool({
+        name: "create_test_plan",
+        arguments: { requestId: "e2e-create-plan", id: "agent-e2e", name: "Agent 编排计划" }
+      }));
+      expect(created.plan.revision).toBe(1);
+      const added = mcpData(await client.callTool({
+        name: "apply_test_plan_operations",
+        arguments: {
+          planId: "agent-e2e", baseRevision: 1, requestId: "e2e-add-steps",
+          operations: [
+            { type: "insert_step", region: "test", step: { id: "sequence", type: "Sequence", name: "测试序列", children: [] } },
+            { type: "insert_step", region: "test", step: { id: "delay", type: "Delay", name: "等待终止", durationMs: 10_000 } },
+            { type: "insert_step", region: "cleanup", step: { id: "cleanup_result", type: "PublishResult", name: "安全清理", value: "done" } }
+          ]
+        }
+      }));
+      expect(added.appliedOperations).toBe(3);
+      const moved = mcpData(await client.callTool({
+        name: "apply_test_plan_operations",
+        arguments: {
+          planId: "agent-e2e", baseRevision: 2, requestId: "e2e-move-step",
+          operations: [{ type: "move_step", stepId: "delay", region: "test", parentId: "sequence", index: 0 }]
+        }
+      }));
+      expect(moved.plan.revision).toBe(3);
+      const validation = mcpData(await client.callTool({ name: "validate_test_plan", arguments: { planId: "agent-e2e" } }));
+      expect(validation).toMatchObject({ valid: true, revision: 3 });
+      const started = mcpData(await client.callTool({
+        name: "start_test_run",
+        arguments: { planId: "agent-e2e", revision: 3, requestId: "e2e-start-run", parameters: {} }
+      }));
+      const duplicate = mcpData(await client.callTool({
+        name: "start_test_run",
+        arguments: { planId: "agent-e2e", revision: 3, requestId: "e2e-start-run", parameters: {} }
+      }));
+      expect(duplicate.runId).toBe(started.runId);
+      await client.callTool({ name: "pause_test_run", arguments: { runId: started.runId } });
+      let sequence = 0;
+      let snapshot = started;
+      for (let attempt = 0; attempt < 5 && snapshot.state !== "paused"; attempt += 1) {
+        const waited = mcpData(await client.callTool({ name: "wait_for_test_run", arguments: { runId: started.runId, afterSequence: sequence, timeoutMs: 5_000 } }));
+        snapshot = waited.run;
+        sequence = snapshot.sequence;
+      }
+      expect(snapshot.state).toBe("paused");
+      await client.callTool({ name: "resume_test_run", arguments: { runId: started.runId } });
+      await client.callTool({ name: "abort_test_run", arguments: { runId: started.runId } });
+      for (let attempt = 0; attempt < 5 && !["completed", "aborted", "error"].includes(snapshot.state); attempt += 1) {
+        const waited = mcpData(await client.callTool({ name: "wait_for_test_run", arguments: { runId: started.runId, afterSequence: sequence, timeoutMs: 5_000 } }));
+        snapshot = waited.run;
+        sequence = snapshot.sequence;
+      }
+      expect(snapshot).toMatchObject({ state: "aborted", verdict: "Aborted" });
+      const results = mcpData(await client.callTool({ name: "read_test_run_results", arguments: { runId: started.runId, afterSequence: 0 } }));
+      expect(results.results).toEqual(expect.arrayContaining([expect.objectContaining({ name: "安全清理", value: "done" })]));
+
+      await page.getByRole("tab", { name: "测试计划", exact: true }).click();
+      await expect(page.getByText("Agent 编排计划", { exact: true }).first()).toBeVisible();
+      await expect(page.getByText("aborted · Aborted", { exact: true })).toBeVisible();
+    } finally {
+      await client.close();
+    }
+  });
+
   test("protects dirty project transitions with save, discard, and cancel", async () => {
     await page.evaluate(async () => {
       const current = await window.hardwareharness.projects.current();
@@ -215,4 +288,21 @@ test.describe.serial("HardwareHarness folder project desktop", () => {
 async function requestLeaveProject(page: Page): Promise<void> {
   await page.getByRole("button", { name: "项目文件夹菜单" }).click();
   await page.getByRole("menuitem", { name: "退出", exact: true }).click();
+}
+
+async function connectGateway(): Promise<Client> {
+  const client = new Client({ name: "e2e", version: "0.0.0" });
+  const transport = new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${gatewayPort}/mcp`), { requestInit: { headers: { Authorization: `Bearer ${gatewayTestToken}` } } });
+  await client.connect(transport);
+  return client;
+}
+
+function mcpData(result: { structuredContent?: unknown; content?: Array<{ type: string; text?: string }> }): any {
+  let value = result.structuredContent;
+  if (!value) {
+    const text = result.content?.find((item) => item.type === "text")?.text;
+    value = text ? JSON.parse(text) : {};
+  }
+  while (value && typeof value === "object" && !Array.isArray(value) && "data" in value) value = (value as { data: unknown }).data;
+  return value;
 }

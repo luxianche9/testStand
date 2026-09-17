@@ -5,6 +5,7 @@ import { ErrorBoundary } from "../../shared/ErrorBoundary.js";
 
 const WiringPage = lazy(() => import("../wiring/index.js").then((module) => ({ default: module.WiringPage })));
 const DevicesPage = lazy(() => import("../devices/index.js").then((module) => ({ default: module.DevicesPage })));
+const TestPlanPage = lazy(() => import("../testing/index.js").then((module) => ({ default: module.TestPlanPage })));
 
 export function ProjectWorkspace({ view }: { view: ProjectView }) {
   return (
@@ -12,7 +13,7 @@ export function ProjectWorkspace({ view }: { view: ProjectView }) {
       <ErrorBoundary key={view}>
         <Suspense fallback={<FeatureFallback />}>
           <div className="animate-page-in contents">
-            {view === "wiring" ? <WiringPage /> : <DevicesPage />}
+            {view === "wiring" ? <WiringPage /> : view === "plans" ? <TestPlanPage /> : <DevicesPage />}
           </div>
         </Suspense>
       </ErrorBoundary>

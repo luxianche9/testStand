@@ -5,6 +5,7 @@ import type { ManualToolInvocationInput, ManualToolInvocationResult } from "./ex
 
 import type { ProjectDocument, ProjectFolderSelection, RecentProjectSummary } from "./projects.js";
 import type { ProjectCanvasNode, ProjectWiring, RequestWiringTaskInput, WiringTask, WiringTaskStatus } from "./wiring.js";
+import type { TestDeviceTools, TestPlan, TestPlanMutationResult, TestPlanOperation, TestPlanSummary, TestPlanValidation, TestRunSnapshot, TestStepCatalogItem } from "./testing.js";
 
 interface SshCredential {
   kind: "password" | "privateKey";
@@ -78,6 +79,25 @@ export interface BackendApplication {
     invokeTool(context: RequestContext, raw: ManualToolInvocationInput): Promise<ManualToolInvocationResult>;
     abortHardware(hardwareId: string, message: string): Promise<void>;
     close(): Promise<void>;
+  };
+  readonly testing: {
+    listPlans(context: RequestContext): TestPlanSummary[];
+    loadPlan(context: RequestContext, planId: string): TestPlan;
+    createPlan(context: RequestContext, input: { requestId: string; id?: string | undefined; name: string; description?: string | undefined; parameters?: unknown[] | undefined }): Promise<TestPlanMutationResult>;
+    savePlan(context: RequestContext, plan: TestPlan, baseRevision: number): Promise<TestPlanMutationResult>;
+    deletePlan(context: RequestContext, planId: string): Promise<{ planId: string }>;
+    applyPlanOperations(context: RequestContext, input: { planId: string; baseRevision: number; requestId: string; operations: TestPlanOperation[] }): Promise<TestPlanMutationResult>;
+    validatePlan(context: RequestContext, planId: string): TestPlanValidation;
+    listStepCatalog(context: RequestContext): TestStepCatalogItem[];
+    listDeviceTools(context: RequestContext, hardwareId: string): TestDeviceTools;
+    startRun(context: RequestContext, input: { planId: string; revision: number; requestId: string; parameters: Record<string, unknown> }): Promise<TestRunSnapshot>;
+    pauseRun(context: RequestContext, runId: string): Promise<TestRunSnapshot>;
+    resumeRun(context: RequestContext, runId: string): Promise<TestRunSnapshot>;
+    abortRun(context: RequestContext, runId: string): Promise<TestRunSnapshot>;
+    currentRun(context: RequestContext): TestRunSnapshot | null;
+    getRun(context: RequestContext, runId: string): TestRunSnapshot;
+    readRunResults(context: RequestContext, runId: string, afterSequence?: number): unknown;
+    waitForRun(context: RequestContext, runId: string, afterSequence?: number, timeoutMs?: number): Promise<unknown>;
   };
 
   readonly system: {

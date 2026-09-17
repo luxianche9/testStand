@@ -5,6 +5,7 @@ import type { ExecutionActivity, ManualToolInvocationInput, ManualToolInvocation
 import type { LlmSettings, LlmSettingsInput, ProjectView, ThemeChoice, WelcomeLayout } from "./storage.js";
 import type { ProjectDocument, ProjectFolderSelection, RecentProjectSummary } from "./projects.js";
 import type { ProjectWiring, RequestWiringTaskInput, WiringOutcome, WiringTask, WiringTaskStatus } from "./wiring.js";
+import type { TestDeviceTools, TestPlan, TestPlanMutationResult, TestPlanOperation, TestPlanSummary, TestPlanValidation, TestRunSnapshot, TestStepCatalogItem } from "./testing.js";
 
 export interface DashboardSnapshot {
   computers: RemoteComputer[];
@@ -45,6 +46,13 @@ export const HARDWAREHARNESS_IPC = {
   manual: {
     invokeTool: "hardwareharness:manual:invoke-tool"
   },
+  testing: {
+    listPlans: "hardwareharness:testing:list-plans", loadPlan: "hardwareharness:testing:load-plan", createPlan: "hardwareharness:testing:create-plan",
+    savePlan: "hardwareharness:testing:save-plan", deletePlan: "hardwareharness:testing:delete-plan", applyPlanOperations: "hardwareharness:testing:apply-operations",
+    validatePlan: "hardwareharness:testing:validate-plan", listStepCatalog: "hardwareharness:testing:list-step-catalog", listDeviceTools: "hardwareharness:testing:list-device-tools",
+    startRun: "hardwareharness:testing:start-run", pauseRun: "hardwareharness:testing:pause-run", resumeRun: "hardwareharness:testing:resume-run",
+    abortRun: "hardwareharness:testing:abort-run", currentRun: "hardwareharness:testing:current-run", readRunResults: "hardwareharness:testing:read-run-results"
+  },
 
   agents: {
     rotateGatewayToken: "hardwareharness:agents:rotate-gateway-token", status: "hardwareharness:agents:status",
@@ -61,7 +69,7 @@ export const HARDWAREHARNESS_IPC = {
   }
 } as const;
 
-export type HardwareHarnessEventName = "availability" | "execution" | "wiringTask" | "workspace" | "project" | "opencode" | "window-state";
+export type HardwareHarnessEventName = "availability" | "execution" | "wiringTask" | "workspace" | "project" | "testPlan" | "testRun" | "opencode" | "window-state";
 
 export interface HardwareHarnessSystemApi {
   dashboard(): Promise<DashboardSnapshot>;
@@ -116,6 +124,24 @@ export interface HardwareHarnessManualApi {
   invokeTool(input: ManualToolInvocationInput): Promise<ManualToolInvocationResult>;
 }
 
+export interface HardwareHarnessTestingApi {
+  listPlans(): Promise<TestPlanSummary[]>;
+  loadPlan(planId: string): Promise<TestPlan>;
+  createPlan(input: { requestId: string; id?: string; name: string; description?: string; parameters?: unknown[] }): Promise<TestPlanMutationResult>;
+  savePlan(plan: TestPlan, baseRevision: number): Promise<TestPlanMutationResult>;
+  deletePlan(planId: string): Promise<void>;
+  applyPlanOperations(input: { planId: string; baseRevision: number; requestId: string; operations: TestPlanOperation[] }): Promise<TestPlanMutationResult>;
+  validatePlan(planId: string): Promise<TestPlanValidation>;
+  listStepCatalog(): Promise<TestStepCatalogItem[]>;
+  listDeviceTools(hardwareId: string): Promise<TestDeviceTools>;
+  startRun(input: { planId: string; revision: number; requestId: string; parameters: Record<string, unknown> }): Promise<TestRunSnapshot>;
+  pauseRun(runId: string): Promise<TestRunSnapshot>;
+  resumeRun(runId: string): Promise<TestRunSnapshot>;
+  abortRun(runId: string): Promise<TestRunSnapshot>;
+  currentRun(): Promise<TestRunSnapshot | null>;
+  readRunResults(runId: string, afterSequence?: number): Promise<unknown>;
+}
+
 export interface HardwareHarnessAgentsApi {
   rotateGatewayToken(): Promise<AgentIntegrationStatus>;
   status(agent: AgentKind): Promise<AgentIntegrationStatus>;
@@ -157,6 +183,7 @@ export interface HardwareHarnessApi {
   projects: HardwareHarnessProjectsApi;
   wiring: HardwareHarnessWiringApi;
   manual: HardwareHarnessManualApi;
+  testing: HardwareHarnessTestingApi;
 
   agents: HardwareHarnessAgentsApi;
   settings: HardwareHarnessSettingsApi;

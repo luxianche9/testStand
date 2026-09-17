@@ -9,7 +9,6 @@ import pytest
 
 from hardwareharness_backend.contracts.errors import AppError
 from hardwareharness_backend.contracts.execution import parse_execution_activity
-from hardwareharness_backend.contracts.validation import ValidationError
 from hardwareharness_backend.host.rpc import StdioRpc
 from hardwareharness_backend.host.runtime import HUMAN, HostRuntime, Services
 from hardwareharness_backend.mcp_gateway.redaction import redact
@@ -39,15 +38,16 @@ async def test_retired_desktop_routes_are_rejected(method: str) -> None:
         await runtime.dispatch(f"application.applications.{method}", {"args": [HUMAN]})
 
 
-def test_agent_catalog_has_no_workflow_or_script_tools() -> None:
+def test_agent_catalog_has_testing_but_no_legacy_workflow_or_script_tools() -> None:
     names = {item.tool["name"] for item in BUILTIN_TOOL_DEFINITIONS}
     assert {"read_reference", "get_tool_contract", "request_wiring_task"} <= names
+    assert {"list_test_plans", "apply_test_plan_operations", "start_test_run"} <= names
     assert not any(
         "python_run" in name or "test_flow" in name or "workspace" in name for name in names
     )
 
 
-def test_execution_contract_and_gateway_redaction_survive_removal() -> None:
+def test_execution_contract_accepts_runs_and_gateway_redaction_survives_removal() -> None:
     call = {
         "state": "manual",
         "hardwareId": "H",
@@ -55,10 +55,13 @@ def test_execution_contract_and_gateway_redaction_survive_removal() -> None:
         "startedAt": "2026-09-16T00:00:00.000Z",
     }
     assert parse_execution_activity(call) == call
-    with pytest.raises(ValidationError):
-        parse_execution_activity(
-            {"state": "run", "runId": "R", "hardwareIds": ["H"], "startedAt": call["startedAt"]}
-        )
+    run = {
+        "state": "run",
+        "runId": "R",
+        "hardwareIds": ["H"],
+        "startedAt": call["startedAt"],
+    }
+    assert parse_execution_activity(run) == run
     payload = {"data": [{"Authorization": "secret", "volts": 2.5}], "token": "secret"}
     assert redact(payload) == {
         "data": [{"Authorization": "[REDACTED]", "volts": 2.5}],

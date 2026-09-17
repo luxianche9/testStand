@@ -34,6 +34,9 @@ AGENT_ALLOWED = {
     "wiring.request",
     "references.read",
     "references.manage",
+    "testing.read",
+    "testing.manage",
+    "testing.execute",
 }
 HARDWARE: Json = {
     "formatVersion": 2,

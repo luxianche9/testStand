@@ -31,6 +31,13 @@ export function useHardwareHarnessEvents(client: QueryClient) {
       window.hardwareharness.events.subscribe("wiringTask", () => {
         debouncedInvalidate(queryKeys.wiringTasks, queryKeys.projectDocument);
       }),
+      window.hardwareharness.events.subscribe("testPlan", () => {
+        void c().invalidateQueries({ queryKey: queryKeys.testPlans });
+      }),
+      window.hardwareharness.events.subscribe("testRun", () => {
+        void c().invalidateQueries({ queryKey: queryKeys.testRun });
+        void c().invalidateQueries({ queryKey: queryKeys.dashboard });
+      }),
     ];
 
     const fallback = window.setInterval(() => {

@@ -25,6 +25,9 @@ CAPABILITIES = (
     "wiring.confirm",
     "references.read",
     "references.manage",
+    "testing.read",
+    "testing.manage",
+    "testing.execute",
 )
 
 

@@ -297,6 +297,7 @@ class ProjectsApplication:
         authorizer: Authorizer,
         projects: ProjectService,
         wiring: ProjectWiringService,
+        execution: ExecutionCoordinator | None = None,
     ) -> None:
         self._notifier: Callable[[Json | None, bool], None] | None = None
         self._transition = asyncio.Lock()
@@ -306,6 +307,7 @@ class ProjectsApplication:
             projects,
             wiring,
         )
+        self.execution = execution or ExecutionCoordinator()
 
     def set_notifier(self, notifier: Callable[[Json | None, bool], None]) -> None:
         self._notifier = notifier
@@ -355,6 +357,8 @@ class ProjectsApplication:
         async with self._transition:
             if self._closed:
                 raise app_error("unavailable", "Project service is shutting down")
+            if self.execution.current()["state"] != "idle":
+                raise app_error("conflict", "Finish the active execution before switching projects")
             return await self._switch_locked(action)
 
     async def _switch_locked(self, action: Callable[[], Awaitable[T]]) -> T:

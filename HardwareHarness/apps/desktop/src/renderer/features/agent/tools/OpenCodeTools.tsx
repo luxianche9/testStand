@@ -14,6 +14,7 @@ import {
   WriteInline
 } from "./inline-tools";
 import { ToolFallback } from "../ToolFallback";
+import { TestPlanTool as TestPlanToolCard } from "./test-plan-tool";
 
 export const ReadTool = withOpenCodeToolInteractions(ReadInline);
 export const EditTool = withOpenCodeToolInteractions(EditInline);
@@ -26,3 +27,4 @@ export const WebFetchTool = withOpenCodeToolInteractions(WebFetchInline);
 export const ApplyPatchTool = withOpenCodeToolInteractions(ApplyPatchDiff);
 export const AskQuestionTool = withOpenCodeToolInteractions(AskQuestionInline);
 export const FallbackTool = withOpenCodeToolInteractions(ToolFallback);
+export const TestPlanTool = withOpenCodeToolInteractions(TestPlanToolCard);

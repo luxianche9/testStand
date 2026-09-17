@@ -35,6 +35,7 @@ from .contract_tools import (
     read_tool_contract,
 )
 from .public_contracts import public_remote_tool, with_error_schema
+from .testing_tools import TESTING_ARGUMENT_SCHEMAS, TESTING_TOOL_DEFINITIONS, invoke_testing_tool
 
 Record = dict[str, Any]
 _EMPTY = obj({}, strict=True)
@@ -118,6 +119,7 @@ _ARGUMENT_SCHEMAS: dict[str, Schema] = {
 }
 _ARGUMENT_SCHEMAS.update(AGENT_ARGUMENT_SCHEMAS)
 _ARGUMENT_SCHEMAS.update(CONTRACT_ARGUMENT_SCHEMAS)
+_ARGUMENT_SCHEMAS.update(TESTING_ARGUMENT_SCHEMAS)
 
 
 @dataclass
@@ -132,6 +134,9 @@ class GatewayToolDefinition:
         name = self.tool["name"]
         if name in AGENT_ARGUMENT_SCHEMAS:
             return {"ok": True, "data": await invoke_agent_tool(application, context, name, value)}
+        if name in TESTING_ARGUMENT_SCHEMAS:
+            data = await invoke_testing_tool(application, context, name, value)
+            return {"ok": True, "data": data}
         if name == "import_firmware_artifact":
             return {"ok": True, "data": await import_firmware(application, context, value)}
         if name == "request_wiring_task":
@@ -158,6 +163,9 @@ BUILTIN_TOOL_DEFINITIONS = [
 BUILTIN_TOOL_DEFINITIONS.extend(
     GatewayToolDefinition(item["tool"], item["capability"])
     for item in [*AGENT_TOOL_DEFINITIONS, *CONTRACT_TOOL_DEFINITIONS]
+)
+BUILTIN_TOOL_DEFINITIONS.extend(
+    GatewayToolDefinition(item["tool"], item["capability"]) for item in TESTING_TOOL_DEFINITIONS
 )
 
 

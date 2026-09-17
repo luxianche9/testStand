@@ -9,15 +9,16 @@ describe("retired workflow compatibility", () => {
     expect(userSettingsSchema.parse({ projectView: view, theme: "dark" })).toMatchObject({ projectView: "wiring", theme: "dark" });
   });
 
-  it("keeps both supported views and excludes retired IPC", () => {
+  it("keeps supported views and excludes retired application IPC", () => {
     expect(projectViewSchema.parse("manual")).toBe("manual");
     expect(projectViewSchema.parse("wiring")).toBe("wiring");
+    expect(projectViewSchema.parse("plans")).toBe("plans");
     expect(HARDWAREHARNESS_IPC).not.toHaveProperty("applications");
   });
 
-  it("accepts direct hardware activities and rejects Python runs", () => {
+  it("accepts direct hardware and test-run activities", () => {
     const call = { state: "manual", hardwareId: "H", toolName: "S__write", startedAt: "2026-09-16T00:00:00.000Z" };
     expect(executionActivitySchema.parse({ ...call, activities: [call, { ...call, hardwareId: "H2" }] })).toMatchObject({ state: "manual" });
-    expect(executionActivitySchema.safeParse({ state: "run", runId: "R", hardwareIds: ["H"], startedAt: call.startedAt }).success).toBe(false);
+    expect(executionActivitySchema.parse({ state: "run", runId: "R", hardwareIds: ["H"], startedAt: call.startedAt })).toMatchObject({ state: "run", runId: "R" });
   });
 });

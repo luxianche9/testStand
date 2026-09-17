@@ -29,6 +29,7 @@ import {
   wiringTaskListQuerySchema
 } from "@hardwareharness/contracts/wiring";
 import { DESKTOP_HUMAN_CONTEXT as HUMAN_REQUEST_CONTEXT, type PythonApplication } from "./python-application.js";
+import { testPlanOperationSchema, testPlanSchema } from "@hardwareharness/contracts/testing";
 import { hardwareHarnessTransformer } from "../shared/trpc-transformer.js";
 import type { DesktopEventListener } from "./desktop-events.js";
 
@@ -40,7 +41,7 @@ interface DesktopDialogsPort {
   chooseProjectFolder(): Promise<string | null>;
 }
 
-type DesktopEventName = "availability" | "execution" | "wiringTask" | "workspace" | "application" | "project" | "opencode" | "window-state";
+type DesktopEventName = "availability" | "execution" | "wiringTask" | "workspace" | "application" | "project" | "testPlan" | "testRun" | "opencode" | "window-state";
 
 interface DesktopWindowPort {
   publish(event: DesktopEventName, payload: unknown): void;
@@ -77,7 +78,7 @@ const trpc = initTRPC.create({
 });
 
 const emptyInput = z.void().optional();
-const eventNameSchema = z.enum(["availability", "execution", "wiringTask", "workspace", "application", "project", "opencode", "window-state"]);
+const eventNameSchema = z.enum(["availability", "execution", "wiringTask", "workspace", "application", "project", "testPlan", "testRun", "opencode", "window-state"]);
 
 export function createDesktopRouter(dependencies: DesktopIpcDependencies) {
   const { application, agents, settings, dialogs, windows } = dependencies;
@@ -197,6 +198,23 @@ export function createDesktopRouter(dependencies: DesktopIpcDependencies) {
     }),
     manual: trpc.router({
       invokeTool: trpc.procedure.input(manualToolInvocationInputSchema).mutation(({ input }) => application.manual.invokeTool(HUMAN_REQUEST_CONTEXT, input))
+    }),
+    testing: trpc.router({
+      listPlans: trpc.procedure.input(emptyInput).query(() => application.testing.listPlans(HUMAN_REQUEST_CONTEXT)),
+      loadPlan: trpc.procedure.input(z.object({ planId: z.string().min(1) }).strict()).query(({ input }) => application.testing.loadPlan(HUMAN_REQUEST_CONTEXT, input.planId)),
+      createPlan: trpc.procedure.input(z.object({ requestId: z.string().min(1), id: z.string().min(1).optional(), name: z.string().min(1), description: z.string().optional(), parameters: z.array(z.unknown()).optional() }).strict()).mutation(({ input }) => application.testing.createPlan(HUMAN_REQUEST_CONTEXT, input)),
+      savePlan: trpc.procedure.input(z.object({ plan: testPlanSchema, baseRevision: z.number().int().positive() }).strict()).mutation(({ input }) => application.testing.savePlan(HUMAN_REQUEST_CONTEXT, input.plan, input.baseRevision)),
+      deletePlan: trpc.procedure.input(z.object({ planId: z.string().min(1) }).strict()).mutation(async ({ input }) => { await application.testing.deletePlan(HUMAN_REQUEST_CONTEXT, input.planId); }),
+      applyPlanOperations: trpc.procedure.input(z.object({ planId: z.string().min(1), baseRevision: z.number().int().positive(), requestId: z.string().min(1), operations: z.array(testPlanOperationSchema) }).strict()).mutation(({ input }) => application.testing.applyPlanOperations(HUMAN_REQUEST_CONTEXT, input)),
+      validatePlan: trpc.procedure.input(z.object({ planId: z.string().min(1) }).strict()).query(({ input }) => application.testing.validatePlan(HUMAN_REQUEST_CONTEXT, input.planId)),
+      listStepCatalog: trpc.procedure.input(emptyInput).query(() => application.testing.listStepCatalog(HUMAN_REQUEST_CONTEXT)),
+      listDeviceTools: trpc.procedure.input(z.object({ hardwareId: z.string().min(1) }).strict()).query(({ input }) => application.testing.listDeviceTools(HUMAN_REQUEST_CONTEXT, input.hardwareId)),
+      startRun: trpc.procedure.input(z.object({ planId: z.string().min(1), revision: z.number().int().positive(), requestId: z.string().min(1), parameters: z.record(z.unknown()) }).strict()).mutation(({ input }) => application.testing.startRun(HUMAN_REQUEST_CONTEXT, input)),
+      pauseRun: trpc.procedure.input(z.object({ runId: z.string().min(1) }).strict()).mutation(({ input }) => application.testing.pauseRun(HUMAN_REQUEST_CONTEXT, input.runId)),
+      resumeRun: trpc.procedure.input(z.object({ runId: z.string().min(1) }).strict()).mutation(({ input }) => application.testing.resumeRun(HUMAN_REQUEST_CONTEXT, input.runId)),
+      abortRun: trpc.procedure.input(z.object({ runId: z.string().min(1) }).strict()).mutation(({ input }) => application.testing.abortRun(HUMAN_REQUEST_CONTEXT, input.runId)),
+      currentRun: trpc.procedure.input(emptyInput).query(() => application.testing.currentRun(HUMAN_REQUEST_CONTEXT)),
+      readRunResults: trpc.procedure.input(z.object({ runId: z.string().min(1), afterSequence: z.number().int().min(0).optional() }).strict()).query(({ input }) => application.testing.readRunResults(HUMAN_REQUEST_CONTEXT, input.runId, input.afterSequence))
     }),
 
     agents: trpc.router({

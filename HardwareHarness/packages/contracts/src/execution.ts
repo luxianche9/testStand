@@ -7,13 +7,23 @@ const manualExecutionActivitySchema = z.object({
   startedAt: z.string().datetime()
 }).strict();
 
-export const activeExecutionActivitySchema = manualExecutionActivitySchema;
+const runExecutionActivitySchema = z.object({
+  state: z.literal("run"),
+  runId: z.string().min(1),
+  planId: z.string().min(1).optional(),
+  revision: z.number().int().positive().optional(),
+  hardwareIds: z.array(z.string().min(1)),
+  startedAt: z.string().datetime()
+}).strict();
+
+export const activeExecutionActivitySchema = z.union([manualExecutionActivitySchema, runExecutionActivitySchema]);
 export type ActiveExecutionActivity = z.infer<typeof activeExecutionActivitySchema>;
 
 const executionActivitiesSchema = z.object({ activities: z.array(activeExecutionActivitySchema).min(2).optional() });
 export const executionActivitySchema = z.union([
   z.object({ state: z.literal("idle") }).strict(),
-  manualExecutionActivitySchema.merge(executionActivitiesSchema)
+  manualExecutionActivitySchema.merge(executionActivitiesSchema),
+  runExecutionActivitySchema.merge(executionActivitiesSchema)
 ]);
 export type ExecutionActivity = z.infer<typeof executionActivitySchema>;
 
@@ -25,7 +35,7 @@ export function activeExecutionActivities(activity: ExecutionActivity | undefine
 }
 
 export function executionHardwareIds(activity: ActiveExecutionActivity): string[] {
-  return [activity.hardwareId];
+  return activity.state === "run" ? activity.hardwareIds : [activity.hardwareId];
 }
 
 export function isHardwareExecuting(activity: ExecutionActivity | undefined, hardwareId: string, state?: ActiveExecutionActivity["state"]): boolean {

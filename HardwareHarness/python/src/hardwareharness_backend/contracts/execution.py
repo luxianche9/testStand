@@ -19,11 +19,22 @@ _manual_fields = {
     "toolName": string(1),
     "startedAt": string(datetime=True),
 }
-active_execution_activity_schema = obj(_manual_fields, strict=True)
+_run_fields = {
+    "state": literal("run"),
+    "runId": string(1),
+    "planId": string(1).optional(),
+    "revision": number(1, integer=True).optional(),
+    "hardwareIds": array(string(1)),
+    "startedAt": string(datetime=True),
+}
+active_execution_activity_schema = union(
+    obj(_manual_fields, strict=True), obj(_run_fields, strict=True)
+)
 _activities = {"activities": array(active_execution_activity_schema, 2).optional()}
 execution_activity_schema = union(
     obj({"state": literal("idle")}, strict=True),
     obj({**_manual_fields, **_activities}),
+    obj({**_run_fields, **_activities}),
 )
 manual_tool_invocation_input_schema = obj(
     {

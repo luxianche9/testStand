@@ -81,6 +81,11 @@ function AppShell() {
   useKeyboardShortcut("s", save.mutateAsync, Boolean(project.data));
   useEffect(() => { writeAssistantOpen(assistantOpen); }, [assistantOpen]);
   useEffect(() => { if (!project.data) setAssistantOpen(false); }, [project.data]);
+  useEffect(() => {
+    const openPlans = () => { if (project.data) { navigate({ type: "show-content", page: "plans" }); void window.hardwareharness.settings.setProjectView("plans"); } };
+    window.addEventListener("hardwareharness:navigate-plans", openPlans);
+    return () => window.removeEventListener("hardwareharness:navigate-plans", openPlans);
+  }, [project.data]);
 
   const enterProject = useCallback(async (rootPath: string) => {
     await syncProject();
@@ -108,6 +113,7 @@ function AppShell() {
   }, [enterProject]);
 
   const switchPage = (next: AppPage) => {
+    if (!window.dispatchEvent(new CustomEvent("hardwareharness:before-navigation", { cancelable: true, detail: { next } }))) return;
     if (next === "settings") { navigate({ type: "open-settings" }); return; }
     if (next === "welcome" && project.data) { dirtyGuard.guard("返回欢迎页", goWelcome); return; }
     if (isProjectView(next) && !project.data) return;
@@ -119,6 +125,7 @@ function AppShell() {
   const returnFromSettings = () => navigate({ type: "return-from-settings", hasProject: Boolean(project.data) });
 
   const handleProjectAction = (action: "save" | "open" | "welcome") => {
+    if (action !== "save" && !window.dispatchEvent(new CustomEvent("hardwareharness:before-navigation", { cancelable: true, detail: { action } }))) return;
     if (action === "save") { save.mutate(); return; }
     if (action === "welcome") { dirtyGuard.guard("返回欢迎页", goWelcome); return; }
     dirtyGuard.guard("打开其他项目", async () => { await chooseAndOpen(); });

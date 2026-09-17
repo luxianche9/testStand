@@ -70,13 +70,30 @@ async def test_unmodified_ts_gateway_protocol_golden(case: dict[str, Any]) -> No
                 )
                 assert replacement.issubset(names)
                 assert not any("occupancy" in name for name in names)
-                assert not {
+                legacy_test_tools = {
                     "get_test_task",
                     "update_test_task",
-                    "start_test_run",
                     "cancel_test_run",
+                }
+                assert not legacy_test_tools.intersection(names)
+                testing_tools = {
+                    "list_test_plans",
+                    "get_test_plan",
+                    "get_test_step_catalog",
+                    "list_test_device_tools",
+                    "validate_test_plan",
                     "get_test_run",
-                }.intersection(names)
+                    "read_test_run_results",
+                    "wait_for_test_run",
+                    "create_test_plan",
+                    "apply_test_plan_operations",
+                    "start_test_run",
+                    "pause_test_run",
+                    "resume_test_run",
+                    "abort_test_run",
+                }
+                assert testing_tools.issubset(names)
+                replacement.update(testing_tools)
                 # Compare retained tools and the unchanged protocol envelope to the fixed golden.
                 body["result"]["tools"] = [name for name in names[4:] if name not in replacement]
                 expected = json.loads(json.dumps(case["expected"]))
@@ -84,14 +101,8 @@ async def test_unmodified_ts_gateway_protocol_golden(case: dict[str, Any]) -> No
                     name
                     for name in expected["body"]["result"]["tools"]
                     if "occupancy" not in name
-                    and name
-                    not in {
-                        "get_test_task",
-                        "update_test_task",
-                        "start_test_run",
-                        "cancel_test_run",
-                        "get_test_run",
-                    }
+                    and name not in legacy_test_tools
+                    and name not in testing_tools
                 ]
                 assert {"status": response.status_code, "body": body} == expected
                 return

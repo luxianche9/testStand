@@ -9,6 +9,7 @@ import {
   MinusIcon,
   Minimize2Icon,
   ServerIcon,
+  ListTreeIcon,
   SettingsIcon,
   XIcon
 } from "lucide-react";
@@ -170,6 +171,7 @@ function TitleBarAction({ label, ariaLabel, icon, active, pressed, badge, onClic
 const PROJECT_VIEWS: { view: ProjectView; label: string; icon: ReactNode }[] = [
   { view: "manual", label: "设备管理", icon: <ServerIcon className="size-[15px]" /> },
   { view: "wiring", label: "工位接线", icon: <CableIcon className="size-[15px]" /> },
+  { view: "plans", label: "测试计划", icon: <ListTreeIcon className="size-[15px]" /> },
 ];
 
 function isProjectViewPage(page: AppPage): page is ProjectView {
@@ -212,6 +214,7 @@ function ViewSlider({ value, onChange }: { value: ProjectView; onChange: (page: 
         <button
           key={item.view}
           role="tab"
+          aria-label={item.label}
           aria-selected={index === activeIndex}
           ref={(node) => { itemRefs.current[index] = node; }}
           onClick={() => onChange(item.view)}

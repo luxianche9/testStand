@@ -9,7 +9,8 @@ import {
   ReadTool,
   WebFetchTool,
   WebSearchTool,
-  WriteTool
+  WriteTool,
+  TestPlanTool
 } from "./OpenCodeTools";
 
 /**
@@ -30,5 +31,19 @@ export function OpenCodeToolUIs() {
   useAssistantToolUI({ toolName: "ask_question", render: AskQuestionTool });
   useAssistantToolUI({ toolName: "request_user_input", render: AskQuestionTool });
   useAssistantToolUI({ toolName: "requestUserInput", render: AskQuestionTool });
+  useAssistantToolUI({ toolName: "list_test_plans", render: TestPlanTool });
+  useAssistantToolUI({ toolName: "get_test_plan", render: TestPlanTool });
+  useAssistantToolUI({ toolName: "get_test_step_catalog", render: TestPlanTool });
+  useAssistantToolUI({ toolName: "list_test_device_tools", render: TestPlanTool });
+  useAssistantToolUI({ toolName: "validate_test_plan", render: TestPlanTool });
+  useAssistantToolUI({ toolName: "get_test_run", render: TestPlanTool });
+  useAssistantToolUI({ toolName: "read_test_run_results", render: TestPlanTool });
+  useAssistantToolUI({ toolName: "wait_for_test_run", render: TestPlanTool });
+  useAssistantToolUI({ toolName: "create_test_plan", render: TestPlanTool });
+  useAssistantToolUI({ toolName: "apply_test_plan_operations", render: TestPlanTool });
+  useAssistantToolUI({ toolName: "start_test_run", render: TestPlanTool });
+  useAssistantToolUI({ toolName: "pause_test_run", render: TestPlanTool });
+  useAssistantToolUI({ toolName: "resume_test_run", render: TestPlanTool });
+  useAssistantToolUI({ toolName: "abort_test_run", render: TestPlanTool });
   return null;
 }

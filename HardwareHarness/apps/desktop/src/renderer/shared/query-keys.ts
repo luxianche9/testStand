@@ -4,6 +4,8 @@ export const queryKeys = {
   projectDocument: ["project-document"] as const,
   recentProjects: ["recent-projects"] as const,
   wiringTasks: ["wiring-tasks"] as const,
+  testPlans: ["test-plans"] as const,
+  testRun: ["test-run"] as const,
 
   openCodeStatus: ["opencode-status"] as const,
   llmSettings: ["llm-settings"] as const,

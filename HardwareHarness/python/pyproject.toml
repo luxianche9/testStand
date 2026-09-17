@@ -13,7 +13,12 @@ dependencies = [
   "starlette==1.6.0",
   "uvicorn==0.52.4",
   "ada-url==1.15.3",
+  "ruamel.yaml==0.18.15",
 ]
+
+[project.entry-points."hardwareharness.test_steps"]
+
+[project.entry-points."hardwareharness.result_listeners"]
 
 [build-system]
 requires = ["hatchling"]

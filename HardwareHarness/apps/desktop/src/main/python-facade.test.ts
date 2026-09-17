@@ -12,6 +12,7 @@ const server = { transport: "mcp-http", serverId: "ID", computerId: "PC", hardwa
 const wiring = { nodes: [], connections: [] };
 const request = { portA: "A.J1", portB: "B.J1", action: "connect" };
 const manual = { hardwareId: "ID", toolName: "S__read", arguments: {} };
+const plan = { schemaVersion: 1, id: "P", name: "Plan", description: "", revision: 1, parameters: [], stopOnFail: false, regions: { prepare: [], test: [], cleanup: [] }, createdAt: "2026-09-17T00:00:00.000Z", updatedAt: "2026-09-17T00:00:00.000Z" };
 
 type Route = [path: string, input: unknown, target: string | null, args: unknown[]];
 const routes: Route[] = [
@@ -53,6 +54,21 @@ const routes: Route[] = [
   ["wiring.getTask", id, "application.wiring.getTask", ["ID"]],
   ["wiring.listTasks", { status: "pending" }, "application.wiring.listTasks", [{ status: "pending" }]],
   ["manual.invokeTool", manual, "application.manual.invokeTool", [{ ...manual, timeoutMs: 30000 }]],
+  ["testing.listPlans", undefined, "application.testing.listPlans", []],
+  ["testing.loadPlan", { planId: "P" }, "application.testing.loadPlan", ["P"]],
+  ["testing.createPlan", { requestId: "create", name: "Plan" }, "application.testing.createPlan", [{ requestId: "create", name: "Plan" }]],
+  ["testing.savePlan", { plan, baseRevision: 1 }, "application.testing.savePlan", [plan, 1]],
+  ["testing.deletePlan", { planId: "P" }, "application.testing.deletePlan", ["P"]],
+  ["testing.applyPlanOperations", { planId: "P", baseRevision: 1, requestId: "change", operations: [] }, "application.testing.applyPlanOperations", [{ planId: "P", baseRevision: 1, requestId: "change", operations: [] }]],
+  ["testing.validatePlan", { planId: "P" }, "application.testing.validatePlan", ["P"]],
+  ["testing.listStepCatalog", undefined, "application.testing.listStepCatalog", []],
+  ["testing.listDeviceTools", { hardwareId: "ID" }, "application.testing.listDeviceTools", ["ID"]],
+  ["testing.startRun", { planId: "P", revision: 1, requestId: "run", parameters: {} }, "application.testing.startRun", [{ planId: "P", revision: 1, requestId: "run", parameters: {} }]],
+  ["testing.pauseRun", { runId: "R" }, "application.testing.pauseRun", ["R"]],
+  ["testing.resumeRun", { runId: "R" }, "application.testing.resumeRun", ["R"]],
+  ["testing.abortRun", { runId: "R" }, "application.testing.abortRun", ["R"]],
+  ["testing.currentRun", undefined, "application.testing.currentRun", []],
+  ["testing.readRunResults", { runId: "R" }, "application.testing.readRunResults", ["R", undefined]],
   ...["status", "preview", "install", "remove", "test"].map((name): Route => [`agents.${name}`, { agent: "codex" }, `agents.${name}`, ["codex"]]),
   ...["rotateGatewayToken", "listTools", "openCodeStatus", "startOpenCode", "stopOpenCode", "restartOpenCode"].map((name): Route => [`agents.${name}`, undefined, `agents.${name}`, []]),
   ...["getTheme", "getProjectView", "getWelcomeLayout", "getLlm"].map((name): Route => [`settings.${name}`, undefined, `settings.${name}`, []]),

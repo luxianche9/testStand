@@ -65,6 +65,23 @@ export function createHardwareHarnessApi(client: DesktopTrpcClient): HardwareHar
     manual: {
       invokeTool: (input) => call(client.manual.invokeTool.mutate(input))
     },
+    testing: {
+      listPlans: () => call(client.testing.listPlans.query()),
+      loadPlan: (planId) => call(client.testing.loadPlan.query({ planId })),
+      createPlan: (input) => call(client.testing.createPlan.mutate(input)),
+      savePlan: (plan, baseRevision) => call(client.testing.savePlan.mutate({ plan, baseRevision })),
+      deletePlan: (planId) => call(client.testing.deletePlan.mutate({ planId })),
+      applyPlanOperations: (input) => call(client.testing.applyPlanOperations.mutate(input)),
+      validatePlan: (planId) => call(client.testing.validatePlan.query({ planId })),
+      listStepCatalog: () => call(client.testing.listStepCatalog.query()),
+      listDeviceTools: (hardwareId) => call(client.testing.listDeviceTools.query({ hardwareId })),
+      startRun: (input) => call(client.testing.startRun.mutate(input)),
+      pauseRun: (runId) => call(client.testing.pauseRun.mutate({ runId })),
+      resumeRun: (runId) => call(client.testing.resumeRun.mutate({ runId })),
+      abortRun: (runId) => call(client.testing.abortRun.mutate({ runId })),
+      currentRun: () => call(client.testing.currentRun.query()),
+      readRunResults: (runId, afterSequence) => call(client.testing.readRunResults.query({ runId, afterSequence }))
+    },
 
     agents: {
       rotateGatewayToken: () => call(client.agents.rotateGatewayToken.mutate()),

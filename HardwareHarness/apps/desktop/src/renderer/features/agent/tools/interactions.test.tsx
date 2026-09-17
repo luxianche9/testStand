@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { OpenCodePermissionCard } from "./PermissionCard";
 import { OpenCodeQuestionCard } from "./QuestionCard";
 import { getPatchInfo } from "./shared";
+import { TestPlanTool } from "./test-plan-tool";
 
 const replyToPermission = vi.fn(async () => undefined);
 const replyToQuestion = vi.fn(async () => undefined);
@@ -37,5 +38,18 @@ describe("OpenCode interaction cards", () => {
 
   it("summarizes apply_patch files and line counts", () => {
     expect(getPatchInfo("*** Begin Patch\n*** Update File: src/a.ts\n-old\n+new\n*** End Patch")).toEqual({ files: ["a.ts"], added: 1, removed: 1 });
+  });
+
+  it("renders test plan revisions and opens the testing workspace", async () => {
+    const navigate = vi.fn();
+    window.addEventListener("hardwareharness:navigate-plans", navigate);
+    render(<TestPlanTool type="tool-call" toolCallId="tool-1" toolName="apply_test_plan_operations" args={{}} argsText="{}" result={{ data: { plan: { name: "台架测试", revision: 4 }, appliedOperations: 2, issues: [] } }} status={{ type: "complete" }} addResult={vi.fn()} resume={vi.fn()} respondToApproval={vi.fn()} />);
+    await userEvent.click(screen.getByRole("button", { name: /修改测试计划/ }));
+    expect(screen.getByText("台架测试")).toBeTruthy();
+    expect(screen.getByText("rev 4")).toBeTruthy();
+    expect(screen.getByText("修改 2 个节点")).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "在测试计划页查看" }));
+    expect(navigate).toHaveBeenCalledOnce();
+    window.removeEventListener("hardwareharness:navigate-plans", navigate);
   });
 });

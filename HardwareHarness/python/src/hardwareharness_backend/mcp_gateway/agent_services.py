@@ -128,6 +128,10 @@ AGENT_TOOL_DEFINITIONS = [
                 "references": _field(
                     "array", "Bundled and project reference metadata.", items=_ANY_OBJECT
                 ),
+                "testing": _field(
+                    "object",
+                    "Plan summaries, active run, directory and effective testing permissions.",
+                ),
             },
             [
                 "appVersion",
@@ -136,6 +140,7 @@ AGENT_TOOL_DEFINITIONS = [
                 "project",
                 "capabilities",
                 "references",
+                "testing",
             ],
         ),
     ),
@@ -379,6 +384,33 @@ async def _wait(app: Any, context: Json, value: Json) -> Json:
         await asyncio.sleep(min(0.25, max(0, deadline - time.monotonic())))
 
 
+def _testing_context(app: Any, context: Json, root: str | None) -> Json:
+    capabilities = [
+        capability
+        for capability in app.authorizer.allowed_capabilities(context)
+        if capability.startswith("testing.")
+    ]
+    if not root:
+        return {
+            "planDirectory": None,
+            "plans": [],
+            "activeRun": None,
+            "capabilities": capabilities,
+        }
+    try:
+        plans = app.testing.list_plans(context)
+        active_run = app.testing.current_run(context)
+    except (TypeError, AttributeError):
+        # Lightweight application test doubles may expose a project document without a session.
+        plans, active_run = [], None
+    return {
+        "planDirectory": f"{root}/.hardwareharness/plans",
+        "plans": plans,
+        "activeRun": active_run,
+        "capabilities": capabilities,
+    }
+
+
 async def invoke_agent_tool(app: Any, context: Json, name: str, value: Json) -> Any:
     """Return raw tool data; the registry validates arguments/authorization and adds ok/data."""
     if name == "get_agent_context":
@@ -394,6 +426,7 @@ async def invoke_agent_tool(app: Any, context: Json, name: str, value: Json) -> 
             else None,
             "capabilities": app.authorizer.allowed_capabilities(context),
             "references": ReferenceService(root).index(),
+            "testing": _testing_context(app, context, root),
         }
     if name == "read_reference":
         return ReferenceService(_root(app, context)).read(value)
