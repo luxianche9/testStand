@@ -1,0 +1,6 @@
+interface:
+  display_name: "STM32F407 霸天虎 V2"
+  short_description: "为霸天虎 V2 创建和维护 Keil HAL 嵌入式工程"
+  default_prompt: "Use $stm32f407-batianhu-v2 to create a Keil HAL project for the requested STM32F407 Batianhu V2 feature."
+policy:
+  allow_implicit_invocation: true

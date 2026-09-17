@@ -1,0 +1,191 @@
+{
+  "schemaVersion": 1,
+  "board": "Embedfire Batianhu V2",
+  "mcu": "STM32F407ZGT6",
+  "defaults": {
+    "toolchain": "Keil MDK ARMCC 5.06 update 7 build 960",
+    "devicePack": "Keil STM32F4xx DFP 3.1.1",
+    "hseHz": 25000000,
+    "sysclkHz": 168000000
+  },
+  "devicePackAsset": {
+    "path": "Keil.STM32F4xx_DFP.3.1.1.pack",
+    "sha256": "345231106fe697df24bbe9133aeeec1b0383d7891c4adf4f47bbb8b478e9f2f0",
+    "installAutomatically": false
+  },
+  "template": {
+    "path": "keil-hal-template",
+    "project": "keil-hal-template/Project/BatianhuV2_HAL.uvprojx",
+    "startup": "keil-hal-template/Libraries/CMSIS/Device/ST/STM32F4xx/Source/Templates/arm/startup_stm32f407xx.s",
+    "baseline": "HAL clock initialization and active-low PF6 LED blink"
+  },
+  "middleware": [
+    {
+      "name": "FatFs",
+      "version": "R0.11 (2015)",
+      "path": "bsp/fatfs-sd",
+      "license": "ChaN permissive notice retained"
+    },
+    {
+      "name": "FreeRTOS",
+      "version": "V9.0.0",
+      "path": "middleware/tutorial_code/LwIP_iperf/FreeRTOS",
+      "license": "Original source headers retained"
+    },
+    {
+      "name": "LwIP",
+      "version": "2.1.2",
+      "path": "middleware/tutorial_code/LwIP_iperf/LwIP",
+      "license": "Original BSD-style source headers retained"
+    }
+  ],
+  "bspModules": [
+    {
+      "name": "led",
+      "path": "bsp/led",
+      "hal": ["GPIO"],
+      "pins": ["PF6", "PF7", "PF8"],
+      "notes": "Common-anode RGB LED, active low"
+    },
+    {
+      "name": "key",
+      "path": "bsp/key",
+      "hal": ["GPIO"],
+      "pins": ["PA0", "PC13"]
+    },
+    {
+      "name": "exti",
+      "path": "bsp/exti",
+      "hal": ["GPIO", "CORTEX"],
+      "pins": ["PA0", "PC13"],
+      "irq": ["EXTI0_IRQn", "EXTI15_10_IRQn"]
+    },
+    {
+      "name": "adc-dma",
+      "path": "bsp/adc-dma",
+      "hal": ["ADC", "DMA", "GPIO"],
+      "pins": ["PB0/ADC1_IN8"],
+      "dma": ["DMA2 Stream0 Channel0"]
+    },
+    {
+      "name": "timer",
+      "path": "bsp/timer",
+      "hal": ["TIM"],
+      "irq": ["TIM6_DAC_IRQn"]
+    },
+    {
+      "name": "usart-dma",
+      "path": "bsp/usart-dma",
+      "hal": ["UART", "DMA", "GPIO"],
+      "pins": ["PA9/USART1_TX", "PA10/USART1_RX"],
+      "dma": ["DMA2 Stream7 Channel4 TX"],
+      "irq": ["USART1_IRQn", "DMA2_Stream7_IRQn"]
+    },
+    {
+      "name": "rs485",
+      "path": "bsp/rs485",
+      "hal": ["UART", "GPIO"],
+      "pins": ["PA2/USART2_TX", "PA3/USART2_RX", "PC0/DE_RE"],
+      "irq": ["USART2_IRQn"],
+      "jumpers": ["J40"],
+      "conflicts": ["Ethernet RMII MDIO on PA2"]
+    },
+    {
+      "name": "can2",
+      "path": "bsp/can2",
+      "hal": ["CAN", "GPIO"],
+      "pins": ["PB12/CAN2_RX", "PB13/CAN2_TX"],
+      "irq": ["CAN2_RX0_IRQn"],
+      "conflicts": ["WM8978 I2S2 WS/CK"]
+    },
+    {
+      "name": "i2c-eeprom",
+      "path": "bsp/i2c-eeprom",
+      "hal": ["I2C", "GPIO"],
+      "pins": ["PB8/I2C1_SCL", "PB9/I2C1_SDA"],
+      "address7bit": "0x50",
+      "conflicts": ["Shared I2C1 bus"]
+    },
+    {
+      "name": "mpu6050",
+      "path": "bsp/mpu6050",
+      "hal": ["I2C"],
+      "pins": ["PB8/I2C1_SCL", "PB9/I2C1_SDA"],
+      "address7bit": "0x68"
+    },
+    {
+      "name": "ap3216c",
+      "path": "bsp/ap3216c",
+      "hal": ["I2C", "GPIO"],
+      "pins": ["PB8/I2C1_SCL", "PB9/I2C1_SDA", "PE3/INT"]
+    },
+    {
+      "name": "spi-flash",
+      "path": "bsp/spi-flash",
+      "hal": ["SPI", "GPIO"],
+      "pins": ["PB3/SPI1_SCK", "PB4/SPI1_MISO", "PB5/SPI1_MOSI", "PG6/CS"],
+      "conflicts": ["Full JTAG and SWO on PB3/PB4"]
+    },
+    {
+      "name": "sdio",
+      "path": "bsp/sdio",
+      "hal": ["SD", "DMA", "GPIO"],
+      "pins": ["PC8/D0", "PC9/D1", "PC10/D2", "PC11/D3", "PC12/CK", "PD2/CMD"],
+      "dma": ["DMA2 Stream3 Channel4 RX", "DMA2 Stream6 Channel4 TX"],
+      "irq": ["SDIO_IRQn", "DMA2_Stream3_IRQn", "DMA2_Stream6_IRQn"]
+    },
+    {
+      "name": "fatfs-sd",
+      "path": "bsp/fatfs-sd",
+      "hal": ["SD", "DMA"],
+      "dependsOn": ["sdio"],
+      "version": "FatFs R0.11"
+    },
+    {
+      "name": "fsmc-sram",
+      "path": "bsp/fsmc-sram",
+      "hal": ["SRAM", "FSMC", "GPIO"],
+      "address": "0x6C000000",
+      "pins": ["FSMC A0..A18", "FSMC D0..D15", "PG12/NE4", "PD4/NOE", "PD5/NWE", "PE0/NBL0", "PE1/NBL1"]
+    },
+    {
+      "name": "lcd-ili9806g",
+      "path": "bsp/lcd-ili9806g",
+      "hal": ["SRAM", "FSMC", "GPIO"],
+      "addresses": ["0x68000000 command", "0x68000002 data"],
+      "pins": ["FSMC D0..D15", "PG10/NE3", "PF0/A0", "PF9/BL", "PF11/RESET"],
+      "dependsOn": ["font"]
+    },
+    {
+      "name": "lcd-nt35510",
+      "path": "bsp/lcd-nt35510",
+      "hal": ["SRAM", "FSMC", "GPIO"],
+      "addresses": ["0x68000000 command", "0x68000002 data"],
+      "pins": ["FSMC D0..D15", "PG10/NE3", "PF0/A0", "PF9/BL", "PF11/RESET"],
+      "dependsOn": ["font"]
+    },
+    {
+      "name": "font",
+      "path": "bsp/font",
+      "hal": [],
+      "notes": "Bitmap font tables used by both bundled LCD drivers"
+    },
+    {
+      "name": "wm8978",
+      "path": "bsp/wm8978",
+      "hal": ["I2C", "I2S", "DMA", "GPIO"],
+      "pins": ["PB8/I2C1_SCL", "PB9/I2C1_SDA", "PB12/I2S2_WS", "PB13/I2S2_CK", "PB14/I2S2ext_SD", "PB15/I2S2_SD", "PC6/I2S2_MCK"],
+      "dma": ["DMA1 Stream4 Channel0 TX", "DMA1 Stream3 Channel3 RX"],
+      "irq": ["DMA1_Stream4_IRQn", "DMA1_Stream3_IRQn"],
+      "address7bit": "0x1A",
+      "conflicts": ["CAN2 on PB12/PB13"],
+      "applicationCallbacks": ["MusicPlayer_I2S_DMA_TX_Callback", "Recorder_I2S_DMA_RX_Callback"]
+    },
+    {
+      "name": "rtc",
+      "path": "bsp/rtc",
+      "hal": ["RTC", "PWR", "RCC"],
+      "clock": "LSE 32768 Hz preferred"
+    }
+  ]
+}
