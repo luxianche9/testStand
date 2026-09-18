@@ -112,8 +112,12 @@ APPLICATION_METHODS = {
             "abortRun",
             "currentRun",
             "getRun",
+            "listRuns",
+            "readRunLog",
             "readRunResults",
             "waitForRun",
+            "listRecoveryItems",
+            "reconcileOperation",
         ]
     ),
 }
@@ -169,7 +173,7 @@ class HostRuntime:
         test_step_plugins = load_plugins("hardwareharness.test_steps")
         result_listeners = load_plugins("hardwareharness.result_listeners")
         test_resolver = DeviceToolResolver(devices, catalog)
-        test_plan_store = TestPlanStore(projects, test_resolver, test_step_plugins)
+        test_plan_store = TestPlanStore(projects, test_resolver, test_step_plugins, wiring)
         test_engine = TestEngine(
             projects,
             devices,
@@ -177,6 +181,7 @@ class HostRuntime:
             execution,
             test_step_plugins,
             result_listeners,
+            runtime_state=test_plan_store.runtime,
         )
         gateway: LocalMcpGateway
         application = HardwareHarnessApplication(

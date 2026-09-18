@@ -5,7 +5,7 @@ import type { ExecutionActivity, ManualToolInvocationInput, ManualToolInvocation
 import type { LlmSettings, LlmSettingsInput, ProjectView, ThemeChoice, WelcomeLayout } from "./storage.js";
 import type { ProjectDocument, ProjectFolderSelection, RecentProjectSummary } from "./projects.js";
 import type { ProjectWiring, RequestWiringTaskInput, WiringOutcome, WiringTask, WiringTaskStatus } from "./wiring.js";
-import type { TestDeviceTools, TestPlan, TestPlanMutationResult, TestPlanOperation, TestPlanSummary, TestPlanValidation, TestRunSnapshot, TestStepCatalogItem } from "./testing.js";
+import type { TestDeviceTools, TestPlan, TestPlanDraftAnalysis, TestPlanMutationResult, TestPlanOperation, TestPlanSummary, TestPlanValidation, TestRunListInput, TestRunLog, TestRunPage, TestRunSnapshot, TestStepCatalogItem } from "./testing.js";
 
 export interface DashboardSnapshot {
   computers: RemoteComputer[];
@@ -49,9 +49,11 @@ export const HARDWAREHARNESS_IPC = {
   testing: {
     listPlans: "hardwareharness:testing:list-plans", loadPlan: "hardwareharness:testing:load-plan", createPlan: "hardwareharness:testing:create-plan",
     savePlan: "hardwareharness:testing:save-plan", deletePlan: "hardwareharness:testing:delete-plan", applyPlanOperations: "hardwareharness:testing:apply-operations",
-    validatePlan: "hardwareharness:testing:validate-plan", listStepCatalog: "hardwareharness:testing:list-step-catalog", listDeviceTools: "hardwareharness:testing:list-device-tools",
+    validatePlan: "hardwareharness:testing:validate-plan", analyzePlanDraft: "hardwareharness:testing:analyze-plan-draft", listStepCatalog: "hardwareharness:testing:list-step-catalog", listDeviceTools: "hardwareharness:testing:list-device-tools",
     startRun: "hardwareharness:testing:start-run", pauseRun: "hardwareharness:testing:pause-run", resumeRun: "hardwareharness:testing:resume-run",
-    abortRun: "hardwareharness:testing:abort-run", currentRun: "hardwareharness:testing:current-run", readRunResults: "hardwareharness:testing:read-run-results"
+    abortRun: "hardwareharness:testing:abort-run", currentRun: "hardwareharness:testing:current-run", getRun: "hardwareharness:testing:get-run",
+    listRuns: "hardwareharness:testing:list-runs", readRunLog: "hardwareharness:testing:read-run-log", readRunResults: "hardwareharness:testing:read-run-results",
+    listRecoveryItems: "hardwareharness:testing:list-recovery-items", reconcileOperation: "hardwareharness:testing:reconcile-operation"
   },
 
   agents: {
@@ -132,14 +134,20 @@ export interface HardwareHarnessTestingApi {
   deletePlan(planId: string): Promise<void>;
   applyPlanOperations(input: { planId: string; baseRevision: number; requestId: string; operations: TestPlanOperation[] }): Promise<TestPlanMutationResult>;
   validatePlan(planId: string): Promise<TestPlanValidation>;
+  analyzePlanDraft(input: { plan: TestPlan; baseRevision: number }): Promise<TestPlanDraftAnalysis>;
   listStepCatalog(): Promise<TestStepCatalogItem[]>;
   listDeviceTools(hardwareId: string): Promise<TestDeviceTools>;
-  startRun(input: { planId: string; revision: number; requestId: string; parameters: Record<string, unknown> }): Promise<TestRunSnapshot>;
+  startRun(input: { planId: string; revision: number; executionRevision: string; requestId: string; parameters: Record<string, unknown> }): Promise<TestRunSnapshot>;
   pauseRun(runId: string): Promise<TestRunSnapshot>;
   resumeRun(runId: string): Promise<TestRunSnapshot>;
   abortRun(runId: string): Promise<TestRunSnapshot>;
   currentRun(): Promise<TestRunSnapshot | null>;
+  getRun(runId: string): Promise<TestRunSnapshot>;
+  listRuns(input?: TestRunListInput): Promise<TestRunPage>;
+  readRunLog(input: { runId: string; afterEventSequence?: number; afterResultSequence?: number; eventLimit?: number; resultLimit?: number }): Promise<TestRunLog>;
   readRunResults(runId: string, afterSequence?: number): Promise<unknown>;
+  listRecoveryItems(): Promise<import("./testing.js").TestOperationSnapshot[]>;
+  reconcileOperation(input: { operationId: string; resolution: "confirmed_succeeded" | "confirmed_failed" | "safe_state_restored"; note?: string }): Promise<import("./testing.js").TestOperationSnapshot>;
 }
 
 export interface HardwareHarnessAgentsApi {

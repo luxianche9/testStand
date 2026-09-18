@@ -122,6 +122,7 @@ class _ClientAdapter:
                 raise McpCompatibilityError(
                     -32600,
                     f"Tool {name} has an output schema but did not return structured content",
+                    {"operationStarted": True, "outcomeKnown": False},
                 )
             if structured is not None and not result.get("isError"):
                 failure_text = schema_error(output_schema, structured, validate_formats=True)
@@ -130,6 +131,7 @@ class _ClientAdapter:
                         -32602,
                         "Structured content does not match the "
                         f"tool's output schema: {failure_text}",
+                        {"operationStarted": True, "outcomeKnown": False},
                     )
         return result
 
@@ -251,6 +253,7 @@ class McpHttpTransport:
                                         "timeoutRecovery",
                                         "referenceIds",
                                         "evidence",
+                                        "operationSemantics",
                                     }
                                 },
                             }
@@ -372,6 +375,12 @@ class McpHttpTransport:
                 options=request_options,
             )
         except McpCompatibilityError as failure:
+            if (
+                failure.details.get("operationStarted", True)
+                and "outcomeKnown" not in failure.details
+            ):
+                failure.details["outcomeKnown"] = False
+            failure.details.setdefault("automaticRetry", False)
             failure.details.update(
                 {
                     "serverId": server_id,

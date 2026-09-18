@@ -88,16 +88,21 @@ export interface BackendApplication {
     deletePlan(context: RequestContext, planId: string): Promise<{ planId: string }>;
     applyPlanOperations(context: RequestContext, input: { planId: string; baseRevision: number; requestId: string; operations: TestPlanOperation[] }): Promise<TestPlanMutationResult>;
     validatePlan(context: RequestContext, planId: string): TestPlanValidation;
+    analyzePlanDraft(context: RequestContext, input: { plan: TestPlan; baseRevision: number }): import("./testing.js").TestPlanDraftAnalysis;
     listStepCatalog(context: RequestContext): TestStepCatalogItem[];
     listDeviceTools(context: RequestContext, hardwareId: string): TestDeviceTools;
-    startRun(context: RequestContext, input: { planId: string; revision: number; requestId: string; parameters: Record<string, unknown> }): Promise<TestRunSnapshot>;
+    startRun(context: RequestContext, input: { planId: string; revision: number; executionRevision: string; requestId: string; parameters: Record<string, unknown> }): Promise<TestRunSnapshot>;
     pauseRun(context: RequestContext, runId: string): Promise<TestRunSnapshot>;
     resumeRun(context: RequestContext, runId: string): Promise<TestRunSnapshot>;
     abortRun(context: RequestContext, runId: string): Promise<TestRunSnapshot>;
     currentRun(context: RequestContext): TestRunSnapshot | null;
     getRun(context: RequestContext, runId: string): TestRunSnapshot;
+    listRuns(context: RequestContext, input?: import("./testing.js").TestRunListInput): import("./testing.js").TestRunPage;
+    readRunLog(context: RequestContext, runId: string, afterEventSequence?: number, afterResultSequence?: number, eventLimit?: number, resultLimit?: number): import("./testing.js").TestRunLog;
     readRunResults(context: RequestContext, runId: string, afterSequence?: number): unknown;
     waitForRun(context: RequestContext, runId: string, afterSequence?: number, timeoutMs?: number): Promise<unknown>;
+    listRecoveryItems(context: RequestContext): import("./testing.js").TestOperationSnapshot[];
+    reconcileOperation(context: RequestContext, input: { operationId: string; resolution: "confirmed_succeeded" | "confirmed_failed" | "safe_state_restored"; note?: string }): Promise<import("./testing.js").TestOperationSnapshot>;
   };
 
   readonly system: {

@@ -83,6 +83,8 @@ async def test_unmodified_ts_gateway_protocol_golden(case: dict[str, Any]) -> No
                     "list_test_device_tools",
                     "validate_test_plan",
                     "get_test_run",
+                    "list_test_runs",
+                    "read_test_run_events",
                     "read_test_run_results",
                     "wait_for_test_run",
                     "create_test_plan",
@@ -91,6 +93,8 @@ async def test_unmodified_ts_gateway_protocol_golden(case: dict[str, Any]) -> No
                     "pause_test_run",
                     "resume_test_run",
                     "abort_test_run",
+                    "list_test_recovery_items",
+                    "reconcile_test_operation",
                 }
                 assert testing_tools.issubset(names)
                 replacement.update(testing_tools)

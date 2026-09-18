@@ -1,4 +1,6 @@
 import asyncio
+import hashlib
+import json
 import math
 from collections.abc import Callable
 from functools import cmp_to_key
@@ -16,6 +18,7 @@ from hardwareharness_backend.compat import (
     utf16_compare,
 )
 from hardwareharness_backend.contracts.errors import app_error
+from hardwareharness_backend.testing.runtime_state import RuntimeStateStore
 
 
 class WiringProjectPort(Protocol):
@@ -39,6 +42,7 @@ class ProjectWiringService:
         self._tasks: dict[str, Record] = {}
         self._notifier: Callable[[Record], None] | None = None
         self._project_notifier: Callable[[], None] | None = None
+        self._runtime = RuntimeStateStore(projects)
 
     def set_notifier(self, notifier: Callable[[Record], None]) -> None:
         self._notifier = notifier
@@ -47,7 +51,12 @@ class ProjectWiringService:
         self._project_notifier = notifier
 
     async def initialize(self) -> None:
-        """Session-scoped todos do not recover across restarts."""
+        session = getattr(self.projects, "session", lambda: None)()
+        if not session:
+            return
+        await asyncio.to_thread(self._runtime.initialize)
+        tasks = await asyncio.to_thread(self._runtime.load_wiring_tasks, str(session["projectId"]))
+        self._tasks = {str(task["wiringTaskId"]): task for task in tasks}
 
     def clear_session(self) -> None:
         self._tasks.clear()
@@ -139,6 +148,7 @@ class ProjectWiringService:
         if input.get("requestedBy"):
             task["operatorName"] = input["requestedBy"]
         self._tasks[task["wiringTaskId"]] = task
+        self._persist(task)
         self._emit(task)
         return clone(task)
 
@@ -169,6 +179,7 @@ class ProjectWiringService:
                 "operatorName": js_trim(operator_name) or "operator",
             }
             self._tasks[wiring_task_id] = started
+            self._persist(started)
             self._emit(started)
             return clone(started)
 
@@ -231,11 +242,37 @@ class ProjectWiringService:
         return [clone(task) for task in items[: int(limit)]]
 
     async def close(self) -> None:
-        tasks = self.list_tasks({"status": "in_progress", "limit": 500})
-        await asyncio.gather(
-            *(self.cancel_task(task["wiringTaskId"], "Application shutdown") for task in tasks),
-            return_exceptions=True,
+        for task in self._tasks.values():
+            self._persist(task)
+
+    def snapshot(self) -> Record:
+        connections = self.projects.wiring()["connections"]
+        return {
+            "connections": clone(connections),
+            "wiringRevision": self.wiring_revision(connections),
+        }
+
+    @staticmethod
+    def connection_signature(connection: Record) -> str:
+        value = {
+            "connectionId": connection.get("connectionId"),
+            "portA": connection.get("portA"),
+            "portB": connection.get("portB"),
+            "pins": connection.get("pins", []),
+        }
+        encoded = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
+    @classmethod
+    def wiring_revision(cls, connections: list[Record]) -> str:
+        encoded = json.dumps(
+            sorted(
+                (cls.connection_signature(connection) for connection in connections),
+            ),
+            ensure_ascii=False,
+            separators=(",", ":"),
         )
+        return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
     def _apply_confirmed_wiring(self, task: Record) -> None:
         wiring = self.projects.wiring()
@@ -270,9 +307,12 @@ class ProjectWiringService:
 
     def _finish(self, task: Record, status: str, message: str | None = None) -> Record:
         finished = {**task, "status": status, "completedAt": utc_now_iso()}
+        if status == "confirmed":
+            finished["wiringRevision"] = self.snapshot()["wiringRevision"]
         if message:
             finished["message"] = message
         self._tasks[task["wiringTaskId"]] = finished
+        self._persist(finished)
         self._emit(finished)
         return clone(finished)
 
@@ -286,12 +326,20 @@ class ProjectWiringService:
             "message": "Wiring task expired before processing started",
         }
         self._tasks[task["wiringTaskId"]] = expired
+        self._persist(expired)
         task.update(expired)
         self._emit(expired)
 
     def _emit(self, task: Record) -> None:
         if self._notifier:
             self._notifier(clone(task))
+
+    def _persist(self, task: Record) -> None:
+        session = getattr(self.projects, "session", lambda: None)()
+        if not session:
+            return
+        self._runtime.initialize()
+        self._runtime.save_wiring_task(str(session["projectId"]), task)
 
     def _lock(self, key: str) -> asyncio.Lock:
         return self._locks.setdefault(key, asyncio.Lock())

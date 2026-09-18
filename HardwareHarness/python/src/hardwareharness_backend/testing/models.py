@@ -29,12 +29,14 @@ BUILTIN_STEPS = {
 
 def empty_plan(name: str = "Untitled test plan", plan_id: str | None = None) -> Record:
     return {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "id": plan_id or new_uuid(),
         "name": name,
         "description": "",
         "revision": 1,
         "parameters": [],
+        "requirements": [],
+        "wiringRequirements": [],
         "stopOnFail": False,
         "regions": {"prepare": [], "test": [], "cleanup": []},
         "createdAt": utc_now_iso(),

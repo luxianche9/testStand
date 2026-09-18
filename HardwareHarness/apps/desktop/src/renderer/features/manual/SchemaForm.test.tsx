@@ -13,7 +13,7 @@ describe("SchemaArgumentsForm JSON fallback", () => {
     fireEvent.change(screen.getByRole("textbox"), { target: { value: '{"hardwareId":"DUT_A","count":3}' } });
     expect(onChange).toHaveBeenLastCalledWith({ hardwareId: "DUT_A", count: 3 });
   });
-  it("blocks stale values while the JSON editor is invalid", async () => {
+  it("renders common oneOf branches without forcing JSON editing", async () => {
     const onChange = vi.fn();
     const onValidityChange = vi.fn();
     render(<SchemaArgumentsForm
@@ -29,18 +29,28 @@ describe("SchemaArgumentsForm JSON fallback", () => {
       onValidityChange={onValidityChange}
     />);
 
-    const editor = screen.getByRole("textbox");
-    fireEvent.change(editor, { target: { value: "{" } });
-    expect(await screen.findByText("请输入合法 JSON")).toBeTruthy();
-    await waitFor(() => expect(onValidityChange).toHaveBeenLastCalledWith(false));
-    expect(onChange).not.toHaveBeenCalled();
-
-    fireEvent.change(editor, { target: { value: "[]" } });
-    expect(await screen.findByText("工具参数必须是 JSON object")).toBeTruthy();
-    expect(onChange).not.toHaveBeenCalled();
-
-    fireEvent.change(editor, { target: { value: "{\"hardwareId\":\"spoofed\",\"channel\":2}" } });
-    await waitFor(() => expect(onValidityChange).toHaveBeenLastCalledWith(true));
+    expect(screen.getByRole("combobox", { name: "Schema 分支" })).toBeTruthy();
+    fireEvent.change(screen.getByRole("spinbutton"), { target: { value: "2" } });
     expect(onChange).toHaveBeenLastCalledWith({ channel: 2 });
+    await waitFor(() => expect(onValidityChange).toHaveBeenLastCalledWith(true));
+  });
+
+  it("supports nullable fields and additionalProperties key-value rows", () => {
+    const onChange = vi.fn();
+    render(<SchemaArgumentsForm
+      schema={{
+        type: "object",
+        properties: { note: { type: ["string", "null"] } },
+        required: ["note"],
+        additionalProperties: true
+      }}
+      value={{ note: null }}
+      onChange={onChange}
+    />);
+    fireEvent.click(screen.getByRole("checkbox", { name: "使用空值" }));
+    expect(onChange).toHaveBeenCalledWith({ note: "" });
+    fireEvent.change(screen.getByRole("textbox", { name: "新增扩展键" }), { target: { value: "channel" } });
+    fireEvent.click(screen.getByRole("button", { name: "增加键" }));
+    expect(onChange).toHaveBeenLastCalledWith({ note: null, channel: "" });
   });
 });

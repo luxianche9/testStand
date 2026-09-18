@@ -2,19 +2,23 @@ from __future__ import annotations
 
 import asyncio
 import json
+import sqlite3
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from jsonschema import Draft202012Validator, ValidationError
 
 from hardwareharness_backend.application import DefaultAuthorizer, ExecutionCoordinator
 from hardwareharness_backend.contracts.errors import AppError
 from hardwareharness_backend.testing import TestEngine, TestingApplication, TestPlanStore
 from hardwareharness_backend.testing.catalog import step_catalog
+from hardwareharness_backend.testing.compiler import compile_plan
 from hardwareharness_backend.testing.expression import evaluate
 from hardwareharness_backend.testing.models import empty_plan, schema_hash
 from hardwareharness_backend.testing.resolver import DeviceToolResolver
+from hardwareharness_backend.testing.runtime_state import RuntimeStateStore
 
 HUMAN = {"actor": "human", "source": "desktop"}
 
@@ -39,11 +43,23 @@ class Resolver:
             "serverId": hardware_id,
             "inputSchema": input_schema,
             "upstreamOutputSchema": self.output_schema,
+            "resultSchema": self.output_schema,
             "annotations": {},
+            "operationSemantics": {
+                "kind": "read",
+                "retry": "safe",
+                "stateRequirements": [],
+                "stateEffects": [],
+                "evidenceType": "measurement",
+                "trusted": True,
+            },
         }
-        tool["inputSchemaHash"] = schema_hash(input_schema)
-        tool["toolContractRevision"] = schema_hash(
-            {"input": input_schema, "output": self.output_schema, "annotations": {}}
+        tool["bindingRevision"] = schema_hash(
+            {
+                "input": input_schema,
+                "result": self.output_schema,
+                "operationSemantics": tool["operationSemantics"],
+            }
         )
         return tool, []
 
@@ -58,9 +74,11 @@ class Devices:
         self.active: dict[str, int] = {}
         self.max_active: dict[str, int] = {}
         self.delay = 0.01
+        self.names: list[str] = []
 
     async def call_aggregated_tool(self, name: str, arguments: dict[str, Any]) -> Any:
         hardware = name.split("__", 1)[0]
+        self.names.append(name)
         self.calls += 1
         self.active[hardware] = self.active.get(hardware, 0) + 1
         self.max_active[hardware] = max(self.max_active.get(hardware, 0), self.active[hardware])
@@ -130,9 +148,7 @@ def test_step_catalog_exposes_concrete_invoke_tool_contract() -> None:
     invoke = next(item for item in step_catalog() if item["type"] == "InvokeTool")
     schema = invoke["settingsSchema"]
     assert schema["properties"]["errorPolicy"]["enum"] == ["error", "fail"]
-    assert {"hardwareId", "toolName", "toolContractRevision", "inputSchemaHash"} <= set(
-        schema["required"]
-    )
+    assert {"hardwareId", "toolName", "bindingRevision"} <= set(schema["required"])
 
 
 def test_device_tool_catalog_rejects_unmanaged_hardware() -> None:
@@ -206,7 +222,7 @@ async def test_fail_continues_and_cleanup_always_runs(tmp_path: Path) -> None:
     assert json.loads((run_dir / "summary.json").read_text(encoding="utf-8"))["verdict"] == "Fail"
     assert (run_dir / "events.jsonl").exists()
     snapshot = (run_dir / "plan.hhplan.yaml").read_text(encoding="utf-8")
-    assert "schemaVersion: 1" in snapshot
+    assert "schemaVersion: 2" in snapshot
     assert not (run_dir / "plan.hhplan.json").exists()
 
 
@@ -232,7 +248,7 @@ async def test_error_enters_cleanup_and_output_schema_is_enforced(tmp_path: Path
     assert [item["name"] for item in run.results] == ["cleanup"]
 
 
-async def test_known_hardware_error_can_be_handled_as_fail(tmp_path: Path) -> None:
+async def test_unknown_hardware_result_cannot_be_handled_as_fail(tmp_path: Path) -> None:
     resolver = Resolver({"type": "object", "required": ["measurement"]})
     devices = Devices()
     engine = TestEngine(Projects(tmp_path), devices, resolver, ExecutionCoordinator())
@@ -249,9 +265,11 @@ async def test_known_hardware_error_can_be_handled_as_fail(tmp_path: Path) -> No
         {"id": "after", "type": "PublishResult", "name": "after", "value": 1},
     )
     completed = await finish(engine, await engine.start(plan, {}))
-    assert completed["verdict"] == "Fail"
+    assert completed["verdict"] == "Error"
+    assert completed["outcomeKnown"] is False
+    assert completed["recoveryRequired"] is True
     assert engine.current() == completed
-    assert engine.runs[completed["runId"]].results[-1]["name"] == "after"
+    assert engine.runs[completed["runId"]].results == []
 
 
 async def test_plugin_validation_and_restricted_execution_context(tmp_path: Path) -> None:
@@ -301,6 +319,111 @@ async def test_parallel_serializes_same_hardware(tmp_path: Path) -> None:
     assert devices.max_active["server"] == 1
 
 
+async def test_execution_instances_capture_parallel_loop_and_evidence_context(
+    tmp_path: Path,
+) -> None:
+    devices = Devices()
+    devices.delay = 0.05
+    engine = TestEngine(Projects(tmp_path), devices, Resolver(), ExecutionCoordinator())
+    repeat = {
+        "id": "repeat",
+        "type": "Repeat",
+        "count": 2,
+        "children": [
+            {
+                "id": "parallel",
+                "type": "Parallel",
+                "children": [
+                    {
+                        "id": "left",
+                        "type": "InvokeTool",
+                        "hardwareId": "left-device",
+                        "toolName": "read",
+                        "arguments": {"output": {"volts": 3.3}},
+                    },
+                    {
+                        "id": "right",
+                        "type": "InvokeTool",
+                        "hardwareId": "right-device",
+                        "toolName": "read",
+                        "arguments": {"output": {"volts": 5.0}},
+                    },
+                ],
+            }
+        ],
+    }
+    started = await engine.start(plan_with(repeat), {})
+    run = engine.runs[started["runId"]]
+    for _ in range(50):
+        if len(run.snapshot()["activeExecutionIds"]) >= 2:
+            break
+        await asyncio.sleep(0.005)
+    assert len(run.snapshot()["activeExecutionIds"]) >= 2
+
+    completed = await finish(engine, started)
+    step_events = [item for item in run.events if item["type"] == "step.started"]
+    left_events = [item for item in step_events if item.get("stepId") == "left"]
+    assert len({item["executionId"] for item in left_events}) == 2
+    assert {item["iterationIndex"] for item in left_events} == {0, 1}
+    parallel_events = [item for item in step_events if item.get("stepId") == "parallel"]
+    assert all(item["parentExecutionId"] for item in parallel_events)
+    branch_events = [item for item in step_events if item.get("branchIndex") is not None]
+    assert {item["branchIndex"] for item in branch_events} == {0, 1}
+    assert completed["activeExecutionIds"] == []
+    assert all(item.get("executionId") for item in run.results)
+    assert all(item.get("stepId") and item.get("executionId") for item in completed["operations"])
+    assert any(item["type"] == "loop.iteration.started" for item in run.events)
+    assert any(item["type"] == "loop.iteration.completed" for item in run.events)
+
+
+async def test_execution_instances_capture_if_retry_and_assertion_source(
+    tmp_path: Path,
+) -> None:
+    engine = TestEngine(Projects(tmp_path), Devices(), Resolver(), ExecutionCoordinator())
+    plan = plan_with(
+        {
+            "id": "conditional",
+            "type": "If",
+            "condition": "true",
+            "children": [{"id": "selected", "type": "Delay", "durationMs": 1}],
+            "elseChildren": [{"id": "not_selected", "type": "Delay", "durationMs": 1}],
+        },
+        {
+            "id": "retry",
+            "type": "Retry",
+            "attempts": 2,
+            "children": [{"id": "retried", "type": "Delay", "durationMs": 1}],
+        },
+        {
+            "id": "measure",
+            "type": "InvokeTool",
+            "hardwareId": "dev",
+            "toolName": "read",
+            "arguments": {"output": {"volts": 3.3}},
+        },
+        {
+            "id": "range",
+            "type": "Range",
+            "actualExpression": "steps.measure.volts",
+            "minimum": 3.0,
+            "maximum": 3.6,
+        },
+    )
+    completed = await finish(engine, await engine.start(plan, {}))
+    run = engine.runs[completed["runId"]]
+    branch = next(item for item in run.events if item["type"] == "control.branch.selected")
+    assert branch["selectedBranch"] == "children"
+    selected = next(item for item in run.events if item.get("stepId") == "selected")
+    assert selected["parentExecutionId"] == branch["executionId"]
+    attempt = next(item for item in run.events if item["type"] == "retry.attempt.completed")
+    assert attempt["attemptIndex"] == 0
+    assertion = next(item for item in run.results if item.get("kind") == "assertion")
+    measurement_execution = next(
+        item["executionId"] for item in run.events if item.get("stepId") == "measure"
+    )
+    assert assertion["sourceMeasurementExecutionId"] == measurement_execution
+
+
 async def test_abort_cleans_up_and_unknown_timeout_is_not_retried(tmp_path: Path) -> None:
     devices = Devices()
     devices.delay = 0.2
@@ -332,6 +455,9 @@ async def test_abort_cleans_up_and_unknown_timeout_is_not_retried(tmp_path: Path
     await engine.abort(started["runId"])
     aborted = await finish(engine, started)
     assert aborted["verdict"] == "Aborted"
+    assert aborted["executionStatus"] == "Aborted"
+    assert aborted["cleanupStatus"] == "Succeeded"
+    assert aborted["state"] == "aborted"
     assert engine.runs[started["runId"]].results[-1]["name"] == "cleanup"
 
 
@@ -345,9 +471,16 @@ async def test_application_request_id_deduplicates_create_and_start(tmp_path: Pa
     wiring = SimpleNamespace(list_tasks=lambda _query: [])
     app = TestingApplication(DefaultAuthorizer(), store, engine, resolver, wiring)
     first = await app.create_plan(HUMAN, {"requestId": "create-1", "id": "dedup", "name": "Dedup"})
-    second = await app.create_plan(HUMAN, {"requestId": "create-1", "id": "other", "name": "Other"})
+    second = await app.create_plan(HUMAN, {"requestId": "create-1", "id": "dedup", "name": "Dedup"})
     assert first == second
-    start_input = {"planId": "dedup", "revision": 1, "requestId": "run-1", "parameters": {}}
+    validation = app.validate_plan(HUMAN, "dedup")
+    start_input = {
+        "planId": "dedup",
+        "revision": 1,
+        "executionRevision": validation["executionRevision"],
+        "requestId": "run-1",
+        "parameters": {},
+    }
     run = await app.start_run(HUMAN, start_input)
     same = await app.start_run(HUMAN, start_input)
     assert same["runId"] == run["runId"]
@@ -359,7 +492,7 @@ async def test_application_request_id_deduplicates_create_and_start(tmp_path: Pa
         DefaultAuthorizer(), restarted_store, restarted_engine, resolver, wiring
     )
     persisted_create = await restarted.create_plan(
-        HUMAN, {"requestId": "create-1", "id": "ignored", "name": "Ignored"}
+        HUMAN, {"requestId": "create-1", "id": "dedup", "name": "Dedup"}
     )
     persisted_run = await restarted.start_run(HUMAN, start_input)
     assert persisted_create == first
@@ -372,7 +505,15 @@ async def test_pending_start_request_blocks_unknown_duplicate(tmp_path: Path) ->
     resolver = Resolver()
     store = TestPlanStore(projects, None)
     await store.create({"id": "pending", "name": "Pending"})
-    assert await store.claim_request("start", "run-pending") is None
+    validation = store.validate("pending")
+    input = {
+        "planId": "pending",
+        "revision": 1,
+        "executionRevision": validation["executionRevision"],
+        "requestId": "run-pending",
+        "parameters": {},
+    }
+    assert await store.claim_request("start", "run-pending", input) is None
     engine = TestEngine(projects, Devices(), resolver, ExecutionCoordinator())
     app = TestingApplication(
         DefaultAuthorizer(),
@@ -384,12 +525,482 @@ async def test_pending_start_request_blocks_unknown_duplicate(tmp_path: Path) ->
     with pytest.raises(AppError) as failure:
         await app.start_run(
             HUMAN,
-            {
-                "planId": "pending",
-                "revision": 1,
-                "requestId": "run-pending",
-                "parameters": {},
-            },
+            input,
         )
     assert failure.value.category == "conflict"
     assert failure.value.details["outcomeKnown"] is False
+
+
+def test_resolver_exposes_unwrapped_business_result_contract() -> None:
+    envelope = {
+        "type": "object",
+        "properties": {
+            "ok": {"const": True},
+            "data": {
+                "type": "object",
+                "properties": {"volts": {"type": "number"}},
+                "required": ["volts"],
+                "additionalProperties": False,
+            },
+        },
+        "required": ["ok", "data"],
+    }
+    devices = SimpleNamespace(
+        list_servers=lambda: [{"serverId": "server", "hardwareId": "dev"}],
+        list_tools=lambda: [
+            {
+                "serverId": "server",
+                "remoteName": "read_voltage",
+                "externalName": "server__read_voltage",
+                "inputSchema": {"type": "object"},
+                "upstreamOutputSchema": envelope,
+                "annotations": {"readOnlyHint": True},
+            }
+        ],
+    )
+    catalog = SimpleNamespace(find_hardware=lambda _identifier: {"kind": "managed"})
+    tool, issues = DeviceToolResolver(devices, catalog).resolve("dev", "read_voltage")
+    assert issues == [] and tool
+    Draft202012Validator(tool["resultSchema"]).validate({"volts": 1.2})
+    with pytest.raises(ValidationError):
+        Draft202012Validator(tool["resultSchema"]).validate({"ok": True, "data": {"volts": 1.2}})
+    assert tool["bindingRevision"]
+
+
+def test_compiler_rejects_missing_output_fields_and_non_dominating_steps() -> None:
+    resolver = Resolver(
+        {
+            "type": "object",
+            "properties": {"volts": {"type": "number"}},
+            "required": ["volts"],
+            "additionalProperties": False,
+        }
+    )
+    binding, _ = resolver.resolve("dev", "read")
+    plan = plan_with(
+        {
+            "id": "conditional",
+            "type": "If",
+            "condition": "true",
+            "children": [
+                {
+                    "id": "measurement",
+                    "type": "InvokeTool",
+                    "hardwareId": "dev",
+                    "toolName": "read",
+                    "bindingRevision": binding["bindingRevision"],
+                    "arguments": {},
+                }
+            ],
+            "elseChildren": [],
+        },
+        {
+            "id": "assertion",
+            "type": "Tolerance",
+            "actualExpression": "steps.measurement.missing",
+            "expected": 1,
+            "tolerance": 0.1,
+        },
+    )
+    compiled = compile_plan(plan, resolver)
+    codes = {item["code"] for item in compiled["issues"]}
+    assert "expression.control_flow" in codes
+    assert compiled["valid"] is False
+
+
+def test_compiler_requires_device_state_to_dominate_control_flow() -> None:
+    class StatefulResolver(Resolver):
+        def resolve(self, hardware_id: str, tool_name: str) -> tuple[dict[str, Any], list[Any]]:
+            tool, issues = super().resolve(hardware_id, tool_name)
+            semantics = tool["operationSemantics"]
+            semantics["stateEffects"] = ["configured"] if tool_name == "configure" else []
+            semantics["stateRequirements"] = ["configured"] if tool_name == "read" else []
+            tool["bindingRevision"] = schema_hash(
+                {
+                    "input": tool["inputSchema"],
+                    "result": tool["resultSchema"],
+                    "operationSemantics": semantics,
+                }
+            )
+            return tool, issues
+
+    resolver = StatefulResolver()
+
+    def invoke(step_id: str, tool_name: str) -> dict[str, Any]:
+        binding, _ = resolver.resolve("dev", tool_name)
+        return {
+            "id": step_id,
+            "type": "InvokeTool",
+            "hardwareId": "dev",
+            "toolName": tool_name,
+            "bindingRevision": binding["bindingRevision"],
+            "arguments": {},
+        }
+
+    conditional = compile_plan(
+        plan_with(
+            {
+                "id": "conditional",
+                "type": "If",
+                "condition": "true",
+                "children": [invoke("configure_yes", "configure")],
+                "elseChildren": [],
+            },
+            invoke("read_after", "read"),
+        ),
+        resolver,
+    )
+    parallel = compile_plan(
+        plan_with(
+            {
+                "id": "parallel",
+                "type": "Parallel",
+                "children": [
+                    invoke("configure_parallel", "configure"),
+                    invoke("read_parallel", "read"),
+                ],
+            }
+        ),
+        resolver,
+    )
+
+    assert "device.state_requirement" in {item["code"] for item in conditional["issues"]}
+    assert "device.state_requirement" in {item["code"] for item in parallel["issues"]}
+
+
+async def test_cleanup_is_top_down_and_system_safety_runs_afterward(tmp_path: Path) -> None:
+    class SafetyResolver(Resolver):
+        def resolve(self, hardware_id: str, tool_name: str) -> tuple[dict[str, Any], list[Any]]:
+            tool, issues = super().resolve(hardware_id, tool_name)
+            tool["externalName"] = f"server__{tool_name}"
+            tool["operationSemantics"] = {
+                "kind": "safe" if tool_name == "safe" else "actuate",
+                "retry": "never_after_dispatch",
+                "stateRequirements": [],
+                "stateEffects": [],
+                "evidenceType": "observation",
+                "trusted": True,
+                **(
+                    {"safetyAction": {"toolName": "safe", "arguments": {}}}
+                    if tool_name == "drive"
+                    else {}
+                ),
+            }
+            return tool, issues
+
+    devices = Devices()
+    engine = TestEngine(Projects(tmp_path), devices, SafetyResolver(), ExecutionCoordinator())
+    plan = plan_with(
+        {
+            "id": "drive",
+            "type": "InvokeTool",
+            "hardwareId": "dev",
+            "toolName": "drive",
+            "arguments": {},
+        },
+        cleanup=[
+            {"id": "cleanup_first", "type": "PublishResult", "name": "first", "value": 1},
+            {"id": "cleanup_second", "type": "PublishResult", "name": "second", "value": 2},
+        ],
+    )
+    completed = await finish(engine, await engine.start(plan, {}))
+    assert [item["name"] for item in engine.runs[completed["runId"]].results] == [
+        "first",
+        "second",
+    ]
+    assert devices.names == ["server__drive", "server__safe"]
+    assert completed["cleanupStatus"] == "Succeeded"
+
+
+async def test_cleanup_failure_recovered_by_system_safety_preserves_dut_verdict(
+    tmp_path: Path,
+) -> None:
+    class SafetyResolver(Resolver):
+        def resolve(self, hardware_id: str, tool_name: str) -> tuple[dict[str, Any], list[Any]]:
+            tool, issues = super().resolve(hardware_id, tool_name)
+            tool["externalName"] = f"server__{tool_name}"
+            tool["operationSemantics"] = {
+                "kind": "safe" if tool_name == "safe" else "actuate",
+                "retry": "never_after_dispatch",
+                "stateRequirements": [],
+                "stateEffects": [],
+                "evidenceType": "observation",
+                "trusted": True,
+                **(
+                    {"safetyAction": {"toolName": "safe", "arguments": {}}}
+                    if tool_name == "drive"
+                    else {}
+                ),
+            }
+            return tool, issues
+
+    class CleanupFailureDevices(Devices):
+        async def call_aggregated_tool(self, name: str, arguments: dict[str, Any]) -> Any:
+            if name.endswith("__cleanup_fail"):
+                raise AppError(
+                    "unavailable",
+                    "cleanup transport disconnected",
+                    {"outcomeKnown": False, "recoveryRequired": True},
+                )
+            return await super().call_aggregated_tool(name, arguments)
+
+    engine = TestEngine(
+        Projects(tmp_path), CleanupFailureDevices(), SafetyResolver(), ExecutionCoordinator()
+    )
+    completed = await finish(
+        engine,
+        await engine.start(
+            plan_with(
+                {
+                    "id": "drive",
+                    "type": "InvokeTool",
+                    "hardwareId": "dev",
+                    "toolName": "drive",
+                    "arguments": {},
+                },
+                cleanup=[
+                    {
+                        "id": "cleanup_fail",
+                        "type": "InvokeTool",
+                        "hardwareId": "dev",
+                        "toolName": "cleanup_fail",
+                        "arguments": {},
+                    }
+                ],
+            ),
+            {},
+        ),
+    )
+    assert completed["verdict"] == "Pass"
+    assert completed["executionStatus"] == "Succeeded"
+    assert completed["cleanupStatus"] == "Recovered"
+    assert completed["safetyStatus"] == "Verified"
+    assert completed["state"] == "completed"
+    assert completed["recoveryRequired"] is False
+    assert completed["outcomeKnown"] is False
+    assert completed["primaryError"]["recovered"] is True
+    recovered = next(item for item in completed["operations"] if item["toolName"] == "cleanup_fail")
+    assert recovered["resolvedByOperationId"]
+
+
+async def test_cleanup_failure_without_safety_is_separate_from_dut_verdict(
+    tmp_path: Path,
+) -> None:
+    class CleanupFailureDevices(Devices):
+        async def call_aggregated_tool(self, name: str, arguments: dict[str, Any]) -> Any:
+            raise AppError("unavailable", "cleanup failed", {"outcomeKnown": False})
+
+    engine = TestEngine(
+        Projects(tmp_path), CleanupFailureDevices(), Resolver(), ExecutionCoordinator()
+    )
+    completed = await finish(
+        engine,
+        await engine.start(
+            plan_with(
+                cleanup=[
+                    {
+                        "id": "cleanup_fail",
+                        "type": "InvokeTool",
+                        "hardwareId": "dev",
+                        "toolName": "cleanup_fail",
+                        "arguments": {},
+                    }
+                ]
+            ),
+            {},
+        ),
+    )
+    assert completed["verdict"] == "Pass"
+    assert completed["executionStatus"] == "Failed"
+    assert completed["cleanupStatus"] == "Failed"
+    assert completed["safetyStatus"] == "Unknown"
+    assert completed["state"] == "error"
+
+
+async def test_firmware_operations_publish_separate_traceable_evidence(tmp_path: Path) -> None:
+    class FirmwareResolver(Resolver):
+        def resolve(self, hardware_id: str, tool_name: str) -> tuple[dict[str, Any], list[Any]]:
+            tool, issues = super().resolve(hardware_id, tool_name)
+            tool["operationSemantics"]["evidenceType"] = "firmware_job_status"
+            return tool, issues
+
+    resolver = FirmwareResolver()
+    engine = TestEngine(Projects(tmp_path), Devices(), resolver, ExecutionCoordinator())
+    plan = plan_with(
+        {
+            "id": "wait_flash",
+            "type": "InvokeTool",
+            "hardwareId": "dev",
+            "toolName": "firedap_wait_job",
+            "arguments": {
+                "hardwareId": "dut",
+                "expected_sha256": "a" * 64,
+                "output": {
+                    "jobId": "job-1",
+                    "operation": "flash",
+                    "state": "succeeded",
+                    "firmware": {"sha256": "a" * 64},
+                    "result": {"verified": True},
+                },
+            },
+        }
+    )
+    binding, _ = resolver.resolve("dev", "firedap_wait_job")
+    plan["resolvedBindings"] = {"wait_flash": binding}
+
+    completed = await finish(engine, await engine.start(plan, {}))
+    evidence = engine.runs[completed["runId"]].results[0]
+    assert evidence["kind"] == "observation"
+    assert evidence["firmware"] == {
+        "sha256": "a" * 64,
+        "targetHardwareId": "dut",
+        "jobId": "job-1",
+        "operation": "flash",
+        "state": "succeeded",
+        "verified": True,
+    }
+
+
+def test_dispatched_operation_becomes_recovery_required_after_restart(tmp_path: Path) -> None:
+    projects = Projects(tmp_path)
+    state = RuntimeStateStore(projects)
+    state.initialize()
+    state.record_operation(
+        {
+            "operationId": "op",
+            "runId": "run",
+            "hardwareId": "dev",
+            "toolName": "write",
+            "inputHash": "hash",
+            "state": "dispatched",
+        }
+    )
+    restarted = RuntimeStateStore(projects)
+    restarted.initialize()
+    operation = restarted.operations(recovery_only=True)[0]
+    assert operation["state"] == "outcome_unknown"
+    assert operation["outcomeKnown"] is False
+
+
+def test_runtime_state_migrates_operation_execution_context_columns(tmp_path: Path) -> None:
+    projects = Projects(tmp_path)
+    path = tmp_path / ".hardwareharness" / "runtime.sqlite3"
+    path.parent.mkdir(parents=True)
+    with sqlite3.connect(path) as database:
+        database.execute(
+            "CREATE TABLE operations (operation_id TEXT PRIMARY KEY,run_id TEXT NOT NULL,"
+            "hardware_id TEXT NOT NULL,tool_name TEXT NOT NULL,input_hash TEXT NOT NULL,"
+            "state TEXT NOT NULL,outcome_known INTEGER NOT NULL,recovery_required INTEGER NOT NULL,"
+            "result_json TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)"
+        )
+    state = RuntimeStateStore(projects)
+    state.initialize()
+    state.record_operation(
+        {
+            "operationId": "op-context",
+            "runId": "run",
+            "hardwareId": "dev",
+            "toolName": "read",
+            "inputHash": "hash",
+            "state": "succeeded",
+            "stepId": "measure",
+            "executionId": "execution-1",
+        }
+    )
+    operation = state.operations("run")[0]
+    assert operation["stepId"] == "measure"
+    assert operation["executionId"] == "execution-1"
+
+
+def test_run_history_indexes_artifacts_filters_and_pages(tmp_path: Path) -> None:
+    projects = Projects(tmp_path)
+    state = RuntimeStateStore(projects)
+    state.initialize()
+    for index, verdict in enumerate(("Pass", "Fail", "Pass")):
+        run_id = f"run-{index}"
+        run_dir = tmp_path / ".hardwareharness" / "runs" / run_id
+        run_dir.mkdir(parents=True)
+        (run_dir / "summary.json").write_text(
+            json.dumps(
+                {
+                    "runId": run_id,
+                    "planId": "plan-a" if index < 2 else "plan-b",
+                    "planName": f"Plan {index}",
+                    "revision": 1,
+                    "state": "completed",
+                    "verdict": verdict,
+                    "startedAt": f"2026-09-18T00:00:0{index}Z",
+                    "cleanupStatus": "Succeeded",
+                    "outcomeKnown": True,
+                    "recoveryRequired": False,
+                }
+            ),
+            encoding="utf-8",
+        )
+    first = state.list_runs(limit=1, verdict="Pass")
+    assert [item["runId"] for item in first["items"]] == ["run-2"]
+    second = state.list_runs(limit=1, verdict="Pass", cursor=first["nextCursor"])
+    assert [item["runId"] for item in second["items"]] == ["run-0"]
+    assert state.list_runs(plan_id="plan-a")["items"][0]["runId"] == "run-1"
+
+
+def test_legacy_run_classification_is_added_without_rewriting_verdict(tmp_path: Path) -> None:
+    state = RuntimeStateStore(Projects(tmp_path))
+    legacy = state.normalize_run(
+        {
+            "runId": "legacy",
+            "planId": "plan",
+            "revision": 1,
+            "state": "error",
+            "verdict": "Error",
+            "sequence": 1,
+            "resultSequence": 0,
+        }
+    )
+    assert legacy["verdict"] == "Error"
+    assert legacy["executionStatus"] == "Failed"
+    assert legacy["legacyClassification"] is True
+
+
+def test_read_run_log_restores_plan_and_incremental_artifacts(tmp_path: Path) -> None:
+    projects = Projects(tmp_path)
+    state = RuntimeStateStore(projects)
+    state.initialize()
+    snapshot = {
+        "runId": "run",
+        "planId": "plan",
+        "planName": "Plan",
+        "revision": 1,
+        "state": "completed",
+        "verdict": "Pass",
+        "startedAt": "2026-09-18T00:00:00Z",
+        "sequence": 2,
+        "resultSequence": 2,
+    }
+    state.save_run(snapshot)
+    run_dir = tmp_path / ".hardwareharness" / "runs" / "run"
+    run_dir.mkdir(parents=True)
+    (run_dir / "plan.hhplan.yaml").write_text(
+        "id: plan\nname: Plan\nregions:\n  prepare: []\n  test: []\n  cleanup: []\n",
+        encoding="utf-8",
+    )
+    (run_dir / "events.jsonl").write_text(
+        '{"sequence":1,"type":"run.started"}\n{"sequence":2,"type":"run.completed"}\n',
+        encoding="utf-8",
+    )
+    (run_dir / "results.jsonl").write_text(
+        '{"sequence":1,"name":"old"}\n{"sequence":2,"name":"new"}\n',
+        encoding="utf-8",
+    )
+    engine = TestEngine(
+        projects, Devices(), Resolver(), ExecutionCoordinator(), runtime_state=state
+    )
+    value = engine.read_log("run", after_event_sequence=1, after_result_sequence=1)
+    assert value["plan"]["id"] == "plan"
+    assert [event["sequence"] for event in value["events"]] == [2]
+    assert [result["sequence"] for result in value["results"]] == [2]
+    first_page = engine.read_log("run", event_limit=1, result_limit=1)
+    assert first_page["hasMoreEvents"] is True
+    assert first_page["hasMoreResults"] is True
+    assert first_page["latestEventSequence"] == 2
+    assert first_page["latestResultSequence"] == 2

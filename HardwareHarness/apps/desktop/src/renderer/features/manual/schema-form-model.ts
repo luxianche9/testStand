@@ -43,7 +43,9 @@ export function initialSchemaValue(schema: JsonSchema): unknown {
 }
 
 export function schemaType(schema: JsonSchema): string | undefined {
-  return typeof schema.type === "string" ? schema.type : undefined;
+  if (typeof schema.type === "string") return schema.type;
+  if (Array.isArray(schema.type)) return schema.type.find((item): item is string => typeof item === "string" && item !== "null");
+  return undefined;
 }
 
 export function schemaProperties(schema: JsonSchema): Record<string, JsonSchema> | undefined {
@@ -60,9 +62,10 @@ export function childSchema(schema: JsonSchema): JsonSchema | undefined {
 }
 
 export function requiresJsonFallback(schema: JsonSchema): boolean {
-  if (["oneOf", "anyOf", "allOf", "not", "if", "then", "else"].some((key) => Object.hasOwn(schema, key))) return true;
+  if (["allOf", "not", "if", "then", "else"].some((key) => Object.hasOwn(schema, key))) return true;
+  if (["oneOf", "anyOf"].some((key) => Object.hasOwn(schema, key))) return false;
   const type = schemaType(schema);
-  if (!type || Array.isArray(schema.type)) return true;
+  if (!type) return true;
   if (type === "object") {
     if (!schemaProperties(schema)) return true;
     if (["patternProperties", "propertyNames", "dependencies", "dependentSchemas", "unevaluatedProperties"].some((key) => Object.hasOwn(schema, key))) return true;

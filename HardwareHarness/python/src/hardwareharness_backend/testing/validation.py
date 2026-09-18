@@ -5,7 +5,7 @@ from typing import Any
 from jsonschema import Draft202012Validator
 
 from .expression import evaluate
-from .models import BUILTIN_STEPS, CONTAINER_STEPS, STEP_ID, iter_steps, schema_hash
+from .models import BUILTIN_STEPS, CONTAINER_STEPS, STEP_ID, iter_steps
 
 Record = dict[str, Any]
 
@@ -20,9 +20,18 @@ def validate_plan(
     issues: list[Record] = []
     if not isinstance(plan, dict):
         return [issue("error", "plan.type", "Plan must be an object")]
-    if plan.get("schemaVersion") != 1:
+    if plan.get("schemaVersion") == 1:
         issues.append(
-            issue("error", "plan.schemaVersion", "schemaVersion must be 1", "/schemaVersion")
+            issue(
+                "error",
+                "plan.migration_required",
+                "schemaVersion 1 plans are read-only and must be explicitly migrated to version 2",
+                "/schemaVersion",
+            )
+        )
+    elif plan.get("schemaVersion") != 2:
+        issues.append(
+            issue("error", "plan.schemaVersion", "schemaVersion must be 2", "/schemaVersion")
         )
     for key in ("id", "name"):
         if not isinstance(plan.get(key), str) or not plan[key].strip():
@@ -102,7 +111,7 @@ def validate_plan(
                         path + "/errorPolicy",
                     )
                 )
-            for field in ("hardwareId", "toolName", "inputSchemaHash"):
+            for field in ("hardwareId", "toolName", "bindingRevision"):
                 if not isinstance(step.get(field), str) or not step[field]:
                     issues.append(
                         issue("error", "invoke.binding", f"{field} is required", path + "/" + field)
@@ -115,26 +124,13 @@ def validate_plan(
                 issues.extend(
                     {**item, "path": path + item.get("path", "")} for item in binding_issues
                 )
-                if resolved and step.get("inputSchemaHash") != schema_hash(
-                    resolved.get("inputSchema", {})
-                ):
+                if resolved and step.get("bindingRevision") != resolved.get("bindingRevision"):
                     issues.append(
                         issue(
                             "error",
-                            "invoke.contract_changed",
-                            "Tool input schema changed; update the step binding",
-                            path + "/inputSchemaHash",
-                        )
-                    )
-                if resolved and step.get("toolContractRevision") != resolved.get(
-                    "toolContractRevision"
-                ):
-                    issues.append(
-                        issue(
-                            "error",
-                            "invoke.contract_revision_changed",
-                            "Tool contract changed; review input and output bindings",
-                            path + "/toolContractRevision",
+                            "invoke.binding_changed",
+                            "Tool binding changed; explicitly refresh the binding",
+                            path + "/bindingRevision",
                         )
                     )
                 if resolved:
@@ -156,11 +152,11 @@ def validate_plan(
                                 path + "/arguments" + "".join(f"/{part}" for part in error.path),
                             )
                         )
-        for field in ("expression", "condition"):
-            if field in step:
+        for field, expression in _expressions(step):
+            if expression:
                 try:
                     evaluate(
-                        str(step[field]),
+                        expression,
                         {"parameters": {}, "variables": {}, "steps": {}, "item": None, "index": 0},
                     )
                 except Exception as error:
@@ -175,12 +171,8 @@ def validate_plan(
                     tool, _ = resolver.resolve(
                         str(child.get("hardwareId", "")), str(child.get("toolName", ""))
                     )
-                    annotations = (tool or {}).get("annotations", {})
-                    if not (
-                        annotations.get("readOnlyHint")
-                        or annotations.get("idempotentHint")
-                        or child.get("retryAllowed")
-                    ):
+                    semantics = (tool or {}).get("operationSemantics", {})
+                    if semantics.get("retry") not in {"safe", "before_dispatch"}:
                         issues.append(
                             issue(
                                 "error",
@@ -190,6 +182,29 @@ def validate_plan(
                             )
                         )
     return issues
+
+
+def _expressions(step: Record) -> list[tuple[str, str]]:
+    output: list[tuple[str, str]] = []
+    for key, value in step.items():
+        if (key.endswith("Expression") or key in {"expression", "condition"}) and isinstance(
+            value, str
+        ):
+            output.append((key, value))
+
+    def visit(value: Any, path: str) -> None:
+        if isinstance(value, dict):
+            if set(value) == {"expression"} and isinstance(value["expression"], str):
+                output.append((path, value["expression"]))
+            else:
+                for key, item in value.items():
+                    visit(item, path + "/" + str(key))
+        elif isinstance(value, list):
+            for index, item in enumerate(value):
+                visit(item, path + f"/{index}")
+
+    visit(step.get("arguments", {}), "arguments")
+    return output
 
 
 def _descendants(step: Record, path: str) -> list[tuple[str, Record]]:

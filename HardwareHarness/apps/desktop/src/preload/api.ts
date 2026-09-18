@@ -73,6 +73,7 @@ export function createHardwareHarnessApi(client: DesktopTrpcClient): HardwareHar
       deletePlan: (planId) => call(client.testing.deletePlan.mutate({ planId })),
       applyPlanOperations: (input) => call(client.testing.applyPlanOperations.mutate(input)),
       validatePlan: (planId) => call(client.testing.validatePlan.query({ planId })),
+      analyzePlanDraft: (input) => call(client.testing.analyzePlanDraft.query(input)),
       listStepCatalog: () => call(client.testing.listStepCatalog.query()),
       listDeviceTools: (hardwareId) => call(client.testing.listDeviceTools.query({ hardwareId })),
       startRun: (input) => call(client.testing.startRun.mutate(input)),
@@ -80,7 +81,12 @@ export function createHardwareHarnessApi(client: DesktopTrpcClient): HardwareHar
       resumeRun: (runId) => call(client.testing.resumeRun.mutate({ runId })),
       abortRun: (runId) => call(client.testing.abortRun.mutate({ runId })),
       currentRun: () => call(client.testing.currentRun.query()),
-      readRunResults: (runId, afterSequence) => call(client.testing.readRunResults.query({ runId, afterSequence }))
+      getRun: (runId) => call(client.testing.getRun.query({ runId })),
+      listRuns: (input) => call(client.testing.listRuns.query(input)),
+      readRunLog: (input) => call(client.testing.readRunLog.query(input)),
+      readRunResults: (runId, afterSequence) => call(client.testing.readRunResults.query({ runId, afterSequence })),
+      listRecoveryItems: () => call(client.testing.listRecoveryItems.query()),
+      reconcileOperation: (input) => call(client.testing.reconcileOperation.mutate(input))
     },
 
     agents: {

@@ -105,6 +105,38 @@ async def test_original_typescript_wiring_golden(
     }
     # Release contracts add actionable recovery data; preserve all legacy state/message semantics.
     legacy = clone(actual)
+
+    def strip_wiring_revisions(value: Any) -> None:
+        if isinstance(value, dict):
+            if "wiringRevision" in value:
+                assert len(value.pop("wiringRevision")) == 64
+            for item in value.values():
+                strip_wiring_revisions(item)
+        elif isinstance(value, list):
+            for item in value:
+                strip_wiring_revisions(item)
+
+    strip_wiring_revisions(legacy)
+    # Persistent wiring tasks intentionally remain in_progress at shutdown. Reconstruct the
+    # retired session-only cancellation only for comparison with this historical TS golden.
+    if any(action["method"] == "close" for action in case["actions"]):
+        close_index = next(
+            index for index, action in enumerate(case["actions"]) if action["method"] == "close"
+        )
+        cancellation: Record | None = None
+        for result in legacy["results"][close_index + 1 :]:
+            value = result.get("result")
+            tasks = value if isinstance(value, list) else [value] if isinstance(value, dict) else []
+            for task in tasks:
+                if isinstance(task, dict) and task.get("status") == "in_progress":
+                    task.update(
+                        status="cancelled",
+                        completedAt=iso_from_ms(clock),
+                        message="Application shutdown",
+                    )
+                    cancellation = clone(task)
+        if cancellation:
+            legacy["notifications"].append(cancellation)
     for result in legacy["results"]:
         wire_error = result.get("error", {})
         if "details" in wire_error:

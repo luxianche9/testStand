@@ -21,8 +21,7 @@ export type TestStep = {
   elseChildren?: TestStep[] | undefined;
   hardwareId?: string | undefined;
   toolName?: string | undefined;
-  toolContractRevision?: string | undefined;
-  inputSchemaHash?: string | undefined;
+  bindingRevision?: string | undefined;
   arguments?: Record<string, unknown> | undefined;
   timeoutMs?: number | undefined;
   stopOnFail?: boolean | undefined;
@@ -38,20 +37,21 @@ export const testStepSchema: z.ZodType<TestStep> = z.lazy(() => z.object({
   elseChildren: z.array(testStepSchema).optional(),
   hardwareId: z.string().min(1).optional(),
   toolName: z.string().min(1).optional(),
-  toolContractRevision: z.string().min(1).optional(),
-  inputSchemaHash: z.string().min(1).optional(),
+  bindingRevision: z.string().min(1).optional(),
   arguments: z.record(z.unknown()).optional(),
   timeoutMs: z.number().int().positive().optional(),
   stopOnFail: z.boolean().optional()
 }).passthrough());
 
 export const testPlanSchema = z.object({
-  schemaVersion: z.literal(1),
+  schemaVersion: z.literal(2),
   id: z.string().min(1),
   name: z.string().min(1),
   description: z.string().default(""),
   revision: z.number().int().positive(),
   parameters: z.array(testParameterSchema).default([]),
+  requirements: z.array(z.object({ id: z.string().min(1), name: z.string().min(1), description: z.string().optional() }).strict()).default([]),
+  wiringRequirements: z.array(z.object({ connectionId: z.string().min(1), signature: z.string().min(1) }).strict()).default([]),
   stopOnFail: z.boolean().default(false),
   regions: z.object({ prepare: z.array(testStepSchema), test: z.array(testStepSchema), cleanup: z.array(testStepSchema) }).strict(),
   createdAt: z.string(),
@@ -61,11 +61,21 @@ export type TestPlan = z.infer<typeof testPlanSchema>;
 
 export interface TestPlanSummary {
   id: string; name: string; description: string; revision: number; updatedAt?: string;
-  valid?: boolean; invalid?: boolean; message?: string; stepCount?: number;
+  valid?: boolean; invalid?: boolean; message?: string; stepCount?: number; migrationRequired?: boolean;
 }
 export interface TestPlanIssue { severity: "error" | "warning"; code: string; message: string; path: string }
-export interface TestPlanValidation { planId: string; revision: number; valid: boolean; issues: TestPlanIssue[] }
+export interface RequirementCoverage { requirementId: string; name: string; status: "Passed" | "Failed" | "NotRun" | "InsufficientEvidence"; assertionCount?: number; evidenceCount?: number }
+export interface TestPlanValidation { planId: string; revision: number; valid: boolean; issues: TestPlanIssue[]; executionRevision: string; wiringRevision: string; coverage: { requirements: RequirementCoverage[]; total: number; linked?: number } }
 export interface TestPlanMutationResult { plan: TestPlan; issues: TestPlanIssue[]; appliedOperations?: number }
+export interface TestExpressionReference {
+  expression: string; label: string; sourceKind: "parameter" | "variable" | "step";
+  sourceId: string; path?: string; valueType?: string; unit?: string;
+  availability: "guaranteed" | "conditional" | "unavailable"; reason?: string;
+}
+export interface TestPlanDraftAnalysis {
+  issues: TestPlanIssue[];
+  referencesByStepId: Record<string, TestExpressionReference[]>;
+}
 
 const regionSchema = z.enum(["prepare", "test", "cleanup"]);
 const branchSchema = z.enum(["children", "elseChildren"]);
@@ -77,7 +87,8 @@ export const testPlanOperationSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("move_step"), stepId: z.string().min(1), region: regionSchema.optional(), parentId: z.string().optional(), branch: branchSchema.optional(), index: z.number().int().min(0).optional() }).strict(),
   z.object({ type: z.literal("set_step_enabled"), stepId: z.string().min(1), enabled: z.boolean() }).strict(),
   z.object({ type: z.literal("remove_step"), stepId: z.string().min(1) }).strict(),
-  z.object({ type: z.literal("replace_device"), fromHardwareId: z.string().min(1), toHardwareId: z.string().min(1) }).strict()
+  z.object({ type: z.literal("bind_invoke_tool"), stepId: z.string().min(1), hardwareId: z.string().min(1), toolName: z.string().min(1) }).strict(),
+  z.object({ type: z.literal("refresh_invoke_binding"), stepId: z.string().min(1) }).strict()
 ]);
 export type TestPlanOperation = z.infer<typeof testPlanOperationSchema>;
 
@@ -87,15 +98,62 @@ export interface TestStepCatalogItem {
 }
 export interface TestDeviceTool {
   hardwareId: string; toolName: string; publicToolName: string; description: string;
-  inputSchema: Record<string, unknown>; outputSchema: Record<string, unknown>;
-  annotations: Record<string, unknown>; toolContractRevision: string; inputSchemaHash: string;
+  inputSchema: Record<string, unknown>; resultSchema: Record<string, unknown>; outputSchema?: Record<string, unknown>;
+  annotations: Record<string, unknown>; bindingRevision: string;
+  operationSemantics: { kind: "read" | "configure" | "actuate" | "safe"; retry: string; stateRequirements: string[]; stateEffects: string[]; evidenceType: string; trusted: boolean; [key: string]: unknown };
 }
 export interface TestDeviceTools { hardwareId: string; tools: TestDeviceTool[]; issues: TestPlanIssue[] }
 export type TestRunState = "starting" | "running" | "paused" | "cleaning" | "completed" | "aborted" | "error";
+export type TestExecutionStatus = "Running" | "Succeeded" | "Failed" | "Aborted";
+export type TestCleanupStatus = "NotRequired" | "Succeeded" | "Recovered" | "Failed" | "Unknown";
+export type TestSafetyStatus = "NotRequired" | "Pending" | "Verified" | "Failed" | "Unknown";
+export interface TestRunPrimaryError {
+  phase: "prepare" | "test" | "cleanup" | "safety" | "startup";
+  category: string; message: string; recovered: boolean;
+  stepId?: string; hardwareId?: string; toolName?: string; operationId?: string;
+}
 export interface TestRunSnapshot {
   runId: string; planId: string; revision: number; planName: string; state: TestRunState;
   verdict: TestVerdict; startedAt: string; completedAt?: string; sequence: number; resultSequence: number;
-  currentStepId?: string; pauseRequested: boolean; abortRequested: boolean; hardwareIds: string[];
+  currentStepId?: string; activeExecutionIds?: string[]; pauseRequested: boolean; abortRequested: boolean; hardwareIds: string[];
+  executionRevision?: string; executionStatus: TestExecutionStatus; cleanupStatus: TestCleanupStatus; safetyStatus: TestSafetyStatus;
+  outcomeKnown: boolean; recoveryRequired: boolean; coverage: { requirements: RequirementCoverage[]; total: number };
+  primaryError?: TestRunPrimaryError; legacyClassification?: boolean;
+  operations: TestOperationSnapshot[];
 }
-export interface TestRunEvent { sequence: number; at: string; runId: string; type: string; [key: string]: unknown }
-export interface TestResult { sequence: number; at: string; name: string; [key: string]: unknown }
+export interface TestOperationSnapshot {
+  operationId: string; runId: string; hardwareId: string; toolName: string;
+  stepId?: string; executionId?: string;
+  state: "accepted" | "dispatched" | "succeeded" | "failed" | "outcome_unknown" | "recovery_required";
+  outcomeKnown: boolean; recoveryRequired: boolean; resolvedByOperationId?: string; resolvedAt?: string; result?: unknown;
+}
+export interface TestRunEvent {
+  sequence: number; at: string; runId: string; type: string;
+  stepId?: string; executionId?: string; parentExecutionId?: string;
+  region?: "prepare" | "test" | "cleanup"; branch?: "children" | "elseChildren";
+  branchIndex?: number; iterationIndex?: number; iterationCount?: number;
+  attemptIndex?: number; attemptCount?: number;
+  [key: string]: unknown;
+}
+export interface TestResult {
+  sequence: number; at: string; name: string;
+  sourceStepId?: string; stepId?: string; executionId?: string;
+  [key: string]: unknown;
+}
+
+export interface TestRunListInput {
+  cursor?: string | undefined; limit?: number | undefined; planId?: string | undefined; verdict?: TestVerdict | undefined; state?: TestRunState | undefined; from?: string | undefined; to?: string | undefined;
+}
+export interface TestRunSummary {
+  runId: string; planId: string; planName: string; revision: number; state: TestRunState; verdict: TestVerdict;
+  startedAt: string; completedAt?: string; executionStatus: TestExecutionStatus; cleanupStatus: TestCleanupStatus; safetyStatus: TestSafetyStatus;
+  outcomeKnown: boolean; recoveryRequired: boolean;
+  legacyClassification?: boolean;
+}
+export interface TestRunPage { items: TestRunSummary[]; nextCursor?: string }
+export interface TestRunLog {
+  run: TestRunSnapshot; plan: TestPlan; events: TestRunEvent[]; results: TestResult[];
+  nextEventSequence: number; nextResultSequence: number;
+  latestEventSequence: number; latestResultSequence: number;
+  hasMoreEvents: boolean; hasMoreResults: boolean;
+}

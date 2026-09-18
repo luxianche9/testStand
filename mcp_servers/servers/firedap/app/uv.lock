@@ -287,6 +287,38 @@ wheels = [
 ]
 
 [[package]]
+name = "hardwareharness-firedap"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "intelhex" },
+    { name = "mcp", extra = ["cli"] },
+    { name = "pyelftools" },
+    { name = "pyocd" },
+    { name = "uvicorn" },
+]
+
+[package.optional-dependencies]
+test = [
+    { name = "httpx" },
+    { name = "jsonschema" },
+    { name = "pytest" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", marker = "extra == 'test'", specifier = ">=0.28" },
+    { name = "intelhex", specifier = ">=2.3" },
+    { name = "jsonschema", marker = "extra == 'test'", specifier = ">=4.20" },
+    { name = "mcp", extras = ["cli"], specifier = ">=1.30,<2" },
+    { name = "pyelftools", specifier = ">=0.33" },
+    { name = "pyocd", specifier = ">=0.45,<0.46" },
+    { name = "pytest", marker = "extra == 'test'", specifier = ">=8" },
+    { name = "uvicorn", specifier = ">=0.35,<1" },
+]
+provides-extras = ["test"]
+
+[[package]]
 name = "hidapi"
 version = "0.15.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1119,36 +1151,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/b5/b4/205b0d5241d934e8a
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c8/cb/6a6a47d5b464bd08695d254f3da6e7986cc70c9fa5d778eda57538edfe56/starlette-1.6.0-py3-none-any.whl", hash = "sha256:a86dd39d14bb45f85a3d18525215a9ef0cfd1f192ac793220e72598c90335f0c", size = 75969, upload-time = "2026-08-08T18:27:56.196Z" },
 ]
-
-[[package]]
-name = "hardwareharness-firedap"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "intelhex" },
-    { name = "mcp", extra = ["cli"] },
-    { name = "pyelftools" },
-    { name = "pyocd" },
-    { name = "uvicorn" },
-]
-
-[package.optional-dependencies]
-test = [
-    { name = "httpx" },
-    { name = "pytest" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "httpx", marker = "extra == 'test'", specifier = ">=0.28" },
-    { name = "intelhex", specifier = ">=2.3" },
-    { name = "mcp", extras = ["cli"], specifier = ">=1.30,<2" },
-    { name = "pyelftools", specifier = ">=0.33" },
-    { name = "pyocd", specifier = ">=0.45,<0.46" },
-    { name = "pytest", marker = "extra == 'test'", specifier = ">=8" },
-    { name = "uvicorn", specifier = ">=0.35,<1" },
-]
-provides-extras = ["test"]
 
 [[package]]
 name = "typer"

@@ -1,38 +1,41 @@
-import { useCallback, useEffect, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  DndContext, DragOverlay, KeyboardSensor, PointerSensor, closestCenter, useDroppable, useSensor, useSensors,
-  type DragEndEvent, type DragStartEvent
-} from "@dnd-kit/core";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { DndContext, DragOverlay, KeyboardSensor, PointerSensor, closestCenter, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from "@dnd-kit/core";
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import {
-  AlertTriangleIcon, CheckCircle2Icon, ChevronDownIcon, ChevronRightIcon, CircleStopIcon,
-  CopyIcon, GripVerticalIcon, PauseIcon, PlayIcon, PlusIcon, Redo2Icon, RefreshCwIcon, SaveIcon,
-  Trash2Icon, Undo2Icon
-} from "lucide-react";
+import { AlertTriangleIcon, BlocksIcon, CheckCircle2Icon, ChevronDownIcon, ChevronRightIcon, CircleStopIcon, CopyIcon, FileTextIcon, GripVerticalIcon, HistoryIcon, ListChecksIcon, PauseIcon, PlayIcon, PlusIcon, Redo2Icon, SaveIcon, SearchIcon, SlidersHorizontalIcon, Trash2Icon, Undo2Icon } from "lucide-react";
 import type { Hardware } from "@hardwareharness/contracts/devices";
-import type { TestPlan, TestPlanIssue, TestRunSnapshot, TestStep, TestStepCatalogItem } from "@hardwareharness/contracts/testing";
+import type { TestExpressionReference, TestPlan, TestPlanDraftAnalysis, TestPlanIssue, TestRunListInput, TestRunSnapshot, TestRunSummary, TestStep, TestStepCatalogItem } from "@hardwareharness/contracts/testing";
 import { Button } from "../../shared/ui/button";
 import { Badge } from "../../shared/ui/badge";
 import { Checkbox } from "../../shared/ui/checkbox";
+import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader } from "../../shared/ui/dialog";
 import { Field, Input, Select, Textarea } from "../../shared/ui/input";
 import { cn } from "../../shared/ui/cn";
-import { SchemaArgumentsForm } from "../manual/SchemaForm.js";
+import { useResizableWidth } from "../../shared/resizable.js";
 import type { JsonSchema } from "../manual/schema-form-model.js";
 import { useKeyboardShortcut } from "../../shared/hooks/useKeyboardShortcut.js";
-import { clonePlan, createStep, findStep, moveStep, planHardwareIds, removeStep, replaceHardware, type TestRegion } from "./plan-model.js";
+import { clonePlan, createStep, findStep, moveStep, removeStep, type TestRegion } from "./plan-model.js";
+import { TestRunLogPage } from "./TestRunLogPage.js";
+import { BoundArgumentsForm, PlanParametersEditor, RunParametersEditor, StepSettingsForm } from "./TestPlanForms.js";
 
-const planKeys = { list: ["test-plans"] as const, plan: (id: string) => ["test-plan", id] as const, run: ["test-run"] as const };
+type SidebarPage = "files" | "components" | "runs";
+type DragDescriptor = { kind: "step"; stepId: string } | { kind: "catalog"; item: TestStepCatalogItem } | { kind: "server"; hardware: Hardware };
+const planKeys = { list: ["test-plans"] as const, run: ["test-run"] as const, runs: (filters: TestRunListInput) => ["test-runs", filters] as const };
 const containerTypes = new Set(["Sequence", "Group", "If", "Repeat", "ForEach", "Parallel", "Retry"]);
+const categoryOrder = ["流程控制", "数据处理", "硬件动作", "判据"] as const;
 
 export function TestPlanPage() {
   const client = useQueryClient();
   const plans = useQuery({ queryKey: planKeys.list, queryFn: () => window.hardwareharness.testing.listPlans() });
   const catalog = useQuery({ queryKey: ["test-step-catalog"], queryFn: () => window.hardwareharness.testing.listStepCatalog() });
   const hardware = useQuery({ queryKey: ["test-hardware"], queryFn: () => window.hardwareharness.devices.listHardware() });
-  const currentRun = useQuery({ queryKey: planKeys.run, queryFn: () => window.hardwareharness.testing.currentRun(), refetchInterval: (query) => isActive(query.state.data) ? 500 : 3_000 });
+  const dashboard = useQuery({ queryKey: ["test-dashboard"], queryFn: () => window.hardwareharness.system.dashboard(), refetchInterval: 3_000 });
+  const currentRun = useQuery({ queryKey: planKeys.run, queryFn: () => window.hardwareharness.testing.currentRun(), refetchInterval: (query) => isActive(query.state.data) ? 5_000 : 15_000 });
+  const sidebarWidth = useResizableWidth({ storageKey: "hardwareharness.testing-sidebar-width", defaultWidth: 300, min: 220, max: 520, direction: "right" });
+  const [sidebarPage, setSidebarPage] = useState<SidebarPage>("files");
   const [selectedPlanId, setSelectedPlanId] = useState<string>();
+  const [selectedRunId, setSelectedRunId] = useState<string>();
   const [draft, setDraft] = useState<TestPlan>();
   const [selectedStepId, setSelectedStepId] = useState<string>();
   const [past, setPast] = useState<TestPlan[]>([]);
@@ -40,21 +43,24 @@ export function TestPlanPage() {
   const [dirty, setDirty] = useState(false);
   const [conflict, setConflict] = useState(false);
   const [issues, setIssues] = useState<TestPlanIssue[]>([]);
+  const [draftAnalysis, setDraftAnalysis] = useState<TestPlanDraftAnalysis>();
+  const [validatedRevision, setValidatedRevision] = useState<number>();
   const [message, setMessage] = useState<string>();
-  const [activeStep, setActiveStep] = useState<TestStep>();
-  const [runParameters, setRunParameters] = useState("{}");
+  const [activeDrag, setActiveDrag] = useState<DragDescriptor>();
+  const [runParameters, setRunParameters] = useState<Record<string, unknown>>({});
+  const [parametersOpen, setParametersOpen] = useState(false);
+  const [issuesOpen, setIssuesOpen] = useState(false);
+  const [planSearch, setPlanSearch] = useState("");
+  const [runFilters, setRunFilters] = useState<TestRunListInput>({ limit: 50 });
+  const [runItems, setRunItems] = useState<TestRunSummary[]>([]);
+  const runs = useQuery({ queryKey: planKeys.runs(runFilters), queryFn: () => window.hardwareharness.testing.listRuns(runFilters), enabled: sidebarPage === "runs" });
 
-  useEffect(() => {
-    if (!selectedPlanId && plans.data?.length) setSelectedPlanId(plans.data[0]!.id);
-  }, [plans.data, selectedPlanId]);
-
+  useEffect(() => { if (!selectedPlanId && plans.data?.length) setSelectedPlanId(plans.data[0]!.id); }, [plans.data, selectedPlanId]);
   const loadPlan = useCallback(async (id: string, force = false) => {
     if (dirty && !force && !window.confirm("当前测试计划有未保存修改，确定放弃并切换吗？")) return;
     const plan = await window.hardwareharness.testing.loadPlan(id);
-    setSelectedPlanId(id); setDraft(plan); setSelectedStepId(undefined); setPast([]); setFuture([]); setDirty(false); setConflict(false); setIssues([]); setMessage(undefined);
-    client.setQueryData(planKeys.plan(id), plan);
-  }, [client, dirty]);
-
+    setSelectedPlanId(id); setDraft(plan); setSelectedStepId(undefined); setPast([]); setFuture([]); setDirty(false); setConflict(false); setIssues([]); setDraftAnalysis(undefined); setValidatedRevision(undefined); setRunParameters(defaultRunParameters(plan)); setMessage(undefined);
+  }, [dirty]);
   useEffect(() => { if (selectedPlanId && draft?.id !== selectedPlanId) void loadPlan(selectedPlanId, true); }, [selectedPlanId, draft?.id, loadPlan]);
   useEffect(() => window.hardwareharness.events.subscribe("testPlan", (payload) => {
     const event = payload as { planId?: string; revision?: number };
@@ -62,202 +68,130 @@ export function TestPlanPage() {
     if (event.planId !== selectedPlanId || event.revision === draft?.revision) return;
     if (dirty) setConflict(true); else if (selectedPlanId) void loadPlan(selectedPlanId, true);
   }), [client, selectedPlanId, draft?.revision, dirty, loadPlan]);
-  useEffect(() => window.hardwareharness.events.subscribe("testRun", () => { void currentRun.refetch(); }), [currentRun]);
+  useEffect(() => window.hardwareharness.events.subscribe("testRun", (payload) => {
+    const event = payload as { runId?: string; state?: TestRunSnapshot["state"] };
+    if (event.runId && event.state && !["completed", "aborted", "error"].includes(event.state)) { setSelectedRunId(event.runId); setSidebarPage("runs"); }
+    void currentRun.refetch(); void client.invalidateQueries({ queryKey: ["test-runs"] });
+  }), [client, currentRun]);
+  useEffect(() => { if (isActive(currentRun.data)) { setSelectedRunId(currentRun.data.runId); setSidebarPage("runs"); } }, [currentRun.data]);
+  useEffect(() => { if (!message) return; const timer = window.setTimeout(() => setMessage(undefined), 4_000); return () => window.clearTimeout(timer); }, [message]);
   useEffect(() => {
-    const guard = (event: Event) => {
-      if ((dirty || conflict) && !window.confirm("测试计划有未保存或冲突中的修改，确定离开吗？")) event.preventDefault();
-    };
-    window.addEventListener("hardwareharness:before-navigation", guard);
-    return () => window.removeEventListener("hardwareharness:before-navigation", guard);
+    const guard = (event: Event) => { if ((dirty || conflict) && !window.confirm("测试计划有未保存或冲突中的修改，确定离开吗？")) event.preventDefault(); };
+    window.addEventListener("hardwareharness:before-navigation", guard); return () => window.removeEventListener("hardwareharness:before-navigation", guard);
   }, [dirty, conflict]);
 
-  const mutate = (change: (next: TestPlan) => void) => {
-    if (!draft) return;
-    const next = clonePlan(draft); change(next);
-    setPast((items) => [...items.slice(-49), draft]); setFuture([]); setDraft(next); setDirty(true); setMessage(undefined);
-  };
-  const undo = () => { const previous = past.at(-1); if (!previous || !draft) return; setPast(past.slice(0, -1)); setFuture([draft, ...future]); setDraft(previous); setDirty(true); };
-  const redo = () => { const next = future[0]; if (!next || !draft) return; setFuture(future.slice(1)); setPast([...past, draft]); setDraft(next); setDirty(true); };
+  useEffect(() => {
+    if (!draft) { setDraftAnalysis(undefined); return; }
+    let stopped = false;
+    const timer = window.setTimeout(() => {
+      void window.hardwareharness.testing.analyzePlanDraft({ plan: draft, baseRevision: draft.revision })
+        .then((analysis) => { if (!stopped) setDraftAnalysis(analysis); })
+        .catch(() => { if (!stopped) setDraftAnalysis(undefined); });
+    }, 320);
+    return () => { stopped = true; window.clearTimeout(timer); };
+  }, [draft]);
 
+  const runFilterKey = JSON.stringify({ ...runFilters, cursor: undefined });
+  useEffect(() => { setRunItems([]); }, [runFilterKey]);
+  useEffect(() => {
+    if (!runs.data) return;
+    setRunItems((current) => runFilters.cursor ? mergeRuns(current, runs.data.items) : runs.data.items);
+  }, [runs.data, runFilters.cursor]);
+
+  const markValidationStale = () => setValidatedRevision(undefined);
+  const mutate = (change: (next: TestPlan) => void) => { if (!draft) return; const next = clonePlan(draft); change(next); setPast((items) => [...items.slice(-49), draft]); setFuture([]); setDraft(next); setDirty(true); markValidationStale(); setMessage(undefined); };
+  const undo = () => { const previous = past.at(-1); if (!previous || !draft) return; setPast(past.slice(0, -1)); setFuture([draft, ...future]); setDraft(previous); setDirty(true); markValidationStale(); };
+  const redo = () => { const next = future[0]; if (!next || !draft) return; setFuture(future.slice(1)); setPast([...past, draft]); setDraft(next); setDirty(true); markValidationStale(); };
   const save = async (): Promise<boolean> => {
     if (!draft || conflict) return false;
-    try {
-      const result = await window.hardwareharness.testing.savePlan(draft, draft.revision);
-      setDraft(result.plan); setIssues(result.issues); setDirty(false); setConflict(false); setPast([]); setFuture([]); setMessage(`已保存 revision ${result.plan.revision}`);
-      await client.invalidateQueries({ queryKey: planKeys.list });
-      return true;
-    } catch (error) {
-      const candidate = error as { category?: string; details?: { currentRevision?: number }; message?: string };
-      if (candidate.category === "conflict") setConflict(true);
-      setMessage(candidate.message ?? String(error));
-      return false;
-    }
+    try { const result = await window.hardwareharness.testing.savePlan(draft, draft.revision); setDraft(result.plan); setIssues(result.issues); setDirty(false); setConflict(false); setPast([]); setFuture([]); setValidatedRevision(undefined); setMessage(`已保存 revision ${result.plan.revision}，需要重新校验`); await client.invalidateQueries({ queryKey: planKeys.list }); return true; }
+    catch (error) { const candidate = error as { category?: string; message?: string }; if (candidate.category === "conflict") setConflict(true); setMessage(candidate.message ?? String(error)); return false; }
   };
   useKeyboardShortcut("s", save, Boolean(draft));
-
-  const validate = async () => {
-    if (!draft || dirty) { setMessage("请先保存当前草稿再校验。"); return; }
-    const result = await window.hardwareharness.testing.validatePlan(draft.id); setIssues(result.issues); setMessage(result.valid ? `revision ${result.revision} 校验通过` : "计划存在阻止运行的问题");
-  };
+  const validate = async () => { if (!draft || dirty) { setMessage("请先保存当前草稿再校验。"); return; } const result = await window.hardwareharness.testing.validatePlan(draft.id); setIssues(result.issues); setValidatedRevision(result.valid ? result.revision : undefined); setMessage(result.valid ? `revision ${result.revision} 校验通过` : "计划存在阻止运行的问题"); };
   const start = async () => {
-    if (!draft) return;
-    if (conflict) { setMessage("请先解决计划冲突再启动运行。"); return; }
+    if (!draft || conflict) { setMessage("请先解决计划冲突再启动运行。"); return; }
     if (dirty && !await save()) return;
     const latest = dirty ? await window.hardwareharness.testing.loadPlan(draft.id) : draft;
     const validation = await window.hardwareharness.testing.validatePlan(latest.id); setIssues(validation.issues);
     if (!validation.valid) { setMessage("校验未通过，未启动运行。"); return; }
-    let parameters: Record<string, unknown>;
-    try { parameters = JSON.parse(runParameters) as Record<string, unknown>; } catch { setMessage("运行参数必须是 JSON object。"); return; }
-    await window.hardwareharness.testing.startRun({ planId: latest.id, revision: validation.revision, requestId: crypto.randomUUID(), parameters });
-    await currentRun.refetch(); setMessage("测试运行已启动");
+    const run = await window.hardwareharness.testing.startRun({ planId: latest.id, revision: validation.revision, executionRevision: validation.executionRevision, requestId: crypto.randomUUID(), parameters: runParameters });
+    setSelectedRunId(run.runId); setSidebarPage("runs"); await currentRun.refetch(); setMessage("测试运行已启动");
   };
-  const create = async () => {
-    const result = await window.hardwareharness.testing.createPlan({ requestId: crypto.randomUUID(), name: `新测试计划 ${new Date().toLocaleTimeString()}` });
-    await client.invalidateQueries({ queryKey: planKeys.list }); setSelectedPlanId(result.plan.id); setDraft(result.plan); setDirty(false);
-  };
-  const saveAs = async () => {
-    if (!draft) return;
-    const created = await window.hardwareharness.testing.createPlan({ requestId: crypto.randomUUID(), name: `${draft.name} - 本地副本`, description: draft.description, parameters: draft.parameters });
-    const copy = { ...clonePlan(draft), id: created.plan.id, name: created.plan.name, revision: created.plan.revision, createdAt: created.plan.createdAt, updatedAt: created.plan.updatedAt };
-    const saved = await window.hardwareharness.testing.savePlan(copy, copy.revision);
-    await client.invalidateQueries({ queryKey: planKeys.list }); setSelectedPlanId(saved.plan.id); setDraft(saved.plan); setDirty(false); setConflict(false);
-  };
+  const create = async () => { const result = await window.hardwareharness.testing.createPlan({ requestId: crypto.randomUUID(), name: `新测试计划 ${new Date().toLocaleTimeString()}` }); await client.invalidateQueries({ queryKey: planKeys.list }); setSelectedPlanId(result.plan.id); setDraft(result.plan); setRunParameters(defaultRunParameters(result.plan)); setDirty(false); setValidatedRevision(undefined); setSidebarPage("files"); };
+  const removePlan = async (planId: string) => { if (!window.confirm("确定删除这个测试计划吗？")) return; await window.hardwareharness.testing.deletePlan(planId); if (selectedPlanId === planId) { setSelectedPlanId(undefined); setDraft(undefined); } await client.invalidateQueries({ queryKey: planKeys.list }); };
+  const saveAs = async () => { if (!draft) return; const created = await window.hardwareharness.testing.createPlan({ requestId: crypto.randomUUID(), name: `${draft.name} - 本地副本`, description: draft.description, parameters: draft.parameters }); const copy = { ...clonePlan(draft), id: created.plan.id, name: created.plan.name, revision: created.plan.revision, createdAt: created.plan.createdAt, updatedAt: created.plan.updatedAt }; const saved = await window.hardwareharness.testing.savePlan(copy, copy.revision); await client.invalidateQueries({ queryKey: planKeys.list }); setSelectedPlanId(saved.plan.id); setDraft(saved.plan); setDirty(false); setConflict(false); };
+  const applyBinding = async (stepId: string, hardwareId: string, toolName: string, refresh = false) => { if (!draft || conflict) return; if (dirty && !await save()) return; const latest = await window.hardwareharness.testing.loadPlan(draft.id); const result = await window.hardwareharness.testing.applyPlanOperations({ planId: latest.id, baseRevision: latest.revision, requestId: crypto.randomUUID(), operations: [refresh ? { type: "refresh_invoke_binding", stepId } : { type: "bind_invoke_tool", stepId, hardwareId, toolName }] }); setDraft(result.plan); setIssues(result.issues); setDirty(false); setPast([]); setFuture([]); setMessage(`工具绑定已更新到 revision ${result.plan.revision}`); };
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
-  const onDragStart = (event: DragStartEvent) => setActiveStep(draft ? findStep(draft, String(event.active.id))?.step : undefined);
+  const insertStep = (step: TestStep, overId?: string) => mutate((next) => { if (!overId || overId.startsWith("region:")) { next.regions[(overId?.slice(7) as TestRegion | undefined) ?? "test"].push(step); return; } const target = findStep(next, overId); if (!target) { next.regions.test.push(step); return; } if (containerTypes.has(target.step.type)) (target.step.children ??= []).push(step); else target.list.splice(target.index, 0, step); });
+  const onDragStart = (event: DragStartEvent) => { const descriptor = event.active.data.current as DragDescriptor | undefined; setActiveDrag(descriptor ?? (draft ? { kind: "step", stepId: String(event.active.id) } : undefined)); };
   const onDragEnd = (event: DragEndEvent) => {
-    setActiveStep(undefined); if (!draft || !event.over || event.active.id === event.over.id) return;
-    const overId = String(event.over.id);
-    mutate((next) => {
-      if (overId.startsWith("region:")) { moveStep(next, String(event.active.id), { region: overId.slice(7) as TestRegion }); return; }
-      const target = findStep(next, overId);
-      if (!target) return;
-      if (containerTypes.has(target.step.type)) moveStep(next, String(event.active.id), { region: target.region, parentId: target.step.id });
-      else moveStep(next, String(event.active.id), { region: target.region, ...(target.parentId ? { parentId: target.parentId } : {}), branch: target.branch, index: target.index });
-    });
+    const descriptor = event.active.data.current as DragDescriptor | undefined; setActiveDrag(undefined); if (!draft || !event.over) return; const overId = String(event.over.id);
+    if (descriptor?.kind === "catalog") { insertStep(createStep(descriptor.item), overId); return; }
+    if (descriptor?.kind === "server") { insertStep({ id: newStepId("invoke"), type: "InvokeTool", name: descriptor.hardware.label, enabled: true, hardwareId: descriptor.hardware.hardwareId, arguments: {}, timeoutMs: 30_000 }, overId); return; }
+    if (event.active.id === event.over.id) return;
+    mutate((next) => { if (overId.startsWith("region:")) { moveStep(next, String(event.active.id), { region: overId.slice(7) as TestRegion }); return; } const target = findStep(next, overId); if (!target) return; if (containerTypes.has(target.step.type)) moveStep(next, String(event.active.id), { region: target.region, parentId: target.step.id }); else moveStep(next, String(event.active.id), { region: target.region, ...(target.parentId ? { parentId: target.parentId } : {}), branch: target.branch, index: target.index }); });
   };
 
   const selectedStep = draft && selectedStepId ? findStep(draft, selectedStepId)?.step : undefined;
-  const run = currentRun.data;
-  return <div className="grid h-full min-h-0 grid-cols-[250px_minmax(420px,1fr)_320px] grid-rows-[minmax(0,1fr)_190px] overflow-hidden">
-    <aside className="row-span-2 flex min-h-0 flex-col border-r bg-secondary/15">
-      <PaneHeader title="测试计划" action={<Button size="icon-xs" variant="ghost" aria-label="新建测试计划" onClick={() => void create()}><PlusIcon /></Button>} />
-      <div className="max-h-[32%] overflow-auto p-2">
-        {(plans.data ?? []).map((plan) => <button key={plan.id} className={cn("mb-1 grid w-full gap-0.5 rounded-md px-2.5 py-2 text-left text-xs hover:bg-accent", plan.id === selectedPlanId && "bg-accent text-accent-foreground")} onClick={() => void loadPlan(plan.id)}>
-          <span className="truncate font-medium">{plan.name}</span><span className="flex items-center justify-between text-[10px] text-muted-foreground"><span>rev {plan.revision}</span><span>{plan.stepCount ?? 0} 步</span></span>
-        </button>)}
+  const catalogByType = useMemo(() => new Map((catalog.data ?? []).map((item) => [item.type, item])), [catalog.data]);
+  const referenceCounts = useMemo(() => draft ? collectReferenceCounts(draft) : {}, [draft]);
+  const referenceConsumers = useMemo(() => draft ? collectReferenceConsumers(draft) : {}, [draft]);
+  const displayedIssues = dirty ? draftAnalysis?.issues ?? [] : issues;
+  const run = currentRun.data; const editMode = sidebarPage !== "runs";
+  const filteredPlans = (plans.data ?? []).filter((item) => item.name.toLowerCase().includes(planSearch.toLowerCase()));
+  return <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={() => setActiveDrag(undefined)}>
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      <TopToolbar {...(draft ? { draft } : {})} {...(run !== undefined ? { run } : {})} dirty={dirty} conflict={conflict} issues={displayedIssues} validationFresh={Boolean(draft && validatedRevision === draft.revision && !dirty)} past={past.length} future={future.length} sidebarPage={sidebarPage} {...(message ? { message } : {})} onCreate={create} onSave={save} onValidate={validate} onUndo={undo} onRedo={redo} onParameters={() => setParametersOpen(true)} onIssues={() => setIssuesOpen(true)} onStart={start} onRunChanged={() => void currentRun.refetch()} />
+      <div className="grid min-h-0 flex-1" style={{ gridTemplateColumns: editMode ? `${sidebarWidth.width}px 4px minmax(420px,1fr) 320px` : `${sidebarWidth.width}px 4px minmax(0,1fr)` }}>
+        <aside className="flex min-h-0 flex-col border-r bg-secondary/15"><SidebarTabs value={sidebarPage} onChange={setSidebarPage} /><div className="min-h-0 flex-1 overflow-auto">
+          {sidebarPage === "files" && <FilesSidebar plans={filteredPlans} {...(selectedPlanId ? { selectedPlanId } : {})} search={planSearch} onSearch={setPlanSearch} onCreate={create} onSelect={loadPlan} onDelete={removePlan} />}
+          {sidebarPage === "components" && <ComponentsSidebar catalog={catalog.data ?? []} hardware={hardware.data ?? []} dashboard={dashboard.data} onAdd={(item) => insertStep(createStep(item))} onAddServer={(item) => insertStep({ id: newStepId("invoke"), type: "InvokeTool", name: item.label, enabled: true, hardwareId: item.hardwareId, arguments: {}, timeoutMs: 30_000 })} />}
+          {sidebarPage === "runs" && <RunsSidebar runs={runItems} {...(selectedRunId ? { selectedRunId } : {})} filters={runFilters} plans={plans.data ?? []} onFilters={setRunFilters} onSelect={setSelectedRunId} onMore={() => runs.data?.nextCursor && setRunFilters((value) => ({ ...value, cursor: runs.data!.nextCursor }))} hasMore={Boolean(runs.data?.nextCursor)} />}
+        </div></aside>
+        <div role="separator" aria-orientation="vertical" aria-label="拖拽调整测试侧栏宽度" title="拖拽调整宽度" className="cursor-col-resize bg-transparent transition-colors hover:bg-ring/30" {...sidebarWidth.handleProps} />
+        {editMode ? <><main className="min-h-0 overflow-auto bg-background p-3">{conflict && <ConflictBanner onReload={() => selectedPlanId && void loadPlan(selectedPlanId, true)} onSaveAs={() => void saveAs()} />}{draft ? <div className="mx-auto grid max-w-4xl gap-3">{(["prepare", "test", "cleanup"] as TestRegion[]).map((region) => <RegionTree key={region} region={region} steps={draft.regions[region]} selectedId={selectedStepId} referenceCounts={referenceCounts} onSelect={setSelectedStepId} onToggle={(id) => mutate((next) => { const step = findStep(next, id)?.step; if (step) step.enabled = !step.enabled; })} onDuplicate={(id) => mutate((next) => { const found = findStep(next, id); if (found) { const copy = structuredClone(found.step); regenerateIds(copy); copy.name = `${copy.name ?? copy.type} 副本`; found.list.splice(found.index + 1, 0, copy); } })} onDelete={(id) => mutate((next) => removeStep(next, id))} />)}</div> : <div className="grid h-full place-items-center text-sm text-muted-foreground">新建或选择一个测试计划</div>}</main><aside className="min-h-0 overflow-auto border-l bg-secondary/10"><PaneHeader title="属性" />{draft ? <Inspector plan={draft} step={selectedStep} hardware={hardware.data ?? []} {...(selectedStep && catalogByType.get(selectedStep.type) ? { catalogItem: catalogByType.get(selectedStep.type)! } : {})} references={selectedStep ? draftAnalysis?.referencesByStepId[selectedStep.id] ?? [] : []} consumers={selectedStep ? referenceConsumers[selectedStep.id] ?? [] : []} mutate={mutate} onSelectStep={setSelectedStepId} onBind={applyBinding} /> : null}</aside></> : <main className="min-h-0 overflow-auto bg-background"><TestRunLogPage {...(selectedRunId ? { runId: selectedRunId } : {})} live={Boolean(run && run.runId === selectedRunId && isActive(run))} /></main>}
       </div>
-      <PaneHeader title="步骤库" />
-      <div className="min-h-0 flex-1 overflow-auto p-2">
-        {groupCatalog(catalog.data ?? []).map(([category, entries]) => <section key={category} className="mb-3"><h3 className="mb-1 px-1 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">{category}</h3>
-          <div className="grid grid-cols-2 gap-1">{entries.map((item) => <button key={item.type} className="rounded-md border bg-background px-2 py-1.5 text-left text-[11px] hover:border-primary/40 hover:bg-accent" onClick={() => draft && mutate((next) => next.regions.test.push(createStep(item)))}>{item.label}</button>)}</div>
-        </section>)}
-      </div>
-      <PaneHeader title="具体设备" />
-      <div className="max-h-[22%] overflow-auto p-2 text-xs">{(hardware.data ?? []).map((item) => <div key={item.hardwareId} className="flex items-center justify-between rounded px-2 py-1.5"><span className="truncate">{item.label}</span><code className="ml-2 text-[9px] text-muted-foreground">{item.hardwareId}</code></div>)}</div>
-    </aside>
-
-    <main className="min-h-0 overflow-auto bg-background p-3">
-      {conflict && <ConflictBanner onReload={() => selectedPlanId && void loadPlan(selectedPlanId, true)} onSaveAs={() => void saveAs()} />}
-      {draft ? <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={() => setActiveStep(undefined)}>
-        <div className="mx-auto grid max-w-4xl gap-3">
-          {(["prepare", "test", "cleanup"] as TestRegion[]).map((region) => <RegionTree key={region} region={region} steps={draft.regions[region]} selectedId={selectedStepId} onSelect={setSelectedStepId} onToggle={(id) => mutate((next) => { const step = findStep(next, id)?.step; if (step) step.enabled = !step.enabled; })} onDuplicate={(id) => mutate((next) => { const found = findStep(next, id); if (found) { const copy = structuredClone(found.step); regenerateIds(copy); copy.name = `${copy.name ?? copy.type} 副本`; found.list.splice(found.index + 1, 0, copy); } })} onDelete={(id) => mutate((next) => removeStep(next, id))} />)}
-        </div><DragOverlay>{activeStep && <div className="rounded-md border bg-background px-3 py-2 text-xs shadow-xl">{activeStep.name ?? activeStep.type}</div>}</DragOverlay>
-      </DndContext> : <div className="grid h-full place-items-center text-sm text-muted-foreground">新建或选择一个测试计划</div>}
-    </main>
-
-    <aside className="min-h-0 overflow-auto border-l bg-secondary/10">
-      <PaneHeader title="属性" />
-      {draft ? <Inspector plan={draft} step={selectedStep} hardware={hardware.data ?? []} mutate={mutate} /> : null}
-    </aside>
-
-    <section className="col-span-2 col-start-2 grid min-h-0 grid-cols-[auto_1fr] border-t bg-secondary/10">
-      <div className="flex w-52 flex-col gap-2 border-r p-3">
-        <div className="flex flex-wrap gap-1.5"><Button size="sm" onClick={() => void save()} disabled={!dirty || conflict}><SaveIcon />保存</Button><Button size="sm" variant="outline" onClick={() => void validate()}><CheckCircle2Icon />校验</Button></div>
-        <div className="flex gap-1"><Button size="icon-sm" variant="ghost" onClick={undo} disabled={!past.length}><Undo2Icon /></Button><Button size="icon-sm" variant="ghost" onClick={redo} disabled={!future.length}><Redo2Icon /></Button></div>
-        <Textarea aria-label="运行参数 JSON" className="min-h-14 resize-none font-mono text-[10px]" value={runParameters} onChange={(event) => setRunParameters(event.target.value)} />
-        <RunControls run={run} onStart={() => void start()} onChanged={() => void currentRun.refetch()} />
-      </div>
-      <div className="min-w-0 overflow-auto p-3 text-xs">
-        <div className="mb-2 flex items-center gap-2"><strong>状态</strong>{dirty && <Badge variant="warning">未保存</Badge>}{run && <Badge variant={run.verdict === "Pass" ? "success" : run.verdict === "Fail" || run.verdict === "Error" ? "destructive" : "secondary"}>{run.state} · {run.verdict}</Badge>}{message && <span className="text-muted-foreground">{message}</span>}</div>
-        {issues.length ? <div className="grid gap-1">{issues.map((item, index) => <div key={`${item.path}-${index}`} className={cn("flex gap-2 rounded px-2 py-1.5", item.severity === "error" ? "bg-destructive/8 text-destructive" : "bg-warning/10 text-warning")}><AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0"/><span><b>{item.code}</b> {item.message}<code className="ml-2 opacity-70">{item.path}</code></span></div>)}</div> : <p className="text-muted-foreground">保存并校验后，这里显示校验问题；运行事件与 Verdict 会实时恢复。</p>}
-      </div>
-    </section>
-  </div>;
-}
-
-function RegionTree({ region, steps, selectedId, onSelect, onToggle, onDuplicate, onDelete }: { region: TestRegion; steps: TestStep[]; selectedId: string | undefined; onSelect: (id: string) => void; onToggle: (id: string) => void; onDuplicate: (id: string) => void; onDelete: (id: string) => void }) {
-  const { setNodeRef, isOver } = useDroppable({ id: `region:${region}`, data: { region } });
-  const labels = { prepare: "准备", test: "测试", cleanup: "清理" };
-  return <section ref={setNodeRef} className={cn("rounded-xl border bg-secondary/10 p-2 shadow-sm", isOver && "ring-2 ring-primary/30")}><header className="mb-2 flex items-center justify-between px-1"><h2 className="text-xs font-semibold">{labels[region]}</h2><Badge variant="outline">{steps.length}</Badge></header>
-    <SortableContext items={steps.map((step) => step.id)} strategy={verticalListSortingStrategy}><div className="grid min-h-10 gap-1.5">{steps.map((step) => <SortableStep key={step.id} step={step} region={region} selectedId={selectedId} onSelect={onSelect} onToggle={onToggle} onDuplicate={onDuplicate} onDelete={onDelete} />)}{!steps.length && <div className="grid min-h-12 place-items-center rounded-lg border border-dashed text-[11px] text-muted-foreground">拖入步骤或从左侧添加</div>}</div></SortableContext>
-  </section>;
-}
-
-function SortableStep({ step, region, selectedId, onSelect, onToggle, onDuplicate, onDelete, depth = 0, parentId }: { step: TestStep; region: TestRegion; selectedId: string | undefined; onSelect: (id: string) => void; onToggle: (id: string) => void; onDuplicate: (id: string) => void; onDelete: (id: string) => void; depth?: number; parentId?: string }) {
-  const [open, setOpen] = useState(true);
-  const sortable = useSortable({ id: step.id, data: { region, parentId } });
-  const style = { transform: CSS.Transform.toString(sortable.transform), transition: sortable.transition };
-  const nested = [...(step.children ?? []), ...(step.elseChildren ?? [])];
-  return <div ref={sortable.setNodeRef} style={style} className={cn("rounded-lg border bg-background shadow-xs", sortable.isDragging && "opacity-35", selectedId === step.id && "border-primary/50 ring-2 ring-primary/15", step.enabled === false && "opacity-55")}>
-    <div className="flex h-9 items-center gap-1 px-1.5" onClick={() => onSelect(step.id)}>
-      <button className="cursor-grab touch-none text-muted-foreground" {...sortable.attributes} {...sortable.listeners} aria-label={`拖动 ${step.name ?? step.type}`}><GripVerticalIcon className="size-4" /></button>
-      {containerTypes.has(step.type) ? <button onClick={(event) => { event.stopPropagation(); setOpen(!open); }}>{open ? <ChevronDownIcon className="size-3.5"/> : <ChevronRightIcon className="size-3.5"/>}</button> : <span className="w-3.5" />}
-      <span className="min-w-0 flex-1 truncate text-xs font-medium">{step.name ?? step.type}</span><code className="text-[9px] text-muted-foreground">{step.type}</code>
-      <Checkbox checked={step.enabled !== false} onCheckedChange={() => onToggle(step.id)} onClick={(event) => event.stopPropagation()} />
-      <Button size="icon-xs" variant="ghost" aria-label="复制步骤" onClick={(event) => { event.stopPropagation(); onDuplicate(step.id); }}><CopyIcon /></Button>
-      <Button size="icon-xs" variant="ghost" aria-label="删除步骤" onClick={(event) => { event.stopPropagation(); onDelete(step.id); }}><Trash2Icon /></Button>
     </div>
-    {open && nested.length > 0 && <div className="ml-5 grid gap-1.5 border-l px-2 pb-2"><SortableContext items={nested.map((item) => item.id)} strategy={verticalListSortingStrategy}>{(step.children ?? []).map((child) => <SortableStep key={child.id} step={child} region={region} parentId={step.id} depth={depth + 1} selectedId={selectedId} onSelect={onSelect} onToggle={onToggle} onDuplicate={onDuplicate} onDelete={onDelete} />)}{(step.elseChildren ?? []).length > 0 && <div className="pt-1 text-[9px] font-semibold text-muted-foreground">ELSE</div>}{(step.elseChildren ?? []).map((child) => <SortableStep key={child.id} step={child} region={region} parentId={step.id} depth={depth + 1} selectedId={selectedId} onSelect={onSelect} onToggle={onToggle} onDuplicate={onDuplicate} onDelete={onDelete} />)}</SortableContext></div>}
-  </div>;
+    <DragOverlay>{activeDrag && <div className="rounded-md border bg-background px-3 py-2 text-xs shadow-xl">{dragLabel(activeDrag, draft)}</div>}</DragOverlay>
+    <Dialog open={parametersOpen} onOpenChange={setParametersOpen}><DialogContent size="sm"><DialogHeader title="运行参数" onClose={() => setParametersOpen(false)} /><DialogBody>{draft ? <RunParametersEditor parameters={draft.parameters} value={runParameters} onChange={setRunParameters} /> : <div className="text-xs text-muted-foreground">请先选择测试计划</div>}</DialogBody><DialogFooter><Button onClick={() => setParametersOpen(false)}>完成</Button></DialogFooter></DialogContent></Dialog>
+    <Dialog open={issuesOpen} onOpenChange={setIssuesOpen}><DialogContent size="lg"><DialogHeader title={`校验问题（${displayedIssues.length}）`} onClose={() => setIssuesOpen(false)} /><DialogBody><IssueList issues={displayedIssues} onSelect={(issue) => { const stepId = draft ? stepIdForIssuePath(draft, issue.path) : undefined; if (stepId) { setSelectedStepId(stepId); setIssuesOpen(false); } }} /></DialogBody></DialogContent></Dialog>
+  </DndContext>;
 }
 
-function Inspector({ plan, step, hardware, mutate }: { plan: TestPlan; step: TestStep | undefined; hardware: Hardware[]; mutate: (change: (next: TestPlan) => void) => void }) {
-  if (!step) return <PlanInspector plan={plan} hardware={hardware} mutate={mutate} />;
-  const update = (patch: Record<string, unknown>) => mutate((next) => { const target = findStep(next, step.id)?.step; if (target) for (const [key, value] of Object.entries(patch)) { if (value === undefined) delete target[key]; else target[key] = value; } });
-  return <div className="grid gap-3 p-3"><Field label="步骤名称"><Input value={step.name ?? ""} onChange={(event) => update({ name: event.target.value })}/></Field><Field label="稳定步骤 ID"><Input value={step.id} readOnly /></Field><div className="flex gap-2"><Badge variant="secondary">{step.type}</Badge>{step.hardwareId && <Badge variant="outline">{step.hardwareId}</Badge>}</div>
-    {step.type === "InvokeTool" ? <InvokeInspector step={step} hardware={hardware} update={update} /> : <GenericSettings step={step} update={update} />}
-    <label className="flex items-center gap-2 text-xs"><Checkbox checked={step.stopOnFail === true} onCheckedChange={(checked) => update({ stopOnFail: checked === true })}/>此步骤 Fail 后停止所在组</label>
-  </div>;
-}
+function TopToolbar({ draft, run, dirty, conflict, issues, validationFresh, past, future, sidebarPage, message, onCreate, onSave, onValidate, onUndo, onRedo, onParameters, onIssues, onStart, onRunChanged }: { draft?: TestPlan; run?: TestRunSnapshot | null; dirty: boolean; conflict: boolean; issues: TestPlanIssue[]; validationFresh: boolean; past: number; future: number; sidebarPage: SidebarPage; message?: string; onCreate: () => Promise<void>; onSave: () => Promise<boolean>; onValidate: () => Promise<void>; onUndo: () => void; onRedo: () => void; onParameters: () => void; onIssues: () => void; onStart: () => Promise<void>; onRunChanged: () => void }) { return <header className="flex h-12 shrink-0 items-center gap-2 border-b bg-card px-3"><div className="min-w-0 mr-auto"><div className="flex items-center gap-2"><strong className="truncate text-sm">{sidebarPage === "runs" && run ? run.planName : draft?.name ?? "测试计划"}</strong>{draft && <Badge variant="outline">rev {draft.revision}</Badge>}{dirty && <Badge variant="warning">未保存</Badge>}{draft && !dirty && <Badge variant={validationFresh ? "success" : "secondary"}>{validationFresh ? "校验有效" : "校验已过期"}</Badge>}{conflict && <Badge variant="destructive">冲突</Badge>}</div>{message && <div className="truncate text-[10px] text-muted-foreground">{message}</div>}</div><Button size="icon-sm" variant="ghost" title="新建" aria-label="新建测试计划" onClick={() => void onCreate()}><PlusIcon /></Button><Button size="icon-sm" variant="ghost" title="保存" aria-label="保存" disabled={!dirty || conflict} onClick={() => void onSave()}><SaveIcon /></Button><Button size="icon-sm" variant="ghost" title="撤销" aria-label="撤销" disabled={!past} onClick={onUndo}><Undo2Icon /></Button><Button size="icon-sm" variant="ghost" title="重做" aria-label="重做" disabled={!future} onClick={onRedo}><Redo2Icon /></Button><Button size="sm" variant="outline" onClick={() => void onValidate()}><CheckCircle2Icon />校验</Button><Button size="sm" variant={issues.some((item) => item.severity === "error") ? "destructive" : "outline"} onClick={onIssues}><ListChecksIcon />{issues.length}</Button><Button size="sm" variant="outline" onClick={onParameters}><SlidersHorizontalIcon />运行参数</Button><RunControls run={run} onStart={() => void onStart()} onChanged={onRunChanged} /></header>; }
 
-function PlanInspector({ plan, hardware, mutate }: { plan: TestPlan; hardware: Hardware[]; mutate: (change: (next: TestPlan) => void) => void }) {
-  const [parameters, setParameters] = useState(() => JSON.stringify(plan.parameters, null, 2));
-  const [sourceHardwareId, setSourceHardwareId] = useState("");
-  const [targetHardwareId, setTargetHardwareId] = useState("");
-  const boundHardwareIds = planHardwareIds(plan);
-  useEffect(() => setParameters(JSON.stringify(plan.parameters, null, 2)), [plan.id, plan.revision, plan.parameters]);
-  return <div className="grid gap-3 p-3"><Field label="计划名称"><Input value={plan.name} onChange={(event) => mutate((next) => { next.name = event.target.value; })} /></Field><Field label="说明"><Textarea value={plan.description} onChange={(event) => mutate((next) => { next.description = event.target.value; })} /></Field><Field label="有类型运行参数 JSON" hint='例如 [{"name":"voltage","type":"number","required":true}]'><Textarea className="min-h-36 font-mono text-[11px]" value={parameters} onChange={(event) => { setParameters(event.target.value); try { const parsed = JSON.parse(event.target.value) as TestPlan["parameters"]; if (Array.isArray(parsed)) mutate((next) => { next.parameters = parsed; }); } catch { /* preserve draft text */ } }}/></Field><label className="flex items-center gap-2 text-xs"><Checkbox checked={plan.stopOnFail} onCheckedChange={(checked) => mutate((next) => { next.stopOnFail = checked === true; })}/>Fail 时停止计划</label>
-    <div className="grid gap-2 rounded-lg border p-2"><div className="text-[11px] font-semibold">批量替换具体设备</div><Select aria-label="待替换设备" value={sourceHardwareId} onChange={(event) => setSourceHardwareId(event.target.value)}><option value="">选择计划内设备</option>{boundHardwareIds.map((hardwareId) => <option key={hardwareId} value={hardwareId}>{hardwareId}</option>)}</Select><Select aria-label="替换为设备" value={targetHardwareId} onChange={(event) => setTargetHardwareId(event.target.value)}><option value="">选择 managed hardware</option>{hardware.filter((item) => item.kind === "managed" && item.hardwareId !== sourceHardwareId).map((item) => <option key={item.hardwareId} value={item.hardwareId}>{item.label} · {item.hardwareId}</option>)}</Select><Button size="sm" variant="outline" disabled={!sourceHardwareId || !targetHardwareId} onClick={() => { mutate((next) => replaceHardware(next, sourceHardwareId, targetHardwareId)); setSourceHardwareId(""); setTargetHardwareId(""); }}>替换并重新校验绑定</Button></div>
-    <div className="rounded-md bg-secondary p-2 text-[11px] text-muted-foreground">计划直接绑定具体设备；运行使用保存 revision 的不可变快照。</div></div>;
-}
+function SidebarTabs({ value, onChange }: { value: SidebarPage; onChange: (value: SidebarPage) => void }) { const items = [{ id: "files" as const, label: "测试文件", Icon: FileTextIcon }, { id: "components" as const, label: "组件库", Icon: BlocksIcon }, { id: "runs" as const, label: "运行日志", Icon: HistoryIcon }]; return <div className="grid h-11 shrink-0 grid-cols-3 border-b bg-card p-1">{items.map(({ id, label, Icon }) => <button key={id} title={label} aria-label={label} className={cn("grid place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground", value === id && "bg-accent text-foreground shadow-sm")} onClick={() => onChange(id)}><Icon className="size-4" /></button>)}</div>; }
+function FilesSidebar({ plans, selectedPlanId, search, onSearch, onCreate, onSelect, onDelete }: { plans: Array<{ id: string; name: string; revision: number; stepCount?: number; migrationRequired?: boolean; valid?: boolean }>; selectedPlanId?: string; search: string; onSearch: (value: string) => void; onCreate: () => Promise<void>; onSelect: (id: string) => Promise<void>; onDelete: (id: string) => Promise<void> }) { return <div className="p-2"><div className="mb-2 flex gap-1"><div className="relative min-w-0 flex-1"><SearchIcon className="absolute left-2 top-2 size-3.5 text-muted-foreground" /><Input aria-label="搜索测试计划" className="pl-7" placeholder="搜索计划" value={search} onChange={(event) => onSearch(event.target.value)} /></div><Button size="icon-sm" aria-label="新建测试计划" onClick={() => void onCreate()}><PlusIcon /></Button></div>{plans.map((plan) => <div key={plan.id} className={cn("group mb-1 flex items-center rounded-md hover:bg-accent", plan.id === selectedPlanId && "bg-accent text-accent-foreground")}><button className="grid min-w-0 flex-1 gap-0.5 px-2.5 py-2 text-left text-xs" onClick={() => void onSelect(plan.id)}><span className="truncate font-medium">{plan.name}</span><span className="flex items-center gap-2 text-[10px] text-muted-foreground"><span>rev {plan.revision}</span><span>{plan.migrationRequired ? "需要迁移" : `${plan.stepCount ?? 0} 步`}</span><span className={plan.valid === false ? "text-destructive" : "text-success"}>{plan.valid === false ? "无效" : "就绪"}</span></span></button><Button size="icon-xs" variant="ghost" aria-label={`删除 ${plan.name}`} className="mr-1 opacity-0 group-hover:opacity-100" onClick={() => void onDelete(plan.id)}><Trash2Icon /></Button></div>)}</div>; }
+function ComponentsSidebar({ catalog, hardware, dashboard, onAdd, onAddServer }: { catalog: TestStepCatalogItem[]; hardware: Hardware[]; dashboard: Awaited<ReturnType<typeof window.hardwareharness.system.dashboard>> | undefined; onAdd: (item: TestStepCatalogItem) => void; onAddServer: (item: Hardware) => void }) { const grouped = useMemo(() => groupCatalog(catalog), [catalog]); return <div className="p-2">{categoryOrder.map((category) => <section key={category} className="mb-4"><h3 className="mb-1.5 px-1 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">{category}</h3><div className="grid gap-1">{category !== "硬件动作" ? (grouped.get(category) ?? []).map((item) => <CatalogRow key={item.type} item={item} onAdd={() => onAdd(item)} />) : hardware.filter((item) => item.kind === "managed").map((item) => <ServerRow key={item.hardwareId} hardware={item} dashboard={dashboard} onAdd={() => onAddServer(item)} />)}</div></section>)}</div>; }
+function CatalogRow({ item, onAdd }: { item: TestStepCatalogItem; onAdd: () => void }) { const drag = useDraggable({ id: `catalog:${item.type}`, data: { kind: "catalog", item } satisfies DragDescriptor }); return <button ref={drag.setNodeRef} {...drag.attributes} {...drag.listeners} className="flex h-9 touch-none items-center gap-2 rounded-md border bg-background px-2 text-left text-xs hover:border-primary/40 hover:bg-accent" onClick={onAdd}><GripVerticalIcon className="size-3.5 text-muted-foreground" /><span className="truncate">{item.label}</span><code className="ml-auto text-[9px] text-muted-foreground">{item.type}</code></button>; }
+function ServerRow({ hardware, dashboard, onAdd }: { hardware: Hardware; dashboard: Awaited<ReturnType<typeof window.hardwareharness.system.dashboard>> | undefined; onAdd: () => void }) { const drag = useDraggable({ id: `server:${hardware.hardwareId}`, data: { kind: "server", hardware } satisfies DragDescriptor }); const status = dashboard?.serverStatuses.find((item) => item.serverId === hardware.serverId); const tools = dashboard?.tools.filter((item) => item.serverId === hardware.serverId).length ?? 0; const online = status?.transport.state === "online"; return <button ref={drag.setNodeRef} {...drag.attributes} {...drag.listeners} className="grid min-h-12 touch-none grid-cols-[16px_1fr_auto] items-center gap-2 rounded-md border bg-background px-2 text-left hover:border-primary/40 hover:bg-accent" onClick={onAdd}><GripVerticalIcon className="size-3.5 text-muted-foreground" /><span className="min-w-0"><span className="block truncate text-xs font-medium">{hardware.label}</span><code className="block truncate text-[9px] text-muted-foreground">{hardware.serverId}</code></span><span className="text-right text-[9px] text-muted-foreground"><i className={cn("mr-1 inline-block size-1.5 rounded-full", online ? "bg-success" : "bg-destructive")} />{online ? "在线" : "离线"}<br />{tools} 工具</span></button>; }
+function RunsSidebar({ runs, selectedRunId, filters, plans, onFilters, onSelect, onMore, hasMore }: { runs: TestRunSummary[]; selectedRunId?: string; filters: TestRunListInput; plans: Array<{ id: string; name: string }>; onFilters: (value: TestRunListInput) => void; onSelect: (id: string) => void; onMore: () => void; hasMore: boolean }) { return <div className="p-2"><div className="mb-3 grid grid-cols-2 gap-1"><Select aria-label="按计划筛选" value={filters.planId ?? ""} onChange={(event) => onFilters({ ...filters, cursor: undefined, planId: event.target.value || undefined })}><option value="">全部计划</option>{plans.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</Select><Select aria-label="按 Verdict 筛选" value={filters.verdict ?? ""} onChange={(event) => onFilters({ ...filters, cursor: undefined, verdict: event.target.value as TestRunListInput["verdict"] || undefined })}><option value="">全部 Verdict</option>{["Pass", "Fail", "Error", "Aborted", "Inconclusive", "NotSet"].map((item) => <option key={item}>{item}</option>)}</Select><Select aria-label="按状态筛选" value={filters.state ?? ""} onChange={(event) => onFilters({ ...filters, cursor: undefined, state: event.target.value as TestRunListInput["state"] || undefined })}><option value="">全部状态</option>{["running", "paused", "cleaning", "completed", "aborted", "error"].map((item) => <option key={item}>{item}</option>)}</Select><Input aria-label="起始日期" type="date" value={filters.from?.slice(0, 10) ?? ""} onChange={(event) => onFilters({ ...filters, cursor: undefined, from: event.target.value ? `${event.target.value}T00:00:00` : undefined })} /></div>{runs.map((run) => <button key={run.runId} className={cn("mb-1 grid w-full gap-1 rounded-md px-2.5 py-2 text-left hover:bg-accent", selectedRunId === run.runId && "bg-accent")} onClick={() => onSelect(run.runId)}><span className="flex items-center gap-2 text-xs"><span className="min-w-0 flex-1 truncate font-medium">{run.planName}</span><Badge variant={run.verdict === "Pass" ? "success" : run.verdict === "Fail" || run.verdict === "Error" ? "destructive" : "secondary"}>{run.verdict}</Badge></span><span className="flex justify-between text-[9px] text-muted-foreground"><span>{new Date(run.startedAt).toLocaleString()}</span><span>{run.state}</span></span></button>)}{hasMore && <Button className="w-full" size="sm" variant="outline" onClick={onMore}>加载更多</Button>}</div>; }
 
-function InvokeInspector({ step, hardware, update }: { step: TestStep; hardware: Hardware[]; update: (patch: Record<string, unknown>) => void }) {
-  const tools = useQuery({ queryKey: ["test-device-tools", step.hardwareId], queryFn: () => window.hardwareharness.testing.listDeviceTools(step.hardwareId!), enabled: Boolean(step.hardwareId) });
-  const selected = tools.data?.tools.find((tool) => tool.toolName === step.toolName);
-  return <><Field label="具体设备" required><Select value={step.hardwareId ?? ""} onChange={(event) => update({ hardwareId: event.target.value || undefined, toolName: undefined, toolContractRevision: undefined, inputSchemaHash: undefined, arguments: {} })}><option value="">选择 managed hardware</option>{hardware.filter((item) => item.kind === "managed").map((item) => <option key={item.hardwareId} value={item.hardwareId}>{item.label} · {item.hardwareId}</option>)}</Select></Field>
-    <Field label="原始工具名" required><Select value={step.toolName ?? ""} disabled={!step.hardwareId} onChange={(event) => { const tool = tools.data?.tools.find((item) => item.toolName === event.target.value); update(tool ? { toolName: tool.toolName, toolContractRevision: tool.toolContractRevision, inputSchemaHash: tool.inputSchemaHash, arguments: {} } : { toolName: undefined }); }}><option value="">选择设备工具</option>{(tools.data?.tools ?? []).map((tool) => <option key={tool.toolName} value={tool.toolName}>{tool.toolName}</option>)}</Select></Field>
-    <Field label="超时 (ms)"><Input type="number" min={1} value={Number(step.timeoutMs ?? 30_000)} onChange={(event) => update({ timeoutMs: Number(event.target.value) })}/></Field>
-    <Field label="错误策略"><Select value={String(step.errorPolicy ?? "error")} onChange={(event) => update({ errorPolicy: event.target.value })}><option value="error">记录 Error 并进入清理</option><option value="fail">已知结果错误转为 Fail 并继续</option></Select></Field>
-    {selected && <div className="rounded-lg border p-2"><div className="mb-2 text-[11px] font-semibold">参数绑定</div><SchemaArgumentsForm schema={selected.inputSchema as JsonSchema} value={step.arguments ?? {}} onChange={(argumentsValue) => update({ arguments: argumentsValue })}/></div>}
-    {step.inputSchemaHash && <code className="break-all text-[9px] text-muted-foreground">schema {step.inputSchemaHash}</code>}</>;
-}
+function RegionTree({ region, steps, selectedId, referenceCounts, onSelect, onToggle, onDuplicate, onDelete }: { region: TestRegion; steps: TestStep[]; selectedId: string | undefined; referenceCounts: Record<string, number>; onSelect: (id: string) => void; onToggle: (id: string) => void; onDuplicate: (id: string) => void; onDelete: (id: string) => void }) { const { setNodeRef, isOver } = useDroppable({ id: `region:${region}`, data: { region } }); const labels = { prepare: "准备", test: "测试", cleanup: "清理" }; return <section ref={setNodeRef} className={cn("rounded-xl border bg-secondary/10 p-2 shadow-sm", isOver && "ring-2 ring-primary/30")}><header className="mb-2 flex items-center justify-between px-1"><h2 className="text-xs font-semibold">{labels[region]}{region === "cleanup" && <span className="ml-2 font-normal text-muted-foreground">从上到下执行 · 系统安全动作随后执行</span>}</h2><Badge variant="outline">{steps.length}</Badge></header><SortableContext items={steps.map((step) => step.id)} strategy={verticalListSortingStrategy}><div className="grid min-h-12 gap-1.5">{steps.map((step) => <SortableStep key={step.id} step={step} region={region} selectedId={selectedId} referenceCounts={referenceCounts} onSelect={onSelect} onToggle={onToggle} onDuplicate={onDuplicate} onDelete={onDelete} />)}{!steps.length && <div className="grid min-h-12 place-items-center rounded-lg border border-dashed text-[11px] text-muted-foreground">拖入组件</div>}</div></SortableContext></section>; }
+function SortableStep({ step, region, selectedId, referenceCounts, onSelect, onToggle, onDuplicate, onDelete, parentId }: { step: TestStep; region: TestRegion; selectedId: string | undefined; referenceCounts: Record<string, number>; onSelect: (id: string) => void; onToggle: (id: string) => void; onDuplicate: (id: string) => void; onDelete: (id: string) => void; parentId?: string }) { const [open, setOpen] = useState(true); const sortable = useSortable({ id: step.id, data: { kind: "step", stepId: step.id, region, parentId } }); const nested = [...(step.children ?? []), ...(step.elseChildren ?? [])]; return <div ref={sortable.setNodeRef} data-step-id={step.id} style={{ transform: CSS.Transform.toString(sortable.transform), transition: sortable.transition }} className={cn("rounded-lg border bg-background shadow-xs", sortable.isDragging && "opacity-35", selectedId === step.id && "border-primary/50 ring-2 ring-primary/15", step.enabled === false && "opacity-55")}><div className="flex h-9 items-center gap-1 px-1.5" onClick={() => onSelect(step.id)}><button className="cursor-grab touch-none text-muted-foreground" {...sortable.attributes} {...sortable.listeners} aria-label={`拖动 ${step.name ?? step.type}`}><GripVerticalIcon className="size-4" /></button>{containerTypes.has(step.type) ? <button onClick={(event) => { event.stopPropagation(); setOpen(!open); }}>{open ? <ChevronDownIcon className="size-3.5" /> : <ChevronRightIcon className="size-3.5" />}</button> : <span className="w-3.5" />}<span className="min-w-0 flex-1 truncate text-xs font-medium">{step.name ?? step.type}</span>{Boolean(referenceCounts[step.id]) && <Badge variant="outline">引用 {referenceCounts[step.id]}</Badge>}<code className="text-[9px] text-muted-foreground">{step.type}</code>{step.type === "InvokeTool" && !step.toolName && <Badge variant="warning">待绑定</Badge>}<Checkbox checked={step.enabled !== false} onCheckedChange={() => onToggle(step.id)} onClick={(event) => event.stopPropagation()} /><Button size="icon-xs" variant="ghost" aria-label="复制步骤" onClick={(event) => { event.stopPropagation(); onDuplicate(step.id); }}><CopyIcon /></Button><Button size="icon-xs" variant="ghost" aria-label="删除步骤" onClick={(event) => { event.stopPropagation(); onDelete(step.id); }}><Trash2Icon /></Button></div>{open && nested.length > 0 && <div className="ml-5 grid gap-1.5 border-l px-2 pb-2"><SortableContext items={nested.map((item) => item.id)} strategy={verticalListSortingStrategy}>{(step.children ?? []).map((child) => <SortableStep key={child.id} step={child} region={region} parentId={step.id} selectedId={selectedId} referenceCounts={referenceCounts} onSelect={onSelect} onToggle={onToggle} onDuplicate={onDuplicate} onDelete={onDelete} />)}{(step.elseChildren ?? []).length > 0 && <div className="pt-1 text-[9px] font-semibold text-muted-foreground">ELSE</div>}{(step.elseChildren ?? []).map((child) => <SortableStep key={child.id} step={child} region={region} parentId={step.id} selectedId={selectedId} referenceCounts={referenceCounts} onSelect={onSelect} onToggle={onToggle} onDuplicate={onDuplicate} onDelete={onDelete} />)}</SortableContext></div>}</div>; }
 
-function GenericSettings({ step, update }: { step: TestStep; update: (patch: Record<string, unknown>) => void }) {
-  const protectedKeys = new Set(["id", "type", "name", "enabled", "children", "elseChildren", "stopOnFail"]);
-  const settings = Object.fromEntries(Object.entries(step).filter(([key]) => !protectedKeys.has(key)));
-  const [text, setText] = useState(() => JSON.stringify(settings, null, 2));
-  useEffect(() => setText(JSON.stringify(Object.fromEntries(Object.entries(step).filter(([key]) => !protectedKeys.has(key))), null, 2)), [step.id, step.type]); // eslint-disable-line react-hooks/exhaustive-deps
-  return <Field label="步骤设置 JSON" hint="表达式使用受限 CEL；不得写入 Python。"><Textarea className="min-h-44 font-mono text-[11px]" value={text} onChange={(event) => { setText(event.target.value); try { const parsed = JSON.parse(event.target.value) as Record<string, unknown>; update(parsed); } catch { /* retain invalid local text until corrected */ } }}/></Field>;
-}
+function Inspector({ plan, step, hardware, catalogItem, references, consumers, mutate, onSelectStep, onBind }: { plan: TestPlan; step: TestStep | undefined; hardware: Hardware[]; catalogItem?: TestStepCatalogItem; references: TestExpressionReference[]; consumers: string[]; mutate: (change: (next: TestPlan) => void) => void; onSelectStep: (stepId: string) => void; onBind: (stepId: string, hardwareId: string, toolName: string, refresh?: boolean) => Promise<void> }) { if (!step) return <PlanInspector plan={plan} mutate={mutate} />; const update = (patch: Record<string, unknown>) => mutate((next) => { const target = findStep(next, step.id)?.step; if (target) for (const [key, value] of Object.entries(patch)) { if (value === undefined) delete target[key]; else target[key] = value; } }); return <div className="grid gap-3 p-3"><Field label="步骤名称"><Input value={step.name ?? ""} onChange={(event) => update({ name: event.target.value })} /></Field><Field label="稳定步骤 ID"><Input value={step.id} readOnly /></Field><div className="flex gap-2"><Badge variant="secondary">{step.type}</Badge>{step.hardwareId && <Badge variant="outline">{step.hardwareId}</Badge>}</div>{step.type === "InvokeTool" ? <InvokeInspector step={step} hardware={hardware} references={references} update={update} onBind={onBind} /> : <StepSettingsForm step={step} {...(catalogItem ? { catalogItem } : {})} references={references} onChange={update} />}<label className="flex items-center gap-2 text-xs"><Checkbox checked={step.stopOnFail === true} onCheckedChange={(checked) => update({ stopOnFail: checked === true })} />此步骤 Fail 后停止所在组</label>{consumers.length > 0 && <div className="grid gap-1 rounded-md border p-2"><div className="text-[11px] font-semibold">被以下步骤引用</div>{consumers.map((stepId) => <button key={stepId} className="truncate text-left text-[11px] text-primary hover:underline" onClick={() => { onSelectStep(stepId); document.querySelector<HTMLElement>(`[data-step-id="${globalThis.CSS.escape(stepId)}"]`)?.scrollIntoView({ block: "center" }); }}>{stepId}</button>)}</div>}</div>; }
+function PlanInspector({ plan, mutate }: { plan: TestPlan; mutate: (change: (next: TestPlan) => void) => void }) { return <div className="grid gap-3 p-3"><Field label="计划名称"><Input value={plan.name} onChange={(event) => mutate((next) => { next.name = event.target.value; })} /></Field><Field label="说明"><Textarea value={plan.description} onChange={(event) => mutate((next) => { next.description = event.target.value; })} /></Field><Field label="有类型运行参数"><PlanParametersEditor value={plan.parameters} onChange={(parameters) => mutate((next) => { next.parameters = parameters; })} /></Field><label className="flex items-center gap-2 text-xs"><Checkbox checked={plan.stopOnFail} onCheckedChange={(checked) => mutate((next) => { next.stopOnFail = checked === true; })} />Fail 时停止计划</label><div className="rounded-md bg-secondary p-2 text-[11px] text-muted-foreground">每个硬件动作直接绑定具体设备；变更设备需要逐步骤重新绑定。</div></div>; }
+function InvokeInspector({ step, hardware, references, update, onBind }: { step: TestStep; hardware: Hardware[]; references: TestExpressionReference[]; update: (patch: Record<string, unknown>) => void; onBind: (stepId: string, hardwareId: string, toolName: string, refresh?: boolean) => Promise<void> }) { const [hardwareId, setHardwareId] = useState(step.hardwareId ?? ""); useEffect(() => setHardwareId(step.hardwareId ?? ""), [step.id, step.hardwareId]); const tools = useQuery({ queryKey: ["test-device-tools", hardwareId], queryFn: () => window.hardwareharness.testing.listDeviceTools(hardwareId), enabled: Boolean(hardwareId) }); const selected = tools.data?.tools.find((tool) => tool.toolName === step.toolName); return <><Field label="具体设备" required><Select value={hardwareId} onChange={(event) => setHardwareId(event.target.value)}><option value="">选择 managed hardware</option>{hardware.filter((item) => item.kind === "managed").map((item) => <option key={item.hardwareId} value={item.hardwareId}>{item.label} · {item.hardwareId}</option>)}</Select></Field><Field label="原始工具名" required><Select value={hardwareId === step.hardwareId ? step.toolName ?? "" : ""} disabled={!hardwareId} onChange={(event) => { if (event.target.value) void onBind(step.id, hardwareId, event.target.value); }}><option value="">选择设备工具</option>{(tools.data?.tools ?? []).map((tool) => <option key={tool.toolName} value={tool.toolName}>{tool.toolName}</option>)}</Select></Field><Field label="超时 (ms)"><Input type="number" min={1} value={Number(step.timeoutMs ?? 30_000)} onChange={(event) => update({ timeoutMs: Number(event.target.value) })} /></Field><Field label="错误策略"><Select value={String(step.errorPolicy ?? "error")} onChange={(event) => update({ errorPolicy: event.target.value })}><option value="error">记录 Error 并进入清理</option><option value="fail">已知结果错误转为 Fail 并继续</option></Select></Field>{selected && <><div className="rounded-lg border p-2"><div className="mb-2 text-[11px] font-semibold">参数绑定</div><BoundArgumentsForm schema={selected.inputSchema as JsonSchema} value={step.arguments ?? {}} references={references} onChange={(argumentsValue) => update({ arguments: argumentsValue })} /></div><div className="rounded-lg border p-2 text-[10px]"><div className="mb-1 font-semibold">可引用输出字段</div><code className="break-all text-muted-foreground">{schemaFieldPaths(selected.resultSchema).join(" · ") || "Schema 未声明确定字段"}</code></div></>}{step.bindingRevision && <div className="grid gap-1"><code className="break-all text-[9px] text-muted-foreground">binding {step.bindingRevision}</code><Button size="xs" variant="outline" onClick={() => void onBind(step.id, step.hardwareId!, step.toolName!, true)}>显式重新绑定</Button></div>}</>; }
 
-function RunControls({ run, onStart, onChanged }: { run: TestRunSnapshot | null | undefined; onStart: () => void; onChanged: () => void }) {
-  if (!isActive(run)) return <Button size="sm" onClick={onStart}><PlayIcon />运行</Button>;
-  return <div className="flex gap-1"><Button size="icon-sm" variant="outline" aria-label={run.state === "paused" ? "继续" : "暂停"} onClick={async () => { if (run.state === "paused") await window.hardwareharness.testing.resumeRun(run.runId); else await window.hardwareharness.testing.pauseRun(run.runId); onChanged(); }}>{run.state === "paused" ? <PlayIcon /> : <PauseIcon />}</Button><Button size="icon-sm" variant="destructive" aria-label="终止" onClick={async () => { await window.hardwareharness.testing.abortRun(run.runId); onChanged(); }}><CircleStopIcon /></Button></div>;
-}
-
-function ConflictBanner({ onReload, onSaveAs }: { onReload: () => void; onSaveAs: () => void }) { return <div className="mb-3 flex items-center gap-2 rounded-lg border border-warning/40 bg-warning/10 p-2 text-xs text-warning"><AlertTriangleIcon className="size-4"/><span className="flex-1">AI 或磁盘已修改当前计划。为保护本地草稿，直接保存已禁用。</span><Button size="xs" variant="outline" onClick={onReload}><RefreshCwIcon/>重载 AI 版本</Button><Button size="xs" variant="outline" onClick={onSaveAs}>另存本地草稿</Button></div>; }
-function PaneHeader({ title, action }: { title: string; action?: React.ReactNode }) { return <div className="flex h-9 shrink-0 items-center justify-between border-b px-3"><h2 className="text-[11px] font-semibold tracking-wide">{title}</h2>{action}</div>; }
-function groupCatalog(items: TestStepCatalogItem[]): Array<[string, TestStepCatalogItem[]]> { const groups = new Map<string, TestStepCatalogItem[]>(); for (const item of items) groups.set(item.category, [...(groups.get(item.category) ?? []), item]); return [...groups]; }
+function RunControls({ run, onStart, onChanged }: { run: TestRunSnapshot | null | undefined; onStart: () => void; onChanged: () => void }) { const [aborting, setAborting] = useState(false); if (!isActive(run)) return <Button size="sm" onClick={onStart}><PlayIcon />运行</Button>; return <div className="flex gap-1"><Button size="icon-sm" variant="outline" aria-label={run.state === "paused" ? "继续" : "暂停"} onClick={async () => { if (run.state === "paused") await window.hardwareharness.testing.resumeRun(run.runId); else await window.hardwareharness.testing.pauseRun(run.runId); onChanged(); }}>{run.state === "paused" ? <PlayIcon /> : <PauseIcon />}</Button><Button size="icon-sm" variant="destructive" aria-label="终止" disabled={aborting} onClick={async () => { if (!window.confirm("终止会停止测试主体，并立即进入清理和安全恢复流程。确定继续吗？")) return; setAborting(true); try { await window.hardwareharness.testing.abortRun(run.runId); onChanged(); } finally { setAborting(false); } }}><CircleStopIcon /></Button></div>; }
+function IssueList({ issues, onSelect }: { issues: TestPlanIssue[]; onSelect?: (issue: TestPlanIssue) => void }) { if (!issues.length) return <div className="grid min-h-24 place-items-center text-sm text-muted-foreground">没有校验问题</div>; const groups = new Map<string, TestPlanIssue[]>(); for (const issue of issues) { const key = issueCategory(issue); groups.set(key, [...(groups.get(key) ?? []), issue]); } return <div className="grid gap-4">{[...groups].map(([category, values]) => <section key={category}><h3 className="mb-1 text-xs font-semibold">{category}</h3><div className="grid gap-1">{values.map((item, index) => <button key={`${item.path}-${index}`} className={cn("flex w-full gap-2 rounded px-2 py-1.5 text-left text-xs", item.severity === "error" ? "bg-destructive/8 text-destructive" : "bg-warning/10 text-warning")} onClick={() => onSelect?.(item)}><AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0" /><span><b>{item.code}</b> {item.message}<code className="ml-2 opacity-70">{item.path}</code></span></button>)}</div></section>)}</div>; }
+function ConflictBanner({ onReload, onSaveAs }: { onReload: () => void; onSaveAs: () => void }) { return <div className="mb-3 flex items-center gap-2 rounded-lg border border-warning/40 bg-warning/10 p-2 text-xs text-warning"><AlertTriangleIcon className="size-4" /><span className="flex-1">AI 或磁盘已修改当前计划。为保护本地草稿，直接保存已禁用。</span><Button size="xs" variant="outline" onClick={onReload}>重载 AI 版本</Button><Button size="xs" variant="outline" onClick={onSaveAs}>另存本地草稿</Button></div>; }
+function PaneHeader({ title }: { title: string }) { return <div className="flex h-9 shrink-0 items-center border-b px-3"><h2 className="text-[11px] font-semibold tracking-wide">{title}</h2></div>; }
+function groupCatalog(items: TestStepCatalogItem[]): Map<string, TestStepCatalogItem[]> { const groups = new Map<string, TestStepCatalogItem[]>(); for (const item of items) { if (item.type === "InvokeTool") continue; const category = catalogCategory(item); groups.set(category, [...(groups.get(category) ?? []), item]); } return groups; }
+function catalogCategory(item: TestStepCatalogItem): string { if (["Sequence", "Group", "If", "Repeat", "ForEach", "Parallel", "Retry"].includes(item.type)) return "流程控制"; if (["Equal", "Range", "Tolerance", "Bitmask", "PublishResult"].includes(item.type)) return "判据"; return "数据处理"; }
+function issueCategory(issue: TestPlanIssue): string { const value = `${issue.code} ${issue.path}`.toLowerCase(); if (value.includes("wiring") || value.includes("connection")) return "接线"; if (value.includes("hardware") || value.includes("tool") || value.includes("binding")) return "设备"; if (value.includes("safe") || value.includes("retry") || value.includes("cleanup")) return "安全"; if (value.includes("coverage") || value.includes("requirement")) return "覆盖"; if (value.includes("type") || value.includes("schema") || value.includes("expression")) return "类型"; return "结构"; }
 function isActive(run: TestRunSnapshot | null | undefined): run is TestRunSnapshot { return Boolean(run && !["completed", "aborted", "error"].includes(run.state)); }
-function regenerateIds(step: TestStep): void { step.id = `${step.type.toLowerCase()}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`; for (const child of [...(step.children ?? []), ...(step.elseChildren ?? [])]) regenerateIds(child); }
+function newStepId(prefix: string): string { return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`; }
+function regenerateIds(step: TestStep): void { step.id = newStepId(step.type.toLowerCase()); for (const child of [...(step.children ?? []), ...(step.elseChildren ?? [])]) regenerateIds(child); }
+function schemaFieldPaths(schema: Record<string, unknown>, prefix = "output"): string[] { const properties = schema.properties; if (!properties || typeof properties !== "object" || Array.isArray(properties)) return []; return Object.entries(properties as Record<string, unknown>).flatMap(([key, value]) => { const path = `${prefix}.${key}`; const nested = value && typeof value === "object" && !Array.isArray(value) ? schemaFieldPaths(value as Record<string, unknown>, path) : []; return nested.length ? nested : [path]; }); }
+function dragLabel(drag: DragDescriptor, draft?: TestPlan): string { if (drag.kind === "catalog") return drag.item.label; if (drag.kind === "server") return drag.hardware.label; return draft ? findStep(draft, drag.stepId)?.step.name ?? drag.stepId : drag.stepId; }
+function defaultRunParameters(plan: TestPlan): Record<string, unknown> { return Object.fromEntries(plan.parameters.flatMap((parameter) => parameter.default === undefined ? [] : [[parameter.name, structuredClone(parameter.default)]])); }
+function mergeRuns(current: TestRunSummary[], next: TestRunSummary[]): TestRunSummary[] { const values = new Map(current.map((item) => [item.runId, item])); for (const item of next) values.set(item.runId, item); return [...values.values()]; }
+function visitSteps(plan: TestPlan, visitor: (step: TestStep) => void): void { const visit = (steps: TestStep[]) => { for (const step of steps) { visitor(step); visit(step.children ?? []); visit(step.elseChildren ?? []); } }; visit(plan.regions.prepare); visit(plan.regions.test); visit(plan.regions.cleanup); }
+function expressionsIn(value: unknown): string[] { if (typeof value === "string") return [value]; if (Array.isArray(value)) return value.flatMap(expressionsIn); if (value && typeof value === "object") return Object.values(value).flatMap(expressionsIn); return []; }
+function collectReferenceConsumers(plan: TestPlan): Record<string, string[]> { const output: Record<string, string[]> = {}; visitSteps(plan, (step) => { for (const expression of expressionsIn(step)) { for (const match of expression.matchAll(/\bsteps\.([A-Za-z][A-Za-z0-9_-]{0,63})/g)) { const source = match[1]!; const consumers = output[source] ??= []; if (source !== step.id && !consumers.includes(step.id)) consumers.push(step.id); } } }); return output; }
+function collectReferenceCounts(plan: TestPlan): Record<string, number> { return Object.fromEntries(Object.entries(collectReferenceConsumers(plan)).map(([stepId, consumers]) => [stepId, consumers.length])); }
+function stepIdForIssuePath(plan: TestPlan, path: string): string | undefined { const tokens = path.split("/").filter(Boolean); if (tokens[0] !== "regions" || !["prepare", "test", "cleanup"].includes(tokens[1] ?? "")) return undefined; let list = plan.regions[tokens[1] as TestRegion]; let step: TestStep | undefined; for (let index = 2; index < tokens.length;) { const position = Number(tokens[index]); if (!Number.isInteger(position)) break; step = list[position]; if (!step) break; index += 1; const branch = tokens[index]; if (branch === "children" || branch === "elseChildren") { list = step[branch] ?? []; index += 1; continue; } break; } return step?.id; }

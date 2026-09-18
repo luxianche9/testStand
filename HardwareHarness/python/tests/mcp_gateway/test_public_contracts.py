@@ -17,6 +17,7 @@ from hardwareharness_backend.mcp_gateway.contract_tools import import_firmware
 from hardwareharness_backend.mcp_gateway.public_contracts import (
     normalized_output_schema,
     public_remote_tool,
+    sdk_envelope_schema,
     with_error_schema,
 )
 from hardwareharness_backend.mcp_gateway.tool_registry import BUILTIN_TOOL_DEFINITIONS, ToolRegistry
@@ -67,6 +68,12 @@ def test_gateway_and_sdk_shapes_keep_referenced_data_and_media_distinct() -> Non
     schema = normalized_output_schema(upstream)
     Draft202012Validator(schema).validate({"ok": True, "data": {"volts": 1.2}})
     assert not Draft202012Validator(schema).is_valid({"ok": True, "data": {"volts": "1.2"}})
+    Draft202012Validator(sdk_envelope_schema(upstream)).validate(
+        {
+            "content": [{"type": "text", "text": "result"}],
+            "structuredContent": {"ok": True, "data": {"volts": 1.2}},
+        }
+    )
     tool = public_remote_tool(
         {
             "externalName": "S__read",

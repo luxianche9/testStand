@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 from typing import Any, cast
 
-from hardwareharness_backend.compat import clone
+from hardwareharness_backend.compat import clone, utc_now_iso
 from hardwareharness_backend.contracts.errors import app_error
 
 from .catalog import step_catalog
@@ -50,7 +50,7 @@ class TestingApplication:
         self.authorizer.authorize(context, "testing.manage")
         request_id = _request_id(input)
         async with self._lock_for("create", request_id):
-            cached = await self._claim_request("create", request_id)
+            cached = await self._claim_request("create", request_id, input)
             if cached:
                 return cached
             try:
@@ -80,7 +80,7 @@ class TestingApplication:
         self.authorizer.authorize(context, "testing.manage")
         request_id = _request_id(input)
         async with self._lock_for("operations", request_id):
-            cached = await self._claim_request("operations", request_id)
+            cached = await self._claim_request("operations", request_id, input)
             if cached:
                 return cached
             try:
@@ -103,6 +103,13 @@ class TestingApplication:
         self.authorizer.authorize(context, "testing.read")
         return cast(Record, self.store.validate(plan_id))
 
+    def analyze_plan_draft(self, context: Record, input: Record) -> Record:
+        self.authorizer.authorize(context, "testing.read")
+        return cast(
+            Record,
+            self.store.analyze(cast(Record, input["plan"]), int(input["baseRevision"])),
+        )
+
     def list_step_catalog(self, context: Record) -> list[Record]:
         self.authorizer.authorize(context, "testing.read")
         return step_catalog(self.plugins)
@@ -115,7 +122,7 @@ class TestingApplication:
         self.authorizer.authorize(context, "testing.execute")
         request_id = _request_id(input)
         async with self._lock_for("start", request_id):
-            cached = await self._claim_request("start", request_id)
+            cached = await self._claim_request("start", request_id, input)
             if cached:
                 return cached
             try:
@@ -126,18 +133,32 @@ class TestingApplication:
                         "Test plan revision changed",
                         {"currentRevision": plan["revision"]},
                     )
-                validation = self.store.validate(plan["id"])
-                if not validation["valid"]:
+                compiled = self.store.compile(plan["id"])
+                if compiled["executionRevision"] != str(input.get("executionRevision", "")):
+                    raise app_error(
+                        "conflict",
+                        "Validated execution inputs changed; validate the plan again",
+                        {
+                            "executionRevision": compiled["executionRevision"],
+                            "revision": plan["revision"],
+                        },
+                    )
+                if not compiled["valid"]:
                     raise app_error(
                         "validation_failed",
                         "Test plan has validation errors",
-                        {"issues": validation["issues"], "revision": plan["revision"]},
+                        {"issues": compiled["issues"], "revision": plan["revision"]},
                     )
                 pending = self.wiring.list_tasks({"limit": 500})
                 if any(task.get("status") in {"pending", "in_progress"} for task in pending):
                     raise app_error("conflict", "A wiring task is awaiting confirmation")
                 parameters = _parameters(plan, input.get("parameters", {}))
-                result = cast(Record, await self.engine.start(plan, parameters))
+                result = cast(
+                    Record,
+                    await self.engine.start(
+                        compiled["compiledPlan"], parameters, compiled["executionRevision"]
+                    ),
+                )
             except BaseException:
                 await self.store.release_request("start", request_id)
                 raise
@@ -167,6 +188,43 @@ class TestingApplication:
             raise app_error("not_found", f"Test run not found: {run_id}")
         return result
 
+    def list_runs(self, context: Record, input: Record | None = None) -> Record:
+        self.authorizer.authorize(context, "testing.read")
+        query = input or {}
+        return cast(
+            Record,
+            self.store.runtime.list_runs(
+                cursor=query.get("cursor"),
+                limit=int(query.get("limit", 50)),
+                plan_id=query.get("planId"),
+                verdict=query.get("verdict"),
+                state=query.get("state"),
+                from_at=query.get("from"),
+                to_at=query.get("to"),
+            ),
+        )
+
+    def read_run_log(
+        self,
+        context: Record,
+        run_id: str,
+        after_event_sequence: int = 0,
+        after_result_sequence: int = 0,
+        event_limit: int = 1000,
+        result_limit: int = 1000,
+    ) -> Record:
+        self.authorizer.authorize(context, "testing.read")
+        return cast(
+            Record,
+            self.engine.read_log(
+                run_id,
+                after_event_sequence,
+                after_result_sequence,
+                event_limit,
+                result_limit,
+            ),
+        )
+
     def read_run_results(self, context: Record, run_id: str, after_sequence: int = 0) -> Record:
         self.authorizer.authorize(context, "testing.read")
         return cast(Record, self.engine.read_results(run_id, after_sequence))
@@ -176,6 +234,43 @@ class TestingApplication:
     ) -> Record:
         self.authorizer.authorize(context, "testing.read")
         return cast(Record, await self.engine.wait(run_id, after_sequence, timeout_ms))
+
+    def list_recovery_items(self, context: Record) -> list[Record]:
+        self.authorizer.authorize(context, "testing.read")
+        self.store.runtime.initialize()
+        return cast(list[Record], self.store.runtime.operations(recovery_only=True))
+
+    async def reconcile_operation(self, context: Record, input: Record) -> Record:
+        self.authorizer.authorize(context, "testing.execute")
+        operation_id = str(input.get("operationId", ""))
+        items = [
+            item
+            for item in self.store.runtime.operations(recovery_only=True)
+            if item["operationId"] == operation_id
+        ]
+        if not items:
+            raise app_error("not_found", f"Recovery operation not found: {operation_id}")
+        resolution = input.get("resolution")
+        if resolution not in {"confirmed_succeeded", "confirmed_failed", "safe_state_restored"}:
+            raise app_error(
+                "invalid_argument", "A supported explicit recovery resolution is required"
+            )
+        operation = items[0]
+        update = {
+            "recoveryRequired": False,
+            "resolvedAt": utc_now_iso(),
+            "result": {"resolution": resolution, "note": input.get("note", "")},
+        }
+        if resolution == "confirmed_succeeded":
+            update.update({"state": "succeeded", "outcomeKnown": True})
+        elif resolution == "confirmed_failed":
+            update.update({"state": "failed", "outcomeKnown": True})
+        self.store.runtime.update_operation(operation_id, **update)
+        run = self.engine.reconcile_run(str(operation["runId"]), operation_id, str(resolution))
+        reconciled = next(
+            item for item in self.store.runtime.operations() if item["operationId"] == operation_id
+        )
+        return {"operation": reconciled, "run": run}
 
     async def close(self) -> None:
         if self.engine.active and not self.engine.active.done:
@@ -192,12 +287,9 @@ class TestingApplication:
     def _lock_for(self, scope: str, request_id: str) -> asyncio.Lock:
         return self._request_locks.setdefault((scope, request_id), asyncio.Lock())
 
-    async def _claim_request(self, scope: str, request_id: str) -> Record | None:
+    async def _claim_request(self, scope: str, request_id: str, payload: Record) -> Record | None:
         key = (scope, request_id)
-        cached = self._requests.get(key)
-        if cached:
-            return clone(cached)
-        entry = cast(Record | None, await self.store.claim_request(scope, request_id))
+        entry = cast(Record | None, await self.store.claim_request(scope, request_id, payload))
         if entry is None:
             return None
         if entry.get("state") == "completed" and isinstance(entry.get("result"), dict):

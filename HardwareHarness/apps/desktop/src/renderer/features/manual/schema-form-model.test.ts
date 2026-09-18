@@ -54,8 +54,8 @@ describe("manual JSON Schema form model", () => {
     expect(composed).toMatchObject({ allOf: [{ properties: { channel: { type: "integer" } }, required: ["channel"] }] });
   });
 
-  it("uses JSON fallback for combinators, tuples and dynamic nested objects", () => {
-    expect(requiresJsonFallback({ oneOf: [{ type: "string" }, { type: "number" }] })).toBe(true);
+  it("uses generated selection for common unions and JSON fallback for unsupported structures", () => {
+    expect(requiresJsonFallback({ oneOf: [{ type: "string" }, { type: "number" }] })).toBe(false);
     expect(requiresJsonFallback({ type: "array", items: [{ type: "string" }, { type: "number" }] })).toBe(true);
     expect(requiresJsonFallback({ type: "object", properties: { fixed: { type: "string" } }, patternProperties: { "^x": { type: "number" } } })).toBe(true);
     expect(requiresJsonFallback({ type: "object", properties: { fixed: { type: "string" } } })).toBe(false);

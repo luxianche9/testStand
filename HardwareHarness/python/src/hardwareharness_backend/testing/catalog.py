@@ -16,7 +16,7 @@ def step_catalog(plugin_steps: list[Any] | None = None) -> list[Record]:
             "条件",
             {
                 "type": "object",
-                "properties": {"condition": {"type": "string"}},
+                "properties": {"condition": _expression("条件表达式", "false", "condition")},
                 "required": ["condition"],
             },
             container=True,
@@ -27,7 +27,9 @@ def step_catalog(plugin_steps: list[Any] | None = None) -> list[Record]:
             "重复",
             {
                 "type": "object",
-                "properties": {"count": {"type": "integer", "minimum": 0}},
+                "properties": {
+                    "count": {"type": "integer", "title": "重复次数", "minimum": 0, "default": 1}
+                },
                 "required": ["count"],
             },
             container=True,
@@ -38,7 +40,7 @@ def step_catalog(plugin_steps: list[Any] | None = None) -> list[Record]:
             "遍历",
             {
                 "type": "object",
-                "properties": {"itemsExpression": {"type": "string"}},
+                "properties": {"itemsExpression": _expression("集合表达式", "[]", "value")},
                 "required": ["itemsExpression"],
             },
             container=True,
@@ -51,8 +53,20 @@ def step_catalog(plugin_steps: list[Any] | None = None) -> list[Record]:
             {
                 "type": "object",
                 "properties": {
-                    "attempts": {"type": "integer", "minimum": 1, "maximum": 20},
-                    "delayMs": {"type": "integer", "minimum": 0},
+                    "attempts": {
+                        "type": "integer",
+                        "title": "最多尝试次数",
+                        "minimum": 1,
+                        "maximum": 20,
+                        "default": 2,
+                    },
+                    "delayMs": {
+                        "type": "integer",
+                        "title": "尝试间隔",
+                        "minimum": 0,
+                        "default": 0,
+                        "x-hh-unit": "ms",
+                    },
                 },
             },
             container=True,
@@ -64,8 +78,8 @@ def step_catalog(plugin_steps: list[Any] | None = None) -> list[Record]:
             {
                 "type": "object",
                 "properties": {
-                    "variable": {"type": "string"},
-                    "valueExpression": {"type": "string"},
+                    "variable": {"type": "string", "title": "变量名", "default": "value"},
+                    "valueExpression": _expression("值表达式", "null", "value"),
                 },
                 "required": ["variable"],
             },
@@ -76,7 +90,7 @@ def step_catalog(plugin_steps: list[Any] | None = None) -> list[Record]:
             "计算表达式",
             {
                 "type": "object",
-                "properties": {"expression": {"type": "string"}},
+                "properties": {"expression": _expression("计算表达式", "null", "value")},
                 "required": ["expression"],
             },
         ),
@@ -86,7 +100,15 @@ def step_catalog(plugin_steps: list[Any] | None = None) -> list[Record]:
             "延时",
             {
                 "type": "object",
-                "properties": {"durationMs": {"type": "integer", "minimum": 0}},
+                "properties": {
+                    "durationMs": {
+                        "type": "integer",
+                        "title": "等待时间",
+                        "minimum": 0,
+                        "default": 1000,
+                        "x-hh-unit": "ms",
+                    }
+                },
                 "required": ["durationMs"],
             },
         ),
@@ -97,9 +119,21 @@ def step_catalog(plugin_steps: list[Any] | None = None) -> list[Record]:
             {
                 "type": "object",
                 "properties": {
-                    "condition": {"type": "string"},
-                    "timeoutMs": {"type": "integer", "minimum": 1},
-                    "pollIntervalMs": {"type": "integer", "minimum": 10},
+                    "condition": _expression("等待条件", "false", "condition"),
+                    "timeoutMs": {
+                        "type": "integer",
+                        "title": "超时时间",
+                        "minimum": 1,
+                        "default": 30000,
+                        "x-hh-unit": "ms",
+                    },
+                    "pollIntervalMs": {
+                        "type": "integer",
+                        "title": "检查间隔",
+                        "minimum": 10,
+                        "default": 100,
+                        "x-hh-unit": "ms",
+                    },
                 },
                 "required": ["condition"],
             },
@@ -113,17 +147,26 @@ def step_catalog(plugin_steps: list[Any] | None = None) -> list[Record]:
                 "properties": {
                     "hardwareId": {"type": "string"},
                     "toolName": {"type": "string"},
-                    "toolContractRevision": {"type": "string"},
-                    "inputSchemaHash": {"type": "string"},
+                    "bindingRevision": {"type": "string"},
                     "arguments": {"type": "object"},
-                    "timeoutMs": {"type": "integer", "minimum": 1},
-                    "errorPolicy": {"type": "string", "enum": ["error", "fail"]},
+                    "timeoutMs": {
+                        "type": "integer",
+                        "title": "超时时间",
+                        "minimum": 1,
+                        "default": 30000,
+                        "x-hh-unit": "ms",
+                    },
+                    "errorPolicy": {
+                        "type": "string",
+                        "title": "错误策略",
+                        "enum": ["error", "fail"],
+                        "default": "error",
+                    },
                 },
                 "required": [
                     "hardwareId",
                     "toolName",
-                    "toolContractRevision",
-                    "inputSchemaHash",
+                    "bindingRevision",
                     "arguments",
                 ],
                 "additionalProperties": True,
@@ -229,12 +272,28 @@ def _item(
 
 
 def _value_schema(extra: Record) -> Record:
+    normalized = {
+        key: _expression(key.removesuffix("Expression"), "", "value")
+        if key.endswith("Expression")
+        else value
+        for key, value in extra.items()
+    }
     return {
         "type": "object",
         "properties": {
             "actual": {},
-            "actualExpression": {"type": "string"},
-            **extra,
+            "actualExpression": _expression("实际值", "", "value"),
+            **normalized,
         },
         "additionalProperties": True,
+    }
+
+
+def _expression(title: str, default: str, mode: str) -> Record:
+    return {
+        "type": "string",
+        "title": title,
+        "default": default,
+        "format": "hh-cel",
+        "x-hh-expression-mode": mode,
     }

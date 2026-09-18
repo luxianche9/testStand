@@ -167,10 +167,21 @@ def contract_tool(mcp, **options):
         opts = {**options, "description": DESCRIPTIONS[name]}
         meta = {**opts.get("meta", {})}
         meta["hardwareharness"] = {**meta.get("hardwareharness", {}), "contractRevision": CONTRACT_REVISION,
-            "resultSemantics": DESCRIPTIONS[name], "timeoutRecovery": "Query current status/evidence before replaying any physical action; an RPC timeout does not prove non-execution."}
+            "resultSemantics": DESCRIPTIONS[name], "timeoutRecovery": "Query current status/evidence before replaying any physical action; an RPC timeout does not prove non-execution.",
+            "operationSemantics": operation_semantics(name)}
         opts["meta"] = meta
         return mcp.tool(**opts)(fn)
     return register
+
+
+def operation_semantics(name: str) -> dict[str, Any]:
+    read = name.startswith(("get_", "list_")) or any(token in name for token in ("_read_", "_get_"))
+    safe = name.endswith("safe_state")
+    configure = "configure" in name
+    requirements = ["serial_port_configured"] if name.startswith("cp118u_") and name != "cp118u_configure_port" else ["analog_input_configured"] if name == "pci1710l_read_voltage" else []
+    effects = ["serial_port_configured"] if name == "cp118u_configure_port" else ["analog_input_configured"] if name == "pci1710l_configure_ai" else []
+    safety = ({"toolName": "pci1762_safe_state", "arguments": {}} if name in {"pci1762_set_relay", "pci1762_set_bank"} else {"toolName": "pci6208v_safe_state", "arguments": {}} if name == "pci6208v_set_voltage" else None)
+    return {"kind": "safe" if safe else "read" if read else "configure" if configure else "actuate", "retry": "safe" if read or configure or safe else "never_after_dispatch", "stateRequirements": requirements, "stateEffects": effects, "evidenceType": "measurement" if any(token in name for token in ("read_voltage", "read_bit", "read_rx")) else "software_shadow" if name == "pci6208v_read_last" else "controller_state" if read else "observation", "outcomeOnInvalidResponse": "unknown", "trusted": True, **({"safetyAction": safety} if safety else {})}
 
 
 def capability_details(server_id: str) -> dict[str, Any]:

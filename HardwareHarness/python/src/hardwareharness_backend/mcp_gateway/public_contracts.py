@@ -161,6 +161,54 @@ def normalized_output_schema(upstream: Record | None) -> Record:
     return result
 
 
+def business_result_schema(upstream: Record | None) -> Record:
+    """Return the schema for the value produced by ``call_remote``.
+
+    MCP output schemas describe ``structuredContent``.  HardwareHarness unwraps a
+    successful top-level ``data`` member at the transport boundary, so every
+    in-process caller must validate the unwrapped value against this schema rather
+    than validating it against the transport envelope a second time.
+    """
+    if not upstream:
+        return {}
+    payload = _payload_schema(upstream)
+    result: Record = {"allOf": [clone(payload["allOf"][0])]}
+    if payload.get("$defs"):
+        result["$defs"] = clone(payload["$defs"])
+    return result
+
+
+def sdk_envelope_schema(structured_content: Record) -> Record:
+    """Describe the MCP SDK response around validated structured content.
+
+    This envelope is transport-only.  ``structuredContent`` is validated against
+    the remote tool schema, while callers inside HH receive the separately
+    normalized business result.
+    """
+    embedded = _embedded_schema(structured_content)
+    return {
+        "type": "object",
+        "properties": {
+            "content": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "type": {"type": "string"},
+                        "text": {"type": "string"},
+                    },
+                    "required": ["type"],
+                    "additionalProperties": True,
+                },
+            },
+            "structuredContent": {"$ref": "#/$defs/HHUpstream"},
+        },
+        "required": ["content", "structuredContent"],
+        "additionalProperties": True,
+        "$defs": {"HHUpstream": embedded},
+    }
+
+
 def public_remote_tool(tool: Record) -> Record:
     result = {
         "name": tool["externalName"],

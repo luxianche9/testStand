@@ -1,15 +1,17 @@
 import { describe, expect, it } from "vitest";
 import type { TestPlan } from "@hardwareharness/contracts/testing";
-import { clonePlan, findStep, moveStep, planHardwareIds, removeStep, replaceHardware } from "./plan-model.js";
+import { clonePlan, findStep, moveStep, planHardwareIds, removeStep } from "./plan-model.js";
 
 function plan(): TestPlan {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     id: "plan",
     name: "Plan",
     description: "",
     revision: 1,
     parameters: [],
+    requirements: [],
+    wiringRequirements: [],
     stopOnFail: false,
     regions: {
       prepare: [],
@@ -46,15 +48,9 @@ describe("test plan tree model", () => {
     expect(findStep(value, "delay")).toBeUndefined();
   });
 
-  it("replaces concrete hardware bindings and invalidates their contracts", () => {
+  it("collects concrete hardware bindings", () => {
     const value = clonePlan(plan());
-    value.regions.test[0]!.children = [{ id: "invoke", type: "InvokeTool", hardwareId: "old", toolName: "read", toolContractRevision: "rev", inputSchemaHash: "hash" }];
+    value.regions.test[0]!.children = [{ id: "invoke", type: "InvokeTool", hardwareId: "old", toolName: "read", bindingRevision: "rev" }];
     expect(planHardwareIds(value)).toEqual(["old"]);
-    replaceHardware(value, "old", "new");
-    const invoke = findStep(value, "invoke")!.step;
-    expect(invoke.hardwareId).toBe("new");
-    expect(invoke.toolName).toBe("read");
-    expect(invoke.toolContractRevision).toBeUndefined();
-    expect(invoke.inputSchemaHash).toBeUndefined();
   });
 });

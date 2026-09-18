@@ -248,6 +248,11 @@ async def test_finish_failure_rejection_disconnect_shutdown(
     await service.start_task(active["wiringTaskId"])
     await service.close()
     assert service.get_task(pending["wiringTaskId"])["status"] == "pending"
-    assert service.get_task(active["wiringTaskId"])["message"] == "Application shutdown"
+    assert service.get_task(active["wiringTaskId"])["status"] == "in_progress"
+
+    restored = ProjectWiringService(projects, service.catalog)
+    await restored.initialize()
+    assert restored.get_task(pending["wiringTaskId"])["status"] == "pending"
+    assert restored.get_task(active["wiringTaskId"])["status"] == "in_progress"
     service.clear_session()
     assert service.list_tasks() == []

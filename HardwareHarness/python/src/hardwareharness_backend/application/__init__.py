@@ -54,6 +54,7 @@ class HardwareHarnessApplication:
             dependencies["projects"],
             test_resolver,
             dependencies.get("test_step_plugins", []),
+            dependencies.get("wiring"),
         )
         test_engine = dependencies.get("test_engine") or TestEngine(
             dependencies["projects"],
@@ -61,6 +62,7 @@ class HardwareHarnessApplication:
             test_resolver,
             execution,
             dependencies.get("test_step_plugins", []),
+            runtime_state=test_plan_store.runtime,
         )
         self.authorizer: Authorizer = dependencies.get("authorizer") or DefaultAuthorizer()
         self.devices = DevicesApplication(

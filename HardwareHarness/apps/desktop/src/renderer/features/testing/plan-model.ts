@@ -43,15 +43,6 @@ export function planHardwareIds(plan: TestPlan): string[] {
   return [...ids].sort();
 }
 
-export function replaceHardware(plan: TestPlan, fromHardwareId: string, toHardwareId: string): void {
-  visitSteps(plan, (step) => {
-    if (step.type !== "InvokeTool" || step.hardwareId !== fromHardwareId) return;
-    step.hardwareId = toHardwareId;
-    delete step.toolContractRevision;
-    delete step.inputSchemaHash;
-  });
-}
-
 export function createStep(item: TestStepCatalogItem): TestStep {
   const id = `${item.type.replace(/[^A-Za-z0-9]/g, "").toLowerCase() || "step"}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
   const step: TestStep = { id, type: item.type, name: item.label, enabled: true };

@@ -11,7 +11,7 @@ describe("preload API", () => {
     const computer = { id: "PC", label: "PC", address: "127.0.0.1", ssh: { port: 22, username: "u", shell: "powershell" as const } };
     const server = { transport: "mcp-http" as const, serverId: "S", computerId: "PC", label: "S", hardwareId: "H", url: "http://127.0.0.1:1/mcp", enabled: true, lifecycle: { statusCommand: "s", startCommand: "a", stopCommand: "x", logPath: "l" } };
     const hardware = { formatVersion: 2 as const, hardwareId: "H", label: "H", kind: "passive" as const, ports: [] };
-    const plan = { schemaVersion: 1 as const, id: "P", name: "Plan", description: "", revision: 1, parameters: [], stopOnFail: false, regions: { prepare: [], test: [], cleanup: [] }, createdAt: "2026-09-17T00:00:00.000Z", updatedAt: "2026-09-17T00:00:00.000Z" };
+    const plan = { schemaVersion: 2 as const, id: "P", name: "Plan", description: "", revision: 1, parameters: [], requirements: [], wiringRequirements: [], stopOnFail: false, regions: { prepare: [], test: [], cleanup: [] }, createdAt: "2026-09-17T00:00:00.000Z", updatedAt: "2026-09-17T00:00:00.000Z" };
 
     void api.system.dashboard(); void api.system.exportText("x.txt", "x");
     void api.devices.saveComputer(computer); void api.devices.removeComputer("PC"); void api.devices.refreshComputer("PC");
@@ -27,9 +27,11 @@ describe("preload API", () => {
     void api.manual.invokeTool({ hardwareId: "H", toolName: "S__write", arguments: { value: 1 } });
     void api.testing.listPlans(); void api.testing.loadPlan("P"); void api.testing.createPlan({ requestId: "create", name: "Plan" });
     void api.testing.savePlan(plan, 1); void api.testing.deletePlan("P"); void api.testing.applyPlanOperations({ planId: "P", baseRevision: 1, requestId: "change", operations: [] });
-    void api.testing.validatePlan("P"); void api.testing.listStepCatalog(); void api.testing.listDeviceTools("H");
-    void api.testing.startRun({ planId: "P", revision: 1, requestId: "run", parameters: {} }); void api.testing.pauseRun("R"); void api.testing.resumeRun("R");
-    void api.testing.abortRun("R"); void api.testing.currentRun(); void api.testing.readRunResults("R");
+    void api.testing.validatePlan("P"); void api.testing.analyzePlanDraft({ plan, baseRevision: 1 }); void api.testing.listStepCatalog(); void api.testing.listDeviceTools("H");
+    void api.testing.startRun({ planId: "P", revision: 1, executionRevision: "exec", requestId: "run", parameters: {} }); void api.testing.pauseRun("R"); void api.testing.resumeRun("R");
+    void api.testing.abortRun("R"); void api.testing.currentRun(); void api.testing.getRun("R"); void api.testing.listRuns({ limit: 20 });
+    void api.testing.readRunLog({ runId: "R", eventLimit: 500, resultLimit: 250 }); void api.testing.readRunResults("R");
+    void api.testing.listRecoveryItems(); void api.testing.reconcileOperation({ operationId: "OP", resolution: "safe_state_restored" });
     void api.agents.rotateGatewayToken(); void api.agents.status("codex"); void api.agents.preview("codex"); void api.agents.install("codex");
     void api.agents.remove("codex"); void api.agents.test("codex"); void api.agents.listTools(); void api.agents.openCodeStatus(); void api.agents.startOpenCode(); void api.agents.stopOpenCode(); void api.agents.restartOpenCode();
     void api.settings.getTheme(); void api.settings.setTheme("system"); void api.settings.getProjectView(); void api.settings.setProjectView("wiring");
