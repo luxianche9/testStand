@@ -1,5 +1,0 @@
-
-> testforge@0.1.0 check:imports E:\Project\hardwareHarness\testForge
-> node scripts/check-import-boundaries.mjs
-
-Workspace imports use only public package entry points.

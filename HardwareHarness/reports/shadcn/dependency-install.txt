@@ -1,6 +1,0 @@
-Scope: all 3 workspace projects
-Lockfile is up to date, resolution step is skipped
-Packages: -22
-----------------------
-
-Done in 1.7s using pnpm v10.15.0

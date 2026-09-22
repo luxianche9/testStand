@@ -1,5 +1,0 @@
-
-> testforge@0.1.0 build:packages E:\Project\hardwareHarness\testForge
-> tsc -b tsconfig.packages.json && node scripts/write-dist-package-manifests.mjs
-
-dist package manifests written

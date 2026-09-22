@@ -1,4 +1,0 @@
-
-> testforge@0.1.0 lint E:\Project\hardwareHarness\testForge
-> eslint packages apps --ext .ts,.tsx
-

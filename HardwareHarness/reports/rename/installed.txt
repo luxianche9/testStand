@@ -1,9 +1,0 @@
-Confirmed read-only installation in a Chinese and space-containing path
-
-Running 1 test using 1 worker
-
-(node:15452) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
-(Use `node --trace-warnings ...` to show where the warning was created)
-  ok 1 e2e\python-backend.spec.ts:30:1 › Python reads existing safeStorage ciphertext and exits without an orphan (7.0s)
-
-  1 passed (7.4s)

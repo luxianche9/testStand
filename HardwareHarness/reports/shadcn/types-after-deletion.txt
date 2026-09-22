@@ -1,9 +1,0 @@
-
-> testforge@0.1.0 typecheck E:\Project\hardwareHarness\testForge
-> pnpm -r typecheck
-
-Scope: 2 of 3 workspace projects
-packages/contracts typecheck$ tsc -p tsconfig.json --noEmit
-packages/contracts typecheck: Done
-apps/desktop typecheck$ tsc -p tsconfig.json --noEmit
-apps/desktop typecheck: Done
