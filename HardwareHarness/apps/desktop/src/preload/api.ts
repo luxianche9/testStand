@@ -1,9 +1,19 @@
 import type { CreateTRPCClient } from "@trpc/client";
+import type { RequestContext } from "@hardwareharness/contracts/agents";
+import { DESKTOP_OPERATIONS, type BackendApplication, type DesktopOperation } from "@hardwareharness/contracts/application";
 import type { ErrorCategory } from "@hardwareharness/contracts/errors";
 import type { HardwareHarnessApi } from "@hardwareharness/contracts/desktop";
 import type { AppRouter } from "../main/ipc.js";
 
 export type DesktopTrpcClient = CreateTRPCClient<AppRouter>;
+
+/** Every Python `@operation` as a renderer function: the request context is supplied by main. */
+type DesktopOperations = {
+  [N in keyof BackendApplication & string]: {
+    [M in keyof BackendApplication[N] & string as `${N}.${M}` extends DesktopOperation ? M : never]:
+      BackendApplication[N][M] extends (context: RequestContext, ...args: infer A) => infer R ? (...args: A) => Promise<Awaited<R>> : never
+  }
+};
 
 export function createHardwareHarnessApi(client: DesktopTrpcClient): HardwareHarnessApi {
   const call = <T>(promise: Promise<T>): Promise<T> => promise.catch((error: unknown) => {
@@ -15,78 +25,38 @@ export function createHardwareHarnessApi(client: DesktopTrpcClient): HardwareHar
       ...(candidate?.data?.details === undefined ? {} : { details: candidate.data.details })
     });
   });
+  const { system, devices, projects, wiring, manual, testing } = operationFunctions((operation, args) => call(client.invoke.mutate({ operation, args })));
 
+  // Renderer names that differ from the operation, and procedures that need main-process dialogs.
   return {
     system: {
-      dashboard: () => call(client.system.dashboard.query()),
+      ...system,
       exportText: (defaultPath, content) => call(client.system.exportText.mutate({ defaultPath, content }))
     },
     devices: {
-      saveComputer: (computer, credentials) => call(client.devices.saveComputer.mutate({ computer, credentials })),
-      removeComputer: (id) => call(client.devices.removeComputer.mutate({ id })),
-      refreshComputer: (id) => call(client.devices.refreshComputer.query({ id })),
-      saveServer: (server, credentials) => call(client.devices.saveServer.mutate({ server, credentials })),
-      removeServer: (id) => call(client.devices.removeServer.mutate({ id })),
-      refreshServer: (id) => call(client.devices.refreshServer.query({ id })),
-      serverAction: (id, action) => call(client.devices.serverAction.mutate({ id, action })),
-      readServerLogs: (id, lines) => call(client.devices.readServerLogs.query({ id, lines })),
-      executeSsh: (id, command, timeoutMs) => call(client.devices.executeSsh.mutate({ id, command, timeoutMs })),
-      refreshManagedHardware: () => call(client.devices.refreshManagedHardware.query()),
-      listHardware: () => call(client.devices.listHardware.query()),
-      saveHardware: (hardware) => call(client.devices.saveHardware.mutate(hardware)),
-      removeHardware: (id) => call(client.devices.removeHardware.mutate({ id })),
+      ...devices,
+      refreshComputer: devices.getComputerStatus,
+      refreshManagedHardware: devices.listManagedHardware,
+      removeHardwareImage: (input) => devices.removeHardwareImage(input.hardwareId, input.portId),
+      hardwareImageUrl: async (hardwareId, assetId) => `hardwareharness-asset://local/${encodeURIComponent(hardwareId)}/${assetId.split("/").map(encodeURIComponent).join("/")}`,
       importHardwareImage: (input) => call(client.devices.importHardwareImage.mutate(input)),
-      removeHardwareImage: (input) => call(client.devices.removeHardwareImage.mutate(input)),
-      hardwareImageUrl: (hardwareId, assetId) => call(client.devices.hardwareImageUrl.query({ hardwareId, assetId })),
       exportBundle: (kind, id) => call(client.devices.exportBundle.mutate({ kind, id })),
       importBundle: (kind) => call(client.devices.importBundle.mutate({ kind })),
       previewBundle: (kind) => call(client.devices.previewBundle.mutate({ kind })),
-      applyBundle: (input) => call(client.devices.applyBundle.mutate(input))
+      applyBundle: async (input) => ({ kind: input.kind, ...await devices.importBundleForServer(input.data, input.hardwareId, input.serverId) })
     },
     projects: {
-      current: () => call(client.projects.current.query()),
-      chooseFolder: () => call(client.projects.chooseFolder.mutate()),
-      openFolder: (id) => call(client.projects.openFolder.mutate({ id })),
-      initializeFolder: (id) => call(client.projects.initializeFolder.mutate({ id })),
-      save: () => call(client.projects.save.mutate()),
-      leave: () => call(client.projects.leave.mutate()),
-      listRecent: () => call(client.projects.listRecent.query()),
-      forgetRecent: (id) => call(client.projects.forgetRecent.mutate({ id }))
+      ...projects,
+      current: projects.document,
+      save: projects.saveProject,
+      leave: projects.leaveProject,
+      chooseFolder: () => call(client.projects.chooseFolder.mutate())
     },
-    wiring: {
-      update: (input) => call(client.wiring.update.mutate(input)),
-      requestTask: (input) => call(client.wiring.requestTask.mutate(input)),
-      startTask: (id, operatorName) => call(client.wiring.startTask.mutate({ id, operatorName })),
-      completeTask: (id, outcome, message) => call(client.wiring.completeTask.mutate({ id, outcome, message })),
-      cancelTask: (id, message) => call(client.wiring.cancelTask.mutate({ id, message })),
-      getTask: (id) => call(client.wiring.getTask.query({ id })),
-      listTasks: (input) => call(client.wiring.listTasks.query(input))
-    },
-    manual: {
-      invokeTool: (input) => call(client.manual.invokeTool.mutate(input))
-    },
+    wiring: { ...wiring, update: wiring.updateDocument },
+    manual,
     testing: {
-      listPlans: () => call(client.testing.listPlans.query()),
-      loadPlan: (planId) => call(client.testing.loadPlan.query({ planId })),
-      createPlan: (input) => call(client.testing.createPlan.mutate(input)),
-      savePlan: (plan, baseRevision) => call(client.testing.savePlan.mutate({ plan, baseRevision })),
-      deletePlan: (planId) => call(client.testing.deletePlan.mutate({ planId })),
-      applyPlanOperations: (input) => call(client.testing.applyPlanOperations.mutate(input)),
-      validatePlan: (planId) => call(client.testing.validatePlan.query({ planId })),
-      analyzePlanDraft: (input) => call(client.testing.analyzePlanDraft.query(input)),
-      listStepCatalog: () => call(client.testing.listStepCatalog.query()),
-      listDeviceTools: (hardwareId) => call(client.testing.listDeviceTools.query({ hardwareId })),
-      startRun: (input) => call(client.testing.startRun.mutate(input)),
-      pauseRun: (runId) => call(client.testing.pauseRun.mutate({ runId })),
-      resumeRun: (runId) => call(client.testing.resumeRun.mutate({ runId })),
-      abortRun: (runId) => call(client.testing.abortRun.mutate({ runId })),
-      currentRun: () => call(client.testing.currentRun.query()),
-      getRun: (runId) => call(client.testing.getRun.query({ runId })),
-      listRuns: (input) => call(client.testing.listRuns.query(input)),
-      readRunLog: (input) => call(client.testing.readRunLog.query(input)),
-      readRunResults: (runId, afterSequence) => call(client.testing.readRunResults.query({ runId, afterSequence })),
-      listRecoveryItems: () => call(client.testing.listRecoveryItems.query()),
-      reconcileOperation: (input) => call(client.testing.reconcileOperation.mutate(input))
+      ...testing,
+      readRunLog: (input) => testing.readRunLog(input.runId, input.afterEventSequence, input.afterResultSequence, input.eventLimit, input.resultLimit)
     },
 
     agents: {
@@ -124,6 +94,16 @@ export function createHardwareHarnessApi(client: DesktopTrpcClient): HardwareHar
       }
     }
   };
+}
+
+/** Concrete functions (contextBridge cannot expose a Proxy) for every generated operation name. */
+function operationFunctions(invoke: (operation: DesktopOperation, args: unknown[]) => Promise<unknown>): DesktopOperations {
+  const namespaces: Record<string, Record<string, (...args: unknown[]) => Promise<unknown>>> = {};
+  for (const operation of DESKTOP_OPERATIONS) {
+    const [namespace, method] = operation.split(".") as [string, string];
+    (namespaces[namespace] ??= {})[method] = (...args) => invoke(operation, args);
+  }
+  return namespaces as unknown as DesktopOperations;
 }
 
 const errorCategories = new Set<ErrorCategory>([

@@ -1,32 +1,27 @@
 import {
-  type ToolApprovalOption,
-  type ToolCallMessagePart,
   type ToolCallMessagePartComponent,
-  type ToolCallMessagePartProps,
   type ToolCallMessagePartStatus,
   useScrollLock,
   useToolCallElapsed
 } from "@assistant-ui/react";
-import { AlertCircleIcon, CheckIcon, ChevronDownIcon, LoaderIcon, XCircleIcon } from "lucide-react";
+import { ChevronRightIcon } from "lucide-react";
 import { memo, useCallback, useRef, useState } from "react";
-import { Collapsible as CollapsiblePrimitive } from "radix-ui";
-import { Button } from "../../shared/ui/index.js";
-const Collapsible = CollapsiblePrimitive.Root;
-const CollapsibleTrigger = CollapsiblePrimitive.Trigger;
-const CollapsibleContent = CollapsiblePrimitive.Content;
-import { cn } from "../../shared/ui/index.js";
+import { Collapsible } from "radix-ui";
+import { cn } from "../../ui";
+import { ToolFallbackApproval } from "./ToolApproval";
+import {
+  isCancelledToolStatus,
+  toolBodyClass,
+  toolCardClass,
+  ToolLamp,
+  toolPreClass,
+  toolRowClass
+} from "./tools/shared";
 import { formatUnknown } from "./utils";
 
-const ANIMATION_DURATION = 160;
-const APPROVED_RESULT = "Approved by user";
-const DENIED_RESULT = "User denied tool execution";
+export { ToolFallbackApproval } from "./ToolApproval";
 
-const statusIcons: Record<ToolCallMessagePartStatus["type"], React.ElementType> = {
-  running: LoaderIcon,
-  complete: CheckIcon,
-  incomplete: XCircleIcon,
-  "requires-action": AlertCircleIcon
-};
+const ANIMATION_DURATION = 160;
 
 export function ToolFallbackRoot({
   open: controlledOpen,
@@ -35,7 +30,7 @@ export function ToolFallbackRoot({
   className,
   children,
   ...props
-}: Omit<React.ComponentProps<typeof Collapsible>, "open" | "onOpenChange"> & {
+}: Omit<React.ComponentProps<typeof Collapsible.Root>, "open" | "onOpenChange"> & {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   defaultOpen?: boolean;
@@ -50,15 +45,15 @@ export function ToolFallbackRoot({
     onOpenChange?.(next);
   }, [controlled, lockScroll, onOpenChange]);
   return (
-    <Collapsible
+    <Collapsible.Root
       ref={rootRef}
       open={controlled ? controlledOpen : localOpen}
       onOpenChange={change}
-      className={cn("group/tool-fallback-root w-full", className)}
+      className={cn("group/tool-fallback-root", toolCardClass, className)}
       {...props}
     >
       {children}
-    </Collapsible>
+    </Collapsible.Root>
   );
 }
 
@@ -72,7 +67,16 @@ function formatDuration(ms: number) {
 
 function ToolDuration() {
   const elapsed = useToolCallElapsed();
-  return elapsed === undefined ? null : <span className="text-xs tabular-nums text-muted-foreground">{formatDuration(elapsed)}</span>;
+  if (elapsed === undefined) return null;
+  return <span className="tf-num shrink-0 text-2xs text-fg-3">{formatDuration(elapsed)}</span>;
+}
+
+function statusLabel(status?: ToolCallMessagePartStatus) {
+  const type = status?.type ?? "complete";
+  if (type === "requires-action") return "等待确认";
+  if (type === "running") return "正在调用";
+  if (isCancelledToolStatus(status)) return "已取消";
+  return type === "incomplete" ? "调用失败" : "已调用";
 }
 
 export function ToolFallbackTrigger({
@@ -80,143 +84,74 @@ export function ToolFallbackTrigger({
   status,
   className,
   ...props
-}: React.ComponentProps<typeof CollapsibleTrigger> & { toolName: string; status?: ToolCallMessagePartStatus }) {
-  const type = status?.type ?? "complete";
-  const Icon = statusIcons[type];
-  const running = type === "running";
-  const cancelled = status?.type === "incomplete" && status.reason === "cancelled";
-  const label = type === "requires-action" ? "等待确认" : running ? "正在调用" : cancelled ? "已取消" : type === "incomplete" ? "调用失败" : "已调用";
+}: React.ComponentProps<typeof Collapsible.Trigger> & { toolName: string; status?: ToolCallMessagePartStatus }) {
+  const running = status?.type === "running";
+  const cancelled = isCancelledToolStatus(status);
+  const label = statusLabel(status);
   return (
-    <CollapsibleTrigger
-      className={cn("group flex w-fit max-w-full items-center gap-2 py-1.5 text-sm text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/40", className)}
-      {...props}
-    >
-      <Icon className={cn("size-4 shrink-0", running && "animate-spin", type === "incomplete" && !cancelled && "text-destructive")} />
-      <span className={cn("relative min-w-0 truncate leading-none", cancelled && "line-through opacity-60")}>
-        <span>{label}：<b>{toolName}</b></span>
-        {running && <span aria-hidden className="shimmer pointer-events-none absolute inset-0">{label}：<b>{toolName}</b></span>}
+    <Collapsible.Trigger className={cn("group", toolRowClass, className)} {...props}>
+      <ToolLamp status={status} />
+      <span className={cn("relative min-w-0 flex-1 truncate", cancelled && "line-through opacity-50")}>
+        <span>
+          {label}：<b className="font-mono font-medium text-fg">{toolName}</b>
+        </span>
+        {running && (
+          <span aria-hidden className="shimmer pointer-events-none absolute inset-0">
+            {label}：<b className="font-mono font-medium">{toolName}</b>
+          </span>
+        )}
       </span>
       <ToolDuration />
-      <ChevronDownIcon className="size-4 shrink-0 -rotate-90 transition-transform group-data-[state=open]:rotate-0" />
-    </CollapsibleTrigger>
+      <ChevronRightIcon
+        aria-hidden
+        className="size-3.5 shrink-0 text-fg-3 transition-transform duration-120 group-data-[state=open]:rotate-90"
+      />
+    </Collapsible.Trigger>
   );
 }
 
-export function ToolFallbackContent({ className, children, ...props }: React.ComponentProps<typeof CollapsibleContent>) {
+export function ToolFallbackContent(
+  { className, children, ...props }: React.ComponentProps<typeof Collapsible.Content>
+) {
   return (
-    <CollapsibleContent
-      className={cn("overflow-hidden text-sm outline-none data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down motion-reduce:animate-none", className)}
-      {...props}
-    >
-      <div className="flex flex-col gap-2 ps-6 pt-1 pb-2">{children}</div>
-    </CollapsibleContent>
+    <Collapsible.Content className={cn(toolBodyClass, "text-sm outline-none", className)} {...props}>
+      <div className="flex flex-col gap-2 p-2">{children}</div>
+    </Collapsible.Content>
   );
 }
 
 export function ToolFallbackArgs({ argsText }: { argsText?: string }) {
   if (!argsText) return null;
-  return <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-md bg-muted/50 p-2.5 font-mono text-xs text-foreground/90">{argsText}</pre>;
+  return (
+    <div className="grid gap-1">
+      <p className="tf-label">参数</p>
+      <pre className={toolPreClass}>{argsText}</pre>
+    </div>
+  );
 }
 
 export function ToolFallbackResult({ result }: { result?: unknown }) {
   if (result === undefined) return null;
   return (
-    <div>
-      <p className="text-xs font-medium text-muted-foreground">结果</p>
-      <pre className="mt-1 max-h-72 overflow-auto whitespace-pre-wrap rounded-md bg-muted/50 p-2.5 font-mono text-xs text-foreground/90">{formatUnknown(result)}</pre>
+    <div className="grid gap-1">
+      <p className="tf-label">结果</p>
+      <pre className={cn(toolPreClass, "max-h-72")}>{formatUnknown(result)}</pre>
     </div>
   );
 }
 
 export function ToolFallbackError({ status }: { status?: ToolCallMessagePartStatus }) {
   if (status?.type !== "incomplete" || !status.error) return null;
+  const cancelled = status.reason === "cancelled";
   return (
-    <div className="rounded-md border border-destructive/30 bg-destructive/10 p-2.5 text-xs text-destructive">
-      <strong>{status.reason === "cancelled" ? "取消原因" : "错误"}</strong>
-      <p className="mt-1 whitespace-pre-wrap">{formatUnknown(status.error)}</p>
-    </div>
-  );
-}
-
-const optionLabels: Record<string, string> = {
-  "allow-once": "允许一次",
-  "allow-always": "始终允许",
-  "reject-once": "拒绝",
-  "reject-always": "始终拒绝"
-};
-const isAllow = (kind: string) => kind === "allow-once" || kind === "allow-always";
-const optionLabel = (option: ToolApprovalOption) => option.label ?? optionLabels[option.kind] ?? option.id;
-
-export function ToolFallbackApproval({
-  addResult,
-  resume,
-  interrupt,
-  approval,
-  respondToApproval
-}: Partial<Pick<ToolCallMessagePartProps, "addResult" | "resume" | "respondToApproval">> & {
-  interrupt?: ToolCallMessagePart["interrupt"];
-  approval?: ToolCallMessagePart["approval"];
-}) {
-  const [submitted, setSubmitted] = useState(false);
-  const [confirmingId, setConfirmingId] = useState<string | null>(null);
-  if (approval && (approval.approved !== undefined || approval.resolution !== undefined)) return null;
-  const declared = respondToApproval ? approval?.options : undefined;
-  const options = declared?.filter((option) => option.kind in optionLabels) ?? [];
-
-  const respond = (approved: boolean) => {
-    if (submitted) return;
-    if (approval && approval.approved === undefined && respondToApproval) respondToApproval({ approved });
-    else if (interrupt) resume?.({ approved });
-    else addResult?.(approved ? APPROVED_RESULT : DENIED_RESULT);
-    setSubmitted(true);
-  };
-  const respondWithOption = (option: ToolApprovalOption) => {
-    if (submitted) return;
-    respondToApproval?.({ optionId: option.id });
-    setSubmitted(true);
-    setConfirmingId(null);
-  };
-  const confirming = options.find((option) => option.id === confirmingId);
-  if (confirming) {
-    const meta = typeof confirming.confirm === "object" ? confirming.confirm : undefined;
-    return (
-      <div className="flex flex-col gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
-        <p className="font-semibold">{meta?.title ?? `确认“${optionLabel(confirming)}”？`}</p>
-        {(meta?.description ?? confirming.description) && <p className="text-xs text-muted-foreground">{meta?.description ?? confirming.description}</p>}
-        {confirming.grants?.map((grant) => <code key={grant} className="rounded-sm bg-muted px-1.5 py-0.5 text-xs">{grant}</code>)}
-        <div className="flex gap-2">
-          <Button size="sm" disabled={submitted} onClick={() => respondWithOption(confirming)}>确认</Button>
-          <Button size="sm" variant="outline" disabled={submitted} onClick={() => setConfirmingId(null)}>返回</Button>
-        </div>
-      </div>
-    );
-  }
-
-  if (declared?.length) {
-    const allow = options.filter((option) => isAllow(option.kind));
-    const reject = options.filter((option) => !isAllow(option.kind));
-    return (
-      <div className="flex flex-wrap items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
-        {[...allow, ...reject].map((option) => (
-          <Button
-            key={option.id}
-            size="sm"
-            variant={option === allow[0] ? "default" : "outline"}
-            disabled={submitted}
-            onClick={() => option.confirm ? setConfirmingId(option.id) : respondWithOption(option)}
-          >
-            {optionLabel(option)}
-          </Button>
-        ))}
-        {!reject.length && <Button size="sm" variant="outline" disabled={submitted} onClick={() => respond(false)}>拒绝</Button>}
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
-      <Button size="sm" disabled={submitted} onClick={() => respond(true)}>允许</Button>
-      <Button size="sm" variant="outline" disabled={submitted} onClick={() => respond(false)}>拒绝</Button>
+    <div
+      className={cn(
+        "rounded-sm border p-2 text-xs",
+        cancelled ? "border-line bg-surface-2 text-fg-2" : "border-fail/35 bg-fail/8 text-fail"
+      )}
+    >
+      <strong className="font-medium">{cancelled ? "取消原因" : "错误"}</strong>
+      <p className="mt-1 font-mono whitespace-pre-wrap wrap-break-word">{formatUnknown(status.error)}</p>
     </div>
   );
 }

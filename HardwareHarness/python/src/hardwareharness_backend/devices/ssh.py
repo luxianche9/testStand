@@ -9,7 +9,7 @@ from typing import Any
 
 import paramiko
 
-from hardwareharness_backend.compat import json_stringify
+from hardwareharness_backend.util import json_dumps
 
 Record = dict[str, Any]
 SshCredential = Record
@@ -52,7 +52,7 @@ class SshManager:
             ),
             "credential": self.secrets.get(f"ssh:{computer['id']}"),
         }
-        return hashlib.sha256(json_stringify(value).encode()).hexdigest()
+        return hashlib.sha256(json_dumps(value).encode()).hexdigest()
 
     def _open(self, computer: Record) -> paramiko.SSHClient:
         credential = self.secrets.get(f"ssh:{computer['id']}")

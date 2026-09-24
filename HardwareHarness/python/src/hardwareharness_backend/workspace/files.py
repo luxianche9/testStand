@@ -21,7 +21,6 @@ HIDDEN = frozenset(
         "snapshots",
         "backups",
         "runtime",
-        "migration-backups",
     }
 )
 READONLY = HIDDEN | {"project.json", "uv.lock"}

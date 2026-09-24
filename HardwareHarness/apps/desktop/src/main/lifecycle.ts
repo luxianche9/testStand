@@ -20,8 +20,7 @@ export async function startDesktop(): Promise<void> {
     agents: composition.agents,
     settings: composition.settings,
     dialogs,
-    windows,
-    workspaceChanged: composition.workspaceChanged
+    windows
   });
   const window = windows.create({
     statePath: join(app.getPath("userData"), "window-state.json"),

@@ -51,7 +51,6 @@ export const testPlanSchema = z.object({
   revision: z.number().int().positive(),
   parameters: z.array(testParameterSchema).default([]),
   requirements: z.array(z.object({ id: z.string().min(1), name: z.string().min(1), description: z.string().optional() }).strict()).default([]),
-  wiringRequirements: z.array(z.object({ connectionId: z.string().min(1), signature: z.string().min(1) }).strict()).default([]),
   stopOnFail: z.boolean().default(false),
   regions: z.object({ prepare: z.array(testStepSchema), test: z.array(testStepSchema), cleanup: z.array(testStepSchema) }).strict(),
   createdAt: z.string(),
@@ -61,7 +60,7 @@ export type TestPlan = z.infer<typeof testPlanSchema>;
 
 export interface TestPlanSummary {
   id: string; name: string; description: string; revision: number; updatedAt?: string;
-  valid?: boolean; invalid?: boolean; message?: string; stepCount?: number; migrationRequired?: boolean;
+  valid?: boolean; invalid?: boolean; message?: string; stepCount?: number;
 }
 export interface TestPlanIssue { severity: "error" | "warning"; code: string; message: string; path: string }
 export interface RequirementCoverage { requirementId: string; name: string; status: "Passed" | "Failed" | "NotRun" | "InsufficientEvidence"; assertionCount?: number; evidenceCount?: number }
@@ -157,3 +156,24 @@ export interface TestRunLog {
   latestEventSequence: number; latestResultSequence: number;
   hasMoreEvents: boolean; hasMoreResults: boolean;
 }
+
+/** The physical unit under test; each project tests one product, one unit at a time. */
+export interface TestUnit { unitId: string; serialNumber: string; startedAt: string }
+/** Latest result of one functional test item (one saved plan) for the current unit. */
+export interface TestItemStatus {
+  planId: string; name: string; revision: number; invalid: boolean; queued: boolean; stale: boolean;
+  runId?: string; state?: TestRunState; verdict?: TestVerdict;
+  startedAt?: string; completedAt?: string; durationMs?: number; message?: string;
+}
+export type TestBatchState = "running" | "completed" | "aborted" | "error" | "interrupted";
+export interface TestBatchItem {
+  planId: string; planName: string; state: "queued" | "running" | "done" | "skipped";
+  runId?: string; verdict?: TestVerdict; message?: string;
+}
+export interface TestBatch {
+  batchId: string; state: TestBatchState; stopOnFail: boolean; unitId: string;
+  startedAt: string; completedAt?: string; currentPlanId?: string; stopReason?: string;
+  items: TestBatchItem[];
+}
+export interface TestItemStatusList { unit: TestUnit; items: TestItemStatus[]; batch?: TestBatch }
+export interface TestBatchStartInput { requestId: string; planIds: string[]; stopOnFail: boolean }

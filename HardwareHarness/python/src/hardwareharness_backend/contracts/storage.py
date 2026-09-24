@@ -1,6 +1,5 @@
 from typing import Any
 
-from hardwareharness_backend.compat import Record
 from hardwareharness_backend.contracts.validation import (
     array,
     boolean,
@@ -11,6 +10,7 @@ from hardwareharness_backend.contracts.validation import (
     record,
     string,
 )
+from hardwareharness_backend.util import Record
 
 theme_choice_schema = enum("system", "light", "dark")
 welcome_layout_schema = enum("grid", "list")

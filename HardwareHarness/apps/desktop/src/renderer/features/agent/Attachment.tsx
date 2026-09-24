@@ -5,10 +5,9 @@ import {
   useAui,
   useAuiState
 } from "@assistant-ui/react";
-import { AlertCircleIcon, FileTextIcon, Loader2Icon, XIcon } from "lucide-react";
+import { AlertCircleIcon, FileTextIcon, XIcon } from "lucide-react";
 import { useEffect, useState, type FC } from "react";
-import { TooltipIconButton } from "../../shared/ui/index.js";
-import { cn } from "../../shared/ui/index.js";
+import { cn, IconButton, Spinner } from "../../ui";
 
 function useAttachmentPreview() {
   const type = useAuiState((state) => state.attachment.type);
@@ -45,25 +44,40 @@ const AttachmentTile: FC = () => {
   return (
     <AttachmentPrimitive.Root
       className={cn(
-        "group/attachment relative flex min-w-0 items-center gap-2 rounded-xl bg-background px-2 py-1.5 text-xs shadow-sm ring-1 ring-border",
+        "group/attachment relative flex min-w-0 items-center gap-2 rounded-md border bg-surface-2 p-1 text-xs",
         composer ? "max-w-48" : "max-w-56",
-        failed && "ring-destructive/50"
+        failed ? "border-fail/50" : "border-line"
       )}
     >
-      <div className="relative grid size-8 shrink-0 place-items-center overflow-hidden rounded-sm bg-muted text-muted-foreground">
-        {preview ? <img src={preview} alt="附件预览" className="size-full object-cover" /> : <FileTextIcon className="size-4" />}
-        {loading && <div className="absolute grid size-8 place-items-center rounded-sm bg-background/75"><Loader2Icon className="size-3.5 animate-spin" /></div>}
-        {failed && <div className="absolute grid size-8 place-items-center rounded-sm bg-background/80 text-destructive"><AlertCircleIcon className="size-3.5" /></div>}
+      <div
+        className={
+          "relative grid size-7 shrink-0 place-items-center overflow-hidden rounded-sm border border-line " +
+          "bg-surface-0 text-fg-3"
+        }
+      >
+        {preview
+          ? <img src={preview} alt="附件预览" className="size-full object-cover" />
+          : <FileTextIcon aria-hidden className="size-3.5" />}
+        {loading && (
+          <div className="absolute inset-0 grid place-items-center bg-surface-0/75 text-run">
+            <Spinner className="size-3" />
+          </div>
+        )}
+        {failed && (
+          <div className="absolute inset-0 grid place-items-center bg-surface-0/80 text-fail">
+            <AlertCircleIcon aria-hidden className="size-3.5" />
+          </div>
+        )}
       </div>
       <div className="min-w-0 flex-1">
-        <span className="block truncate font-medium text-foreground"><AttachmentPrimitive.Name /></span>
-        <span className="text-[10px] text-muted-foreground">{type === "image" ? "图片" : "文件"}</span>
+        <span className="block truncate font-mono text-fg"><AttachmentPrimitive.Name /></span>
+        <span className="tf-label">{type === "image" ? "图片" : "文件"}</span>
       </div>
       {composer && (
         <AttachmentPrimitive.Remove asChild>
-          <TooltipIconButton tooltip={`移除 ${name}`} className="size-5 rounded-sm opacity-70 hover:opacity-100" aria-label={`移除 ${name}`}>
+          <IconButton label={`移除 ${name}`} size="icon-xs" className="text-fg-3">
             <XIcon className="size-3" />
-          </TooltipIconButton>
+          </IconButton>
         </AttachmentPrimitive.Remove>
       )}
     </AttachmentPrimitive.Root>
@@ -72,7 +86,7 @@ const AttachmentTile: FC = () => {
 
 export function ComposerAttachments() {
   return (
-    <div className="flex w-full gap-2 overflow-x-auto empty:hidden">
+    <div className="flex w-full gap-1.5 overflow-x-auto empty:hidden">
       <ComposerPrimitive.Attachments>{() => <AttachmentTile />}</ComposerPrimitive.Attachments>
     </div>
   );
@@ -80,7 +94,7 @@ export function ComposerAttachments() {
 
 export function UserMessageAttachments() {
   return (
-    <div className="col-span-full col-start-1 row-start-1 flex w-full flex-wrap justify-end gap-2 empty:hidden">
+    <div className="col-span-full col-start-1 row-start-1 flex w-full flex-wrap justify-end gap-1.5 empty:hidden">
       <MessagePrimitive.Attachments>{() => <AttachmentTile />}</MessagePrimitive.Attachments>
     </div>
   );

@@ -15,8 +15,8 @@ import httpx
 import pytest
 import pytest_asyncio
 
-from hardwareharness_backend.compat import UNDEFINED
 from hardwareharness_backend.host.codec import decode, encode
+from hardwareharness_backend.util import UNDEFINED
 
 
 class Client:

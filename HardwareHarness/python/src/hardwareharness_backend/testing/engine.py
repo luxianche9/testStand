@@ -13,8 +13,8 @@ from typing import Any, cast
 from jsonschema import Draft202012Validator
 from ruamel.yaml import YAML
 
-from hardwareharness_backend.compat import clone, new_uuid, utc_now_iso
 from hardwareharness_backend.contracts.errors import app_error, to_wire_error
+from hardwareharness_backend.util import clone, new_uuid, utc_now_iso
 
 from .expression import evaluate
 from .models import aggregate_verdict, plan_hardware_ids
@@ -87,7 +87,11 @@ class TestEngine:
         self.notifier = notifier
 
     async def start(
-        self, plan: Record, parameters: Record, execution_revision: str | None = None
+        self,
+        plan: Record,
+        parameters: Record,
+        execution_revision: str | None = None,
+        tags: Record | None = None,
     ) -> Record:
         if self.active and not self.active.done:
             raise app_error(
@@ -103,7 +107,7 @@ class TestEngine:
                 "Hardware has unresolved physical operations",
                 {"hardwareIds": sorted(blocked), "recoveryRequired": True},
             )
-        run = _Run(self, plan, parameters, execution_revision)
+        run = _Run(self, plan, parameters, execution_revision, tags)
         self.runs[run.run_id] = run
         self.active = run
         run.task = asyncio.create_task(run.execute())
@@ -363,8 +367,10 @@ class _Run:
         plan: Record,
         parameters: Record,
         execution_revision: str | None = None,
+        tags: Record | None = None,
     ) -> None:
         self.engine, self.plan, self.parameters = engine, clone(plan), clone(parameters)
+        self.tags = {key: value for key, value in (tags or {}).items() if value is not None}
         self.run_id = new_uuid()
         self.state = "starting"
         self.verdict = "NotSet"
@@ -424,6 +430,7 @@ class _Run:
             "revision": self.plan["revision"],
             "executionRevision": self.execution_revision,
             "planName": self.plan.get("name", ""),
+            **clone(self.tags),
             "state": self.state,
             "verdict": self.verdict,
             "executionStatus": self.execution_status,
@@ -449,6 +456,8 @@ class _Run:
         try:
             self.run_dir.mkdir(parents=True, exist_ok=False)
             self._write_yaml(self.run_dir / "plan.hhplan.yaml", self.plan)
+            if hasattr(self.engine.projects, "wiring"):
+                self._write_json(self.run_dir / "wiring.json", self.engine.projects.wiring())
             hardware_ids = plan_hardware_ids(self.plan)
             self.activity_handle = self.engine.execution.acquire(
                 {

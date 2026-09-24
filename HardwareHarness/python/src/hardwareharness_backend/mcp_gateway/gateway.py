@@ -16,13 +16,6 @@ from mcp.shared.version import SUPPORTED_PROTOCOL_VERSIONS as SDK_PROTOCOL_VERSI
 from pydantic import ValidationError
 from starlette.types import Receive, Scope, Send
 
-from hardwareharness_backend.compat import (
-    UNDEFINED,
-    json_parse,
-    json_stringify,
-    new_uuid,
-    utc_now_iso,
-)
 from hardwareharness_backend.contracts.validation import (
     literal,
     number,
@@ -31,6 +24,13 @@ from hardwareharness_backend.contracts.validation import (
     string,
     union,
     unknown,
+)
+from hardwareharness_backend.util import (
+    UNDEFINED,
+    json_dumps,
+    json_loads,
+    new_uuid,
+    utc_now_iso,
 )
 
 from .agent_instructions import AGENT_INSTRUCTIONS as AGENT_INSTRUCTIONS
@@ -263,7 +263,7 @@ class LocalMcpGateway:
                         return
                     if not message.get("more_body", False):
                         break
-                body = json_parse(data.decode("utf-8", errors="replace"))
+                body = json_loads(data.decode("utf-8", errors="replace"))
                 self._record_client(body)
             consumed = False
 
@@ -377,7 +377,7 @@ class LocalMcpGateway:
                     consumed = True
                     return {
                         "type": "http.request",
-                        "body": json_stringify(message).encode(),
+                        "body": json_dumps(message).encode(),
                         "more_body": False,
                     }
                 await asyncio.Event().wait()
@@ -422,7 +422,7 @@ class LocalMcpGateway:
                 return types.ServerResult(
                     types.EmptyResult.model_validate(
                         {
-                            "content": [{"type": "text", "text": json_stringify(data)}],
+                            "content": [{"type": "text", "text": json_dumps(data)}],
                             "structuredContent": data,
                         }
                     )
@@ -444,7 +444,7 @@ class LocalMcpGateway:
                     types.EmptyResult.model_validate(
                         {
                             "isError": True,
-                            "content": [{"type": "text", "text": json_stringify(failure)}],
+                            "content": [{"type": "text", "text": json_dumps(failure)}],
                             "structuredContent": failure,
                         }
                     )
@@ -565,7 +565,7 @@ async def _sse_reply(send: Send, session_id: str, body: Record) -> None:
     await send(
         {
             "type": "http.response.body",
-            "body": f"event: message\ndata: {json_stringify(body)}\n\n".encode(),
+            "body": f"event: message\ndata: {json_dumps(body)}\n\n".encode(),
         }
     )
 
@@ -590,4 +590,4 @@ async def _reply(
             "headers": [(b"content-type", b"application/json"), *(extra_headers or [])],
         }
     )
-    await send({"type": "http.response.body", "body": json_stringify(body).encode("utf-8")})
+    await send({"type": "http.response.body", "body": json_dumps(body).encode("utf-8")})

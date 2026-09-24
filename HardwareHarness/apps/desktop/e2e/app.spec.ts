@@ -118,7 +118,9 @@ test.describe.serial("HardwareHarness folder project desktop", () => {
 
     await page.getByRole("tab", { name: "工位接线", exact: true }).click();
     await expect(page.getByText("硬件库")).toBeVisible();
-    await expect(page.getByRole("button", { name: "信箱" })).toBeVisible();
+    await expect(page.getByRole("region", { name: "接线任务列表" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "信箱" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "命令面板" })).toHaveCount(0);
     await page.screenshot({ path: resolve(artifactDir, "project-wiring.png") });
 
   });
@@ -141,7 +143,7 @@ test.describe.serial("HardwareHarness folder project desktop", () => {
 
     for (let index = 0; index < taskIds.length; index++) {
       const modal = page.getByRole("dialog", { name: /^(接线|断线)任务$/ });
-      const confirm = modal.getByRole("button", { name: "已完成", exact: true });
+      const confirm = modal.getByRole("button", { name: "完成", exact: true });
       await expect(confirm).toBeEnabled();
       await confirm.click();
       await expect(modal.getByText("已完成", { exact: true })).toBeVisible();
@@ -216,11 +218,17 @@ test.describe.serial("HardwareHarness folder project desktop", () => {
       expect(validation).toMatchObject({ valid: true, revision: 3 });
       const started = mcpData(await client.callTool({
         name: "start_test_run",
-        arguments: { planId: "agent-e2e", revision: 3, requestId: "e2e-start-run", parameters: {} }
+        arguments: {
+          planId: "agent-e2e", revision: 3, executionRevision: validation.executionRevision,
+          requestId: "e2e-start-run", parameters: {}
+        }
       }));
       const duplicate = mcpData(await client.callTool({
         name: "start_test_run",
-        arguments: { planId: "agent-e2e", revision: 3, requestId: "e2e-start-run", parameters: {} }
+        arguments: {
+          planId: "agent-e2e", revision: 3, executionRevision: validation.executionRevision,
+          requestId: "e2e-start-run", parameters: {}
+        }
       }));
       expect(duplicate.runId).toBe(started.runId);
       await client.callTool({ name: "pause_test_run", arguments: { runId: started.runId } });
@@ -243,9 +251,9 @@ test.describe.serial("HardwareHarness folder project desktop", () => {
       const results = mcpData(await client.callTool({ name: "read_test_run_results", arguments: { runId: started.runId, afterSequence: 0 } }));
       expect(results.results).toEqual(expect.arrayContaining([expect.objectContaining({ name: "安全清理", value: "done" })]));
 
-      await page.getByRole("tab", { name: "测试计划", exact: true }).click();
+      await page.getByRole("tab", { name: "功能测试", exact: true }).click();
       await expect(page.getByText("Agent 编排计划", { exact: true }).first()).toBeVisible();
-      await expect(page.getByText("aborted · Aborted", { exact: true })).toBeVisible();
+      await expect(page.getByRole("list", { name: "功能测试项" }).getByText("中止", { exact: true }).first()).toBeVisible();
     } finally {
       await client.close();
     }

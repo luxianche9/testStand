@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { filterOpenCodeCommands, parseOpenCodeCommand, serializeOpenCodeCommandAttachments, type OpenCodeCommandOption } from "./OpenCodeComposer";
+import {
+  filterOpenCodeCommands,
+  parseOpenCodeCommand,
+  serializeOpenCodeCommandAttachments,
+  type OpenCodeCommandOption
+} from "./OpenCodeComposer";
 
 const commands: OpenCodeCommandOption[] = [
   { name: "review", description: "Review the current changes" },

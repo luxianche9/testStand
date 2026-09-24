@@ -1,197 +1,204 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent } from "react";
-import { Handle, NodeResizer, useUpdateNodeInternals, type NodeProps } from "@xyflow/react";
-import type { Hardware } from "@hardwareharness/contracts/devices";
-import type { PortPosition, PortSide } from "@hardwareharness/contracts/wiring";
-import { CableIcon, CpuIcon, RefreshCwIcon } from "lucide-react";
-import { cn } from "../../shared/ui/cn";
-import { Badge, badgeVariantFromTone } from "../../shared/ui/badge";
-import { Button } from "../../shared/ui/button";
-import { useDashboard } from "../../shared/queries.js";
-import { hardwareStatus } from "../../shared/hardware-status.js";
+import { useEffect, useRef, type DragEvent } from "react";
 import {
-  MAX_CARD_HEIGHT,
-  MAX_CARD_WIDTH,
-  MIN_CARD_HEIGHT_LABEL,
-  MIN_CARD_HEIGHT_WITH_IMAGE,
-  MIN_CARD_WIDTH,
-  assetKey,
-  nearestPortPosition,
-  reactFlowPosition,
-  type HardwareFlowNode
-} from "./wiring-model.js";
+  Background,
+  BackgroundVariant,
+  ConnectionLineType,
+  ConnectionMode,
+  Controls,
+  ReactFlow,
+  useNodesInitialized,
+  useReactFlow,
+  type Connection,
+  type OnEdgesChange,
+  type OnNodesChange
+} from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
+import { CableIcon } from "lucide-react";
+import { cn } from "../../ui/index.js";
+import { HARDWARE_MIME } from "./HardwareLibrary.js";
+import { wiringNodeTypes } from "./HardwareNode.js";
+import type { HardwareFlowNode, ManualPair, NodeMenu, TopologyEdge } from "./wiring-model.js";
 
-export function HardwareLibrary({ hardware, assetUrls, placed, onAdd, onRefresh }: {
-  hardware: Hardware[];
-  assetUrls: Record<string, string>;
-  placed: Set<string>;
-  onAdd: (hardwareId: string) => void;
-  onRefresh: () => void;
+export { wiringNodeTypes } from "./HardwareNode.js";
+
+const fitOptions = { padding: 0.2, maxZoom: 1 };
+
+/** The bench: dotted canvas, faceplate nodes, signal-coloured cables. */
+export function WiringCanvas({
+  nodes, edges, onNodesChange, onEdgesChange, onConnect, onDropHardware, onMoveNode,
+  onSelectConnection, onNodeMenu
+}: {
+  nodes: HardwareFlowNode[];
+  edges: TopologyEdge[];
+  onNodesChange: OnNodesChange<HardwareFlowNode>;
+  onEdgesChange: OnEdgesChange<TopologyEdge>;
+  onConnect: (pair: ManualPair) => void;
+  onDropHardware: (hardwareId: string, position: { x: number; y: number }) => void;
+  onMoveNode: (hardwareId: string, x: number, y: number) => void;
+  onSelectConnection: (connectionId: string | undefined) => void;
+  onNodeMenu: (menu: NodeMenu) => void;
 }) {
-  const dashboard = useDashboard();
-  const [checking, setChecking] = useState(false);
-  // Online state comes from the availability probe, keyed by hardwareId; passive (non-MCP)
-  // hardware has no probe and is shown as such rather than "offline".
-  const availability = useMemo(() => new Map((dashboard.data?.availability ?? []).map((item) => [item.hardwareId, item])), [dashboard.data]);
+  const flow = useReactFlow<HardwareFlowNode, TopologyEdge>();
+  // Frame the bench once every node loaded from the project has been measured.
+  const nodesInitialized = useNodesInitialized();
+  const framed = useRef(false);
+  useEffect(() => {
+    if (framed.current || !nodesInitialized || !nodes.length) return;
+    framed.current = true;
+    void flow.fitView(fitOptions);
+  }, [flow, nodesInitialized, nodes.length]);
 
-  const check = async () => {
-    setChecking(true);
-    try { await window.hardwareharness.devices.refreshManagedHardware(); } catch { /* a half-down MCP still reports per-hardware state below */ }
-    await dashboard.refetch();
-    onRefresh();
-    setChecking(false);
+  const connect = (connection: Connection) => {
+    if (!connection.source || !connection.target || !connection.sourceHandle || !connection.targetHandle) return;
+    const portA = `${connection.source}.${connection.sourceHandle}`;
+    const portB = `${connection.target}.${connection.targetHandle}`;
+    if (portA !== portB) onConnect({ portA, portB });
+  };
+  const drop = (event: DragEvent) => {
+    event.preventDefault();
+    const hardwareId = event.dataTransfer.getData(HARDWARE_MIME);
+    if (hardwareId) onDropHardware(hardwareId, flow.screenToFlowPosition({ x: event.clientX, y: event.clientY }));
   };
 
-  return <aside className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] bg-secondary/40">
-    <header className="flex items-center justify-between gap-2 bg-card px-3 py-2.5">
-      <strong className="truncate text-sm font-semibold">硬件库</strong>
-      <Button variant="ghost" size="sm" disabled={checking} onClick={() => void check()}>
-        <RefreshCwIcon className={cn("size-3.5", checking && "animate-spin")} />刷新
-      </Button>
-    </header>
-    <div className="min-h-0 overflow-auto p-2.5">
-      {hardware.map((item) => {
-        const onCanvas = placed.has(item.hardwareId);
-        const url = item.appearanceAssetId ? assetUrls[assetKey(item.hardwareId, item.appearanceAssetId)] : undefined;
-        const status = item.kind === "managed"
-          ? hardwareStatus(dashboard.data?.serverStatuses.find((server) => server.serverId === item.serverId), availability.get(item.hardwareId))
-          : { label: "被动", tone: "muted" as const, title: undefined };
-        return <article
-          className={cn(
-            "mb-2 overflow-hidden rounded-xl bg-card shadow-sm ring-1 transition-[box-shadow,ring-color,transform] active:scale-[0.99]",
-            onCanvas ? "ring-ring/60" : "ring-border"
-          )}
-          key={item.hardwareId}
-          draggable={!onCanvas}
-          onDragStart={(event) => { event.dataTransfer.setData("application/hardwareharness-hardware", item.hardwareId); event.dataTransfer.effectAllowed = "move"; }}
+  return (
+    <div
+      className="wiring-canvas relative h-full min-h-0 min-w-0 bg-canvas"
+      onDrop={drop}
+      onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "move"; }}
+    >
+      <ReactFlow<HardwareFlowNode, TopologyEdge>
+        nodes={nodes}
+        edges={edges}
+        nodeTypes={wiringNodeTypes}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onConnect={connect}
+        connectionLineType={ConnectionLineType.SmoothStep}
+        connectionMode={ConnectionMode.Loose}
+        onNodeDragStop={(_event, node) => onMoveNode(node.id, node.position.x, node.position.y)}
+        onNodeContextMenu={(event, node) => {
+          event.preventDefault();
+          onNodeMenu({
+            hardwareId: node.id,
+            x: Math.max(8, Math.min(event.clientX, window.innerWidth - 176)),
+            y: Math.max(8, Math.min(event.clientY, window.innerHeight - 140))
+          });
+        }}
+        onEdgeClick={(_event, edge) => onSelectConnection(String(edge.data?.connectionId ?? edge.id))}
+        onPaneClick={() => onSelectConnection(undefined)}
+        fitView
+        fitViewOptions={fitOptions}
+        minZoom={0.3}
+        maxZoom={2}
+        deleteKeyCode={null}
+        proOptions={{ hideAttribution: true }}
+      >
+        <Background
+          id="minor"
+          variant={BackgroundVariant.Dots}
+          gap={16}
+          size={1.2}
+          color="var(--tf-canvas-grid)"
+          bgColor="var(--tf-canvas)"
+        />
+        <Background
+          id="major"
+          variant={BackgroundVariant.Lines}
+          gap={160}
+          lineWidth={1}
+          color="var(--tf-canvas-grid)"
+          bgColor="transparent"
+        />
+        <Controls position="bottom-right" showInteractive={false} />
+      </ReactFlow>
+      {!nodes.length && (
+        <div
+          className="pointer-events-none absolute inset-0 z-[1] grid place-content-center justify-items-center gap-2"
         >
-          <button
-            className="flex h-10 w-full items-center gap-2 px-2 py-1 text-left transition-colors enabled:hover:bg-accent disabled:cursor-default"
-            onClick={() => onAdd(item.hardwareId)}
-            disabled={onCanvas}
-          >
-            <span className="grid size-[30px] flex-none place-items-center overflow-hidden rounded-md bg-secondary text-muted-foreground shadow-sm ring-1 ring-border [&_img]:size-full [&_img]:object-contain">
-              {url ? <img src={url} alt="" /> : <CpuIcon className="size-5" />}
-            </span>
-            <span className="min-w-0 flex-1"><strong className="block truncate text-xs">{item.label}</strong></span>
-            <Badge variant={badgeVariantFromTone(status.tone)} title={status.title} className="ml-auto flex-none">{status.label}</Badge>
-          </button>
-        </article>;
-      })}
-      {!hardware.length && <div className="p-4 text-xs leading-normal text-muted-foreground">还没有登记设备。请到「设备管理」页登记硬件及其端口。</div>}
-    </div>
-  </aside>;
-}
-
-function HardwareNode({ id, data, selected, width, height }: NodeProps<HardwareFlowNode>) {
-  const updateNodeInternals = useUpdateNodeInternals();
-  const showImage = data.showImage;
-  const interactive = data.interactive !== false;
-  useEffect(() => {
-    updateNodeInternals(id);
-  }, [data.portPositions, data.showImage, height, id, updateNodeInternals, width]);
-  return <div
-    data-hardware-id={id}
-    data-connector-editing={data.portEditing ? "true" : "false"}
-    data-show-image={showImage ? "true" : "false"}
-    className={`flow-hardware-node${selected ? " selected" : ""}${data.portEditing ? " connector-editing" : ""}${showImage ? "" : " image-hidden"}${data.resolved ? "" : " unresolved"}`}
-    title={`${data.hardware.label}\n${data.resolved ? `${data.hardware.ports.length} 个端口` : "设备资料未解析"}`}
-    aria-label={data.hardware.label}
-  >
-    <NodeResizer
-      isVisible={interactive && selected}
-      minWidth={MIN_CARD_WIDTH}
-      minHeight={showImage ? MIN_CARD_HEIGHT_WITH_IMAGE : MIN_CARD_HEIGHT_LABEL}
-      maxWidth={MAX_CARD_WIDTH}
-      maxHeight={MAX_CARD_HEIGHT}
-      autoScale
-      onResizeEnd={(_event, params) => data.resizeNode(id, params.width, params.height)}
-    />
-    <div className="flow-node-body">
-      {showImage && (
-        <div className="flow-node-image">
-          {data.imageUrl ? <img src={data.imageUrl} alt={data.hardware.label} /> : <CableIcon className="size-9" />}
+          <div className="grid size-10 place-items-center rounded-md border border-dashed border-line-strong text-fg-3">
+            <CableIcon className="size-4" />
+          </div>
+          <strong className="text-sm font-medium text-fg">把设备从左侧拖到画布</strong>
+          <span className="max-w-[300px] text-center text-xs text-fg-3">
+            画布是工程文档，加入节点不会调用远端硬件。
+          </span>
         </div>
       )}
-      <div className="flow-node-caption">{data.hardware.label}</div>
     </div>
-    {data.hardware.ports.map((port) => {
-      const position = data.portPositions[port.portId] ?? { side: "right" as const, offset: 0.5 };
-      return <DraggablePort
-        key={port.portId}
-        nodeId={id}
-        portId={port.portId}
-        label={port.name}
-        position={position}
-        editing={interactive && data.portEditing}
-        interactive={interactive}
-        onMove={(side, offset) => data.movePort(data.hardware.hardwareId, port.portId, side, offset)}
-      />;
-    })}
-  </div>;
+  );
 }
 
-function DraggablePort({ nodeId, portId, label, position, editing, interactive, onMove }: {
-  nodeId: string; portId: string; label: string; position: PortPosition; editing: boolean; interactive: boolean;
-  onMove: (side: PortSide, offset: number) => void;
+/** Right-click menu for one node. Focuses its first item so the keyboard can drive it. */
+export function NodeContextMenu({ menu, showingImage, onEditPorts, onToggleImage, onRemove }: {
+  menu: NodeMenu;
+  showingImage: boolean;
+  onEditPorts: () => void;
+  onToggleImage: () => void;
+  onRemove: () => void;
 }) {
-  const drag = useRef<{ card: DOMRect; element: HTMLDivElement; side: PortSide; offset: number } | null>(null);
-  const updateNodeInternals = useUpdateNodeInternals();
-  const onPointerDown = (event: PointerEvent<HTMLButtonElement>) => {
-    if (!editing) return;
-    event.preventDefault();
-    event.stopPropagation();
-    const element = event.currentTarget.parentElement as HTMLDivElement | null;
-    const card = event.currentTarget.closest(".flow-hardware-node")?.getBoundingClientRect();
-    if (!element || !card) return;
-    event.currentTarget.setPointerCapture(event.pointerId);
-    drag.current = { card, element, side: position.side, offset: position.offset };
-  };
-  const onPointerMove = (event: PointerEvent<HTMLButtonElement>) => {
-    const current = drag.current;
-    if (!current) return;
-    event.preventDefault();
-    const next = nearestPortPosition(current.card, event.clientX, event.clientY);
-    current.side = next.side;
-    current.offset = next.offset;
-    current.element.dataset.side = next.side;
-    current.element.style.setProperty("--connector-offset", `${next.offset * 100}%`);
-  };
-  const finish = (event: PointerEvent<HTMLButtonElement>) => {
-    const current = drag.current;
-    if (!current) return;
-    event.stopPropagation();
-    drag.current = null;
-    onMove(current.side, current.offset);
-    queueMicrotask(() => updateNodeInternals(nodeId));
-  };
-  return <div
-    className="flow-connector nodrag"
-    data-side={position.side}
-    style={{ "--connector-offset": `${position.offset * 100}%` } as CSSProperties}
-  >
-    <Handle
-      id={portId}
-      type="source"
-      position={reactFlowPosition(position.side)}
-      className="flow-connector-handle"
-      isConnectable={interactive}
-      title={`从 ${label} 创建接线`}
-    />
-    {interactive ? (
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => { ref.current?.querySelector<HTMLButtonElement>("[role=menuitem]")?.focus(); }, [menu]);
+  const itemClass = cn(
+    "flex h-7 w-full items-center rounded-sm px-2 text-left text-sm whitespace-nowrap text-fg outline-none",
+    "transition-colors duration-120 hover:bg-surface-3 focus-visible:bg-surface-3"
+  );
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        "wiring-node-menu fixed z-30 grid w-[168px] animate-fade-in gap-px rounded-md border border-line-strong",
+        "bg-surface-2 p-1 shadow-overlay"
+      )}
+      role="menu"
+      aria-label="硬件操作"
+      style={{ left: menu.x, top: menu.y }}
+    >
+      <button type="button" role="menuitem" className={itemClass} onClick={onEditPorts}>改变端口位置</button>
+      <button type="button" role="menuitem" className={itemClass} onClick={onToggleImage}>
+        {showingImage ? "隐藏图片" : "显示图片"}
+      </button>
+      <div role="separator" className="my-0.5 h-px bg-line" />
       <button
         type="button"
-        className="flow-connector-hit"
-        title={editing ? `拖动 ${label} 改变端口位置` : label}
-        aria-label={editing ? `拖动端口 ${label}` : `端口 ${label}`}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={finish}
-        onPointerCancel={finish}
+        role="menuitem"
+        className={cn(itemClass, "text-fail hover:bg-fail/12 focus-visible:bg-fail/12")}
+        onClick={onRemove}
       >
-        <span className="flow-connector-label">{label}</span>
+        从画布移除
       </button>
-    ) : <span className="flow-connector-hit" aria-hidden="true"><span className="flow-connector-label">{label}</span></span>}
-  </div>;
+    </div>
+  );
 }
 
-export const wiringNodeTypes = { hardware: HardwareNode };
+/** Closes the node menu and leaves port-editing mode on Escape or a pointer press elsewhere.
+ *  Presses on the editing node's own connectors keep editing alive so several ports can be moved. */
+export function useTransientNodeUi({ menu, editingHardwareId, closeMenu, stopEditing }: {
+  menu: NodeMenu | undefined;
+  editingHardwareId: string | undefined;
+  closeMenu: () => void;
+  stopEditing: () => void;
+}) {
+  useEffect(() => {
+    if (!editingHardwareId && !menu) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) { closeMenu(); stopEditing(); return; }
+      if (target.closest(".wiring-node-menu")) return;
+      const portNode = target.closest(".flow-connector-hit")?.closest<HTMLElement>(".flow-hardware-node");
+      closeMenu();
+      if (editingHardwareId && portNode?.dataset.hardwareId === editingHardwareId) return;
+      stopEditing();
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      closeMenu();
+      stopEditing();
+    };
+    document.addEventListener("pointerdown", onPointerDown, true);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown, true);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [closeMenu, editingHardwareId, menu, stopEditing]);
+}

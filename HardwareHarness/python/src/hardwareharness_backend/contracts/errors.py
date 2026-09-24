@@ -1,7 +1,7 @@
 from typing import Any
 
-from hardwareharness_backend.compat import UNDEFINED, Record, js_string
 from hardwareharness_backend.contracts.validation import enum, obj, parse_record, string, unknown
+from hardwareharness_backend.util import UNDEFINED, Record
 
 ERROR_CATEGORIES = (
     "permission_denied",
@@ -51,7 +51,7 @@ def to_wire_error(error: Any) -> Record:
     )
     result = {
         "category": category if category in ERROR_CATEGORIES else "error",
-        "message": message if isinstance(message, str) else js_string(error),
+        "message": message if isinstance(message, str) else str(error),
     }
     if "details" in candidate and candidate["details"] is not UNDEFINED:
         result["details"] = candidate["details"]

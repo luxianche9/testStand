@@ -4,13 +4,14 @@ import asyncio
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any, Protocol, TypeVar, cast
 
-from hardwareharness_backend.compat import utc_now_iso
 from hardwareharness_backend.contracts.devices import (
     parse_hardware,
     parse_mcp_server,
     parse_remote_computer,
 )
 from hardwareharness_backend.contracts.errors import app_error
+from hardwareharness_backend.contracts.operations import operation
+from hardwareharness_backend.util import utc_now_iso
 
 from .authorization import Authorizer, Json
 from .execution import ExecutionCoordinator
@@ -55,23 +56,23 @@ class DevicesApplication:
         self.active: dict[asyncio.Task[Any], str] = {}
         self._calls_closed = False
 
+    @operation("devices.read")
     def list_computers(self, context: Json) -> list[Json]:
-        self.authorizer.authorize(context, "devices.read")
         return self.service.list_computers()
 
+    @operation("devices.manageComputers")
     async def save_computer(
         self, context: Json, input: Json, credentials: Json | None = None
     ) -> Json:
-        self.authorizer.authorize(context, "devices.manageComputers")
         return await self.service.save_computer(parse_remote_computer(input), credentials)
 
+    @operation("devices.manageComputers")
     async def remove_computer(self, context: Json, computer_id: str) -> Json:
-        self.authorizer.authorize(context, "devices.manageComputers")
         await self.service.remove_computer(computer_id)
         return {"computerId": computer_id}
 
+    @operation("devices.read")
     async def get_computer_status(self, context: Json, computer_id: str) -> Json:
-        self.authorizer.authorize(context, "devices.read")
         computer = await self.service.refresh_computer(computer_id)
         servers = await asyncio.gather(
             *(
@@ -82,67 +83,66 @@ class DevicesApplication:
         )
         return {**computer, "servers": servers}
 
+    @operation("devices.ssh")
     async def execute_ssh(
         self, context: Json, computer_id: str, command: str, timeout_ms: int | None = None
     ) -> Json:
-        self.authorizer.authorize(context, "devices.ssh")
         if timeout_ms is None:
             return await self.service.execute(computer_id, command)
         return await self.service.execute(computer_id, command, timeout_ms)
 
+    @operation("devices.read")
     def list_servers(self, context: Json) -> list[Json]:
-        self.authorizer.authorize(context, "devices.read")
         return self.service.list_servers()
 
+    @operation("devices.read")
     async def list_servers_with_status(self, context: Json) -> Json:
-        self.authorizer.authorize(context, "devices.read")
         servers = self.service.list_servers()
         return {"servers": servers, "statuses": await self.service.refresh_all_servers()}
 
+    @operation("devices.manageServers")
     async def save_server(
         self, context: Json, input: Json, credentials: Json | None = None
     ) -> Json:
-        self.authorizer.authorize(context, "devices.manageServers")
         return await self.service.save_server(parse_mcp_server(input), credentials)
 
+    @operation("devices.manageServers")
     async def remove_server(self, context: Json, server_id: str) -> Json:
-        self.authorizer.authorize(context, "devices.manageServers")
         await self.service.remove_server(server_id)
         return {"serverId": server_id}
 
+    @operation("devices.read")
     async def refresh_server(self, context: Json, server_id: str) -> Json:
-        self.authorizer.authorize(context, "devices.read")
         return await self.service.refresh_server(server_id)
 
+    @operation("devices.controlServers")
     async def server_action(self, context: Json, server_id: str, action: str) -> Json:
-        self.authorizer.authorize(
-            context,
-            "devices.forceStopServers" if action == "force-stop" else "devices.controlServers",
-        )
+        if action == "force-stop":
+            self.authorizer.authorize(context, "devices.forceStopServers")
         return await self.service.server_action(server_id, action)
 
+    @operation("devices.read")
     async def read_server_logs(
         self, context: Json, server_id: str, lines: int | None = None
     ) -> Json:
-        self.authorizer.authorize(context, "devices.read")
         if lines is None:
             return await self.service.read_server_logs(server_id)
         return await self.service.read_server_logs(server_id, lines)
 
+    @operation("hardware.read")
     async def list_managed_hardware(self, context: Json) -> list[Json]:
-        self.authorizer.authorize(context, "hardware.read")
         return await self.service.refresh_hardware()
 
+    @operation("hardware.read")
     def list_hardware(self, context: Json) -> list[Json]:
-        self.authorizer.authorize(context, "hardware.read")
         return self.catalog.list_hardware()
 
+    @operation("hardware.read")
     def get_hardware(self, context: Json, hardware_id: str) -> Json:
-        self.authorizer.authorize(context, "hardware.read")
         return self.catalog.get_hardware(hardware_id)
 
+    @operation("hardware.manage")
     async def save_hardware(self, context: Json, input: Json) -> Json:
-        self.authorizer.authorize(context, "hardware.manage")
         hardware = parse_hardware(input)
         assigned = next(
             (
@@ -166,11 +166,12 @@ class DevicesApplication:
             )
         return await self.catalog.save_hardware(hardware)
 
+    @operation("hardware.manage")
     async def remove_hardware(self, context: Json, hardware_id: str) -> Json:
-        self.authorizer.authorize(context, "hardware.manage")
         await self.catalog.remove_hardware(hardware_id)
         return {"hardwareId": hardware_id}
 
+    @operation("hardware.manage")
     async def set_hardware_image_bytes(
         self,
         context: Json,
@@ -179,37 +180,36 @@ class DevicesApplication:
         data: bytes,
         extension_hint: str = "",
     ) -> Any:
-        self.authorizer.authorize(context, "hardware.manage")
         return await self.service.store.put_image_bytes(hardware_id, port_id, data, extension_hint)
 
+    @operation("hardware.manage")
     async def set_hardware_image_from_path(
         self, context: Json, hardware_id: str, port_id: str | None, source_path: str
     ) -> Any:
-        self.authorizer.authorize(context, "hardware.manage")
         return await self.service.store.put_image(hardware_id, port_id, source_path)
 
+    @operation("hardware.manage")
     async def remove_hardware_image(
         self, context: Json, hardware_id: str, port_id: str | None = None
     ) -> Any:
-        self.authorizer.authorize(context, "hardware.manage")
         return await self.service.store.remove_image(hardware_id, port_id)
 
+    @operation("hardware.read")
     async def export_bundle(self, context: Json, hardware_id: str) -> bytes:
-        self.authorizer.authorize(context, "hardware.read")
         return cast(bytes, await self.service.store.export_bundle(hardware_id))
 
+    @operation("hardware.manage")
     async def import_bundle(self, context: Json, data: bytes) -> Json:
-        self.authorizer.authorize(context, "hardware.manage")
         return cast(Json, await self.service.store.import_bundle(data))
 
+    @operation("hardware.manage")
     async def inspect_bundle(self, context: Json, data: bytes) -> Json:
-        self.authorizer.authorize(context, "hardware.manage")
         return cast(Json, await self.service.store.inspect_bundle(data))
 
+    @operation("hardware.manage")
     async def import_bundle_for_server(
         self, context: Json, data: bytes, hardware_id: str, server_id: str
     ) -> Json:
-        self.authorizer.authorize(context, "hardware.manage")
         server = next(
             (server for server in self.service.list_servers() if server["serverId"] == server_id),
             None,
@@ -228,8 +228,8 @@ class DevicesApplication:
             ),
         )
 
+    @operation("hardware.executeTools")
     async def call_tool(self, context: Json, name: str, args: Json) -> Any:
-        self.authorizer.authorize(context, "hardware.executeTools")
         if self._calls_closed:
             raise app_error("unavailable", "Hardware execution is shutting down")
         tool = next(
@@ -286,8 +286,8 @@ class DevicesApplication:
             task.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
 
+    @operation("hardware.executeTools")
     def list_tools(self, context: Json) -> list[Json]:
-        self.authorizer.authorize(context, "hardware.executeTools")
         return self.service.list_tools()
 
 
@@ -312,39 +312,39 @@ class ProjectsApplication:
     def set_notifier(self, notifier: Callable[[Json | None, bool], None]) -> None:
         self._notifier = notifier
 
+    @operation("projects.read")
     def document(self, context: Json) -> Json | None:
-        self.authorizer.authorize(context, "projects.read")
         return self.projects.current()
 
+    @operation("projects.read")
     async def inspect_folder(self, context: Json, root_path: str) -> Json:
-        self.authorizer.authorize(context, "projects.read")
         return await self.projects.inspect_folder(root_path)
 
+    @operation("projects.manage")
     async def initialize_folder(self, context: Json, root_path: str) -> Json:
-        self.authorizer.authorize(context, "projects.manage")
         return await self._switch(lambda: self.projects.initialize_folder(root_path))
 
+    @operation("projects.manage")
     async def open_folder(self, context: Json, root_path: str) -> Json:
-        self.authorizer.authorize(context, "projects.manage")
         return await self._switch(lambda: self.projects.open_folder(root_path))
 
+    @operation("projects.manage")
     async def save_project(self, context: Json) -> Json:
-        self.authorizer.authorize(context, "projects.manage")
         document = await self.projects.save()
         if self._notifier:
             self._notifier(document, False)
         return document
 
+    @operation("projects.manage")
     async def leave_project(self, context: Json) -> None:
-        self.authorizer.authorize(context, "projects.manage")
         await self._switch(self.projects.leave)
 
+    @operation("projects.read")
     async def list_recent(self, context: Json) -> list[Json]:
-        self.authorizer.authorize(context, "projects.read")
         return await self.projects.list_recent()
 
+    @operation("projects.manage")
     async def forget_recent(self, context: Json, root_path: str) -> None:
-        self.authorizer.authorize(context, "projects.manage")
         await self.projects.forget_recent(root_path)
 
     async def close(self) -> None:
@@ -381,17 +381,17 @@ class WiringApplication:
     ) -> None:
         self.authorizer, self.projects, self.wiring = authorizer, projects, wiring
 
+    @operation("wiring.confirm")
     async def update_document(self, context: Json, wiring: Json) -> Json:
-        self.authorizer.authorize(context, "wiring.confirm")
         self.wiring.validate_document_connections(wiring)
         return await self.projects.update_wiring_with_layout(wiring)
 
+    @operation("projects.manage")
     async def add_managed_hardware_to_canvas(self, context: Json, hardware_id: str) -> Json:
-        self.authorizer.authorize(context, "projects.manage")
         return await self.wiring.add_managed_hardware_to_canvas(hardware_id)
 
+    @operation("wiring.request")
     async def request_task(self, context: Json, input: Json) -> Json:
-        self.authorizer.authorize(context, "wiring.request")
         request = {key: input[key] for key in ["portA", "portB", "action"]}
         request["pins"] = input.get("pins", [])
         if "timeoutMs" in input:
@@ -401,30 +401,30 @@ class WiringApplication:
             request["requestedBy"] = requested_by
         return await self.wiring.request_task(request)
 
+    @operation("wiring.confirm")
     async def start_task(
         self, context: Json, task_id: str, operator_name: str | None = None
     ) -> Json:
-        self.authorizer.authorize(context, "wiring.confirm")
         if operator_name is None:
             return await self.wiring.start_task(task_id)
         return await self.wiring.start_task(task_id, operator_name)
 
+    @operation("wiring.confirm")
     async def complete_task(
         self, context: Json, task_id: str, outcome: str, message: str | None = None
     ) -> Json:
-        self.authorizer.authorize(context, "wiring.confirm")
         return await self.wiring.complete_task(task_id, outcome, message)
 
+    @operation("wiring.request")
     async def cancel_task(self, context: Json, task_id: str, message: str | None = None) -> Json:
-        self.authorizer.authorize(context, "wiring.request")
         return await self.wiring.cancel_task(task_id, message)
 
+    @operation("wiring.read")
     def get_task(self, context: Json, task_id: str) -> Json:
-        self.authorizer.authorize(context, "wiring.read")
         return self.wiring.get_task(task_id)
 
+    @operation("wiring.read")
     def list_tasks(self, context: Json, input: Json | None = None) -> list[Json]:
-        self.authorizer.authorize(context, "wiring.read")
         return self.wiring.list_tasks(input)
 
 
@@ -443,8 +443,8 @@ class SystemApplication:
             execution,
         )
 
+    @operation("system.read")
     def dashboard(self, context: Json) -> Json:
-        self.authorizer.authorize(context, "system.read")
         return {
             "computers": self.devices.list_computers(),
             "statuses": self.devices.list_statuses(),

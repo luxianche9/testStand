@@ -21,7 +21,6 @@ export interface DesktopComposition {
   theme(): "system" | "light" | "dark";
   resolveImagePath(hardwareId: string, assetId: string): Promise<string>;
   connectionInfo(): { url: string; password: string } | undefined;
-  workspaceChanged(): Promise<void>;
   probeAvailability(): Promise<{ availability: unknown[]; servers: unknown[] }>;
   autoStartAgentRuntime(): Promise<void>;
   shutdown(): Promise<void>;
@@ -96,7 +95,6 @@ export async function createDesktopComposition(windows: DesktopWindows): Promise
     application, agents, settings: settingsApi, theme: () => backend.state.settings.theme,
     resolveImagePath: (hardwareId, assetId) => backend.call<string>("assets.resolveImagePath", { hardwareId, assetId }),
     connectionInfo: () => openCodeRuntime.connectionInfo(),
-    workspaceChanged: async () => { await reconcileOpenCodeWorkspace(openCodeRuntime, Boolean(backend.state.project), llmApiKey()); },
     probeAvailability: () => backend.call("backend.probeAvailability"),
     autoStartAgentRuntime: async () => { await autoStartOpenCode(openCodeRuntime, llmApiKey(), Boolean(backend.state.project)); },
     shutdown: () => shutdownPromise ??= (async () => {

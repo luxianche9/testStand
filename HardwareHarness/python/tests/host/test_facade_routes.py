@@ -16,9 +16,9 @@ import pytest
 from hardwareharness_backend.application import (
     HardwareHarnessApplication,
 )
-from hardwareharness_backend.compat import UNDEFINED
 from hardwareharness_backend.host.rpc import StdioRpc
 from hardwareharness_backend.host.runtime import HUMAN, HostRuntime, Services
+from hardwareharness_backend.util import UNDEFINED
 
 
 def restore(value: Any) -> Any:

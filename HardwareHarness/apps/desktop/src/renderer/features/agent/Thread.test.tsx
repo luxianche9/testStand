@@ -18,7 +18,14 @@ const messages: ThreadMessageLike[] = [{
   content: [
     { type: "text", text: "**加粗**\n\n| A | B |\n| - | - |\n| 1 | 2 |" },
     { type: "reasoning", text: "先检查工程，再执行测试。" },
-    { type: "tool-call", toolCallId: "tool-1", toolName: "read", args: { file_path: "src/app.ts" }, argsText: "{\"file_path\":\"src/app.ts\"}", result: "ok" }
+    {
+      type: "tool-call",
+      toolCallId: "tool-1",
+      toolName: "read",
+      args: { file_path: "src/app.ts" },
+      argsText: "{\"file_path\":\"src/app.ts\"}",
+      result: "ok"
+    }
   ],
   status: { type: "complete", reason: "stop" }
 }];

@@ -1,15 +1,13 @@
 import asyncio
 import os
+from os import stat
 from pathlib import Path
 
-from hardwareharness_backend.compat import UNDEFINED, Record, clone, new_uuid, utc_now_iso
-from hardwareharness_backend.compat.filesystem import stat
 from hardwareharness_backend.contracts.errors import app_error
-from hardwareharness_backend.contracts.projects import inspect_project_file, parse_project_file
+from hardwareharness_backend.contracts.projects import parse_project_file
 from hardwareharness_backend.contracts.wiring import parse_project_wiring
 from hardwareharness_backend.storage import SettingsStore, atomic_json, read_json
-
-from .migration import convert_project
+from hardwareharness_backend.util import UNDEFINED, Record, clone, new_uuid, utc_now_iso
 
 
 class ProjectService:
@@ -56,7 +54,7 @@ class ProjectService:
             raw = await read_json(project_path(root))
             if raw is UNDEFINED:
                 return {"rootPath": root, "state": "uninitialized", "name": name}
-            file = inspect_project_file(raw)
+            file = parse_project_file(raw)
             return {"rootPath": root, "state": "ready", "name": file["name"]}
         except Exception as error:
             return {"rootPath": root, "state": "invalid", "name": name, "message": str(error)}
@@ -84,7 +82,7 @@ class ProjectService:
         if selection["state"] == "invalid":
             raise app_error("invalid_project", selection.get("message", "invalid_project"))
         path = project_path(selection["rootPath"])
-        file = await convert_project(Path(path))
+        file = parse_project_file(await read_json(path))
         self._root_path = selection["rootPath"]
         self._path = path
         self._file = file
@@ -127,7 +125,7 @@ class ProjectService:
                 raw = await read_json(project_path(root))
                 if raw is UNDEFINED:
                     return {**fallback, "status": "invalid", "message": "project_manifest_missing"}
-                file = inspect_project_file(raw)
+                file = parse_project_file(raw)
                 return {
                     "rootPath": root,
                     "name": file["name"],

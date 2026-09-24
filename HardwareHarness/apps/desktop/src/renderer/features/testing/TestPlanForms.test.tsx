@@ -29,7 +29,11 @@ describe("test plan schema forms", () => {
   it("switches InvokeTool arguments between fixed values and data references", () => {
     const onChange = vi.fn();
     render(<BoundArgumentsForm
-      schema={{ type: "object", properties: { voltage: { type: "number", title: "目标电压", "x-hh-unit": "V" } }, required: ["voltage"] }}
+      schema={{
+        type: "object",
+        properties: { voltage: { type: "number", title: "目标电压", "x-hh-unit": "V" } },
+        required: ["voltage"]
+      }}
       value={{ voltage: 3.3 }}
       references={references}
       onChange={onChange}
@@ -43,7 +47,15 @@ describe("test plan schema forms", () => {
     const onChange = vi.fn();
     render(<StepSettingsForm
       step={step}
-      catalogItem={{ type: "If", category: "流程控制", label: "条件", container: true, settingsSchema: { type: "object", properties: { condition: { type: "string", format: "hh-cel", title: "条件", "x-hh-expression-mode": "condition" } } }, outputSchema: {} }}
+      catalogItem={{
+        type: "If", category: "流程控制", label: "条件", container: true, outputSchema: {},
+        settingsSchema: {
+          type: "object",
+          properties: {
+            condition: { type: "string", format: "hh-cel", title: "条件", "x-hh-expression-mode": "condition" }
+          }
+        }
+      }}
       references={references}
       onChange={onChange}
     />);

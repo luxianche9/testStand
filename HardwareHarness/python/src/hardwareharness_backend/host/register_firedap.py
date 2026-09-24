@@ -11,9 +11,9 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from hardwareharness_backend.compat import utc_now_iso
 from hardwareharness_backend.devices.device_store import DeviceStore
 from hardwareharness_backend.storage.secrets import SecretProtector, SecretStore
+from hardwareharness_backend.util import utc_now_iso
 
 
 async def register(
@@ -58,7 +58,7 @@ async def register(
     await store.save_computer(
         {
             "id": "LOCAL_PC",
-            "label": "本机 · FireDAP",
+            "label": "本机",
             "address": "127.0.0.1",
             "execution": "local",
             "ssh": {"port": 22, "username": "local", "shell": "powershell"},

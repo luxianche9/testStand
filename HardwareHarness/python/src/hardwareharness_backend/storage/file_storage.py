@@ -5,26 +5,16 @@ from contextlib import suppress
 from pathlib import Path
 from typing import Any
 
-from hardwareharness_backend.compat import (
-    UNDEFINED,
-    json_parse,
-    json_stringify,
-    new_uuid,
-    utf8_bytes,
-)
-from hardwareharness_backend.compat.filesystem import fs_operation, mkdir, read_bytes, replace
+from hardwareharness_backend.util import UNDEFINED, json_dumps, json_loads, new_uuid
 
 
 def _sync_directory(path: str | Path) -> None:
     try:
-        with fs_operation("open", path):
-            descriptor = os.open(path, os.O_RDONLY)
+        descriptor = os.open(path, os.O_RDONLY)
         try:
-            with fs_operation("fsync"):
-                os.fsync(descriptor)
+            os.fsync(descriptor)
         finally:
-            with fs_operation("close"):
-                os.close(descriptor)
+            os.close(descriptor)
     except OSError as error:
         if error.errno not in (
             errno.EACCES,
@@ -44,16 +34,14 @@ async def sync_directory(path: str | Path) -> None:
 
 def _atomic_text(path: str | Path, value: str) -> None:
     target = Path(path)
-    mkdir(target.parent)
+    target.parent.mkdir(parents=True, exist_ok=True)
     temporary = Path(f"{target}.{new_uuid()}.tmp")
     try:
-        with fs_operation("open", temporary), temporary.open("xb") as handle:
-            with fs_operation("write"):
-                handle.write(utf8_bytes(value))
-                handle.flush()
-            with fs_operation("fsync"):
-                os.fsync(handle.fileno())
-        replace(temporary, target)
+        with temporary.open("xb") as handle:
+            handle.write(value.encode("utf-8"))
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, target)
         _sync_directory(target.parent)
     except BaseException:
         with suppress(OSError):
@@ -66,12 +54,12 @@ async def atomic_text(path: str | Path, value: str) -> None:
 
 
 async def atomic_json(path: str | Path, value: Any) -> None:
-    await atomic_text(path, json_stringify(value, 2) + "\n")
+    await atomic_text(path, json_dumps(value, 2) + "\n")
 
 
 async def read_json(path: str | Path) -> Any:
     try:
-        data = await asyncio.to_thread(read_bytes, path)
+        data = await asyncio.to_thread(Path(path).read_bytes)
     except FileNotFoundError:
         return UNDEFINED
-    return json_parse(data.decode("utf-8", "replace"))
+    return json_loads(data.decode("utf-8", "replace"))

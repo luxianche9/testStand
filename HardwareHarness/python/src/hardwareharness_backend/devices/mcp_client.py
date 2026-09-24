@@ -9,12 +9,12 @@ import httpx
 from jsonschema import Draft7Validator
 from mcp import ClientSession, types
 
-from hardwareharness_backend.compat import clone, json_stringify
 from hardwareharness_backend.contracts.devices import (
     parse_managed_hardware,
     parse_reported_managed_hardware,
 )
 from hardwareharness_backend.contracts.errors import app_error
+from hardwareharness_backend.util import clone, json_dumps
 
 from .mcp_transport import compatible_http_client
 from .schema_validation import schema_error
@@ -481,10 +481,10 @@ def _stable(value: Any) -> str:
     if isinstance(value, dict):
         return (
             "{"
-            + ",".join(json_stringify(key) + ":" + _stable(value[key]) for key in sorted(value))
+            + ",".join(json_dumps(key) + ":" + _stable(value[key]) for key in sorted(value))
             + "}"
         )
-    return json_stringify(value)
+    return json_dumps(value)
 
 
 def _ungroup(error: BaseException) -> BaseException:

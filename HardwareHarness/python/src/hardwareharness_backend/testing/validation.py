@@ -20,16 +20,7 @@ def validate_plan(
     issues: list[Record] = []
     if not isinstance(plan, dict):
         return [issue("error", "plan.type", "Plan must be an object")]
-    if plan.get("schemaVersion") == 1:
-        issues.append(
-            issue(
-                "error",
-                "plan.migration_required",
-                "schemaVersion 1 plans are read-only and must be explicitly migrated to version 2",
-                "/schemaVersion",
-            )
-        )
-    elif plan.get("schemaVersion") != 2:
+    if plan.get("schemaVersion") != 2:
         issues.append(
             issue("error", "plan.schemaVersion", "schemaVersion must be 2", "/schemaVersion")
         )

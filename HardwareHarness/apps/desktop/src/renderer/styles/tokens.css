@@ -1,116 +1,115 @@
-/* shadcn new-york-v4 neutral, adapted to the existing --tf-* names.
-   The exact downloaded source and its hashes are in docs/shadcn/. */
+/* Precision-instrument design tokens.
+   Views use only the semantic names (surface-*, line, fg-*, signal, pass/fail/run/invalid). */
 @theme inline {
-  --color-background: var(--tf-background);
-  --color-foreground: var(--tf-foreground);
-  --color-card: var(--tf-card);
-  --color-card-foreground: var(--tf-card-foreground);
-  --color-popover: var(--tf-popover);
-  --color-popover-foreground: var(--tf-popover-foreground);
-  --color-primary: var(--tf-primary);
-  --color-primary-foreground: var(--tf-primary-foreground);
-  --color-secondary: var(--tf-secondary);
-  --color-secondary-foreground: var(--tf-secondary-foreground);
-  --color-muted: var(--tf-muted);
-  --color-muted-foreground: var(--tf-muted-foreground);
-  --color-accent: var(--tf-accent);
-  --color-accent-foreground: var(--tf-accent-foreground);
-  --color-destructive: var(--tf-destructive);
-  --color-destructive-foreground: var(--tf-destructive-foreground);
-  --color-border: var(--tf-border);
-  --color-input: var(--tf-input);
-  --color-ring: var(--tf-ring);
-  --color-success: var(--tf-success);
-  --color-warning: var(--tf-warning);
+  --color-surface-0: var(--tf-surface-0);
+  --color-surface-1: var(--tf-surface-1);
+  --color-surface-2: var(--tf-surface-2);
+  --color-surface-3: var(--tf-surface-3);
+  --color-line: var(--tf-line);
+  --color-line-strong: var(--tf-line-strong);
+  --color-fg: var(--tf-fg);
+  --color-fg-2: var(--tf-fg-2);
+  --color-fg-3: var(--tf-fg-3);
+  --color-signal: var(--tf-signal);
+  --color-signal-fg: var(--tf-signal-fg);
+  --color-run: var(--tf-run);
+  --color-pass: var(--tf-pass);
+  --color-fail: var(--tf-fail);
+  --color-invalid: var(--tf-invalid);
+  --color-idle: var(--tf-fg-3);
+
   --color-canvas: var(--tf-canvas);
   --color-canvas-grid: var(--tf-canvas-grid);
   --color-wiring-edge: var(--tf-wiring-edge);
   --color-wiring-edge-strong: var(--tf-wiring-edge-strong);
+
   --font-sans: var(--tf-font-sans);
   --font-mono: var(--tf-font-mono);
-  --radius-sm: calc(var(--tf-radius) - 4px);
-  --radius-md: var(--tf-radius-control);
-  --radius-lg: var(--tf-radius);
-  --radius-xl: calc(var(--tf-radius) + 4px);
-  --animate-collapsible-down: tf-collapsible-down 160ms ease-out;
-  --animate-collapsible-up: tf-collapsible-up 140ms ease-in;
-  --animate-toast-in: tf-toast-in 180ms ease-out;
-  --animate-fade-in: tf-fade-in 150ms ease-out;
-  --animate-dialog-in: tf-dialog-in 160ms ease-out;
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1.125rem;
+  --text-sm: 0.8125rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base: 0.875rem;
+  --text-base--line-height: 1.375rem;
+  --radius-xs: 2px;
+  --radius-sm: 3px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
+  --shadow-overlay: var(--tf-shadow-overlay);
+
+  --animate-collapsible-down: tf-collapsible-down 120ms ease-out;
+  --animate-collapsible-up: tf-collapsible-up 120ms ease-in;
+  --animate-toast-in: tf-toast-in 160ms var(--tf-ease-out);
+  --animate-fade-in: tf-fade-in 120ms ease-out;
+  --animate-dialog-in: tf-dialog-in 140ms var(--tf-ease-out);
   --animate-spin: tf-spin 0.7s linear infinite;
-  --animate-page-in: tf-page-in 180ms ease-out;
-  --animate-slide-in-right: tf-slide-in-right 200ms ease-out;
+  --animate-page-in: tf-page-in 140ms ease-out;
+  --animate-slide-in-right: tf-slide-in-right 160ms var(--tf-ease-out);
+  --animate-lamp: tf-lamp 1.4s ease-in-out infinite;
 }
 
 :root {
-  --tf-radius: 0.625rem;
-  --tf-radius-control: calc(var(--tf-radius) - 2px);
-  --tf-font-sans: "Geist Variable", "Segoe UI Variable", "Microsoft YaHei UI", "PingFang SC", system-ui, sans-serif;
+  --tf-font-sans: "Geist Variable", "Segoe UI Variable", "Microsoft YaHei UI", "PingFang SC",
+    system-ui, sans-serif;
   --tf-font-mono: "Geist Mono Variable", "Cascadia Code", Consolas, monospace;
   --tf-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --tf-shadow-color: 0 0 0;
-  --tf-shadow-sm: 0 1px 2px rgb(var(--tf-shadow-color) / 0.04), 0 1px 3px rgb(var(--tf-shadow-color) / 0.05);
-  --tf-shadow-md: 0 6px 16px rgb(var(--tf-shadow-color) / 0.07), 0 2px 5px rgb(var(--tf-shadow-color) / 0.04);
-  --tf-shadow-lg: 0 16px 40px rgb(var(--tf-shadow-color) / 0.1), 0 4px 12px rgb(var(--tf-shadow-color) / 0.05);
+  --tf-radius: 6px;
+  --tf-radius-control: 4px;
 }
 
+/* Dark instrument console (default). */
 :root,
-:root[data-theme="light"] {
-  color-scheme: light;
-  --tf-shadow-color: 0 0 0;
-  --tf-background: oklch(1 0 0);
-  --tf-foreground: oklch(0.145 0 0);
-  --tf-card: oklch(1 0 0);
-  --tf-card-foreground: oklch(0.145 0 0);
-  --tf-popover: oklch(1 0 0);
-  --tf-popover-foreground: oklch(0.145 0 0);
-  --tf-primary: oklch(0.205 0 0);
-  --tf-primary-foreground: oklch(0.985 0 0);
-  --tf-secondary: oklch(0.97 0 0);
-  --tf-secondary-foreground: oklch(0.205 0 0);
-  --tf-muted: oklch(0.97 0 0);
-  --tf-muted-foreground: oklch(0.556 0 0);
-  --tf-accent: oklch(0.97 0 0);
-  --tf-accent-foreground: oklch(0.205 0 0);
-  --tf-destructive: oklch(0.577 0.245 27.325);
-  --tf-destructive-foreground: oklch(0.985 0 0);
-  --tf-border: oklch(0.922 0 0);
-  --tf-input: oklch(0.922 0 0);
-  --tf-ring: oklch(0.708 0 0);
-  --tf-success: oklch(0.58 0.15 155);
-  --tf-warning: oklch(0.68 0.14 75);
-  --tf-canvas: var(--tf-muted);
-  --tf-canvas-grid: var(--tf-border);
-  --tf-wiring-edge: var(--tf-muted-foreground);
-  --tf-wiring-edge-strong: var(--tf-foreground);
-}
-
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --tf-shadow-color: 0 0 0;
-  --tf-background: oklch(0.145 0 0);
-  --tf-foreground: oklch(0.985 0 0);
-  --tf-card: oklch(0.205 0 0);
-  --tf-card-foreground: oklch(0.985 0 0);
-  --tf-popover: oklch(0.205 0 0);
-  --tf-popover-foreground: oklch(0.985 0 0);
-  --tf-primary: oklch(0.922 0 0);
-  --tf-primary-foreground: oklch(0.205 0 0);
-  --tf-secondary: oklch(0.269 0 0);
-  --tf-secondary-foreground: oklch(0.985 0 0);
-  --tf-muted: oklch(0.269 0 0);
-  --tf-muted-foreground: oklch(0.708 0 0);
-  --tf-accent: oklch(0.269 0 0);
-  --tf-accent-foreground: oklch(0.985 0 0);
-  --tf-destructive: oklch(0.704 0.191 22.216);
-  --tf-destructive-foreground: oklch(0.985 0 0);
-  --tf-border: oklch(1 0 0 / 10%);
-  --tf-input: oklch(1 0 0 / 15%);
-  --tf-ring: oklch(0.556 0 0);
-  --tf-success: oklch(0.72 0.14 155);
-  --tf-warning: oklch(0.78 0.13 80);
-  --tf-canvas: var(--tf-background);
-  --tf-canvas-grid: var(--tf-muted);
-  --tf-wiring-edge: var(--tf-muted-foreground);
-  --tf-wiring-edge-strong: var(--tf-foreground);
+  --tf-surface-0: oklch(0.155 0.006 250);
+  --tf-surface-1: oklch(0.185 0.006 250);
+  --tf-surface-2: oklch(0.225 0.007 250);
+  --tf-surface-3: oklch(0.265 0.008 250);
+  --tf-line: oklch(1 0 0 / 8%);
+  --tf-line-strong: oklch(1 0 0 / 14%);
+  --tf-fg: oklch(0.93 0.004 250);
+  --tf-fg-2: oklch(0.72 0.008 250);
+  --tf-fg-3: oklch(0.54 0.01 250);
+  --tf-signal: oklch(0.8 0.15 75);
+  --tf-signal-fg: oklch(0.2 0.03 75);
+  --tf-run: oklch(0.8 0.12 210);
+  --tf-pass: oklch(0.77 0.16 152);
+  --tf-fail: oklch(0.68 0.19 25);
+  --tf-invalid: oklch(0.77 0.15 55);
+  --tf-shadow-overlay: 0 0 0 1px oklch(1 0 0 / 6%), 0 12px 32px oklch(0 0 0 / 50%);
+  --tf-canvas: oklch(0.14 0.006 250);
+  --tf-canvas-grid: oklch(1 0 0 / 7%);
+}
+
+/* Light "paper" theme. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --tf-surface-0: oklch(0.972 0.003 90);
+  --tf-surface-1: oklch(0.995 0.001 90);
+  --tf-surface-2: oklch(0.952 0.004 90);
+  --tf-surface-3: oklch(0.925 0.005 90);
+  --tf-line: oklch(0.2 0.01 250 / 10%);
+  --tf-line-strong: oklch(0.2 0.01 250 / 18%);
+  --tf-fg: oklch(0.21 0.01 250);
+  --tf-fg-2: oklch(0.43 0.012 250);
+  --tf-fg-3: oklch(0.57 0.012 250);
+  --tf-signal: oklch(0.62 0.15 60);
+  --tf-signal-fg: oklch(0.99 0.01 80);
+  --tf-run: oklch(0.55 0.12 225);
+  --tf-pass: oklch(0.55 0.15 150);
+  --tf-fail: oklch(0.56 0.2 25);
+  --tf-invalid: oklch(0.62 0.16 55);
+  --tf-shadow-overlay: 0 0 0 1px oklch(0 0 0 / 6%), 0 12px 32px oklch(0.2 0.02 250 / 16%);
+  --tf-canvas: oklch(0.962 0.004 90);
+  --tf-canvas-grid: oklch(0.2 0.01 250 / 9%);
+}
+
+/* Shared by both themes. */
+:root,
+:root[data-theme] {
+  --tf-wiring-edge: var(--tf-fg-3);
+  --tf-wiring-edge-strong: var(--tf-signal);
 }

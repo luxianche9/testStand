@@ -51,13 +51,19 @@ describe("manual JSON Schema form model", () => {
         required: ["hardwareId", "channel"]
       }]
     }, ["hardwareId"]);
-    expect(composed).toMatchObject({ allOf: [{ properties: { channel: { type: "integer" } }, required: ["channel"] }] });
+    expect(composed).toMatchObject({
+      allOf: [{ properties: { channel: { type: "integer" } }, required: ["channel"] }]
+    });
   });
 
   it("uses generated selection for common unions and JSON fallback for unsupported structures", () => {
     expect(requiresJsonFallback({ oneOf: [{ type: "string" }, { type: "number" }] })).toBe(false);
     expect(requiresJsonFallback({ type: "array", items: [{ type: "string" }, { type: "number" }] })).toBe(true);
-    expect(requiresJsonFallback({ type: "object", properties: { fixed: { type: "string" } }, patternProperties: { "^x": { type: "number" } } })).toBe(true);
+    expect(requiresJsonFallback({
+      type: "object",
+      properties: { fixed: { type: "string" } },
+      patternProperties: { "^x": { type: "number" } }
+    })).toBe(true);
     expect(requiresJsonFallback({ type: "object", properties: { fixed: { type: "string" } } })).toBe(false);
   });
 
@@ -77,7 +83,8 @@ describe("manual JSON Schema form model", () => {
       required: ["channel", "options"]
     };
 
-    expect(validateSchemaArguments(schema, { channel: 2, options: { enabled: true } })).toEqual({ valid: true, errors: [] });
+    expect(validateSchemaArguments(schema, { channel: 2, options: { enabled: true } }))
+      .toEqual({ valid: true, errors: [] });
     const invalid = validateSchemaArguments(schema, { channel: 8, options: {} });
     expect(invalid.valid).toBe(false);
     expect(invalid.errors.join(" ")).toMatch(/小于或等于 3|必填/);
@@ -85,7 +92,8 @@ describe("manual JSON Schema form model", () => {
   });
 
   it("reports unsupported root schemas and malformed patterns without using eval", () => {
-    expect(validateSchemaArguments({ type: "string" }, {})).toMatchObject({ valid: false, errors: [expect.stringContaining("object")] });
+    expect(validateSchemaArguments({ type: "string" }, {}))
+      .toMatchObject({ valid: false, errors: [expect.stringContaining("object")] });
     expect(validateSchemaArguments({
       oneOf: [{
         type: "object",
@@ -93,7 +101,8 @@ describe("manual JSON Schema form model", () => {
         required: ["channel"]
       }]
     }, { channel: 1 })).toEqual({ valid: true, errors: [] });
-    expect(validateSchemaArguments({ type: "object", properties: { value: { type: "string", pattern: "[" } }, required: ["value"] }, { value: "x" }))
+    const badPattern = { type: "object", properties: { value: { type: "string", pattern: "[" } }, required: ["value"] };
+    expect(validateSchemaArguments(badPattern, { value: "x" }))
       .toMatchObject({ valid: false, errors: [expect.stringContaining("pattern")] });
   });
 });

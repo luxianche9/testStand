@@ -2,10 +2,10 @@ from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Any
 
-from hardwareharness_backend.compat import UNDEFINED, Record, clone
 from hardwareharness_backend.contracts.storage import parse_user_settings
 from hardwareharness_backend.storage.file_storage import atomic_json, read_json
 from hardwareharness_backend.storage.serialized_writer import SerializedWriter
+from hardwareharness_backend.util import UNDEFINED, Record, clone
 
 JsonWriter = Callable[[str | Path, Any], Awaitable[None]]
 

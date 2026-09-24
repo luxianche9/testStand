@@ -1,11 +1,5 @@
+/* AI assistant side console. Layout-level rules only; components style themselves with utilities. */
 @layer components {
-  .flow-workspace-layout { display: grid; }
-  @media (max-width: 1023px) {
-    .flow-workspace-layout { display: flex; }
-    .flow-navigation { display: none; width: 224px; flex-shrink: 0; }
-    .flow-navigation-resize { display: none; }
-    .flow-workspace-layout[data-navigation-open="true"] .flow-navigation { display: block; }
-  }
   .tf-agent-sidebar {
     --tf-agent-sidebar-width: 420px;
     position: relative;
@@ -14,61 +8,34 @@
     min-width: 300px;
     max-width: min(720px, calc(100vw - 468px));
     overflow: visible;
-    color: var(--tf-foreground);
-    background: var(--tf-card);
-    box-shadow: inset 1px 0 0 var(--tf-border), -4px 0 16px rgb(var(--tf-shadow-color) / 0.03);
+    color: var(--tf-fg);
+    background: var(--tf-surface-1);
+    box-shadow: inset 1px 0 0 var(--tf-line);
     container-type: inline-size;
-  }
-
-  .tf-agent-resize-handle {
-    position: absolute;
-    z-index: 70;
-    inset: 0 auto 0 -5px;
-    width: 10px;
-    cursor: col-resize;
-    touch-action: none;
   }
 
   @media (max-width: 1023px) {
     .tf-agent-sidebar {
       position: fixed;
       z-index: 80;
-      top: 40px;
+      top: 36px;
       right: 0;
-      bottom: 0;
-      box-shadow: -16px 0 40px rgb(0 0 0 / 0.18);
+      bottom: 24px;
+      box-shadow: inset 1px 0 0 var(--tf-line-strong), var(--tf-shadow-overlay);
     }
-  }
-
-  .tf-agent-resize-handle::after {
-    content: "";
-    position: absolute;
-    inset: 0 auto 0 4px;
-    width: 2px;
-    background: transparent;
-    transition: background-color 120ms ease;
-  }
-
-  .tf-agent-resize-handle:hover::after,
-  .tf-agent-resize-handle:focus-visible::after,
-  .tf-agent-resize-handle[data-dragging="true"]::after {
-    background: var(--tf-ring);
-  }
-
-  body.is-resizing-agent-sidebar {
-    cursor: col-resize;
-    user-select: none;
   }
 
   .shimmer {
     color: transparent;
-    background: linear-gradient(90deg, transparent 0%, var(--tf-foreground) 45%, transparent 90%);
+    background: linear-gradient(90deg, transparent 0%, var(--tf-fg) 45%, transparent 90%);
     background-clip: text;
     background-size: 220% 100%;
     animation: tf-shimmer 1.5s linear infinite;
   }
 
-  .tf-agent-readonly-status { flex: none; color: var(--tf-muted-foreground); font-size: 11px; }
+  @media (prefers-reduced-motion: reduce) {
+    .shimmer { animation: none; }
+  }
 
   .aui-md > :first-child { margin-top: 0; }
   .aui-md > :last-child { margin-bottom: 0; }

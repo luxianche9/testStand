@@ -2,11 +2,9 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from functools import cmp_to_key
 
-from hardwareharness_backend.compat import clone, utf16_compare
-from hardwareharness_backend.compat.collation import locale_compare
 from hardwareharness_backend.contracts.errors import app_error
+from hardwareharness_backend.util import clone
 
 from .authorization import Json
 
@@ -49,14 +47,10 @@ class ExecutionCoordinator:
         self.notifier: Callable[[Json], None] | None = None
 
     def current(self) -> Json:
-        def compare(a: Json, b: Json) -> int:
-            return locale_compare(a["startedAt"], b["startedAt"]) or locale_compare(
-                _key(a), _key(b)
-            )
+        def order(item: Json) -> tuple[str, str]:
+            return item["startedAt"], _key(item)
 
-        activities = sorted(
-            [holder.activity for holder in self.holders.values()], key=cmp_to_key(compare)
-        )
+        activities = sorted([holder.activity for holder in self.holders.values()], key=order)
         if not activities:
             return {"state": "idle"}
         representative = clone(activities[0])
@@ -76,9 +70,7 @@ class ExecutionCoordinator:
             if hardware_id in self.hardware_holders
         ]
         if conflicts:
-            ids = sorted(
-                {hardware_id for hardware_id, _ in conflicts}, key=cmp_to_key(utf16_compare)
-            )
+            ids = sorted({hardware_id for hardware_id, _ in conflicts})
             activities = list({_key(item): clone(item) for _, item in conflicts}.values())
             raise app_error(
                 "conflict",

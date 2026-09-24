@@ -5,6 +5,7 @@ import type { ManualToolInvocationInput, ManualToolInvocationResult } from "./ex
 
 import type { ProjectDocument, ProjectFolderSelection, RecentProjectSummary } from "./projects.js";
 import type { ProjectCanvasNode, ProjectWiring, RequestWiringTaskInput, WiringTask, WiringTaskStatus } from "./wiring.js";
+import type { DesktopOperation } from "./operations.generated.js";
 import type { TestDeviceTools, TestPlan, TestPlanMutationResult, TestPlanOperation, TestPlanSummary, TestPlanValidation, TestRunSnapshot, TestStepCatalogItem } from "./testing.js";
 
 interface SshCredential {
@@ -92,6 +93,15 @@ export interface BackendApplication {
     listStepCatalog(context: RequestContext): TestStepCatalogItem[];
     listDeviceTools(context: RequestContext, hardwareId: string): TestDeviceTools;
     startRun(context: RequestContext, input: { planId: string; revision: number; executionRevision: string; requestId: string; parameters: Record<string, unknown> }): Promise<TestRunSnapshot>;
+    currentUnit(context: RequestContext): import("./testing.js").TestUnit;
+    startUnit(context: RequestContext, input?: { serialNumber?: string }): import("./testing.js").TestUnit;
+    listItemStatus(context: RequestContext): import("./testing.js").TestItemStatusList;
+    reorderItems(context: RequestContext, input: { planIds: string[] }): import("./testing.js").TestItemStatusList;
+    startBatch(context: RequestContext, input: import("./testing.js").TestBatchStartInput): Promise<import("./testing.js").TestBatch>;
+    abortBatch(context: RequestContext, batchId: string): Promise<import("./testing.js").TestBatch>;
+    currentBatch(context: RequestContext): import("./testing.js").TestBatch | null;
+    getBatch(context: RequestContext, batchId: string): import("./testing.js").TestBatch;
+    waitForBatch(context: RequestContext, batchId: string, timeoutMs?: number): Promise<import("./testing.js").TestBatch>;
     pauseRun(context: RequestContext, runId: string): Promise<TestRunSnapshot>;
     resumeRun(context: RequestContext, runId: string): Promise<TestRunSnapshot>;
     abortRun(context: RequestContext, runId: string): Promise<TestRunSnapshot>;
@@ -109,3 +119,13 @@ export interface BackendApplication {
     dashboard(context: RequestContext): DashboardSnapshot;
   };
 }
+
+export { DESKTOP_OPERATIONS, type DesktopOperation } from "./operations.generated.js";
+
+/** Process lifecycle members owned by the host rather than exposed as desktop operations. */
+type LifecycleMember = "projects.close" | "manual.abortHardware" | "manual.close";
+type BackendMember = { [N in keyof BackendApplication & string]: `${N}.${keyof BackendApplication[N] & string}` }[keyof BackendApplication & string];
+type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
+type Assert<T extends true> = T;
+/** Fails to compile when this interface and the generated Python operation list diverge. */
+export type BackendMatchesOperations = Assert<Same<Exclude<BackendMember, LifecycleMember>, DesktopOperation>>;

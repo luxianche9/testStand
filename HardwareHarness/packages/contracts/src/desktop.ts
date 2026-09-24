@@ -20,58 +20,7 @@ export interface DashboardSnapshot {
   availability?: HardwareAvailability[];
 }
 
-export const HARDWAREHARNESS_IPC = {
-  system: {
-    dashboard: "hardwareharness:system:dashboard",
-    exportText: "hardwareharness:system:export-text"
-  },
-  devices: {
-    saveComputer: "hardwareharness:devices:save-computer", removeComputer: "hardwareharness:devices:remove-computer", refreshComputer: "hardwareharness:devices:refresh-computer",
-    saveServer: "hardwareharness:devices:save-server", removeServer: "hardwareharness:devices:remove-server", refreshServer: "hardwareharness:devices:refresh-server",
-    serverAction: "hardwareharness:devices:server-action", readServerLogs: "hardwareharness:devices:server-logs", executeSsh: "hardwareharness:devices:ssh-execute",
-    refreshManagedHardware: "hardwareharness:devices:refresh-managed-hardware", listHardware: "hardwareharness:devices:list-hardware", saveHardware: "hardwareharness:devices:save-hardware",
-    removeHardware: "hardwareharness:devices:remove-hardware", importHardwareImage: "hardwareharness:devices:import-hardware-image", removeHardwareImage: "hardwareharness:devices:remove-hardware-image",
-    hardwareImageUrl: "hardwareharness:devices:hardware-image-url", exportBundle: "hardwareharness:devices:export-bundle", importBundle: "hardwareharness:devices:import-bundle",
-    previewBundle: "hardwareharness:devices:preview-bundle", applyBundle: "hardwareharness:devices:apply-bundle"
-  },
-  projects: {
-    current: "hardwareharness:projects:current", chooseFolder: "hardwareharness:projects:choose-folder", openFolder: "hardwareharness:projects:open-folder",
-    initializeFolder: "hardwareharness:projects:initialize-folder", save: "hardwareharness:projects:save", leave: "hardwareharness:projects:leave",
-    listRecent: "hardwareharness:projects:list-recent", forgetRecent: "hardwareharness:projects:forget-recent"
-  },
-  wiring: {
-    update: "hardwareharness:wiring:update", requestTask: "hardwareharness:wiring:request-task", startTask: "hardwareharness:wiring:start-task",
-    completeTask: "hardwareharness:wiring:complete-task", cancelTask: "hardwareharness:wiring:cancel-task", getTask: "hardwareharness:wiring:get-task", listTasks: "hardwareharness:wiring:list-tasks"
-  },
-  manual: {
-    invokeTool: "hardwareharness:manual:invoke-tool"
-  },
-  testing: {
-    listPlans: "hardwareharness:testing:list-plans", loadPlan: "hardwareharness:testing:load-plan", createPlan: "hardwareharness:testing:create-plan",
-    savePlan: "hardwareharness:testing:save-plan", deletePlan: "hardwareharness:testing:delete-plan", applyPlanOperations: "hardwareharness:testing:apply-operations",
-    validatePlan: "hardwareharness:testing:validate-plan", analyzePlanDraft: "hardwareharness:testing:analyze-plan-draft", listStepCatalog: "hardwareharness:testing:list-step-catalog", listDeviceTools: "hardwareharness:testing:list-device-tools",
-    startRun: "hardwareharness:testing:start-run", pauseRun: "hardwareharness:testing:pause-run", resumeRun: "hardwareharness:testing:resume-run",
-    abortRun: "hardwareharness:testing:abort-run", currentRun: "hardwareharness:testing:current-run", getRun: "hardwareharness:testing:get-run",
-    listRuns: "hardwareharness:testing:list-runs", readRunLog: "hardwareharness:testing:read-run-log", readRunResults: "hardwareharness:testing:read-run-results",
-    listRecoveryItems: "hardwareharness:testing:list-recovery-items", reconcileOperation: "hardwareharness:testing:reconcile-operation"
-  },
-
-  agents: {
-    rotateGatewayToken: "hardwareharness:agents:rotate-gateway-token", status: "hardwareharness:agents:status",
-    preview: "hardwareharness:agents:preview", install: "hardwareharness:agents:install", remove: "hardwareharness:agents:remove", test: "hardwareharness:agents:test", listTools: "hardwareharness:agents:list-tools",
-    openCodeStatus: "hardwareharness:agents:opencode-status", startOpenCode: "hardwareharness:agents:opencode-start", stopOpenCode: "hardwareharness:agents:opencode-stop", restartOpenCode: "hardwareharness:agents:opencode-restart"
-  },
-  settings: {
-    getTheme: "hardwareharness:settings:get-theme", setTheme: "hardwareharness:settings:set-theme", getProjectView: "hardwareharness:settings:get-project-view", setProjectView: "hardwareharness:settings:set-project-view",
-    getWelcomeLayout: "hardwareharness:settings:get-welcome-layout", setWelcomeLayout: "hardwareharness:settings:set-welcome-layout",
-    getLlm: "hardwareharness:settings:get-llm", saveLlm: "hardwareharness:settings:save-llm"
-  },
-  window: {
-    minimize: "hardwareharness:window:minimize", toggleMaximize: "hardwareharness:window:toggle-maximize", close: "hardwareharness:window:close"
-  }
-} as const;
-
-export type HardwareHarnessEventName = "availability" | "execution" | "wiringTask" | "workspace" | "project" | "testPlan" | "testRun" | "opencode" | "window-state";
+export type HardwareHarnessEventName = "availability" | "execution" | "wiringTask" | "workspace" | "project" | "testPlan" | "testRun" | "testBatch" | "opencode" | "window-state";
 
 export interface HardwareHarnessSystemApi {
   dashboard(): Promise<DashboardSnapshot>;
@@ -80,10 +29,10 @@ export interface HardwareHarnessSystemApi {
 
 export interface HardwareHarnessDevicesApi {
   saveComputer(input: RemoteComputer, secrets?: { ssh?: string }): Promise<RemoteComputer>;
-  removeComputer(computerId: string): Promise<void>;
+  removeComputer(computerId: string): Promise<{ computerId: string }>;
   refreshComputer(computerId: string): Promise<ComputerStatus>;
   saveServer(input: McpServerConfig, secrets?: { mcpToken?: string }): Promise<McpServerConfig>;
-  removeServer(serverId: string): Promise<void>;
+  removeServer(serverId: string): Promise<{ serverId: string }>;
   refreshServer(serverId: string): Promise<ServerStatus>;
   serverAction(serverId: string, action: "start" | "stop" | "restart" | "force-stop"): Promise<ServerStatus>;
   readServerLogs(serverId: string, lines?: number): Promise<RemoteServiceLog>;
@@ -91,7 +40,7 @@ export interface HardwareHarnessDevicesApi {
   refreshManagedHardware(): Promise<ManagedHardware[]>;
   listHardware(): Promise<Hardware[]>;
   saveHardware(hardware: Hardware): Promise<Hardware>;
-  removeHardware(hardwareId: string): Promise<void>;
+  removeHardware(hardwareId: string): Promise<{ hardwareId: string }>;
   importHardwareImage(input: HardwareImageTarget): Promise<Hardware | null>;
   removeHardwareImage(input: HardwareImageTarget): Promise<Hardware>;
   hardwareImageUrl(hardwareId: string, assetId: string): Promise<string>;
@@ -131,13 +80,22 @@ export interface HardwareHarnessTestingApi {
   loadPlan(planId: string): Promise<TestPlan>;
   createPlan(input: { requestId: string; id?: string; name: string; description?: string; parameters?: unknown[] }): Promise<TestPlanMutationResult>;
   savePlan(plan: TestPlan, baseRevision: number): Promise<TestPlanMutationResult>;
-  deletePlan(planId: string): Promise<void>;
+  deletePlan(planId: string): Promise<{ planId: string }>;
   applyPlanOperations(input: { planId: string; baseRevision: number; requestId: string; operations: TestPlanOperation[] }): Promise<TestPlanMutationResult>;
   validatePlan(planId: string): Promise<TestPlanValidation>;
   analyzePlanDraft(input: { plan: TestPlan; baseRevision: number }): Promise<TestPlanDraftAnalysis>;
   listStepCatalog(): Promise<TestStepCatalogItem[]>;
   listDeviceTools(hardwareId: string): Promise<TestDeviceTools>;
   startRun(input: { planId: string; revision: number; executionRevision: string; requestId: string; parameters: Record<string, unknown> }): Promise<TestRunSnapshot>;
+  currentUnit(): Promise<import("./testing.js").TestUnit>;
+  startUnit(input?: { serialNumber?: string }): Promise<import("./testing.js").TestUnit>;
+  listItemStatus(): Promise<import("./testing.js").TestItemStatusList>;
+  reorderItems(input: { planIds: string[] }): Promise<import("./testing.js").TestItemStatusList>;
+  startBatch(input: import("./testing.js").TestBatchStartInput): Promise<import("./testing.js").TestBatch>;
+  abortBatch(batchId: string): Promise<import("./testing.js").TestBatch>;
+  currentBatch(): Promise<import("./testing.js").TestBatch | null>;
+  getBatch(batchId: string): Promise<import("./testing.js").TestBatch>;
+  waitForBatch(batchId: string, timeoutMs?: number): Promise<import("./testing.js").TestBatch>;
   pauseRun(runId: string): Promise<TestRunSnapshot>;
   resumeRun(runId: string): Promise<TestRunSnapshot>;
   abortRun(runId: string): Promise<TestRunSnapshot>;

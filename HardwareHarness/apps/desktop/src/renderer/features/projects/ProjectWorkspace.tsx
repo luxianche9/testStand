@@ -1,7 +1,7 @@
 import { lazy, Suspense } from "react";
 import type { ProjectView } from "@hardwareharness/contracts/storage";
-import { FeatureFallback } from "../../shared/FeatureFallback.js";
-import { ErrorBoundary } from "../../shared/ErrorBoundary.js";
+import { ErrorBoundary } from "../../app/ErrorBoundary.js";
+import { FeatureFallback } from "../../app/FeatureFallback.js";
 
 const WiringPage = lazy(() => import("../wiring/index.js").then((module) => ({ default: module.WiringPage })));
 const DevicesPage = lazy(() => import("../devices/index.js").then((module) => ({ default: module.DevicesPage })));
@@ -9,12 +9,10 @@ const TestPlanPage = lazy(() => import("../testing/index.js").then((module) => (
 
 export function ProjectWorkspace({ view }: { view: ProjectView }) {
   return (
-    <div className="grid h-full min-h-0 min-w-0 flex-1 bg-background">
+    <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col bg-surface-0">
       <ErrorBoundary key={view}>
         <Suspense fallback={<FeatureFallback />}>
-          <div className="animate-page-in contents">
-            {view === "wiring" ? <WiringPage /> : view === "plans" ? <TestPlanPage /> : <DevicesPage />}
-          </div>
+          {view === "wiring" ? <WiringPage /> : view === "plans" ? <TestPlanPage /> : <DevicesPage />}
         </Suspense>
       </ErrorBoundary>
     </div>

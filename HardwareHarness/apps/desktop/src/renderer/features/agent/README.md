@@ -10,7 +10,7 @@ Upstream is MIT licensed. HardwareHarness adaptations keep the existing Electron
 translate product copy to Chinese, enable OpenCode-compatible text/image/PDF attachments, add model and Agent
 selection, `/` commands and `@` project-file context, replace the persistent thread sidebar with a 16rem overlay
 drawer, and consume the app-wide Tailwind design tokens and shared component library in
-`src/renderer/shared/ui` (the former `.tf-agent-theme` scope was removed when the design system went global). Voice and remote-image generation remain intentionally out of scope because the current sidecar does not
+`src/renderer/ui` (precision-instrument tokens; the former `.tf-agent-theme` scope is gone). Voice and remote-image generation remain intentionally out of scope because the current sidecar does not
 provide those adapters. The pinned OpenCode adapter leaves a newly selected thread as a disabled local placeholder
 until its remote session is initialized, so all New actions await the assistant-ui thread-list runtime's
 `initialize()` operation before continuing.

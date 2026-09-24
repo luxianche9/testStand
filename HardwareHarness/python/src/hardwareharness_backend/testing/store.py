@@ -13,8 +13,8 @@ from typing import Any, cast
 from ruamel.yaml import YAML
 from ruamel.yaml.tokens import TagToken
 
-from hardwareharness_backend.compat import clone, new_uuid, utc_now_iso
 from hardwareharness_backend.contracts.errors import app_error
+from hardwareharness_backend.util import clone, new_uuid, utc_now_iso
 
 from .compiler import analyze_plan_draft, compile_plan
 from .models import STEP_ID, empty_plan, iter_steps
@@ -120,7 +120,6 @@ class TestPlanStore:
                 "description",
                 "parameters",
                 "requirements",
-                "wiringRequirements",
                 "stopOnFail",
                 "regions",
             ):
@@ -139,7 +138,7 @@ class TestPlanStore:
             document = self._read_document(path)
             current = clone(document)
             if current.get("schemaVersion") != 2:
-                raise app_error("conflict", "Version 1 plans are read-only; migrate explicitly")
+                raise app_error("conflict", "Only schemaVersion 2 plans can be edited")
             if current["revision"] != base_revision:
                 raise app_error(
                     "conflict",
@@ -167,7 +166,7 @@ class TestPlanStore:
             document = self._read_document(path)
             plan = cast(Record, document)
             if plan.get("schemaVersion") != 2:
-                raise app_error("conflict", "Version 1 plans are read-only; migrate explicitly")
+                raise app_error("conflict", "Only schemaVersion 2 plans can be edited")
             if plan["revision"] != base_revision:
                 raise app_error(
                     "conflict", "Test plan revision changed", {"currentRevision": plan["revision"]}
@@ -285,7 +284,7 @@ class TestPlanStore:
 
     def _validate_structure(self, plan: Record) -> None:
         if (
-            plan.get("schemaVersion") not in {1, 2}
+            plan.get("schemaVersion") != 2
             or not isinstance(plan.get("id"), str)
             or not PLAN_ID.fullmatch(plan["id"])
         ):
@@ -313,7 +312,6 @@ class TestPlanStore:
             "updatedAt": plan.get("updatedAt"),
             "valid": not any(item["severity"] == "error" for item in issues),
             "stepCount": len(iter_steps(plan)),
-            "migrationRequired": plan.get("schemaVersion") == 1,
         }
 
 

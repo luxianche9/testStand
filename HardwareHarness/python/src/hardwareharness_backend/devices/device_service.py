@@ -3,9 +3,9 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
-from hardwareharness_backend.compat import js_string, json_parse, now_ms, utc_now_iso
 from hardwareharness_backend.contracts.devices import parse_mcp_server, parse_remote_computer
 from hardwareharness_backend.contracts.errors import app_error
+from hardwareharness_backend.util import json_loads, now_ms, utc_now_iso
 
 from .local_shell import execute_local_shell
 from .remote_shell import remote_shell_for
@@ -147,7 +147,7 @@ class DeviceService:
             status["ssh"] = {
                 "state": "offline",
                 "checkedAt": utc_now_iso(),
-                "message": js_string(error),
+                "message": str(error),
             }
         self._statuses[computer_id] = status
         return status
@@ -177,12 +177,12 @@ class DeviceService:
                 "state": "error",
                 "checkedAt": utc_now_iso(),
                 "serviceState": "unknown",
-                "message": js_string(error),
+                "message": str(error),
             }
             status["transport"] = {
                 "state": "error",
                 "checkedAt": utc_now_iso(),
-                "message": js_string(error),
+                "message": str(error),
             }
             self._server_statuses[server_id] = status
             return status
@@ -213,13 +213,13 @@ class DeviceService:
             status["transport"] = {
                 "state": "offline",
                 "checkedAt": utc_now_iso(),
-                "message": js_string(error),
+                "message": str(error),
             }
             try:
                 service = await self.execute(
                     server["computerId"], server["lifecycle"]["statusCommand"], 15000
                 )
-                parsed = json_parse(service["stdout"].strip() or "{}")
+                parsed = json_loads(service["stdout"].strip() or "{}")
                 state = _normalize_service_state(parsed.get("state"))
                 message = parsed.get("message", parsed.get("state", "Unknown"))
                 status["service"] = {
@@ -233,9 +233,9 @@ class DeviceService:
                     "hardwareId": server["hardwareId"],
                     "state": "faulted" if state == "running" else "unavailable",
                     "checkedAt": utc_now_iso(),
-                    "message": js_string(error),
+                    "message": str(error),
                     "diagnostics": {
-                        "transport": js_string(error),
+                        "transport": str(error),
                         **({"process": process_message} if process_message else {}),
                     },
                 }
@@ -244,16 +244,16 @@ class DeviceService:
                     "state": "unknown",
                     "checkedAt": utc_now_iso(),
                     "serviceState": "unknown",
-                    "message": js_string(diagnostic_error),
+                    "message": str(diagnostic_error),
                 }
                 self._availability[server["hardwareId"]] = {
                     "hardwareId": server["hardwareId"],
                     "state": "unavailable",
                     "checkedAt": utc_now_iso(),
-                    "message": js_string(error),
+                    "message": str(error),
                     "diagnostics": {
-                        "transport": js_string(error),
-                        "ssh": js_string(diagnostic_error),
+                        "transport": str(error),
+                        "ssh": str(diagnostic_error),
                     },
                 }
         self._server_statuses[server_id] = status

@@ -11,7 +11,6 @@ function plan(): TestPlan {
     revision: 1,
     parameters: [],
     requirements: [],
-    wiringRequirements: [],
     stopOnFail: false,
     regions: {
       prepare: [],
@@ -50,7 +49,9 @@ describe("test plan tree model", () => {
 
   it("collects concrete hardware bindings", () => {
     const value = clonePlan(plan());
-    value.regions.test[0]!.children = [{ id: "invoke", type: "InvokeTool", hardwareId: "old", toolName: "read", bindingRevision: "rev" }];
+    value.regions.test[0]!.children = [{
+      id: "invoke", type: "InvokeTool", hardwareId: "old", toolName: "read", bindingRevision: "rev"
+    }];
     expect(planHardwareIds(value)).toEqual(["old"]);
   });
 });

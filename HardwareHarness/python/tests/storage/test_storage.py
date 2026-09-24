@@ -6,7 +6,6 @@ from typing import Any, cast
 
 import pytest
 
-from hardwareharness_backend.compat import UNDEFINED, clone
 from hardwareharness_backend.storage import (
     SecretStore,
     SettingsStore,
@@ -15,6 +14,7 @@ from hardwareharness_backend.storage import (
     read_json,
     sync_directory,
 )
+from hardwareharness_backend.util import UNDEFINED, clone
 
 
 class Protector:
@@ -167,7 +167,7 @@ async def test_atomic_failure_cleanup_and_sync_errors(
 
     with monkeypatch.context() as patch:
         patch.setattr(os, "replace", failed_replace)
-        with pytest.raises(OSError, match="EIO: i/o error, rename"):
+        with pytest.raises(OSError, match="replace failure"):
             await atomic_text(path, "after")
     assert path.read_text() == "before"
     assert list(tmp_path.glob("*.tmp")) == []
@@ -177,7 +177,7 @@ async def test_atomic_failure_cleanup_and_sync_errors(
 
     with monkeypatch.context() as patch:
         patch.setattr(os, "open", failed_open)
-        with pytest.raises(OSError, match="EIO: i/o error, open"):
+        with pytest.raises(OSError, match="sync failure"):
             await sync_directory(tmp_path)
 
 

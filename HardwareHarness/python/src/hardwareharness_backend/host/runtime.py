@@ -4,18 +4,16 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-import re
 from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
 from hardwareharness_backend.application import (
+    DESKTOP_METHODS,
     ExecutionCoordinator,
     HardwareHarnessApplication,
 )
-from hardwareharness_backend.compat import UNDEFINED, clone, js_trim
-from hardwareharness_backend.compat.collation import set_default_locale
 from hardwareharness_backend.contracts.errors import AppError, to_wire_error
 from hardwareharness_backend.devices import (
     DeviceCatalogService,
@@ -24,7 +22,6 @@ from hardwareharness_backend.devices import (
     DeviceTransportRegistry,
     McpHttpTransport,
 )
-from hardwareharness_backend.host.migrations import migrate_global_storage
 from hardwareharness_backend.host.rpc import DesktopSecretProtector, StdioRpc
 from hardwareharness_backend.mcp_gateway import LocalMcpGateway
 from hardwareharness_backend.projects import ProjectService
@@ -32,95 +29,12 @@ from hardwareharness_backend.storage import SecretStore, SettingsStore
 from hardwareharness_backend.testing import TestEngine, TestPlanStore
 from hardwareharness_backend.testing.plugins import load_plugins
 from hardwareharness_backend.testing.resolver import DeviceToolResolver
+from hardwareharness_backend.util import UNDEFINED, clone
 from hardwareharness_backend.wiring import ProjectWiringService
 
 LLM_SECRET = "opencode.llm.api-key"
 HUMAN = {"actor": "human", "source": "desktop"}
 AGENT = {"actor": "agent", "source": "mcp"}
-
-APPLICATION_METHODS = {
-    "system": {"dashboard"},
-    "devices": set(
-        [
-            "listComputers",
-            "saveComputer",
-            "removeComputer",
-            "getComputerStatus",
-            "executeSsh",
-            "listServers",
-            "listServersWithStatus",
-            "saveServer",
-            "removeServer",
-            "refreshServer",
-            "serverAction",
-            "readServerLogs",
-            "listManagedHardware",
-            "listHardware",
-            "getHardware",
-            "saveHardware",
-            "removeHardware",
-            "setHardwareImageBytes",
-            "setHardwareImageFromPath",
-            "removeHardwareImage",
-            "exportBundle",
-            "importBundle",
-            "inspectBundle",
-            "importBundleForServer",
-            "callTool",
-            "listTools",
-        ]
-    ),
-    "projects": set(
-        [
-            "document",
-            "inspectFolder",
-            "initializeFolder",
-            "openFolder",
-            "saveProject",
-            "leaveProject",
-            "listRecent",
-            "forgetRecent",
-        ]
-    ),
-    "wiring": set(
-        [
-            "addManagedHardwareToCanvas",
-            "updateDocument",
-            "requestTask",
-            "startTask",
-            "completeTask",
-            "cancelTask",
-            "getTask",
-            "listTasks",
-        ]
-    ),
-    "manual": {"invokeTool"},
-    "testing": set(
-        [
-            "listPlans",
-            "loadPlan",
-            "createPlan",
-            "savePlan",
-            "deletePlan",
-            "applyPlanOperations",
-            "validatePlan",
-            "listStepCatalog",
-            "listDeviceTools",
-            "startRun",
-            "pauseRun",
-            "resumeRun",
-            "abortRun",
-            "currentRun",
-            "getRun",
-            "listRuns",
-            "readRunLog",
-            "readRunResults",
-            "waitForRun",
-            "listRecoveryItems",
-            "reconcileOperation",
-        ]
-    ),
-}
 
 
 @dataclass
@@ -153,9 +67,7 @@ class HostRuntime:
             raise AppError("conflict", "Python backend is already initialized")
         root = Path(options["userData"])
         root.mkdir(parents=True, exist_ok=True)
-        set_default_locale(options.get("locale", "zh-CN"))
         protector = DesktopSecretProtector(self.rpc)
-        await migrate_global_storage(root, protector)
         settings = SettingsStore(root / "settings.json")
         await settings.initialize()
         secrets = SecretStore(root / "secrets.json", protector)
@@ -205,6 +117,7 @@ class HostRuntime:
         execution.set_notifier(lambda activity: self.publish("execution", activity))
         application.testing.set_plan_notifier(lambda event: self.publish("testPlan", event))
         test_engine.set_notifier(lambda event: self.publish("testRun", event))
+        application.testing.set_batch_notifier(lambda event: self.publish("testBatch", event))
         test_token = options.get("gatewayTestToken")
         if (
             options.get("integrationTestMode")
@@ -281,15 +194,15 @@ class HostRuntime:
         if self._shutdown is not None:
             raise AppError("unavailable", "Python backend is shutting down")
         if method.startswith("application."):
-            parts = method.split(".")
-            if len(parts) != 3 or parts[2] not in APPLICATION_METHODS.get(parts[1], set()):
+            target = DESKTOP_METHODS.get(method.removeprefix("application."))
+            if target is None:
                 raise AppError("invalid_argument", f"Unknown backend method: {method}")
             args = list(params.get("args", []))
             if not args or args[0] != HUMAN:
                 raise AppError("permission_denied", "Desktop request context must be human/desktop")
             while args and args[-1] is UNDEFINED:
                 args.pop()
-            operation = getattr(getattr(services.application, parts[1]), _snake(parts[2]))
+            operation = getattr(getattr(services.application, target[0]), target[1])
             parameters = list(inspect.signature(operation).parameters.values())
             for index, value in enumerate(args):
                 if value is UNDEFINED:
@@ -304,7 +217,7 @@ class HostRuntime:
                 {"llm": {"baseUrl": params["baseUrl"], "model": params["model"]}}
             )
             raw_key = params.get("apiKey")
-            api_key = js_trim(raw_key) if isinstance(raw_key, str) else ""
+            api_key = raw_key.strip() if isinstance(raw_key, str) else ""
             if params.get("clearApiKey"):
                 await services.secrets.remove(LLM_SECRET)
             elif api_key:
@@ -373,7 +286,3 @@ class HostRuntime:
         await services.devices.close()
         await services.transports.close()
         await services.secrets.flush()
-
-
-def _snake(name: str) -> str:
-    return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()

@@ -3,22 +3,19 @@ import hashlib
 import json
 import math
 from collections.abc import Callable
-from functools import cmp_to_key
 from typing import Protocol
 
-from hardwareharness_backend.compat import (
+from hardwareharness_backend.contracts.errors import app_error
+from hardwareharness_backend.testing.runtime_state import RuntimeStateStore
+from hardwareharness_backend.util import (
     Record,
     clone,
     iso_from_ms,
-    js_trim,
     new_uuid,
     now_ms,
     parse_date_ms,
     utc_now_iso,
-    utf16_compare,
 )
-from hardwareharness_backend.contracts.errors import app_error
-from hardwareharness_backend.testing.runtime_state import RuntimeStateStore
 
 
 class WiringProjectPort(Protocol):
@@ -63,7 +60,7 @@ class ProjectWiringService:
 
     async def add_managed_hardware_to_canvas(self, hardware_id: str) -> Record:
         async with self._lock("canvas:nodes"):
-            identifier = js_trim(hardware_id)
+            identifier = hardware_id.strip()
             if not identifier:
                 raise app_error("invalid_argument", "hardwareId is required")
             hardware = self.catalog.get_hardware(identifier)
@@ -102,7 +99,7 @@ class ProjectWiringService:
             return {"added": True, "node": node, "dirty": document["dirty"]}
 
     async def request_task(self, input: Record) -> Record:
-        references = [js_trim(input[key]) for key in ("portA", "portB")]
+        references = [input[key].strip() for key in ("portA", "portB")]
         if not all(references):
             raise app_error("invalid_argument", "Two port references are required")
         endpoints = [self.catalog.resolve_port(reference) for reference in references]
@@ -115,8 +112,7 @@ class ProjectWiringService:
             {
                 self.catalog.resolve_port(port_a)["hardware"]["hardwareId"],
                 self.catalog.resolve_port(port_b)["hardware"]["hardwareId"],
-            },
-            key=cmp_to_key(utf16_compare),
+            }
         )
         timeout_ms = min(max(input.get("timeoutMs", 1_800_000), 1000), 86_400_000)
         now = now_ms()
@@ -176,7 +172,7 @@ class ProjectWiringService:
                 **task,
                 "status": "in_progress",
                 "startedAt": utc_now_iso(),
-                "operatorName": js_trim(operator_name) or "operator",
+                "operatorName": operator_name.strip() or "operator",
             }
             self._tasks[wiring_task_id] = started
             self._persist(started)
@@ -222,8 +218,6 @@ class ProjectWiringService:
         return clone(task)
 
     def list_tasks(self, input: Record | None = None) -> list[Record]:
-        from hardwareharness_backend.compat.collation import locale_compare
-
         query = input or {}
         for task in list(self._tasks.values()):
             if task["status"] == "pending":
@@ -234,11 +228,7 @@ class ProjectWiringService:
             for task in self._tasks.values()
             if "status" not in query or task["status"] == query["status"]
         ]
-        items.sort(
-            key=cmp_to_key(
-                lambda left, right: locale_compare(right["requestedAt"], left["requestedAt"])
-            )
-        )
+        items.sort(key=lambda task: task["requestedAt"], reverse=True)
         return [clone(task) for task in items[: int(limit)]]
 
     async def close(self) -> None:
@@ -346,15 +336,15 @@ class ProjectWiringService:
 
 
 def canonical_ports(left: str, right: str, pins: list[Record]) -> tuple[str, str, list[Record]]:
-    a, b = js_trim(left), js_trim(right)
+    a, b = left.strip(), right.strip()
     if not a or not b:
         raise app_error("invalid_argument", "Two port references are required")
     if a == b:
         if not pins or any(pin["a"] == pin["b"] for pin in pins):
             raise app_error("invalid_argument", "Same-port wiring requires distinct pin pairs")
-        pairs = [sorted((pin["a"], pin["b"]), key=cmp_to_key(utf16_compare)) for pin in pins]
+        pairs = [sorted((pin["a"], pin["b"])) for pin in pins]
         return a, b, [{"a": left, "b": right} for left, right in pairs]
-    if utf16_compare(a, b) <= 0:
+    if a <= b:
         return a, b, [{"a": pin["a"], "b": pin["b"]} for pin in pins]
     return b, a, [{"a": pin["b"], "b": pin["a"]} for pin in pins]
 

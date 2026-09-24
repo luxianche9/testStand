@@ -1,34 +1,55 @@
 import type { ToolCallMessagePartComponent } from "@assistant-ui/react";
-import { memo, useMemo } from "react";
-import { cn } from "../../../shared/ui/index.js";
-import { ToolStatusIcon, basename, isCancelledToolStatus, str, truncate, type ToolCallStatusLike } from "./shared";
+import { memo, type ReactNode } from "react";
+import {
+  basename,
+  isCancelledToolStatus,
+  str,
+  toolCardClass,
+  ToolHeading,
+  ToolLamp,
+  toolRowClass,
+  truncate,
+  type ToolCallStatusLike
+} from "./shared";
 
 function shortenPath(path: string, depth = 2) {
   const parts = path.split(/[\\/]/).filter(Boolean);
   return parts.length <= depth ? path : parts.slice(-depth).join("/");
 }
 
-function ToolCallShell({ toolName, status, children }: { toolName: string; status?: ToolCallStatusLike; children?: React.ReactNode }) {
-  const cancelled = isCancelledToolStatus(status);
+function ToolCallShell({ toolName, status, detail }: {
+  toolName: string;
+  status?: ToolCallStatusLike;
+  detail?: ReactNode;
+}) {
   return (
-    <div className="flex items-center gap-2 py-0.5 text-sm text-muted-foreground">
-      <ToolStatusIcon status={status} />
-      <span className={cn("flex min-w-0 items-center gap-1.5 truncate", cancelled && "line-through opacity-50")}>
-        <span className="font-medium">{toolName}</span>{children}
-      </span>
+    <div className={toolCardClass}>
+      <div className={toolRowClass}>
+        <ToolLamp status={status} />
+        <ToolHeading name={toolName} detail={detail} cancelled={isCancelledToolStatus(status)} />
+      </div>
     </div>
   );
 }
 
-function inlineTool(argKeys: string | string[], format: (value: string) => string = truncate): ToolCallMessagePartComponent {
+function inlineTool(
+  argKeys: string | string[],
+  format: (value: string) => string = truncate
+): ToolCallMessagePartComponent {
   const keys = Array.isArray(argKeys) ? argKeys : [argKeys];
   return memo(({ toolName, args, status }) => {
-    const value = keys.reduce<string>((current, key) => current || str((args as Record<string, unknown>)?.[key]), "");
-    return <ToolCallShell toolName={toolName} status={status}>{value && <span className="truncate opacity-60">{format(value)}</span>}</ToolCallShell>;
+    const value = keys.reduce<string>(
+      (current, key) => current || str((args as Record<string, unknown>)?.[key]),
+      ""
+    );
+    return <ToolCallShell toolName={toolName} status={status} detail={value ? format(value) : undefined} />;
   });
 }
 
-export const ReadInline = inlineTool(["file_path", "filePath", "path", "file"], (value) => truncate(shortenPath(value)));
+export const ReadInline = inlineTool(
+  ["file_path", "filePath", "path", "file"],
+  (value) => truncate(shortenPath(value))
+);
 export const EditInline = inlineTool(["file_path", "filePath", "path"], basename);
 export const WriteInline = inlineTool(["file_path", "filePath", "path"], basename);
 export const GrepInline = inlineTool(["pattern", "query"]);

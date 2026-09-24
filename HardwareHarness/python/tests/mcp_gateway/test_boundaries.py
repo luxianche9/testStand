@@ -12,7 +12,7 @@ from hardwareharness_backend.contracts.errors import AppError
 from hardwareharness_backend.contracts.validation import ValidationError
 from hardwareharness_backend.mcp_gateway import LocalMcpGateway
 from hardwareharness_backend.mcp_gateway.gateway import AGENT_INSTRUCTIONS
-from hardwareharness_backend.mcp_gateway.tool_registry import BUILTIN_TOOL_DEFINITIONS, ToolRegistry
+from hardwareharness_backend.mcp_gateway.tool_registry import BUILTIN_TOOLS, ToolRegistry
 
 
 def make_gateway() -> tuple[LocalMcpGateway, Any]:
@@ -94,7 +94,11 @@ async def test_all_builtin_routes_and_defaults(
     name: str, args: dict[str, Any], group: str, method: str, expected: list[Any]
 ) -> None:
     gateway, app = make_gateway()
-    result = {"task": _TASK, "dirty": True, "extra": "omit"} if name == "update_test_task" else []
+    result: Any = []
+    if name == "update_test_task":
+        result = {"task": _TASK, "dirty": True, "extra": "omit"}
+    elif name == "get_hardware_definition":
+        result = {"hardwareId": "H", "ports": []}
     handler = AsyncMock(return_value=result)
     getattr(app, group).__dict__[method] = handler
     output = await gateway.invoke_tool(name, args)
@@ -135,7 +139,7 @@ async def test_zod_argument_errors_and_nested_stripping() -> None:
 def test_permissions_duplicate_builtin_and_snapshot_copy() -> None:
     gateway, app = make_gateway()
     with pytest.raises(RuntimeError, match="Duplicate builtin"):
-        ToolRegistry(app, [BUILTIN_TOOL_DEFINITIONS[0], BUILTIN_TOOL_DEFINITIONS[0]])
+        ToolRegistry(app, [BUILTIN_TOOLS[0], BUILTIN_TOOLS[0]])
     app.authorizer.is_allowed.return_value = False
     assert gateway.list_tools() == []
     app.devices.list_tools.assert_not_called()

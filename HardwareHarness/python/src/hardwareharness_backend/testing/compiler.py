@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from hardwareharness_backend.compat import clone
+from hardwareharness_backend.util import clone
 
 from .models import iter_steps, schema_hash
 from .validation import issue, validate_plan
@@ -131,8 +131,7 @@ def compile_plan(
             guaranteed_state,
         )
 
-    wiring_revision, wiring_issues = _check_wiring(plan, wiring)
-    issues.extend(wiring_issues)
+    wiring_revision = _wiring_revision(wiring)
     coverage = _coverage_summary(plan)
     compiled = clone(plan)
     compiled["resolvedBindings"] = bindings
@@ -518,43 +517,10 @@ def _builtin_output_schema(step: Record) -> Record:
     return {}
 
 
-def _check_wiring(plan: Record, wiring: Any | None) -> tuple[str, list[Record]]:
-    requirements = plan.get("wiringRequirements", [])
-    if not requirements:
-        return "none", []
-    if wiring is None:
-        return "unavailable", [
-            issue(
-                "warning",
-                "wiring.unavailable",
-                "Wiring service is unavailable",
-                "/wiringRequirements",
-            )
-        ]
-    snapshot = wiring.snapshot() if hasattr(wiring, "snapshot") else {"connections": []}
-    by_id = {item.get("connectionId"): item for item in snapshot.get("connections", [])}
-    issues: list[Record] = []
-    for index, requirement in enumerate(requirements):
-        connection = by_id.get(requirement.get("connectionId"))
-        if not connection:
-            issues.append(
-                issue(
-                    "error",
-                    "wiring.connection_missing",
-                    "Required connection is missing",
-                    f"/wiringRequirements/{index}",
-                )
-            )
-        elif requirement.get("signature") != wiring.connection_signature(connection):
-            issues.append(
-                issue(
-                    "error",
-                    "wiring.connection_changed",
-                    "Required connection changed",
-                    f"/wiringRequirements/{index}/signature",
-                )
-            )
-    return str(snapshot.get("wiringRevision", "unknown")), issues
+def _wiring_revision(wiring: Any | None) -> str:
+    if wiring is None or not hasattr(wiring, "snapshot"):
+        return "unavailable"
+    return str(wiring.snapshot().get("wiringRevision", "unknown"))
 
 
 def _coverage_summary(plan: Record) -> Record:

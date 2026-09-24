@@ -1,67 +1,117 @@
-/* React Flow third-party overrides — colors reference --tf-* tokens exclusively. */
+/* React Flow overrides for the wiring bench and the welcome-page preview.
+   Colors reference the semantic --tf-* tokens only. */
 
-.topology-preview { position: relative; display: block; width: 100%; height: 132px; overflow: hidden; background: var(--tf-canvas); pointer-events: none; }
+/* ---- Welcome-page thumbnail ------------------------------------------------------------------ */
+.topology-preview {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 132px;
+  overflow: hidden;
+  background: var(--tf-canvas);
+  pointer-events: none;
+}
 .topology-preview.compact { height: 74px; }
 .topology-preview .react-flow { background: var(--tf-canvas); }
-.topology-preview .react-flow__edge-path { stroke: var(--tf-wiring-edge); stroke-width: 2; opacity: .78; }
+.topology-preview .react-flow__edge.wiring-flow-edge[class] .react-flow__edge-path {
+  stroke: var(--tf-wiring-edge);
+  opacity: 0.85;
+}
 .topology-preview .react-flow__node { cursor: default; }
 .topology-preview .flow-hardware-node { transition: none; }
 .topology-preview .flow-connector-label { display: none; }
-.topology-empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--tf-muted-foreground); font-size: 11px; }
+.topology-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--tf-fg-3);
+  font-family: var(--tf-font-mono);
+  font-size: 11px;
+}
 
+/* ---- Canvas chrome --------------------------------------------------------------------------- */
 .react-flow {
   background: var(--tf-canvas);
-  --xy-controls-button-background-color: var(--tf-popover);
-  --xy-controls-button-background-color-hover: var(--tf-accent);
-  --xy-controls-button-color: var(--tf-foreground);
-  --xy-controls-button-color-hover: var(--tf-foreground);
-  --xy-controls-button-border-color: var(--tf-border);
-  --xy-controls-box-shadow: var(--tf-shadow-sm);
+  --xy-controls-button-background-color: var(--tf-surface-2);
+  --xy-controls-button-background-color-hover: var(--tf-surface-3);
+  --xy-controls-button-color: var(--tf-fg-2);
+  --xy-controls-button-color-hover: var(--tf-fg);
+  --xy-controls-button-border-color: var(--tf-line);
+  --xy-controls-box-shadow: var(--tf-shadow-overlay);
 }
-.react-flow__controls { overflow: hidden; border: 0; border-radius: var(--tf-radius-control); background: var(--tf-popover); box-shadow: var(--tf-shadow-sm); outline: 1px solid var(--tf-border); }
-.react-flow__controls-button { border-bottom-color: var(--tf-border); background: var(--tf-popover); fill: var(--tf-foreground); }
-.react-flow__controls-button:hover { background: var(--tf-accent); }
-.react-flow__edge-text { fill: var(--tf-foreground); font-family: var(--tf-font-mono); font-size: 10px; }
-.react-flow__edge-textbg { fill: var(--tf-popover); stroke: var(--tf-border); stroke-width: 1; }
+.react-flow__controls {
+  overflow: hidden;
+  border: 1px solid var(--tf-line-strong);
+  border-radius: var(--tf-radius-control);
+  background: var(--tf-surface-2);
+  box-shadow: var(--tf-shadow-overlay);
+}
+.react-flow__controls-button {
+  width: 24px;
+  height: 24px;
+  border-bottom-color: var(--tf-line);
+  background: var(--tf-surface-2);
+  fill: var(--tf-fg-2);
+}
+.react-flow__controls-button:hover { background: var(--tf-surface-3); fill: var(--tf-fg); }
+.react-flow__controls-button svg { max-width: 10px; max-height: 10px; }
+.react-flow__edge-text { fill: var(--tf-fg); font-family: var(--tf-font-mono); font-size: 10px; }
+.react-flow__edge-textbg { fill: var(--tf-surface-2); stroke: var(--tf-line); stroke-width: 1; }
+
+/* ---- Cables ---------------------------------------------------------------------------------- */
+/* Base cable. The welcome preview relies on this exact stroke and width. */
 .react-flow__edge.wiring-flow-edge .react-flow__edge-path {
   stroke: var(--tf-wiring-edge);
   stroke-width: 3.5;
   stroke-linecap: round;
+  stroke-linejoin: round;
   opacity: 1;
   filter: none;
+  transition: stroke 0.12s ease, stroke-width 0.12s ease;
 }
-.react-flow__edge.wiring-flow-edge.selected .react-flow__edge-path {
+.wiring-canvas .react-flow__edge.wiring-flow-edge .react-flow__edge-path { stroke-width: 2.5; }
+.react-flow__edge.wiring-flow-edge.signal-bus .react-flow__edge-path { stroke: var(--tf-run); }
+.react-flow__edge.wiring-flow-edge.signal-link .react-flow__edge-path { stroke: var(--tf-pass); }
+.react-flow__edge.wiring-flow-edge.signal-power .react-flow__edge-path { stroke: var(--tf-fail); }
+.react-flow__edge.wiring-flow-edge.signal-ground .react-flow__edge-path { stroke: var(--tf-fg-2); }
+.wiring-canvas .react-flow__edge.wiring-flow-edge:hover .react-flow__edge-path { stroke-width: 3.5; }
+.react-flow__edge.wiring-flow-edge.selected .react-flow__edge-path,
+.wiring-canvas .react-flow__edge.wiring-flow-edge.selected .react-flow__edge-path {
   stroke: var(--tf-wiring-edge-strong);
-  stroke-width: 4.5;
+  stroke-width: 4;
 }
 .react-flow__connection-path {
-  stroke: var(--tf-wiring-edge);
-  stroke-width: 3;
+  stroke: var(--tf-wiring-edge-strong);
+  stroke-width: 2.5;
+  stroke-dasharray: 6 4;
   stroke-linecap: round;
 }
+
+/* ---- Resize handles -------------------------------------------------------------------------- */
 .react-flow__resize-control.handle {
-  width: 8px !important;
-  height: 8px !important;
-  border: 1px solid var(--tf-wiring-edge) !important;
-  border-radius: 2px;
-  background: var(--tf-card) !important;
+  width: 7px !important;
+  height: 7px !important;
+  border: 1px solid var(--tf-signal) !important;
+  border-radius: 1px;
+  background: var(--tf-surface-1) !important;
 }
 .react-flow__resize-control.line {
-  border-color: color-mix(in srgb, var(--tf-wiring-edge) 45%, transparent) !important;
+  border-color: color-mix(in oklch, var(--tf-signal) 45%, transparent) !important;
 }
 
-/* Hardware node card */
+/* ---- Hardware node: instrument faceplate ------------------------------------------------------ */
 .flow-hardware-node {
   position: relative;
   box-sizing: border-box;
   width: 100%;
   height: 100%;
   overflow: visible;
-  border: 1px solid var(--tf-border);
+  border: 1px solid var(--tf-line-strong);
   border-radius: var(--tf-radius);
-  background: var(--tf-card);
-  box-shadow: var(--tf-shadow-sm);
-  transition: border-color .12s ease, box-shadow .12s ease;
+  background: var(--tf-surface-1);
+  box-shadow: 0 2px 6px oklch(0 0 0 / 18%);
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
 }
 .flow-node-body {
   display: flex;
@@ -72,17 +122,19 @@
   min-height: 0;
   overflow: hidden;
   border-radius: calc(var(--tf-radius) - 1px);
-  background: var(--tf-card);
+  background: var(--tf-surface-1);
 }
 .flow-node-image {
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
   place-items: center;
+  margin: 6px 6px 0;
   overflow: hidden;
-  border-bottom: 0;
-  background: var(--tf-secondary);
-  color: var(--tf-muted-foreground);
+  border: 1px solid var(--tf-line);
+  border-radius: var(--tf-radius-control);
+  background: var(--tf-surface-0);
+  color: var(--tf-fg-3);
 }
 .flow-node-image img {
   width: 100%;
@@ -97,17 +149,19 @@
   min-height: 28px;
   max-height: 40px;
   display: block;
-  padding: 5px 8px;
+  padding: 6px 8px;
   overflow: hidden;
-  color: var(--tf-foreground);
+  color: var(--tf-fg);
+  font-family: var(--tf-font-mono);
   font-size: 11px;
-  font-weight: 600;
-  line-height: 1.6;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  line-height: 1.5;
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
   pointer-events: none;
-  background: var(--tf-card);
+  background: var(--tf-surface-1);
 }
 .flow-hardware-node.image-hidden .flow-node-body {
   display: flex;
@@ -128,16 +182,19 @@
   white-space: nowrap;
 }
 .flow-hardware-node.selected {
-  border-color: var(--tf-wiring-edge);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--tf-wiring-edge) 22%, transparent), var(--tf-shadow-md);
+  border-color: var(--tf-signal);
+  box-shadow: 0 0 0 2px color-mix(in oklch, var(--tf-signal) 22%, transparent), var(--tf-shadow-overlay);
 }
 .flow-hardware-node.connector-editing {
-  outline: 1px dashed var(--tf-wiring-edge);
+  outline: 1px dashed var(--tf-signal);
   outline-offset: 4px;
 }
-.flow-hardware-node.unresolved { border-color: var(--tf-warning); }
+.flow-hardware-node.unresolved {
+  border-color: var(--tf-invalid);
+  border-style: dashed;
+}
 
-/* Port connectors */
+/* ---- Port connectors ------------------------------------------------------------------------- */
 .flow-connector {
   --connector-offset: 50%;
   position: absolute;
@@ -169,37 +226,41 @@
   cursor: grab;
 }
 .flow-hardware-node.connector-editing .flow-connector-hit:active { cursor: grabbing; }
+.flow-hardware-node.connector-editing .flow-connector-hit:focus-visible {
+  outline: 1px solid var(--tf-signal);
+  outline-offset: 1px;
+}
+
+/* Port names sit just off the card edge, beside the cable exit, and only appear on hover. */
 .flow-connector-label {
   position: absolute;
   z-index: 5;
-  max-width: 120px;
-  padding: 2px 7px;
+  max-width: 112px;
+  padding: 0 3px;
   overflow: hidden;
-  border: 0;
-  border-radius: calc(var(--tf-radius-control) - 2px);
-  background: var(--tf-popover);
-  box-shadow: var(--tf-shadow-sm);
-  outline: 1px solid var(--tf-border);
-  color: var(--tf-popover-foreground);
+  border-radius: 2px;
+  background: color-mix(in oklch, var(--tf-canvas) 82%, transparent);
+  color: var(--tf-fg-2);
   font-family: var(--tf-font-mono);
   font-size: 10px;
-  line-height: 1.3;
+  line-height: 14px;
   text-overflow: ellipsis;
   white-space: nowrap;
-  opacity: 0;
   pointer-events: none;
-  transition: opacity .1s ease;
+  opacity: 0;
+  transition: opacity 0.1s ease;
 }
-.flow-connector[data-side="top"] .flow-connector-label { bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); }
-.flow-connector[data-side="right"] .flow-connector-label { left: calc(100% + 6px); top: 50%; transform: translateY(-50%); }
-.flow-connector[data-side="bottom"] .flow-connector-label { top: calc(100% + 6px); left: 50%; transform: translateX(-50%); }
-.flow-connector[data-side="left"] .flow-connector-label { right: calc(100% + 6px); top: 50%; transform: translateY(-50%); }
+.flow-connector[data-side="right"] .flow-connector-label { bottom: calc(50% + 3px); left: calc(50% + 8px); }
+.flow-connector[data-side="left"] .flow-connector-label { bottom: calc(50% + 3px); right: calc(50% + 8px); }
+.flow-connector[data-side="top"] .flow-connector-label { bottom: calc(50% + 6px); left: calc(50% + 7px); }
+.flow-connector[data-side="bottom"] .flow-connector-label { top: calc(50% + 6px); left: calc(50% + 7px); }
 .flow-connector:hover .flow-connector-label,
-.flow-connector:focus-within .flow-connector-label,
-.flow-connector-hit:hover .flow-connector-label,
-.flow-connector-hit:focus-visible .flow-connector-label {
+.flow-hardware-node.connector-editing .flow-connector-label {
+  color: var(--tf-fg);
   opacity: 1;
 }
+
+/* The pin itself: a small socket ringed in the card color, filled by signal family. */
 .flow-connector-handle {
   position: absolute !important;
   top: 50% !important;
@@ -212,11 +273,26 @@
   min-width: 10px;
   min-height: 10px;
   transform: translate(-50%, -50%) !important;
-  border: 2px solid var(--tf-card) !important;
+  border: 2px solid var(--tf-surface-1) !important;
   border-radius: 999px;
   background: var(--tf-wiring-edge) !important;
+  box-shadow: 0 0 0 1px var(--tf-line-strong);
+  transition: transform 0.12s ease, background-color 0.12s ease;
+}
+.flow-connector[data-signal="bus"] .flow-connector-handle { background: var(--tf-run) !important; }
+.flow-connector[data-signal="link"] .flow-connector-handle { background: var(--tf-pass) !important; }
+.flow-connector[data-signal="power"] .flow-connector-handle { background: var(--tf-fail) !important; }
+.flow-connector[data-signal="ground"] .flow-connector-handle { background: var(--tf-fg-2) !important; }
+.wiring-canvas .flow-connector:hover .flow-connector-handle {
+  background: var(--tf-signal) !important;
+  transform: translate(-50%, -50%) scale(1.25) !important;
+}
+.flow-hardware-node.connector-editing .flow-connector-handle {
+  background: var(--tf-signal) !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .flow-hardware-node { transition: none; }
+  .flow-hardware-node,
+  .flow-connector-handle,
+  .react-flow__edge.wiring-flow-edge .react-flow__edge-path { transition: none; }
 }

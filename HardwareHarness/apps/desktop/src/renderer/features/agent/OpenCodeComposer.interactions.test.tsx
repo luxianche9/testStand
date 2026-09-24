@@ -48,7 +48,12 @@ function createClient() {
   } as unknown as OpencodeClient;
 }
 
-function Harness({ client, onSelectionChange, onError, adapter = modelAdapter }: { client: OpencodeClient; onSelectionChange: (selection: OpenCodeSelection) => void; onError: (reason: unknown) => void; adapter?: ChatModelAdapter }) {
+function Harness({ client, onSelectionChange, onError, adapter = modelAdapter }: {
+  client: OpencodeClient;
+  onSelectionChange: (selection: OpenCodeSelection) => void;
+  onError: (reason: unknown) => void;
+  adapter?: ChatModelAdapter;
+}) {
   const runtime = useLocalRuntime(adapter, { adapters: { attachments: attachmentAdapter } });
   return (
     <AssistantRuntimeProvider runtime={runtime}>
@@ -104,7 +109,10 @@ describe("OpenCode composer interactions", () => {
     const cancel = await screen.findByRole("button", { name: "停止生成" });
     await waitFor(() => expect(started).toHaveBeenCalledOnce());
     const request = started.mock.calls[0]![0];
-    expect(request.messages.at(-1)).toMatchObject({ role: "user", content: [{ type: "text", text: "Check the input\nthen wait" }] });
+    expect(request.messages.at(-1)).toMatchObject({
+      role: "user",
+      content: [{ type: "text", text: "Check the input\nthen wait" }]
+    });
     expect(request.abortSignal.aborted).toBe(false);
     expect(input.value).toBe("");
     expect(screen.queryByRole("button", { name: "发送消息" })).toBeNull();
@@ -147,7 +155,9 @@ describe("OpenCode composer interactions", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "选择模型" }));
     await userEvent.click(await screen.findByRole("button", { name: /Claude Sonnet/i }));
-    expect(onSelectionChange).toHaveBeenCalledWith(expect.objectContaining({ model: { providerID: "anthropic", modelID: "claude-sonnet" } }));
+    expect(onSelectionChange).toHaveBeenCalledWith(
+      expect.objectContaining({ model: { providerID: "anthropic", modelID: "claude-sonnet" } })
+    );
 
     await userEvent.click(screen.getByRole("button", { name: "选择 Agent" }));
     await userEvent.click(await screen.findByRole("button", { name: /plan/i }));
@@ -161,7 +171,10 @@ describe("OpenCode composer interactions", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "添加工程文件" }));
     await userEvent.type(await screen.findByRole("textbox", { name: "搜索工程文件" }), "answer");
-    await waitFor(() => expect(client.v2.fs.find).toHaveBeenCalledWith({ query: "answer", type: "file", limit: "20" }, { throwOnError: true }));
+    await waitFor(() => expect(client.v2.fs.find).toHaveBeenCalledWith(
+      { query: "answer", type: "file", limit: "20" },
+      { throwOnError: true }
+    ));
     await userEvent.click(await screen.findByRole("button", { name: /src\/answer\.ts/i }));
 
     expect(await screen.findByText("src/answer.ts")).toBeTruthy();

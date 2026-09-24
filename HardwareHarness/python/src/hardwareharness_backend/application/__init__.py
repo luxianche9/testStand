@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from hardwareharness_backend.contracts.operations import desktop_methods
 from hardwareharness_backend.testing import TestEngine, TestingApplication, TestPlanStore
 from hardwareharness_backend.testing.resolver import DeviceToolResolver
 
@@ -40,6 +41,23 @@ from .services import (
 from .services import (
     WiringApplication as WiringApplication,
 )
+
+NAMESPACES: dict[str, type] = {
+    "devices": DevicesApplication,
+    "projects": ProjectsApplication,
+    "wiring": WiringApplication,
+    "manual": ManualControlApplication,
+    "testing": TestingApplication,
+    "system": SystemApplication,
+}
+DESKTOP_METHODS = desktop_methods(NAMESPACES)
+"""Wire name ``namespace.camelMethod`` to ``(namespace, snake_method)`` for every operation."""
+
+
+def operation_capability(path: str) -> str:
+    """Capability declared by the ``@operation`` on ``namespace.snake_method``."""
+    namespace, method = path.split(".")
+    return str(getattr(NAMESPACES[namespace], method).capability)
 
 
 class HardwareHarnessApplication:

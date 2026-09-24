@@ -224,11 +224,12 @@ def step_catalog(plugin_steps: list[Any] | None = None) -> list[Record]:
             {
                 "type": "object",
                 "properties": {
-                    "value": {},
-                    "valueExpression": {"type": "string"},
-                    "unit": {"type": "string"},
-                    "metadata": {"type": "object"},
+                    "value": {"title": "结果值"},
+                    "valueExpression": _expression("结果值表达式", "", "value"),
+                    "unit": {"type": "string", "title": "单位"},
+                    "metadata": {"type": "object", "title": "附加信息"},
                     "verdict": {
+                        "title": "判定",
                         "type": "string",
                         "enum": [
                             "NotSet",
@@ -271,20 +272,27 @@ def _item(
     }
 
 
+_VALUE_TITLES = {
+    "actual": "实际值",
+    "expected": "期望值",
+    "minimum": "下限",
+    "maximum": "上限",
+    "tolerance": "容差",
+    "mask": "掩码",
+}
+
+
 def _value_schema(extra: Record) -> Record:
+    fields = {"actual": {}, "actualExpression": {"type": "string"}, **extra}
     normalized = {
-        key: _expression(key.removesuffix("Expression"), "", "value")
+        key: _expression(f"{_VALUE_TITLES[key.removesuffix('Expression')]}表达式", "", "value")
         if key.endswith("Expression")
-        else value
-        for key, value in extra.items()
+        else {**value, "title": _VALUE_TITLES[key], "description": "固定值；填写表达式时以表达式为准"}
+        for key, value in fields.items()
     }
     return {
         "type": "object",
-        "properties": {
-            "actual": {},
-            "actualExpression": _expression("实际值", "", "value"),
-            **normalized,
-        },
+        "properties": normalized,
         "additionalProperties": True,
     }
 

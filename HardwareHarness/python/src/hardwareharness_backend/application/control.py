@@ -5,12 +5,13 @@ import math
 import time
 from typing import TYPE_CHECKING
 
-from hardwareharness_backend.compat import (
-    utc_now_iso,
-)
-from hardwareharness_backend.compat.cancellation import AbortController, AbortError
+from hardwareharness_backend.application.cancellation import AbortController, AbortError
 from hardwareharness_backend.contracts.errors import app_error
 from hardwareharness_backend.contracts.execution import parse_manual_tool_invocation_input
+from hardwareharness_backend.contracts.operations import operation
+from hardwareharness_backend.util import (
+    utc_now_iso,
+)
 
 from .authorization import Authorizer, Json
 from .execution import ExecutionCoordinator
@@ -37,8 +38,8 @@ class ManualControlApplication:
         )
         self.active: dict[asyncio.Task[Json], tuple[str, AbortController]] = {}
 
+    @operation("hardware.executeTools")
     async def invoke_tool(self, context: Json, raw: Json) -> Json:
-        self.authorizer.authorize(context, "hardware.executeTools")
         input = parse_manual_tool_invocation_input(raw)
         hardware = self.catalog.get_hardware(input["hardwareId"])
         if hardware["kind"] != "managed" or not hardware.get("serverId"):

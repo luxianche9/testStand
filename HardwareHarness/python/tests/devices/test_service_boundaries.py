@@ -123,7 +123,7 @@ async def test_computer_probe_status_logs_timeout_clamp_and_remove_cache() -> No
     assert service.list_servers() == [server]
     assert (await service.refresh_computer("C"))["ssh"]["state"] == "online"
     service.ssh.execute.side_effect = RuntimeError("SSH down")
-    assert (await service.refresh_computer("C"))["ssh"]["message"] == "Error: SSH down"
+    assert (await service.refresh_computer("C"))["ssh"]["message"] == "SSH down"
     assert service.list_statuses()[0]["ssh"]["state"] == "offline"
     service.ssh.execute.side_effect = None
     await service.execute("C", "run", 1)

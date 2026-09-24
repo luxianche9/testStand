@@ -3,10 +3,10 @@ from typing import Any
 
 import pytest
 
-from hardwareharness_backend.compat import json_parse, json_stringify
 from hardwareharness_backend.contracts.errors import AppError
 from hardwareharness_backend.projects import ProjectService, project_display_name, project_path
 from hardwareharness_backend.storage import SettingsStore
+from hardwareharness_backend.util import json_dumps, json_loads
 
 PREFIX = "packages/projects/src/project-service.test.ts::ProjectService folder projects::"
 
@@ -66,7 +66,7 @@ async def test_save_damage(tmp_path: Path) -> None:
         }
     )
     await service.save()
-    assert len(json_parse(Path(project_path(folder)).read_text())["wiring"]["nodes"]) == 1
+    assert len(json_loads(Path(project_path(folder)).read_text())["wiring"]["nodes"]) == 1
     await service.leave()
     Path(project_path(folder)).write_text("{ broken")
     assert (await service.inspect_folder(folder))["state"] == "invalid"
@@ -83,7 +83,7 @@ async def test_future(tmp_path: Path) -> None:
     folder = tmp_path / "future"
     path = Path(project_path(folder))
     path.parent.mkdir(parents=True)
-    raw = json_stringify({"formatVersion": 99, "projectId": "FUTURE"})
+    raw = json_dumps({"formatVersion": 99, "projectId": "FUTURE"})
     path.write_text(raw)
     assert (await service.inspect_folder(folder))["state"] == "invalid"
     with pytest.raises(AppError) as error:
@@ -163,7 +163,7 @@ async def test_open_current_bytes_and_explicit_save(tmp_path: Path) -> None:
     created = await service.initialize_folder(tmp_path)
     assert created["file"]["formatVersion"] == 4 and "task" not in created["file"]
     path = Path(created["path"])
-    raw = json_stringify({**created["file"], "ignored": True})
+    raw = json_dumps({**created["file"], "ignored": True})
     path.write_text(raw, encoding="utf-8")
     opened = await service.open_folder(tmp_path)
     assert "ignored" not in opened["file"]
@@ -233,13 +233,11 @@ async def test_realpath_failure_keeps_resolved_directory(
 
 
 @pytest.mark.asyncio
-async def test_project_filesystem_error_messages_match_electron(tmp_path: Path) -> None:
+async def test_project_filesystem_errors_are_reported(tmp_path: Path) -> None:
     service, settings = await fixture(tmp_path)
     missing = tmp_path / "missing"
-    expected = f"ENOENT: no such file or directory, stat '{missing}'"
-    with pytest.raises(FileNotFoundError) as caught:
+    with pytest.raises(FileNotFoundError):
         await service.inspect_folder(missing)
-    assert str(caught.value) == expected
     await settings.update(
         {
             "recentProjects": [
@@ -247,11 +245,11 @@ async def test_project_filesystem_error_messages_match_electron(tmp_path: Path) 
             ]
         }
     )
-    assert (await service.list_recent())[0]["message"] == expected
+    assert (await service.list_recent())[0]["status"] == "missing"
     manifest_directory = tmp_path / ".hardwareharness/project.json"
     manifest_directory.mkdir(parents=True)
     selection = await service.inspect_folder(tmp_path)
-    assert selection["message"] == "EISDIR: illegal operation on a directory, read"
+    assert selection["state"] == "invalid"
     with pytest.raises(AppError) as invalid:
         await service.open_folder(tmp_path)
     assert invalid.value.category == "invalid_project"
@@ -259,15 +257,12 @@ async def test_project_filesystem_error_messages_match_electron(tmp_path: Path) 
 
 
 @pytest.mark.asyncio
-async def test_project_directory_occupied_by_file_matches_electron(tmp_path: Path) -> None:
+async def test_project_directory_occupied_by_file_is_rejected(tmp_path: Path) -> None:
     service, _ = await fixture(tmp_path)
     (tmp_path / ".hardwareharness").write_text("a file")
     assert (await service.inspect_folder(tmp_path))["state"] == "uninitialized"
-    with pytest.raises(OSError) as caught:
+    with pytest.raises(OSError):
         await service.initialize_folder(tmp_path)
-    assert str(caught.value) == (
-        f"EEXIST: file already exists, mkdir '{tmp_path / '.hardwareharness'}'"
-    )
 
 
 async def test_layout_survives_restart_without_saving_pending_connections(tmp_path: Path) -> None:

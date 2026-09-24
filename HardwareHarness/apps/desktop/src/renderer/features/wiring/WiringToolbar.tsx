@@ -1,22 +1,35 @@
-import { cn } from "../../shared/ui/cn";
+import { PlusIcon } from "lucide-react";
+import { Button, SegmentedControl, Toolbar, ToolbarDivider } from "../../ui/index.js";
 
 export type WiringView = "canvas" | "list";
 
-export function WiringViewSwitch({ view, onChange }: { view: WiringView; onChange: (view: WiringView) => void }) {
-  const itemClass = (active: boolean) => cn(
-    "h-[26px] min-w-13 rounded-sm px-2.5 text-xs transition-colors",
-    active
-      ? "bg-background text-foreground shadow-sm ring-1 ring-border"
-      : "text-muted-foreground hover:text-foreground"
-  );
+const viewOptions = [
+  { value: "canvas", label: "画布", title: "在画布上摆放设备并拖线" },
+  { value: "list", label: "列表", title: "按端口列出所有接线" }
+] as const;
+
+/** Bench command bar: view switch, live counts, and the one entry point for creating a cable by
+ *  picking both ends (also reachable through the `wiring.new-connection` command). */
+export function WiringToolbar({ view, onViewChange, nodeCount, connectionCount, saving, onCreate }: {
+  view: WiringView;
+  onViewChange: (view: WiringView) => void;
+  nodeCount: number;
+  connectionCount: number;
+  saving: boolean;
+  onCreate: () => void;
+}) {
   return (
-    <div
-      role="group"
-      aria-label="接线视图"
-      className="absolute top-2.5 left-2.5 z-[5] flex items-center gap-0.5 rounded-lg bg-popover p-0.5 shadow-md ring-1 ring-border"
-    >
-      <button type="button" aria-pressed={view === "canvas"} className={itemClass(view === "canvas")} onClick={() => onChange("canvas")}>画布</button>
-      <button type="button" aria-pressed={view === "list"} className={itemClass(view === "list")} onClick={() => onChange("list")}>列表</button>
-    </div>
+    <Toolbar aria-label="接线工具栏">
+      <SegmentedControl<WiringView> label="接线视图" value={view} options={viewOptions} onChange={onViewChange} />
+      <ToolbarDivider />
+      <span className="tf-label text-fg-3">节点</span>
+      <span className="tf-num text-xs text-fg">{nodeCount}</span>
+      <span className="tf-label ml-2 text-fg-3">接线</span>
+      <span className="tf-num text-xs text-fg">{connectionCount}</span>
+      {saving && <span className="ml-2 text-2xs text-fg-3">正在保存…</span>}
+      <Button variant="primary" size="xs" className="ml-auto" onClick={onCreate}>
+        <PlusIcon />新建接线
+      </Button>
+    </Toolbar>
   );
 }

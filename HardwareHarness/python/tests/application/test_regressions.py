@@ -21,7 +21,7 @@ from hardwareharness_backend.application import (
     SystemApplication,
     WiringApplication,
 )
-from hardwareharness_backend.compat.cancellation import AbortError
+from hardwareharness_backend.application.cancellation import AbortError
 from hardwareharness_backend.contracts.agents import CAPABILITIES
 from hardwareharness_backend.contracts.errors import AppError
 

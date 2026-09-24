@@ -1,63 +1,105 @@
-import type { ReactNode } from "react";
+import type { KeyboardEvent, ReactNode } from "react";
 import { ChevronRightIcon } from "lucide-react";
-import { cn } from "../../../shared/ui/cn";
-import { Dot } from "../../../shared/ui/skeleton";
+import { cn, StatusLamp, toneText } from "../../../ui";
+import type { RowStatus } from "./device-labels.js";
 
-export function TreeRow({ depth, icon, label, subtitle, title, meta, statuses, hasChildren, open, selected, onClick, actions, className = "" }: {
+/** One 24px row of the instrument tree. Rows are flat siblings; depth is carried by aria-level. */
+export function TreeRow({
+  depth, label, title, meta, status, hasChildren, open, selected, tabbable, onClick, onToggle, actions, className
+}: {
   depth: number;
-  icon: ReactNode;
   label: string;
-  subtitle?: string | undefined;
+  /** Hover text; carries the identifier, which the row itself does not show. */
   title?: string | undefined;
-  meta?: string | undefined;
-  statuses?: { dot: string; label: string; title?: string | undefined }[];
+  meta?: ReactNode;
+  status?: RowStatus | undefined;
   hasChildren?: boolean;
   open?: boolean;
   selected: boolean;
+  /** Roving tab stop: exactly one row per tree is reachable with Tab. */
+  tabbable: boolean;
   onClick: () => void;
+  /** Expand/collapse for the chevron and ArrowRight/ArrowLeft; defaults to `onClick`. */
+  onToggle?: () => void;
   actions?: ReactNode;
   className?: string;
 }) {
-  return <div
-    role="treeitem"
-    aria-level={depth + 1}
-    tabIndex={0}
-    aria-selected={selected}
-    aria-expanded={hasChildren ? Boolean(open) : undefined}
-    className={cn(
-      "flex h-9 w-full cursor-pointer items-center gap-2 pr-3 text-[13px] transition-[color,background-color] duration-150 ease-[var(--tf-ease-out)] select-none hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/45",
-      selected && "bg-accent font-medium",
-      className
-    )}
-    style={{ paddingLeft: 12 + depth * 20 }}
-    title={title ?? label}
-    onClick={onClick}
-    onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onClick(); } }}
-  >
-    <span className="grid size-4 flex-none place-items-center text-muted-foreground/60">{hasChildren ? <ChevronRightIcon className={cn("size-3.5 transition-transform", open && "rotate-90")} /> : null}</span>
-    <span className={cn("grid flex-none place-items-center text-muted-foreground", selected && "text-primary")}>{icon}</span>
-    <span className="flex-1 truncate">{label}</span>
-    {subtitle && <span className="max-w-[220px] truncate text-[10px] text-muted-foreground/70">{subtitle}</span>}
-    {meta && <span className="min-w-[18px] flex-none rounded-full bg-foreground/8 px-1.5 text-center text-[11px] leading-[18px] text-muted-foreground">{meta}</span>}
-    {statuses?.map((status) => <span key={status.label} className="flex flex-none items-center gap-1.5" title={status.title}>
-      <Dot state={status.dot} />
-      <span className={cn(
-        "flex-none text-xs",
-        status.dot === "ok" && "text-success",
-        status.dot === "warn" && "text-warning",
-        status.dot === "bad" && "text-destructive",
-        status.dot === "checking" && "text-primary",
-        (status.dot === "muted" || !["ok", "warn", "bad", "checking"].includes(status.dot)) && "text-muted-foreground/70"
-      )}>{status.label}</span>
-    </span>)}
-    {actions}
-  </div>;
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget) return;
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onClick();
+      return;
+    }
+    if (!hasChildren) return;
+    const collapse = event.key === "ArrowLeft" && open;
+    const expand = event.key === "ArrowRight" && !open;
+    if (collapse || expand) {
+      event.preventDefault();
+      (onToggle ?? onClick)();
+    }
+  };
+  return (
+    <div
+      role="treeitem"
+      aria-level={depth + 1}
+      aria-selected={selected}
+      aria-expanded={hasChildren ? Boolean(open) : undefined}
+      tabIndex={tabbable ? 0 : -1}
+      title={title ?? label}
+      className={cn(
+        "group/row relative flex h-6 cursor-default items-center gap-1.5 pr-2 text-sm text-fg-2 select-none",
+        "outline-none transition-colors duration-120 hover:bg-surface-2 hover:text-fg",
+        "focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-signal",
+        selected && "bg-surface-2 text-fg before:absolute before:inset-y-0 before:left-0 before:w-0.5",
+        selected && "before:bg-signal before:content-['']",
+        className
+      )}
+      style={{ paddingLeft: 6 + depth * 14 }}
+      onClick={onClick}
+      onKeyDown={onKeyDown}
+    >
+      <span
+        aria-hidden
+        className={cn("grid size-3.5 flex-none place-items-center text-fg-3", hasChildren && "hover:text-fg")}
+        onClick={hasChildren ? (event) => { event.stopPropagation(); (onToggle ?? onClick)(); } : undefined}
+      >
+        {hasChildren && (
+          <ChevronRightIcon className={cn("size-3 transition-transform duration-120", open && "rotate-90")} />
+        )}
+      </span>
+      {status && <StatusLamp tone={status.tone} pulse={status.pulse ?? false} className="size-1.5" />}
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+      {meta !== undefined && <span className="tf-num flex-none text-2xs text-fg-3">{meta}</span>}
+      {status && (
+        <span title={status.title} className={cn("flex-none text-2xs", toneText[status.tone])}>{status.label}</span>
+      )}
+      {actions && (
+        <span className="flex flex-none items-center" onClick={(event) => event.stopPropagation()}>{actions}</span>
+      )}
+    </div>
+  );
 }
 
-export function InlineDetail({ depth, children }: { depth: number; children: ReactNode }) {
-  return <div className="animate-collapsible-down bg-secondary/50">
-    <div className="min-h-0 overflow-hidden">
-      <div className="py-3.5 pr-5 pl-5" style={{ marginLeft: 12 + depth * 20 }}>{children}</div>
-    </div>
-  </div>;
+/** Placeholder line inside a tree branch ("no devices yet"). */
+export function TreeNote({ depth, children }: { depth: number; children: ReactNode }) {
+  return (
+    <p className="py-1 pr-3 text-xs leading-5 text-fg-3" style={{ paddingLeft: 26 + depth * 14 }}>{children}</p>
+  );
+}
+
+/** Arrow/Home/End focus movement across the visible rows of one tree. */
+export function onTreeKeyDown(event: KeyboardEvent<HTMLElement>) {
+  const keys = ["ArrowDown", "ArrowUp", "Home", "End"];
+  if (!keys.includes(event.key)) return;
+  const items = [...event.currentTarget.querySelectorAll<HTMLElement>("[role='treeitem']")];
+  const index = items.indexOf(document.activeElement as HTMLElement);
+  if (index < 0) return;
+  const next = event.key === "ArrowDown" ? index + 1
+    : event.key === "ArrowUp" ? index - 1
+      : event.key === "Home" ? 0 : items.length - 1;
+  const target = items[Math.max(0, Math.min(items.length - 1, next))];
+  if (!target) return;
+  event.preventDefault();
+  target.focus();
 }

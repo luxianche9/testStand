@@ -7,7 +7,7 @@ import math
 from datetime import UTC, datetime
 from typing import Any
 
-from hardwareharness_backend.compat import UNDEFINED
+from hardwareharness_backend.util import UNDEFINED
 
 
 def encode(value: Any) -> list[Any]:

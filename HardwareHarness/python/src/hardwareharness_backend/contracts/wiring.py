@@ -1,6 +1,5 @@
 from typing import Any
 
-from hardwareharness_backend.compat import Record
 from hardwareharness_backend.contracts.validation import (
     array,
     boolean,
@@ -12,6 +11,7 @@ from hardwareharness_backend.contracts.validation import (
     record,
     string,
 )
+from hardwareharness_backend.util import Record
 
 wiring_action_schema = enum("connect", "disconnect")
 port_position_schema = obj({"side": enum("top", "right", "bottom", "left"), "offset": number(0, 1)})

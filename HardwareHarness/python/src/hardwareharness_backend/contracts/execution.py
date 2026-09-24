@@ -1,6 +1,5 @@
 from typing import Any
 
-from hardwareharness_backend.compat import Record
 from hardwareharness_backend.contracts.validation import (
     array,
     literal,
@@ -12,6 +11,7 @@ from hardwareharness_backend.contracts.validation import (
     union,
     unknown,
 )
+from hardwareharness_backend.util import Record
 
 _manual_fields = {
     "state": literal("manual"),

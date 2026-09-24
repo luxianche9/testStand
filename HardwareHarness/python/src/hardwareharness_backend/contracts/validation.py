@@ -4,25 +4,14 @@ from __future__ import annotations
 
 import math
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
 from datetime import date
 from typing import Any
 
 from ada_url import check_url
 
-from hardwareharness_backend.compat import (
-    UNDEFINED,
-    Record,
-    clone,
-    js_object_keys,
-    js_strict_equal,
-    js_string,
-    js_trim,
-    json_stringify,
-    utf8_bytes,
-    utf16_length,
-)
+from hardwareharness_backend.util import UNDEFINED, Record, clone, json_dumps
 
 Path = list[str | int]
 
@@ -32,7 +21,7 @@ class ValidationError(ValueError):
 
     def __init__(self, issues: list[Record]) -> None:
         self.issues = issues
-        super().__init__(json_stringify(issues, 2))
+        super().__init__(json_dumps(issues, 2))
 
 
 def _type(value: Any) -> str:
@@ -66,6 +55,10 @@ class Schema:
     nullable_value: bool = False
     catch_value: Any = UNDEFINED
     refinement: Callable[[Any], list[Record]] | None = None
+    description: str = ""
+
+    def describe(self, description: str) -> Schema:
+        return replace(self, description=description)
 
     def optional(self) -> Schema:
         return replace(self, optional_value=True)
@@ -151,7 +144,12 @@ class Schema:
             choices: dict[Any, Schema] = options["choices"]
             selected = value.get(discriminator, UNDEFINED)
             match = next(
-                (schema for key, schema in choices.items() if js_strict_equal(key, selected)), None
+                (
+                    schema
+                    for key, schema in choices.items()
+                    if type(key) is type(selected) and key == selected
+                ),
+                None,
             )
             if match is None:
                 expected = list(choices)
@@ -179,7 +177,7 @@ class Schema:
                         "code": "invalid_literal",
                         "expected": expected,
                         "path": path,
-                        "message": f"Invalid literal value, expected {json_stringify(expected)}",
+                        "message": f"Invalid literal value, expected {json_dumps(expected)}",
                     }
                 )
             return value
@@ -229,8 +227,8 @@ class Schema:
             return self._invalid_type(expected_type, value, path, issues)
         if kind == "string":
             if options.get("trim"):
-                value = js_trim(value)
-            length = utf16_length(value)
+                value = value.strip()
+            length = len(value)
             self._bounds(length, "string", path, issues)
             if options.get("regex") and re.search(options["regex"], value) is None:
                 issues.append(
@@ -288,8 +286,7 @@ class Schema:
         if kind == "record":
             element = options["element"]
             parsed_entries = {
-                key: element._parse(value[key], [*path, key], issues)
-                for key in js_object_keys(value)
+                key: element._parse(value[key], [*path, key], issues) for key in value
             }
             return {key: item for key, item in parsed_entries.items() if key != "__proto__"}
         if kind == "object":
@@ -341,7 +338,7 @@ class Schema:
             if kind == "number":
                 comparison = "greater than" if key == "minimum" else "less than"
                 equality = " or equal to" if inclusive else ""
-                message = f"Number must be {comparison}{equality} {js_string(bound)}"
+                message = f"Number must be {comparison}{equality} {_number(bound)}"
             else:
                 noun = "String" if kind == "string" else "Array"
                 unit = "character(s)" if kind == "string" else "element(s)"
@@ -361,7 +358,11 @@ class Schema:
 
 
 def _literal_display(value: Any) -> str:
-    return f"'{value}'" if isinstance(value, str) else js_string(value)
+    return f"'{value}'" if isinstance(value, str) else json_dumps(value)
+
+
+def _number(value: float) -> str:
+    return str(int(value)) if isinstance(value, float) and value.is_integer() else str(value)
 
 
 def _aborted(issues: list[Record]) -> bool:
@@ -396,9 +397,7 @@ def _valid_datetime(value: str, offset: bool = False) -> bool:
 
 
 def _valid_url(value: str) -> bool:
-    # ada-url 1.15.3 embeds Ada 2.9.2, matching Electron 36 / Node 22.19.
-    # URL construction first converts a JavaScript string to a USVString.
-    return check_url(utf8_bytes(value).decode("utf-8"))
+    return check_url(value)
 
 
 def string(
@@ -483,6 +482,84 @@ def union(*choices: Schema) -> Schema:
 
 def discriminated(key: str, choices: dict[Any, Schema]) -> Schema:
     return Schema("discriminated", {"key": key, "choices": choices})
+
+
+def json_schema(schema: Schema, glossary: Mapping[str, str] | None = None) -> Record:
+    """Advertise ``schema`` as JSON Schema; undescribed object properties use ``glossary``."""
+    glossary = glossary or {}
+    kind, options = schema.kind, schema.options
+    result: Record
+    if kind == "lazy":
+        result = json_schema(options["factory"](), glossary)
+    elif kind == "string":
+        result = {"type": "string"}
+        for key, name in (("minimum", "minLength"), ("maximum", "maxLength"), ("regex", "pattern")):
+            if options.get(key) is not None:
+                result[name] = options[key]
+        if options.get("datetime"):
+            result["format"] = "date-time"
+        if options.get("url"):
+            result["format"] = "uri"
+    elif kind == "number":
+        result = {"type": "integer" if options.get("integer") else "number"}
+        if options.get("positive"):
+            result["exclusiveMinimum"] = 0
+        elif options.get("minimum") is not None:
+            result["minimum"] = options["minimum"]
+        if options.get("maximum") is not None:
+            result["maximum"] = options["maximum"]
+    elif kind == "boolean":
+        result = {"type": "boolean"}
+    elif kind == "literal":
+        result = {"const": options["value"]}
+    elif kind == "enum":
+        result = {"type": "string", "enum": list(options["values"])}
+    elif kind == "array":
+        result = {"type": "array", "items": json_schema(options["element"], glossary)}
+        for key, name in (("minimum", "minItems"), ("maximum", "maxItems")):
+            if options.get(key) is not None:
+                result[name] = options[key]
+    elif kind == "record":
+        element = json_schema(options["element"], glossary)
+        result = {"type": "object", **({"additionalProperties": element} if element else {})}
+    elif kind == "object":
+        fields: dict[str, Schema] = options["fields"]
+        properties = {}
+        for key, item in fields.items():
+            prop = json_schema(item, glossary)
+            if "description" not in prop:
+                if key not in glossary:
+                    raise KeyError(f"Missing JSON Schema description for property {key}")
+                prop["description"] = glossary[key]
+            properties[key] = prop
+        required = [
+            key
+            for key, item in fields.items()
+            if not item.optional_value
+            and item.default_value is UNDEFINED
+            and item.kind != "unknown"
+        ]
+        result = {"type": "object", "properties": properties}
+        if required:
+            result["required"] = required
+        result["additionalProperties"] = False
+    elif kind in ("union", "discriminated"):
+        choices = options["choices"]
+        branches = choices.values() if kind == "discriminated" else choices
+        result = {"oneOf": [json_schema(item, glossary) for item in branches]}
+        if kind == "discriminated":
+            result["discriminator"] = {"propertyName": options["key"]}
+    elif kind == "unknown":
+        result = {}
+    else:
+        raise RuntimeError(f"Schema kind has no JSON Schema form: {kind}")
+    if schema.nullable_value and isinstance(result.get("type"), str):
+        result["type"] = [result["type"], "null"]
+    if schema.default_value is not UNDEFINED:
+        result["default"] = clone(schema.default_value)
+    if schema.description:
+        result["description"] = schema.description
+    return result
 
 
 def parse_record(schema: Schema, value: Any) -> Record:

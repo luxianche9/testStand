@@ -1,20 +1,17 @@
 import { useScrollLock } from "@assistant-ui/react";
 import { cva, type VariantProps } from "class-variance-authority";
-import { ChevronDownIcon, LoaderIcon } from "lucide-react";
+import { ChevronRightIcon } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
-import { Collapsible as CollapsiblePrimitive } from "radix-ui";
-const Collapsible = CollapsiblePrimitive.Root;
-const CollapsibleTrigger = CollapsiblePrimitive.Trigger;
-const CollapsibleContent = CollapsiblePrimitive.Content;
-import { cn } from "../../shared/ui/index.js";
+import { Collapsible } from "radix-ui";
+import { cn, StatusLamp } from "../../ui";
 
 const ANIMATION_DURATION = 160;
-const variants = cva("group/tool-group-root w-full", {
+const variants = cva("group/tool-group-root w-full min-w-0", {
   variants: {
     variant: {
-      outline: "rounded-xl bg-card py-3 shadow-sm ring-1 ring-border",
+      outline: "overflow-hidden rounded-md border border-line bg-surface-0/40",
       ghost: "",
-      muted: "rounded-xl bg-muted/30 py-3 shadow-sm ring-1 ring-muted-foreground/20"
+      muted: "overflow-hidden rounded-md border border-line bg-surface-2/50"
     }
   },
   defaultVariants: { variant: "outline" }
@@ -28,7 +25,7 @@ export function ToolGroupRoot({
   defaultOpen = false,
   children,
   ...props
-}: Omit<React.ComponentProps<typeof Collapsible>, "open" | "onOpenChange"> &
+}: Omit<React.ComponentProps<typeof Collapsible.Root>, "open" | "onOpenChange"> &
   VariantProps<typeof variants> & { open?: boolean; onOpenChange?: (open: boolean) => void; defaultOpen?: boolean }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [localOpen, setLocalOpen] = useState(defaultOpen);
@@ -40,7 +37,7 @@ export function ToolGroupRoot({
     onOpenChange?.(next);
   }, [controlled, lockScroll, onOpenChange]);
   return (
-    <Collapsible
+    <Collapsible.Root
       ref={rootRef}
       open={controlled ? controlledOpen : localOpen}
       onOpenChange={change}
@@ -49,7 +46,7 @@ export function ToolGroupRoot({
       {...props}
     >
       {children}
-    </Collapsible>
+    </Collapsible.Root>
   );
 }
 
@@ -58,35 +55,52 @@ export function ToolGroupTrigger({
   active = false,
   className,
   ...props
-}: React.ComponentProps<typeof CollapsibleTrigger> & { count: number; active?: boolean }) {
+}: React.ComponentProps<typeof Collapsible.Trigger> & { count: number; active?: boolean }) {
   const label = `${count} 次工具调用`;
   return (
-    <CollapsibleTrigger
+    <Collapsible.Trigger
       className={cn(
-        "group flex origin-left items-center gap-2 py-1.5 text-sm text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/40 group-data-[variant=outline]/tool-group-root:w-full group-data-[variant=outline]/tool-group-root:px-4",
+        "group flex h-7 w-full items-center gap-2 px-2 text-xs text-fg-2 outline-none",
+        "transition-colors duration-120 hover:bg-surface-2 hover:text-fg",
+        "focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-signal",
         className
       )}
       {...props}
     >
-      {active && <LoaderIcon className="size-3 shrink-0 animate-spin" />}
-      <span className="relative grow text-start text-xs leading-none font-medium">
+      <StatusLamp tone={active ? "run" : "neutral"} pulse={active} />
+      <span className="tf-num relative grow text-start font-medium">
         <span>{label}</span>
         {active && <span aria-hidden className="shimmer pointer-events-none absolute inset-0">{label}</span>}
       </span>
-      <ChevronDownIcon className="size-3 shrink-0 -rotate-90 transition-transform group-data-[state=open]:rotate-0" />
-    </CollapsibleTrigger>
+      <ChevronRightIcon
+        aria-hidden
+        className="size-3.5 shrink-0 text-fg-3 transition-transform duration-120 group-data-[state=open]:rotate-90"
+      />
+    </Collapsible.Trigger>
   );
 }
 
-export function ToolGroupContent({ className, children, ...props }: React.ComponentProps<typeof CollapsibleContent>) {
+export function ToolGroupContent({ className, children, ...props }: React.ComponentProps<typeof Collapsible.Content>) {
   return (
-    <CollapsibleContent
-      className={cn("overflow-hidden text-sm outline-none data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down motion-reduce:animate-none", className)}
+    <Collapsible.Content
+      className={cn(
+        "overflow-hidden text-sm outline-none",
+        "data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down",
+        "motion-reduce:animate-none",
+        className
+      )}
       {...props}
     >
-      <div className="mt-1 flex flex-col gap-1 group-data-[variant=outline]/tool-group-root:mt-3 group-data-[variant=outline]/tool-group-root:bg-secondary/20 group-data-[variant=outline]/tool-group-root:px-4 group-data-[variant=outline]/tool-group-root:pt-3">
+      <div
+        className={cn(
+          "flex flex-col gap-1.5 pt-1.5",
+          "group-data-[variant=outline]/tool-group-root:border-t",
+          "group-data-[variant=outline]/tool-group-root:border-line",
+          "group-data-[variant=outline]/tool-group-root:p-1.5"
+        )}
+      >
         {children}
       </div>
-    </CollapsibleContent>
+    </Collapsible.Content>
   );
 }

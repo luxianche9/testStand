@@ -2,27 +2,19 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import errno
 import io
+import os
+import shutil
 import struct
 import tempfile
 import zipfile
 import zlib
 from collections.abc import Awaitable, Callable
-from functools import cmp_to_key
 from pathlib import Path, PureWindowsPath
 from typing import Any
 from urllib.parse import quote
 
-from hardwareharness_backend.compat import (
-    UNDEFINED,
-    clone,
-    json_parse,
-    json_stringify,
-    new_uuid,
-    utc_now_iso,
-)
-from hardwareharness_backend.compat import filesystem as node_fs
-from hardwareharness_backend.compat.collation import locale_compare
 from hardwareharness_backend.contracts.devices import (
     parse_hardware,
     parse_mcp_server,
@@ -30,35 +22,39 @@ from hardwareharness_backend.contracts.devices import (
     parse_stored_hardware_definition,
 )
 from hardwareharness_backend.storage import atomic_json
+from hardwareharness_backend.util import (
+    UNDEFINED,
+    clone,
+    json_dumps,
+    json_loads,
+    new_uuid,
+    utc_now_iso,
+)
 
 Record = dict[str, Any]
 Rename = Callable[[Path, Path], Awaitable[None]]
 Remove = Callable[[Path], Awaitable[None]]
 
 
-def _key_order(field: str) -> Callable[[Record, Record], int]:
-    def compare(left: Record, right: Record) -> int:
-        return locale_compare(left[field], right[field])
-
-    return compare
+def _delete(path: Path) -> None:
+    if path.is_dir() and not path.is_symlink():
+        shutil.rmtree(path)
+    else:
+        path.unlink(missing_ok=True)
 
 
 async def _rename(source: Path, target: Path) -> None:
-    node_fs.replace(source, target)
+    os.replace(source, target)
 
 
 async def _remove(path: Path) -> None:
-    node_fs.rm(path, recursive=True, force=True)
+    _delete(path)
 
 
 def _write_bytes(path: Path, data: bytes | bytearray) -> None:
     if path.is_dir():
-        raise node_fs.NodeFsError("EISDIR", "open", path)
-    with (
-        node_fs.fs_operation("open", path),
-        path.open("wb") as stream,
-        node_fs.fs_operation("write"),
-    ):
+        raise IsADirectoryError(errno.EISDIR, "Is a directory", str(path))
+    with path.open("wb") as stream:
         stream.write(data)
 
 
@@ -76,12 +72,12 @@ class DeviceStore:
 
     async def initialize(self) -> None:
         for path in [self._computer_dir, self._server_dir, self._hardware_dir]:
-            node_fs.mkdir(path)
+            path.mkdir(parents=True, exist_ok=True)
 
     def list_computers(self) -> list[Record]:
         return sorted(
             self._read_all(self._computer_dir, "", parse_remote_computer),
-            key=cmp_to_key(_key_order("id")),
+            key=lambda item: item["id"],
         )
 
     def get_computer(self, identifier: str) -> Record | None:
@@ -99,7 +95,7 @@ class DeviceStore:
             if server["computerId"] == identifier:
                 removed.append(str(server["serverId"]))
                 await self.remove_server(server["serverId"])
-        node_fs.rm(self._computer_dir / (safe_segment(identifier) + ".json"), force=True)
+        _delete(self._computer_dir / (safe_segment(identifier) + ".json"))
         self._read_cache.clear()
         return removed
 
@@ -109,7 +105,7 @@ class DeviceStore:
         unique = {item["serverId"]: item for item in [*legacy, *flat]}
         return sorted(
             unique.values(),
-            key=cmp_to_key(_key_order("serverId")),
+            key=lambda item: item["serverId"],
         )
 
     def get_server(self, server_id: str) -> Record | None:
@@ -152,7 +148,7 @@ class DeviceStore:
     def list_stored_hardware(self) -> list[Record]:
         return sorted(
             self._read_all(self._hardware_dir, "hardware.json", _parse_stored),
-            key=cmp_to_key(_key_order("hardwareId")),
+            key=lambda item: item["hardwareId"],
         )
 
     def get_stored_hardware(self, hardware_id: str) -> Record | None:
@@ -192,7 +188,7 @@ class DeviceStore:
                 ),
             }
         )
-        node_fs.mkdir(self._hardware_path(stored["hardwareId"]))
+        self._hardware_path(stored["hardwareId"]).mkdir(parents=True, exist_ok=True)
         keep = {port["imageAssetId"] for port in stored["ports"] if port.get("imageAssetId")}
         if existing:
             for port in existing["ports"]:
@@ -218,7 +214,7 @@ class DeviceStore:
 
     async def put_image(self, hardware_id: str, port_id: str | None, source: str | Path) -> Record:
         return await self.put_image_bytes(
-            hardware_id, port_id, node_fs.read_bytes(source), image_extension(str(source))
+            hardware_id, port_id, Path(source).read_bytes(), image_extension(str(source))
         )
 
     async def put_image_bytes(
@@ -240,7 +236,7 @@ class DeviceStore:
             else f"ports/{safe_segment(port_id)}{extension}"
         )
         target = self.image_path(hardware_id, asset_id)
-        node_fs.mkdir(target.parent)
+        target.parent.mkdir(parents=True, exist_ok=True)
         _write_bytes(target, data)
         target_record = (
             hardware
@@ -287,7 +283,7 @@ class DeviceStore:
         }
         for asset_id in _asset_ids(hardware):
             with contextlib.suppress(OSError):
-                entries[asset_id] = node_fs.read_bytes(self.image_path(identifier, asset_id))
+                entries[asset_id] = self.image_path(identifier, asset_id).read_bytes()
         output = io.BytesIO()
         with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
             for name, data in entries.items():
@@ -312,17 +308,16 @@ class DeviceStore:
         )
         if replaced and assigned and assigned["serverId"] != options.get("allowManagedServerId"):
             raise RuntimeError(f"Cannot replace managed hardware {stored['hardwareId']}")
-        with node_fs.fs_operation("mkdtemp", self._hardware_dir / ".import-XXXXXX"):
-            staging_root = Path(tempfile.mkdtemp(prefix=".import-", dir=self._hardware_dir))
+        staging_root = Path(tempfile.mkdtemp(prefix=".import-", dir=self._hardware_dir))
         staging = staging_root / "hardware"
         target = self._hardware_path(stored["hardwareId"])
         backup = target.with_name(target.name + ".backup-" + new_uuid())
         existing_moved = staging_moved = False
         try:
-            node_fs.mkdir(staging)
+            staging.mkdir(parents=True, exist_ok=True)
             for asset_id in assets:
                 asset = _resolve_inside(staging, asset_id)
-                node_fs.mkdir(asset.parent)
+                asset.parent.mkdir(parents=True, exist_ok=True)
                 _write_bytes(asset, entries[asset_id])
             await atomic_json(staging / "hardware.json", stored)
             if target.exists():
@@ -349,7 +344,7 @@ class DeviceStore:
             raise
         finally:
             with contextlib.suppress(OSError):
-                node_fs.rm(staging_root, recursive=True, force=True)
+                _delete(staging_root)
         self._read_cache.clear()
         return {"id": stored["hardwareId"], "label": stored["label"], "replaced": replaced}
 
@@ -376,7 +371,7 @@ class DeviceStore:
     async def _save_stored_hardware(self, stored: Record) -> None:
         parsed = parse_stored_hardware_definition(stored)
         directory = self._hardware_path(parsed["hardwareId"])
-        node_fs.mkdir(directory)
+        directory.mkdir(parents=True, exist_ok=True)
         await atomic_json(directory / "hardware.json", parsed)
         self._read_cache.clear()
 
@@ -386,7 +381,7 @@ class DeviceStore:
     async def _delete_asset(self, hardware_id: str, asset_id: str) -> None:
         target = self.image_path(hardware_id, asset_id)
         with contextlib.suppress(OSError):
-            node_fs.rm(target, force=True)
+            _delete(target)
 
     def _read_all(
         self, directory: Path, document_name: str, parse: Callable[[Any], Record]
@@ -416,7 +411,7 @@ class DeviceStore:
         for path in paths:
             with contextlib.suppress(Exception):
                 output.append(
-                    parse(json_parse(node_fs.read_bytes(path).decode("utf-8", errors="replace")))
+                    parse(json_loads(path.read_bytes().decode("utf-8", errors="replace")))
                 )
         self._read_cache[key] = (signature, clone(output))
         return output
@@ -460,7 +455,7 @@ def _asset_ids(hardware: Record) -> list[str]:
 
 
 def _encode_json(value: Any) -> bytes:
-    return (json_stringify(value, indent=2) + "\n").encode("utf-8")
+    return (json_dumps(value, indent=2) + "\n").encode("utf-8")
 
 
 def image_extension(source: str) -> str:
@@ -574,7 +569,7 @@ def _parse_bundle(data: bytes) -> tuple[dict[str, bytes], Record, list[str]]:
             raise RuntimeError(f"Bundle is missing {name}")
         if len(entries[name]) > 1024 * 1024:
             raise RuntimeError(f"{name} exceeds the 1 MB limit")
-        return json_parse(entries[name].decode("utf-8-sig", errors="replace"))
+        return json_loads(entries[name].decode("utf-8-sig", errors="replace"))
 
     manifest = decode_document("bundle.json")
     if manifest is None:

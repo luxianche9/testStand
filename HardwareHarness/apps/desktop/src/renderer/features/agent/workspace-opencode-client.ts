@@ -99,7 +99,8 @@ export async function resolveWorkspaceThread(
     { throwOnError: true }
   );
   const newest = (response.data ?? [])
-    .filter((session) => !session.parentID && typeof session.time.archived !== "number" && isSessionInWorkspace(session, workspace))
+    .filter((session) =>
+      !session.parentID && typeof session.time.archived !== "number" && isSessionInWorkspace(session, workspace))
     .sort((left, right) => right.time.updated - left.time.updated)[0];
 
   if (newest) storage.setItem(storageKey, newest.id);

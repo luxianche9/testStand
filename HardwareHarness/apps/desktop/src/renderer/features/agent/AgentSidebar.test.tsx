@@ -38,7 +38,11 @@ function installApi(currentStatus: OpenCodeRuntimeStatus, settings: LlmSettings)
 
 function renderSidebar(onOpenSettings = () => undefined) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<QueryClientProvider client={client}><AssistantSidebar gatewayRunning onClose={() => undefined} onOpenSettings={onOpenSettings} /></QueryClientProvider>);
+  return render(
+    <QueryClientProvider client={client}>
+      <AssistantSidebar gatewayRunning onClose={() => undefined} onOpenSettings={onOpenSettings} />
+    </QueryClientProvider>
+  );
 }
 
 beforeEach(() => {
@@ -49,12 +53,15 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
+const llm = (apiKeyConfigured: boolean): LlmSettings =>
+  ({ baseUrl: "https://api.openai.com/v1", model: "gpt-4.1", apiKeyConfigured });
+
 describe("AssistantSidebar runtime states", () => {
   it.each([
-    [status("stopped"), { baseUrl: "https://api.openai.com/v1", model: "gpt-4.1", apiKeyConfigured: false }, "先完成模型配置"],
-    [status("starting"), { baseUrl: "https://api.openai.com/v1", model: "gpt-4.1", apiKeyConfigured: true }, "正在启动 OpenCode"],
-    [status("stopped"), { baseUrl: "https://api.openai.com/v1", model: "gpt-4.1", apiKeyConfigured: true }, "OpenCode 已停止"],
-    [status("error", "认证失败"), { baseUrl: "https://api.openai.com/v1", model: "gpt-4.1", apiKeyConfigured: true }, "OpenCode 启动失败"]
+    [status("stopped"), llm(false), "先完成模型配置"],
+    [status("starting"), llm(true), "正在启动 OpenCode"],
+    [status("stopped"), llm(true), "OpenCode 已停止"],
+    [status("error", "认证失败"), llm(true), "OpenCode 启动失败"]
   ])("renders the expected state for %s", async (runtimeStatus, settings, title) => {
     installApi(runtimeStatus, settings);
     renderSidebar();

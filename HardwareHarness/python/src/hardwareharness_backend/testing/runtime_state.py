@@ -6,10 +6,10 @@ import hashlib
 import json
 import sqlite3
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
-from hardwareharness_backend.compat import clone, utc_now_iso
 from hardwareharness_backend.contracts.errors import app_error
+from hardwareharness_backend.util import clone, utc_now_iso
 
 Record = dict[str, Any]
 
@@ -61,6 +61,10 @@ class RuntimeStateStore:
                     task_json TEXT NOT NULL, updated_at TEXT NOT NULL
                 );
                 CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS batches (
+                    batch_id TEXT PRIMARY KEY, state TEXT NOT NULL, batch_json TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
                 """
             )
             operation_columns = {
@@ -297,6 +301,57 @@ class RuntimeStateStore:
             )
         return {"items": summaries, **({"nextCursor": next_cursor} if next_cursor else {})}
 
+    def run_snapshots(self) -> list[Record]:
+        self.initialize()
+        self._index_run_artifacts()
+        with self._connect() as database:
+            rows = database.execute("SELECT snapshot_json FROM runs").fetchall()
+        return [self.normalize_run(json.loads(row[0])) for row in rows]
+
+    def get_metadata(self, key: str) -> Any:
+        self.initialize()
+        with self._connect() as database:
+            row = database.execute("SELECT value FROM metadata WHERE key=?", (key,)).fetchone()
+        return json.loads(row[0]) if row else None
+
+    def set_metadata(self, key: str, value: Any) -> None:
+        self.initialize()
+        with self._connect() as database:
+            database.execute(
+                "INSERT OR REPLACE INTO metadata VALUES (?,?)",
+                (key, json.dumps(value, ensure_ascii=False)),
+            )
+
+    def save_batch(self, batch: Record) -> None:
+        self.initialize()
+        with self._connect() as database:
+            database.execute(
+                "INSERT INTO batches VALUES (?,?,?,?) ON CONFLICT(batch_id) DO UPDATE SET "
+                "state=excluded.state,batch_json=excluded.batch_json,updated_at=excluded.updated_at",
+                (
+                    batch["batchId"],
+                    batch["state"],
+                    json.dumps(batch, ensure_ascii=False),
+                    utc_now_iso(),
+                ),
+            )
+
+    def load_batch(self, batch_id: str) -> Record | None:
+        self.initialize()
+        with self._connect() as database:
+            row = database.execute(
+                "SELECT batch_json FROM batches WHERE batch_id=?", (batch_id,)
+            ).fetchone()
+        return cast(Record, json.loads(row[0])) if row else None
+
+    def latest_batch(self) -> Record | None:
+        self.initialize()
+        with self._connect() as database:
+            row = database.execute(
+                "SELECT batch_json FROM batches ORDER BY updated_at DESC LIMIT 1"
+            ).fetchone()
+        return cast(Record, json.loads(row[0])) if row else None
+
     def save_wiring_task(self, project_id: str, task: Record) -> None:
         with self._connect() as database:
             database.execute(
@@ -379,6 +434,8 @@ class RuntimeStateStore:
             "outcomeKnown",
             "recoveryRequired",
             "legacyClassification",
+            "unitId",
+            "batchId",
         )
         result = {key: clone(snapshot[key]) for key in keys if key in snapshot}
         result.setdefault("planName", str(snapshot.get("planId", "历史计划")))
@@ -444,6 +501,18 @@ class RuntimeStateStore:
         database.execute(
             "UPDATE operations SET state='failed',updated_at=? WHERE state='accepted'", (now,)
         )
+        for batch_id, raw in database.execute(
+            "SELECT batch_id,batch_json FROM batches WHERE state='running'"
+        ).fetchall():
+            batch = json.loads(raw)
+            batch.update({"state": "interrupted", "completedAt": now})
+            for item in batch.get("items", []):
+                if item.get("state") in {"queued", "running"}:
+                    item["state"] = "skipped"
+            database.execute(
+                "UPDATE batches SET state='interrupted',batch_json=?,updated_at=? WHERE batch_id=?",
+                (json.dumps(batch, ensure_ascii=False), now, batch_id),
+            )
         rows = database.execute(
             "SELECT run_id,snapshot_json FROM runs "
             "WHERE state IN ('starting','running','paused','cleaning')"

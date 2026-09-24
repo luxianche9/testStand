@@ -18,7 +18,7 @@
     "check:dependencies": "depcruise --config .dependency-cruiser.cjs packages apps/desktop/src --output-type err && knip --config knip.json --include \"dependencies,unlisted,exports,types,cycles\"",
     "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm check:imports && pnpm check:branding && pnpm check:dependencies && pnpm build",
     "verify:full": "pnpm verify && pnpm verify:python && pnpm test:e2e",
-    "python:setup": "uv sync --project python --frozen && uv run --project python python python/scripts/prepare_icu.py",
+    "python:setup": "uv sync --project python --frozen",
     "verify:python": "uv run --project python python python/scripts/verify.py",
     "build:python": "pnpm python:setup && uv run --project python python python/scripts/build.py",
     "package:win": "pnpm build:python && pnpm build && pnpm --filter @hardwareharness/desktop package:win",

@@ -123,7 +123,7 @@ for (const theme of ["light", "dark", "system"] as const) {
         await navigateProject(page, "设备管理");
         await expect(page.getByRole("treeitem", { name: /DUT_A/ })).toBeVisible();
         await capture(page, group, "devices");
-        await page.locator("button").filter({ hasText: /^设置$/ }).click();
+        await page.getByRole("button", { name: "设置", exact: true }).click();
         await expect(page.getByRole("heading", { name: "外观", exact: true })).toBeVisible();
         await capture(page, group, "settings-appearance");
         await page.getByRole("button", { name: "AI 模型", exact: true }).click();

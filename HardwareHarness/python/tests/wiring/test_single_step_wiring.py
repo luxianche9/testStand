@@ -3,11 +3,11 @@ from pathlib import Path
 
 import pytest
 
-from hardwareharness_backend.compat import Record, iso_from_ms
 from hardwareharness_backend.contracts.errors import AppError
 from hardwareharness_backend.devices import DeviceCatalogService, DeviceStore
 from hardwareharness_backend.projects import ProjectService
 from hardwareharness_backend.storage import SettingsStore
+from hardwareharness_backend.util import Record, iso_from_ms
 from hardwareharness_backend.wiring import ProjectWiringService
 
 

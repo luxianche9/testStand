@@ -7,8 +7,8 @@ from datetime import UTC, datetime
 
 import pytest
 
-from hardwareharness_backend.compat import UNDEFINED
 from hardwareharness_backend.host.codec import decode, encode
+from hardwareharness_backend.util import UNDEFINED
 
 
 def test_nested_binary_missing_and_dates_round_trip() -> None:

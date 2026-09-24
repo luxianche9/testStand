@@ -1,9 +1,20 @@
 import { useAuiState } from "@assistant-ui/react";
 import { BrainIcon } from "lucide-react";
 import { memo, type FC, type PropsWithChildren } from "react";
-import { cn } from "../../shared/ui/index.js";
+import { cn } from "../../ui";
 
 type Group = { indices: readonly number[] };
+
+type Parts = readonly { type: string }[];
+
+function neighbourIsText(parts: Parts, from: number, step: 1 | -1) {
+  for (let index = from; index >= 0 && index < parts.length; index += step) {
+    const type = parts[index]?.type;
+    if (type === "data") continue;
+    return type === "text";
+  }
+  return false;
+}
 
 const ReasoningGroupImpl: FC<PropsWithChildren<{ group: Group }>> = ({ children, group }) => {
   const start = group.indices[0]!;
@@ -19,29 +30,27 @@ const ReasoningGroupImpl: FC<PropsWithChildren<{ group: Group }>> = ({ children,
     }
     return length > 120;
   });
-  const textAfter = useAuiState((state) => {
-    for (let index = end + 1; index < state.message.parts.length; index++) {
-      const type = state.message.parts[index]?.type;
-      if (type === "data") continue;
-      return type === "text";
-    }
-    return false;
-  });
-  return <div className={cn("mt-4 mb-2 flex items-start gap-2 text-sm leading-relaxed text-muted-foreground first:mt-0", multiline && "mt-6 mb-4", textAfter && "mb-4")}><BrainIcon className="mt-[3px] size-3.5 shrink-0" /><div className="space-y-4">{children}</div></div>;
+  const textAfter = useAuiState((state) => neighbourIsText(state.message.parts, end + 1, 1));
+  return (
+    <div
+      className={cn(
+        "mt-3 mb-2 flex items-start gap-2 text-sm leading-relaxed text-fg-3 first:mt-0",
+        multiline && "mt-4 mb-3",
+        textAfter && "mb-3"
+      )}
+    >
+      <BrainIcon aria-hidden className="mt-[3px] size-3.5 shrink-0" />
+      <div className="min-w-0 space-y-3 border-l border-line ps-3">{children}</div>
+    </div>
+  );
 };
 export const OpenCodeReasoningGroup = memo(ReasoningGroupImpl);
 
 const ToolGroupImpl: FC<PropsWithChildren<{ group: Group }>> = ({ children, group }) => {
   const start = group.indices[0]!;
   const end = group.indices.at(-1)!;
-  const textBefore = useAuiState((state) => {
-    for (let index = start - 1; index >= 0; index--) { const type = state.message.parts[index]?.type; if (type === "data") continue; return type === "text"; }
-    return false;
-  });
-  const textAfter = useAuiState((state) => {
-    for (let index = end + 1; index < state.message.parts.length; index++) { const type = state.message.parts[index]?.type; if (type === "data") continue; return type === "text"; }
-    return false;
-  });
-  return <div className={cn(textBefore && "mt-4", textAfter && "mb-4")}>{children}</div>;
+  const textBefore = useAuiState((state) => neighbourIsText(state.message.parts, start - 1, -1));
+  const textAfter = useAuiState((state) => neighbourIsText(state.message.parts, end + 1, 1));
+  return <div className={cn("grid gap-1.5", textBefore && "mt-3", textAfter && "mb-3")}>{children}</div>;
 };
 export const OpenCodeToolGroup = memo(ToolGroupImpl);

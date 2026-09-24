@@ -2,25 +2,31 @@ import { useMemo } from "react";
 import { Background, BackgroundVariant, ConnectionMode, ReactFlow } from "@xyflow/react";
 import type { Hardware } from "@hardwareharness/contracts/devices";
 import type { RecentProjectSummary } from "@hardwareharness/contracts/projects";
-import { wiringNodeTypes } from "./WiringCanvas.js";
-import {
-  DEFAULT_CARD_HEIGHT,
-  DEFAULT_CARD_WIDTH,
-  MIN_CARD_HEIGHT_LABEL,
-  clampCardHeight,
-  clampCardWidth,
-  splitPortRef,
-  type HardwareFlowNode,
-  type TopologyEdge
-} from "./wiring-model.js";
+import { useHardwareImageUrls } from "../../lib/queries.js";
+import { wiringNodeTypes } from "./HardwareNode.js";
+import { fallbackHardware, toFlowEdges, toFlowNode, type FlowNodeOptions } from "./flow-elements.js";
+import type { HardwareFlowNode, TopologyEdge } from "./wiring-model.js";
 
-const noopMovePort = () => undefined;
-const noopResizeNode = () => undefined;
+const noop = () => undefined;
 
-export function TopologyPreview({ project, hardware, compact }: { project: RecentProjectSummary; hardware: Hardware[]; compact: boolean }) {
-  const topology = useMemo(() => buildPreviewTopology(project, hardware), [hardware, project]);
+/** Read-only thumbnail of a project's bench, used on the welcome page. */
+export function TopologyPreview({ project, hardware, compact }: {
+  project: RecentProjectSummary; hardware: Hardware[]; compact: boolean;
+}) {
+  const imageRefs = useMemo(
+    () => hardware
+      .filter((item) => project.preview.nodes.some((node) => node.hardwareId === item.hardwareId))
+      .map((item) => ({ hardwareId: item.hardwareId, assetId: item.appearanceAssetId })),
+    [hardware, project.preview.nodes]
+  );
+  const imageUrls = useHardwareImageUrls(imageRefs);
+  const topology = useMemo(() => buildPreviewTopology(project, hardware, imageUrls), [hardware, imageUrls, project]);
   return (
-    <div className={`topology-preview${compact ? " compact" : ""}`} role="img" aria-label={`${project.name} 工位接线缩略图`}>
+    <div
+      className={compact ? "topology-preview compact" : "topology-preview"}
+      role="img"
+      aria-label={`${project.name} 工位接线缩略图`}
+    >
       {topology.nodes.length ? (
         <ReactFlow<HardwareFlowNode, TopologyEdge>
           nodes={topology.nodes}
@@ -45,83 +51,39 @@ export function TopologyPreview({ project, hardware, compact }: { project: Recen
           disableKeyboardA11y
           proOptions={{ hideAttribution: true }}
         >
-          <Background variant={BackgroundVariant.Lines} gap={24} size={1} color="var(--tf-canvas-grid)" bgColor="var(--tf-canvas)" />
+          <Background
+            variant={BackgroundVariant.Dots}
+            gap={14}
+            size={1}
+            color="var(--tf-canvas-grid)"
+            bgColor="var(--tf-canvas)"
+          />
         </ReactFlow>
       ) : <span className="topology-empty">暂无接线数据</span>}
     </div>
   );
 }
 
-function buildPreviewTopology(project: RecentProjectSummary, hardware: Hardware[]) {
-  const source = project.preview.nodes;
+function buildPreviewTopology(project: RecentProjectSummary, hardware: Hardware[], imageUrls: Record<string, string>) {
+  const { nodes: source, connections } = project.preview;
   if (!source.length) return { nodes: [] as HardwareFlowNode[], edges: [] as TopologyEdge[] };
-  const nodes: HardwareFlowNode[] = source.map((node) => {
+  const options: FlowNodeOptions = { imageUrls, interactive: false, movePort: noop, resizeNode: noop };
+  const nodes = source.map((node) => {
     const item = hardware.find((entry) => entry.hardwareId === node.hardwareId);
-    const showImage = node.showImage !== false;
-    const width = clampCardWidth(node.width ?? DEFAULT_CARD_WIDTH);
-    const height = clampCardHeight(node.height ?? (showImage ? DEFAULT_CARD_HEIGHT : MIN_CARD_HEIGHT_LABEL + 8), showImage);
-    return {
-      id: node.hardwareId,
-      type: "hardware",
-      position: { x: node.x, y: node.y },
-      width,
-      height,
-      style: { width, height },
-      draggable: false,
-      selectable: false,
-      focusable: false,
-      deletable: false,
-      data: {
-        hardware: item ?? unresolvedHardware(node.hardwareId, project.preview.connections),
-        resolved: Boolean(item),
-        imageUrl: item?.appearanceAssetId ? hardwareImageUrl(item.hardwareId, item.appearanceAssetId) : undefined,
-        showImage,
-        portPositions: node.portPositions,
-        portEditing: false,
-        interactive: false,
-        movePort: noopMovePort,
-        resizeNode: noopResizeNode
-      }
-    };
+    const fallback = fallbackHardware(node.hardwareId, portsFromConnections(node.hardwareId, connections));
+    return toFlowNode(node, item, fallback, options);
   });
-  const edges: TopologyEdge[] = project.preview.connections.flatMap((connection) => {
-    if (connection.portA === connection.portB) return [];
-    const a = splitPortRef(connection.portA, nodes.map((node) => node.data.hardware));
-    const b = splitPortRef(connection.portB, nodes.map((node) => node.data.hardware));
-    if (!a || !b) return [];
-    return [{
-      id: connection.connectionId,
-      source: a.hardwareId,
-      sourceHandle: a.portId,
-      target: b.hardwareId,
-      targetHandle: b.portId,
-      type: "step",
-      className: "wiring-flow-edge",
-      selectable: false,
-      focusable: false,
-      deletable: false,
-      data: { connectionId: connection.connectionId }
-    }];
-  });
+  const edges = toFlowEdges(connections, nodes.map((node) => node.data.hardware), false);
   return { nodes, edges };
 }
 
-function unresolvedHardware(hardwareId: string, connections: RecentProjectSummary["preview"]["connections"]): Hardware {
+/** Unregistered devices still draw their connectors, derived from the cables that reference them. */
+function portsFromConnections(hardwareId: string, connections: RecentProjectSummary["preview"]["connections"]) {
   const portIds = new Set<string>();
   for (const connection of connections) {
     for (const ref of [connection.portA, connection.portB]) {
       if (ref.startsWith(`${hardwareId}.`)) portIds.add(ref.slice(hardwareId.length + 1));
     }
   }
-  return {
-    formatVersion: 2,
-    hardwareId,
-    kind: "passive",
-    label: hardwareId,
-    ports: [...portIds].map((portId) => ({ portId, name: portId, pins: [] }))
-  };
-}
-
-function hardwareImageUrl(hardwareId: string, assetId: string) {
-  return `hardwareharness-asset://local/${encodeURIComponent(hardwareId)}/${assetId.split("/").map(encodeURIComponent).join("/")}`;
+  return portIds;
 }

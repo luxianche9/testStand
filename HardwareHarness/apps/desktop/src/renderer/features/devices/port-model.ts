@@ -1,0 +1,49 @@
+import type { HardwarePort } from "@hardwareharness/contracts/devices";
+
+/** Ports and pins are identified by hand-typed ids, so a new row only needs a free default. */
+export function uniqueId(prefix: string, taken: Set<string>): string {
+  for (let index = 1; ; index += 1) {
+    const candidate = `${prefix}${index}`;
+    if (!taken.has(candidate)) return candidate;
+  }
+}
+
+/** Positions describe physical order, so they stay contiguous when a pin in the middle goes. */
+export function renumber(pins: HardwarePort["pins"]): HardwarePort["pins"] {
+  return pins.map((pin, index) => ({ ...pin, position: index + 1 }));
+}
+
+/**
+ * The image lives at a path derived from portId, so a rename would orphan it. Dropping the
+ * reference is honest: the picture no longer belongs to a port that exists.
+ */
+export function renamePort(port: HardwarePort, portId: string): HardwarePort {
+  const { imageAssetId: _dropped, ...rest } = port;
+  return { ...(port.imageAssetId ? rest : port), portId };
+}
+
+export function withoutImage(port: HardwarePort): HardwarePort {
+  const { imageAssetId: _removed, ...rest } = port;
+  return rest;
+}
+
+export function addPin(port: HardwarePort): HardwarePort {
+  const pinId = uniqueId("", new Set(port.pins.map((entry) => entry.pinId)));
+  return { ...port, pins: [...port.pins, { pinId, position: port.pins.length + 1, label: "" }] };
+}
+
+export function removePin(port: HardwarePort, pinId: string): HardwarePort {
+  return { ...port, pins: renumber(port.pins.filter((entry) => entry.pinId !== pinId)) };
+}
+
+export function updatePin(
+  port: HardwarePort,
+  pinId: string,
+  change: Partial<Pick<HardwarePort["pins"][number], "pinId" | "label">>
+): HardwarePort {
+  return { ...port, pins: port.pins.map((entry) => (entry.pinId === pinId ? { ...entry, ...change } : entry)) };
+}
+
+export function pinTotal(ports: HardwarePort[]): number {
+  return ports.reduce((total, port) => total + port.pins.length, 0);
+}

@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { queryKeys } from "../../shared/query-keys.js";
-import { cn } from "../../shared/ui/cn";
-import { Spinner } from "../../shared/ui/skeleton";
+import { queryKeys } from "../../lib/query-keys.js";
+import { cn, Spinner } from "../../ui";
 
 /** Loads a stored hardware/port photo and renders it inline. */
 export function HardwareImage({ hardwareId, assetId, alt = "", className }: {
@@ -15,6 +14,6 @@ export function HardwareImage({ hardwareId, assetId, alt = "", className }: {
     queryFn: () => window.hardwareharness.devices.hardwareImageUrl(hardwareId, assetId),
     staleTime: Infinity
   });
-  if (!url.data) return <Spinner />;
+  if (!url.data) return <Spinner className="m-2 text-fg-3" />;
   return <img src={url.data} alt={alt} className={cn("block max-w-full object-contain", className)} />;
 }

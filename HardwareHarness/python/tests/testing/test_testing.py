@@ -531,6 +531,60 @@ async def test_pending_start_request_blocks_unknown_duplicate(tmp_path: Path) ->
     assert failure.value.details["outcomeKnown"] is False
 
 
+class WiredProjects(Projects):
+    def wiring(self) -> dict[str, Any]:
+        return {"nodes": [], "connections": [{"from": "dev.P1", "to": "dut.J1"}]}
+
+
+async def test_start_gate_only_blocks_wiring_tasks_for_plan_hardware(tmp_path: Path) -> None:
+    projects = WiredProjects(tmp_path)
+    resolver = Resolver()
+    store = TestPlanStore(projects, resolver)
+    engine = TestEngine(projects, Devices(), resolver, ExecutionCoordinator())
+    tasks: list[dict[str, Any]] = [
+        {"status": "pending", "portA": "other.P1", "portB": "dut.J2"},
+        {"status": "completed", "portA": "dev.P2", "portB": "dut.J3"},
+    ]
+    app = TestingApplication(
+        DefaultAuthorizer(), store, engine, resolver, SimpleNamespace(list_tasks=lambda _q: tasks)
+    )
+    invoke = {
+        "id": "read",
+        "type": "InvokeTool",
+        "hardwareId": "dev",
+        "toolName": "read",
+        "arguments": {},
+        "timeoutMs": 1000,
+        "bindingRevision": resolver.resolve("dev", "read")[0]["bindingRevision"],
+    }
+    await app.create_plan(
+        HUMAN,
+        {
+            "requestId": "create-gate",
+            "id": "gate",
+            "name": "Gate",
+            "regions": {"prepare": [], "test": [invoke], "cleanup": []},
+        },
+    )
+    validation = app.validate_plan(HUMAN, "gate")
+    start_input = {
+        "planId": "gate",
+        "revision": 1,
+        "executionRevision": validation["executionRevision"],
+        "parameters": {},
+    }
+
+    tasks.append({"status": "in_progress", "portA": "dut.J4", "portB": "dev.P3"})
+    with pytest.raises(AppError) as failure:
+        await app.start_run(HUMAN, {**start_input, "requestId": "run-blocked"})
+    assert failure.value.category == "conflict"
+
+    tasks.pop()
+    run = await finish(engine, await app.start_run(HUMAN, {**start_input, "requestId": "run-ok"}))
+    run_dir = next((tmp_path / ".hardwareharness").rglob(f"{run['runId']}/wiring.json")).parent
+    assert json.loads((run_dir / "wiring.json").read_text(encoding="utf-8")) == projects.wiring()
+
+
 def test_resolver_exposes_unwrapped_business_result_contract() -> None:
     envelope = {
         "type": "object",

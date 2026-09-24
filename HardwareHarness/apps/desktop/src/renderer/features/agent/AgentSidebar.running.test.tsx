@@ -60,7 +60,8 @@ vi.mock("@assistant-ui/react-opencode", () => ({
     return {};
   },
   useOpenCodeSession: () => null,
-  useOpenCodeThreadState: (selector?: (state: typeof fixtures.threadState) => unknown) => selector ? selector(fixtures.threadState) : fixtures.threadState
+  useOpenCodeThreadState: (selector?: (state: typeof fixtures.threadState) => unknown) =>
+    selector ? selector(fixtures.threadState) : fixtures.threadState
 }));
 
 vi.mock("./OpenCodeComposer", () => ({

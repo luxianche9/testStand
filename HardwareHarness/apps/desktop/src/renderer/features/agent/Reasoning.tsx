@@ -3,29 +3,26 @@ import {
   useScrollLock
 } from "@assistant-ui/react";
 import { cva, type VariantProps } from "class-variance-authority";
-import { BrainIcon, ChevronDownIcon } from "lucide-react";
+import { BrainIcon, ChevronRightIcon } from "lucide-react";
 import { memo, useCallback, useRef, useState } from "react";
+import { Collapsible } from "radix-ui";
+import { cn } from "../../ui";
 import { MarkdownText } from "./MarkdownText";
-import { Collapsible as CollapsiblePrimitive } from "radix-ui";
-const Collapsible = CollapsiblePrimitive.Root;
-const CollapsibleTrigger = CollapsiblePrimitive.Trigger;
-const CollapsibleContent = CollapsiblePrimitive.Content;
-import { cn } from "../../shared/ui/index.js";
 
 const ANIMATION_DURATION = 160;
 
-const reasoningVariants = cva("aui-reasoning-root mb-4 w-full", {
+const reasoningVariants = cva("aui-reasoning-root mb-3 w-full", {
   variants: {
     variant: {
-      outline: "rounded-xl bg-card px-3 py-2 shadow-sm ring-1 ring-border",
+      outline: "rounded-md border border-line bg-surface-0/40 px-2 py-1",
       ghost: "",
-      muted: "rounded-xl bg-muted/50 px-3 py-2"
+      muted: "rounded-md bg-surface-2/50 px-2 py-1"
     }
   },
   defaultVariants: { variant: "outline" }
 });
 
-export type ReasoningRootProps = Omit<React.ComponentProps<typeof Collapsible>, "open" | "onOpenChange"> &
+export type ReasoningRootProps = Omit<React.ComponentProps<typeof Collapsible.Root>, "open" | "onOpenChange"> &
   VariantProps<typeof reasoningVariants> & {
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
@@ -55,7 +52,7 @@ export function ReasoningRoot({
   }, [controlled, lockScroll, onOpenChange]);
 
   return (
-    <Collapsible
+    <Collapsible.Root
       ref={rootRef}
       open={open}
       onOpenChange={change}
@@ -65,7 +62,7 @@ export function ReasoningRoot({
       {...props}
     >
       {children}
-    </Collapsible>
+    </Collapsible.Root>
   );
 }
 
@@ -74,43 +71,59 @@ export function ReasoningTrigger({
   duration,
   className,
   ...props
-}: React.ComponentProps<typeof CollapsibleTrigger> & { active?: boolean; duration?: number }) {
+}: React.ComponentProps<typeof Collapsible.Trigger> & { active?: boolean; duration?: number }) {
   const label = active ? "正在思考" : "思考过程";
   const durationText = duration ? `（${duration} 秒）` : "";
   return (
-    <CollapsibleTrigger
+    <Collapsible.Trigger
       className={cn(
-        "group flex max-w-[85%] origin-left items-center gap-2 py-1.5 text-sm text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/40",
+        "group flex max-w-[85%] items-center gap-1.5 rounded-sm py-1 text-xs text-fg-3 outline-none",
+        "transition-colors duration-120 hover:text-fg-2",
+        "focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-signal",
         className
       )}
       {...props}
     >
-      <BrainIcon className="size-4 shrink-0" />
-      <span className="relative inline-block leading-none tabular-nums">
+      <BrainIcon aria-hidden className={cn("size-3.5 shrink-0", active && "text-run")} />
+      <span className="tf-num relative inline-block leading-none">
         <span>{label}{durationText}</span>
-        {active && <span aria-hidden className="shimmer pointer-events-none absolute inset-0 motion-reduce:animate-none">{label}{durationText}</span>}
+        {active && (
+          <span aria-hidden className="shimmer pointer-events-none absolute inset-0 motion-reduce:animate-none">
+            {label}{durationText}
+          </span>
+        )}
       </span>
-      <ChevronDownIcon className="size-4 shrink-0 -rotate-90 transition-transform group-data-[state=open]:rotate-0" />
-    </CollapsibleTrigger>
+      <ChevronRightIcon
+        aria-hidden
+        className="size-3.5 shrink-0 transition-transform duration-120 group-data-[state=open]:rotate-90"
+      />
+    </Collapsible.Trigger>
   );
 }
 
-export function ReasoningContent({ className, children, ...props }: React.ComponentProps<typeof CollapsibleContent>) {
+export function ReasoningContent({ className, children, ...props }: React.ComponentProps<typeof Collapsible.Content>) {
   return (
-    <CollapsibleContent
+    <Collapsible.Content
       className={cn(
-        "overflow-hidden text-sm text-muted-foreground outline-none data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down motion-reduce:animate-none",
+        "overflow-hidden text-sm text-fg-2 outline-none",
+        "data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down",
+        "motion-reduce:animate-none",
         className
       )}
       {...props}
     >
       {children}
-    </CollapsibleContent>
+    </Collapsible.Content>
   );
 }
 
 export function ReasoningText({ className, ...props }: React.ComponentPropsWithoutRef<"div">) {
-  return <div className={cn("max-h-64 overflow-y-auto ps-6 pt-2 pb-2 leading-relaxed text-pretty", className)} {...props} />;
+  return (
+    <div
+      className={cn("max-h-64 overflow-y-auto border-l border-line py-1.5 ps-3 leading-relaxed text-pretty", className)}
+      {...props}
+    />
+  );
 }
 
 const ReasoningImpl: ReasoningMessagePartComponent = () => <MarkdownText />;

@@ -12,7 +12,7 @@ from hardwareharness_backend.contracts.execution import parse_execution_activity
 from hardwareharness_backend.host.rpc import StdioRpc
 from hardwareharness_backend.host.runtime import HUMAN, HostRuntime, Services
 from hardwareharness_backend.mcp_gateway.redaction import redact
-from hardwareharness_backend.mcp_gateway.tool_registry import BUILTIN_TOOL_DEFINITIONS
+from hardwareharness_backend.mcp_gateway.tool_registry import BUILTIN_TOOLS
 from hardwareharness_backend.storage import SettingsStore
 
 
@@ -39,7 +39,7 @@ async def test_retired_desktop_routes_are_rejected(method: str) -> None:
 
 
 def test_agent_catalog_has_testing_but_no_legacy_workflow_or_script_tools() -> None:
-    names = {item.tool["name"] for item in BUILTIN_TOOL_DEFINITIONS}
+    names = {item.name for item in BUILTIN_TOOLS}
     assert {"read_reference", "get_tool_contract", "request_wiring_task"} <= names
     assert {"list_test_plans", "apply_test_plan_operations", "start_test_run"} <= names
     assert not any(

@@ -13,7 +13,7 @@ from hardwareharness_backend.application.authorization import (
 )
 from hardwareharness_backend.application.services import ProjectsApplication
 from hardwareharness_backend.contracts.validation import ValidationError
-from hardwareharness_backend.mcp_gateway.tool_registry import BUILTIN_TOOL_DEFINITIONS
+from hardwareharness_backend.mcp_gateway.tool_registry import BUILTIN_TOOLS
 
 
 def setup(dirty: bool = False, state: str = "idle") -> tuple[Any, Any]:
@@ -29,7 +29,7 @@ def setup(dirty: bool = False, state: str = "idle") -> tuple[Any, Any]:
     )
 
     async def invoke(name: str, value: dict[str, Any]) -> Any:
-        tool = next(item for item in BUILTIN_TOOL_DEFINITIONS if item.tool["name"] == name)
+        tool = next(item for item in BUILTIN_TOOLS if item.name == name)
         return await tool.execute(application, AGENT_REQUEST_CONTEXT, tool.parse(value))
 
     return projects, invoke
@@ -43,7 +43,7 @@ async def test_project_tools_forward_agent_context(tmp_path: Path) -> None:
     ]:
         await invoke(name, {"rootPath": str(tmp_path)})
         method.assert_awaited_once_with(AGENT_REQUEST_CONTEXT, str(tmp_path))
-    assert await invoke("get_project", {}) == {"ok": True, "data": {"dirty": False}}
+    assert await invoke("get_project", {}) == {"dirty": False}
     projects.document.assert_called_with(AGENT_REQUEST_CONTEXT)
     await invoke("save_project", {})
     projects.save_project.assert_awaited_once_with(AGENT_REQUEST_CONTEXT)

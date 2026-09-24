@@ -5,11 +5,11 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Protocol, TypeVar, cast
 
-from hardwareharness_backend.compat import UNDEFINED, Record, clone, json_parse, json_stringify
 from hardwareharness_backend.contracts.storage import parse_encrypted_secret_file
 from hardwareharness_backend.storage.file_storage import atomic_json, read_json
 from hardwareharness_backend.storage.serialized_writer import SerializedWriter
 from hardwareharness_backend.storage.settings_store import JsonWriter
+from hardwareharness_backend.util import UNDEFINED, Record, clone, json_dumps, json_loads
 
 T = TypeVar("T")
 
@@ -84,7 +84,7 @@ class SecretStore:
         await self._writer.flush()
 
     def _encode(self, value: Any) -> str:
-        serialized = UNDEFINED if value is UNDEFINED else json_stringify(value)
+        serialized = UNDEFINED if value is UNDEFINED else json_dumps(value)
         return base64.b64encode(self._protector.encrypt(cast(str, serialized))).decode("ascii")
 
     def _decode(self, encoded: str) -> Any:
@@ -95,7 +95,7 @@ class SecretStore:
         )
         if len(digits) % 4 == 1:
             digits = digits[:-1]
-        return json_parse(self._protector.decrypt(base64.b64decode(digits + "===")))
+        return json_loads(self._protector.decrypt(base64.b64decode(digits + "===")))
 
     async def _enqueue(self, mutate: Callable[[Record], tuple[bool, T]]) -> T:
         async def operation() -> T:

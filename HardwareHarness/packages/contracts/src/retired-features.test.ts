@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { projectViewSchema, userSettingsSchema } from "./storage.js";
 import { executionActivitySchema } from "./execution.js";
-import { HARDWAREHARNESS_IPC } from "./desktop.js";
+import { DESKTOP_OPERATIONS } from "./application.js";
 
 describe("retired workflow compatibility", () => {
   it.each(["applications", "logs", "orchestration", "unknown"])("restores %s to wiring without losing settings", (view) => {
@@ -13,7 +13,7 @@ describe("retired workflow compatibility", () => {
     expect(projectViewSchema.parse("manual")).toBe("manual");
     expect(projectViewSchema.parse("wiring")).toBe("wiring");
     expect(projectViewSchema.parse("plans")).toBe("plans");
-    expect(HARDWAREHARNESS_IPC).not.toHaveProperty("applications");
+    expect(DESKTOP_OPERATIONS.some((operation) => operation.startsWith("applications."))).toBe(false);
   });
 
   it("accepts direct hardware and test-run activities", () => {

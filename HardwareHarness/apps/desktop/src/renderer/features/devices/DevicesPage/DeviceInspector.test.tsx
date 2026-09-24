@@ -7,14 +7,19 @@ import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DashboardSnapshot } from "@hardwareharness/contracts/desktop";
 import type { Hardware } from "@hardwareharness/contracts/devices";
-import { queryKeys } from "../../../shared/query-keys.js";
+import { hardwareStatus } from "../../../lib/hardware-status.js";
+import { queryKeys } from "../../../lib/query-keys.js";
 import { DeviceInspector } from "./DeviceInspector.js";
 import { HardwareListTree } from "./HardwareListTree.js";
 import { RemoteComputerTree } from "./RemoteComputerTree.js";
-import { HardwareLibrary } from "../../wiring/index.js";
 
 const snapshot: DashboardSnapshot = {
-  computers: [{ id: "LOCAL_FIXTURE", label: "Local fixture", address: "127.0.0.1", ssh: { port: 22, username: "fixture", shell: "powershell" } }],
+  computers: [{
+    id: "LOCAL_FIXTURE",
+    label: "Local fixture",
+    address: "127.0.0.1",
+    ssh: { port: 22, username: "fixture", shell: "powershell" }
+  }],
   statuses: [{ computerId: "LOCAL_FIXTURE", ssh: { state: "online" } }],
   servers: [{
     transport: "mcp-http",
@@ -38,12 +43,15 @@ const snapshot: DashboardSnapshot = {
     remoteName: "write_voltage",
     serverId: "E2E_MCP",
     description: "write",
-    inputSchema: { type: "object", properties: { voltage: { type: "number", title: "Voltage" } }, required: ["voltage"] },
+    inputSchema: {
+      type: "object",
+      properties: { voltage: { type: "number", title: "Voltage" } },
+      required: ["voltage"]
+    },
     kind: "hardware"
   }],
   gateway: { running: true, endpoint: "http://127.0.0.1", tokenConfigured: true, toolCount: 1 },
   execution: { state: "idle" },
-  
   availability: [{ hardwareId: "E2E_CARD", state: "available", checkedAt: "2026-01-01T00:00:00Z" }]
 };
 
@@ -68,10 +76,29 @@ const catalog: Hardware[] = [
   }
 ];
 
+const invokeTool = vi.fn();
+
 function Wrapper({ children }: { children: ReactNode }) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   client.setQueryData(queryKeys.dashboard, snapshot);
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+}
+
+function renderInspector(selected: string) {
+  return render(
+    <DeviceInspector
+      selected={selected}
+      snapshot={snapshot}
+      hardware={catalog}
+      onSelect={vi.fn()}
+      onEditComputer={vi.fn()}
+      onAddServer={vi.fn()}
+      onEditServer={vi.fn()}
+      onEditHardware={vi.fn()}
+      onChanged={vi.fn(async () => undefined)}
+    />,
+    { wrapper: Wrapper }
+  );
 }
 
 beforeEach(() => {
@@ -84,11 +111,11 @@ beforeEach(() => {
         removeComputer: vi.fn(),
         removeServer: vi.fn(),
         serverAction: vi.fn(),
-        removeHardware: vi.fn()
+        removeHardware: vi.fn(),
+        readServerLogs: vi.fn(async () => ({ lines: [], truncated: false }))
       },
-      
       events: { subscribe: () => () => undefined },
-      manual: { invokeTool: vi.fn() }
+      manual: { invokeTool }
     }
   });
 });
@@ -103,45 +130,84 @@ describe("device trees", () => {
     ["faulted", "online", "故障", "SWD No ACK"],
     ["available", "online", "在线", undefined],
     ["available", "offline", "离线", "Connection refused"]
-  ] as const)("agrees with wiring when hardware is %s and transport is %s", (state, transport, label, message) => {
-    const data: DashboardSnapshot = {
-      ...snapshot,
-      availability: [{ hardwareId: "E2E_CARD", state, checkedAt: "2026-09-15T00:00:00Z", ...(message ? { message } : {}) }],
-      serverStatuses: snapshot.serverStatuses.map((status) => ({ ...status, transport: { state: transport, ...(message ? { message } : {}) } }))
+  ] as const)("uses the shared hardware status when hardware is %s and transport is %s", (
+    state,
+    transport,
+    label,
+    message
+  ) => {
+    const availability = {
+      hardwareId: "E2E_CARD",
+      state,
+      checkedAt: "2026-09-15T00:00:00Z",
+      ...(message ? { message } : {})
     };
-    const client = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } });
-    client.setQueryData(queryKeys.dashboard, data);
-    render(<QueryClientProvider client={client}>
-      <RemoteComputerTree data={data} hardware={catalog} selected={null} isOpen={() => true} onSelect={vi.fn()} onToggle={vi.fn()} onAddComputer={vi.fn()} />
-      <HardwareLibrary hardware={catalog} assetUrls={{}} placed={new Set()} onAdd={vi.fn()} onRefresh={vi.fn()} />
-    </QueryClientProvider>);
+    const serverStatuses = snapshot.serverStatuses.map((status) => ({
+      ...status,
+      transport: { state: transport, ...(message ? { message } : {}) }
+    }));
+    const data: DashboardSnapshot = { ...snapshot, availability: [availability], serverStatuses };
+    expect(hardwareStatus(serverStatuses[0], availability).label).toBe(label);
+
+    render(
+      <RemoteComputerTree
+        data={data}
+        hardware={catalog}
+        selected={null}
+        isOpen={() => true}
+        onSelect={vi.fn()}
+        onToggle={vi.fn()}
+        onAddComputer={vi.fn()}
+      />
+    );
     const device = screen.getByRole("treeitem", { name: /E2E fixture card/ });
-    const wiring = screen.getByRole("button", { name: /E2E fixture card/ });
     expect(within(device).getByText(label)).toBeTruthy();
-    expect(within(wiring).getByText(label)).toBeTruthy();
-    if (message) {
-      expect(within(device).getByTitle(message)).toBeTruthy();
-      expect(within(wiring).getByTitle(message)).toBeTruthy();
-    }
-    if (state === "faulted") {
-      expect(within(device).queryByText("在线")).toBeNull();
-      expect(within(wiring).queryByText("离线")).toBeNull();
-    }
+    if (message) expect(within(device).getByTitle(message)).toBeTruthy();
+    if (state === "faulted") expect(within(device).queryByText("在线")).toBeNull();
   });
 
-  it("shows a two-level computer-device tree with status and without actions or MCP tools", () => {
+  it("shows a computer → device tree with status only, no actions or MCP tools", async () => {
     const onSelect = vi.fn();
-    render(<RemoteComputerTree data={snapshot} hardware={catalog} selected={null} isOpen={() => true} onSelect={onSelect} onToggle={vi.fn()} onAddComputer={vi.fn()} />);
-    expect(screen.getByRole("treeitem", { name: /Local fixture/ })).toBeTruthy();
-    expect(screen.getByRole("treeitem", { name: /E2E fixture card/ })).toBeTruthy();
+    const onToggle = vi.fn();
+    render(
+      <RemoteComputerTree
+        data={snapshot}
+        hardware={catalog}
+        selected={null}
+        isOpen={() => true}
+        onSelect={onSelect}
+        onToggle={onToggle}
+        onAddComputer={vi.fn()}
+      />
+    );
+    expect(screen.getByRole("tree", { name: "电脑列表" })).toBeTruthy();
+    const computer = screen.getByRole("treeitem", { name: /Local fixture/ });
+    const device = screen.getByRole("treeitem", { name: /E2E fixture card/ });
     expect(screen.queryByText("write_voltage")).toBeNull();
     expect(screen.queryByRole("button", { name: "占用硬件" })).toBeNull();
     expect(screen.queryByRole("button", { name: "启动 MCP 服务" })).toBeNull();
     expect(screen.queryByRole("button", { name: "编辑信息" })).toBeNull();
+
+    device.focus();
+    await userEvent.keyboard("{Enter}");
+    expect(onSelect).toHaveBeenLastCalledWith("s:E2E_MCP");
+    computer.focus();
+    await userEvent.keyboard(" ");
+    expect(onSelect).toHaveBeenLastCalledWith("c:LOCAL_FIXTURE");
   });
 
   it("lists passive hardware without row actions", () => {
-    render(<HardwareListTree hardware={catalog} selected={null} isOpen={() => true} onSelect={vi.fn()} onToggle={vi.fn()} onAddHardware={vi.fn()} />);
+    render(
+      <HardwareListTree
+        hardware={catalog}
+        selected={null}
+        isOpen={() => true}
+        onSelect={vi.fn()}
+        onToggle={vi.fn()}
+        onAddHardware={vi.fn()}
+      />
+    );
+    expect(screen.getByRole("tree", { name: "硬件列表" })).toBeTruthy();
     expect(screen.getByRole("treeitem", { name: /DUT_A/ })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "编辑" })).toBeNull();
     expect(screen.queryByRole("button", { name: "移除硬件" })).toBeNull();
@@ -149,27 +215,23 @@ describe("device trees", () => {
 });
 
 describe("device inspector", () => {
-  it("shows managed hardware details, operations and MCP tools after selecting a device", async () => {
-    render(<DeviceInspector
-      selected="s:E2E_MCP"
-      snapshot={snapshot}
-      hardware={catalog}
-      onSelect={vi.fn()}
-      onEditComputer={vi.fn()}
-      onAddServer={vi.fn()}
-      onEditServer={vi.fn()}
-      onEditHardware={vi.fn()}
-      onChanged={vi.fn(async () => undefined)}
-    />, { wrapper: Wrapper });
+  it("shows an empty state until something is selected", () => {
+    renderInspector("");
+    expect(screen.getByText("选择一台电脑或设备")).toBeTruthy();
+  });
+
+  it("shows managed hardware details, service and manual control after selecting a device", async () => {
+    renderInspector("s:E2E_MCP");
 
     expect(screen.getByRole("heading", { name: "E2E fixture card" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "占用硬件" })).toBeNull();
-    expect(screen.getByRole("button", { name: "启动 MCP 服务" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "释放硬件" })).toBeNull();
+    expect(screen.getByRole("button", { name: "启动 MCP 服务" })).toHaveProperty("disabled", true);
+    expect(screen.getByRole("button", { name: "终止 MCP 服务" })).toHaveProperty("disabled", false);
     expect(await screen.findByAltText("E2E fixture card 外观图")).toBeTruthy();
     expect(screen.getByText("AO0")).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "MCP 工具" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "手动控制" })).toBeTruthy();
     const tool = screen.getByRole("button", { name: /write_voltage/ });
-    expect(tool).toBeTruthy();
     expect(tool.getAttribute("aria-expanded")).toBe("false");
 
     await userEvent.click(tool);
@@ -178,23 +240,38 @@ describe("device inspector", () => {
     expect(screen.getByRole("button", { name: "执行一次" })).toBeTruthy();
   });
 
+  it("invokes a tool once and shows the result as readings plus raw JSON", async () => {
+    invokeTool.mockResolvedValue({
+      hardwareId: "E2E_CARD",
+      toolName: "E2E_MCP__write_voltage",
+      startedAt: "2026-01-01T00:00:00Z",
+      completedAt: "2026-01-01T00:00:00Z",
+      durationMs: 12,
+      output: { structuredContent: { voltage: 3.3, ok: true } }
+    });
+    renderInspector("s:E2E_MCP");
+    await userEvent.click(screen.getByRole("button", { name: /write_voltage/ }));
+    await userEvent.type(await screen.findByLabelText(/Voltage/), "3.3");
+    await userEvent.click(screen.getByRole("button", { name: "执行一次" }));
+
+    const verdict = await screen.findByText("调用成功");
+    const result = verdict.closest("section")!;
+    expect(invokeTool).toHaveBeenCalledWith(expect.objectContaining({
+      hardwareId: "E2E_CARD",
+      toolName: "E2E_MCP__write_voltage",
+      timeoutMs: 30_000
+    }));
+    expect(result.querySelector("pre")?.textContent).toContain("\"voltage\": 3.3");
+    expect(within(result).getByText("3.3")).toBeTruthy();
+  });
+
   it("shows a passive hardware photo inline without a preview button", async () => {
-    render(<DeviceInspector
-      selected="l:DUT_A"
-      snapshot={snapshot}
-      hardware={catalog}
-      onSelect={vi.fn()}
-      onEditComputer={vi.fn()}
-      onAddServer={vi.fn()}
-      onEditServer={vi.fn()}
-      onEditHardware={vi.fn()}
-      onChanged={vi.fn(async () => undefined)}
-    />, { wrapper: Wrapper });
+    renderInspector("l:DUT_A");
 
     expect(screen.getByRole("heading", { name: "DUT_A" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "编辑" })).toBeTruthy();
     expect(await screen.findByAltText("DUT_A 外观图")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "预览" })).toBeNull();
-    expect(screen.queryByRole("heading", { name: "MCP 工具" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "手动控制" })).toBeNull();
   });
 });

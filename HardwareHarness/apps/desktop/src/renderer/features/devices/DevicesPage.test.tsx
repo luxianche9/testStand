@@ -7,10 +7,12 @@ import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ComputerEditor } from "./DevicesPage/editors/ComputerEditor.js";
 import { HardwareEditor } from "./DevicesPage/editors/HardwareEditor.js";
+import { ServerEditor } from "./DevicesPage/editors/ServerEditor.js";
 
 const saveComputer = vi.fn();
 const saveHardware = vi.fn();
 const listHardware = vi.fn();
+const saveServer = vi.fn();
 
 function Wrapper({ children }: { children: ReactNode }) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
@@ -21,10 +23,11 @@ beforeEach(() => {
   saveComputer.mockResolvedValue(undefined);
   saveHardware.mockResolvedValue(undefined);
   listHardware.mockResolvedValue([]);
+  saveServer.mockResolvedValue(undefined);
   Object.defineProperty(window, "hardwareharness", {
     configurable: true,
     value: {
-      devices: { saveComputer, saveHardware, listHardware }
+      devices: { saveComputer, saveHardware, listHardware, saveServer }
     }
   });
 });
@@ -91,6 +94,47 @@ describe("device editors", () => {
       ports: []
     }));
     expect(onChanged).toHaveBeenCalledOnce();
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("autofills lifecycle paths from the Server ID and saves the server with its managed hardware", async () => {
+    const onClose = vi.fn();
+    const computers = [{
+      id: "PC1",
+      label: "仪器电脑",
+      address: "192.168.3.51",
+      ssh: { port: 22, username: "op", shell: "powershell" as const }
+    }];
+    render(
+      <ServerEditor
+        open
+        computers={computers}
+        hardware={[]}
+        onClose={onClose}
+        onChanged={vi.fn(async () => undefined)}
+      />,
+      { wrapper: Wrapper }
+    );
+    const save = screen.getByRole("button", { name: "保存" });
+    expect(save).toHaveProperty("disabled", true);
+
+    await userEvent.type(screen.getByLabelText(/Server ID/), "PCI1710L_MCP");
+    expect((screen.getByLabelText(/日志目录/) as HTMLInputElement).value).toBe(String.raw`E:\pci1710l_mcp_server\logs`);
+    await userEvent.type(screen.getByLabelText(/唯一 Hardware ID/), "CARD_0");
+    await userEvent.click(save);
+
+    await waitFor(() => expect(saveServer).toHaveBeenCalledWith(expect.objectContaining({
+      serverId: "PCI1710L_MCP",
+      computerId: "PC1",
+      hardwareId: "CARD_0",
+      url: "http://192.168.3.51:8011/mcp",
+      lifecycle: expect.objectContaining({ startCommand: String.raw`& 'E:\pci1710l_mcp_server\start.ps1'` })
+    }), undefined));
+    expect(saveHardware).toHaveBeenCalledWith(expect.objectContaining({
+      hardwareId: "CARD_0",
+      kind: "managed",
+      serverId: "PCI1710L_MCP"
+    }));
     expect(onClose).toHaveBeenCalledOnce();
   });
 });

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from hardwareharness_backend.compat import clone
-from hardwareharness_backend.mcp_gateway.public_contracts import business_result_schema
+from hardwareharness_backend.contracts.mcp import business_result_schema
+from hardwareharness_backend.util import clone
 
 from .models import schema_hash
 from .validation import issue

@@ -12,15 +12,15 @@ from jsonschema import Draft202012Validator
 from hardwareharness_backend.application import DefaultAuthorizer, ExecutionCoordinator
 from hardwareharness_backend.application.services import DevicesApplication
 from hardwareharness_backend.contracts.errors import AppError
-from hardwareharness_backend.devices.mcp_client import McpHttpTransport
-from hardwareharness_backend.mcp_gateway.contract_tools import import_firmware
-from hardwareharness_backend.mcp_gateway.public_contracts import (
+from hardwareharness_backend.contracts.mcp import (
     normalized_output_schema,
     public_remote_tool,
     sdk_envelope_schema,
     with_error_schema,
 )
-from hardwareharness_backend.mcp_gateway.tool_registry import BUILTIN_TOOL_DEFINITIONS, ToolRegistry
+from hardwareharness_backend.devices.mcp_client import McpHttpTransport
+from hardwareharness_backend.mcp_gateway.contract_tools import import_firmware
+from hardwareharness_backend.mcp_gateway.tool_registry import BUILTIN_TOOLS, ToolRegistry
 
 Json = dict[str, Any]
 CONTEXT = {"actor": "agent", "source": "mcp"}
@@ -38,8 +38,8 @@ def _check_fields(schema: Json) -> None:
 
 def test_every_builtin_has_a_valid_described_contract() -> None:
     names = set()
-    for definition in BUILTIN_TOOL_DEFINITIONS:
-        tool = definition.tool
+    for item in BUILTIN_TOOLS:
+        tool = item.definition()
         assert tool["name"] not in names
         names.add(tool["name"])
         assert len(tool["description"]) > 20

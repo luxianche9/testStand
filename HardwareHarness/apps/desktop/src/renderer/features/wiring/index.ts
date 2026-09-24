@@ -1,2 +1,2 @@
 export { WiringPage } from "./WiringPage.js";
-export { HardwareLibrary } from "./WiringCanvas.js";
+export { HardwareLibrary } from "./HardwareLibrary.js";

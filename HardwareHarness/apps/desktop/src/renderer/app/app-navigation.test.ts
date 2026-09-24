@@ -22,7 +22,10 @@ describe("app navigation", () => {
   });
 
   it("records a new origin after leaving and reopening settings", () => {
-    let state: AppNavigationState = appNavigationReducer(initialAppNavigation, { type: "enter-project", view: "wiring" });
+    let state: AppNavigationState = appNavigationReducer(
+      initialAppNavigation,
+      { type: "enter-project", view: "wiring" }
+    );
     state = appNavigationReducer(state, { type: "open-settings" });
     state = appNavigationReducer(state, { type: "show-content", page: "wiring" });
     state = appNavigationReducer(state, { type: "open-settings" });

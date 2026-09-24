@@ -1,6 +1,5 @@
 from typing import Any
 
-from hardwareharness_backend.compat import Record
 from hardwareharness_backend.contracts.validation import (
     Schema,
     array,
@@ -14,6 +13,7 @@ from hardwareharness_backend.contracts.validation import (
     parse_record,
     string,
 )
+from hardwareharness_backend.util import Record
 
 connection_state_schema = enum("unknown", "checking", "online", "offline", "error")
 remote_computer_schema = obj(

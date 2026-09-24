@@ -1,7 +1,7 @@
 from typing import Any
 
-from hardwareharness_backend.compat import Record
 from hardwareharness_backend.contracts.validation import literal, obj, parse_record
+from hardwareharness_backend.util import Record
 
 agent_kind_schema = literal("codex")
 agent_kind_input_schema = obj({"id": agent_kind_schema}, strict=True)

@@ -1,14 +1,21 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
+from datetime import datetime
 from typing import Any, cast
 
-from hardwareharness_backend.compat import clone, utc_now_iso
 from hardwareharness_backend.contracts.errors import app_error
+from hardwareharness_backend.contracts.operations import operation
+from hardwareharness_backend.util import clone, new_uuid, utc_now_iso
 
+from .batch import BatchCoordinator
 from .catalog import step_catalog
+from .models import plan_hardware_ids
 
 Record = dict[str, Any]
+_UNIT_KEY = "currentUnit"
+_ORDER_KEY = "testItemOrder"
 
 
 class TestingApplication:
@@ -34,20 +41,28 @@ class TestingApplication:
         self._requests: dict[tuple[str, str], Record] = {}
         self._request_locks: dict[tuple[str, str], asyncio.Lock] = {}
         self._plan_notifier: Any = None
+        self.batches = BatchCoordinator(self)
 
     def set_plan_notifier(self, notifier: Any) -> None:
         self._plan_notifier = notifier
 
+    def set_batch_notifier(self, notifier: Any) -> None:
+        self.batches.set_notifier(notifier)
+
+    def _notify_items(self, event: Record) -> None:
+        if self.batches.notifier:
+            self.batches.notifier(event)
+
+    @operation("testing.read")
     def list_plans(self, context: Record) -> list[Record]:
-        self.authorizer.authorize(context, "testing.read")
         return cast(list[Record], self.store.list())
 
+    @operation("testing.read")
     def load_plan(self, context: Record, plan_id: str) -> Record:
-        self.authorizer.authorize(context, "testing.read")
         return cast(Record, self.store.load(plan_id))
 
+    @operation("testing.manage")
     async def create_plan(self, context: Record, input: Record) -> Record:
-        self.authorizer.authorize(context, "testing.manage")
         request_id = _request_id(input)
         async with self._lock_for("create", request_id):
             cached = await self._claim_request("create", request_id, input)
@@ -62,22 +77,22 @@ class TestingApplication:
             self._notify_plan(result["plan"], "created")
             return result
 
+    @operation("testing.manage")
     async def save_plan(self, context: Record, plan: Record, base_revision: int) -> Record:
-        self.authorizer.authorize(context, "testing.manage")
         result = cast(Record, await self.store.save(plan, base_revision))
         self._notify_plan(result["plan"], "saved")
         return result
 
+    @operation("testing.manage")
     async def delete_plan(self, context: Record, plan_id: str) -> Record:
-        self.authorizer.authorize(context, "testing.manage")
         if self.engine.active and self.engine.active.plan["id"] == plan_id:
             raise app_error("conflict", "Cannot delete the active test plan")
         result = cast(Record, await self.store.delete(plan_id))
         self._notify_plan({"id": plan_id}, "deleted")
         return result
 
+    @operation("testing.manage")
     async def apply_plan_operations(self, context: Record, input: Record) -> Record:
-        self.authorizer.authorize(context, "testing.manage")
         request_id = _request_id(input)
         async with self._lock_for("operations", request_id):
             cached = await self._claim_request("operations", request_id, input)
@@ -99,27 +114,27 @@ class TestingApplication:
             self._notify_plan(result["plan"], "updated")
             return result
 
+    @operation("testing.read")
     def validate_plan(self, context: Record, plan_id: str) -> Record:
-        self.authorizer.authorize(context, "testing.read")
         return cast(Record, self.store.validate(plan_id))
 
+    @operation("testing.read")
     def analyze_plan_draft(self, context: Record, input: Record) -> Record:
-        self.authorizer.authorize(context, "testing.read")
         return cast(
             Record,
             self.store.analyze(cast(Record, input["plan"]), int(input["baseRevision"])),
         )
 
+    @operation("testing.read")
     def list_step_catalog(self, context: Record) -> list[Record]:
-        self.authorizer.authorize(context, "testing.read")
         return step_catalog(self.plugins)
 
+    @operation("testing.read")
     def list_device_tools(self, context: Record, hardware_id: str) -> Record:
-        self.authorizer.authorize(context, "testing.read")
         return cast(Record, self.resolver.list_device_tools(hardware_id))
 
+    @operation("testing.execute")
     async def start_run(self, context: Record, input: Record) -> Record:
-        self.authorizer.authorize(context, "testing.execute")
         request_id = _request_id(input)
         async with self._lock_for("start", request_id):
             cached = await self._claim_request("start", request_id, input)
@@ -134,6 +149,8 @@ class TestingApplication:
                         {"currentRevision": plan["revision"]},
                     )
                 compiled = self.store.compile(plan["id"])
+                if self.batches.running:
+                    raise app_error("conflict", "A batch run is in progress")
                 if compiled["executionRevision"] != str(input.get("executionRevision", "")):
                     raise app_error(
                         "conflict",
@@ -143,53 +160,181 @@ class TestingApplication:
                             "revision": plan["revision"],
                         },
                     )
-                if not compiled["valid"]:
-                    raise app_error(
-                        "validation_failed",
-                        "Test plan has validation errors",
-                        {"issues": compiled["issues"], "revision": plan["revision"]},
-                    )
-                pending = self.wiring.list_tasks({"limit": 500})
-                if any(task.get("status") in {"pending", "in_progress"} for task in pending):
-                    raise app_error("conflict", "A wiring task is awaiting confirmation")
                 parameters = _parameters(plan, input.get("parameters", {}))
-                result = cast(
-                    Record,
-                    await self.engine.start(
-                        compiled["compiledPlan"], parameters, compiled["executionRevision"]
-                    ),
-                )
+                result = await self._start_compiled(plan, compiled, parameters)
             except BaseException:
                 await self.store.release_request("start", request_id)
                 raise
             await self._complete_request("start", request_id, result)
             return result
 
+    async def start_item(self, plan_id: str, batch_id: str) -> Record:
+        """Start one batch item with default parameters at its latest saved revision."""
+        plan = self.store.load(plan_id)
+        compiled = self.store.compile(plan_id)
+        return await self._start_compiled(plan, compiled, _parameters(plan, {}), batch_id)
+
+    async def _start_compiled(
+        self, plan: Record, compiled: Record, parameters: Record, batch_id: str | None = None
+    ) -> Record:
+        if not compiled["valid"]:
+            raise app_error(
+                "validation_failed",
+                "Test plan has validation errors",
+                {"issues": compiled["issues"], "revision": plan["revision"]},
+            )
+        self.check_wiring_gate(plan)
+        tags = {"unitId": self.ensure_unit()["unitId"], "batchId": batch_id}
+        return cast(
+            Record,
+            await self.engine.start(
+                compiled["compiledPlan"], parameters, compiled["executionRevision"], tags
+            ),
+        )
+
+    def check_wiring_gate(self, plan: Record) -> None:
+        hardware_ids = plan_hardware_ids(plan)
+        pending = self.wiring.list_tasks({"limit": 500})
+        if any(
+            task.get("status") in {"pending", "in_progress"}
+            and _touches_hardware(task, hardware_ids)
+            for task in pending
+        ):
+            raise app_error(
+                "conflict",
+                "A wiring task for this plan's hardware is awaiting confirmation",
+            )
+
+    def check_recovery_gate(self, plan: Record) -> None:
+        self.store.runtime.initialize()
+        blocked = {
+            item["hardwareId"] for item in self.store.runtime.operations(recovery_only=True)
+        } & set(plan_hardware_ids(plan))
+        if blocked:
+            raise app_error(
+                "conflict",
+                "Hardware has unresolved physical operations",
+                {"hardwareIds": sorted(blocked), "recoveryRequired": True},
+            )
+
+    # Units under test: a project tests one product; each physical unit is one round.
+
+    def ensure_unit(self) -> Record:
+        unit = self.store.runtime.get_metadata(_UNIT_KEY)
+        if isinstance(unit, dict) and unit.get("unitId"):
+            return cast(Record, unit)
+        return self._new_unit("")
+
+    def _new_unit(self, serial_number: str) -> Record:
+        unit = {"unitId": new_uuid(), "serialNumber": serial_number, "startedAt": utc_now_iso()}
+        self.store.runtime.set_metadata(_UNIT_KEY, unit)
+        self._notify_items({"kind": "unit", "unit": unit})
+        return unit
+
+    @operation("testing.read")
+    def current_unit(self, context: Record) -> Record:
+        return self.ensure_unit()
+
+    @operation("testing.execute")
+    def start_unit(self, context: Record, input: Record | None = None) -> Record:
+        if self.batches.running or (self.engine.active and not self.engine.active.done):
+            raise app_error("conflict", "Cannot change the unit under test while a run is active")
+        return self._new_unit(str((input or {}).get("serialNumber", "")).strip())
+
+    # Functional test items: one saved plan per item, ordered per project.
+
+    @operation("testing.read")
+    def list_item_status(self, context: Record) -> Record:
+        unit = self.ensure_unit()
+        plans = cast(list[Record], self.store.list())
+        latest: dict[str, Record] = {}
+        for run in self.store.runtime.run_snapshots():
+            if run.get("unitId") != unit["unitId"]:
+                continue
+            plan_id = str(run.get("planId"))
+            previous = latest.get(plan_id)
+            if not previous or str(run.get("startedAt", "")) > str(previous.get("startedAt", "")):
+                latest[plan_id] = run
+        active = self.engine.active if self.engine.active and not self.engine.active.done else None
+        batch = self.batches.snapshot() if self.batches.running else None
+        queued = {
+            item["planId"] for item in (batch or {}).get("items", []) if item["state"] == "queued"
+        }
+        items = []
+        for plan in _ordered(plans, self.store.runtime.get_metadata(_ORDER_KEY)):
+            run = latest.get(plan["id"])
+            if active and active.plan["id"] == plan["id"]:
+                run = active.snapshot()
+            items.append(_item_status(plan, run, plan["id"] in queued))
+        return {"unit": unit, "items": items, **({"batch": batch} if batch else {})}
+
+    @operation("testing.manage")
+    def reorder_items(self, context: Record, input: Record) -> Record:
+        self.store.runtime.set_metadata(_ORDER_KEY, list(dict.fromkeys(_plan_ids(input))))
+        self._notify_items({"kind": "order"})
+        return self.list_item_status(context)
+
+    # Batch runs execute selected items one after another.
+
+    @operation("testing.execute")
+    async def start_batch(self, context: Record, input: Record) -> Record:
+        request_id = _request_id(input)
+        async with self._lock_for("batch", request_id):
+            cached = await self._claim_request("batch", request_id, input)
+            if cached:
+                return cached
+            try:
+                stop_on_fail = bool(input.get("stopOnFail", False))
+                result = await self.batches.start(_plan_ids(input), stop_on_fail)
+            except BaseException:
+                await self.store.release_request("batch", request_id)
+                raise
+            await self._complete_request("batch", request_id, result)
+            return result
+
+    @operation("testing.execute")
+    async def abort_batch(self, context: Record, batch_id: str) -> Record:
+        return await self.batches.abort(batch_id)
+
+    @operation("testing.read")
+    def current_batch(self, context: Record) -> Record | None:
+        return self.batches.current()
+
+    @operation("testing.read")
+    def get_batch(self, context: Record, batch_id: str) -> Record:
+        return self.batches.get(batch_id)
+
+    @operation("testing.read")
+    async def wait_for_batch(
+        self, context: Record, batch_id: str, timeout_ms: int = 30_000
+    ) -> Record:
+        return await self.batches.wait(batch_id, min(max(int(timeout_ms), 1), 30_000))
+
+    @operation("testing.execute")
     async def pause_run(self, context: Record, run_id: str) -> Record:
-        self.authorizer.authorize(context, "testing.execute")
         return cast(Record, await self.engine.pause(run_id))
 
+    @operation("testing.execute")
     async def resume_run(self, context: Record, run_id: str) -> Record:
-        self.authorizer.authorize(context, "testing.execute")
         return cast(Record, await self.engine.resume(run_id))
 
+    @operation("testing.execute")
     async def abort_run(self, context: Record, run_id: str) -> Record:
-        self.authorizer.authorize(context, "testing.execute")
         return cast(Record, await self.engine.abort(run_id))
 
+    @operation("testing.read")
     def current_run(self, context: Record) -> Record | None:
-        self.authorizer.authorize(context, "testing.read")
         return cast(Record | None, self.engine.current())
 
+    @operation("testing.read")
     def get_run(self, context: Record, run_id: str) -> Record:
-        self.authorizer.authorize(context, "testing.read")
         result = cast(Record | None, self.engine.get(run_id))
         if not result:
             raise app_error("not_found", f"Test run not found: {run_id}")
         return result
 
+    @operation("testing.read")
     def list_runs(self, context: Record, input: Record | None = None) -> Record:
-        self.authorizer.authorize(context, "testing.read")
         query = input or {}
         return cast(
             Record,
@@ -204,6 +349,7 @@ class TestingApplication:
             ),
         )
 
+    @operation("testing.read")
     def read_run_log(
         self,
         context: Record,
@@ -213,7 +359,6 @@ class TestingApplication:
         event_limit: int = 1000,
         result_limit: int = 1000,
     ) -> Record:
-        self.authorizer.authorize(context, "testing.read")
         return cast(
             Record,
             self.engine.read_log(
@@ -225,23 +370,23 @@ class TestingApplication:
             ),
         )
 
+    @operation("testing.read")
     def read_run_results(self, context: Record, run_id: str, after_sequence: int = 0) -> Record:
-        self.authorizer.authorize(context, "testing.read")
         return cast(Record, self.engine.read_results(run_id, after_sequence))
 
+    @operation("testing.read")
     async def wait_for_run(
         self, context: Record, run_id: str, after_sequence: int = 0, timeout_ms: int = 30_000
     ) -> Record:
-        self.authorizer.authorize(context, "testing.read")
         return cast(Record, await self.engine.wait(run_id, after_sequence, timeout_ms))
 
+    @operation("testing.read")
     def list_recovery_items(self, context: Record) -> list[Record]:
-        self.authorizer.authorize(context, "testing.read")
         self.store.runtime.initialize()
         return cast(list[Record], self.store.runtime.operations(recovery_only=True))
 
+    @operation("testing.execute")
     async def reconcile_operation(self, context: Record, input: Record) -> Record:
-        self.authorizer.authorize(context, "testing.execute")
         operation_id = str(input.get("operationId", ""))
         items = [
             item
@@ -273,6 +418,7 @@ class TestingApplication:
         return {"operation": reconciled, "run": run}
 
     async def close(self) -> None:
+        await self.batches.close()
         if self.engine.active and not self.engine.active.done:
             await self.engine.abort(self.engine.active.run_id)
             if self.engine.active.task:
@@ -305,6 +451,60 @@ class TestingApplication:
     async def _complete_request(self, scope: str, request_id: str, result: Record) -> None:
         await self.store.complete_request(scope, request_id, result)
         self._requests[(scope, request_id)] = clone(result)
+
+
+def _plan_ids(input: Record) -> list[str]:
+    plan_ids = input.get("planIds")
+    if not isinstance(plan_ids, list) or not all(isinstance(item, str) for item in plan_ids):
+        raise app_error("invalid_argument", "planIds must be a list of plan ids")
+    return cast(list[str], plan_ids)
+
+
+def _ordered(plans: list[Record], order: Any) -> list[Record]:
+    rank = {
+        plan_id: index for index, plan_id in enumerate(order if isinstance(order, list) else [])
+    }
+    return sorted(
+        plans,
+        key=lambda plan: (rank.get(plan["id"], len(rank)), str(plan.get("name", "")).lower()),
+    )
+
+
+def _item_status(plan: Record, run: Record | None, queued: bool) -> Record:
+    item: Record = {
+        "planId": plan["id"],
+        "name": plan.get("name", plan["id"]),
+        "revision": plan.get("revision", 0),
+        "invalid": bool(plan.get("invalid", False)),
+        "queued": queued,
+        "stale": False,
+    }
+    if not run:
+        return item
+    item.update(
+        {
+            "runId": run["runId"],
+            "state": run.get("state"),
+            "verdict": run.get("verdict", "NotSet"),
+            "startedAt": run.get("startedAt"),
+            "stale": run.get("revision") != plan.get("revision"),
+        }
+    )
+    if run.get("completedAt"):
+        item["completedAt"] = run["completedAt"]
+        with contextlib.suppress(ValueError, TypeError):
+            started = datetime.fromisoformat(str(run["startedAt"]).replace("Z", "+00:00"))
+            completed = datetime.fromisoformat(str(run["completedAt"]).replace("Z", "+00:00"))
+            item["durationMs"] = max(0, int((completed - started).total_seconds() * 1000))
+    error = run.get("primaryError")
+    if isinstance(error, dict) and error.get("message"):
+        item["message"] = str(error["message"])
+    return item
+
+
+def _touches_hardware(task: Record, hardware_ids: list[str]) -> bool:
+    ports = [str(task.get("portA", "")), str(task.get("portB", ""))]
+    return any(port.startswith(hardware_id + ".") for port in ports for hardware_id in hardware_ids)
 
 
 def _request_id(value: Record) -> str:

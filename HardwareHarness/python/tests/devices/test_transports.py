@@ -11,7 +11,7 @@ import pytest
 import uvicorn
 from starlette.types import Receive, Scope, Send
 
-from hardwareharness_backend.compat.cancellation import AbortController
+from hardwareharness_backend.application.cancellation import AbortController
 from hardwareharness_backend.contracts.errors import AppError
 from hardwareharness_backend.devices import DeviceTransportRegistry, McpHttpTransport, SshManager
 from hardwareharness_backend.devices.mcp_client import McpCompatibilityError

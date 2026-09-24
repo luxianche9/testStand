@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Hardware } from "@hardwareharness/contracts/devices";
 import type { HardwareHarnessApi } from "@hardwareharness/contracts/desktop";
@@ -8,7 +7,7 @@ import { cleanup, render, screen, waitFor, within } from "@testing-library/react
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import "./test-dom";
-import { WiringTaskModal } from "./WiringTaskPanel";
+import { WiringTaskModal, WiringTaskPanel } from "./WiringTaskPanel";
 import { WiringTaskInbox } from "../../app/WiringTaskInbox";
 
 const hardware: Hardware[] = ["A", "B"].map((hardwareId) => ({
@@ -22,16 +21,22 @@ const baseTask: WiringTask = {
 };
 function setup() {
   const startTask = vi.fn();
+  const cancelTask = vi.fn();
   const completeTask = vi.fn(async () => ({ ...baseTask, status: "confirmed" as const }));
+  const listTasks = vi.fn(async (): Promise<WiringTask[]> => [baseTask]);
   const hardwareImageUrl = vi.fn(async (id: string) => `https://example.test/${id}.png`);
   Object.defineProperty(window, "hardwareharness", { configurable: true, value: {
-    wiring: { startTask, completeTask }, devices: { hardwareImageUrl }
+    wiring: { startTask, cancelTask, completeTask, listTasks }, devices: { hardwareImageUrl }
   } as unknown as HardwareHarnessApi });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   const onChanged = vi.fn(async () => undefined);
   const onClose = vi.fn();
-  const show = (task = baseTask) => <QueryClientProvider client={client}><WiringTaskModal task={task} hardware={hardware} onChanged={onChanged} onClose={onClose} /></QueryClientProvider>;
-  return { client, startTask, completeTask, onChanged, onClose, show };
+  const show = (task = baseTask) => (
+    <QueryClientProvider client={client}>
+      <WiringTaskModal task={task} hardware={hardware} onChanged={onChanged} onClose={onClose} />
+    </QueryClientProvider>
+  );
+  return { client, startTask, cancelTask, completeTask, listTasks, onChanged, onClose, show };
 }
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
@@ -40,19 +45,19 @@ describe("WiringTaskModal", () => {
     const { show, startTask, completeTask, onChanged } = setup();
     const view = render(show());
     expect(screen.queryByRole("button", { name: "开始处理" })).toBeNull();
-    await userEvent.click(screen.getByRole("button", { name: "已完成" }));
+    await userEvent.click(screen.getByRole("button", { name: "完成" }));
     await waitFor(() => expect(completeTask).toHaveBeenCalledWith("task-1", "confirmed"));
     expect(startTask).not.toHaveBeenCalled();
     await waitFor(() => expect(onChanged).toHaveBeenCalledOnce());
     view.rerender(show({ ...baseTask, status: "confirmed" }));
     expect(screen.getByText("已完成")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "已完成" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "无法完成" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "完成" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "未完成" })).toBeNull();
   });
   it.each(["cancelled", "timed_out", "failed", "rejected"] as const)("opens %s history read-only", (status) => {
     const { show } = setup();
     render(show({ ...baseTask, status }));
-    expect(screen.queryByRole("button", { name: "已完成" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "完成" })).toBeNull();
   });
   it("opens the full photo and closes only the preview with Escape", async () => {
     const { show, onClose } = setup();
@@ -77,32 +82,57 @@ describe("WiringTaskModal", () => {
     const { show, completeTask } = setup();
     completeTask.mockRejectedValueOnce(new Error("connection lost"));
     render(show());
-    await userEvent.click(screen.getByRole("button", { name: "已完成" }));
+    await userEvent.click(screen.getByRole("button", { name: "完成" }));
     expect(await screen.findByRole("alert")).toHaveProperty("textContent", "connection lost");
-    expect(screen.getByRole("button", { name: "已完成" }).hasAttribute("disabled")).toBe(false);
+    expect(screen.getByRole("button", { name: "完成" }).hasAttribute("disabled")).toBe(false);
   });
-  it("keeps dismissed requests closed across refreshes and reopens pending or completed inbox entries", async () => {
-    const { client, completeTask } = setup();
-    function Harness({ tasks }: { tasks: WiringTask[] }) {
-      const [open, setOpen] = useState(false);
-      return <QueryClientProvider client={client}>
-        <button onClick={() => setOpen(true)}>信箱</button>
-        <WiringTaskInbox tasks={tasks} hardware={hardware} mailboxOpen={open} onCloseMailbox={() => setOpen(false)} />
-      </QueryClientProvider>;
-    }
-    const view = render(<Harness tasks={[baseTask]} />);
+  it("pops a new request once and keeps it closed across refreshes after dismissal", async () => {
+    const { client } = setup();
+    const inbox = (tasks: WiringTask[]) => (
+      <QueryClientProvider client={client}><WiringTaskInbox tasks={tasks} hardware={hardware} /></QueryClientProvider>
+    );
+    const view = render(inbox([baseTask]));
     await userEvent.click(await screen.findByRole("button", { name: "关闭" }));
-    view.rerender(<Harness tasks={[{ ...baseTask }]} />);
+    view.rerender(inbox([{ ...baseTask }]));
     expect(screen.queryByRole("dialog", { name: "接线任务" })).toBeNull();
-    await userEvent.click(screen.getByRole("button", { name: "信箱" }));
-    await userEvent.click(screen.getByRole("button", { name: /待处理.*连接/ }));
-    await userEvent.click(screen.getByRole("button", { name: "已完成" }));
-    await waitFor(() => expect(completeTask).toHaveBeenCalledOnce());
-    view.rerender(<Harness tasks={[{ ...baseTask, status: "confirmed" }]} />);
-    await userEvent.click(screen.getAllByRole("button", { name: "关闭" })[0]!);
-    await userEvent.click(screen.getByRole("button", { name: "信箱" }));
-    await userEvent.click(screen.getByRole("button", { name: /已完成.*连接/ }));
+    view.rerender(inbox([{ ...baseTask, wiringTaskId: "task-2" }, baseTask]));
+    expect(await screen.findByRole("dialog", { name: "接线任务" })).toBeTruthy();
+  });
+});
+
+describe("WiringTaskPanel", () => {
+  const history: WiringTask = {
+    ...baseTask, wiringTaskId: "task-0", status: "confirmed",
+    requestedAt: "2026-01-02T03:04:05.000Z", completedAt: "2026-01-02T03:05:00.000Z"
+  };
+  const panel = (client: QueryClient) => (
+    <QueryClientProvider client={client}><WiringTaskPanel hardware={hardware} /></QueryClientProvider>
+  );
+
+  it.each([["完成", "confirmed"], ["未完成", "rejected"]] as const)(
+    "resolves an open request with %s and no start step",
+    async (label, outcome) => {
+      const { client, listTasks, completeTask, startTask, cancelTask } = setup();
+      listTasks.mockResolvedValue([baseTask, history]);
+      render(panel(client));
+      const open = within(await screen.findByRole("region", { name: "待处理" }));
+      expect(open.queryByRole("button", { name: "开始处理" })).toBeNull();
+      expect(open.queryByRole("button", { name: "取消任务" })).toBeNull();
+      await userEvent.click(open.getByRole("button", { name: label }));
+      await waitFor(() => expect(completeTask).toHaveBeenCalledWith("task-1", outcome));
+      expect(startTask).not.toHaveBeenCalled();
+      expect(cancelTask).not.toHaveBeenCalled();
+    }
+  );
+
+  it("keeps finished tasks as history and opens their record", async () => {
+    const { client, listTasks } = setup();
+    listTasks.mockResolvedValue([history]);
+    render(panel(client));
+    const past = within(await screen.findByRole("region", { name: "历史任务" }));
+    expect(screen.queryByRole("region", { name: "待处理" })).toBeNull();
+    expect(past.queryByRole("button", { name: "完成" })).toBeNull();
+    await userEvent.click(past.getByRole("button", { name: /连接 A J1 → B J1/ }));
     expect(screen.getByRole("dialog", { name: "接线任务" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "已完成" })).toBeNull();
   });
 });

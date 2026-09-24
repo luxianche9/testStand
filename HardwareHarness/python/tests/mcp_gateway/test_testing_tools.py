@@ -7,10 +7,11 @@ import pytest
 
 from hardwareharness_backend.application import DefaultAuthorizer
 from hardwareharness_backend.contracts.validation import ValidationError
-from hardwareharness_backend.mcp_gateway.testing_tools import TESTING_TOOL_DEFINITIONS
 from hardwareharness_backend.mcp_gateway.tool_registry import ToolRegistry
+from hardwareharness_backend.testing.tools import TESTING_TOOLS
 
 AGENT = {"actor": "agent", "source": "mcp"}
+BATCH = {"batchId": "batch", "state": "running", "items": []}
 
 
 def application() -> SimpleNamespace:
@@ -58,32 +59,39 @@ def application() -> SimpleNamespace:
         abort_run=AsyncMock(return_value={"runId": "run", "state": "cleaning"}),
         list_recovery_items=Mock(return_value=[]),
         reconcile_operation=AsyncMock(return_value={"operationId": "op", "state": "succeeded"}),
+        list_item_status=Mock(return_value={"unit": {"unitId": "u"}, "items": []}),
+        start_unit=Mock(return_value={"unitId": "u2", "serialNumber": "SN", "startedAt": "t"}),
+        start_batch=AsyncMock(return_value=BATCH),
+        wait_for_batch=AsyncMock(return_value={**BATCH, "state": "completed"}),
+        abort_batch=AsyncMock(return_value={**BATCH, "state": "aborted"}),
     )
     devices = SimpleNamespace(list_tools=Mock(return_value=[]))
     return SimpleNamespace(authorizer=DefaultAuthorizer(), testing=testing, devices=devices)
 
 
 def test_testing_tools_are_visible_with_precise_permissions() -> None:
-    definitions = {item["tool"]["name"]: item for item in TESTING_TOOL_DEFINITIONS}
-    assert definitions["list_test_plans"]["capability"] == "testing.read"
-    assert definitions["list_test_runs"]["capability"] == "testing.read"
-    assert definitions["read_test_run_events"]["capability"] == "testing.read"
-    assert definitions["apply_test_plan_operations"]["capability"] == "testing.manage"
-    assert definitions["start_test_run"]["capability"] == "testing.execute"
-    assert definitions["start_test_run"]["tool"]["inputSchema"]["required"] == [
+    registry = ToolRegistry(application())
+    capabilities = {name: capability for name, (_, capability) in registry._builtin.items()}
+    definitions = {item.name: item.definition() for item in TESTING_TOOLS}
+    assert capabilities["list_test_plans"] == "testing.read"
+    assert capabilities["list_test_runs"] == "testing.read"
+    assert capabilities["read_test_run_events"] == "testing.read"
+    assert capabilities["apply_test_plan_operations"] == "testing.manage"
+    assert capabilities["start_test_run"] == "testing.execute"
+    assert definitions["start_test_run"]["inputSchema"]["required"] == [
         "planId",
         "revision",
         "executionRevision",
         "requestId",
     ]
-    listed = {tool["name"] for tool in ToolRegistry(application()).list_builtin(AGENT)}
+    listed = {tool["name"] for tool in registry.list_builtin(AGENT)}
     assert set(definitions) <= listed
-    operation_choices = definitions["apply_test_plan_operations"]["tool"]["inputSchema"][
-        "properties"
-    ]["operations"]["items"]["oneOf"]
+    operation_choices = definitions["apply_test_plan_operations"]["inputSchema"]["properties"][
+        "operations"
+    ]["items"]["oneOf"]
     operation_types = {choice["properties"]["type"]["const"] for choice in operation_choices}
     assert "replace_device" not in operation_types
-    run_schema = definitions["read_test_run_events"]["tool"]["outputSchema"]["properties"]["data"][
+    run_schema = definitions["read_test_run_events"]["outputSchema"]["properties"]["data"][
         "properties"
     ]["run"]
     assert run_schema["properties"]["activeExecutionIds"] == {
@@ -149,3 +157,31 @@ async def test_testing_tool_schemas_reject_missing_request_id() -> None:
             "start_test_run",
             {"planId": "plan", "revision": 1, "executionRevision": "exec", "parameters": {}},
         )
+
+
+async def test_batch_tools_dispatch_to_item_status_and_batches() -> None:
+    app = application()
+    registry = ToolRegistry(app)
+    capabilities = {name: capability for name, (_, capability) in registry._builtin.items()}
+    assert capabilities["get_test_item_status"] == "testing.read"
+    assert capabilities["start_test_batch"] == "testing.execute"
+    status = await registry.invoke(AGENT, "get_test_item_status", {})
+    assert status["data"]["items"] == []
+    await registry.invoke(AGENT, "start_test_unit", {"serialNumber": "SN"})
+    app.testing.start_unit.assert_called_once_with(AGENT, {"serialNumber": "SN"})
+    started = await registry.invoke(
+        AGENT, "start_test_batch", {"requestId": "r", "planIds": ["a", "b"], "stopOnFail": True}
+    )
+    assert started["data"]["batchId"] == "batch"
+    app.testing.start_batch.assert_awaited_once_with(
+        AGENT, {"requestId": "r", "planIds": ["a", "b"], "stopOnFail": True}
+    )
+    waited = await registry.invoke(
+        AGENT, "wait_for_test_batch", {"batchId": "batch", "timeoutMs": 5000}
+    )
+    assert waited["data"]["state"] == "completed"
+    app.testing.wait_for_batch.assert_awaited_once_with(AGENT, "batch", 5000)
+    aborted = await registry.invoke(AGENT, "abort_test_batch", {"batchId": "batch"})
+    assert aborted["data"]["state"] == "aborted"
+    with pytest.raises(ValidationError):
+        await registry.invoke(AGENT, "start_test_batch", {"requestId": "r", "planIds": []})

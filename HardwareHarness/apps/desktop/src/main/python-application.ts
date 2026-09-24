@@ -1,4 +1,4 @@
-import type { BackendApplication } from "@hardwareharness/contracts/application";
+import type { BackendApplication, DesktopOperation } from "@hardwareharness/contracts/application";
 import type { RequestContext } from "@hardwareharness/contracts/agents";
 import type { PythonBridge } from "./python-bridge.js";
 
@@ -16,4 +16,11 @@ export function createPythonApplication(bridge: PythonBridge): PythonApplication
     namespace,
     new Proxy({}, { get: (_target, method) => (...args: unknown[]) => bridge.call(`application.${namespace}.${String(method)}`, { args }) })
   ])) as PythonApplication;
+}
+
+/** Call one Python `@operation` by its wire name as the desktop human. */
+export function invokeOperation(application: PythonApplication, operation: DesktopOperation, args: readonly unknown[]): Promise<unknown> {
+  const [namespace, method] = operation.split(".") as [Namespace, string];
+  const methods = application[namespace] as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>;
+  return methods[method]!(DESKTOP_HUMAN_CONTEXT, ...args);
 }

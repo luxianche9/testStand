@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from hardwareharness_backend.compat import json_stringify
 from hardwareharness_backend.contracts.errors import app_error
+from hardwareharness_backend.util import json_dumps
 
 from .device_store import DeviceStore
 
@@ -48,7 +48,7 @@ class DeviceCatalogService:
         hardware = self.list_hardware()
         # Approved TS bug exception: imports/image writes bypass the catalog, so ids alone
         # cannot identify the cached objects. Include contents to invalidate those updates.
-        signature = json_stringify(hardware)
+        signature = json_dumps(hardware)
         if signature != self._port_index_signature:
             self._port_index = {
                 f"{item['hardwareId']}.{port['portId']}": {"hardware": item, "port": port}

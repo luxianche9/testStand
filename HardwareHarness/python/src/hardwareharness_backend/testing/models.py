@@ -5,7 +5,7 @@ import json
 import re
 from typing import Any
 
-from hardwareharness_backend.compat import clone, new_uuid, utc_now_iso
+from hardwareharness_backend.util import clone, new_uuid, utc_now_iso
 
 Record = dict[str, Any]
 STEP_ID = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,63}$")
@@ -36,7 +36,6 @@ def empty_plan(name: str = "Untitled test plan", plan_id: str | None = None) -> 
         "revision": 1,
         "parameters": [],
         "requirements": [],
-        "wiringRequirements": [],
         "stopOnFail": False,
         "regions": {"prepare": [], "test": [], "cleanup": []},
         "createdAt": utc_now_iso(),

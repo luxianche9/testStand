@@ -1,9 +1,17 @@
-import type { TestOperationSnapshot, TestPlan, TestResult, TestRunEvent, TestStep } from "@hardwareharness/contracts/testing";
+import type {
+  TestOperationSnapshot, TestPlan, TestResult, TestRunEvent, TestStep
+} from "@hardwareharness/contracts/testing";
 
 export type StepRunState = "waiting" | "running" | "Pass" | "Fail" | "Error" | "skipped" | "Aborted";
 export interface StepProjection { state: StepRunState; durationMs?: number; startedAt?: string; completedAt?: string }
 export interface MeasurementPoint { at: string; value: number; sequence: number }
-export interface MeasurementSeries { key: string; sourceStepId: string; field: string; unit?: string; points: MeasurementPoint[] }
+export interface MeasurementSeries {
+  key: string;
+  sourceStepId: string;
+  field: string;
+  unit?: string;
+  points: MeasurementPoint[];
+}
 
 export interface TraceIteration {
   index: number;
@@ -43,6 +51,13 @@ export interface ExecutionTrace {
   unmatchedOperations: TestOperationSnapshot[];
 }
 
+type Region = ExecutionTraceNode["region"];
+const regionNames = ["prepare", "test", "cleanup"] as const;
+
+const emptyCollections = () => ({
+  children: [], iterations: [], attempts: [], results: [], relatedAssertions: [], operations: []
+});
+
 export function buildExecutionTrace(
   plan: TestPlan,
   events: TestRunEvent[],
@@ -50,13 +65,15 @@ export function buildExecutionTrace(
   operations: TestOperationSnapshot[]
 ): ExecutionTrace {
   const orderedEvents = [...events].sort((left, right) => left.sequence - right.sequence);
-  const hasInstances = orderedEvents.some((event) => typeof event.executionId === "string" && event.type.startsWith("step."));
+  const hasInstances = orderedEvents
+    .some((event) => typeof event.executionId === "string" && event.type.startsWith("step."));
   if (!hasInstances) return buildLegacyTrace(plan, orderedEvents, results, operations);
 
   const stepIndex = indexPlanSteps(plan);
   const byExecutionId = new Map<string, ExecutionTraceNode>();
   for (const event of orderedEvents) {
-    if (!event.type.startsWith("step.") || typeof event.executionId !== "string" || typeof event.stepId !== "string") continue;
+    if (!event.type.startsWith("step.")) continue;
+    if (typeof event.executionId !== "string" || typeof event.stepId !== "string") continue;
     const step = stepIndex.get(event.stepId);
     if (!step) continue;
     const node = byExecutionId.get(event.executionId) ?? createNode(step, event);
@@ -68,13 +85,22 @@ export function buildExecutionTrace(
     if (typeof event.executionId !== "string") continue;
     const node = byExecutionId.get(event.executionId);
     if (!node) continue;
-    if (event.type === "control.branch.selected" && (event.selectedBranch === "children" || event.selectedBranch === "elseChildren")) node.selectedBranch = event.selectedBranch;
-    if (event.type === "loop.iteration.started" || event.type === "loop.iteration.completed") applyScopeEvent(node, event, "iteration");
-    if (event.type === "retry.attempt.started" || event.type === "retry.attempt.completed") applyScopeEvent(node, event, "attempt");
+    const selected = event.selectedBranch;
+    if (event.type === "control.branch.selected" && (selected === "children" || selected === "elseChildren")) {
+      node.selectedBranch = selected;
+    }
+    if (event.type === "loop.iteration.started" || event.type === "loop.iteration.completed") {
+      applyScopeEvent(node, event, "iteration");
+    }
+    if (event.type === "retry.attempt.started" || event.type === "retry.attempt.completed") {
+      applyScopeEvent(node, event, "attempt");
+    }
   }
 
   const regions: ExecutionTrace["regions"] = { prepare: [], test: [], cleanup: [] };
-  const orderedNodes = [...byExecutionId.values()].sort((left, right) => executionOrder(left, right, orderedEvents));
+  const startSequence = startSequences(orderedEvents);
+  const orderedNodes = [...byExecutionId.values()]
+    .sort((left, right) => executionOrder(left, right, startSequence));
   for (const node of orderedNodes) {
     const parent = node.parentExecutionId ? byExecutionId.get(node.parentExecutionId) : undefined;
     if (parent) parent.children.push(node);
@@ -144,22 +170,29 @@ export function downsample(points: MeasurementPoint[], maxPoints = 2000): Measur
   return output.length <= maxPoints ? output : [...output.slice(0, maxPoints - 1), last];
 }
 
-function buildLegacyTrace(plan: TestPlan, events: TestRunEvent[], results: TestResult[], operations: TestOperationSnapshot[]): ExecutionTrace {
+function buildLegacyTrace(
+  plan: TestPlan,
+  events: TestRunEvent[],
+  results: TestResult[],
+  operations: TestOperationSnapshot[]
+): ExecutionTrace {
   const states = projectStepStates(plan, events);
   const byExecutionId = new Map<string, ExecutionTraceNode>();
   const regions: ExecutionTrace["regions"] = { prepare: [], test: [], cleanup: [] };
-  const build = (step: TestStep, region: keyof ExecutionTrace["regions"], parentExecutionId?: string): ExecutionTraceNode => {
+  const build = (step: TestStep, region: Region, parentExecutionId?: string): ExecutionTraceNode => {
     const executionId = `legacy:${step.id}`;
     const projection = states[step.id] ?? { state: "waiting" as const };
     const node: ExecutionTraceNode = {
-      executionId, stepId: step.id, step, region, children: [], iterations: [], attempts: [], results: [], relatedAssertions: [], operations: [], pending: projection.state === "waiting", ...projection,
+      executionId, stepId: step.id, step, region, ...emptyCollections(),
+      pending: projection.state === "waiting", ...projection,
       ...(parentExecutionId ? { parentExecutionId } : {})
     };
     byExecutionId.set(executionId, node);
-    node.children = [...(step.children ?? []), ...(step.elseChildren ?? [])].map((child) => build(child, region, executionId));
+    node.children = [...(step.children ?? []), ...(step.elseChildren ?? [])]
+      .map((child) => build(child, region, executionId));
     return node;
   };
-  for (const region of ["prepare", "test", "cleanup"] as const) regions[region] = plan.regions[region].map((step) => build(step, region));
+  for (const region of regionNames) regions[region] = plan.regions[region].map((step) => build(step, region));
   const unmatchedResults = attachResults(results, byExecutionId);
   const unmatchedOperations = attachOperations(operations, byExecutionId);
   return { regions, byExecutionId, legacy: true, unmatchedResults, unmatchedOperations };
@@ -169,7 +202,7 @@ function createNode(step: TestStep, event: TestRunEvent): ExecutionTraceNode {
   const region = event.region === "prepare" || event.region === "cleanup" ? event.region : "test";
   return {
     executionId: event.executionId!, stepId: event.stepId!, step, region,
-    state: "waiting", children: [], iterations: [], attempts: [], results: [], relatedAssertions: [], operations: [], pending: false,
+    state: "waiting", ...emptyCollections(), pending: false,
     ...(typeof event.parentExecutionId === "string" ? { parentExecutionId: event.parentExecutionId } : {}),
     ...(event.branch === "children" || event.branch === "elseChildren" ? { branch: event.branch } : {}),
     ...(typeof event.branchIndex === "number" ? { branchIndex: event.branchIndex } : {}),
@@ -187,9 +220,8 @@ function applyStepEvent(node: ExecutionTraceNode, event: TestRunEvent): void {
 }
 
 function projectionFromCompletion(event: TestRunEvent): StepProjection {
-  const verdict = String(event.verdict ?? "Pass");
   return {
-    state: verdict === "Fail" || verdict === "Error" || verdict === "Aborted" ? verdict : "Pass",
+    state: scopeState(String(event.verdict ?? "Pass")),
     ...(typeof event.durationMs === "number" ? { durationMs: event.durationMs } : {}),
     completedAt: event.at
   };
@@ -208,7 +240,11 @@ function applyScopeEvent(node: ExecutionTraceNode, event: TestRunEvent, kind: "i
   target.sort((left, right) => left.index - right.index);
 }
 
-function mergeScopeChildren(scopes: TraceIteration[], children: ExecutionTraceNode[], key: "iterationIndex" | "attemptIndex"): TraceIteration[] {
+function mergeScopeChildren(
+  scopes: TraceIteration[],
+  children: ExecutionTraceNode[],
+  key: "iterationIndex" | "attemptIndex"
+): TraceIteration[] {
   const output = [...scopes];
   for (const child of children) {
     const index = child[key];
@@ -216,37 +252,50 @@ function mergeScopeChildren(scopes: TraceIteration[], children: ExecutionTraceNo
     const scope = output.find((item) => item.index === index) ?? { index, state: child.state, children: [] };
     if (!output.includes(scope)) output.push(scope);
     if (!scope.children.includes(child)) scope.children.push(child);
-    if (scope.state === "waiting" || child.state === "running" || child.state === "Error" || child.state === "Fail") scope.state = child.state;
+    const escalates = child.state === "running" || child.state === "Error" || child.state === "Fail";
+    if (scope.state === "waiting" || escalates) scope.state = child.state;
   }
   return output.sort((left, right) => left.index - right.index);
 }
 
 function appendPendingRegionSteps(plan: TestPlan, regions: ExecutionTrace["regions"]): void {
-  for (const region of ["prepare", "test", "cleanup"] as const) {
+  for (const region of regionNames) {
     const represented = new Set(regions[region].map((node) => node.stepId));
-    for (const step of plan.regions[region]) if (!represented.has(step.id)) regions[region].push(pendingNode(step, region));
+    for (const step of plan.regions[region]) {
+      if (!represented.has(step.id)) regions[region].push(pendingNode(step, region));
+    }
   }
 }
 
 function appendPendingContainerChildren(node: ExecutionTraceNode): void {
   if (!["Sequence", "Group", "Parallel", "If"].includes(node.step.type)) return;
   const represented = new Set(node.children.map((child) => child.stepId));
-  const expected = node.step.type === "If" && node.selectedBranch ? node.step[node.selectedBranch] ?? [] : node.step.children ?? [];
-  for (const step of expected) if (!represented.has(step.id)) {
+  const expected = node.step.type === "If" && node.selectedBranch
+    ? node.step[node.selectedBranch] ?? []
+    : node.step.children ?? [];
+  for (const step of expected) {
+    if (represented.has(step.id)) continue;
     const pending = pendingNode(step, node.region, node.executionId);
     if (node.step.type === "If" && node.selectedBranch) pending.branch = node.selectedBranch;
     node.children.push(pending);
   }
 }
 
-function pendingNode(step: TestStep, region: ExecutionTraceNode["region"], parentExecutionId?: string): ExecutionTraceNode {
+function pendingNode(step: TestStep, region: Region, parentExecutionId?: string): ExecutionTraceNode {
   const executionId = `pending:${parentExecutionId ?? region}:${step.id}`;
   const node: ExecutionTraceNode = {
-    executionId, stepId: step.id, step, region, state: "waiting", children: [], iterations: [], attempts: [], results: [], relatedAssertions: [], operations: [], pending: true,
+    executionId, stepId: step.id, step, region, state: "waiting", ...emptyCollections(), pending: true,
     ...(parentExecutionId ? { parentExecutionId } : {})
   };
   node.children = (step.children ?? []).map((child) => pendingNode(child, region, executionId));
   return node;
+}
+
+/** The only node for a step, when the step ran exactly once (safe fallback attribution). */
+function soleNode(byStep: Map<string, ExecutionTraceNode[]>, stepId: unknown): ExecutionTraceNode | undefined {
+  if (typeof stepId !== "string" || !stepId) return undefined;
+  const nodes = byStep.get(stepId);
+  return nodes?.length === 1 ? nodes[0] : undefined;
 }
 
 function attachResults(results: TestResult[], byExecutionId: Map<string, ExecutionTraceNode>): TestResult[] {
@@ -254,20 +303,21 @@ function attachResults(results: TestResult[], byExecutionId: Map<string, Executi
   const unmatched: TestResult[] = [];
   for (const result of results) {
     const direct = typeof result.executionId === "string" ? byExecutionId.get(result.executionId) : undefined;
-    const fallback = typeof result.sourceStepId === "string" && byStep.get(result.sourceStepId)?.length === 1 ? byStep.get(result.sourceStepId)![0] : undefined;
-    const target = direct ?? fallback;
+    const target = direct ?? soleNode(byStep, result.sourceStepId);
     if (target) target.results.push(result); else unmatched.push(result);
   }
   return unmatched;
 }
 
-function attachOperations(operations: TestOperationSnapshot[], byExecutionId: Map<string, ExecutionTraceNode>): TestOperationSnapshot[] {
+function attachOperations(
+  operations: TestOperationSnapshot[],
+  byExecutionId: Map<string, ExecutionTraceNode>
+): TestOperationSnapshot[] {
   const byStep = nodesByStep(byExecutionId);
   const unmatched: TestOperationSnapshot[] = [];
   for (const operation of operations) {
     const direct = operation.executionId ? byExecutionId.get(operation.executionId) : undefined;
-    const fallback = operation.stepId && byStep.get(operation.stepId)?.length === 1 ? byStep.get(operation.stepId)![0] : undefined;
-    const target = direct ?? fallback;
+    const target = direct ?? soleNode(byStep, operation.stepId);
     if (target) target.operations.push(operation); else unmatched.push(operation);
   }
   return unmatched;
@@ -277,10 +327,9 @@ function attachRelatedAssertions(results: TestResult[], byExecutionId: Map<strin
   const byStep = nodesByStep(byExecutionId);
   for (const result of results) {
     if (result.kind !== "assertion") continue;
-    const direct = typeof result.sourceMeasurementExecutionId === "string" ? byExecutionId.get(result.sourceMeasurementExecutionId) : undefined;
-    const sourceStepId = typeof result.sourceMeasurementStepId === "string" ? result.sourceMeasurementStepId : undefined;
-    const fallback = sourceStepId && byStep.get(sourceStepId)?.length === 1 ? byStep.get(sourceStepId)![0] : undefined;
-    const target = direct ?? fallback;
+    const directId = result.sourceMeasurementExecutionId;
+    const direct = typeof directId === "string" ? byExecutionId.get(directId) : undefined;
+    const target = direct ?? soleNode(byStep, result.sourceMeasurementStepId);
     if (target) target.relatedAssertions.push(result);
   }
 }
@@ -308,16 +357,29 @@ function visitPlanSteps(plan: Pick<TestPlan, "regions">, visitor: (step: TestSte
   visit(plan.regions.prepare, 0); visit(plan.regions.test, 0); visit(plan.regions.cleanup, 0);
 }
 
-function executionOrder(left: ExecutionTraceNode, right: ExecutionTraceNode, events: TestRunEvent[]): number {
-  const sequence = (node: ExecutionTraceNode) => events.find((event) => event.executionId === node.executionId && event.type === "step.started")?.sequence ?? Number.MAX_SAFE_INTEGER;
+/** executionId → sequence of its first `step.started` event. */
+function startSequences(events: TestRunEvent[]): Map<string, number> {
+  const output = new Map<string, number>();
+  for (const event of events) {
+    if (event.type !== "step.started" || typeof event.executionId !== "string") continue;
+    if (!output.has(event.executionId)) output.set(event.executionId, event.sequence);
+  }
+  return output;
+}
+
+function executionOrder(left: ExecutionTraceNode, right: ExecutionTraceNode, starts: Map<string, number>): number {
+  const sequence = (node: ExecutionTraceNode) => starts.get(node.executionId) ?? Number.MAX_SAFE_INTEGER;
   return sequence(left) - sequence(right);
 }
 
 function childOrder(left: ExecutionTraceNode, right: ExecutionTraceNode): number {
-  return (left.branchIndex ?? left.iterationIndex ?? left.attemptIndex ?? 0) - (right.branchIndex ?? right.iterationIndex ?? right.attemptIndex ?? 0);
+  const position = (node: ExecutionTraceNode) => node.branchIndex ?? node.iterationIndex ?? node.attemptIndex ?? 0;
+  return position(left) - position(right);
 }
 
-function scopeState(verdict: string): StepRunState { return verdict === "Fail" || verdict === "Error" || verdict === "Aborted" ? verdict : "Pass"; }
+function scopeState(verdict: string): StepRunState {
+  return verdict === "Fail" || verdict === "Error" || verdict === "Aborted" ? verdict : "Pass";
+}
 
 function numericFields(value: unknown, prefix = "value"): Array<[string, number]> {
   if (typeof value === "number" && Number.isFinite(value)) return [[prefix, value]];

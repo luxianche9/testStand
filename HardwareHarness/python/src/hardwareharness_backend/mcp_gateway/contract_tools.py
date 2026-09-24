@@ -8,103 +8,46 @@ import hashlib
 from pathlib import Path
 from typing import Any
 
+from hardwareharness_backend import CONTRACT_REVISION
 from hardwareharness_backend.contracts.errors import app_error
+from hardwareharness_backend.contracts.operations import Tool
 from hardwareharness_backend.contracts.validation import number, obj, string
-
-from .public_contracts import (
-    CONTRACT_REVISION,
-    success_schema,
-)
 
 Record = dict[str, Any]
 _FIRMWARE_LIMIT = 32 * 1024 * 1024
-CONTRACT_ARGUMENT_SCHEMAS = {
-    "get_tool_contract": obj(
-        {
-            "toolName": string(1).optional(),
-            "query": string().optional(),
-            "offset": number(0, None, integer=True).default(0),
-            "limit": number(1, 100, integer=True).default(20),
-        },
-        strict=True,
-    ),
-    "import_firmware_artifact": obj(
-        {
-            "serverId": string(1),
-            "path": string(1),
-            "expectedSha256": string(64).optional(),
-        },
-        strict=True,
-    ),
-}
+_META = {"kind": "platform"}
 
 
-def _definition(
-    name: str,
-    description: str,
-    properties: Record,
-    required: list[str],
-    capability: str,
-    data: Record,
-    *,
-    readonly: bool,
-) -> Record:
-    return {
-        "capability": capability,
-        "tool": {
-            "name": name,
-            "description": description,
-            "inputSchema": {
-                "type": "object",
-                "properties": properties,
-                "required": required,
-                "additionalProperties": False,
-            },
-            "outputSchema": success_schema(data),
-            "annotations": {
-                "readOnlyHint": readonly,
-                "destructiveHint": False,
-                "idempotentHint": readonly,
-                "openWorldHint": not readonly,
-            },
-            "_meta": {
-                "hardwareharness": {"contractRevision": CONTRACT_REVISION, "kind": "platform"}
-            },
-        },
-    }
+def _unreachable(app: Any, context: Record, value: Record) -> Any:
+    raise RuntimeError("get_tool_contract is answered by the tool registry")
 
 
-CONTRACT_TOOL_DEFINITIONS = [
-    _definition(
+async def _import_firmware(app: Any, context: Record, value: Record) -> Any:
+    return await import_firmware(app, context, value)
+
+
+CONTRACT_TOOLS = [
+    Tool(
         "get_tool_contract",
         "Read one exact public tool contract, including gateway result shapes and recovery. "
         "Omit toolName to search/page the catalog. Copy tool names from this contract.",
-        {
-            "toolName": {
-                "type": "string",
-                "minLength": 1,
-                "description": "Exact name from tools/list; omit to search.",
+        obj(
+            {
+                "toolName": string(1)
+                .optional()
+                .describe("Exact name from tools/list; omit to search."),
+                "query": string()
+                .optional()
+                .describe("Case-insensitive name/description substring for discovery."),
+                "offset": number(0, None, integer=True)
+                .default(0)
+                .describe("Zero-based catalog offset."),
+                "limit": number(1, 100, integer=True)
+                .default(20)
+                .describe("Maximum catalog matches per page."),
             },
-            "query": {
-                "type": "string",
-                "description": "Case-insensitive name/description substring for discovery.",
-            },
-            "offset": {
-                "type": "integer",
-                "minimum": 0,
-                "default": 0,
-                "description": "Zero-based catalog offset.",
-            },
-            "limit": {
-                "type": "integer",
-                "minimum": 1,
-                "maximum": 100,
-                "default": 20,
-                "description": "Maximum catalog matches per page.",
-            },
-        },
-        [],
-        "projects.read",
+            strict=True,
+        ),
         {
             "type": "object",
             "properties": {
@@ -116,33 +59,31 @@ CONTRACT_TOOL_DEFINITIONS = [
             },
             "required": ["contractRevision"],
         },
-        readonly=True,
+        call=_unreachable,
+        capability="projects.read",
+        read_only=True,
+        meta=_META,
     ),
-    _definition(
+    Tool(
         "import_firmware_artifact",
         "Import a USER project firmware file into a selected service's managed immutable storage. "
         "HH transfers bytes internally (up to 32 MiB), checks SHA-256 and returns the server path. "
         "Inspect the returned file before flash; BIN requires an explicit base address.",
-        {
-            "serverId": {
-                "type": "string",
-                "minLength": 1,
-                "description": "Server from list_mcp_servers exposing firedap_import_firmware.",
+        obj(
+            {
+                "serverId": string(1).describe(
+                    "Server from list_mcp_servers exposing firedap_import_firmware."
+                ),
+                "path": string(1).describe(
+                    "Relative USER project .bin/.hex/.ihex/.elf/.axf file; "
+                    "escapes and outside symlink targets rejected."
+                ),
+                "expectedSha256": string(64, 64, regex="^[0-9a-fA-F]{64}$")
+                .optional()
+                .describe("Expected SHA-256; mismatch aborts before any transfer."),
             },
-            "path": {
-                "type": "string",
-                "minLength": 1,
-                "description": "Relative USER project .bin/.hex/.ihex/.elf/.axf file; "
-                "escapes and outside symlink targets rejected.",
-            },
-            "expectedSha256": {
-                "type": "string",
-                "pattern": "^[0-9a-fA-F]{64}$",
-                "description": "Expected SHA-256; mismatch aborts before any transfer.",
-            },
-        },
-        ["serverId", "path"],
-        "hardware.executeTools",
+            strict=True,
+        ),
         {
             "type": "object",
             "properties": {
@@ -155,7 +96,10 @@ CONTRACT_TOOL_DEFINITIONS = [
             },
             "required": ["artifactId", "path", "sha256", "fileBytes"],
         },
-        readonly=False,
+        call=_import_firmware,
+        capability="hardware.executeTools",
+        open_world=True,
+        meta=_META,
     ),
 ]
 

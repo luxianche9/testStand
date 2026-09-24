@@ -1,232 +1,212 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import {
   BotIcon,
   CableIcon,
   ChevronDownIcon,
-  FolderIcon,
-  InboxIcon,
+  FlaskConicalIcon,
   Maximize2Icon,
-  MinusIcon,
   Minimize2Icon,
+  MinusIcon,
   ServerIcon,
-  ListTreeIcon,
   SettingsIcon,
   XIcon
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import type { ProjectDocument } from "@hardwareharness/contracts/projects";
 import type { ProjectView } from "@hardwareharness/contracts/storage";
-import { cn } from "../shared/ui/cn";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../shared/ui/dropdown-menu";
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger, cn } from "../ui";
 import type { AppPage } from "./app-navigation.js";
 
-export function TitleBar({ page, projectView, project, assistantOpen, busy, pendingTaskCount, wiringLogOpen, onToggleWiringLog, onNavigate, onProjectAction, onToggleAssistant }: {
+export const PROJECT_VIEWS: { view: ProjectView; label: string; icon: ReactNode }[] = [
+  { view: "manual", label: "设备管理", icon: <ServerIcon /> },
+  { view: "wiring", label: "工位接线", icon: <CableIcon /> },
+  { view: "plans", label: "功能测试", icon: <FlaskConicalIcon /> }
+];
+
+export type ProjectAction = "save" | "open" | "welcome";
+
+const noDrag = "[-webkit-app-region:no-drag]";
+const barButton = cn(
+  "relative inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-xs text-fg-2 transition-colors duration-120",
+  "hover:bg-surface-2 hover:text-fg aria-pressed:bg-surface-2 aria-pressed:text-fg [&_svg]:size-3.5",
+  noDrag
+);
+
+export function TitleBar(props: {
   page: AppPage;
   projectView: ProjectView;
   project: ProjectDocument | null | undefined;
   assistantOpen: boolean;
   busy: boolean;
+  /** Open wiring requests, counted on the 工位接线 tab. */
   pendingTaskCount: number;
-  wiringLogOpen: boolean;
-  onToggleWiringLog: () => void;
   onNavigate: (page: AppPage) => void;
-  onProjectAction: (action: "save" | "open" | "welcome") => void;
+  onProjectAction: (action: ProjectAction) => void;
   onToggleAssistant: () => void;
 }) {
-  const [maximized, setMaximized] = useState(false);
+  const { page, project, busy } = props;
   const inProject = page !== "welcome" && Boolean(project);
+  const activeView = PROJECT_VIEWS.some((item) => item.view === page) ? (page as ProjectView) : props.projectView;
 
-  useEffect(() => window.hardwareharness.events.subscribe("window-state", (payload) => {
-    const state = payload as { maximized?: boolean };
-    if (typeof state.maximized === "boolean") setMaximized(state.maximized);
-  }), []);
-
-  const projectLabel = inProject && project ? project.file.name : "项目";
   return (
-    <header className="relative flex h-11 flex-none items-center gap-0.5 bg-secondary/45 shadow-[inset_0_-1px_0_var(--tf-border)] backdrop-blur-md [-webkit-app-region:drag] select-none">
-      <span className="flex items-center self-stretch px-3.5 text-[13px] font-semibold tracking-[-0.03em]">HardwareHarness</span>
-
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            aria-label="项目文件夹菜单"
-            className="inline-flex h-[30px] max-w-[220px] items-center gap-1.5 rounded-md px-2.5 text-xs text-muted-foreground transition-[color,background-color,transform] duration-200 ease-[var(--tf-ease-out)] [-webkit-app-region:no-drag] hover:bg-accent hover:text-foreground data-[state=open]:bg-accent data-[state=open]:text-foreground"
-          >
-            <FolderIcon className="size-[15px]" />
-            <span className="truncate">{projectLabel}{inProject && project?.dirty ? " *" : ""}</span>
-            <ChevronDownIcon className="size-3" />
+    <header
+      className={cn(
+        "relative flex h-9 flex-none items-center gap-1 border-b border-line bg-surface-1 pl-2",
+        "select-none [-webkit-app-region:drag]"
+      )}
+    >
+      <Brand />
+      <Menu>
+        <MenuTrigger asChild>
+          <button type="button" aria-label="项目文件夹菜单" className={cn(barButton, "max-w-60")}>
+            <span className="truncate font-medium text-fg">{inProject && project ? project.file.name : "项目"}</span>
+            {inProject && project?.dirty && <span aria-hidden className="size-1.5 rounded-full bg-signal" />}
+            <ChevronDownIcon className="!size-3 text-fg-3" />
           </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start">
-          <DropdownMenuItem disabled={busy} onSelect={() => onProjectAction("open")}>打开</DropdownMenuItem>
+        </MenuTrigger>
+        <MenuContent>
+          <MenuItem disabled={busy} onSelect={() => props.onProjectAction("open")}>打开</MenuItem>
           {inProject && (
-            <DropdownMenuItem disabled={busy} onSelect={() => onProjectAction("save")}>
-              保存<span className="text-xs text-muted-foreground">Ctrl+S</span>
-            </DropdownMenuItem>
+            <MenuItem disabled={busy} shortcut="Ctrl+S" onSelect={() => props.onProjectAction("save")}>保存</MenuItem>
           )}
-          {inProject && <DropdownMenuItem disabled={busy} onSelect={() => onProjectAction("welcome")}>退出</DropdownMenuItem>}
-        </DropdownMenuContent>
-      </DropdownMenu>
+          {inProject && <MenuSeparator />}
+          {inProject && (
+            <MenuItem disabled={busy} onSelect={() => props.onProjectAction("welcome")}>退出</MenuItem>
+          )}
+        </MenuContent>
+      </Menu>
 
-      <NavButton active={page === "settings"} label="设置" icon={<SettingsIcon className="size-[15px]" />} onClick={() => onNavigate("settings")} />
-
-      {inProject ? <ViewSlider value={isProjectViewPage(page) ? page : projectView} onChange={onNavigate} /> : <span className="flex-1 self-stretch" />}
-
-      <span className="flex-1 self-stretch" />
-
-      <TitleBarAction
-        label="信箱"
-        active={wiringLogOpen}
-        pressed={wiringLogOpen}
-        onClick={onToggleWiringLog}
-        icon={<InboxIcon className="size-4" />}
-        badge={pendingTaskCount > 0 ? pendingTaskCount : undefined}
-      />
       {inProject && (
-        <TitleBarAction
-          label="AI助手"
-          ariaLabel={assistantOpen ? "关闭 AI 侧栏" : "打开 AI 侧栏"}
-          active={assistantOpen}
-          pressed={assistantOpen}
-          onClick={onToggleAssistant}
-          icon={<BotIcon className="size-4" />}
+        <ViewTabs
+          value={activeView}
+          dimmed={page === "settings"}
+          pendingTaskCount={props.pendingTaskCount}
+          onChange={props.onNavigate}
         />
       )}
+      <span className="flex-1 self-stretch" />
+
+      {inProject && (
+        <button
+          type="button"
+          aria-label={props.assistantOpen ? "关闭 AI 侧栏" : "打开 AI 侧栏"}
+          aria-pressed={props.assistantOpen}
+          onClick={props.onToggleAssistant}
+          className={barButton}
+        >
+          <BotIcon />
+          <span className="max-[1100px]:hidden">AI助手</span>
+        </button>
+      )}
       <button
-        title="最小化"
-        aria-label="最小化"
-        className={winButtonClass}
-        onClick={() => void window.hardwareharness.window.minimize()}
+        type="button"
+        aria-label="设置"
+        aria-pressed={page === "settings"}
+        onClick={() => props.onNavigate("settings")}
+        className={barButton}
       >
-        <MinusIcon className="size-[15px]" />
+        <SettingsIcon />
       </button>
-      <button
-        title={maximized ? "还原" : "最大化"}
-        aria-label={maximized ? "还原" : "最大化"}
-        className={winButtonClass}
-        onClick={() => void window.hardwareharness.window.toggleMaximize()}
-      >
-        {maximized ? <Minimize2Icon className="size-3.5" /> : <Maximize2Icon className="size-3.5" />}
-      </button>
-      <button
-        title="关闭"
-        aria-label="关闭"
-        className={cn(winButtonClass, "hover:bg-[#e81123] hover:text-white")}
-        onClick={() => void window.hardwareharness.window.close()}
-      >
-        <XIcon className="size-[15px]" />
-      </button>
+      <span aria-hidden className="mx-1 h-4 w-px bg-line" />
+      <WindowControls />
     </header>
   );
 }
 
-const winButtonClass =
-  "grid h-11 w-10 place-items-center text-muted-foreground transition-[color,background-color] duration-200 ease-[var(--tf-ease-out)] [-webkit-app-region:no-drag] hover:bg-accent hover:text-foreground";
-
-function NavButton({ active, label, icon, onClick }: { active: boolean; label: string; icon: ReactNode; onClick: () => void }) {
+function Brand() {
   return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "inline-flex h-[30px] items-center gap-1.5 rounded-md px-2.5 text-xs text-muted-foreground transition-[color,background-color] duration-200 ease-[var(--tf-ease-out)] [-webkit-app-region:no-drag] hover:bg-accent hover:text-foreground",
-        active && "bg-accent font-medium text-foreground"
-      )}
-    >
-      {icon}
-      <span className="max-[1100px]:hidden">{label}</span>
-    </button>
+    <span className="mr-1 flex items-center gap-2 px-1">
+      <span
+        aria-hidden
+        className={cn(
+          "grid size-5 place-items-center rounded-sm border border-signal/60 bg-signal/12",
+          "font-mono text-[10px] leading-none font-bold text-signal"
+        )}
+      >
+        HH
+      </span>
+      <span className="text-sm font-semibold tracking-tight text-fg max-[1100px]:hidden">HardwareHarness</span>
+      <span aria-hidden className="text-fg-3">/</span>
+    </span>
   );
 }
 
-function TitleBarAction({ label, ariaLabel, icon, active, pressed, badge, onClick }: {
-  label: string;
-  ariaLabel?: string | undefined;
-  icon: ReactNode;
-  active?: boolean | undefined;
-  pressed?: boolean | undefined;
-  badge?: number | undefined;
-  onClick: () => void;
+function ViewTabs({ value, dimmed, pendingTaskCount, onChange }: {
+  value: ProjectView;
+  /** Settings is open: keep the last view selected for AT but drop its highlight. */
+  dimmed: boolean;
+  pendingTaskCount: number;
+  onChange: (page: AppPage) => void;
 }) {
-  return (
-    <button
-      title={ariaLabel ?? label}
-      aria-label={ariaLabel ?? label}
-      aria-pressed={pressed}
-      onClick={onClick}
-      className={cn(
-        "relative mx-0.5 inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs text-muted-foreground transition-[color,background-color] duration-200 ease-[var(--tf-ease-out)] [-webkit-app-region:no-drag] hover:bg-accent hover:text-foreground",
-        active && "bg-accent font-medium text-foreground"
-      )}
-    >
-      {icon}
-      <span className="max-[1100px]:hidden">{label}</span>
-      {badge != null && badge > 0 && (
-        <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold tabular-nums text-destructive-foreground" aria-label={`${badge} 条待处理`}>
-          {badge > 99 ? "99+" : badge}
-        </span>
-      )}
-    </button>
-  );
-}
-
-const PROJECT_VIEWS: { view: ProjectView; label: string; icon: ReactNode }[] = [
-  { view: "manual", label: "设备管理", icon: <ServerIcon className="size-[15px]" /> },
-  { view: "wiring", label: "工位接线", icon: <CableIcon className="size-[15px]" /> },
-  { view: "plans", label: "测试计划", icon: <ListTreeIcon className="size-[15px]" /> },
-];
-
-function isProjectViewPage(page: AppPage): page is ProjectView {
-  return PROJECT_VIEWS.some((item) => item.view === page);
-}
-
-function ViewSlider({ value, onChange }: { value: ProjectView; onChange: (page: AppPage) => void }) {
-  const railRef = useRef<HTMLDivElement>(null);
-  const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
-  const [thumb, setThumb] = useState<{ left: number; width: number } | null>(null);
-
-  const activeIndex = Math.max(0, PROJECT_VIEWS.findIndex((item) => item.view === value));
-  useLayoutEffect(() => {
-    const update = () => {
-      const rail = railRef.current;
-      const item = itemRefs.current[activeIndex];
-      if (!rail || !item) return;
-      setThumb({ left: item.offsetLeft, width: item.offsetWidth });
-    };
-    update();
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
-  }, [activeIndex]);
-
   return (
     <div
       role="tablist"
       aria-label="项目子页面"
-      ref={railRef}
-      className="absolute top-1/2 left-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-0.5 rounded-xl bg-foreground/[0.04] p-0.5 shadow-[var(--tf-shadow-sm)] ring-1 ring-border [-webkit-app-region:no-drag]"
-    >
-      {thumb && (
-        <span
-          aria-hidden="true"
-          className="absolute top-0.5 bottom-0.5 rounded-lg bg-background shadow-[var(--tf-shadow-sm)] ring-1 ring-border/50 transition-[left,width] duration-250 ease-[var(--tf-ease-out)]"
-          style={{ left: thumb.left, width: thumb.width }}
-        />
+      className={cn(
+        "absolute top-0 left-1/2 flex h-full -translate-x-1/2 items-stretch gap-1",
+        noDrag
       )}
-      {PROJECT_VIEWS.map((item, index) => (
-        <button
-          key={item.view}
-          role="tab"
-          aria-label={item.label}
-          aria-selected={index === activeIndex}
-          ref={(node) => { itemRefs.current[index] = node; }}
-          onClick={() => onChange(item.view)}
-          className={cn(
-            "relative z-[1] inline-flex h-[26px] items-center gap-1.5 rounded-lg px-2.5 text-xs whitespace-nowrap text-muted-foreground transition-colors duration-200 ease-[var(--tf-ease-out)] hover:text-foreground",
-            index === activeIndex && "font-medium text-foreground"
-          )}
-        >
-          {item.icon}
-          <span className="max-[1100px]:hidden">{item.label}</span>
-        </button>
-      ))}
+    >
+      {PROJECT_VIEWS.map((item) => {
+        const selected = item.view === value;
+        const lit = selected && !dimmed;
+        return (
+          <button
+            key={item.view}
+            type="button"
+            role="tab"
+            aria-label={item.label}
+            aria-selected={selected}
+            onClick={() => onChange(item.view)}
+            className={cn(
+              "relative inline-flex items-center gap-1.5 px-3 text-xs whitespace-nowrap text-fg-2",
+              "transition-colors duration-120 hover:text-fg [&_svg]:size-3.5",
+              "after:absolute after:inset-x-2 after:-bottom-px after:h-0.5 after:rounded-full after:content-['']",
+              lit ? "font-medium text-fg after:bg-signal" : "after:bg-transparent"
+            )}
+          >
+            <span className={lit ? "text-signal" : "text-fg-3"}>{item.icon}</span>
+            <span className="max-[1100px]:hidden">{item.label}</span>
+            {item.view === "wiring" && pendingTaskCount > 0 && (
+              <span
+                aria-label={`${pendingTaskCount} 条待处理接线任务`}
+                className="tf-num rounded-xs bg-signal px-1 text-2xs leading-4 font-semibold text-signal-fg"
+              >
+                {pendingTaskCount > 99 ? "99+" : pendingTaskCount}
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function WindowControls() {
+  const [maximized, setMaximized] = useState(false);
+  useEffect(() => window.hardwareharness.events.subscribe("window-state", (payload) => {
+    const state = payload as { maximized?: boolean };
+    if (typeof state.maximized === "boolean") setMaximized(state.maximized);
+  }), []);
+  const base = cn(
+    "grid h-9 w-11 place-items-center text-fg-2 transition-colors duration-120 hover:bg-surface-2 hover:text-fg",
+    "[&_svg]:size-3.5",
+    noDrag
+  );
+  return (
+    <div className="flex self-stretch">
+      <button type="button" title="最小化" aria-label="最小化" className={base}
+        onClick={() => void window.hardwareharness.window.minimize()}>
+        <MinusIcon />
+      </button>
+      <button type="button" title={maximized ? "还原" : "最大化"} aria-label={maximized ? "还原" : "最大化"}
+        className={base} onClick={() => void window.hardwareharness.window.toggleMaximize()}>
+        {maximized ? <Minimize2Icon /> : <Maximize2Icon />}
+      </button>
+      <button type="button" title="关闭" aria-label="关闭" className={cn(base, "hover:bg-[#c42b1c] hover:text-white")}
+        onClick={() => void window.hardwareharness.window.close()}>
+        <XIcon />
+      </button>
     </div>
   );
 }

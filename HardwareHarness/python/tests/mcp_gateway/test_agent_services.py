@@ -8,38 +8,30 @@ import pytest
 from jsonschema import Draft202012Validator
 
 from hardwareharness_backend.application import DefaultAuthorizer
-from hardwareharness_backend.contracts.validation import ValidationError, parse_record
-from hardwareharness_backend.mcp_gateway.agent_services import (
-    AGENT_ARGUMENT_SCHEMAS,
-    AGENT_TOOL_DEFINITIONS,
-    invoke_agent_tool,
-)
+from hardwareharness_backend.contracts.validation import ValidationError
+from hardwareharness_backend.mcp_gateway.agent_services import AGENT_TOOLS
 
 AGENT = {"actor": "agent", "source": "mcp"}
+TOOLS = {tool.name: tool for tool in AGENT_TOOLS}
 
 
 async def invoke(app: Any, name: str, value: Any = None) -> Any:
-    inputs = parse_record(AGENT_ARGUMENT_SCHEMAS[name], value or {})
-    output = await invoke_agent_tool(app, AGENT, name, inputs)
-    definition = next(
-        item["tool"] for item in AGENT_TOOL_DEFINITIONS if item["tool"]["name"] == name
-    )
+    tool = TOOLS[name]
+    output = await tool.execute(app, AGENT, tool.parse(value or {}))
+    definition = tool.definition()
     Draft202012Validator(definition["outputSchema"]).validate({"ok": True, "data": output})
     return output
 
 
 def test_new_tool_contracts_have_descriptions_output_schemas_and_bounded_inputs() -> None:
-    for definition in AGENT_TOOL_DEFINITIONS:
-        tool = definition["tool"]
+    for item in AGENT_TOOLS:
+        tool = item.definition()
         Draft202012Validator.check_schema(tool["inputSchema"])
         Draft202012Validator.check_schema(tool["outputSchema"])
         assert tool["annotations"]["destructiveHint"] is False
         assert all(prop.get("description") for prop in tool["inputSchema"]["properties"].values())
     with pytest.raises(ValidationError):
-        parse_record(
-            AGENT_ARGUMENT_SCHEMAS["wait_for_status"],
-            {"kind": "run", "id": "R", "timeoutMs": 30001},
-        )
+        TOOLS["wait_for_status"].parse({"kind": "run", "id": "R", "timeoutMs": 30001})
 
 
 async def test_context_without_project_and_document_reads_use_only_bundled_contract() -> None:

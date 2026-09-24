@@ -6,7 +6,7 @@ import { _electron as electron, expect, test, type ElectronApplication, type Pag
 const desktopDir = resolve(import.meta.dirname, "..");
 const artifacts = resolve(desktopDir, "../../output/playwright/wiring-single-step");
 
-test.describe.serial("single-step wiring inbox", () => {
+test.describe.serial("single-step wiring tasks", () => {
   let app: ElectronApplication;
   let page: Page;
   let userData: string;
@@ -59,7 +59,7 @@ test.describe.serial("single-step wiring inbox", () => {
     if (userData && dirname(userData) === resolve(tmpdir())) await rm(userData, { recursive: true, force: true });
   });
 
-  test("defers a request, reopens from the inbox, previews photos, and completes in one click", async () => {
+  test("defers a request, reopens it from the task sidebar, previews photos, and keeps history", async () => {
     await page.getByRole("tab", { name: "设备管理", exact: true }).click();
     const id = await page.evaluate(async () => (await window.hardwareharness.wiring.requestTask({
       portA: "DUT_A.J1", portB: "DUT_B.J1", action: "connect",
@@ -67,7 +67,8 @@ test.describe.serial("single-step wiring inbox", () => {
     })).wiringTaskId);
     const modal = page.getByRole("dialog", { name: "接线任务", exact: true });
     await expect(modal).toBeVisible();
-    await expect(modal.getByRole("button", { name: "已完成", exact: true })).toBeEnabled();
+    await expect(modal.getByRole("button", { name: "完成", exact: true })).toBeEnabled();
+    await expect(modal.getByRole("button", { name: "未完成", exact: true })).toBeEnabled();
     await expect(modal.getByRole("button", { name: "开始处理" })).toHaveCount(0);
     await expect(modal.locator("img").first()).toHaveJSProperty("complete", true);
     await page.screenshot({ animations: "disabled", path: join(artifacts, "pending-light.png") });
@@ -75,21 +76,35 @@ test.describe.serial("single-step wiring inbox", () => {
     await page.getByRole("tab", { name: "工位接线", exact: true }).click();
     await expect(modal).toHaveCount(0);
     expect(await page.evaluate((taskId) => window.hardwareharness.wiring.getTask(taskId).then((task) => task.status), id)).toBe("pending");
-    await page.getByRole("button", { name: "信箱", exact: true }).click();
-    await page.getByRole("dialog", { name: "信箱", exact: true }).getByRole("button", { name: /待处理.*连接/ }).click();
+    const sidebar = page.getByRole("region", { name: "接线任务列表" });
+    const open = sidebar.getByRole("region", { name: "待处理" });
+    await expect(open.getByRole("button", { name: "开始处理" })).toHaveCount(0);
+    await page.screenshot({ animations: "disabled", path: join(artifacts, "task-sidebar.png") });
+    await open.getByRole("button", { name: /连接 DUT_A/ }).click();
     await modal.getByRole("button", { name: "查看全图：DUT_A · 串口" }).click();
     await expect(page.getByRole("dialog", { name: "DUT_A · 串口", exact: true })).toBeVisible();
     await page.screenshot({ animations: "disabled", path: join(artifacts, "full-photo.png") });
     await page.keyboard.press("Escape");
     await expect(modal).toBeVisible();
-    await modal.getByRole("button", { name: "已完成", exact: true }).click();
+    await modal.getByRole("button", { name: "完成", exact: true }).click();
     await expect(modal.getByText("已完成", { exact: true })).toBeVisible();
-    await expect(modal.getByRole("button", { name: "已完成", exact: true })).toHaveCount(0);
+    await expect(modal.getByRole("button", { name: "完成", exact: true })).toHaveCount(0);
     await modal.getByRole("button", { name: "关闭", exact: true }).last().click();
-    await page.getByRole("button", { name: "信箱", exact: true }).click();
-    await page.getByRole("dialog", { name: "信箱", exact: true }).getByRole("button", { name: /已完成.*连接/ }).click();
+    const history = sidebar.getByRole("region", { name: "历史任务" });
+    await history.getByRole("button", { name: /连接 DUT_A/ }).click();
     await expect(modal.getByText("已完成", { exact: true })).toBeVisible();
     await modal.getByRole("button", { name: "关闭", exact: true }).last().click();
+    await expect(page.locator(".react-flow__edge")).toHaveCount(1);
+
+    const rejectedId = await page.evaluate(async () => (await window.hardwareharness.wiring.requestTask({
+      portA: "DUT_A.J1", portB: "DUT_B.J1", action: "disconnect", pins: [{ a: "1", b: "2" }]
+    })).wiringTaskId);
+    const popup = page.getByRole("dialog", { name: "断线任务", exact: true });
+    await popup.getByRole("button", { name: "关闭", exact: true }).click();
+    await open.getByRole("button", { name: "未完成", exact: true }).click();
+    await expect(open).toHaveCount(0);
+    await expect(history.getByRole("listitem")).toHaveCount(2);
+    expect(await page.evaluate((taskId) => window.hardwareharness.wiring.getTask(taskId).then((task) => task.status), rejectedId)).toBe("rejected");
     await expect(page.locator(".react-flow__edge")).toHaveCount(1);
   });
 
@@ -119,7 +134,7 @@ test.describe.serial("single-step wiring inbox", () => {
     await page.evaluate(() => { document.documentElement.dataset.theme = "dark"; document.documentElement.classList.add("dark"); });
     await page.setViewportSize({ width: 960, height: 600 });
     await page.screenshot({ animations: "disabled", path: join(artifacts, "same-port-dark-960.png") });
-    await modal.getByRole("button", { name: "已完成", exact: true }).click();
+    await modal.getByRole("button", { name: "完成", exact: true }).click();
     await expect(modal.getByText("已完成", { exact: true })).toBeVisible();
     expect(await page.evaluate((id) => window.hardwareharness.wiring.getTask(id).then((task) => task.status), taskId)).toBe("confirmed");
     expect(await page.evaluate(async () => (await window.hardwareharness.projects.current())?.file.wiring.connections.length)).toBe(1);

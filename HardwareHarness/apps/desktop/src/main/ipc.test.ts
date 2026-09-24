@@ -1,12 +1,21 @@
 import { describe, expect, it, vi } from "vitest";
-import { HARDWAREHARNESS_IPC } from "@hardwareharness/contracts/desktop";
 import { createDesktopRouter, type DesktopIpcDependencies } from "./ipc.js";
 
+/** Procedures that need main-process services; every Python operation goes through `invoke`. */
+const MAIN_PROCEDURES = [
+  "system.exportText",
+  "devices.importHardwareImage", "devices.exportBundle", "devices.importBundle", "devices.previewBundle",
+  "projects.chooseFolder",
+  ...["rotateGatewayToken", "status", "preview", "install", "remove", "test", "listTools", "openCodeStatus", "startOpenCode", "stopOpenCode", "restartOpenCode"].map((name) => `agents.${name}`),
+  ...["getTheme", "setTheme", "getProjectView", "setProjectView", "getWelcomeLayout", "setWelcomeLayout", "getLlm", "saveLlm"].map((name) => `settings.${name}`),
+  ...["minimize", "toggleMaximize", "close"].map((name) => `window.${name}`),
+  "events.subscribe"
+];
+
 describe("Desktop tRPC router", () => {
-  it("registers one procedure for every facade method plus the event subscription", () => {
+  it("registers one generic operation procedure plus the main-process procedures", () => {
     const router = createDesktopRouter(dependencies());
-    const expected = [...flattenProcedurePaths(HARDWAREHARNESS_IPC), "events.subscribe"];
-    expect(Object.keys(router._def.procedures).sort()).toEqual(expected.sort());
+    expect(Object.keys(router._def.procedures).sort()).toEqual(["invoke", ...MAIN_PROCEDURES].sort());
   });
 
   it("validates LLM settings at the tRPC boundary", async () => {
@@ -19,19 +28,26 @@ describe("Desktop tRPC router", () => {
     expect(saveLlm).toHaveBeenCalledWith({ baseUrl: "https://example.com/v1", model: "model" });
   });
 
-  it("routes manual control through the application layer", async () => {
+  it("invokes operations as the desktop human with JSON-shaped arguments", async () => {
     const invokeTool = vi.fn(async (context, input) => ({ context, input }));
-    const router = createDesktopRouter(dependencies({
-      application: {
-        manual: { invokeTool },
-      } as never
-    }));
+    const router = createDesktopRouter(dependencies({ application: { manual: { invokeTool } } as never }));
     const caller = router.createCaller({});
 
-    const manualInput = { hardwareId: "HW1", toolName: "SERVER__write", arguments: { value: 1 } };
-    await caller.manual.invokeTool(manualInput);
+    const manualInput = { hardwareId: "HW1", toolName: "SERVER__write", arguments: { value: 1, unset: undefined }, timeoutMs: undefined };
+    await caller.invoke({ operation: "manual.invokeTool", args: [manualInput, undefined] });
 
-    expect(invokeTool).toHaveBeenCalledWith(expect.objectContaining({ actor: "human" }), { ...manualInput, timeoutMs: 30_000 });
+    expect(invokeTool).toHaveBeenCalledWith({ actor: "human", source: "desktop" }, { hardwareId: "HW1", toolName: "SERVER__write", arguments: { value: 1 } }, undefined);
+    await expect(caller.invoke({ operation: "manual.abortHardware" as never, args: [] })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("publishes the project document after a wiring update", async () => {
+    const document = { rootPath: "P" };
+    const base = dependencies();
+    const router = createDesktopRouter({ ...base, application: { wiring: { updateDocument: vi.fn(async () => document) } } as never });
+
+    await router.createCaller({}).invoke({ operation: "wiring.updateDocument", args: [{ nodes: [], connections: [] }] });
+
+    expect(base.windows.publish).toHaveBeenCalledWith("project", document);
   });
 });
 
@@ -49,14 +65,6 @@ function dependencies(overrides: Partial<DesktopIpcDependencies> = {}): DesktopI
       close: vi.fn(),
       applyTheme: vi.fn()
     },
-    workspaceChanged: vi.fn(),
     ...overrides
   };
-}
-
-function flattenProcedurePaths(value: object, prefix = ""): string[] {
-  return Object.entries(value).flatMap(([key, item]) => {
-    const path = prefix ? `${prefix}.${key}` : key;
-    return typeof item === "string" ? [path] : flattenProcedurePaths(item as object, path);
-  });
 }

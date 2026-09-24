@@ -37,7 +37,11 @@ function Runtime({ adapter, onCreated }: { adapter: RemoteThreadListAdapter; onC
     adapter,
     runtimeHook: useRuntimeHook
   });
-  return <AssistantRuntimeProvider runtime={runtime}><ThreadList onThreadSelected={onCreated} /></AssistantRuntimeProvider>;
+  return (
+    <AssistantRuntimeProvider runtime={runtime}>
+      <ThreadList onThreadSelected={onCreated} />
+    </AssistantRuntimeProvider>
+  );
 }
 
 afterEach(() => {
