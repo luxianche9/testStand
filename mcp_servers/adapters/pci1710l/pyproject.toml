@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hh-adapter-pci1710l"
+version = "0.2.0"
+description = "HardwareHarness MCP adapter for the Advantech PCI-1710L multifunction DAQ card (16 AI, 16 DI, 16 DO)"
+requires-python = ">=3.11"
+dependencies = ["hardwareharness-device-sdk>=0.2,<0.3"]
+
+[tool.setuptools.packages.find]
+where = ["src"]

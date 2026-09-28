@@ -1,36 +1,38 @@
 [CmdletBinding()]
 param(
-    [ValidateSet("all", "pci1710l", "pci1762", "pci6208v", "cp118u_i")]
-    [string]$Server = "all"
+    # "all", "sdk" or an adapter directory name under adapters\ (e.g. pci6208v).
+    [string]$Target = "all"
 )
 
+# Local tests only: the SDK suite plus each adapter's tests (which include the
+# dry-run compliance suite). Nothing here talks to real hardware.
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
-$workspaceRoot = Split-Path -Parent $root
-$pythonCandidates = @(
-    (Join-Path $workspaceRoot "sim_hardware\.venv\Scripts\python.exe"),
-    (Join-Path $workspaceRoot "sim_hardware\venv\Scripts\python.exe")
-)
-$python = $pythonCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
-if (-not $python) { throw "No local Python environment found under sim_hardware" }
-
-$serverIds = if ($Server -eq "all") {
-    @("pci1710l", "pci1762", "pci6208v", "cp118u_i")
-} else {
-    @($Server)
+$known = @(Get-ChildItem -LiteralPath (Join-Path $root "adapters") -Directory |
+    Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName "pyproject.toml") } |
+    ForEach-Object { $_.Name })
+if ($Target -notin @("all", "sdk") -and $Target -notin $known) {
+    throw "Unknown target '$Target'. Use all, sdk or one of: $($known -join ', ')"
 }
+$paths = @(switch ($Target) {
+    "all" { "sdk", "adapters" }
+    "sdk" { "sdk" }
+    default { "adapters\$Target" }
+})
 
+Push-Location -LiteralPath $root
 try {
-    foreach ($serverId in $serverIds) {
-        $serverRoot = Join-Path $root "servers\$serverId"
-        $env:PYTHONPATH = Join-Path $serverRoot "app\src"
-        $env:HARDWAREHARNESS_SERVER_CONFIG = Join-Path $serverRoot "server.example.json"
-        Write-Host "[test] $serverId"
-        & $python -m unittest discover -s (Join-Path $serverRoot "app\tests") -p "test_*.py"
-        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    & uv run pytest @paths -q -p no:cacheprovider
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    if ($Target -ne "sdk") {
+        $adapters = if ($Target -eq "all") { $known } else { @($Target) }
+        foreach ($adapter in $adapters) {
+            Write-Host "[check] hh_adapter_$adapter"
+            & uv run python -m hardwareharness_device_sdk --adapter "hh_adapter_$adapter" --check --log-level warning
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        }
     }
 }
 finally {
-    Remove-Item Env:PYTHONPATH -ErrorAction SilentlyContinue
-    Remove-Item Env:HARDWAREHARNESS_SERVER_CONFIG -ErrorAction SilentlyContinue
+    Pop-Location
 }

@@ -1,0 +1,33 @@
+"""Dry-run driver: same interface and status codes as ``VendorDriver``, no hardware.
+
+Model controller state faithfully (handles, output register, configuration
+gates) but never invent measurements: inputs read as their idle value. Demo
+behaviour must be opt-in through an environment flag (see
+``hardwareharness_device_sdk.sim``) so dry-run output cannot pass as evidence.
+"""
+
+from __future__ import annotations
+
+
+class SimulatedDriver:
+    def __init__(self) -> None:
+        self.opened: int | None = None
+        self.outputs = 0
+        self.inputs = 0
+        self.writes: list[int] = []
+
+    def open(self, card_index: int) -> int:
+        self.opened = card_index
+        return 0
+
+    def close(self, handle: int) -> int:
+        self.opened = None
+        return 0
+
+    def write_outputs(self, handle: int, mask: int) -> int:
+        self.outputs = mask
+        self.writes.append(mask)
+        return 0
+
+    def read_inputs(self, handle: int) -> tuple[int, int]:
+        return 0, self.inputs

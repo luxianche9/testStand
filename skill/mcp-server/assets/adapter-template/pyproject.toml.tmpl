@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "__DIST__"
+version = "0.1.0"
+description = "HardwareHarness MCP adapter for the __MANUFACTURER__ __MODEL__"
+requires-python = ">=3.11"
+dependencies = ["hardwareharness-device-sdk__SDK_RANGE__"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+__PACKAGE__ = ["py.typed"]

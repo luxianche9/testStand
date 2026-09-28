@@ -1,0 +1,25 @@
+"""Widget templates for the canvas (``get_panel``).
+
+Each item suggests one freestanding widget: a display bound to a stream and/or
+manual control bound to exact tools. Short tool names are expanded with the
+device prefix; ``VALUE`` is replaced by the widget's input. Mark writes that
+move something physical with ``confirm=True``.
+"""
+
+from __future__ import annotations
+
+from hardwareharness_device_sdk import VALUE, PanelItem, ToolBinding
+
+
+def items(output_count: int, input_count: int) -> list[PanelItem]:
+    result = [
+        PanelItem(id=f"do{channel}", label=f"DO{channel}", group="Digital output", widget="toggle", stream="do",
+                  bit=channel, confirm=True, description="Shows the accepted level (software shadow).",
+                  write=ToolBinding(tool="set_output", args={"channel": channel, "level": VALUE}))
+        for channel in range(output_count)
+    ]
+    result.append(PanelItem(id="di", label=f"DI0..{input_count - 1}", group="Digital input", widget="lamp",
+                            stream="di", bits=input_count, read=ToolBinding(tool="read_inputs")))
+    result.append(PanelItem(id="safe_state", label="All outputs low", group="Safety", widget="button",
+                            write=ToolBinding(tool="safe_state")))
+    return result

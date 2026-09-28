@@ -1,0 +1,161 @@
+"""__MANUFACTURER__ __MODEL__: TODO(new_device) one paragraph from the manual.
+
+State what the device is, the channel origin (zero- or one-based, as printed
+on the connector), what every read proves (controller register, software
+shadow, measured value) and what it does not prove.
+
+The skeleton is a digital I/O card: ``set_output`` drives one output,
+``read_inputs`` reads the input bitmap, ``safe_state`` drives every output to
+its safe level. ``di`` is sampled while someone watches it; ``do`` pushes the
+software shadow after each accepted write. Replace them with the real device's
+operations; keep the patterns.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+from hardwareharness_device_sdk import (
+    DEVICE_UNREACHABLE,
+    INVALID_ARGUMENT,
+    Device,
+    DeviceError,
+    PanelItem,
+    Pinout,
+    SampledStream,
+    ServerConfig,
+    Stream,
+    model,
+    param,
+    tool,
+)
+
+from . import panel as panel_items
+from .driver import VendorDriver
+from .pinout import pinout as build_pinout
+from .sim import SimulatedDriver
+
+# TODO(new_device): channel counts and limits from the manual's specification table.
+OUTPUT_COUNT = 8
+INPUT_COUNT = 8
+
+Output = model("OutputResult", channel=(int, "Zero-based output channel."),
+               level=(bool, "Level accepted by the driver; not a measured line voltage."))
+Inputs = model("InputsResult", bits=(int, "Input bitmap read from the controller register, bit0=DI0."),
+               count=(int, "Number of valid bits."))
+SafeOutputs = model("SafeOutputsResult", mask=(int, "Output bitmap after the safe action, bit0=DO0; all low."))
+
+OutputChannel = param(int, f"Zero-based output channel 0..{OUTPUT_COUNT - 1}; see get_pinout channelIndex.",
+                      ge=0, le=OUTPUT_COUNT - 1)
+Level = param(bool, "true drives the output high (active), false low. No pulse, no auto-reset.")
+
+
+class __CLASS__(Device):
+    manufacturer = "__MANUFACTURER__"
+    model = "__MODEL__"
+    prefix = "__PREFIX__"
+    capabilities = ("digital_input", "digital_output")  # TODO(new_device)
+    version = "0.1.0"
+    instructions = ("__MANUFACTURER__ __MODEL__. TODO(new_device): two sentences for the AI: what the device does, "
+                    "which tool to call first, what every output does physically.")
+
+    def __init__(self, config: ServerConfig) -> None:
+        super().__init__(config)
+        # Nonsecret per-bench settings live in server.json "settings"; never put tokens there.
+        self.card_index = int(config.settings.get("cardIndex", 0))
+        self.driver = self.select_driver(lambda: VendorDriver(config.settings.get("dllPath")), SimulatedDriver)
+        self.handle: int | None = None
+        self.shadow = 0
+        self.do = self.streams.add(Stream(
+            "do", label=f"DO0..{OUTPUT_COUNT - 1}", value_schema={"type": "integer", "minimum": 0},
+            description="Software shadow of accepted writes, bit0=DO0; not a line measurement.",
+            meta={"bits": OUTPUT_COUNT}, capacity=1024))
+        self.streams.add(SampledStream(
+            "di", label=f"DI0..{INPUT_COUNT - 1}", rate_hz=float(config.settings.get("inputRateHz", 5)),
+            sample=self._sample_inputs, value_schema={"type": "integer", "minimum": 0},
+            description="Input bitmap read from the controller, bit0=DI0.", meta={"bits": INPUT_COUNT}))
+
+    # --- lifecycle ----------------------------------------------------
+    def open(self) -> dict[str, Any]:
+        rc = self.driver.open(self.card_index)
+        if rc < 0:
+            raise DeviceError(f"open(card {self.card_index}) failed rc={rc}", category=DEVICE_UNREACHABLE,
+                              details={"rc": rc})
+        self.handle = rc
+        self.shadow = 0
+        return {"card_index": self.card_index, "handle": rc}
+
+    def close(self) -> dict[str, Any]:
+        handle, self.handle = self.handle, None
+        if handle is not None:
+            rc = self.driver.close(handle)
+            if rc != 0:
+                raise DeviceError(f"close failed rc={rc}", details={"rc": rc, "handle": handle})
+        return {"released_handle": handle}
+
+    def _require_open(self) -> int:
+        if self.handle is None:
+            raise DeviceError("Device not open.", category=DEVICE_UNREACHABLE)
+        return self.handle
+
+    def _write_mask(self, handle: int, mask: int) -> None:
+        rc = self.driver.write_outputs(handle, mask)
+        if rc != 0:
+            # The write may have partially happened; report what was requested and the last known state.
+            raise DeviceError(f"write_outputs failed rc={rc}", details={"rc": rc, "requested": mask,
+                                                                         "last_accepted": self.shadow})
+        self.shadow = mask
+        self.do.publish(mask, source="software_shadow")
+
+    def _sample_inputs(self) -> int:
+        # Runs under the device operation lock, interleaved with tool calls; must not actuate anything.
+        rc, bits = self.driver.read_inputs(self._require_open())
+        if rc != 0:
+            raise DeviceError(f"read_inputs failed rc={rc}", details={"rc": rc})
+        return int(bits)
+
+    # --- tools --------------------------------------------------------
+    @tool(kind="actuate", output=Output, safety_action="safe_state", effects=("output_driven",),
+          description="Drive one digital output high or low. The result is the level the driver accepted, not a "
+                      "measured line state; other outputs keep their level. Never re-send after a timeout: read "
+                      "the do stream or measure first.")
+    def set_output(self, channel: OutputChannel, level: Level) -> dict[str, Any]:
+        # Schema validation already rejects this; keep the driver unreachable for direct callers too.
+        if not 0 <= channel < OUTPUT_COUNT:
+            raise DeviceError(f"channel must be 0..{OUTPUT_COUNT - 1}, got {channel}", category=INVALID_ARGUMENT)
+        handle = self._require_open()
+        mask = self.shadow | (1 << channel) if level else self.shadow & ~(1 << channel)
+        self._write_mask(handle, mask)
+        return {"channel": channel, "level": level}
+
+    @tool(kind="read", output=Inputs, evidence="controller_state",
+          description="Read all digital inputs once as a bitmap (bit0=DI0) from the controller register. Proves the "
+                      "logic level the card sees, not which external device drives it or the wiring.")
+    def read_inputs(self) -> dict[str, Any]:
+        return {"bits": self._sample_inputs(), "count": INPUT_COUNT}
+
+    @tool(kind="safe", output=SafeOutputs,
+          description="Drive every digital output low (the de-energized safe level). Idempotent. On failure "
+                      "error.details keeps the requested and last accepted masks; treat outputs as unknown.")
+    def safe_state(self) -> dict[str, Any]:
+        self._write_mask(self._require_open(), 0)
+        return {"mask": 0}
+
+    # --- declarations -------------------------------------------------
+    def capability_details(self) -> dict[str, Any]:
+        # Must not touch the driver: this is served even while the device is unreachable.
+        return {
+            "outputs": {"minimum": 0, "maximum": OUTPUT_COUNT - 1},
+            "inputs": {"minimum": 0, "maximum": INPUT_COUNT - 1},
+            "safeOutputLevel": "low",
+            "outputReadback": False,
+        }
+
+    def pinout(self) -> Pinout:
+        result = build_pinout(self.hardware_id)
+        if result is None:
+            return super().pinout()  # not_supported until the connector table is filled in
+        return result
+
+    def panel(self) -> list[PanelItem]:
+        return panel_items.items(OUTPUT_COUNT, INPUT_COUNT)

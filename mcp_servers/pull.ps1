@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet("all", "pci1710l", "pci1762", "pci6208v", "cp118u_i")]
+    # "all" or a servers.json id; remote-source.cjs rejects unknown ids.
     [string]$Server = "all",
 
     [switch]$Force

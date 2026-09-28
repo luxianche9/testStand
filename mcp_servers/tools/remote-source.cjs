@@ -15,10 +15,11 @@ const config = JSON.parse(readFileSync(join(realHardwareRoot, "servers.json"), "
 const sourceExtensions = new Set([
   ".py", ".pyi", ".ps1", ".psm1", ".psd1", ".json", ".toml", ".ini",
   ".cfg", ".conf", ".yaml", ".yml", ".md", ".txt", ".lock", ".xml",
-  ".bat", ".cmd"
+  ".bat", ".cmd", ".whl"
 ]);
+// `native` holds the compiled vendor CLIs (hwcli_*.exe) on the remote computer; deploys never touch it.
 const excludedDirectoryPatterns = [
-  /^(?:\.venv|venv|logs|run|__pycache__|\.pytest_cache|\.mypy_cache|\.ruff_cache)$/i,
+  /^(?:\.venv|venv|logs|run|native|__pycache__|\.pytest_cache|\.mypy_cache|\.ruff_cache)$/i,
   /\.egg-info$/i,
   /^(?:backup|deploy-staging|source-backup)-/i
 ];
@@ -28,11 +29,27 @@ const excludedFilePatterns = [
   /\.(?:log|pyc|pyo|pem|key|pfx|p12|crt|cer)$/i
 ];
 const localOnlyPreservedFiles = new Set(["server.example.json"]);
+const distRoot = resolve(realHardwareRoot, "dist");
+
+// Bundles come from `tools/assemble.py <id>`; pulled remote copies land beside them for inspection only.
+function bundleRoot(server) {
+  const root = resolve(distRoot, server.id);
+  if (!root.startsWith(distRoot + sep)) throw new Error(`Unsafe bundle path: ${root}`);
+  return root;
+}
+
+function readBuild(server) {
+  const path = join(bundleRoot(server), "build.json");
+  if (!existsSync(path)) throw new Error(`${server.label}: ${path} not found. Run: uv run python tools/assemble.py ${server.id}`);
+  const build = JSON.parse(readFileSync(path, "utf8"));
+  if (build.adapter !== server.adapter) throw new Error(`${server.label}: bundle adapter ${build.adapter} != servers.json ${server.adapter}; re-assemble`);
+  return build;
+}
 
 function parseArguments(argv) {
   const [action, ...rest] = argv;
   if (!["inventory", "pull", "deploy", "verify"].includes(action)) {
-    throw new Error("Usage: pull|deploy|verify|inventory [--server all|pci1710l|pci1762|pci6208v|cp118u_i] [--skip-tests]");
+    throw new Error(`Usage: pull|deploy|verify|inventory [--server all|${config.servers.map((item) => item.id).join("|")}] [--skip-tests]`);
   }
   let server = "all";
   let skipTests = false;
@@ -174,7 +191,7 @@ $sourceExtensions = @(${extensions})
 function Test-SourceFile([System.IO.FileInfo]$file, [string]$relativePath) {
   $parts = $relativePath -split '[\\/]'
   foreach ($part in $parts) {
-    if ($part -match '^(\\.venv|venv|logs|run|__pycache__|\\.pytest_cache|\\.mypy_cache|\\.ruff_cache)$') { return $false }
+    if ($part -match '^(\\.venv|venv|logs|run|native|__pycache__|\\.pytest_cache|\\.mypy_cache|\\.ruff_cache)$') { return $false }
     if ($part -match '\\.egg-info$') { return $false }
     if ($part -match '^(backup|deploy-staging|source-backup)-') { return $false }
   }
@@ -207,9 +224,9 @@ Get-ChildItem -LiteralPath $root -File -Recurse | ForEach-Object {
 }
 
 async function pullServer(client, sftp, server, force) {
-  const target = resolve(realHardwareRoot, "servers", server.id);
-  const serversRoot = resolve(realHardwareRoot, "servers") + sep;
-  if (!target.startsWith(serversRoot)) throw new Error(`Unsafe local target: ${target}`);
+  const pulledRoot = resolve(distRoot, "pulled");
+  const target = resolve(pulledRoot, server.id);
+  if (!target.startsWith(pulledRoot + sep)) throw new Error(`Unsafe local target: ${target}`);
   mkdirSync(target, { recursive: true });
   const manifest = await remoteManifest(client, server);
   const remotePaths = new Set(manifest.map((file) => file.path));
@@ -237,7 +254,7 @@ async function pullServer(client, sftp, server, force) {
 }
 
 async function verifyServer(client, server) {
-  const localRoot = resolve(realHardwareRoot, "servers", server.id);
+  const localRoot = bundleRoot(server);
   const local = localSourceFiles(localRoot);
   const remote = await remoteManifest(client, server);
   const remoteMap = new Map(remote.map((file) => [file.path, file.sha256]));
@@ -251,9 +268,11 @@ async function verifyServer(client, server) {
 }
 
 async function deployServer(client, sftp, server, skipTests) {
-  const localRoot = resolve(realHardwareRoot, "servers", server.id);
+  const build = readBuild(server);
+  const localRoot = bundleRoot(server);
   const files = localSourceFiles(localRoot);
-  if (files.length === 0) throw new Error(`No source files found for ${server.label}. Run pull.ps1 first.`);
+  if (files.length === 0) throw new Error(`No bundle files found for ${server.label}. Run tools/assemble.py first.`);
+  if (build.dirty) console.warn(`[deploy] ${server.label}: bundle ${build.sourceRevision} was assembled from uncommitted sources`);
   const timestamp = new Date().toISOString().replace(/[-:TZ.]/g, "").slice(0, 14);
   const staging = `${server.remoteRoot}\\deploy-staging-${timestamp}`;
   const backup = `${server.remoteRoot}\\source-backup-${timestamp}`;
@@ -302,19 +321,19 @@ Remove-Item -LiteralPath $staging -Recurse -Force
 Write-Output $backup`, 180_000);
     const backupPath = deployResult.stdout.trim().split(/\r?\n/).at(-1);
     try {
+      await execPowerShell(client, `
+$ErrorActionPreference = 'Stop'
+& (Join-Path ${psQuote(server.remoteRoot)} 'install.ps1')
+if ($LASTEXITCODE -ne 0) { throw "install.ps1 failed with exit code $LASTEXITCODE" }`, 600_000);
       if (!skipTests) {
+        // Dry-run compliance suite in-process: exercises the installed bundle without touching hardware.
         await execPowerShell(client, `
 $ErrorActionPreference = 'Stop'
 $root = ${psQuote(server.remoteRoot)}
-$python = @(
-  (Join-Path $root 'venv\\Scripts\\python.exe'),
-  (Join-Path $root '.venv\\Scripts\\python.exe')
-) | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
-if (-not $python) { throw "Python virtual environment not found under $root" }
-$env:PYTHONPATH = Join-Path $root 'app\\src'
-$env:HARDWAREHARNESS_SERVER_CONFIG = Join-Path $root 'server.json'
-& $python -m unittest discover -s (Join-Path $root 'app\\tests') -p 'test_*.py'
-if ($LASTEXITCODE -ne 0) { throw "Unit tests failed with exit code $LASTEXITCODE" }`, 300_000);
+$python = Join-Path $root 'venv\\Scripts\\python.exe'
+if (-not (Test-Path -LiteralPath $python)) { throw "Python virtual environment not found under $root" }
+& $python -m hardwareharness_device_sdk --adapter ${psQuote(build.adapterModule)} --check --log-level warning
+if ($LASTEXITCODE -ne 0) { throw "Compliance check failed with exit code $LASTEXITCODE" }`, 300_000);
       }
       await execPowerShell(client, `
 $ErrorActionPreference = 'Stop'
@@ -329,8 +348,9 @@ for ($attempt = 1; $attempt -le 15; $attempt++) {
   Start-Sleep -Seconds 1
 }
 throw "Health check failed: $healthUrl"`, 180_000);
-      console.log(`[deploy] ${server.label}: ${files.length} files, backup ${backupPath}`);
+      console.log(`[deploy] ${server.label}: ${build.sourceRevision} (${files.length} files), backup ${backupPath}`);
     } catch (error) {
+      // A pre-SDK backup (no build.json) still runs from its editable venv install; SDK bundles reinstall their wheels.
       await execPowerShell(client, `
 $ErrorActionPreference = 'Continue'
 $root = ${psQuote(server.remoteRoot)}
@@ -347,7 +367,8 @@ Get-ChildItem -LiteralPath $backup -File -Recurse | ForEach-Object {
   New-Item -ItemType Directory -Force -Path (Split-Path -Parent $destination) | Out-Null
   Copy-Item -LiteralPath $_.FullName -Destination $destination -Force
 }
-& (Join-Path $root 'start.ps1') | Out-Null`, 180_000);
+if (Test-Path -LiteralPath (Join-Path $root 'build.json')) { & (Join-Path $root 'install.ps1') | Out-Null }
+& (Join-Path $root 'start.ps1') | Out-Null`, 600_000);
       throw new Error(`${server.label} deployment failed and was rolled back: ${error.message}`);
     }
   } catch (error) {

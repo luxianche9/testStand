@@ -1,0 +1,86 @@
+"""ctypes binding for the __MANUFACTURER__ __MODEL__ vendor DLL.
+
+TODO(new_device): copy every prototype from the vendor header (``.h``) into a
+comment above its ``argtypes``/``restype``, exactly as declared. Use
+``ctypes.WinDLL`` for ``__stdcall`` exports and ``ctypes.CDLL`` for ``__cdecl``
+(the header's calling-convention macro tells you which). If the SDK is C++ or
+needs callbacks, wrap it in a native JSON-line CLI instead and use
+``hardwareharness_device_sdk.JsonLineCli`` (see references/vendor-bindings.md).
+
+The driver returns the vendor status codes unchanged; the adapter turns them
+into ``DeviceError``. It never retries a write.
+"""
+
+from __future__ import annotations
+
+import ctypes
+import logging
+import os
+from ctypes import POINTER, c_int16, c_uint16, c_uint32
+from pathlib import Path
+from typing import Any
+
+from hardwareharness_device_sdk import DEVICE_UNREACHABLE, DeviceError
+
+log = logging.getLogger(__name__)
+
+# TODO(new_device): install locations from the vendor installer; the env var overrides them.
+DLL_ENV = "__PREFIX_UPPER___DLL"
+DLL_CANDIDATES: tuple[str, ...] = ()
+
+
+def resolve_dll_path(explicit: str | None = None) -> Path | None:
+    for candidate in (explicit, os.environ.get(DLL_ENV), *DLL_CANDIDATES):
+        if candidate and Path(candidate).is_file():
+            return Path(candidate)
+    return None
+
+
+class VendorDriver:
+    """Thin wrapper returning vendor status codes; loaded lazily so dry-run never needs the DLL."""
+
+    def __init__(self, dll_path: str | None = None) -> None:
+        self.dll_path = dll_path
+        self._dll: Any = None
+
+    def _load(self) -> Any:
+        if self._dll is not None:
+            return self._dll
+        path = resolve_dll_path(self.dll_path)
+        if path is None:
+            raise DeviceError(f"Vendor DLL not found. Install the __MANUFACTURER__ driver or set {DLL_ENV}.",
+                              category=DEVICE_UNREACHABLE)
+        try:
+            dll = ctypes.WinDLL(str(path))  # type: ignore[attr-defined]
+        except OSError as exc:
+            raise DeviceError(f"Failed to load {path}: {exc}", category=DEVICE_UNREACHABLE) from exc
+        # TODO(new_device): replace these hypothetical prototypes with the header's.
+        # I16 Card_Open(U16 card_num)
+        dll.Card_Open.argtypes = [c_uint16]
+        dll.Card_Open.restype = c_int16
+        # I16 Card_Close(U16 handle)
+        dll.Card_Close.argtypes = [c_uint16]
+        dll.Card_Close.restype = c_int16
+        # I16 DO_WritePort(U16 handle, U32 mask)
+        dll.DO_WritePort.argtypes = [c_uint16, c_uint32]
+        dll.DO_WritePort.restype = c_int16
+        # I16 DI_ReadPort(U16 handle, U32 *mask)
+        dll.DI_ReadPort.argtypes = [c_uint16, POINTER(c_uint32)]
+        dll.DI_ReadPort.restype = c_int16
+        log.info("Loaded vendor DLL: %s", path)
+        self._dll = dll
+        return dll
+
+    def open(self, card_index: int) -> int:
+        return int(self._load().Card_Open(c_uint16(card_index)))
+
+    def close(self, handle: int) -> int:
+        return int(self._load().Card_Close(c_uint16(handle)))
+
+    def write_outputs(self, handle: int, mask: int) -> int:
+        return int(self._load().DO_WritePort(c_uint16(handle), c_uint32(mask)))
+
+    def read_inputs(self, handle: int) -> tuple[int, int]:
+        value = c_uint32(0)
+        rc = int(self._load().DI_ReadPort(c_uint16(handle), ctypes.byref(value)))
+        return rc, int(value.value)

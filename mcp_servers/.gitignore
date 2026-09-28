@@ -12,3 +12,6 @@ __pycache__/
 venv/
 logs/
 run/
+build/
+*.egg-info/
+dist/

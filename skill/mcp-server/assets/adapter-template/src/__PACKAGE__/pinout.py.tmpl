@@ -1,0 +1,22 @@
+"""__MODEL__ connector table for ``get_pinout``.
+
+TODO(new_device): fill ``FUNCTIONS`` from the manual's connector table and set
+``SOURCE`` to the document title and revision. Until then ``pinout`` returns
+None and ``get_pinout`` answers ``not_supported`` — never guess pin numbers.
+Every position without an entry is published as NC.
+"""
+
+from __future__ import annotations
+
+from hardwareharness_device_sdk import PinFunction, Pinout, single_connector_pinout
+
+PIN_COUNT = 0
+SOURCE = ""
+# position -> functions, e.g. 1: (function("DO0", "output", "digital_logic", channel_kind="DO", channel_index=0),)
+FUNCTIONS: dict[int, tuple[PinFunction, ...]] = {}
+
+
+def pinout(hardware_id: str) -> Pinout | None:
+    if not PIN_COUNT or not SOURCE:
+        return None
+    return single_connector_pinout(hardware_id, "__MANUFACTURER__", "__MODEL__", PIN_COUNT, FUNCTIONS, SOURCE)

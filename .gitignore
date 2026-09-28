@@ -18,7 +18,7 @@ output/
 tmp/
 
 /logs/
-mcp-server/
+/mcp-server/
 run/
 sim_hardware/servers/*/server.json
 mcp_servers/servers/firedap/server.json
