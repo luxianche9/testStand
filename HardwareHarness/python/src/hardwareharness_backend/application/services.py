@@ -384,7 +384,10 @@ class WiringApplication:
     @operation("wiring.confirm")
     async def update_document(self, context: Json, wiring: Json) -> Json:
         self.wiring.validate_document_connections(wiring)
-        return await self.projects.update_wiring_with_layout(wiring)
+        previous = self.projects.wiring()["connections"]
+        document = await self.projects.update_wiring_with_layout(wiring)
+        self.wiring.record_manual_changes(previous, document["file"]["wiring"]["connections"])
+        return document
 
     @operation("projects.manage")
     async def add_managed_hardware_to_canvas(self, context: Json, hardware_id: str) -> Json:
@@ -422,6 +425,10 @@ class WiringApplication:
     @operation("wiring.read")
     def get_task(self, context: Json, task_id: str) -> Json:
         return self.wiring.get_task(task_id)
+
+    @operation("wiring.read")
+    def list_changes(self, context: Json, input: Json | None = None) -> list[Json]:
+        return self.wiring.list_changes(input)
 
     @operation("wiring.read")
     def list_tasks(self, context: Json, input: Json | None = None) -> list[Json]:

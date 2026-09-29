@@ -48,6 +48,14 @@ export function useWiringTasks() {
   });
 }
 
+/** 工位接线的人工更改日志（持久化在项目运行库中）。刷新由 project 事件驱动。 */
+export function useWiringChanges() {
+  return useQuery({
+    queryKey: queryKeys.wiringChanges,
+    queryFn: () => window.hardwareharness.wiring.listChanges({ limit: 500 })
+  });
+}
+
 /** 功能测试项（已保存的测试计划）。刷新由 testPlan 事件驱动。 */
 export function useTestPlans() {
   return useQuery({ queryKey: queryKeys.testPlans, queryFn: () => window.hardwareharness.testing.listPlans() });

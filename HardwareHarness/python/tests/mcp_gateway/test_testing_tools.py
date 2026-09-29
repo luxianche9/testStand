@@ -60,7 +60,6 @@ def application() -> SimpleNamespace:
         list_recovery_items=Mock(return_value=[]),
         reconcile_operation=AsyncMock(return_value={"operationId": "op", "state": "succeeded"}),
         list_item_status=Mock(return_value={"unit": {"unitId": "u"}, "items": []}),
-        start_unit=Mock(return_value={"unitId": "u2", "serialNumber": "SN", "startedAt": "t"}),
         start_batch=AsyncMock(return_value=BATCH),
         wait_for_batch=AsyncMock(return_value={**BATCH, "state": "completed"}),
         abort_batch=AsyncMock(return_value={**BATCH, "state": "aborted"}),
@@ -167,8 +166,6 @@ async def test_batch_tools_dispatch_to_item_status_and_batches() -> None:
     assert capabilities["start_test_batch"] == "testing.execute"
     status = await registry.invoke(AGENT, "get_test_item_status", {})
     assert status["data"]["items"] == []
-    await registry.invoke(AGENT, "start_test_unit", {"serialNumber": "SN"})
-    app.testing.start_unit.assert_called_once_with(AGENT, {"serialNumber": "SN"})
     started = await registry.invoke(
         AGENT, "start_test_batch", {"requestId": "r", "planIds": ["a", "b"], "stopOnFail": True}
     )

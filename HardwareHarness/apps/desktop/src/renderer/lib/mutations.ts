@@ -12,7 +12,8 @@ export async function invalidateWiringData(client: QueryClient): Promise<void> {
   await Promise.all([
     client.invalidateQueries({ queryKey: queryKeys.projectDocument }),
     client.invalidateQueries({ queryKey: queryKeys.deviceCatalog }),
-    client.invalidateQueries({ queryKey: queryKeys.wiringTasks })
+    client.invalidateQueries({ queryKey: queryKeys.wiringTasks }),
+    client.invalidateQueries({ queryKey: queryKeys.wiringChanges })
   ]);
 }
 

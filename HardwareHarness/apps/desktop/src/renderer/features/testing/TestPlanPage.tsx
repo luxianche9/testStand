@@ -8,19 +8,19 @@ import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { ArrowLeftIcon } from "lucide-react";
 import type { Hardware } from "@hardwareharness/contracts/devices";
 import type { TestPlan, TestStep, TestStepCatalogItem } from "@hardwareharness/contracts/testing";
-import { Button, Splitter, useConfirm } from "../../ui";
+import { Button, HeaderTabs, Splitter, useConfirm } from "../../ui";
 import { onAppCommand } from "../../app/commands.js";
 import { useResizableWidth } from "../../lib/resizable.js";
 import { useCurrentTestRun, useTestItemStatus } from "../../lib/queries.js";
 import { queryKeys } from "../../lib/query-keys.js";
 import { BatchFooter } from "./BatchFooter.js";
-import type { DragDescriptor } from "./ComponentLibrary.js";
+import { ComponentLibrary, type DragDescriptor } from "./ComponentLibrary.js";
 import { RunControls } from "./EditorToolbar.js";
 import { ItemPromptDialog } from "./ItemDialogs.js";
 import { ItemList } from "./ItemList.js";
-import { InspectorTabs, type InspectorTab } from "./InspectorTabs.js";
 import { IssuesDialog, RunParametersDialog } from "./PlanDialogs.js";
 import { PlanEditorPane } from "./PlanEditorPane.js";
+import { PropertiesPanel } from "./PropertiesPanel.js";
 import { insertStepAt, invokeStepFor, isActiveRun, moveStepTo, stepIdForIssuePath } from "./plan-helpers.js";
 import { createStep, findStep } from "./plan-model.js";
 import { RecoveryDialog } from "./RecoveryDialog.js";
@@ -28,7 +28,9 @@ import { TestRunLogPage } from "./TestRunLogPage.js";
 import { useItemActions } from "./useItemActions.js";
 import { usePlanEditor } from "./usePlanEditor.js";
 
-/** 功能测试: item list · flow editor / run view · 属性 / 组件库 / 运行日志. */
+type SideTab = "items" | "library";
+
+/** 功能测试: 测试项 / 组件库 on the left · flow editor (属性 below) or run view. */
 export function TestPlanPage() {
   const client = useQueryClient();
   const [confirm, confirmDialog] = useConfirm();
@@ -38,14 +40,18 @@ export function TestPlanPage() {
   const currentRun = useCurrentTestRun();
   const items = status.data?.items ?? [];
   const actions = useItemActions({ editor, items, confirm });
-  const [tab, setTab] = useState<InspectorTab>("properties");
+  const [sideTab, setSideTab] = useState<SideTab>("items");
   const [dialog, setDialog] = useState<"parameters" | "issues" | "recovery">();
   const [activeDrag, setActiveDrag] = useState<DragDescriptor>();
   const left = useResizableWidth({
     storageKey: "hardwareharness.testing-sidebar-width", defaultWidth: 300, min: 220, max: 520, direction: "right"
   });
-  const right = useResizableWidth({
-    storageKey: "hardwareharness.testing-inspector-width", defaultWidth: 320, min: 260, max: 560, direction: "left"
+  const bottom = useResizableWidth({
+    storageKey: "hardwareharness.testing-properties-height",
+    defaultWidth: 260,
+    min: 120,
+    max: () => Math.max(160, window.innerHeight - 260),
+    direction: "up"
   });
   const run = currentRun.data;
   const batch = status.data?.batch;
@@ -65,14 +71,11 @@ export function TestPlanPage() {
     setViewRunId(run.runId);
   }, [run]);
 
-  useEffect(() => { if (editor.selectedStepId) setTab("properties"); }, [editor.selectedStepId]);
-
   const commandState = useRef(actions);
   commandState.current = actions;
   useEffect(() => {
     const offs = [
       onAppCommand("testing.run-selected", () => void commandState.current.runSelected()),
-      onAppCommand("testing.run-all", () => void commandState.current.runAll()),
       onAppCommand("testing.new-item", () => commandState.current.setPrompt({ kind: "create", name: defaultName() }))
     ];
     return () => { for (const off of offs) off(); };
@@ -130,44 +133,64 @@ export function TestPlanPage() {
   const busy = isActiveRun(run) || batch?.state === "running";
 
   return (
-    <div
-      className="grid h-full min-h-0 overflow-hidden bg-surface-0"
-      style={{ gridTemplateColumns: `${left.width}px 1px minmax(0,1fr) 1px ${right.width}px` }}
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      onDragCancel={() => setActiveDrag(undefined)}
     >
-      <ItemList
-        status={status.data}
-        loading={status.isLoading}
-        selectedPlanId={editor.selectedPlanId}
-        checked={actions.checked}
-        onCheckedChange={actions.setChecked}
-        onSelect={(planId) => void openItem(planId)}
-        onCreate={() => actions.setPrompt({ kind: "create", name: defaultName() })}
-        onRename={(item) => actions.setPrompt({ kind: "rename", planId: item.planId, name: item.name })}
-        onDelete={(item) => void actions.remove(item)}
-        onReorder={(planIds) => void actions.reorder(planIds)}
-        onNewUnit={() => actions.setPrompt({ kind: "unit" })}
-        footer={(
-          <BatchFooter
-            batch={batch}
-            selectedCount={actions.checkedCount}
-            totalCount={items.length}
-            stopOnFail={actions.stopOnFail}
-            busy={busy}
-            onStopOnFail={actions.setStopOnFail}
-            onRunSelected={() => void actions.runSelected()}
-            onRunAll={() => void actions.runAll()}
-            onAbort={() => void actions.abortBatch(batch)}
-          />
-        )}
-      />
-      <Splitter label="拖拽调整测试侧栏宽度" {...left.separatorProps} />
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragStart={onDragStart}
-        onDragEnd={onDragEnd}
-        onDragCancel={() => setActiveDrag(undefined)}
+      <div
+        className="grid h-full min-h-0 overflow-hidden bg-surface-0"
+        style={{ gridTemplateColumns: `${left.width}px 1px minmax(0,1fr)` }}
       >
+        <div className="flex min-h-0 min-w-0 flex-col bg-surface-1">
+          <HeaderTabs<SideTab>
+            label="测试侧栏"
+            idPrefix="testing-side"
+            value={sideTab}
+            onChange={setSideTab}
+            options={[
+              { value: "items", label: "测试项", meta: items.length },
+              { value: "library", label: "组件库" }
+            ]}
+          />
+          {sideTab === "items" ? (
+            <ItemList
+              className="flex-1"
+              status={status.data}
+              loading={status.isLoading}
+              selectedPlanId={editor.selectedPlanId}
+              checked={actions.checked}
+              onCheckedChange={actions.setChecked}
+              onSelect={(planId) => void openItem(planId)}
+              onCreate={() => actions.setPrompt({ kind: "create", name: defaultName() })}
+              onRename={(item) => actions.setPrompt({ kind: "rename", planId: item.planId, name: item.name })}
+              onDelete={(item) => void actions.remove(item)}
+              onReorder={(planIds) => void actions.reorder(planIds)}
+              footer={(
+                <BatchFooter
+                  batch={batch}
+                  selectedCount={actions.checkedCount}
+                  stopOnFail={actions.stopOnFail}
+                  busy={busy}
+                  onStopOnFail={actions.setStopOnFail}
+                  onRunSelected={() => void actions.runSelected()}
+                  onAbort={() => void actions.abortBatch(batch)}
+                />
+              )}
+            />
+          ) : (
+            <div id="testing-side-library" role="tabpanel" className="min-h-0 flex-1 overflow-y-auto">
+              <ComponentLibrary
+                enabled={Boolean(editor.draft) && !viewRunId}
+                onAdd={addCatalog}
+                onAddServer={addServer}
+              />
+            </div>
+          )}
+        </div>
+        <Splitter label="拖拽调整测试侧栏宽度" {...left.separatorProps} />
         {viewRunId ? (
           <main aria-label="运行视图" className="min-h-0 min-w-0">
             <TestRunLogPage
@@ -184,27 +207,23 @@ export function TestPlanPage() {
             />
           </main>
         ) : (
-          <PlanEditorPane
-            editor={editor}
-            run={run}
-            confirm={confirm}
-            onParameters={() => setDialog("parameters")}
-            onIssues={() => setDialog("issues")}
-            onRecovery={() => setDialog("recovery")}
-            onRunChanged={refreshRun}
-          />
+          <div
+            className="grid min-h-0 min-w-0"
+            style={{ gridTemplateRows: `minmax(0,1fr) 1px ${bottom.width}px` }}
+          >
+            <PlanEditorPane
+              editor={editor}
+              run={run}
+              confirm={confirm}
+              onParameters={() => setDialog("parameters")}
+              onIssues={() => setDialog("issues")}
+              onRecovery={() => setDialog("recovery")}
+              onRunChanged={refreshRun}
+            />
+            <Splitter label="拖拽调整属性栏高度" {...bottom.separatorProps} />
+            <PropertiesPanel editor={editor} />
+          </div>
         )}
-        <Splitter label="拖拽调整测试属性栏宽度" {...right.separatorProps} />
-        <InspectorTabs
-          tab={tab}
-          onTab={setTab}
-          editor={editor}
-          plans={items.map((item) => ({ id: item.planId, name: item.name }))}
-          viewRunId={viewRunId}
-          onOpenRun={setViewRunId}
-          onAdd={addCatalog}
-          onAddServer={addServer}
-        />
         <DragOverlay>
           {activeDrag && (
             <div className="rounded-sm border border-signal bg-surface-2 px-3 py-1.5 text-xs text-fg shadow-overlay">
@@ -212,35 +231,34 @@ export function TestPlanPage() {
             </div>
           )}
         </DragOverlay>
-      </DndContext>
-      <ItemPromptDialog
-        prompt={actions.prompt}
-        onClose={() => actions.setPrompt(undefined)}
-        onNewUnit={actions.newUnit}
-        onCreate={actions.create}
-        onRename={actions.rename}
-      />
-      <RunParametersDialog
-        open={dialog === "parameters"}
-        plan={editor.draft}
-        value={editor.runParameters}
-        onChange={editor.setRunParameters}
-        onClose={() => setDialog(undefined)}
-      />
-      <IssuesDialog
-        open={dialog === "issues"}
-        issues={issues}
-        onClose={() => setDialog(undefined)}
-        onSelect={(issue) => {
-          const stepId = editor.draft ? stepIdForIssuePath(editor.draft, issue.path) : undefined;
-          if (!stepId) return;
-          editor.setSelectedStepId(stepId);
-          setDialog(undefined);
-        }}
-      />
-      <RecoveryDialog open={dialog === "recovery"} onClose={() => setDialog(undefined)} />
-      {confirmDialog}
-    </div>
+        <ItemPromptDialog
+          prompt={actions.prompt}
+          onClose={() => actions.setPrompt(undefined)}
+          onCreate={actions.create}
+          onRename={actions.rename}
+        />
+        <RunParametersDialog
+          open={dialog === "parameters"}
+          plan={editor.draft}
+          value={editor.runParameters}
+          onChange={editor.setRunParameters}
+          onClose={() => setDialog(undefined)}
+        />
+        <IssuesDialog
+          open={dialog === "issues"}
+          issues={issues}
+          onClose={() => setDialog(undefined)}
+          onSelect={(issue) => {
+            const stepId = editor.draft ? stepIdForIssuePath(editor.draft, issue.path) : undefined;
+            if (!stepId) return;
+            editor.setSelectedStepId(stepId);
+            setDialog(undefined);
+          }}
+        />
+        <RecoveryDialog open={dialog === "recovery"} onClose={() => setDialog(undefined)} />
+        {confirmDialog}
+      </div>
+    </DndContext>
   );
 }
 

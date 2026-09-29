@@ -13,8 +13,11 @@ export type ResizableWidthOptions = {
   min: number;
   /** Upper bound; a function is re-evaluated on window resize (viewport-relative panels). */
   max: number | (() => number);
-  /** Direction the pointer moves to grow the panel ("left" for right-hand sidebars). */
-  direction: "left" | "right";
+  /**
+   * Direction the pointer moves to grow the panel ("left" for right-hand sidebars, "up" for bottom panels).
+   * "up" / "down" make the size a height.
+   */
+  direction: "left" | "right" | "up" | "down";
   step?: number;
 };
 
@@ -27,7 +30,7 @@ function persist(key: string, width: number) {
 }
 
 /**
- * Persisted, pointer- and keyboard-resizable panel width.
+ * Persisted, pointer- and keyboard-resizable panel width (or height, for "up" / "down").
  * Spread `separatorProps` on the handle; it carries the separator role, aria values and handlers.
  */
 export function useResizableWidth(options: ResizableWidthOptions) {
@@ -52,6 +55,8 @@ export function useResizableWidth(options: ResizableWidthOptions) {
   const widthRef = useRef(width);
   widthRef.current = width;
   const cleanup = useRef<(() => void) | undefined>(undefined);
+  const vertical = direction === "up" || direction === "down";
+  const negative = direction === "left" || direction === "up";
 
   const commit = useCallback((value: number) => {
     const bounded = clamp(value);
@@ -79,19 +84,20 @@ export function useResizableWidth(options: ResizableWidthOptions) {
     if (event.button !== 0) return;
     cleanup.current?.();
     event.preventDefault();
-    const start = { x: event.clientX, width: widthRef.current };
+    const start = { at: vertical ? event.clientY : event.clientX, width: widthRef.current };
+    const bodyClass = vertical ? "resizing-row" : "resizing-col";
     const handle = event.currentTarget;
     handle.setPointerCapture(event.pointerId);
     handle.dataset.dragging = "true";
-    document.body.classList.add("resizing-col");
+    document.body.classList.add(bodyClass);
 
     const onMove = (move: PointerEvent) => {
-      const delta = move.clientX - start.x;
-      commit(direction === "left" ? start.width - delta : start.width + delta);
+      const delta = (vertical ? move.clientY : move.clientX) - start.at;
+      commit(negative ? start.width - delta : start.width + delta);
     };
     const onUp = () => {
       handle.dataset.dragging = "false";
-      document.body.classList.remove("resizing-col");
+      document.body.classList.remove(bodyClass);
       handle.removeEventListener("pointermove", onMove);
       handle.removeEventListener("pointerup", onUp);
       handle.removeEventListener("pointercancel", onUp);
@@ -103,11 +109,12 @@ export function useResizableWidth(options: ResizableWidthOptions) {
     handle.addEventListener("pointerup", onUp);
     handle.addEventListener("pointercancel", onUp);
     handle.addEventListener("lostpointercapture", onUp);
-  }, [commit, direction]);
+  }, [commit, negative, vertical]);
 
   const onKeyDown = useCallback((event: ReactKeyboardEvent<HTMLElement>) => {
-    const grow = direction === "left" ? "ArrowLeft" : "ArrowRight";
-    const shrink = direction === "left" ? "ArrowRight" : "ArrowLeft";
+    const [back, forward] = vertical ? ["ArrowUp", "ArrowDown"] : ["ArrowLeft", "ArrowRight"];
+    const grow = negative ? back : forward;
+    const shrink = negative ? forward : back;
     const current = widthRef.current;
     const next = event.key === grow ? current + step
       : event.key === shrink ? current - step
@@ -117,14 +124,14 @@ export function useResizableWidth(options: ResizableWidthOptions) {
     if (next === undefined) return;
     event.preventDefault();
     commit(next);
-  }, [commit, direction, min, step]);
+  }, [commit, min, negative, step, vertical]);
 
   const reset = useCallback(() => commit(defaultWidth), [commit, defaultWidth]);
 
   const separatorProps = {
     role: "separator" as const,
     tabIndex: 0,
-    "aria-orientation": "vertical" as const,
+    "aria-orientation": vertical ? "horizontal" as const : "vertical" as const,
     "aria-valuemin": min,
     "aria-valuemax": max,
     "aria-valuenow": width,

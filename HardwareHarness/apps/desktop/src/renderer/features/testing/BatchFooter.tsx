@@ -2,18 +2,15 @@ import { OctagonXIcon, PlayIcon } from "lucide-react";
 import type { TestBatch } from "@hardwareharness/contracts/testing";
 import { Button, Label, Switch } from "../../ui";
 
-/** Item-list footer: batch start (selected / all), stop-on-fail, and live batch progress with abort. */
-export function BatchFooter({ batch, selectedCount, totalCount, stopOnFail, busy, onStopOnFail, onRunSelected, onRunAll,
-  onAbort }: {
+/** Item-list footer: stop-on-fail beside batch start, and live batch progress with abort. */
+export function BatchFooter({ batch, selectedCount, stopOnFail, busy, onStopOnFail, onRunSelected, onAbort }: {
   batch: TestBatch | undefined;
   selectedCount: number;
-  totalCount: number;
   stopOnFail: boolean;
   /** Another run or batch is active, so nothing new may start. */
   busy: boolean;
   onStopOnFail: (value: boolean) => void;
   onRunSelected: () => void;
-  onRunAll: () => void;
   onAbort: () => void;
 }) {
   const running = batch?.state === "running";
@@ -21,23 +18,20 @@ export function BatchFooter({ batch, selectedCount, totalCount, stopOnFail, busy
     <div className="grid shrink-0 gap-2 border-t border-line bg-surface-1 p-2">
       {running && batch ? <BatchProgress batch={batch} onAbort={onAbort} /> : (
         <>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
+            <Switch id="testing-stop-on-fail" checked={stopOnFail} onCheckedChange={onStopOnFail} />
+            <Label htmlFor="testing-stop-on-fail" className="shrink-0 font-normal">失败即停</Label>
             <Button
               size="sm"
               variant="primary"
-              className="flex-1"
+              className="min-w-0 flex-1"
               disabled={busy || selectedCount === 0}
               onClick={onRunSelected}
             >
               <PlayIcon />运行所选 ({selectedCount})
             </Button>
-            <Button size="sm" variant="outline" disabled={busy || totalCount === 0} onClick={onRunAll}>全部运行</Button>
           </div>
-          <div className="flex items-center gap-2">
-            <Switch id="testing-stop-on-fail" checked={stopOnFail} onCheckedChange={onStopOnFail} />
-            <Label htmlFor="testing-stop-on-fail" className="font-normal">失败即停</Label>
-            {batch && batch.state !== "running" && <LastBatch batch={batch} />}
-          </div>
+          {batch && <LastBatch batch={batch} />}
         </>
       )}
     </div>
@@ -80,6 +74,6 @@ const batchStateLabels: Record<TestBatch["state"], string> = {
 function LastBatch({ batch }: { batch: TestBatch }) {
   const text = `上次批量 ${batchStateLabels[batch.state]}`;
   return (
-    <span className="ml-auto truncate text-2xs text-fg-3" title={batch.stopReason ?? text}>{text}</span>
+    <span className="truncate text-2xs text-fg-3" title={batch.stopReason ?? text}>{text}</span>
   );
 }

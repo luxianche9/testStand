@@ -9,14 +9,14 @@ import { CommandPalette, type PaletteCommand } from "./CommandPalette";
 afterEach(cleanup);
 
 it("reports whether a page handled an app command", () => {
-  expect(dispatchAppCommand("testing.run-all")).toBe(false);
+  expect(dispatchAppCommand("testing.run-selected")).toBe(false);
   const handler = vi.fn();
-  const off = onAppCommand("testing.run-all", handler);
+  const off = onAppCommand("testing.run-selected", handler);
   expect(dispatchAppCommand("wiring.new-connection")).toBe(false);
-  expect(dispatchAppCommand("testing.run-all")).toBe(true);
+  expect(dispatchAppCommand("testing.run-selected")).toBe(true);
   expect(handler).toHaveBeenCalledOnce();
   off();
-  expect(dispatchAppCommand("testing.run-all")).toBe(false);
+  expect(dispatchAppCommand("testing.run-selected")).toBe(false);
 });
 
 it("filters palette commands and runs the active one with Enter", async () => {

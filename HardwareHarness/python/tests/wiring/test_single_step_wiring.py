@@ -174,3 +174,24 @@ async def test_pending_task_can_be_rejected_without_starting(tmp_path: Path) -> 
     assert result["status"] == "rejected"
     assert result["message"] == "Cannot connect"
     assert projects.wiring()["connections"] == []
+
+
+async def test_manual_connection_edits_are_logged_and_persisted(tmp_path: Path) -> None:
+    service, projects = await setup(tmp_path)
+    first = {"connectionId": "c1", "portA": "DUT.J1", "portB": "DUT.J1"}
+    first["pins"] = [{"a": "1", "b": "2"}]
+    edited = {**first, "pins": [{"a": "1", "b": "3"}]}
+    assert service.record_manual_changes([], []) == []
+    [added] = service.record_manual_changes([], [first])
+    assert added["kind"] == "added"
+    # A quick follow-up edit folds into the addition instead of adding a second line.
+    [folded] = service.record_manual_changes([first], [edited])
+    assert folded["entryId"] == added["entryId"]
+    assert folded["kind"] == "added" and folded["pins"] == edited["pins"]
+    assert [entry["entryId"] for entry in service.list_changes()] == [added["entryId"]]
+    service.clear_session()
+    [removed] = service.record_manual_changes([edited], [])
+    assert removed["kind"] == "removed"
+    await projects.open_folder(str(tmp_path / "project"))
+    await service.initialize()
+    assert [entry["kind"] for entry in service.list_changes()] == ["removed", "added"]

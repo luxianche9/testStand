@@ -52,6 +52,18 @@ export interface WiringTask {
   message?: string;
   warnings: string[];
 }
+/** One operator edit of a connection on the wiring canvas, kept in the project's runtime store. */
+export interface WiringChange {
+  entryId: string;
+  kind: "added" | "removed" | "changed";
+  connectionId: string;
+  portA: string;
+  portB: string;
+  pins: PinPair[];
+  /** The connection before a `changed` edit. */
+  previous?: { portA: string; portB: string; pins: PinPair[] };
+  at: string;
+}
 export const requestWiringTaskInputSchema = z.object({
   portA: z.string().min(1),
   portB: z.string().min(1),

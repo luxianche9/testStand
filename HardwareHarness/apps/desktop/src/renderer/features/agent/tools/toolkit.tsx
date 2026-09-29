@@ -10,7 +10,8 @@ import {
   WebFetchTool,
   WebSearchTool,
   WriteTool,
-  TestPlanTool
+  TestPlanTool,
+  WiringTaskTool
 } from "./OpenCodeTools";
 
 /**
@@ -45,5 +46,8 @@ export function OpenCodeToolUIs() {
   useAssistantToolUI({ toolName: "pause_test_run", render: TestPlanTool });
   useAssistantToolUI({ toolName: "resume_test_run", render: TestPlanTool });
   useAssistantToolUI({ toolName: "abort_test_run", render: TestPlanTool });
+  // OpenCode prefixes MCP tools with the server name; register both spellings.
+  useAssistantToolUI({ toolName: "request_wiring_task", render: WiringTaskTool });
+  useAssistantToolUI({ toolName: "hardwareharness_request_wiring_task", render: WiringTaskTool });
   return null;
 }

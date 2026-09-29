@@ -85,61 +85,31 @@ export function WelcomePage({ onOpened }: { onOpened: (rootPath: string) => Prom
   };
   const busy = choose.isPending || initialize.isPending || openRecent.isPending;
   const projects = recent.data ?? [];
-  const available = projects.filter((project) => project.status === "available").length;
 
   return (
-    <div className="grid min-h-0 flex-1 grid-cols-[minmax(280px,340px)_minmax(0,1fr)] bg-surface-0">
-      <section
-        aria-label="开始"
-        className="flex min-h-0 flex-col gap-6 overflow-y-auto border-r border-line bg-surface-1 p-8"
-      >
-        <div className="flex items-center gap-3">
-          <span
-            aria-hidden
-            className={cn(
-              "grid size-10 shrink-0 place-items-center rounded-md border border-signal/60 bg-signal/12",
-              "font-mono text-sm font-bold text-signal"
-            )}
-          >
-            HH
-          </span>
-          <div className="grid gap-0.5">
-            <span className="tf-label">欢迎使用</span>
-            <h1 className="text-lg leading-6 font-semibold tracking-tight text-fg">HardwareHarness</h1>
-          </div>
-        </div>
-        <p className="text-sm leading-6 text-fg-2">
-          硬件设备与接线工作台。选择一个项目文件夹开始工作；尚未初始化的文件夹会先创建项目清单。
-        </p>
-        <div className="grid gap-2">
-          <Button variant="primary" size="lg" className="justify-start" disabled={busy} onClick={() => choose.mutate()}>
-            {choose.isPending ? <Spinner /> : <FolderOpenIcon />}
-            打开项目文件夹
-          </Button>
-          {error && <ErrorNotice>{error}</ErrorNotice>}
-        </div>
-        <dl className="mt-auto grid grid-cols-3 gap-3 border-t border-line pt-4">
-          <Stat label="项目" value={projects.length} />
-          <Stat label="可用" value={available} />
-          <Stat label="异常" value={projects.length - available} warn={projects.length > available} />
-        </dl>
-      </section>
-
-      <Panel as="section" aria-label="最近项目" className="bg-surface-0">
+    <div className="flex min-h-0 flex-1 flex-col bg-surface-0">
+      <Panel as="section" aria-label="最近项目" className="min-h-0 flex-1 bg-surface-0">
         <PanelHeader
           title="最近项目"
           meta={`${projects.length} 个项目`}
           actions={
-            <SegmentedControl<WelcomeLayout>
-              label="最近项目布局"
-              size="xs"
-              value={layout}
-              options={layoutOptions}
-              onChange={changeLayout}
-            />
+            <>
+              <SegmentedControl<WelcomeLayout>
+                label="最近项目布局"
+                size="xs"
+                value={layout}
+                options={layoutOptions}
+                onChange={changeLayout}
+              />
+              <Button variant="primary" size="xs" disabled={busy} onClick={() => choose.mutate()}>
+                {choose.isPending ? <Spinner /> : <FolderOpenIcon />}
+                打开项目文件夹
+              </Button>
+            </>
           }
         />
         <PanelBody>
+          {error && <div className="mb-3"><ErrorNotice>{error}</ErrorNotice></div>}
           {recent.isLoading ? (
             <div className="grid h-full min-h-40 place-items-center text-fg-3">
               <Spinner label="正在读取最近项目…" />
@@ -185,15 +155,6 @@ function LayoutOption({ icon, label }: { icon: ReactNode; label: string }) {
       {icon}
       <span className="sr-only">{label}</span>
     </>
-  );
-}
-
-function Stat({ label, value, warn }: { label: string; value: number; warn?: boolean }) {
-  return (
-    <div className="grid gap-0.5">
-      <dt className="tf-label">{label}</dt>
-      <dd className={cn("tf-num text-base leading-5", warn ? "text-invalid" : "text-fg")}>{value}</dd>
-    </div>
   );
 }
 

@@ -35,6 +35,8 @@ export function useHardwareHarnessEvents(client: QueryClient) {
       window.hardwareharness.events.subscribe("project", (payload) => {
         c().setQueryData(queryKeys.projectDocument, payload as ProjectDocument | null);
         void c().invalidateQueries({ queryKey: queryKeys.wiringTasks });
+        // Canvas edits are logged by the backend as they are applied.
+        void c().invalidateQueries({ queryKey: queryKeys.wiringChanges });
       }),
       window.hardwareharness.events.subscribe("wiringTask", () => {
         debouncedInvalidate(queryKeys.wiringTasks, queryKeys.projectDocument);

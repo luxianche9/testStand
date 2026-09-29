@@ -60,6 +60,10 @@ class RuntimeStateStore:
                     wiring_task_id TEXT PRIMARY KEY, project_id TEXT NOT NULL,
                     task_json TEXT NOT NULL, updated_at TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS wiring_changes (
+                    entry_id TEXT PRIMARY KEY, project_id TEXT NOT NULL,
+                    entry_json TEXT NOT NULL, at TEXT NOT NULL
+                );
                 CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS batches (
                     batch_id TEXT PRIMARY KEY, state TEXT NOT NULL, batch_json TEXT NOT NULL,
@@ -369,6 +373,26 @@ class RuntimeStateStore:
         with self._connect() as database:
             rows = database.execute(
                 "SELECT task_json FROM wiring_tasks WHERE project_id=?", (project_id,)
+            ).fetchall()
+        return [json.loads(row[0]) for row in rows]
+
+    def save_wiring_change(self, project_id: str, entry: Record) -> None:
+        with self._connect() as database:
+            database.execute(
+                "INSERT INTO wiring_changes VALUES (?,?,?,?) ON CONFLICT(entry_id) "
+                "DO UPDATE SET entry_json=excluded.entry_json,at=excluded.at",
+                (entry["entryId"], project_id, json.dumps(entry, ensure_ascii=False), entry["at"]),
+            )
+
+    def delete_wiring_change(self, entry_id: str) -> None:
+        with self._connect() as database:
+            database.execute("DELETE FROM wiring_changes WHERE entry_id=?", (entry_id,))
+
+    def load_wiring_changes(self, project_id: str, limit: int) -> list[Record]:
+        with self._connect() as database:
+            rows = database.execute(
+                "SELECT entry_json FROM wiring_changes WHERE project_id=? ORDER BY at DESC LIMIT ?",
+                (project_id, limit),
             ).fetchall()
         return [json.loads(row[0]) for row in rows]
 

@@ -5,7 +5,6 @@
  */
 export type AppCommandId =
   | "testing.run-selected"
-  | "testing.run-all"
   | "testing.new-item"
   | "wiring.new-connection";
 

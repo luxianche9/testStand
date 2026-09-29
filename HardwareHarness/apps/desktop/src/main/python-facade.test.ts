@@ -55,6 +55,7 @@ const routes: Route[] = [
   ["wiring.cancelTask", ["ID"], "application.wiring.cancelTask", ["ID"]],
   ["wiring.getTask", ["ID"], "application.wiring.getTask", ["ID"]],
   ["wiring.listTasks", [{ status: "pending", limit: undefined }], "application.wiring.listTasks", [{ status: "pending" }]],
+  ["wiring.listChanges", [{ limit: 50 }], "application.wiring.listChanges", [{ limit: 50 }]],
   ["manual.invokeTool", [manual], "application.manual.invokeTool", [manual]],
   ["testing.listPlans", [], "application.testing.listPlans", []],
   ["testing.loadPlan", ["P"], "application.testing.loadPlan", ["P"]],

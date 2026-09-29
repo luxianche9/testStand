@@ -5,24 +5,27 @@ import { TriangleAlertIcon } from "lucide-react";
 import { onAppCommand } from "../../app/commands.js";
 import { errorMessage } from "../../lib/errors.js";
 import { invalidateWiringData } from "../../lib/mutations.js";
-import { useHardwareImageUrls } from "../../lib/queries.js";
+import { useHardwareImageUrls, useWiringTasks } from "../../lib/queries.js";
 import { useResizableWidth } from "../../lib/resizable.js";
-import { ConfirmDialog, Spinner, Splitter } from "../../ui/index.js";
+import { ConfirmDialog, HeaderTabs, Spinner, Splitter } from "../../ui/index.js";
 import { EditPinsModal, ListCreateConnectionModal, ManualConnectionModal } from "./ConnectionEditor.js";
 import { HardwareLibrary } from "./HardwareLibrary.js";
 import { NodeContextMenu, WiringCanvas, useTransientNodeUi } from "./WiringCanvas.js";
 import { ConnectionInspector, WiringList } from "./WiringInspector.js";
-import { WiringTaskPanel } from "./WiringTaskPanel.js";
+import { WiringLogPanel } from "./WiringLogPanel.js";
 import { WiringToolbar, type WiringView } from "./WiringToolbar.js";
 import { fallbackHardware, toFlowEdges, toFlowNode } from "./flow-elements.js";
 import { useWiringDocument } from "./use-wiring-document.js";
 import {
+  isTaskActionable,
   touchesHardware,
   type HardwareFlowNode,
   type ManualPair,
   type NodeMenu,
   type TopologyEdge
 } from "./wiring-model.js";
+
+type SideTab = "library" | "log";
 
 export function WiringPage() {
   return <ReactFlowProvider><WiringWorkbench /></ReactFlowProvider>;
@@ -54,11 +57,13 @@ function WiringWorkbench() {
   const client = useQueryClient();
   const { project, catalog, save, wiring, hardware, edits } = useWiringDocument();
   const [view, setView] = useState<WiringView>("canvas");
+  const [sideTab, setSideTab] = useState<SideTab>("library");
+  const tasks = useWiringTasks();
   const library = useResizableWidth({
     storageKey: "hardwareharness.wiring-library-width", defaultWidth: 300, min: 200, max: 520, direction: "right"
   });
   const sidebar = useResizableWidth({
-    storageKey: "hardwareharness.wiring-sidebar-width", defaultWidth: 300, min: 240, max: 520, direction: "left"
+    storageKey: "hardwareharness.wiring-inspector-width", defaultWidth: 300, min: 240, max: 520, direction: "left"
   });
   const [manualPair, setManualPair] = useState<ManualPair>();
   const [listCreateOpen, setListCreateOpen] = useState(false);
@@ -121,21 +126,54 @@ function WiringWorkbench() {
   const menuNode = nodeMenu && wiring.nodes.find((item) => item.hardwareId === nodeMenu.hardwareId);
   const pendingLabel = hardware.find((item) => item.hardwareId === pendingRemoveHardwareId)?.label
     ?? pendingRemoveHardwareId;
+  const inspecting = view === "canvas" ? selectedConnection : undefined;
+  const allTasks = tasks.data ?? [];
+  const pendingTaskCount = allTasks.filter(isTaskActionable).length;
+  const sideTabs = (actions?: ReactNode) => (
+    <HeaderTabs<SideTab>
+      label="接线侧栏"
+      idPrefix="wiring-side"
+      value={sideTab}
+      onChange={setSideTab}
+      actions={actions}
+      options={[
+        { value: "library", label: "硬件库", meta: hardware.length },
+        {
+          value: "log",
+          label: "接线日志",
+          meta: pendingTaskCount > 0
+            ? <span className="rounded-xs bg-signal px-1 font-semibold text-signal-fg">{pendingTaskCount}</span>
+            : allTasks.length
+        }
+      ]}
+    />
+  );
 
   return (
     <main className="h-full min-h-0 min-w-0 overflow-hidden bg-surface-0">
       <section
         className="grid h-full"
-        style={{ gridTemplateColumns: `${library.width}px 1px minmax(0, 1fr) 1px ${sidebar.width}px` }}
+        style={{
+          gridTemplateColumns: `${library.width}px 1px minmax(0, 1fr)`
+            + (inspecting ? ` 1px ${sidebar.width}px` : "")
+        }}
       >
-        <HardwareLibrary
-          hardware={hardware}
-          assetUrls={imageUrls}
-          placed={new Set(wiring.nodes.map((node) => node.hardwareId))}
-          onAdd={(hardwareId) => edits.addNode(hardwareId)}
-          onRefresh={() => void invalidateWiringData(client)}
-        />
-        <Splitter label="调整硬件库宽度" {...library.separatorProps} />
+        {/* The left column switches between the hardware library and the wiring log. */}
+        {sideTab === "library" ? (
+          <HardwareLibrary
+            id="wiring-side-library"
+            role="tabpanel"
+            header={sideTabs}
+            hardware={hardware}
+            assetUrls={imageUrls}
+            placed={new Set(wiring.nodes.map((node) => node.hardwareId))}
+            onAdd={(hardwareId) => edits.addNode(hardwareId)}
+            onRefresh={() => void invalidateWiringData(client)}
+          />
+        ) : (
+          <WiringLogPanel id="wiring-side-log" role="tabpanel" header={sideTabs()} hardware={hardware} />
+        )}
+        <Splitter label="调整侧栏宽度" {...library.separatorProps} />
         <section className="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)]">
           <WiringToolbar
             view={view}
@@ -177,18 +215,18 @@ function WiringWorkbench() {
             )}
           </div>
         </section>
-        <Splitter label="调整任务栏宽度" {...sidebar.separatorProps} />
-        {/* The sidebar holds the operator's task queue; a selected cable temporarily takes its place. */}
-        {view === "canvas" && selectedConnection ? (
+        {/* A selected cable opens its inspector on the right; otherwise the canvas takes the width. */}
+        {inspecting && <>
+          <Splitter label="调整接线属性栏宽度" {...sidebar.separatorProps} />
           <ConnectionInspector
-            connection={selectedConnection}
+            connection={inspecting}
             hardware={hardware}
             onClose={() => setSelectedConnectionId(undefined)}
-            onEdit={() => setEditingConnectionId(selectedConnection.connectionId)}
+            onEdit={() => setEditingConnectionId(inspecting.connectionId)}
             onRemove={edits.removeConnection}
             removing={save.isPending}
           />
-        ) : <WiringTaskPanel hardware={hardware} />}
+        </>}
       </section>
 
       {nodeMenu && (

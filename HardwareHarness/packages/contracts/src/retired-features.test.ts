@@ -13,6 +13,7 @@ describe("retired workflow compatibility", () => {
     expect(projectViewSchema.parse("manual")).toBe("manual");
     expect(projectViewSchema.parse("wiring")).toBe("wiring");
     expect(projectViewSchema.parse("plans")).toBe("plans");
+    expect(projectViewSchema.parse("runs")).toBe("runs");
     expect(DESKTOP_OPERATIONS.some((operation) => operation.startsWith("applications."))).toBe(false);
   });
 

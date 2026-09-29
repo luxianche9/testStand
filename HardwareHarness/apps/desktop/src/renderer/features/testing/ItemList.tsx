@@ -14,7 +14,7 @@ import { summarizeItems, summarySegments } from "./item-status.js";
 /** Left column: 功能测试项 of the current unit with selection, reorder and per-item actions. */
 export function ItemList({
   status, loading, selectedPlanId, checked, onCheckedChange, onSelect, onCreate, onRename, onDelete, onReorder,
-  onNewUnit, footer
+  footer, className
 }: {
   status: TestItemStatusList | undefined;
   loading: boolean;
@@ -26,8 +26,8 @@ export function ItemList({
   onRename: (item: TestItemStatus) => void;
   onDelete: (item: TestItemStatus) => void;
   onReorder: (planIds: string[]) => void;
-  onNewUnit: () => void;
   footer: React.ReactNode;
+  className?: string;
 }) {
   const [query, setQuery] = useState("");
   const items = useMemo(() => status?.items ?? [], [status?.items]);
@@ -62,8 +62,7 @@ export function ItemList({
   };
 
   return (
-    <aside aria-label="功能测试项列表" className="flex min-h-0 flex-col bg-surface-1">
-      <UnitHeader serial={status?.unit.serialNumber} disabled={batchRunning} onNewUnit={onNewUnit} />
+    <aside aria-label="功能测试项列表" className={cn("flex min-h-0 flex-col bg-surface-1", className)}>
       <div className="flex items-center gap-1.5 border-b border-line px-2 py-1.5">
         <div className="relative min-w-0 flex-1">
           <SearchIcon className="pointer-events-none absolute top-1/2 left-2 size-3 -translate-y-1/2 text-fg-3" />
@@ -124,26 +123,6 @@ export function ItemList({
       </div>
       {footer}
     </aside>
-  );
-}
-
-function UnitHeader({ serial, disabled, onNewUnit }: {
-  serial: string | undefined;
-  disabled: boolean;
-  onNewUnit: () => void;
-}) {
-  return (
-    <div className="flex h-9 shrink-0 items-center gap-2 border-b border-line px-2">
-      <div className="flex min-w-0 flex-1 items-baseline gap-2">
-        {serial && <>
-          <span className="tf-label flex-none">被测件</span>
-          <span className="truncate font-mono text-xs text-fg" title={serial}>{serial}</span>
-        </>}
-      </div>
-      <Button size="xs" variant="outline" disabled={disabled} onClick={onNewUnit}>
-        {serial ? "新被测件" : "登记被测件"}
-      </Button>
-    </div>
   );
 }
 

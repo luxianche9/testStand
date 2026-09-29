@@ -4,7 +4,7 @@ import type { ConnectionStatus, Hardware, ManagedHardware, McpServerConfig, Remo
 import type { ManualToolInvocationInput, ManualToolInvocationResult } from "./execution.js";
 
 import type { ProjectDocument, ProjectFolderSelection, RecentProjectSummary } from "./projects.js";
-import type { ProjectCanvasNode, ProjectWiring, RequestWiringTaskInput, WiringTask, WiringTaskStatus } from "./wiring.js";
+import type { ProjectCanvasNode, ProjectWiring, RequestWiringTaskInput, WiringChange, WiringTask, WiringTaskStatus } from "./wiring.js";
 import type { DesktopOperation } from "./operations.generated.js";
 import type { TestDeviceTools, TestPlan, TestPlanMutationResult, TestPlanOperation, TestPlanSummary, TestPlanValidation, TestRunSnapshot, TestStepCatalogItem } from "./testing.js";
 
@@ -75,6 +75,7 @@ export interface BackendApplication {
     cancelTask(context: RequestContext, wiringTaskId: string, message?: string): Promise<WiringTask>;
     getTask(context: RequestContext, wiringTaskId: string): WiringTask;
     listTasks(context: RequestContext, input?: { status?: WiringTaskStatus; limit?: number }): WiringTask[];
+    listChanges(context: RequestContext, input?: { limit?: number }): WiringChange[];
   };
   readonly manual: {
     invokeTool(context: RequestContext, raw: ManualToolInvocationInput): Promise<ManualToolInvocationResult>;
@@ -94,7 +95,6 @@ export interface BackendApplication {
     listDeviceTools(context: RequestContext, hardwareId: string): TestDeviceTools;
     startRun(context: RequestContext, input: { planId: string; revision: number; executionRevision: string; requestId: string; parameters: Record<string, unknown> }): Promise<TestRunSnapshot>;
     currentUnit(context: RequestContext): import("./testing.js").TestUnit;
-    startUnit(context: RequestContext, input?: { serialNumber?: string }): import("./testing.js").TestUnit;
     listItemStatus(context: RequestContext): import("./testing.js").TestItemStatusList;
     reorderItems(context: RequestContext, input: { planIds: string[] }): import("./testing.js").TestItemStatusList;
     startBatch(context: RequestContext, input: import("./testing.js").TestBatchStartInput): Promise<import("./testing.js").TestBatch>;

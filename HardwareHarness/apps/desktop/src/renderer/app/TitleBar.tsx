@@ -7,6 +7,7 @@ import {
   Maximize2Icon,
   Minimize2Icon,
   MinusIcon,
+  ScrollTextIcon,
   ServerIcon,
   SettingsIcon,
   XIcon
@@ -20,7 +21,8 @@ import type { AppPage } from "./app-navigation.js";
 export const PROJECT_VIEWS: { view: ProjectView; label: string; icon: ReactNode }[] = [
   { view: "manual", label: "设备管理", icon: <ServerIcon /> },
   { view: "wiring", label: "工位接线", icon: <CableIcon /> },
-  { view: "plans", label: "功能测试", icon: <FlaskConicalIcon /> }
+  { view: "plans", label: "功能测试", icon: <FlaskConicalIcon /> },
+  { view: "runs", label: "运行日志", icon: <ScrollTextIcon /> }
 ];
 
 export type ProjectAction = "save" | "open" | "welcome";

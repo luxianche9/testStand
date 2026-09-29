@@ -15,7 +15,7 @@ function errorText(error: unknown): string {
   return error instanceof Error ? error.message : String((error as { message?: string })?.message ?? error);
 }
 
-/** Item-list commands: unit, create / rename / delete, reorder, and batch start / abort. */
+/** Item-list commands: create / rename / delete, reorder, and batch start / abort. */
 export function useItemActions({ editor, items, confirm }: {
   editor: PlanEditor;
   items: TestItemStatus[];
@@ -29,13 +29,6 @@ export function useItemActions({ editor, items, confirm }: {
 
   const setStatus = (update: (current: TestItemStatusList) => TestItemStatusList) =>
     client.setQueryData<TestItemStatusList>(queryKeys.testItemStatus, (current) => current && update(current));
-
-  const newUnit = async (serialNumber: string) => {
-    await window.hardwareharness.testing.startUnit(serialNumber ? { serialNumber } : {});
-    setPrompt(undefined);
-    await invalidateTestingData(client);
-    editor.setMessage(serialNumber ? `已开始新被测件 ${serialNumber}` : "已开始新被测件");
-  };
 
   const create = async (name: string) => {
     const result = await window.hardwareharness.testing.createPlan({ requestId: crypto.randomUUID(), name });
@@ -110,7 +103,6 @@ export function useItemActions({ editor, items, confirm }: {
   };
   const orderedChecked = orderedSelection(items, checked);
   const runSelected = () => startBatch(orderedChecked);
-  const runAll = () => startBatch(items.map((item) => item.planId));
 
   const abortBatch = async (batch: TestBatch | undefined) => {
     if (!batch) return;
@@ -132,6 +124,6 @@ export function useItemActions({ editor, items, confirm }: {
 
   return {
     checked, setChecked, checkedCount: orderedChecked.length, stopOnFail, setStopOnFail, prompt, setPrompt,
-    newUnit, create, rename, remove, reorder, runSelected, runAll, abortBatch
+    create, rename, remove, reorder, runSelected, abortBatch
   };
 }

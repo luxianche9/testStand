@@ -76,7 +76,8 @@ export function OpenCodeComposer({
   attachmentAdapter,
   attachmentAccept,
   clientSession,
-  onError
+  onError,
+  blockedReason
 }: {
   client: OpencodeClient;
   catalog: OpenCodeCatalog;
@@ -86,6 +87,8 @@ export function OpenCodeComposer({
   attachmentAccept: string;
   clientSession?: Session | null;
   onError: (reason: unknown) => void;
+  /** Set while the operator must answer an in-thread card (e.g. a wiring task); sending is held until then. */
+  blockedReason?: string | undefined;
 }) {
   const aui = useAui();
   const runtimeSession = useOpenCodeSession();
@@ -146,11 +149,12 @@ export function OpenCodeComposer({
   }, [attachmentAdapter, aui, client, commandFromText, agent, modelID, providerID, session]);
 
   const handleSubmit = useCallback((event: FormEvent<HTMLFormElement>) => {
+    if (blockedReason) { event.preventDefault(); return; }
     const command = commandFromText(aui.composer.getState().text);
     if (!command) return;
     event.preventDefault();
     void runCommand().catch(onError);
-  }, [aui, commandFromText, onError, runCommand]);
+  }, [aui, blockedReason, commandFromText, onError, runCommand]);
 
   const attachWorkspaceFile = useCallback(async (file: OpenCodeFileOption) => {
     setPicker(null);
@@ -192,9 +196,9 @@ export function OpenCodeComposer({
     }
   };
 
-  const status = isRunning
+  const status = blockedReason ?? (isRunning
     ? runState === "cancelling" ? "正在停止" : "OpenCode 正在执行"
-    : session ? "上下文仅作用于当前会话" : "正在创建工作区会话";
+    : session ? "上下文仅作用于当前会话" : "正在创建工作区会话");
 
   return (
     <ComposerPrimitive.Root className="relative flex w-full flex-col" onSubmit={handleSubmit}>
@@ -208,7 +212,8 @@ export function OpenCodeComposer({
         >
           <ComposerAttachments />
           <ComposerPrimitive.Input
-            placeholder="输入任务，使用 @ 添加文件，使用 / 调用命令"
+            placeholder={blockedReason ? "请先在上方卡片中处理接线任务" : "输入任务，使用 @ 添加文件，使用 / 调用命令"}
+            disabled={Boolean(blockedReason)}
             className={cn(
               "max-h-40 min-h-12 w-full resize-none bg-transparent px-1.5 py-1 text-sm leading-relaxed text-fg",
               "outline-none placeholder:text-fg-3"
@@ -218,6 +223,7 @@ export function OpenCodeComposer({
             enterKeyHint="send"
             aria-label="消息"
             onKeyDown={handleInputKeyDown}
+            submitMode={blockedReason ? "none" : "enter"}
           />
 
           <div className="flex min-w-0 flex-wrap items-center justify-between gap-1">
@@ -269,7 +275,7 @@ export function OpenCodeComposer({
                   side="top"
                   variant="primary"
                   size="icon-sm"
-                  disabled={!canSend && !hasAttachments && !commandReady}
+                  disabled={Boolean(blockedReason) || (!canSend && !hasAttachments && !commandReady)}
                 >
                   <ArrowUpIcon />
                 </IconButton>
@@ -287,7 +293,9 @@ export function OpenCodeComposer({
       <p className="mt-1 flex items-center justify-between gap-2 px-1 text-2xs text-fg-3">
         <span>Enter 发送，Shift+Enter 换行</span>
         <span className="flex min-w-0 items-center gap-1.5 truncate">
-          {isRunning && <span aria-hidden className="size-1.5 shrink-0 animate-lamp rounded-full bg-run" />}
+          {blockedReason
+            ? <span aria-hidden className="size-1.5 shrink-0 animate-lamp rounded-full bg-signal" />
+            : isRunning && <span aria-hidden className="size-1.5 shrink-0 animate-lamp rounded-full bg-run" />}
           {status}
         </span>
       </p>

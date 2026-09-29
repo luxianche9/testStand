@@ -8,6 +8,7 @@ import { PlusIcon, XIcon } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { errorMessage } from "../../lib/errors.js";
+import { useWiringTasks } from "../../lib/queries.js";
 import { Button, IconButton, Kbd } from "../../ui";
 import { AgentHeader, DrawerToggle, type HeaderProps } from "./AgentHeader";
 import { OpenCodeComposer, useOpenCodeCatalog, useSessionSelection, type OpenCodeSelection } from "./OpenCodeComposer";
@@ -16,6 +17,7 @@ import { SidebarNotice } from "./RuntimeStates";
 import { Thread } from "./Thread";
 import { ThreadList } from "./ThreadList";
 import { FallbackTool } from "./tools/OpenCodeTools";
+import { isTaskActionable } from "../wiring/wiring-model.js";
 
 function AutoInitializeThread({ onError }: { onError: (reason: unknown) => void }) {
   const aui = useAui();
@@ -115,6 +117,7 @@ export function RunningShell({
   const catalog = useOpenCodeCatalog(client, fallbackSelection.model.modelID);
   const [sessionSelection, setSessionSelection] = useSessionSelection(selection);
   const aui = useAui();
+  const pendingWiring = useWiringTasks().data?.filter(isTaskActionable).length ?? 0;
 
   useEffect(() => {
     if (
@@ -164,6 +167,7 @@ export function RunningShell({
               attachmentAdapter={attachmentAdapter}
               attachmentAccept={attachmentAccept}
               onError={onRuntimeError}
+              blockedReason={pendingWiring ? `等待操作员处理 ${pendingWiring} 个接线任务` : undefined}
             />,
             ToolFallback: FallbackTool,
             ToolGroup: OpenCodeToolGroup,

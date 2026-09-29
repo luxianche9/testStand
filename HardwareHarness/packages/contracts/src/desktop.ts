@@ -4,7 +4,7 @@ import type { ExecutionActivity, ManualToolInvocationInput, ManualToolInvocation
 
 import type { LlmSettings, LlmSettingsInput, ProjectView, ThemeChoice, WelcomeLayout } from "./storage.js";
 import type { ProjectDocument, ProjectFolderSelection, RecentProjectSummary } from "./projects.js";
-import type { ProjectWiring, RequestWiringTaskInput, WiringOutcome, WiringTask, WiringTaskStatus } from "./wiring.js";
+import type { ProjectWiring, RequestWiringTaskInput, WiringOutcome, WiringChange, WiringTask, WiringTaskStatus } from "./wiring.js";
 import type { TestDeviceTools, TestPlan, TestPlanDraftAnalysis, TestPlanMutationResult, TestPlanOperation, TestPlanSummary, TestPlanValidation, TestRunListInput, TestRunLog, TestRunPage, TestRunSnapshot, TestStepCatalogItem } from "./testing.js";
 
 export interface DashboardSnapshot {
@@ -69,6 +69,7 @@ export interface HardwareHarnessWiringApi {
   cancelTask(wiringTaskId: string, message?: string): Promise<WiringTask>;
   getTask(wiringTaskId: string): Promise<WiringTask>;
   listTasks(input?: { status?: WiringTaskStatus; limit?: number }): Promise<WiringTask[]>;
+  listChanges(input?: { limit?: number }): Promise<WiringChange[]>;
 }
 
 export interface HardwareHarnessManualApi {
@@ -88,7 +89,6 @@ export interface HardwareHarnessTestingApi {
   listDeviceTools(hardwareId: string): Promise<TestDeviceTools>;
   startRun(input: { planId: string; revision: number; executionRevision: string; requestId: string; parameters: Record<string, unknown> }): Promise<TestRunSnapshot>;
   currentUnit(): Promise<import("./testing.js").TestUnit>;
-  startUnit(input?: { serialNumber?: string }): Promise<import("./testing.js").TestUnit>;
   listItemStatus(): Promise<import("./testing.js").TestItemStatusList>;
   reorderItems(input: { planIds: string[] }): Promise<import("./testing.js").TestItemStatusList>;
   startBatch(input: import("./testing.js").TestBatchStartInput): Promise<import("./testing.js").TestBatch>;

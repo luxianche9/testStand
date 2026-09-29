@@ -15,6 +15,7 @@ import {
 } from "./inline-tools";
 import { ToolFallback } from "../ToolFallback";
 import { TestPlanTool as TestPlanToolCard } from "./test-plan-tool";
+import { WiringTaskTool as WiringTaskToolCard } from "./wiring-task-tool";
 
 export const ReadTool = withOpenCodeToolInteractions(ReadInline);
 export const EditTool = withOpenCodeToolInteractions(EditInline);
@@ -28,3 +29,4 @@ export const ApplyPatchTool = withOpenCodeToolInteractions(ApplyPatchDiff);
 export const AskQuestionTool = withOpenCodeToolInteractions(AskQuestionInline);
 export const FallbackTool = withOpenCodeToolInteractions(ToolFallback);
 export const TestPlanTool = withOpenCodeToolInteractions(TestPlanToolCard);
+export const WiringTaskTool = withOpenCodeToolInteractions(WiringTaskToolCard);

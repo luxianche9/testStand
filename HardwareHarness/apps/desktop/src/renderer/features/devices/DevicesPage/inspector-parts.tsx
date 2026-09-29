@@ -91,9 +91,13 @@ export function HardwareSections({ hardware }: { hardware: Hardware }) {
             {port.pins.length > 0 && (
               <ul className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-x-3 px-2 py-1.5 text-xs">
                 {port.pins.map((pin) => (
-                  <li className="flex h-5 min-w-0 items-center gap-2" key={pin.pinId} title={`位置 ${pin.position}`}>
-                    <code className="tf-num text-fg">{pin.pinId}</code>
-                    {pin.label && <span className="truncate text-fg-2">{pin.label}</span>}
+                  <li
+                    className="flex h-5 min-w-0 items-center gap-2"
+                    key={pin.pinId}
+                    title={`${pin.pinId} · 位置 ${pin.position}${pin.label ? ` · ${pin.label}` : ""}`}
+                  >
+                    <code className="tf-num min-w-0 truncate text-fg">{shortPinId(port.portId, pin.pinId)}</code>
+                    {pin.label && <span className="min-w-0 truncate text-fg-2">{pin.label}</span>}
                   </li>
                 ))}
               </ul>
@@ -103,6 +107,11 @@ export function HardwareSections({ hardware }: { hardware: Hardware }) {
       </Section>
     </>
   );
+}
+
+/** Pin IDs are often qualified with the port ID; drop that prefix for display. */
+function shortPinId(portId: string, pinId: string): string {
+  return pinId.startsWith(`${portId}.`) ? pinId.slice(portId.length + 1) : pinId;
 }
 
 export function Missing({ title }: { title: string }) {

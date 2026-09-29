@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider, useMutation, useQueryClient } from "@
 import type { ProjectDocument, ProjectFolderSelection } from "@hardwareharness/contracts/projects";
 import type { ProjectView } from "@hardwareharness/contracts/storage";
 import { ToastProvider, TooltipProvider, useToast } from "../ui";
-import { useDashboard, useDeviceCatalog, useProjectDocument, useWiringTasks } from "../lib/queries.js";
+import { useDashboard, useProjectDocument, useWiringTasks } from "../lib/queries.js";
 import { useTheme } from "../lib/theme.js";
 import { errorMessage } from "../lib/errors.js";
 import { queryKeys } from "../lib/query-keys.js";
@@ -19,9 +19,7 @@ import { DirtyDialog } from "./DirtyDialog.js";
 import { ErrorBoundary } from "./ErrorBoundary.js";
 import { FeatureFallback } from "./FeatureFallback.js";
 import { InitializeDialog } from "./InitializeDialog.js";
-import { StatusBar } from "./StatusBar.js";
 import { TitleBar, PROJECT_VIEWS, type ProjectAction } from "./TitleBar.js";
-import { WiringTaskInbox } from "./WiringTaskInbox.js";
 
 const AssistantSidebar = lazy(() => import("../features/agent/assistant.js")
   .then((module) => ({ default: module.AssistantSidebar })));
@@ -56,7 +54,6 @@ function Shell() {
   const dashboard = useDashboard();
   const project = useProjectDocument();
   const wiringTasks = useWiringTasks();
-  const catalog = useDeviceCatalog();
   const [navigation, navigate] = useReducer(appNavigationReducer, initialAppNavigation);
   const [assistantOpen, setAssistantOpen] = useState(readAssistantOpen);
   const [pendingSelection, setPendingSelection] = useState<ProjectFolderSelection>();
@@ -159,6 +156,9 @@ function Shell() {
   const currentProject = project.data ?? null;
   const taskList = wiringTasks.data ?? [];
   const pendingTasks = currentProject ? taskList.filter(isTaskActionable) : [];
+  const pendingKey = pendingTasks.map((task) => task.wiringTaskId).join(",");
+  // A wiring request is answered in the conversation card, so make sure the conversation is on screen.
+  useEffect(() => { if (pendingKey) setAssistantOpen(true); }, [pendingKey]);
   const page = navigation.page;
 
   const runCommand = (id: Parameters<typeof dispatchAppCommand>[0], view: ProjectView) => {
@@ -184,8 +184,6 @@ function Shell() {
       list.push(
         { id: "test-run-selected", label: "运行所选测试项", group: "功能测试", icon: paletteIcons.run,
           keywords: "run test", run: () => runCommand("testing.run-selected", "plans") },
-        { id: "test-run-all", label: "全部运行", group: "功能测试", icon: paletteIcons.run,
-          keywords: "run all test", run: () => runCommand("testing.run-all", "plans") },
         { id: "test-new-item", label: "新建测试项", group: "功能测试", icon: paletteIcons.add,
           keywords: "new test item", run: () => runCommand("testing.new-item", "plans") },
         { id: "wiring-new", label: "新建接线", group: "工位接线", icon: paletteIcons.add,
@@ -255,13 +253,7 @@ function Shell() {
           </ErrorBoundary>
         )}
       </div>
-      <StatusBar dashboard={dashboard.data} project={currentProject} />
 
-      <WiringTaskInbox
-        key={currentProject?.rootPath ?? "no-project"}
-        tasks={currentProject ? taskList : []}
-        hardware={catalog.data?.hardware ?? []}
-      />
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} commands={commands} />
       <DirtyDialog
         pending={dirtyGuard.pending}

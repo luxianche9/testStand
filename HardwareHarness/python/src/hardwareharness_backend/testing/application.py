@@ -223,10 +223,7 @@ class TestingApplication:
         unit = self.store.runtime.get_metadata(_UNIT_KEY)
         if isinstance(unit, dict) and unit.get("unitId"):
             return cast(Record, unit)
-        return self._new_unit("")
-
-    def _new_unit(self, serial_number: str) -> Record:
-        unit = {"unitId": new_uuid(), "serialNumber": serial_number, "startedAt": utc_now_iso()}
+        unit = {"unitId": new_uuid(), "serialNumber": "", "startedAt": utc_now_iso()}
         self.store.runtime.set_metadata(_UNIT_KEY, unit)
         self._notify_items({"kind": "unit", "unit": unit})
         return unit
@@ -234,12 +231,6 @@ class TestingApplication:
     @operation("testing.read")
     def current_unit(self, context: Record) -> Record:
         return self.ensure_unit()
-
-    @operation("testing.execute")
-    def start_unit(self, context: Record, input: Record | None = None) -> Record:
-        if self.batches.running or (self.engine.active and not self.engine.active.done):
-            raise app_error("conflict", "Cannot change the unit under test while a run is active")
-        return self._new_unit(str((input or {}).get("serialNumber", "")).strip())
 
     # Functional test items: one saved plan per item, ordered per project.
 

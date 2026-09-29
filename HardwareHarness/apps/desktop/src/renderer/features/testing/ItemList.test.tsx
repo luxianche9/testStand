@@ -36,7 +36,7 @@ describe("功能测试项列表", () => {
   it("summarises the current unit's results", async () => {
     render(<TestPlanPage />, { wrapper: Wrapper });
     const list = await screen.findByRole("complementary", { name: "功能测试项列表" });
-    await within(list).findByText("SN-0001");
+    await within(list).findByText("上电自检");
     expect(screen.getByTestId("item-summary").textContent).toBe("1 PASS · 1 FAIL · 1 未测");
     expect(within(list).getByText("PASS")).toBeTruthy();
     expect(within(list).getByText("FAIL")).toBeTruthy();
@@ -59,7 +59,7 @@ describe("功能测试项列表", () => {
     expect(await screen.findByRole("progressbar", { name: "批量运行进度" })).toBeTruthy();
   });
 
-  it("runs every item with 全部运行 and toggles select-all", async () => {
+  it("runs every item via select-all", async () => {
     render(<TestPlanPage />, { wrapper: Wrapper });
     const all = await screen.findByRole("checkbox", { name: "全选功能测试项" });
     await waitFor(() => expect(all.hasAttribute("disabled")).toBe(false));
@@ -67,7 +67,8 @@ describe("功能测试项列表", () => {
     expect(screen.getByRole("button", { name: "运行所选 (3)" })).toBeTruthy();
     await userEvent.click(all);
     expect(screen.getByRole("button", { name: "运行所选 (0)" }).hasAttribute("disabled")).toBe(true);
-    await userEvent.click(screen.getByRole("button", { name: "全部运行" }));
+    await userEvent.click(all);
+    await userEvent.click(screen.getByRole("button", { name: "运行所选 (3)" }));
     await waitFor(() => expect(api.testing.startBatch).toHaveBeenCalledWith({
       requestId: "request-id", planIds: ["alpha", "beta", "gamma"], stopOnFail: false
     }));

@@ -45,6 +45,7 @@ HARDWAREHARNESS_IPC: dict[str, dict[str, str]] = {
         "cancelTask": "hardwareharness:wiring:cancel-task",
         "getTask": "hardwareharness:wiring:get-task",
         "listTasks": "hardwareharness:wiring:list-tasks",
+        "listChanges": "hardwareharness:wiring:list-changes",
     },
     "manual": {"invokeTool": "hardwareharness:manual:invoke-tool"},
     "agents": {

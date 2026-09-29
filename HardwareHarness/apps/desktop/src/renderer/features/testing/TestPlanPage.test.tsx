@@ -55,22 +55,6 @@ describe("TestPlanPage", () => {
     expect(screen.getByRole("button", { name: "另存本地草稿" })).toBeTruthy();
   });
 
-  it("appends and deduplicates run history pages for the selected item", async () => {
-    const first = makeSummary("run-1", `${plan.name} run-1`, "2026-09-18T00:00:00Z");
-    const second = makeSummary("run-2", `${plan.name} run-2`, "2026-09-17T00:00:00Z");
-    api.testing.listRuns.mockImplementation(async (input?: { cursor?: string }) => input?.cursor
-      ? { items: [first, second] }
-      : { items: [first], nextCursor: "page-2" });
-    render(<TestPlanPage />, { wrapper: Wrapper });
-    await screen.findByDisplayValue(plan.name);
-    await userEvent.click(screen.getByRole("tab", { name: "运行日志" }));
-    expect(await screen.findByText(`${plan.name} run-1`)).toBeTruthy();
-    expect(api.testing.listRuns).toHaveBeenCalledWith(expect.objectContaining({ planId: "plan" }));
-    await userEvent.click(screen.getByRole("button", { name: "加载更多" }));
-    expect(await screen.findByText(`${plan.name} run-2`)).toBeTruthy();
-    expect(screen.getAllByText(`${plan.name} run-1`)).toHaveLength(1);
-  });
-
   it("shows the latest result in the item list and keeps raw run state out of the editor header", async () => {
     api = installTestingApi([plan], [makeItem("plan", plan.name, {
       runId: "run-old", state: "aborted", verdict: "Aborted", durationMs: 1200

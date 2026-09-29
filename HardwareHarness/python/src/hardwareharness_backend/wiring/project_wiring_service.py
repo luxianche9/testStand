@@ -17,6 +17,10 @@ from hardwareharness_backend.util import (
     utc_now_iso,
 )
 
+# Edits of one connection within this window become one log entry.
+COALESCE_MS = 60_000
+CONNECTION_KEYS = ("portA", "portB", "pins")
+
 
 class WiringProjectPort(Protocol):
     def wiring(self) -> Record: ...
@@ -40,6 +44,7 @@ class ProjectWiringService:
         self._notifier: Callable[[Record], None] | None = None
         self._project_notifier: Callable[[], None] | None = None
         self._runtime = RuntimeStateStore(projects)
+        self._last_changes: dict[str, Record] = {}
 
     def set_notifier(self, notifier: Callable[[Record], None]) -> None:
         self._notifier = notifier
@@ -57,6 +62,7 @@ class ProjectWiringService:
 
     def clear_session(self) -> None:
         self._tasks.clear()
+        self._last_changes.clear()
 
     async def add_managed_hardware_to_canvas(self, hardware_id: str) -> Record:
         async with self._lock("canvas:nodes"):
@@ -230,6 +236,78 @@ class ProjectWiringService:
         ]
         items.sort(key=lambda task: task["requestedAt"], reverse=True)
         return [clone(task) for task in items[: int(limit)]]
+
+    def record_manual_changes(self, previous: list[Record], current: list[Record]) -> list[Record]:
+        """Log the operator's canvas edits to connections; layout-only edits leave no entry."""
+        session = getattr(self.projects, "session", lambda: None)()
+        if not session:
+            return []
+        project_id = str(session["projectId"])
+        before = {item["connectionId"]: item for item in previous}
+        after = {item["connectionId"]: item for item in current}
+        now = utc_now_iso()
+        entries: list[Record] = []
+        for identifier in [*before, *(key for key in after if key not in before)]:
+            old, new = before.get(identifier), after.get(identifier)
+            if old and new and all(old.get(key) == new.get(key) for key in CONNECTION_KEYS):
+                continue
+            kind = "added" if old is None else "removed" if new is None else "changed"
+            source = new or old
+            assert source is not None
+            entry: Record = {
+                "entryId": new_uuid(),
+                "kind": kind,
+                "connectionId": identifier,
+                "portA": source["portA"],
+                "portB": source["portB"],
+                "pins": clone(source.get("pins", [])),
+                "at": now,
+            }
+            if kind == "changed" and old is not None:
+                entry["previous"] = {
+                    "portA": old["portA"],
+                    "portB": old["portB"],
+                    "pins": clone(old.get("pins", [])),
+                }
+            entries.append(self._coalesce(entry))
+        self._runtime.initialize()
+        for entry in entries:
+            if entry.pop("dropped", False):
+                self._runtime.delete_wiring_change(entry["entryId"])
+                self._last_changes.pop(entry["connectionId"], None)
+            else:
+                self._runtime.save_wiring_change(project_id, entry)
+                self._last_changes[entry["connectionId"]] = entry
+        kept = [item for item in entries if self._last_changes.get(item["connectionId"]) is item]
+        return [clone(entry) for entry in kept]
+
+    def list_changes(self, input: Record | None = None) -> list[Record]:
+        session = getattr(self.projects, "session", lambda: None)()
+        if not session:
+            return []
+        limit = min(max((input or {}).get("limit", 200), 1), 1000)
+        self._runtime.initialize()
+        return self._runtime.load_wiring_changes(str(session["projectId"]), int(limit))
+
+    def _coalesce(self, entry: Record) -> Record:
+        """Fold rapid edits of one connection (pin by pin) into a single log entry."""
+        last = self._last_changes.get(entry["connectionId"])
+        if (
+            last is None
+            or last["kind"] == "removed"
+            or entry["kind"] == "added"
+            or parse_date_ms(entry["at"]) - parse_date_ms(last["at"]) > COALESCE_MS
+        ):
+            return entry
+        if last["kind"] == "added":
+            # Added then edited is still one addition; added then removed never happened.
+            dropped = entry["kind"] == "removed"
+            return {**entry, "entryId": last["entryId"], "kind": "added", "dropped": dropped}
+        original = last["previous"]
+        if entry["kind"] == "removed":
+            return {**entry, **clone(original), "entryId": last["entryId"]}
+        unchanged = all(original[key] == entry[key] for key in CONNECTION_KEYS)
+        return {**entry, "entryId": last["entryId"], "previous": original, "dropped": unchanged}
 
     async def close(self) -> None:
         for task in self._tasks.values():

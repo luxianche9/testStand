@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import type { Hardware } from "@hardwareharness/contracts/devices";
 import { CheckIcon, CpuIcon, RefreshCwIcon } from "lucide-react";
 import { useDashboard } from "../../lib/queries.js";
@@ -17,12 +17,16 @@ const statusTone: Record<ReturnType<typeof hardwareStatus>["tone"], Tone> = {
 
 type LibraryStatus = { label: string; tone: Tone; title?: string | undefined; pulse?: boolean };
 
-export function HardwareLibrary({ hardware, assetUrls, placed, onAdd, onRefresh }: {
+export function HardwareLibrary({ hardware, assetUrls, placed, onAdd, onRefresh, header, ...props }: {
   hardware: Hardware[];
   assetUrls: Record<string, string>;
   placed: Set<string>;
   onAdd: (hardwareId: string) => void;
   onRefresh: () => void;
+  /** Replaces the default title; receives the refresh control to place in it. */
+  header?: (actions: ReactNode) => ReactNode;
+  id?: string;
+  role?: string;
 }) {
   const dashboard = useDashboard();
   const [checking, setChecking] = useState(false);
@@ -54,17 +58,15 @@ export function HardwareLibrary({ hardware, assetUrls, placed, onAdd, onRefresh 
     setChecking(false);
   };
 
+  const refresh = (
+    <IconButton label="刷新" size="icon-sm" disabled={checking} onClick={() => void check()}>
+      <RefreshCwIcon className={cn(checking && "animate-spin")} />
+    </IconButton>
+  );
+
   return (
-    <Panel as="aside" aria-label="硬件库面板" className="min-h-0">
-      <PanelHeader
-        title="硬件库"
-        meta={hardware.length}
-        actions={(
-          <IconButton label="刷新" size="icon-sm" disabled={checking} onClick={() => void check()}>
-            <RefreshCwIcon className={cn(checking && "animate-spin")} />
-          </IconButton>
-        )}
-      />
+    <Panel as="aside" aria-label="硬件库面板" className="min-h-0" {...props}>
+      {header ? header(refresh) : <PanelHeader title="硬件库" meta={hardware.length} actions={refresh} />}
       <PanelBody className="py-1">
         {groups.map((group) => (
           <section key={group.key} aria-label={group.title} className="pb-1">

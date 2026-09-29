@@ -543,18 +543,6 @@ TESTING_TOOLS = [
         **_READ,
     ),
     _testing(
-        "start_test_unit",
-        "Begin a new unit under test (a new physical product). Item verdicts reset to untested.",
-        obj(
-            {"serialNumber": string().default("").describe("Optional unit serial number.")},
-            strict=True,
-        ),
-        _open_object({"unitId": {"type": "string"}}, ["unitId"]),
-        operation="testing.start_unit",
-        fields=(WHOLE,),
-        **_MUTATE,
-    ),
-    _testing(
         "start_test_batch",
         "Run several functional test items one after another with default parameters. "
         "All items are prechecked first. Fail continues unless stopOnFail; Error or Aborted "

@@ -127,7 +127,6 @@ export function installTestingApi(plans: TestPlan[], items: TestItemStatus[]) {
       ...(batch ? { batch } : {})
     })),
     currentUnit: vi.fn(),
-    startUnit: vi.fn(),
     reorderItems: vi.fn(),
     startBatch: vi.fn(async (input: { planIds: string[]; stopOnFail: boolean }) => {
       batch = makeBatch(input.planIds, input.stopOnFail);

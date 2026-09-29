@@ -88,11 +88,6 @@ async def test_item_status_tracks_latest_run_per_unit_and_staleness(tmp_path: Pa
     await app.save_plan(HUMAN, plan, plan["revision"])
     assert statuses(app)["power"]["stale"] is True
 
-    unit = app.start_unit(HUMAN, {"serialNumber": " SN-002 "})
-    assert unit["serialNumber"] == "SN-002"
-    assert app.current_unit(HUMAN) == unit
-    assert "verdict" not in statuses(app)["power"]
-
 
 async def test_items_follow_saved_order_then_name(tmp_path: Path) -> None:
     app = make_app(tmp_path)
@@ -169,10 +164,6 @@ async def test_abort_batch_stops_current_run_and_skips_the_rest(tmp_path: Path) 
             break
         await asyncio.sleep(0.01)
     assert statuses(app)["next"]["queued"] is True
-    with pytest.raises(AppError) as blocked:
-        app.start_unit(HUMAN)
-    assert blocked.value.category == "conflict"
-
     await app.abort_batch(HUMAN, started["batchId"])
     batch = await app.wait_for_batch(HUMAN, started["batchId"], 10_000)
     assert batch["state"] == "aborted"

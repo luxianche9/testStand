@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button, Dialog, DialogBody, DialogContent, DialogFooter, Field, Input } from "../../ui";
 
-/** Single text-field dialog used for 新被测件 serial numbers and 功能测试项 names. */
+/** Single text-field dialog used for 功能测试项 names. */
 export function TextPromptDialog({ open, title, label, initial = "", placeholder, submitLabel, hint, allowEmpty,
   onCancel, onSubmit }: {
   open: boolean;
@@ -59,33 +59,16 @@ export function TextPromptDialog({ open, title, label, initial = "", placeholder
 }
 
 export type ItemPrompt =
-  | { kind: "unit" }
   | { kind: "create"; name: string }
   | { kind: "rename"; planId: string; name: string };
 
 /** Renders the prompt dialog for whichever item-list action is pending. */
-export function ItemPromptDialog({ prompt, onClose, onNewUnit, onCreate, onRename }: {
+export function ItemPromptDialog({ prompt, onClose, onCreate, onRename }: {
   prompt: ItemPrompt | undefined;
   onClose: () => void;
-  onNewUnit: (serialNumber: string) => Promise<void>;
   onCreate: (name: string) => Promise<void>;
   onRename: (planId: string, name: string) => Promise<void>;
 }) {
-  if (prompt?.kind === "unit") {
-    return (
-      <TextPromptDialog
-        open
-        title="新被测件"
-        label="序列号"
-        placeholder="留空则自动生成"
-        hint="开始新被测件后，所有功能测试项的结果都会重置为未测。"
-        submitLabel="开始测试"
-        allowEmpty
-        onCancel={onClose}
-        onSubmit={onNewUnit}
-      />
-    );
-  }
   if (prompt?.kind === "create") {
     return (
       <TextPromptDialog

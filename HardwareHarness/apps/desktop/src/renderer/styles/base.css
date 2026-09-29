@@ -77,3 +77,4 @@
 
 body.resizing-col { cursor: col-resize; user-select: none; }
 body.resizing-row { cursor: row-resize; user-select: none; }
+body.resizing-row { cursor: row-resize; user-select: none; }

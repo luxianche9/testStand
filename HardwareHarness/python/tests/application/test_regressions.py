@@ -272,10 +272,17 @@ async def test_wiring_orchestration_and_dashboard_facades() -> None:
         cancel_task=AsyncMock(return_value={"status": "cancelled"}),
         get_task=Mock(return_value={"id": "W"}),
         list_tasks=Mock(return_value=[]),
+        list_changes=Mock(return_value=[]),
     )
-    projects = Mock(update_wiring_with_layout=AsyncMock(return_value={"dirty": True}))
+    saved = {"dirty": True, "file": {"wiring": {"connections": []}}}
+    projects = Mock(
+        wiring=Mock(return_value={"connections": []}),
+        update_wiring_with_layout=AsyncMock(return_value=saved),
+    )
     app = WiringApplication(authorizer, projects, wiring)
-    assert await app.update_document(HUMAN, {}) == {"dirty": True}
+    assert await app.update_document(HUMAN, {}) == saved
+    wiring.record_manual_changes.assert_called_once_with([], [])
+    assert app.list_changes(HUMAN) == []
     assert await app.add_managed_hardware_to_canvas(AGENT, "H") == {"added": True}
     await app.request_task(
         HUMAN, {"portA": "A", "portB": "B", "action": "connect", "timeoutMs": 1000}
