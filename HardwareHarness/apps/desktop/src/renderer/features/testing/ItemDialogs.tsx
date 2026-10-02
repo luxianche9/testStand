@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Button, Dialog, DialogBody, DialogContent, DialogFooter, Field, Input } from "../../ui";
 
 /** Single text-field dialog used for 功能测试项 names. */
-export function TextPromptDialog({ open, title, label, initial = "", placeholder, submitLabel, hint, allowEmpty,
+function TextPromptDialog({ open, title, label, initial = "", placeholder, submitLabel, hint, allowEmpty,
   onCancel, onSubmit }: {
   open: boolean;
   title: string;

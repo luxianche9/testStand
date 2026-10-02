@@ -24,22 +24,28 @@ export type RemoteComputer = z.infer<typeof remoteComputerSchema>;
 export type StoredRemoteComputer = RemoteComputer;
 export const computerIdInputSchema = z.object({ id: z.string().min(1) }).strict();
 
+// Overrides for single commands; by default every command derives from `root` (design doc §4.8.2).
 const serverLifecycleSchema = z.object({
-  statusCommand: z.string().min(1),
-  startCommand: z.string().min(1),
-  stopCommand: z.string().min(1),
-  logPath: z.string().min(1)
+  statusCommand: z.string().min(1).optional(),
+  startCommand: z.string().min(1).optional(),
+  stopCommand: z.string().min(1).optional(),
+  forceStopCommand: z.string().min(1).optional(),
+  logPath: z.string().min(1).optional()
 }).strict();
+export type ServerLifecycle = z.infer<typeof serverLifecycleSchema>;
 
 export const mcpHttpServerSchema = z.object({
   transport: z.literal("mcp-http"),
   serverId: z.string().min(1),
-  computerId: z.string().min(1),
+  // Absent: an unmanaged service added by URL + token; usable, but not started or stopped.
+  computerId: z.string().min(1).optional(),
   label: z.string().min(1),
   hardwareId: z.string().min(1),
   url: z.string().url(),
   enabled: z.boolean().default(true),
-  lifecycle: serverLifecycleSchema
+  // Install directory on the computer (`services.json` `root`); lifecycle derives from it.
+  root: z.string().min(1).optional(),
+  lifecycle: serverLifecycleSchema.optional()
 }).strict();
 const deviceServerSchema = z.discriminatedUnion("transport", [mcpHttpServerSchema]);
 export const mcpServerSchema = z.preprocess((value) => {
@@ -63,7 +69,7 @@ export interface ServerStatus {
 export type HardwareState = "initializing" | "open" | "unreachable" | "faulted" | "closing" | "closed";
 export const managedHardwareSchema = z.object({
   hardwareId: z.string().min(1),
-  computerId: z.string().min(1),
+  computerId: z.string().min(1).optional(),
   serverId: z.string().min(1),
   state: z.enum(["initializing", "open", "unreachable", "faulted", "closing", "closed"]),
   health: z.string(),
@@ -72,7 +78,49 @@ export const managedHardwareSchema = z.object({
 });
 export type ManagedHardware = z.infer<typeof managedHardwareSchema>;
 export const reportedManagedHardwareSchema = managedHardwareSchema.omit({ computerId: true, serverId: true });
-export interface RemoteServiceLog { lines: string[]; truncated: boolean }
+// `path` is the effective log directory (derived from `root` or the lifecycle override).
+export interface RemoteServiceLog { lines: string[]; truncated: boolean; path?: string }
+/** One entry of a computer's `services.json` (design doc §4.8.1); `added` if already registered. */
+export interface DiscoveredService {
+  serverId: string;
+  hardwareId: string;
+  root: string;
+  port: number;
+  adapter?: string;
+  adapterVersion?: string;
+  installedAt?: string;
+  url: string;
+  added: boolean;
+}
+export interface RegisteredService { server: McpServerConfig; status: ServerStatus }
+export interface ServiceImportResult {
+  imported: RegisteredService[];
+  skipped: { serverId: string; reason: string }[];
+}
+/** An adapter in the `mcp_servers` workspace that can be packed and deployed (design doc §4.8.3). */
+export interface DeployableAdapter { adapter: string; package: string; module: string; version: string; description: string }
+export interface DeployServiceSpec {
+  serverId: string;
+  hardwareId: string;
+  adapter: string;
+  port: number;
+  /** Windows directory; defaults to the registered root or `E:\<serverid>_server`. */
+  root?: string;
+  label?: string;
+  settings?: Record<string, unknown>;
+  dryRun?: boolean;
+  autostart?: boolean;
+}
+export interface DeployStep { step: string; ok: boolean; skipped?: string; message?: string }
+export interface DeployResult extends RegisteredService {
+  root: string;
+  port: number;
+  createdConfig: boolean;
+  upgraded: boolean;
+  steps: DeployStep[];
+  build: { adapter?: string; adapterModule?: string; sdkVersion?: string; sourceRevision?: string | null; builtAt?: string };
+}
+export interface UninstallResult { serverId: string; root: string; archive: string; steps: DeployStep[] }
 export interface ToolCatalogItem {
   externalName: string;
   remoteName: string;
@@ -106,6 +154,23 @@ const hardwareFields = {
 export const storedHardwareDefinitionSchema = z.object({ formatVersion: z.literal(2).default(2), ...hardwareFields });
 export type StoredHardwareDefinition = z.infer<typeof storedHardwareDefinitionSchema>;
 
+/** Adapter release (design doc §8.4): "developing" until every release gate is met. */
+export const adapterStatusSchema = z.enum(["developing", "available"]);
+export type AdapterStatus = z.infer<typeof adapterStatusSchema>;
+export type AdapterReleaseGate = "check" | "simulator" | "smoke";
+export interface AdapterEvidence { at: string; note: string }
+/** A manual bench smoke run: who ran it, the wiring used and what they observed. */
+export interface AdapterSmokeRecord { operator: string; at: string; wiring: string; observation: string }
+export interface AdapterReleaseRecord {
+  hardwareId: string;
+  status: AdapterStatus;
+  check?: AdapterEvidence;
+  simulator?: AdapterEvidence;
+  smoke: AdapterSmokeRecord[];
+  /** Release gates not met yet; "available" needs this empty. */
+  gaps: AdapterReleaseGate[];
+}
+
 export const hardwareSchema = z.object({
   formatVersion: z.literal(2).default(2),
   hardwareId: z.string().min(1),
@@ -114,9 +179,11 @@ export const hardwareSchema = z.object({
   serverId: z.string().min(1).optional(),
   computerId: z.string().min(1).optional(),
   ports: z.array(hardwarePortSchema).default([]),
-  appearanceAssetId: z.string().min(1).optional()
+  appearanceAssetId: z.string().min(1).optional(),
+  /** Managed hardware only, derived by the backend from the adapter record. */
+  adapterStatus: adapterStatusSchema.optional()
 }).superRefine((value, context) => {
-  if (value.kind === "managed" && (!value.serverId || !value.computerId)) context.addIssue({ code: z.ZodIssueCode.custom, message: "Managed hardware requires serverId and computerId" });
+  if (value.kind === "managed" && !value.serverId) context.addIssue({ code: z.ZodIssueCode.custom, message: "Managed hardware requires serverId" });
   if (value.kind === "passive" && (value.serverId || value.computerId)) context.addIssue({ code: z.ZodIssueCode.custom, message: "Passive hardware cannot reference remote infrastructure" });
   const portIds = new Set<string>();
   for (const port of value.ports) {
@@ -157,3 +224,55 @@ export const deviceBundleApplyInputSchema = z.object({
   data: z.custom<Uint8Array<ArrayBufferLike>>((value) => value instanceof Uint8Array, "Expected Uint8Array")
 }).strict();
 export type DeviceBundleApplyInput = z.infer<typeof deviceBundleApplyInputSchema>;
+
+/** A managed device's own declaration (`GET /device`), as the terminal last cached it (§9.7). */
+export interface DeviceDeclaredImage { asset: string; assetId?: string; mediaType: string; width?: number; height?: number }
+export interface DeviceDeclaredPinFunction { signal: string; direction: string; electricalType: string; channelKind?: string; channelIndex?: number; mode?: string; description?: string }
+export interface DeviceDeclaredPin { pinId: string; connectorId: string; position: number | string; functions: DeviceDeclaredPinFunction[] }
+export interface DeviceDeclaredConnector {
+  connectorId: string;
+  name: string;
+  connectorType: string;
+  gender?: string;
+  channelIndex?: number;
+  image?: DeviceDeclaredImage & { pinPositions?: { pinId: string; x: number; y: number }[] };
+  pinIds: string[];
+}
+export interface DeviceDeclaration {
+  manifestRevision: string;
+  contractRevision?: string;
+  identity: {
+    serverId: string;
+    hardwareId: string;
+    manufacturer?: string;
+    model?: string;
+    hardwareRevision?: string;
+    adapter?: { name: string; version: string };
+    sdkVersion?: string;
+    dryRun?: boolean;
+  };
+  description?: string;
+  images?: { appearance?: DeviceDeclaredImage };
+  pinout?: { connectors: DeviceDeclaredConnector[]; pins: DeviceDeclaredPin[]; activeMode?: string; modes?: unknown; hardwareRevision?: string } | null;
+  streams?: Record<string, unknown>[];
+  capabilities?: Record<string, unknown>;
+  tools?: { name: string; kind: string }[];
+}
+export interface ManagedDeviceDefinition {
+  hardwareId: string;
+  manifestRevision: string;
+  fetchedAt: string;
+  /** The service is not reachable now: this is the cached copy. */
+  offline: boolean;
+  document: DeviceDeclaration;
+}
+
+/** Who holds a managed device's configure/actuate lease (`streams.leaseStatus`, §4.5). */
+export interface DeviceLeaseHolder { terminalId: string; user?: string; host?: string; label?: string }
+export interface DeviceLeaseStatus {
+  held: boolean;
+  holder?: DeviceLeaseHolder;
+  acquiredAt?: string;
+  lastHeartbeatAt?: string;
+  heldByThisTerminal: boolean;
+}

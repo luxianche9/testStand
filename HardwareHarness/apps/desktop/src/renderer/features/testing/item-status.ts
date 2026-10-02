@@ -3,7 +3,7 @@ import type { Tone } from "../../ui";
 
 const terminal: ReadonlySet<TestRunState> = new Set(["completed", "aborted", "error"]);
 
-export type ItemResultKind = "running" | "pass" | "fail" | "error" | "stale" | "untested" | "other";
+type ItemResultKind = "running" | "pass" | "fail" | "error" | "stale" | "untested" | "other";
 
 /** What the item list shows for one 功能测试项 on the current unit. */
 export interface ItemResult {
@@ -13,7 +13,7 @@ export interface ItemResult {
   pulse: boolean;
 }
 
-export function isItemRunning(item: Pick<TestItemStatus, "state">): boolean {
+function isItemRunning(item: Pick<TestItemStatus, "state">): boolean {
   return Boolean(item.state && !terminal.has(item.state));
 }
 

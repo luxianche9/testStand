@@ -1,8 +1,8 @@
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { BrowserWindow, nativeTheme } from "electron";
+import { BrowserWindow, nativeTheme, type WebContents, type WebFrameMain } from "electron";
 import type { HardwareHarnessEventName } from "@hardwareharness/contracts/desktop";
-import { DesktopEventHub, type DesktopEventListener } from "./desktop-events.js";
+import { DESKTOP_EVENT_CHANNEL, type DesktopEventMessage } from "../shared/desktop-ipc.js";
 import { injectOpenCodeAuthorization } from "./opencode-auth.js";
 import { readWindowState, writeWindowState } from "./window-state.js";
 
@@ -19,7 +19,6 @@ interface WindowOptions {
 export class DesktopWindows {
   private mainWindow: BrowserWindow | undefined;
   private persistState: (() => void) | undefined;
-  private readonly events = new DesktopEventHub();
 
   current(): BrowserWindow | undefined { return this.mainWindow; }
 
@@ -77,12 +76,17 @@ export class DesktopWindows {
     return window;
   }
 
+  /** Events that originate in main (availability, OpenCode, window state); Python's go over SSE. */
   publish(event: HardwareHarnessEventName, payload: unknown): void {
-    this.events.publish(event, payload);
+    const contents = this.mainWindow?.webContents;
+    if (!contents || contents.isDestroyed()) return;
+    contents.send(DESKTOP_EVENT_CHANNEL, { event, payload } satisfies DesktopEventMessage);
   }
 
-  subscribe(event: HardwareHarnessEventName, listener: DesktopEventListener): () => void {
-    return this.events.subscribe(event, listener);
+  /** IPC calls are accepted only from the main window's top frame. */
+  isTrustedSender(sender: WebContents, frame: WebFrameMain | null): boolean {
+    const window = this.mainWindow;
+    return Boolean(window && sender === window.webContents && frame === sender.mainFrame);
   }
 
   flashFrame(flag: boolean): void { this.mainWindow?.flashFrame(flag); }

@@ -1,5 +1,6 @@
 import asyncio
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -178,7 +179,7 @@ async def test_pending_task_can_be_rejected_without_starting(tmp_path: Path) -> 
 
 async def test_manual_connection_edits_are_logged_and_persisted(tmp_path: Path) -> None:
     service, projects = await setup(tmp_path)
-    first = {"connectionId": "c1", "portA": "DUT.J1", "portB": "DUT.J1"}
+    first: dict[str, Any] = {"connectionId": "c1", "portA": "DUT.J1", "portB": "DUT.J1"}
     first["pins"] = [{"a": "1", "b": "2"}]
     edited = {**first, "pins": [{"a": "1", "b": "3"}]}
     assert service.record_manual_changes([], []) == []

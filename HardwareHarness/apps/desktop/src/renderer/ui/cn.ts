@@ -20,10 +20,10 @@ export const toneText: Record<Tone, string> = {
 };
 
 export const toneSurface: Record<Tone, string> = {
-  neutral: "bg-surface-2 text-fg-2",
-  signal: "bg-signal/14 text-signal",
-  run: "bg-run/14 text-run",
-  pass: "bg-pass/14 text-pass",
-  fail: "bg-fail/14 text-fail",
-  invalid: "bg-invalid/14 text-invalid"
+  neutral: "border-line-strong bg-surface-2 text-fg-2",
+  signal: "border-signal/35 bg-signal/10 text-signal",
+  run: "border-run/35 bg-run/10 text-run",
+  pass: "border-pass/35 bg-pass/10 text-pass",
+  fail: "border-fail/40 bg-fail/10 text-fail",
+  invalid: "border-invalid/40 bg-invalid/10 text-invalid"
 };

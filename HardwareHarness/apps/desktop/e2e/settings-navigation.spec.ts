@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { _electron as electron, expect, test, type Page } from "@playwright/test";
+import { reloadAfterLeave, rendererReady } from "./renderer.js";
 
 const desktopDir = resolve(import.meta.dirname, "..");
 const gatewayPort = 18082;
@@ -14,18 +15,18 @@ test("settings returns to the page that opened it", async () => {
   delete env.ELECTRON_RUN_AS_NODE;
   const application = await electron.launch({ args: [desktopDir], cwd: desktopDir, env, timeout: 90_000 });
   try {
-    const page = await application.firstWindow({ timeout: 90_000 });
+    const page = await rendererReady(await application.firstWindow({ timeout: 90_000 }));
     page.setDefaultTimeout(30_000);
 
     await openSettingsAndReturn(page, () => expect(page.getByRole("heading", { name: "最近项目" })).toBeVisible());
 
     await page.evaluate((rootPath) => window.hardwareharness.projects.initializeFolder(rootPath), projectRoot);
     await page.evaluate(() => window.hardwareharness.projects.leave());
-    await page.reload();
+    await reloadAfterLeave(page);
     await page.getByText("settings-navigation-project", { exact: true }).first().click();
 
-    await expect(page.getByText("硬件库", { exact: true })).toBeVisible();
-    await openSettingsAndReturn(page, () => expect(page.getByText("硬件库", { exact: true })).toBeVisible());
+    await expect(page.getByRole("tab", { name: /^硬件库/ })).toBeVisible();
+    await openSettingsAndReturn(page, () => expect(page.getByRole("tab", { name: /^硬件库/ })).toBeVisible());
 
     await page.getByRole("tab", { name: "设备管理" }).click();
     await expect(page.getByRole("heading", { name: "设备管理" })).toBeVisible();

@@ -1,4 +1,8 @@
-"""Advantech PCI-1762: 16 relays + 16 isolated DI, via hwcli_pci1762."""
+"""Advantech PCI-1762: 16 relays + 16 isolated DI, via hwcli_pci1762.
+
+Streams: ``di`` (bits, sampled, published only on change) and ``relay``
+(bits, the coil-control mask published right after every relay write).
+"""
 
 from __future__ import annotations
 
@@ -6,11 +10,11 @@ import os
 from typing import Any
 
 from hardwareharness_device_sdk import (
+    BitsStream,
     Device,
+    DeviceError,
     JsonLineBackend,
-    PanelItem,
     Pinout,
-    SampledStream,
     ServerConfig,
     model,
     param,
@@ -18,7 +22,6 @@ from hardwareharness_device_sdk import (
     unwrap,
 )
 
-from . import panel as panel_items
 from .driver import hwcli
 from .pinout import pinout as build_pinout
 from .sim import SimulatedHwcli
@@ -49,29 +52,32 @@ class Pci1762(Device):
     version = "0.2.0"
     instructions = ("One MCP Server controls exactly one PCI-1762. set_relay/set_bank actuate relays; "
                     "safe_state releases all 16 coils.")
+    description = ("Advantech PCI-1762 PCI card with 16 relay outputs (dry contacts R0..R15, OUT/COM pairs) and 16 "
+                   "isolated digital inputs (IDI0..IDI15, four ECOM groups) on a 62-pin D-sub (CN1). The relay "
+                   "stream is the commanded coil mask, not a contact measurement.")
 
     def __init__(self, config: ServerConfig) -> None:
         super().__init__(config)
         settings = config.settings
-        self.description = str(settings.get("description", os.environ.get("ADVANTECH_PCI1762_DESC",
-                                                                          DEFAULT_DESCRIPTION)))
+        self.board_description = str(settings.get("description", os.environ.get("ADVANTECH_PCI1762_DESC",
+                                                                                DEFAULT_DESCRIPTION)))
         self.cli: JsonLineBackend = self.select_driver(lambda: hwcli(settings), SimulatedHwcli)
-        rate = float(settings.get("bitRateHz", 5))
-        schema = {"type": "integer", "minimum": 0, "maximum": 0xFFFF}
-        self.streams.add(SampledStream("di", label="IDI0..15", rate_hz=rate, sample=lambda: self._sample_bits("DI"),
-                                       value_schema=schema, description="Isolated input bitmap, bit0=IDI0.",
-                                       meta={"bits": CHANNELS}))
-        self.streams.add(SampledStream("relay", label="RELAY0..15 readback", rate_hz=rate,
-                                       sample=lambda: self._sample_bits("RELAY"), value_schema=schema,
-                                       description="Coil control readback bitmap, bit0=RELAY0; not contact continuity.",
-                                       meta={"bits": CHANNELS}))
+        self.mask_command = True
+        self.di = self.streams.add(BitsStream("di", sample=lambda: self._read_mask("DI"), publish_on_change=True,
+                                              rate_hz=float(settings.get("bitRateHz", 20)),
+                                              bit_labels=[f"IDI{bit}" for bit in range(CHANNELS)], kind="measured"))
+        self.relay = self.streams.add(BitsStream("relay", bit_labels=[f"R{bit}" for bit in range(CHANNELS)],
+                                                 label="Relay coil control"))
 
     def _request(self, command: dict[str, Any]) -> Any:
         return unwrap(self.cli.call(command))
 
     # --- lifecycle ----------------------------------------------------
     def open(self) -> Any:
-        return self._request({"cmd": "open", "description": self.description})
+        result = self._request({"cmd": "open", "description": self.board_description})
+        # read_mask reads a whole kind in one round trip; older hwcli builds only know read_bit.
+        self.mask_command = bool(self.cli.call({"cmd": "read_mask", "kind": "DI"}).get("ok"))
+        return result
 
     def close(self) -> Any:
         try:
@@ -79,25 +85,37 @@ class Pci1762(Device):
         finally:
             self.cli.stop()
 
-    def _sample_bits(self, kind: str) -> int:
+    def _read_mask(self, kind: str) -> int:
+        if self.mask_command:
+            return int(self._request({"cmd": "read_mask", "kind": kind})["mask"])
         mask = 0
         for channel in range(CHANNELS):
             if self._request({"cmd": "read_bit", "channel": channel, "kind": kind}).get("value"):
                 mask |= 1 << channel
         return mask
 
+    def _write(self, command: dict[str, Any]) -> Any:
+        """Send a relay write, then publish the coil-control readback so the stream shows the effect at once."""
+        try:
+            return self._request(command)
+        finally:
+            try:
+                self.relay.publish(self._read_mask("RELAY"))
+            except DeviceError:
+                pass  # the write error (if any) is the one that matters
+
     # --- tools --------------------------------------------------------
     @tool(kind="actuate", output=Relay, safety_action="safe_state", effects=("relay_driven",),
           description="Set RELAY0..15; closed=true energizes the coil. Controller feedback does not prove external "
                       "contact continuity or load behavior. Consult pinout for actual OUT/COM wiring and load ratings.")
     def set_relay(self, channel: Channel, closed: Closed) -> Any:
-        return self._request({"cmd": "set_relay", "channel": channel, "closed": closed})
+        return self._write({"cmd": "set_relay", "channel": channel, "closed": closed})
 
     @tool(kind="actuate", output=Mask, safety_action="safe_state", effects=("relay_driven",),
           description="Set all 16 relays from mask bit0=RELAY0. The driver writes separate 8-bit ports, so the whole "
                       "bank is not atomic and a failed write may leave partial changes.")
     def set_bank(self, mask: MaskParam) -> Any:
-        return self._request({"cmd": "set_bank", "mask": mask})
+        return self._write({"cmd": "set_bank", "mask": mask})
 
     @tool(kind="read", output=Bit, evidence="measurement",
           description="Read channel 0..15 as DI or relay-control feedback. kind=RELAY selects coil control; DO is its "
@@ -109,7 +127,7 @@ class Pci1762(Device):
           description="Release all 16 relay coils and check control feedback. This actuates real relays. Failure may "
                       "be partial; all_open describes control state, not a physical continuity measurement.")
     def safe_state(self) -> Any:
-        return self._request({"cmd": "safe_state"})
+        return self._write({"cmd": "safe_state"})
 
     # --- declarations -------------------------------------------------
     def capability_details(self) -> dict[str, Any]:
@@ -118,6 +136,3 @@ class Pci1762(Device):
 
     def pinout(self) -> Pinout:
         return build_pinout(self.hardware_id)
-
-    def panel(self) -> list[PanelItem]:
-        return panel_items.items(self.hardware_id)

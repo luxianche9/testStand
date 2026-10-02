@@ -54,6 +54,11 @@ export function ImageViewer({ src, title, open, onOpenChange }: {
             <IconButton label="复位" size="icon-sm" onClick={reset}><ScanIcon /></IconButton>
           </span>
         )}
+        // Focus the viewer, not its first button: a focused button shows its tooltip, which would take the first Esc.
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          (event.target as HTMLElement).focus();
+        }}
         onKeyDown={(event) => {
           if (event.key === "+" || event.key === "=") zoom(1.25);
           else if (event.key === "-") zoom(1 / 1.25);

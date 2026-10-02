@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from "@playwright/test";
+import { reloadAfterLeave, rendererReady } from "./renderer.js";
 
 const desktopDir = resolve(import.meta.dirname, "..");
 
@@ -29,7 +30,7 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
       env,
       timeout: 90_000
     });
-    page = await application.firstWindow({ timeout: 90_000 });
+    page = await rendererReady(await application.firstWindow({ timeout: 90_000 }));
     page.setDefaultTimeout(30_000);
     await application.evaluate(({ BrowserWindow }) => {
       const window = BrowserWindow.getAllWindows()[0]!;
@@ -57,7 +58,7 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
     await writeFile(join(userData, "devices/hardware/DUT_A/appearance.png"), Buffer.from(
       "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZQMcAAAAASUVORK5CYII=", "base64"
     ));
-    await page.reload();
+    await reloadAfterLeave(page);
     await page.getByText("interaction-fixture", { exact: true }).first().click();
     await expect(page.locator('[data-hardware-id="DUT_A"]')).toBeVisible();
   });
@@ -106,11 +107,13 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
     expect(afterMove).toMatchObject({ width: 220, height: 140, portPositions: afterPort.portPositions });
     await expect(wrapper).toHaveCSS("width", "220px");
     await expect(wrapper).toHaveCSS("height", "140px");
-    await page.evaluate(async () => {
+    const rootPath = await page.evaluate(async () => {
       const current = (await window.hardwareharness.projects.current())!;
       await window.hardwareharness.projects.leave();
-      await window.hardwareharness.projects.openFolder(current.rootPath);
+      return current.rootPath;
     });
+    await expect(page.getByRole("heading", { name: "最近项目" })).toBeVisible();
+    await page.evaluate((root) => window.hardwareharness.projects.openFolder(root), rootPath);
     await page.reload();
     await page.getByText("interaction-fixture", { exact: true }).first().click();
     await expect(page.getByRole("tab", { name: "工位接线", exact: true })).toBeVisible();
@@ -119,7 +122,7 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
 
   test("restores each panel width after navigating and reloading", async () => {
     const panels = [
-      { tab: "工位接线", label: "调整硬件库宽度" },
+      { tab: "工位接线", label: "调整侧栏宽度" },
       { tab: "设备管理", label: "拖拽调整面板宽度" }
     ];
     const widths: number[] = [];
@@ -275,7 +278,7 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
       env,
       timeout: 90_000
     });
-    page = await application.firstWindow({ timeout: 90_000 });
+    page = await rendererReady(await application.firstWindow({ timeout: 90_000 }));
     // Windows display scaling can round logical window dimensions by one pixel.
     await expect.poll(async () => {
       const actual = await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.getSize());
@@ -286,7 +289,7 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
     await expect(page.getByRole("tab", { name: "工位接线", exact: true })).toBeVisible();
     expect(await readNode(page, "DUT_A")).toEqual(node);
     await page.getByRole("tab", { name: "工位接线", exact: true }).click();
-    const separator = page.getByRole("separator", { name: "调整硬件库宽度", exact: true });
+    const separator = page.getByRole("separator", { name: "调整侧栏宽度", exact: true });
     await expect.poll(() => separator.evaluate((element) => parseFloat((element.parentElement as HTMLElement).style.gridTemplateColumns))).toBe(Number(savedWidths["hardwareharness.wiring-library-width"]));
   });
 });

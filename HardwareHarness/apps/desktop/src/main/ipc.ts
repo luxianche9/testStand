@@ -1,29 +1,13 @@
-import { initTRPC } from "@trpc/server";
-import { observable } from "@trpc/server/observable";
-import { z } from "zod";
+import { ipcMain, type IpcMainInvokeEvent } from "electron";
+import { z, ZodError } from "zod";
 import { agentKindSchema } from "@hardwareharness/contracts/agents";
-import { DESKTOP_OPERATIONS } from "@hardwareharness/contracts/application";
 import type { HardwareHarnessAgentsApi, HardwareHarnessSettingsApi } from "@hardwareharness/contracts/desktop";
-import { deviceBundleKindSchema, hardwareImageTargetSchema, type DeviceBundleExport, type DeviceBundleKind } from "@hardwareharness/contracts/devices";
-import { toWireError } from "@hardwareharness/contracts/errors";
+import { deviceBundleKindSchema } from "@hardwareharness/contracts/devices";
+import { appError, toWireError } from "@hardwareharness/contracts/errors";
 import { llmSettingsInputSchema, projectViewSchema, themeChoiceSchema, welcomeLayoutSchema } from "@hardwareharness/contracts/storage";
-import { DESKTOP_HUMAN_CONTEXT as HUMAN_REQUEST_CONTEXT, invokeOperation, type PythonApplication } from "./python-application.js";
-import { hardwareHarnessTransformer } from "../shared/trpc-transformer.js";
-import type { DesktopEventListener } from "./desktop-events.js";
-
-interface DesktopDialogsPort {
-  exportText(defaultPath: string, content: string): Promise<string | null>;
-  chooseHardwareImage(): Promise<string | null>;
-  saveBundle(kind: DeviceBundleKind, id: string, data: Uint8Array): Promise<DeviceBundleExport | null>;
-  openBundle(kind: DeviceBundleKind): Promise<Uint8Array | null>;
-  chooseProjectFolder(): Promise<string | null>;
-}
-
-type DesktopEventName = "availability" | "execution" | "wiringTask" | "workspace" | "application" | "project" | "testPlan" | "testRun" | "testBatch" | "opencode" | "window-state";
+import { DESKTOP_CALL_CHANNEL, type DesktopDialogsPort, type DesktopMainChannel, type DesktopReply, type LocalApiEndpoint } from "../shared/desktop-ipc.js";
 
 interface DesktopWindowPort {
-  publish(event: DesktopEventName, payload: unknown): void;
-  subscribe(event: DesktopEventName, listener: DesktopEventListener): () => void;
   minimize(): void;
   toggleMaximize(): void;
   close(): void;
@@ -31,118 +15,82 @@ interface DesktopWindowPort {
 }
 
 export interface DesktopIpcDependencies {
-  application: PythonApplication;
+  endpoint(): LocalApiEndpoint;
   agents: HardwareHarnessAgentsApi;
   settings: HardwareHarnessSettingsApi;
   dialogs: DesktopDialogsPort;
   windows: DesktopWindowPort;
 }
 
-const trpc = initTRPC.create({
-  transformer: hardwareHarnessTransformer,
-  errorFormatter({ shape, error }) {
-    const wire = toWireError(error.cause ?? error);
-    const category = error.code === "BAD_REQUEST" && wire.category === "error" ? "invalid_argument" : wire.category;
-    return {
-      ...shape,
-      data: {
-        ...shape.data,
-        category,
-        ...(wire.details === undefined ? {} : { details: wire.details })
-      }
-    };
-  }
-});
+interface Handler { args: z.ZodTypeAny; run(...args: never[]): unknown }
+export type DesktopMainHandlers = { [K in DesktopMainChannel]: Handler };
 
-const emptyInput = z.void().optional();
-const eventNameSchema = z.enum(["availability", "execution", "wiringTask", "workspace", "application", "project", "testPlan", "testRun", "testBatch", "opencode", "window-state"]);
-
-export function createDesktopRouter(dependencies: DesktopIpcDependencies) {
-  const { application, agents, settings, dialogs, windows } = dependencies;
-
-  return trpc.router({
-    /** Every Python `@operation`; argument validation belongs to the Python registry. */
-    invoke: trpc.procedure.input(z.object({ operation: z.enum(DESKTOP_OPERATIONS), args: z.array(z.unknown()) }).strict())
-      .mutation(async ({ input }) => {
-        const result = await invokeOperation(application, input.operation, input.args.map(withoutUndefinedMembers));
-        if (input.operation === "wiring.updateDocument") windows.publish("project", result);
-        return result;
-      }),
-    system: trpc.router({
-      exportText: trpc.procedure.input(z.object({ defaultPath: z.string().min(1), content: z.string() }).strict())
-        .mutation(({ input }) => dialogs.exportText(input.defaultPath, input.content))
-    }),
-    devices: trpc.router({
-      importHardwareImage: trpc.procedure.input(hardwareImageTargetSchema).mutation(async ({ input }) => {
-        const path = await dialogs.chooseHardwareImage();
-        return path ? await application.devices.setHardwareImageFromPath(HUMAN_REQUEST_CONTEXT, input.hardwareId, input.portId, path) : null;
-      }),
-      exportBundle: trpc.procedure.input(z.object({ kind: deviceBundleKindSchema, id: z.string().min(1) }).strict()).mutation(async ({ input }) => {
-        const data = await application.devices.exportBundle(HUMAN_REQUEST_CONTEXT, input.id);
-        return await dialogs.saveBundle(input.kind, input.id, data);
-      }),
-      importBundle: trpc.procedure.input(z.object({ kind: deviceBundleKindSchema }).strict()).mutation(async ({ input }) => {
-        const data = await dialogs.openBundle(input.kind);
-        return data ? { kind: input.kind, ...await application.devices.importBundle(HUMAN_REQUEST_CONTEXT, data) } : null;
-      }),
-      previewBundle: trpc.procedure.input(z.object({ kind: deviceBundleKindSchema }).strict()).mutation(async ({ input }) => {
-        const data = await dialogs.openBundle(input.kind);
-        return data ? { kind: input.kind, hardware: await application.devices.inspectBundle(HUMAN_REQUEST_CONTEXT, data), data } : null;
-      })
-    }),
-    projects: trpc.router({
-      chooseFolder: trpc.procedure.input(emptyInput).mutation(async () => {
-        const rootPath = await dialogs.chooseProjectFolder();
-        return rootPath ? await application.projects.inspectFolder(HUMAN_REQUEST_CONTEXT, rootPath) : null;
-      })
-    }),
-    agents: trpc.router({
-      rotateGatewayToken: trpc.procedure.input(emptyInput).mutation(() => agents.rotateGatewayToken()),
-      status: trpc.procedure.input(z.object({ agent: agentKindSchema }).strict()).query(({ input }) => agents.status(input.agent)),
-      preview: trpc.procedure.input(z.object({ agent: agentKindSchema }).strict()).query(({ input }) => agents.preview(input.agent)),
-      install: trpc.procedure.input(z.object({ agent: agentKindSchema }).strict()).mutation(({ input }) => agents.install(input.agent)),
-      remove: trpc.procedure.input(z.object({ agent: agentKindSchema }).strict()).mutation(({ input }) => agents.remove(input.agent)),
-      test: trpc.procedure.input(z.object({ agent: agentKindSchema }).strict()).mutation(({ input }) => agents.test(input.agent)),
-      listTools: trpc.procedure.input(emptyInput).query(() => agents.listTools()),
-      openCodeStatus: trpc.procedure.input(emptyInput).query(() => agents.openCodeStatus()),
-      startOpenCode: trpc.procedure.input(emptyInput).mutation(() => agents.startOpenCode()),
-      stopOpenCode: trpc.procedure.input(emptyInput).mutation(() => agents.stopOpenCode()),
-      restartOpenCode: trpc.procedure.input(emptyInput).mutation(() => agents.restartOpenCode())
-    }),
-    settings: trpc.router({
-      getTheme: trpc.procedure.input(emptyInput).query(() => settings.getTheme()),
-      setTheme: trpc.procedure.input(z.object({ theme: themeChoiceSchema }).strict()).mutation(async ({ input }) => {
-        await settings.setTheme(input.theme);
-        windows.applyTheme(input.theme);
-      }),
-      getProjectView: trpc.procedure.input(emptyInput).query(() => settings.getProjectView()),
-      setProjectView: trpc.procedure.input(z.object({ view: projectViewSchema }).strict()).mutation(({ input }) => settings.setProjectView(input.view)),
-      getWelcomeLayout: trpc.procedure.input(emptyInput).query(() => settings.getWelcomeLayout()),
-      setWelcomeLayout: trpc.procedure.input(z.object({ layout: welcomeLayoutSchema }).strict()).mutation(({ input }) => settings.setWelcomeLayout(input.layout)),
-      getLlm: trpc.procedure.input(emptyInput).query(() => settings.getLlm()),
-      saveLlm: trpc.procedure.input(llmSettingsInputSchema).mutation(({ input }) => settings.saveLlm(input))
-    }),
-    window: trpc.router({
-      minimize: trpc.procedure.input(emptyInput).mutation(() => windows.minimize()),
-      toggleMaximize: trpc.procedure.input(emptyInput).mutation(() => windows.toggleMaximize()),
-      close: trpc.procedure.input(emptyInput).mutation(() => windows.close())
-    }),
-    events: trpc.router({
-      subscribe: trpc.procedure.input(z.object({ event: eventNameSchema }).strict()).subscription(({ input }) => observable<unknown>((emit) => {
-        const unsubscribe = windows.subscribe(input.event, (payload) => emit.next(payload));
-        return unsubscribe;
-      }))
-    })
-  });
+function handler<S extends z.ZodTypeAny>(args: S, run: (...values: z.infer<S> & unknown[]) => unknown): Handler {
+  return { args, run: run as Handler["run"] };
 }
 
-export type AppRouter = ReturnType<typeof createDesktopRouter>;
+const none = z.tuple([]);
+const agent = z.tuple([agentKindSchema]);
 
-/** Drop `undefined` object members so desktop calls reach Python with JSON semantics, as MCP calls do. */
-function withoutUndefinedMembers(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(withoutUndefinedMembers);
-  if (value === null || typeof value !== "object") return value;
-  const prototype: unknown = Object.getPrototypeOf(value);
-  if (prototype !== Object.prototype && prototype !== null) return value;
-  return Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined).map(([key, item]) => [key, withoutUndefinedMembers(item)]));
+/** Every main-process call with its argument schema; Python operations never pass through main. */
+export function createMainHandlers(dependencies: DesktopIpcDependencies): DesktopMainHandlers {
+  const { agents, settings, dialogs, windows } = dependencies;
+  return {
+    "desktop.endpoint": handler(none, () => dependencies.endpoint()),
+    "dialogs.exportText": handler(z.tuple([z.string().min(1), z.string()]), (path, content) => dialogs.exportText(path, content)),
+    "dialogs.chooseHardwareImage": handler(none, () => dialogs.chooseHardwareImage()),
+    "dialogs.saveBundle": handler(
+      z.tuple([deviceBundleKindSchema, z.string().min(1), z.instanceof(Uint8Array)]),
+      (kind, id, data) => dialogs.saveBundle(kind, id, data)
+    ),
+    "dialogs.openBundle": handler(z.tuple([deviceBundleKindSchema]), (kind) => dialogs.openBundle(kind)),
+    "dialogs.chooseProjectFolder": handler(none, () => dialogs.chooseProjectFolder()),
+    "agents.rotateGatewayToken": handler(none, () => agents.rotateGatewayToken()),
+    "agents.status": handler(agent, (kind) => agents.status(kind)),
+    "agents.preview": handler(agent, (kind) => agents.preview(kind)),
+    "agents.install": handler(agent, (kind) => agents.install(kind)),
+    "agents.remove": handler(agent, (kind) => agents.remove(kind)),
+    "agents.test": handler(agent, (kind) => agents.test(kind)),
+    "agents.listTools": handler(none, () => agents.listTools()),
+    "agents.openCodeStatus": handler(none, () => agents.openCodeStatus()),
+    "agents.startOpenCode": handler(none, () => agents.startOpenCode()),
+    "agents.stopOpenCode": handler(none, () => agents.stopOpenCode()),
+    "agents.restartOpenCode": handler(none, () => agents.restartOpenCode()),
+    "settings.getTheme": handler(none, () => settings.getTheme()),
+    "settings.setTheme": handler(z.tuple([themeChoiceSchema]), async (theme) => {
+      await settings.setTheme(theme);
+      windows.applyTheme(theme);
+    }),
+    "settings.getProjectView": handler(none, () => settings.getProjectView()),
+    "settings.setProjectView": handler(z.tuple([projectViewSchema]), (view) => settings.setProjectView(view)),
+    "settings.getWelcomeLayout": handler(none, () => settings.getWelcomeLayout()),
+    "settings.setWelcomeLayout": handler(z.tuple([welcomeLayoutSchema]), (layout) => settings.setWelcomeLayout(layout)),
+    "settings.getLlm": handler(none, () => settings.getLlm()),
+    "settings.saveLlm": handler(z.tuple([llmSettingsInputSchema]), (input) => settings.saveLlm(input)),
+    "window.minimize": handler(none, () => windows.minimize()),
+    "window.toggleMaximize": handler(none, () => windows.toggleMaximize()),
+    "window.close": handler(none, () => windows.close())
+  };
+}
+
+/** Validate and run one call; failures come back as a wire error, never as a thrown IPC error. */
+export async function dispatchMainCall(handlers: DesktopMainHandlers, channel: unknown, args: unknown): Promise<DesktopReply> {
+  try {
+    const handler = typeof channel === "string" && Object.hasOwn(handlers, channel) ? handlers[channel as DesktopMainChannel] : undefined;
+    if (!handler) throw appError("invalid_argument", `Unknown desktop call: ${String(channel)}`);
+    const parsed = handler.args.parse(args) as never[];
+    return { ok: true, value: await handler.run(...parsed) };
+  } catch (error) {
+    if (error instanceof ZodError) return { ok: false, error: { category: "invalid_argument", message: error.message, details: error.issues } };
+    return { ok: false, error: toWireError(error) };
+  }
+}
+
+/** Accept calls only from the main window's own frame. */
+export function registerDesktopIpc(handlers: DesktopMainHandlers, trusted: (event: IpcMainInvokeEvent) => boolean): () => void {
+  ipcMain.handle(DESKTOP_CALL_CHANNEL, (event, channel: unknown, args: unknown) => {
+    if (!trusted(event)) return { ok: false, error: { category: "permission_denied", message: "Untrusted sender" } } satisfies DesktopReply;
+    return dispatchMainCall(handlers, channel, args);
+  });
+  return () => ipcMain.removeHandler(DESKTOP_CALL_CHANNEL);
 }

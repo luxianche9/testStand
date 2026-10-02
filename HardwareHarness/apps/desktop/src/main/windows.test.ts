@@ -15,6 +15,9 @@ vi.mock("electron", () => ({
     const windowHandlers = new Map<string, (...args: unknown[]) => void>();
     const webContents = {
       setWindowOpenHandler: vi.fn(),
+      send: vi.fn(),
+      isDestroyed: vi.fn(() => false),
+      mainFrame: { name: "top" },
       on: vi.fn((event: string, handler: (...args: unknown[]) => void) => webHandlers.set(event, handler)),
       session: {
         setPermissionRequestHandler: vi.fn(),
@@ -55,6 +58,8 @@ interface MockWindow {
   maximize: ReturnType<typeof vi.fn>;
   webContents: {
     setWindowOpenHandler: ReturnType<typeof vi.fn>;
+    send: ReturnType<typeof vi.fn>;
+    mainFrame: object;
     session: {
       setPermissionRequestHandler: ReturnType<typeof vi.fn>;
       webRequest: { onBeforeSendHeaders: ReturnType<typeof vi.fn> };
@@ -105,6 +110,21 @@ describe("DesktopWindows security", () => {
 
     expect(electron.nativeTheme.themeSource).toBe("dark");
     expect(window.loadURL).toHaveBeenCalledWith("http://127.0.0.1:4173/");
+  });
+
+  it("sends main-process events to the window and trusts only its top frame", () => {
+    const windows = new DesktopWindows();
+    windows.create({ theme: "light", connectionInfo: () => undefined });
+    const window = electron.created[0] as MockWindow;
+
+    window.isMaximized.mockReturnValue(true);
+    window.windowHandlers.get("maximize")?.();
+    expect(window.webContents.send).toHaveBeenCalledWith("hardwareharness:event", { event: "window-state", payload: { maximized: true } });
+
+    const sender = window.webContents as never;
+    expect(windows.isTrustedSender(sender, window.webContents.mainFrame as never)).toBe(true);
+    expect(windows.isTrustedSender(sender, {} as never)).toBe(false);
+    expect(windows.isTrustedSender({} as never, window.webContents.mainFrame as never)).toBe(false);
   });
 
   it("restores normal window dimensions and maximization across instances", () => {

@@ -38,6 +38,13 @@ export function BatchFooter({ batch, selectedCount, stopOnFail, busy, onStopOnFa
   );
 }
 
+/** " · station=2" for an item that runs on one station of a multi-station batch (design §7.6). */
+export function stationLabel(station: Record<string, unknown> | undefined): string {
+  if (!station) return "";
+  const parts = Object.entries(station).map(([name, value]) => `${name}=${String(value)}`);
+  return parts.length ? ` · ${parts.join(", ")}` : "";
+}
+
 function BatchProgress({ batch, onAbort }: { batch: TestBatch; onAbort: () => void }) {
   const done = batch.items.filter((item) => item.state === "done" || item.state === "skipped").length;
   const total = batch.items.length;
@@ -46,7 +53,9 @@ function BatchProgress({ batch, onAbort }: { batch: TestBatch; onAbort: () => vo
     <div className="grid gap-1.5">
       <div className="flex items-center gap-2 text-xs">
         <span className="size-1.5 animate-lamp rounded-full bg-run" />
-        <span className="min-w-0 flex-1 truncate text-fg-2">{current ? current.planName : "批量运行中"}</span>
+        <span className="min-w-0 flex-1 truncate text-fg-2">
+          {current ? current.planName + stationLabel(current.station) : "批量运行中"}
+        </span>
         <span className="tf-num text-2xs text-fg-3">{done}/{total}</span>
       </div>
       <div

@@ -115,7 +115,8 @@ async def test_one_server_index(tmp_path: Path) -> None:
         await store.save_hardware(hardware(identifier))
     with patch.object(store, "_read_all", wraps=store._read_all) as read_all:
         assert len(store.list_hardware()) == 3
-        assert read_all.call_count == 3
+        # One scan per record kind; the adapter release records are the fourth.
+        assert read_all.call_count == 4
 
 
 @pytest.mark.ts_case(PREFIX + "enforces one server per hardware and deletion rules")

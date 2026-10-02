@@ -138,4 +138,4 @@ export function useWiringDocument() {
   };
 }
 
-export type WiringEdits = ReturnType<typeof useWiringDocument>["edits"];
+type WiringEdits = ReturnType<typeof useWiringDocument>["edits"];

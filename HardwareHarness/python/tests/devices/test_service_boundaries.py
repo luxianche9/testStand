@@ -134,6 +134,7 @@ async def test_computer_probe_status_logs_timeout_clamp_and_remove_cache() -> No
     assert await service.read_server_logs("S", 99999) == {
         "lines": ["first", "last"],
         "truncated": True,
+        "path": "/logs",
     }
     assert "2000" in service.ssh.execute.call_args.args[1]
     service._hardware = [{"hardwareId": "H", "serverId": "S"}, {"hardwareId": "X", "serverId": "T"}]

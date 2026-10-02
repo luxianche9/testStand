@@ -50,10 +50,12 @@ export const CAPABILITIES = [
   "devices.manageServers",
   "devices.controlServers",
   "devices.forceStopServers",
+  "devices.deploy",
   "devices.ssh",
   "hardware.read",
   "hardware.manage",
   "hardware.executeTools",
+  "hardware.releaseAdapters",
   "projects.read",
   "projects.manage",
   "wiring.read",
@@ -64,6 +66,7 @@ export const CAPABILITIES = [
   "testing.read",
   "testing.manage",
   "testing.execute",
+  "testing.judge",
 ] as const;
 
 export type Capability = typeof CAPABILITIES[number];
@@ -73,6 +76,22 @@ export interface RequestContext {
   source: "desktop" | "mcp" | "internal";
   requestId?: string;
   subjectId?: string;
+}
+
+/** An Agent's high-risk operation waiting for the operator (design doc 8.4). */
+export interface AgentConfirmation {
+  confirmationId: string;
+  operation: string;
+  summary: string;
+  risk: "read" | "write" | "actuate" | "destructive";
+  arguments: Record<string, unknown>;
+  actor?: RequestActor | null;
+  subjectId?: string | null;
+  requestedAt: string;
+}
+export interface AgentConfirmationAnswer {
+  confirmationId: string;
+  approved: boolean;
 }
 
 export type OpenCodeRuntimeState = "stopped" | "starting" | "running" | "stopping" | "error";

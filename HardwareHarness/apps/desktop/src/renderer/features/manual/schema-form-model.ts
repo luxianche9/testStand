@@ -1,6 +1,5 @@
 export type JsonSchema = Record<string, unknown>;
 
-export { validateSchemaArguments } from "./schema-validation.js";
 
 const UNSUPPORTED_OBJECT_KEYS = [
   "patternProperties",

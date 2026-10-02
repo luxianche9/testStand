@@ -6,6 +6,7 @@ import { act, cleanup, render, screen, waitFor, within } from "@testing-library/
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { onRunRequested } from "../../lib/run-focus.js";
 import { TestPlanPage } from "./TestPlanPage.js";
 import { installTestingApi, makeItem, makePlan, makeSummary } from "./testing-api.fixture.js";
 
@@ -29,6 +30,8 @@ afterEach(() => {
 
 describe("TestPlanPage", () => {
   it("adds a catalog step once, saves, validates and starts the saved revision", async () => {
+    const requested = vi.fn();
+    const stop = onRunRequested(requested);
     render(<TestPlanPage />, { wrapper: Wrapper });
     await screen.findByDisplayValue(plan.name);
     await userEvent.click(screen.getByRole("tab", { name: "组件库" }));
@@ -42,6 +45,9 @@ describe("TestPlanPage", () => {
     await waitFor(() => expect(api.testing.startRun).toHaveBeenCalledWith(expect.objectContaining({
       planId: "plan", revision: 1, executionRevision: "exec", requestId: "request-id", parameters: {}
     })));
+    // The started run opens in 运行监控.
+    await waitFor(() => expect(requested).toHaveBeenCalledWith("run"));
+    stop();
   });
 
   it("protects a dirty draft when an AI plan revision arrives", async () => {

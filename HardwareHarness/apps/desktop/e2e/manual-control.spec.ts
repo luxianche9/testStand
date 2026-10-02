@@ -5,6 +5,7 @@ import { _electron as electron, expect, test, type ElectronApplication, type Pag
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { startHardwareMcpFixture, type HardwareMcpFixture } from "./fixtures/hardware-mcp.js";
+import { reloadAfterLeave, rendererReady } from "./renderer.js";
 
 const desktopDir = resolve(import.meta.dirname, "..");
 const gatewayPort = 18086;
@@ -48,7 +49,7 @@ test.describe.serial("manual control and Agent hardware calls", () => {
       await window.hardwareharness.projects.save();
       await window.hardwareharness.projects.leave();
     }, { projectRoot, fixtureUrl: fixture.url, token: fixture.token });
-    await page.reload();
+    await reloadAfterLeave(page);
     await page.getByText("manual-control-project", { exact: true }).first().click();
     await page.getByRole("tab", { name: "设备管理" }).click();
 
@@ -79,10 +80,13 @@ test.describe.serial("manual control and Agent hardware calls", () => {
     try {
       const { tools } = await client.listTools();
       expect(tools.some((tool) => tool.name.includes("occupancy"))).toBe(false);
+      // Device tools are listed but callable only after the session enables their hardware.
+      const enabled = await client.callTool({ name: "enable_device_tools", arguments: { hardwareId: "E2E_CARD" } });
+      expect(enabled.isError, JSON.stringify(enabled.content)).not.toBe(true);
       const result = await client.callTool({ name: "E2E_MCP__write_voltage", arguments: {
         hardwareId: "E2E_CARD", voltage: 1.5, mode: "dc", options: { enabled: true }, tags: ["agent"]
       } });
-      expect(result.isError).not.toBe(true);
+      expect(result.isError, JSON.stringify(result.content)).not.toBe(true);
       expect(fixture.calls.at(-1)).toMatchObject({ name: "write_voltage", arguments: { voltage: 1.5 } });
     } finally {
       await transport.close();
@@ -101,7 +105,7 @@ async function launch(userDataDir: string): Promise<{ application: ElectronAppli
   };
   delete env.ELECTRON_RUN_AS_NODE;
   const application = await electron.launch({ args: [desktopDir], cwd: desktopDir, env, timeout: 90_000 });
-  const page = await application.firstWindow({ timeout: 90_000 });
+  const page = await rendererReady(await application.firstWindow({ timeout: 90_000 }));
   page.setDefaultTimeout(30_000);
   return { application, page };
 }

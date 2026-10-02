@@ -13,6 +13,7 @@ import { RemoteComputerTree } from "./RemoteComputerTree.js";
 import { ComputerEditor } from "./editors/ComputerEditor.js";
 import { HardwareEditor } from "./editors/HardwareEditor.js";
 import { ServerEditor } from "./editors/ServerEditor.js";
+import { AddServerByUrlDialog } from "./editors/ServiceDialogs.js";
 
 type ServerEditorState = { open: boolean; server?: McpServerConfig; computerId?: string };
 
@@ -25,6 +26,7 @@ export function DevicesPage() {
   const [computerEditor, setComputerEditor] = useState<{ open: boolean; computer?: RemoteComputer }>({ open: false });
   const [serverEditor, setServerEditor] = useState<ServerEditorState>({ open: false });
   const [hardwareEditor, setHardwareEditor] = useState<{ open: boolean; hardware?: Hardware }>({ open: false });
+  const [addByUrlOpen, setAddByUrlOpen] = useState(false);
   const sidebar = useResizableWidth({
     storageKey: "hardwareharness.devices-sidebar-width",
     defaultWidth: 320,
@@ -108,6 +110,7 @@ export function DevicesPage() {
                 onSelect={setSelected}
                 onToggle={toggle}
                 onAddComputer={() => setComputerEditor({ open: true })}
+                onAddByUrl={() => setAddByUrlOpen(true)}
               />
               <HardwareListTree
                 hardware={hardware}
@@ -141,7 +144,8 @@ export function DevicesPage() {
             onSelect={setSelected}
             onEditComputer={(computer) => setComputerEditor({ open: true, computer })}
             onAddServer={(computerId) => setServerEditor({ open: true, computerId })}
-            onEditServer={(server) => setServerEditor({ open: true, server, computerId: server.computerId })}
+            onEditServer={(server) =>
+              setServerEditor({ open: true, server, ...(server.computerId ? { computerId: server.computerId } : {}) })}
             onEditHardware={(item) => setHardwareEditor({ open: true, hardware: item })}
             onChanged={refreshAll}
           />
@@ -161,6 +165,11 @@ export function DevicesPage() {
         hardware={hardware}
         onClose={() => setServerEditor({ open: false })}
         onChanged={refreshAll}
+      />
+      <AddServerByUrlDialog
+        open={addByUrlOpen}
+        onClose={() => setAddByUrlOpen(false)}
+        onAdded={async (serverId) => { await refreshAll(); setSelected(`s:${serverId}`); }}
       />
       <HardwareEditor
         open={hardwareEditor.open}

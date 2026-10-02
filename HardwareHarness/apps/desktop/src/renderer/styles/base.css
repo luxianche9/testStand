@@ -16,13 +16,12 @@
     font-family: var(--tf-font-sans);
     font-size: 13px;
     line-height: 1.5;
-    font-feature-settings: "ss01" on, "cv11" on;
     color: var(--tf-fg);
     background: var(--tf-surface-0);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
-  h1, h2, h3, h4 { margin: 0; font-weight: 600; letter-spacing: -0.01em; text-wrap: balance; }
+  h1, h2, h3, h4 { margin: 0; font-weight: 600; text-wrap: balance; }
   p, figure, blockquote, dl, dd { margin: 0; }
   ul, ol { margin: 0; padding: 0; list-style: none; }
   button { font: inherit; padding: 0; cursor: pointer; }
@@ -39,9 +38,9 @@
   ::-webkit-scrollbar { width: 10px; height: 10px; }
   ::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
   ::-webkit-scrollbar-thumb {
-    border: 3px solid transparent;
-    border-radius: 5px;
-    background: color-mix(in oklch, var(--tf-fg) 20%, transparent);
+    border: 2px solid transparent;
+    border-radius: 0;
+    background: color-mix(in oklch, var(--tf-fg) 22%, transparent);
     background-clip: padding-box;
   }
   ::-webkit-scrollbar-thumb:hover {
@@ -60,15 +59,12 @@
 }
 
 @layer components {
-  /* Instrument nameplate: small uppercase mono label used by panel headers. */
+  /* Panel and section heading. */
   .tf-label {
-    font-family: var(--tf-font-mono);
-    font-size: 11px;
-    font-weight: 500;
+    font-size: 12px;
+    font-weight: 600;
     line-height: 16px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--tf-fg-3);
+    color: var(--tf-fg-2);
   }
   .tf-num { font-family: var(--tf-font-mono); font-variant-numeric: tabular-nums; }
   .tf-drag { -webkit-app-region: drag; }
@@ -76,5 +72,4 @@
 }
 
 body.resizing-col { cursor: col-resize; user-select: none; }
-body.resizing-row { cursor: row-resize; user-select: none; }
 body.resizing-row { cursor: row-resize; user-select: none; }

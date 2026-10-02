@@ -127,7 +127,7 @@ export function ItemList({
 }
 
 /** `12 PASS · 1 FAIL · 3 未测` for the current unit. */
-export function SummaryLine({ items }: { items: TestItemStatus[] }) {
+function SummaryLine({ items }: { items: TestItemStatus[] }) {
   const segments = summarySegments(summarizeItems(items));
   return (
     <span data-testid="item-summary" className="tf-num min-w-0 truncate font-mono whitespace-pre">

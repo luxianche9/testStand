@@ -20,8 +20,8 @@ export const buttonVariants = cva(
           "disabled:bg-surface-3 disabled:text-fg-2"
         ],
         secondary: [
-          "border border-line-strong bg-surface-2 text-fg",
-          "hover:bg-surface-3 active:bg-surface-3/80"
+          "border border-line-strong bg-surface-1 text-fg",
+          "hover:bg-surface-2 active:bg-surface-3"
         ],
         outline: "border border-line-strong text-fg hover:bg-surface-2",
         ghost: "text-fg-2 hover:bg-surface-2 hover:text-fg aria-pressed:bg-surface-2 aria-pressed:text-fg",

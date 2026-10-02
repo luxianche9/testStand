@@ -2,8 +2,7 @@ import { app, Menu } from "electron";
 import { join } from "node:path";
 import { createDesktopComposition } from "./composition.js";
 import { DesktopDialogs } from "./dialogs.js";
-import { createElectronTrpcV11Handler } from "./electron-trpc-v11.js";
-import { createDesktopRouter } from "./ipc.js";
+import { createMainHandlers, registerDesktopIpc } from "./ipc.js";
 import { registerAssetProtocol } from "./protocols.js";
 import { DesktopWindows } from "./windows.js";
 import { logger } from "./logger.js";
@@ -15,20 +14,19 @@ export async function startDesktop(): Promise<void> {
   const dialogs = new DesktopDialogs(() => windows.current());
 
   registerAssetProtocol(composition.resolveImagePath);
-  const router = createDesktopRouter({
-    application: composition.application,
+  registerDesktopIpc(createMainHandlers({
+    endpoint: () => composition.endpoint,
     agents: composition.agents,
     settings: composition.settings,
     dialogs,
     windows
-  });
-  const window = windows.create({
+  }), (event) => windows.isTrustedSender(event.sender, event.senderFrame));
+  windows.create({
     statePath: join(app.getPath("userData"), "window-state.json"),
     theme: composition.theme(),
     ...(process.env.ELECTRON_RENDERER_URL ? { rendererUrl: process.env.ELECTRON_RENDERER_URL } : {}),
     connectionInfo: composition.connectionInfo
   });
-  createElectronTrpcV11Handler({ router, windows: [window] });
 
   const probe = async () => windows.publish("availability", await composition.probeAvailability());
   void probe();

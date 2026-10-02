@@ -28,21 +28,18 @@ try {
     UV_OFFLINE: "1", UV_CACHE_DIR: join(root, "empty-cache"), UV_PYTHON_DOWNLOADS: "never",
     PYTHONUTF8: "1"
   });
-  child = spawn(join(backend, "hardwareharness-backend.exe"), [], {
-    cwd: root, env, windowsHide: true, stdio: ["pipe", "pipe", "pipe"]
-  });
+  env.HARDWAREHARNESS_GATEWAY_TEST_TOKEN = token;
+  child = spawn(join(backend, "hardwareharness-backend.exe"), [
+    "--user-data", join(root, "profile"), "--gateway-port", "0", "--integration-test-mode"
+  ], { cwd: root, env, windowsHide: true, stdio: ["pipe", "pipe", "pipe"] });
   console.log(`Frozen smoke: relocated backend PID ${child.pid} at ${root}`);
-  host = createDesktopHost(child);
-  await host.call("backend.initialize", {
-    userData: join(root, "profile"), gatewayPort: 0, locale: "zh-CN",
-    integrationTestMode: true, gatewayTestToken: token
-  });
-  console.log("Frozen smoke: backend initialized; opening isolated project");
-  const human = { actor: "human", source: "desktop" };
-  await host.call("application.projects.initializeFolder", { args: [human, project] });
+  host = await connectDesktopHost(child);
+  console.log("Frozen smoke: backend listening; opening isolated project");
+  await host.invoke("projects.initializeFolder", { rootPath: project });
   console.log("Frozen smoke: project ready; checking public MCP interface");
-  report = await verifyAgentInterface(host.state().gateway.endpoint, token);
-  await host.call("backend.shutdown");
+  const state = await host.host("desktop.state");
+  report = await verifyAgentInterface(state.gateway.endpoint, token);
+  // Closing stdin is the shutdown signal.
   child.stdin.end();
   const code = await host.exited;
   assert.equal(code, 0);
@@ -59,74 +56,41 @@ try {
 } finally {
   if (child && child.exitCode === null) {
     child.stdin.end();
-    await Promise.race([host.exited, new Promise((done) => setTimeout(done, 5000))]);
+    await Promise.race([host?.exited, new Promise((done) => setTimeout(done, 5000))]);
     if (child.exitCode === null) {
       child.kill();
-      await host.exited;
+      await host?.exited;
     }
   }
   // root is the absolute directory returned by mkdtemp; all disposable resources stay under it.
   await rm(root, { recursive: true, force: true });
 }
 
-function createDesktopHost(process) {
-  let state = {};
-  let sequence = 0;
+/** Plays Electron main: reads the one-line handshake, then speaks the local HTTP API. */
+async function connectDesktopHost(process) {
   let stderr = "";
-  const pending = new Map();
-  const lines = createInterface({ input: process.stdout });
   process.stderr.on("data", (chunk) => { stderr = (stderr + chunk).slice(-16000); });
-  const send = (message) => process.stdin.write(JSON.stringify(message) + "\n");
-  lines.on("line", (line) => {
-    const message = JSON.parse(line);
-    if (message.method && message.id) {
-      const params = decode(message.params);
-      // This test host stores only generated test credentials; it never reads the user's secrets.
-      const result = message.method === "host.safeStorage.encrypt"
-        ? Buffer.from(`test-profile:${params.value}`) : params.value.toString("utf8").slice(13);
-      send({ jsonrpc: "2.0", id: message.id, result: encode(result) });
-    } else if (!message.method) {
-      const handler = pending.get(message.id);
-      if (!handler) return;
-      pending.delete(message.id);
-      clearTimeout(handler.timer);
-      if (message.state) state = decode(message.state);
-      if (message.error) handler.reject(new Error(JSON.stringify(decode(message.error))));
-      else handler.resolve(decode(message.result));
-    }
+  const exited = new Promise((resolveExit) => process.once("exit", (code) => resolveExit(code)));
+  const lines = createInterface({ input: process.stdout });
+  const handshake = await new Promise((resolveLine, reject) => {
+    const timer = setTimeout(() => reject(new Error(`Backend did not start: ${stderr}`)), 60000);
+    lines.once("line", (line) => { clearTimeout(timer); resolveLine(JSON.parse(line)); });
+    exited.then((code) => reject(new Error(`Backend exited ${code}: ${stderr}`)));
   });
-  const exited = new Promise((resolveExit) => process.once("exit", (code) => {
-    for (const handler of pending.values()) {
-      clearTimeout(handler.timer);
-      handler.reject(new Error(`Backend exited ${code}: ${stderr}`));
-    }
-    resolveExit(code);
-  }));
-  return {
-    state: () => state, exited,
-    call: (method, params = null) => new Promise((resolveCall, reject) => {
-      const id = `release:${++sequence}`;
-      const timer = setTimeout(() => { pending.delete(id); reject(new Error(`${method} timed out: ${stderr}`)); }, 60000);
-      pending.set(id, { resolve: resolveCall, reject, timer });
-      send({ jsonrpc: "2.0", id, method, params: encode(params) });
-    })
+  const url = `http://127.0.0.1:${handshake.port}`;
+  const post = async (token, operation, body) => {
+    const response = await fetch(`${url}/api/ops/${operation}`, {
+      method: "POST", signal: AbortSignal.timeout(60000),
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: JSON.stringify(body)
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(`${operation} failed: ${JSON.stringify(result.error)} ${stderr}`);
+    return result;
   };
-}
-
-function encode(value) {
-  if (value === null) return ["null"];
-  if (value === undefined) return ["undefined"];
-  if (Buffer.isBuffer(value)) return ["bytes", value.toString("base64")];
-  if (Array.isArray(value)) return ["array", value.map(encode)];
-  if (typeof value === "object") return ["object", Object.entries(value).map(([key, item]) => [key, encode(item)])];
-  return [typeof value, value];
-}
-
-function decode([tag, value]) {
-  if (tag === "null") return null;
-  if (tag === "undefined") return undefined;
-  if (tag === "bytes") return Buffer.from(value, "base64");
-  if (tag === "array") return value.map(decode);
-  if (tag === "object") return Object.fromEntries(value.map(([key, item]) => [key, decode(item)]));
-  return value;
+  return {
+    exited,
+    invoke: (operation, body = {}) => post(handshake.token, operation, body),
+    host: (operation, body = {}) => post(handshake.hostToken, operation, body)
+  };
 }

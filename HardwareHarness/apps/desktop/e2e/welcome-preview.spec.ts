@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { _electron as electron, expect, test } from "@playwright/test";
+import { rendererReady } from "./renderer.js";
 
 const desktopDir = resolve(import.meta.dirname, "..");
 const artifactPath = resolve(desktopDir, "../../output/playwright/welcome-reactflow-preview.png");
@@ -16,7 +17,7 @@ test("renders the saved wiring canvas as a recent-project React Flow preview", a
   delete env.ELECTRON_RUN_AS_NODE;
   const application = await electron.launch({ args: [desktopDir], cwd: desktopDir, env, timeout: 90_000 });
   try {
-    const page = await application.firstWindow({ timeout: 90_000 });
+    const page = await rendererReady(await application.firstWindow({ timeout: 90_000 }));
     await page.evaluate(async () => {
       await window.hardwareharness.devices.saveHardware({
         formatVersion: 2,
@@ -61,6 +62,7 @@ test("renders the saved wiring canvas as a recent-project React Flow preview", a
     // reload 可能触发 beforeunload(dirty guard);Playwright 对 Electron 的自动 dialog dismiss 存在竞态,显式接管
     page.on("dialog", (dialog) => void dialog.accept().catch(() => undefined));
     await page.reload({ waitUntil: "domcontentloaded" });
+    await rendererReady(page);
     const preview = page.getByRole("img", { name: "project-preview 工位接线缩略图" });
     await expect(preview.locator(".react-flow__node")).toHaveCount(2);
     await expect(preview.locator(".react-flow__edge")).toHaveCount(1);

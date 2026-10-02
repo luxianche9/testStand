@@ -300,3 +300,123 @@ async def test_body_errors_and_shutdown(gateway: LocalMcpGateway) -> None:
     assert (await request(gateway, headers, method="DELETE")).status_code == 400
     assert (await request(gateway, {**headers, "mcp-session-id": "missing"})).status_code == 404
     await asyncio.sleep(0)
+
+
+async def test_transport_errors_batches_and_stream_tools() -> None:
+    app, devices, _ = application(
+        {"list_streams": AsyncMock(return_value=[{"id": "ain0", "type": "scalar"}])}
+    )
+    gateway = LocalMcpGateway(app, secrets(), 0)
+    await gateway.start()
+    headers = {
+        "authorization": "Bearer test-token",
+        "accept": "application/json, text/event-stream",
+        "content-type": "application/json",
+    }
+
+    def rpc(ident: int | None, method: str, params: Any = None) -> dict[str, Any]:
+        message: dict[str, Any] = {"jsonrpc": "2.0", "method": method}
+        if ident is not None:
+            message["id"] = ident
+        if params is not None:
+            message["params"] = params
+        return message
+
+    initialize = rpc(
+        1,
+        "initialize",
+        {
+            "protocolVersion": "2025-03-26",
+            "capabilities": {},
+            "clientInfo": {"name": "probe", "version": "1"},
+        },
+    )
+    try:
+        assert (
+            await request(gateway, headers, json.dumps([initialize, initialize]))
+        ).status_code == 400
+        response = await request(gateway, headers, json.dumps(initialize))
+        headers["mcp-session-id"] = response.headers["mcp-session-id"]
+        await request(gateway, headers, json.dumps(rpc(None, "notifications/initialized")))
+
+        failures = [
+            ({"accept": "application/json"}, json.dumps(rpc(2, "ping")), "POST", 406),
+            ({"content-type": "text/plain"}, json.dumps(rpc(2, "ping")), "POST", 415),
+            ({}, json.dumps({"jsonrpc": "1.0"}), "POST", 400),
+            ({}, json.dumps(initialize), "POST", 400),
+            ({"mcp-protocol-version": "1999-01-01"}, json.dumps(rpc(2, "ping")), "POST", 400),
+            ({"accept": "application/json"}, "", "GET", 406),
+        ]
+        for extra, body, method, status in failures:
+            reply = await request(gateway, {**headers, **extra}, body, method)
+            assert reply.status_code == status, (extra, reply.text)
+        assert "text/event-stream" in (gateway.status()["lastError"] or "")
+
+        missing = await request(gateway, headers, json.dumps(rpc(3, "resources/list")))
+        assert "Method not found" in missing.text
+
+        batch = await request(
+            gateway,
+            headers,
+            json.dumps(
+                [
+                    rpc(
+                        4,
+                        "tools/call",
+                        {"name": "list_device_streams", "arguments": {"hardwareId": "HW1"}},
+                    ),
+                    rpc(None, "notifications/progress", {"progressToken": 1, "progress": 1}),
+                ]
+            ),
+        )
+        assert batch.status_code == 200
+        assert "ain0" in batch.text
+        devices.list_streams.assert_awaited_with("HW1")
+        notification = await request(
+            gateway, headers, json.dumps([rpc(None, "notifications/initialized")])
+        )
+        assert notification.status_code == 202
+    finally:
+        await gateway.stop()
+
+
+async def test_device_tools_expand_per_session_and_never_in_run_mode() -> None:
+    remote = {
+        "externalName": "S1.measure",
+        "remoteName": "measure",
+        "serverId": "S1",
+        "inputSchema": {"type": "object"},
+        "kind": "hardware",
+    }
+    app, devices, _ = application({"list_tools": Mock(return_value=[remote])})
+    registry = LocalMcpGateway(app, secrets()).registry
+    session: dict[str, Any] = {"actor": "agent", "source": "mcp", "enabledHardware": []}
+    names = {tool["name"] for tool in registry.list(session)}
+    assert {"list_device_tools", "enable_device_tools"} <= names
+    assert "S1.measure" not in names
+    with pytest.raises(Exception, match="not enabled"):
+        await registry.invoke(session, "S1.measure", {})
+    devices.call_aggregated_tool.assert_not_called()
+
+    listed = await registry.invoke(session, "list_device_tools", {"hardwareId": "HW1"})
+    assert listed["data"]["enabled"] is False
+    assert [tool["name"] for tool in listed["data"]["tools"]] == ["S1.measure"]
+    with pytest.raises(Exception, match="no device tools"):
+        await registry.invoke(session, "enable_device_tools", {"hardwareId": "HW2"})
+    enabled = await registry.invoke(session, "enable_device_tools", {"hardwareId": "HW1"})
+    assert enabled["data"] == {
+        "hardwareId": "HW1",
+        "enabledHardware": ["HW1"],
+        "tools": ["S1.measure"],
+    }
+    assert "S1.measure" in {tool["name"] for tool in registry.list(session)}
+    await registry.invoke(session, "S1.measure", {"voltage": 1})
+    devices.call_aggregated_tool.assert_awaited_once()
+
+    # Another session starts with nothing expanded; run mode offers no device tools at all.
+    assert "S1.measure" not in {
+        t["name"] for t in registry.list({**session, "enabledHardware": []})
+    }
+    run = {**session, "mode": "run"}
+    names = {tool["name"] for tool in registry.list(run)}
+    assert not names & {"S1.measure", "list_device_tools", "enable_device_tools"}

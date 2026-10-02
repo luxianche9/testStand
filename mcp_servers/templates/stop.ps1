@@ -1,3 +1,7 @@
+param(
+  # Skip the graceful /admin/shutdown (design 4.8.2 force-stop; needs devices.forceStopServers).
+  [switch]$Force
+)
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
 $pidFile = Join-Path $root 'run\server.pid'
@@ -11,6 +15,12 @@ $process = Get-Process -Id $serverPid -ErrorAction SilentlyContinue
 if (-not $process) {
   Remove-Item -LiteralPath $pidFile -Force
   [pscustomobject]@{ state = 'Stopped'; message = 'Stale PID removed' } | ConvertTo-Json -Compress
+  exit 0
+}
+if ($Force) {
+  Stop-Process -Id $serverPid -Force -ErrorAction SilentlyContinue
+  Remove-Item -LiteralPath $pidFile -Force -ErrorAction SilentlyContinue
+  [pscustomobject]@{ state = 'Stopped'; message = 'Forced to stop' } | ConvertTo-Json -Compress
   exit 0
 }
 try { Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:$($config.port)/admin/shutdown" -Headers @{ Authorization = "Bearer $($config.token)" } -TimeoutSec 10 | Out-Null } catch { }

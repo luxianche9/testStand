@@ -8,6 +8,7 @@
 - [ ] 通道数、编号起点（0 或 1）、量程、单位都来自手册，出处写在 README
 - [ ] 手册缺失的事实写成 `TODO` 并向用户提出，没有猜测值
 - [ ] `instructions` 两三句：设备做什么、先调哪个工具、输出的物理效果
+- [ ] `description` 一段：接口、通道、连接器、硬件开关等限制；已知时填 `hardware_revision`
 
 ## 驱动与模拟器
 
@@ -29,6 +30,7 @@
 - [ ] 所有 `actuate` 工具都有 `safety_action`
 - [ ] 失败的 `DeviceError.details` 带 `rc`、`requested`、已生效部分、最后已知状态
 - [ ] `output` 模型覆盖返回的全部字段
+- [ ] 工具不做通过 / 失败判定：没有期望值、阈值参数，不返回 `pass` / `fail`
 
 ## 安全状态
 
@@ -37,27 +39,32 @@
 - [ ] 部分通道失败时继续处理其余通道，`details` 列出未到位的通道
 - [ ] 测试：连续调用两次结果相同；模拟器中所有输出回到安全值
 
-## 流与面板
+## 流
 
-- [ ] 需要实时显示的量都有流；`sample()` 不写任何输出
-- [ ] 采样率在 `settings` 中可调，默认值符合 `streams-and-panel.md` 的建议
-- [ ] 采样流需要配置时声明 `requires`，未配置时状态为 `not_configured`
-- [ ] 字节流只记录驱动实际接受的 tx 字节
-- [ ] 面板每个写控件的 `range`/`options` 与工具参数一致；驱动外部信号的控件 `confirm=True`
-- [ ] 面板有绑定 `safe_state` 的 `button`
-- [ ] 没有回读流的写控件在描述里说明"显示的是最后写入值"
-- [ ] 流条目和面板里没有秘密
+- [ ] 需要在运行中看到或判定的量都有流；id 与工具参数的通道号对应（`ai3`、`serial2`）
+- [ ] 流带手册能证实的元数据：`unit`、`label`、`kind`（`measured` / `setpoint`）、位流的 `width` / `bit_labels`；设定值影子标 `setpoint`
+- [ ] 没有硬件定时的波形用 `SoftwareWaveform`，`safe_state` 先 `stop_all()`，`capability_details()` 报告 `waveform_capability(...)`
+- [ ] `sample()` / 扫描函数 / `read_block()` 不写任何输出；多通道能一次读就用 `streams.scan`
+- [ ] 位图用一次读整个端口的原语；变化少的输入用 `publish_on_change`
+- [ ] 采样率在 `settings` 中可调，默认值符合 `streams.md` 的建议，并在 `capability_details()` 报告
+- [ ] 未配置时 `sample()` 返回 `None` 或抛 `NOT_CONFIGURED`；事件型流用 `set_state("not_configured")`
+- [ ] 有回读的输出写后立即发布（写失败也回读）；没有回读的只在驱动接受后发布设定值
+- [ ] 字节流：读线程持 `io_lock` 调 `rx`；每次读返回调 `idle()`（未配置的端口也调），轮询间隔不超过 100 ms；发送只走 `stream.send`（写入器持 `io_lock`、检查配置门槛）；配置 / 清空 / 复位写 `mark`
+- [ ] 流记录里没有秘密
 
-## 引脚
+## 引脚与图片
 
 - [ ] `pinout()` 来自手册连接器表，否则保持 `not_supported`
-- [ ] 面板 `pins` 引用的 `pinId` 都存在
+- [ ] 针脚名与手册一致；程序里不把针脚和工具、流关联
+- [ ] 每个连接器有端口图（`attach_port_image`，带 `pinPositions`），有外观图 `assets/appearance.*`；示意图注明不按比例、未核实的视图方向
+- [ ] 图片列入 `pyproject.toml` package-data；测试保证仓库里的 SVG 等于重新生成的结果
 
 ## 测试与组装
 
 - [ ] `check_adapter.ps1 -Adapter <adapter>` 通过（pytest、`--check` 合规、无 `TODO(new_device)`）
-- [ ] 测试覆盖：公共工具数量与 `outputSchema`、越界拒绝、未配置门槛、`safe_state` 幂等、流 `hello`/`batch`、面板引用
-- [ ] README 写明：设备语义、流与面板、`settings` 字段、构建原生程序的方法、部署注意事项
-- [ ] 仓库中没有 `server.json`、令牌、密码
-- [ ] `servers.json` 条目与 `assemble.py` 由人添加和运行；部署到真实台架由人执行
+- [ ] `check_device(cls, warnings=warnings)` 无失败且 `warnings == []`
+- [ ] 测试覆盖：公共工具集合（含 5 个 `lease_*` 工具与内置流工具，不含 `get_pinout` / `list_streams` / `lease_renew`）、越界拒绝、未配置门槛、`safe_state` 幂等、`/device` 的 `streams`（含元数据）、`description`、图片与 `/assets`、写工具的 `meta.streamRefs` 与记录 `op`、采样流经 SSE 通道出值、字节流的 `idle()` 水位
+- [ ] README 写明：设备语义、流、`settings` 字段、构建原生程序的方法、部署注意事项
+- [ ] 仓库中没有 `server.json`、令牌、密码（远端 `server.json` 由终端生成）
+- [ ] 部署到真实台架由人在终端设备页（“部署服务”）或 `deploy.ps1` 发起，本技能不部署
 - [ ] 首次上架按草稿服务空载验收，结果记录在 README 或交付说明里

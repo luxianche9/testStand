@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import type {
-  DeviceBundlePreview, Hardware, HardwarePort, McpServerConfig, RemoteComputer
+  DeviceBundlePreview, Hardware, HardwarePort, McpServerConfig, RemoteComputer, ServerLifecycle
 } from "@hardwareharness/contracts/devices";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -16,44 +16,60 @@ import { EditorAlert, EditorField, EditorNote, EditorPanel, editorGrid } from ".
 const required = (message: string) => z.string().trim().min(1, message);
 const serverEditorSchema = z.object({
   serverId: required("请输入 Server ID"),
-  computerId: required("请选择所属电脑"),
+  // Empty: an unmanaged service that is only used over its URL (design doc §4.8.3).
+  computerId: z.string(),
   label: z.string(),
   hardwareId: required("请输入 Hardware ID"),
   url: z.string(),
   mcpToken: z.string(),
-  statusCommand: required("请输入状态查询命令"),
-  startCommand: required("请输入启动命令"),
-  stopCommand: required("请输入停止命令"),
-  logPath: required("请输入日志目录")
+  root: z.string(),
+  statusCommand: z.string(),
+  startCommand: z.string(),
+  stopCommand: z.string(),
+  forceStopCommand: z.string(),
+  logPath: z.string()
+}).refine((value) => !value.computerId || value.root.trim() || value.statusCommand.trim(), {
+  path: ["root"],
+  message: "托管的服务需要安装目录（或在高级选项里填写状态查询命令）"
 });
 type ServerEditorValues = z.infer<typeof serverEditorSchema>;
-type LifecycleKey = "statusCommand" | "startCommand" | "stopCommand" | "logPath";
+type LifecycleKey = keyof ServerLifecycle;
+const lifecycleFields: { key: LifecycleKey; label: string }[] = [
+  { key: "statusCommand", label: "状态查询命令" },
+  { key: "startCommand", label: "启动命令" },
+  { key: "stopCommand", label: "停止命令" },
+  { key: "forceStopCommand", label: "强制停止命令" },
+  { key: "logPath", label: "日志目录" }
+];
 
-/** Lifecycle scripts follow the `E:\<name>_mcp_server` layout of the reference MCP servers. */
-export function serverDefaults(serverId: string): Pick<ServerEditorValues, LifecycleKey> {
-  const hardwareName = serverId.replace(/_MCP$/, "").toLowerCase();
-  const root = `E:\\${hardwareName}_mcp_server`;
-  return {
-    statusCommand: `& '${root}\\status.ps1'`,
-    startCommand: `& '${root}\\start.ps1'`,
-    stopCommand: `& '${root}\\stop.ps1'`,
-    logPath: `${root}\\logs`
-  };
+/** Bundles install to `E:\<name>_mcp_server`; start/stop/status/logs derive from it (§4.8.2). */
+function defaultRoot(serverId: string): string {
+  return `E:\\${serverId.replace(/_MCP$/, "").toLowerCase()}_mcp_server`;
 }
 
 function initialValues(server: McpServerConfig | undefined, computerId: string): ServerEditorValues {
+  const overrides: Record<LifecycleKey, string> = {
+    statusCommand: server?.lifecycle?.statusCommand ?? "",
+    startCommand: server?.lifecycle?.startCommand ?? "",
+    stopCommand: server?.lifecycle?.stopCommand ?? "",
+    forceStopCommand: server?.lifecycle?.forceStopCommand ?? "",
+    logPath: server?.lifecycle?.logPath ?? ""
+  };
   if (server) {
     return {
       serverId: server.serverId,
-      computerId: server.computerId,
+      computerId: server.computerId ?? "",
       label: server.label,
       hardwareId: server.hardwareId,
       url: server.url,
       mcpToken: "",
-      ...server.lifecycle
+      root: server.root ?? "",
+      ...overrides
     };
   }
-  return { serverId: "", computerId, label: "", hardwareId: "", url: "", mcpToken: "", ...serverDefaults("") };
+  return {
+    serverId: "", computerId, label: "", hardwareId: "", url: "", mcpToken: "", root: defaultRoot(""), ...overrides
+  };
 }
 
 /** A server and the single managed hardware device it drives are edited together. */
@@ -77,8 +93,8 @@ export function ServerEditor({ open, server, computerId, computers, hardware, on
   const [bundlePreview, setBundlePreview] = useState<DeviceBundlePreview>();
   // Bumped to clear the bundle notice when the hardware binding changes by hand.
   const [bundleKey, setBundleKey] = useState(0);
-  // Typing a Server ID autofills the lifecycle paths until the user edits one of them.
-  const pathsTouched = useRef(false);
+  // Typing a Server ID autofills the install root until the user edits it.
+  const rootTouched = useRef(false);
   const hardwareId = watch("hardwareId");
   const live = server ? hardwareForServer(server, hardware) : undefined;
   const selectedHardware = live ?? hardware.find((item) => item.hardwareId === hardwareId);
@@ -86,7 +102,7 @@ export function ServerEditor({ open, server, computerId, computers, hardware, on
   useEffect(() => {
     if (!open) return;
     reset(initialValues(server, defaultComputer));
-    pathsTouched.current = Boolean(server);
+    rootTouched.current = Boolean(server);
     setPorts(live ? structuredClone(live.ports) : []);
     setBundlePreview(undefined);
     setBundleKey((key) => key + 1);
@@ -94,15 +110,13 @@ export function ServerEditor({ open, server, computerId, computers, hardware, on
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, server?.serverId, computerId]);
 
-  const lifecycleKeys: LifecycleKey[] = ["statusCommand", "startCommand", "stopCommand", "logPath"];
-  const lifecycleField = (key: LifecycleKey) => register(key, { onChange: () => { pathsTouched.current = true; } });
+  const rootField = register("root", { onChange: () => { rootTouched.current = true; } });
   const serverIdField = register("serverId", {
     onChange: (event: { target: { value: string } }) => {
-      if (pathsTouched.current) return;
-      const defaults = serverDefaults(event.target.value);
-      for (const key of lifecycleKeys) setValue(key, defaults[key], { shouldValidate: true });
+      if (!rootTouched.current) setValue("root", defaultRoot(event.target.value), { shouldValidate: true });
     }
   });
+  const managed = Boolean(watch("computerId"));
   const hardwareIdField = register("hardwareId", {
     onChange: (event: { target: { value: string } }) => {
       const known = hardware.find((item) => item.hardwareId === event.target.value);
@@ -129,20 +143,20 @@ export function ServerEditor({ open, server, computerId, computers, hardware, on
       const host = computers.find((item) => item.id === values.computerId)?.address ?? "";
       const serverId = values.serverId.trim();
       const boundId = values.hardwareId.trim();
+      const root = values.root.trim();
+      const lifecycle: ServerLifecycle = Object.fromEntries(
+        lifecycleFields.flatMap(({ key }) => (values[key].trim() ? [[key, values[key].trim()]] : []))
+      );
       const input: McpServerConfig = {
         transport: "mcp-http",
         serverId,
-        computerId: values.computerId,
+        ...(values.computerId ? { computerId: values.computerId } : {}),
         label: values.label.trim() || serverId,
         hardwareId: boundId,
         url: values.url.trim() || `http://${host}:8011/mcp`,
         enabled: true,
-        lifecycle: {
-          statusCommand: values.statusCommand.trim(),
-          startCommand: values.startCommand.trim(),
-          stopCommand: values.stopCommand.trim(),
-          logPath: values.logPath.trim()
-        }
+        ...(values.computerId && root ? { root } : {}),
+        ...(values.computerId && Object.keys(lifecycle).length ? { lifecycle } : {})
       };
       const saved = await devices.saveServer(input, values.mcpToken ? { mcpToken: values.mcpToken } : undefined);
       if (bundlePreview) {
@@ -155,7 +169,7 @@ export function ServerEditor({ open, server, computerId, computers, hardware, on
         label: input.label,
         kind: "managed",
         serverId,
-        computerId: input.computerId,
+        ...(input.computerId ? { computerId: input.computerId } : {}),
         ports,
         ...(appearanceAssetId ? { appearanceAssetId } : {})
       });
@@ -176,8 +190,9 @@ export function ServerEditor({ open, server, computerId, computers, hardware, on
             <EditorField label="Server ID" required error={errors.serverId?.message}>
               <Input className="font-mono" {...serverIdField} disabled={Boolean(server)} placeholder="PCI1710L_MCP" />
             </EditorField>
-            <EditorField label="所属电脑" required error={errors.computerId?.message}>
+            <EditorField label="所属电脑" error={errors.computerId?.message}>
               <Select {...register("computerId")} disabled={Boolean(server)}>
+                <option value="">无（未托管，只通过 URL 使用）</option>
                 {computers.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
               </Select>
             </EditorField>
@@ -206,18 +221,26 @@ export function ServerEditor({ open, server, computerId, computers, hardware, on
               可直接在这里导入 `.hhhw`；HardwareHarness 会在保存 Server 时绑定硬件，并验证 list_hardware
               恰好返回这一块硬件。端口和针脚不再向远端索取。
             </EditorNote>
-            <EditorField label="状态查询命令" required span error={errors.statusCommand?.message}>
-              <Textarea className={commandClass} {...lifecycleField("statusCommand")} />
-            </EditorField>
-            <EditorField label="启动命令" required span error={errors.startCommand?.message}>
-              <Textarea className={commandClass} {...lifecycleField("startCommand")} />
-            </EditorField>
-            <EditorField label="停止命令" required span error={errors.stopCommand?.message}>
-              <Textarea className={commandClass} {...lifecycleField("stopCommand")} />
-            </EditorField>
-            <EditorField label="日志目录" required span error={errors.logPath?.message}>
-              <Input className="font-mono text-xs" {...lifecycleField("logPath")} />
-            </EditorField>
+            {managed && (
+              <>
+                <EditorField label="安装目录" span error={errors.root?.message}>
+                  <Input className="font-mono text-xs" {...rootField} placeholder="E:\pci1710l_mcp_server" />
+                </EditorField>
+                <details className="col-span-full text-xs">
+                  <summary className="cursor-pointer text-fg-2">
+                    高级：覆盖生命周期命令（只在非标准安装时填写，留空则由安装目录推导）
+                  </summary>
+                  <div className={`${editorGrid} mt-2`}>
+                    {lifecycleFields.map(({ key, label }) => (
+                      <EditorField key={key} label={label} span>
+                        <Textarea className={commandClass} {...register(key)} />
+                      </EditorField>
+                    ))}
+                  </div>
+                </details>
+              </>
+            )}
+            {!managed && <EditorNote>未托管的服务只能使用，不能从这里启动、停止或读取日志。</EditorNote>}
             <EditorPanel>
               <AppearanceImage
                 hardwareId={hardwareId}

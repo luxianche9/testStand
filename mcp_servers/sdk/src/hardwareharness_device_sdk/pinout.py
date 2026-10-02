@@ -1,10 +1,15 @@
-"""Connector/pin reference models; each adapter ships its own data."""
+"""Connector/pin reference models; each adapter ships its own data.
+
+The pinout is published inside ``/device`` (``pinout``); a connector may
+reference a port diagram in the adapter's ``assets/`` directory through
+:class:`ConnectorImage`, optionally with normalized pin positions on it.
+"""
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 Direction = Literal["input", "output", "bidirectional", "passive", "power", "ground", "nc"]
 
@@ -30,6 +35,29 @@ class Pin(BaseModel):
     functions: tuple[PinFunction, ...]
 
 
+class PinPosition(BaseModel):
+    """Where a pin sits on its connector image, normalized to 0..1 (x right, y down)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    pinId: str
+    x: float = Field(ge=0.0, le=1.0)
+    y: float = Field(ge=0.0, le=1.0)
+
+
+class ConnectorImage(BaseModel):
+    """Port diagram: ``asset`` is relative to the adapter package's ``assets/`` directory.
+
+    ``mediaType`` is derived from the file extension when omitted.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    asset: str
+    mediaType: str | None = None
+    pinPositions: tuple[PinPosition, ...] = ()
+
+
 class Connector(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -38,6 +66,7 @@ class Connector(BaseModel):
     connectorType: str
     gender: str | None = None
     channelIndex: int | None = None
+    image: ConnectorImage | None = None
     pinIds: tuple[str, ...]
 
 
@@ -60,7 +89,6 @@ class Pinout(BaseModel):
     modeSelection: str | None = None
     modes: tuple[ModeDefinition, ...] = ()
     sources: tuple[str, ...]
-    pagination: dict[str, int | None] | None = None
     connectorView: str = "unknown; verify the connector view in the cited manufacturer manual"
     hardwareRevision: str = "unknown"
 
@@ -97,6 +125,8 @@ def single_connector_pinout(
     count: int,
     functions: dict[int, tuple[PinFunction, ...]],
     source: str,
+    *,
+    image: ConnectorImage | None = None,
 ) -> Pinout:
     connector_id = f"{hardware_id}.CN1"
     pins = tuple(
@@ -112,6 +142,7 @@ def single_connector_pinout(
         connectorId=connector_id,
         name="CN1",
         connectorType=f"{count}-pin",
+        image=image,
         pinIds=tuple(pin.pinId for pin in pins),
     )
     return Pinout(
@@ -123,17 +154,3 @@ def single_connector_pinout(
         sources=(source,),
     )
 
-
-def page(pinout: Pinout, connector_id: str | None, offset: int, limit: int | None) -> Pinout:
-    """Filter one connector and page its pins; raises KeyError for an unknown connector."""
-    if connector_id is not None and connector_id not in {item.connectorId for item in pinout.connectors}:
-        raise KeyError(connector_id)
-    pins = tuple(pin for pin in pinout.pins if connector_id is None or pin.connectorId == connector_id)
-    selected = pins[offset:offset + limit] if limit is not None else pins[offset:]
-    pagination: dict[str, Any] = {"offset": offset, "total": len(pins),
-                                  "nextOffset": offset + len(selected) if offset + len(selected) < len(pins) else None}
-    return pinout.model_copy(update={
-        "pins": selected,
-        "connectors": tuple(item for item in pinout.connectors if connector_id is None or item.connectorId == connector_id),
-        "pagination": pagination,
-    })

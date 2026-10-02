@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import hashlib
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Any
 
@@ -14,16 +15,13 @@ from hardwareharness_backend.contracts.operations import Tool
 from hardwareharness_backend.contracts.validation import number, obj, string
 
 Record = dict[str, Any]
+DeviceToolCall = Callable[[Record, str, Record], Awaitable[Any]]
 _FIRMWARE_LIMIT = 32 * 1024 * 1024
 _META = {"kind": "platform"}
 
 
 def _unreachable(app: Any, context: Record, value: Record) -> Any:
-    raise RuntimeError("get_tool_contract is answered by the tool registry")
-
-
-async def _import_firmware(app: Any, context: Record, value: Record) -> Any:
-    return await import_firmware(app, context, value)
+    raise RuntimeError("Contract tools are answered by the tool registry")
 
 
 CONTRACT_TOOLS = [
@@ -96,9 +94,56 @@ CONTRACT_TOOLS = [
             },
             "required": ["artifactId", "path", "sha256", "fileBytes"],
         },
-        call=_import_firmware,
+        call=_unreachable,
         capability="hardware.executeTools",
         open_world=True,
+        profiles=frozenset({"adapter", "explore"}),
+        meta=_META,
+    ),
+    Tool(
+        "list_device_tools",
+        "List one hardware's device tools (names, descriptions, kinds) without adding them to "
+        "tools/list. Call enable_device_tools to make them callable in this session.",
+        obj(
+            {"hardwareId": string(1).describe("Hardware from get_agent_context or list_hardware.")},
+            strict=True,
+        ),
+        {
+            "type": "object",
+            "properties": {
+                "hardwareId": {"type": "string"},
+                "enabled": {"type": "boolean"},
+                "tools": {"type": "array", "items": {"type": "object"}},
+            },
+            "required": ["hardwareId", "enabled", "tools"],
+        },
+        call=_unreachable,
+        capability="hardware.executeTools",
+        read_only=True,
+        profiles=frozenset({"adapter", "explore"}),
+        meta=_META,
+    ),
+    Tool(
+        "enable_device_tools",
+        "Add one hardware's device tools to this session's tools/list (design 8.2). Expand only "
+        "the hardware you are working on; read a tool's contract before calling it.",
+        obj(
+            {"hardwareId": string(1).describe("Hardware whose tools to enable.")},
+            strict=True,
+        ),
+        {
+            "type": "object",
+            "properties": {
+                "hardwareId": {"type": "string"},
+                "enabledHardware": {"type": "array", "items": {"type": "string"}},
+                "tools": {"type": "array", "items": {"type": "string"}},
+            },
+            "required": ["hardwareId", "enabledHardware", "tools"],
+        },
+        call=_unreachable,
+        capability="hardware.executeTools",
+        idempotent=True,
+        profiles=frozenset({"adapter", "explore"}),
         meta=_META,
     ),
 ]
@@ -158,7 +203,14 @@ def read_tool_contract(registry: Any, context: Record, arguments: Record) -> Rec
     return result
 
 
-async def import_firmware(application: Any, context: Record, arguments: Record) -> Any:
+async def import_firmware(
+    application: Any,
+    context: Record,
+    arguments: Record,
+    call_tool: DeviceToolCall | None = None,
+) -> Any:
+    """Send a project firmware file to a FireDAP service; ``call_tool`` runs the device tool
+    (the gateway passes its ``devices.callTool`` route through the registry middleware)."""
     application.authorizer.authorize(context, "projects.read")
     name = f"{arguments['serverId']}__firedap_import_firmware"
     if not any(t["externalName"] == name for t in application.devices.list_tools(context)):
@@ -197,7 +249,8 @@ async def import_firmware(application: Any, context: Record, arguments: Record) 
         raise app_error(
             "conflict", "Firmware hash changed; no transfer performed", {"actualSha256": digest}
         )
-    return await application.devices.call_tool(
+    call = call_tool or application.devices.call_tool
+    return await call(
         context,
         name,
         {

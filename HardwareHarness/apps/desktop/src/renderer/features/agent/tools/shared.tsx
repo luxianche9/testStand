@@ -26,7 +26,7 @@ export function getPatchInfo(patchText: string) {
 }
 
 /** Maps a tool-call status onto lamp tones. `failed` marks a completed call with a bad result. */
-export function toolTone(status?: ToolCallStatusLike, failed = false): Tone {
+function toolTone(status?: ToolCallStatusLike, failed = false): Tone {
   const type = status?.type ?? "complete";
   if (type === "running") return "run";
   if (type === "requires-action") return "signal";

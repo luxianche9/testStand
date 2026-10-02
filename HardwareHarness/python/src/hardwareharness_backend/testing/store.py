@@ -121,6 +121,8 @@ class TestPlanStore:
                 "parameters",
                 "requirements",
                 "stopOnFail",
+                "protocolBindings",
+                "bindings",
                 "regions",
             ):
                 if key in value:
@@ -206,8 +208,8 @@ class TestPlanStore:
             "coverage": compiled["coverage"],
         }
 
-    def compile(self, plan_id: str) -> Record:
-        return compile_plan(self.load(plan_id), self.resolver, self.plugins, self.wiring)
+    def compile(self, plan_id: str, values: Record | None = None) -> Record:
+        return compile_plan(self.load(plan_id), self.resolver, self.plugins, self.wiring, values)
 
     def analyze(self, plan: Record, base_revision: int) -> Record:
         current = self.load(str(plan.get("id", "")))
@@ -319,7 +321,7 @@ def _apply_operation(plan: Record, operation: Record, resolver: Any | None = Non
     kind = operation.get("type")
     if kind == "set_plan_fields":
         patch = operation.get("patch", {})
-        for key in ("name", "description", "stopOnFail"):
+        for key in ("name", "description", "stopOnFail", "protocolBindings", "bindings"):
             if key in patch:
                 plan[key] = clone(patch[key])
         return

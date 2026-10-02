@@ -6,10 +6,18 @@ import type {
 import { XIcon } from "lucide-react";
 import { Badge, Button, Checkbox, Field, IconButton, Input, Section, Select, Textarea } from "../../ui";
 import { useTestDeviceTools } from "../../lib/queries.js";
-import type { JsonSchema } from "../manual/schema-form-model.js";
+import { stripSchemaProperties, type JsonSchema } from "../manual/schema-form-model.js";
 import { collectRequirementSteps, schemaFieldPaths } from "./plan-helpers.js";
 import { findStep } from "./plan-model.js";
+import { DeviceBindingsEditor } from "./DeviceBindings.js";
+import { ProtocolBindingsEditor } from "./ProtocolBindings.js";
+import { StreamStepInspector } from "./StreamStepInspector.js";
 import { BoundArgumentsForm, PlanParametersEditor, StepSettingsForm } from "./TestPlanForms.js";
+
+/** InvokeTool settings with their own controls above the schema form. */
+const invokeFieldsAbove = ["timeoutMs", "errorPolicy"];
+/** Steps that judge a device stream (see `STREAM_STEPS` in the backend models). */
+const streamStepTypes = new Set(["Observe", "Expect", "Guard"]);
 
 type Mutate = (change: (next: TestPlan) => void) => void;
 type Bind = (stepId: string, hardwareId: string, toolName: string, refresh?: boolean) => Promise<void>;
@@ -29,7 +37,7 @@ export function StepInspector({ plan, step, hardware, catalogItem, references, c
   onSelectStep: (stepId: string | undefined) => void;
   onBind: Bind;
 }) {
-  if (!step) return <PlanInspector plan={plan} mutate={mutate} />;
+  if (!step) return <PlanInspector plan={plan} hardware={hardware} mutate={mutate} />;
   const patch = (value: Record<string, unknown>) => update(step.id, value);
   const reveal = (stepId: string) => {
     onSelectStep(stepId);
@@ -50,7 +58,23 @@ export function StepInspector({ plan, step, hardware, catalogItem, references, c
         <Input value={step.name ?? ""} onChange={(event) => patch({ name: event.target.value })} />
       </Field>
       {step.type === "InvokeTool" ? (
-        <InvokeInspector step={step} hardware={hardware} references={references} update={patch} onBind={onBind} />
+        <InvokeInspector
+          step={step}
+          hardware={hardware}
+          catalogItem={catalogItem}
+          references={references}
+          update={patch}
+          onBind={onBind}
+        />
+      ) : streamStepTypes.has(step.type) ? (
+        <StreamStepInspector
+          plan={plan}
+          step={step}
+          hardware={hardware}
+          catalogItem={catalogItem}
+          references={references}
+          update={patch}
+        />
       ) : (
         <StepSettingsForm
           step={step}
@@ -86,7 +110,7 @@ export function StepInspector({ plan, step, hardware, catalogItem, references, c
   );
 }
 
-function PlanInspector({ plan, mutate }: { plan: TestPlan; mutate: Mutate }) {
+function PlanInspector({ plan, hardware, mutate }: { plan: TestPlan; hardware: Hardware[]; mutate: Mutate }) {
   const covered = collectRequirementSteps(plan);
   return (
     <div className="grid gap-3 p-3">
@@ -112,6 +136,26 @@ function PlanInspector({ plan, mutate }: { plan: TestPlan; mutate: Mutate }) {
         />
         任一步骤失败时停止
       </label>
+      <Field label="协议绑定" hint="用 ICD 解码设备的原始数据流；步骤以「别名.报文.字段」引用解出的数据流。">
+        <ProtocolBindingsEditor
+          value={plan.protocolBindings ?? []}
+          hardware={hardware}
+          onChange={(bindings) => mutate((next) => {
+            if (bindings.length) next.protocolBindings = bindings;
+            else delete next.protocolBindings;
+          })}
+        />
+      </Field>
+      <Field label="设备绑定" hint="步骤可用绑定名代替设备；${参数} 取运行参数，批量运行时按工位展开。">
+        <DeviceBindingsEditor
+          value={plan.bindings ?? {}}
+          hardware={hardware}
+          onChange={(bindings) => mutate((next) => {
+            if (Object.keys(bindings).length) next.bindings = bindings;
+            else delete next.bindings;
+          })}
+        />
+      </Field>
       {plan.requirements.length > 0 && (
         <Field label="验收项">
           <ul className="grid gap-1">
@@ -137,9 +181,10 @@ function PlanInspector({ plan, mutate }: { plan: TestPlan; mutate: Mutate }) {
   );
 }
 
-function InvokeInspector({ step, hardware, references, update, onBind }: {
+function InvokeInspector({ step, hardware, catalogItem, references, update, onBind }: {
   step: TestStep;
   hardware: Hardware[];
+  catalogItem: TestStepCatalogItem | undefined;
   references: TestExpressionReference[];
   update: (patch: Record<string, unknown>) => void;
   onBind: Bind;
@@ -189,6 +234,17 @@ function InvokeInspector({ step, hardware, references, update, onBind }: {
           <option value="fail">已知结果错误转为 Fail 并继续</option>
         </Select>
       </Field>
+      {catalogItem && (
+        <StepSettingsForm
+          step={step}
+          catalogItem={{
+            ...catalogItem,
+            settingsSchema: stripSchemaProperties(catalogItem.settingsSchema as JsonSchema, invokeFieldsAbove)
+          }}
+          references={references}
+          onChange={update}
+        />
+      )}
       {selected && (
         <>
           <Section title="参数绑定">

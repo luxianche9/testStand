@@ -12,6 +12,8 @@ NOT_CONFIGURED = "not_configured"
 INVALID_RESPONSE = "invalid_response"
 NOT_SUPPORTED = "not_supported"
 INTERNAL = "internal"
+BUSY = "busy"
+"""Another holder leases the hardware; retry after it releases (see error.details.expiresAt)."""
 
 RETRYABLE_CATEGORIES = frozenset({DEVICE_UNREACHABLE, SERVICE_UNAVAILABLE})
 

@@ -7,9 +7,9 @@ import { cleanup, render, screen, waitFor, within } from "@testing-library/react
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import "./test-dom";
-import { extractTask } from "../agent/tools/wiring-task-tool";
 import { WiringLogPanel } from "./WiringLogPanel";
 import { WiringTaskCard } from "./WiringTaskCard";
+import { extractTask } from "./wiring-model";
 
 const hardware: Hardware[] = ["A", "B"].map((hardwareId) => ({
   formatVersion: 2, hardwareId, label: hardwareId, kind: "passive",

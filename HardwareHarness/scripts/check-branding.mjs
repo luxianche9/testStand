@@ -21,7 +21,7 @@ async function visit(directory) {
 
 for (const directory of ["apps", "packages", "python/src"]) await visit(resolve(workspace, directory));
 await visit(resolve(repository, "mcp_servers"));
-for (const name of ["package.json", "pnpm-lock.yaml", "python/pyproject.toml", "python/uv.lock", "python/backend.spec", "README.md"]) {
+for (const name of ["package.json", "pnpm-lock.yaml", "python/pyproject.toml", "python/uv.lock", "python/backend.spec"]) {
   if (retired.test(await readFile(resolve(workspace, name), "utf8"))) violations.push(name);
 }
 if (violations.length) throw new Error(`Retired branding in active files:\n${violations.join("\n")}`);

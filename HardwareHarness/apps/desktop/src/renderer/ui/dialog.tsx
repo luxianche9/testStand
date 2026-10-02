@@ -6,7 +6,6 @@ import { cn } from "./cn";
 
 export const Dialog = DialogPrimitive.Root;
 export const DialogTrigger = DialogPrimitive.Trigger;
-export const DialogClose = DialogPrimitive.Close;
 
 const widths = { sm: "w-[400px]", md: "w-[520px]", lg: "w-[720px]", xl: "w-[920px]" } as const;
 

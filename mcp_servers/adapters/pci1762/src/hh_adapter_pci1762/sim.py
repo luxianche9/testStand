@@ -54,6 +54,9 @@ class SimulatedHwcli:
             kind = str(command.get("kind", "DI")).upper()
             register = self.relays if kind in ("RELAY", "DO") else self.di
             return _ok("read_bit", {"kind": kind, "channel": channel, "value": bool(register >> channel & 1)})
+        if name == "read_mask":
+            kind = str(command.get("kind", "DI")).upper()
+            return _ok("read_mask", {"kind": kind, "mask": self.relays if kind in ("RELAY", "DO") else self.di})
         if name == "safe_state":
             self.relays = 0
             return _ok("All relays opened (safe_state)", {"relays": "all_open"})

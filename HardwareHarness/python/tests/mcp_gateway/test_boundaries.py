@@ -8,6 +8,8 @@ from unittest.mock import AsyncMock, Mock, patch
 import httpx
 import pytest
 
+from hardwareharness_backend.application import OPERATIONS
+from hardwareharness_backend.application.registry import OperationRegistry
 from hardwareharness_backend.contracts.errors import AppError
 from hardwareharness_backend.contracts.validation import ValidationError
 from hardwareharness_backend.mcp_gateway import LocalMcpGateway
@@ -18,8 +20,13 @@ from hardwareharness_backend.mcp_gateway.tool_registry import BUILTIN_TOOLS, Too
 def make_gateway() -> tuple[LocalMcpGateway, Any]:
     app = Mock(authorizer=Mock(is_allowed=Mock(return_value=True)))
     app.devices.list_tools.return_value = []
+    # The operator confirms every confirm=True operation (remove_hardware_definition).
+    operations = OperationRegistry(app, OPERATIONS, confirmer=AsyncMock(return_value=True))
     gateway = LocalMcpGateway(
-        app, Mock(ensure_token=AsyncMock(return_value="secret"), set=AsyncMock()), 0
+        app,
+        Mock(ensure_token=AsyncMock(return_value="secret"), set=AsyncMock()),
+        0,
+        operations=operations,
     )
     return gateway, app
 
@@ -89,6 +96,14 @@ _CASES: list[tuple[str, dict[str, Any], str, str, list[Any]]] = [
 ]
 
 
+def keywords(group: str, method: str, values: list[Any]) -> dict[str, Any]:
+    """The operation's keyword arguments for positional ``values``."""
+    definition = next(
+        item for item in OPERATIONS.values() if (item.namespace, item.method) == (group, method)
+    )
+    return dict(zip([python for _, python in definition.parameters], values, strict=True))
+
+
 @pytest.mark.parametrize("name,args,group,method,expected", _CASES, ids=[row[0] for row in _CASES])
 async def test_all_builtin_routes_and_defaults(
     name: str, args: dict[str, Any], group: str, method: str, expected: list[Any]
@@ -106,7 +121,9 @@ async def test_all_builtin_routes_and_defaults(
         "ok": True,
         "data": {"task": _TASK, "dirty": True} if name == "update_test_task" else result,
     }
-    handler.assert_awaited_once_with({"actor": "agent", "source": "mcp"}, *expected)
+    handler.assert_awaited_once_with(
+        {"actor": "agent", "source": "mcp"}, **keywords(group, method, expected)
+    )
 
 
 async def test_zod_argument_errors_and_nested_stripping() -> None:
@@ -121,7 +138,7 @@ async def test_zod_argument_errors_and_nested_stripping() -> None:
             "pins": [{"a": "1", "b": "2", "extra": "stripped"}],
         },
     )
-    assert app.wiring.request_task.call_args.args[1]["pins"] == [{"a": "1", "b": "2"}]
+    assert app.wiring.request_task.call_args.kwargs["input"]["pins"] == [{"a": "1", "b": "2"}]
     with pytest.raises(ValidationError) as caught:
         await gateway.invoke_tool("read_remote_mcp_logs", {"lines": 1.5, "extra": True})
     assert [(issue["code"], issue["path"]) for issue in caught.value.issues] == [
@@ -206,10 +223,15 @@ async def test_http_routes_and_tool_errors() -> None:
     try:
         async with httpx.AsyncClient(headers=_HEADERS) as client:
             url = gateway.status()["endpoint"]
-            for method, suffix in [("PUT", ""), ("GET", "?extra=1"), ("POST", "/extra")]:
+            for method, suffix in [("PUT", ""), ("POST", "/extra")]:
                 response = await client.request(method, url + suffix)
                 assert response.status_code == 405
                 assert response.headers["allow"] == "GET, POST, DELETE"
+            # Only ?mode=<work mode> is accepted as a query (design doc 8.2).
+            for suffix in ["?extra=1", "?mode=bogus", "?mode=run&mode=plan", "?mode=run&x=1"]:
+                response = await client.get(url + suffix)
+                assert response.status_code == 400
+                assert "mode" in response.json()["error"]
             initialized = await client.post(url, json=_INITIALIZE)
             initialization = result_body(initialized)
             # Application building adds only Agent guidance; retain every historical
@@ -217,7 +239,7 @@ async def test_http_routes_and_tool_errors() -> None:
             assert initialization.pop("instructions") == AGENT_INSTRUCTIONS
             assert initialization == {
                 "protocolVersion": "2025-03-26",
-                "capabilities": {"tools": {}},
+                "capabilities": {"tools": {"listChanged": True}},
                 "serverInfo": {"name": "hardwareharness", "version": "0.1.0"},
             }
             client.headers["mcp-session-id"] = initialized.headers["mcp-session-id"]
@@ -331,7 +353,7 @@ async def test_mcp_cancellation_keeps_application_operation_running() -> None:
     gateway, app = make_gateway()
     started, finish, completed = asyncio.Event(), asyncio.Event(), asyncio.Event()
 
-    async def run(*_args: Any) -> dict[str, Any]:
+    async def run(*_args: Any, **_kwargs: Any) -> dict[str, Any]:
         started.set()
         await finish.wait()
         completed.set()

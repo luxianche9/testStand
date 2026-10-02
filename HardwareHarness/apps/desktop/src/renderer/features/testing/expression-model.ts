@@ -16,13 +16,13 @@ export function emptyClause(references: TestExpressionReference[]): Clause {
   return { left, operator: "==", rightKind: "literal", right: "" };
 }
 
-export function literal(value: string): string {
+function literal(value: string): string {
   const trimmed = value.trim();
   if (numberOrKeyword(trimmed)) return trimmed.toLowerCase();
   return JSON.stringify(value);
 }
 
-export function serializeClause(clause: Clause): string {
+function serializeClause(clause: Clause): string {
   const right = clause.rightKind === "reference" ? clause.right : literal(clause.right);
   return clause.operator === "contains" ? `${right} in ${clause.left}` : `${clause.left} ${clause.operator} ${right}`;
 }
@@ -33,7 +33,7 @@ export function serializeCondition(clauses: Clause[], join: "all" | "any"): stri
 
 export function serializeValue(clause: Clause): string { return clause.left || literal(clause.right); }
 
-export function parseLiteral(value: string): string {
+function parseLiteral(value: string): string {
   try {
     const parsed = JSON.parse(value);
     return typeof parsed === "string" ? parsed : String(parsed);

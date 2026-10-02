@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { TestPlan } from "@hardwareharness/contracts/testing";
-import { clonePlan, findStep, moveStep, planHardwareIds, removeStep } from "./plan-model.js";
+import { clonePlan, createStep, findStep, moveStep, planAnchors, planHardwareIds, removeStep } from "./plan-model.js";
 
 function plan(): TestPlan {
   return {
@@ -53,5 +53,26 @@ describe("test plan tree model", () => {
       id: "invoke", type: "InvokeTool", hardwareId: "old", toolName: "read", bindingRevision: "rev"
     }];
     expect(planHardwareIds(value)).toEqual(["old"]);
+  });
+
+  it("collects stream-step devices and the anchors tool calls set", () => {
+    const value = clonePlan(plan());
+    value.regions.test[0]!.children = [
+      { id: "pulse", type: "InvokeTool", hardwareId: "gen", toolName: "pulse", anchor: "pulse" },
+      { id: "again", type: "InvokeTool", hardwareId: "gen", toolName: "pulse", anchor: "pulse" },
+      { id: "guard", type: "Guard", hardwareId: "scope", streamId: "ch1", children: [] }
+    ];
+    expect(planHardwareIds(value)).toEqual(["gen", "scope"]);
+    expect(planAnchors(value)).toEqual([{ name: "pulse", hardwareId: "gen", stepId: "pulse" }]);
+  });
+
+  it("creates stream steps with their judging defaults", () => {
+    const item = { category: "判定", label: "观测窗口", container: false, settingsSchema: {}, outputSchema: {} };
+    expect(createStep({ ...item, type: "Observe" })).toMatchObject({
+      window: { anchor: "", startMs: 0, endMs: 100 }, assertions: [], minSamples: 3
+    });
+    expect(createStep({ ...item, type: "Guard", container: true })).toMatchObject({
+      children: [], condition: {}, onViolation: "abort"
+    });
   });
 });

@@ -6,7 +6,10 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DashboardSnapshot } from "@hardwareharness/contracts/desktop";
-import type { Hardware } from "@hardwareharness/contracts/devices";
+import type {
+  AdapterReleaseRecord, DeviceLeaseStatus, Hardware, ManagedDeviceDefinition
+} from "@hardwareharness/contracts/devices";
+import type { LiveFrame, LiveQuery } from "@hardwareharness/contracts/observability";
 import { hardwareStatus } from "../../../lib/hardware-status.js";
 import { queryKeys } from "../../../lib/query-keys.js";
 import { DeviceInspector } from "./DeviceInspector.js";
@@ -77,6 +80,69 @@ const catalog: Hardware[] = [
 ];
 
 const invokeTool = vi.fn();
+const stopLive = vi.fn();
+const streamsApi = {
+  listStreams: vi.fn(async () => [{ id: "uart", type: "bytes" }]),
+  live: vi.fn((_query: LiveQuery, _onFrame: (frame: LiveFrame) => void) => stopLive),
+  leaseStatus: vi.fn(async (): Promise<DeviceLeaseStatus> => ({ held: false, heldByThisTerminal: false })),
+  leaseRelease: vi.fn(async () => ({ released: true })),
+  leaseForceRelease: vi.fn(async () => ({ released: true }))
+};
+const getDefinition = vi.fn(async () => null as ManagedDeviceDefinition | null);
+const developing: AdapterReleaseRecord = {
+  hardwareId: "E2E_CARD",
+  status: "developing",
+  check: { at: "2026-10-01T00:00:00Z", note: "" },
+  simulator: { at: "2026-10-01T00:00:00Z", note: "12 passed" },
+  smoke: [],
+  gaps: ["smoke"]
+};
+const smoked: AdapterReleaseRecord = {
+  ...developing,
+  smoke: [{ operator: "alice", at: "2026-10-01T01:00:00Z", wiring: "AO0→AI0", observation: "1.00 V" }],
+  gaps: []
+};
+const adapterApi = {
+  getAdapterStatus: vi.fn(async () => developing),
+  recordAdapterSmoke: vi.fn(async () => smoked),
+  setAdapterStatus: vi.fn(async () => ({ ...smoked, status: "available" as const }))
+};
+
+const definition: ManagedDeviceDefinition = {
+  hardwareId: "E2E_CARD",
+  manifestRevision: "sha256:0123456789abcdef",
+  fetchedAt: "2026-10-01T00:00:00Z",
+  offline: true,
+  document: {
+    manifestRevision: "sha256:0123456789abcdef",
+    identity: {
+      serverId: "E2E_MCP",
+      hardwareId: "E2E_CARD",
+      manufacturer: "Advantech",
+      model: "PCI-1710L",
+      dryRun: true
+    },
+    description: "Multifunction DAQ card",
+    images: {
+      appearance: { asset: "appearance.png", assetId: "definition/assets/appearance.png", mediaType: "image/png" }
+    },
+    pinout: {
+      connectors: [{
+        connectorId: "CN1",
+        name: "CN1",
+        connectorType: "SCSI-68",
+        image: { asset: "cn1.svg", assetId: "definition/assets/cn1.svg", mediaType: "image/svg+xml" },
+        pinIds: ["CN1.1"]
+      }],
+      pins: [{
+        pinId: "CN1.1",
+        connectorId: "CN1",
+        position: 1,
+        functions: [{ signal: "AI0", direction: "input", electricalType: "analog" }]
+      }]
+    }
+  }
+};
 
 function Wrapper({ children }: { children: ReactNode }) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
@@ -108,6 +174,8 @@ beforeEach(() => {
       system: { dashboard: vi.fn(async () => snapshot) },
       devices: {
         hardwareImageUrl: vi.fn(async () => "data:image/png;base64,aaaa"),
+        getDefinition,
+        ...adapterApi,
         removeComputer: vi.fn(),
         removeServer: vi.fn(),
         serverAction: vi.fn(),
@@ -115,7 +183,8 @@ beforeEach(() => {
         readServerLogs: vi.fn(async () => ({ lines: [], truncated: false }))
       },
       events: { subscribe: () => () => undefined },
-      manual: { invokeTool }
+      manual: { invokeTool },
+      streams: streamsApi
     }
   });
 });
@@ -158,6 +227,7 @@ describe("device trees", () => {
         onSelect={vi.fn()}
         onToggle={vi.fn()}
         onAddComputer={vi.fn()}
+        onAddByUrl={vi.fn()}
       />
     );
     const device = screen.getByRole("treeitem", { name: /E2E fixture card/ });
@@ -178,6 +248,7 @@ describe("device trees", () => {
         onSelect={onSelect}
         onToggle={onToggle}
         onAddComputer={vi.fn()}
+        onAddByUrl={vi.fn()}
       />
     );
     expect(screen.getByRole("tree", { name: "电脑列表" })).toBeTruthy();
@@ -194,6 +265,34 @@ describe("device trees", () => {
     computer.focus();
     await userEvent.keyboard(" ");
     expect(onSelect).toHaveBeenLastCalledWith("c:LOCAL_FIXTURE");
+  });
+
+  it("groups services added by URL under 未托管服务 with an add-by-URL action", async () => {
+    const onAddByUrl = vi.fn();
+    const unmanaged = {
+      transport: "mcp-http" as const,
+      serverId: "SCOPE_MCP",
+      label: "Rigol DS1104",
+      hardwareId: "SCOPE_0",
+      url: "http://10.0.0.9:8020/mcp",
+      enabled: true
+    };
+    render(
+      <RemoteComputerTree
+        data={{ ...snapshot, servers: [...snapshot.servers, unmanaged] }}
+        hardware={catalog}
+        selected={null}
+        isOpen={() => true}
+        onSelect={vi.fn()}
+        onToggle={vi.fn()}
+        onAddComputer={vi.fn()}
+        onAddByUrl={onAddByUrl}
+      />
+    );
+    expect(screen.getByRole("treeitem", { name: /未托管服务/ })).toBeTruthy();
+    expect(screen.getByRole("treeitem", { name: /Rigol DS1104/ })).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "按 URL 添加服务" }));
+    expect(onAddByUrl).toHaveBeenCalledOnce();
   });
 
   it("lists passive hardware without row actions", () => {
@@ -273,5 +372,75 @@ describe("device inspector", () => {
     expect(await screen.findByAltText("DUT_A 外观图")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "预览" })).toBeNull();
     expect(screen.queryByRole("heading", { name: "手动控制" })).toBeNull();
+  });
+
+  it("watches a running device's streams read-only and stops the watch when closed", async () => {
+    const view = renderInspector("s:E2E_MCP");
+    expect(await screen.findByText(/uart · bytes/)).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "开始监视" }));
+    expect(streamsApi.live).toHaveBeenCalledWith(
+      expect.objectContaining({ keys: ["E2E_CARD__uart"] }), expect.any(Function), expect.any(Function)
+    );
+    view.unmount();
+    expect(stopLive).toHaveBeenCalled();
+  });
+
+  it("shows the service's own declaration read-only and labels an offline cache", async () => {
+    getDefinition.mockResolvedValue(definition);
+    renderInspector("s:E2E_MCP");
+
+    expect(await screen.findByText("离线，显示的是缓存版本")).toBeTruthy();
+    expect(screen.getByText("模拟运行")).toBeTruthy();
+    expect(screen.getByText("Multifunction DAQ card")).toBeTruthy();
+    expect(screen.getByText("0123456789ab")).toBeTruthy();
+    expect(await screen.findByAltText("PCI-1710L 外观图")).toBeTruthy();
+    const port = screen.getByRole("article", { name: "端口 CN1" });
+    expect(within(port).getByText("AI0")).toBeTruthy();
+    expect(await within(port).findByAltText("CN1 端口图")).toBeTruthy();
+    expect(screen.queryByText("AO0")).toBeNull();
+    expect(window.hardwareharness.devices.hardwareImageUrl)
+      .toHaveBeenCalledWith("E2E_CARD", "definition/assets/appearance.png");
+  });
+
+  it("releases an adapter only after a human smoke record closes the last gate", async () => {
+    renderInspector("s:E2E_MCP");
+    const section = (await screen.findByText("实物冒烟")).closest("section")!;
+    const release = within(section).getByRole("button", { name: "标记为可用" });
+    expect(within(section).getByText("开发中")).toBeTruthy();
+    expect((release as HTMLButtonElement).disabled).toBe(true);
+
+    const form = within(section).getByRole("group", { name: "添加冒烟记录" });
+    await userEvent.type(within(form).getByLabelText("执行人"), "alice");
+    await userEvent.type(within(form).getByLabelText("接线"), "AO0→AI0");
+    await userEvent.type(within(form).getByLabelText("观察结果"), "1.00 V");
+    await userEvent.click(within(form).getByRole("button", { name: "添加冒烟记录" }));
+    expect(adapterApi.recordAdapterSmoke).toHaveBeenCalledWith("E2E_CARD", "alice", "AO0→AI0", "1.00 V");
+    expect(await within(section).findByText("接线：AO0→AI0")).toBeTruthy();
+
+    await userEvent.click(within(section).getByRole("button", { name: "标记为可用" }));
+    expect(adapterApi.setAdapterStatus).toHaveBeenCalledWith("E2E_CARD", "available");
+    expect(await within(section).findByRole("button", { name: "退回开发中" })).toBeTruthy();
+  });
+
+  it("releases this terminal's lease and force-releases another holder only after two confirmations", async () => {
+    streamsApi.leaseStatus.mockResolvedValueOnce({ held: true, heldByThisTerminal: true });
+    const view = renderInspector("s:E2E_MCP");
+    await userEvent.click(await screen.findByRole("button", { name: "释放" }));
+    expect(streamsApi.leaseRelease).toHaveBeenCalledWith("E2E_CARD");
+    view.unmount();
+
+    streamsApi.leaseStatus.mockResolvedValue({
+      held: true,
+      heldByThisTerminal: false,
+      holder: { terminalId: "t-2", user: "alice", host: "bench-2" }
+    });
+    renderInspector("s:E2E_MCP");
+    expect(await screen.findByText("被 alice@bench-2 持有")).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "强制释放" }));
+    await userEvent.click(await screen.findByRole("button", { name: "继续" }));
+    expect(streamsApi.leaseForceRelease).not.toHaveBeenCalled();
+    const dialog = await screen.findByRole("dialog", { name: "再次确认强制释放" });
+    await userEvent.click(within(dialog).getByRole("button", { name: "强制释放" }));
+    expect(streamsApi.leaseForceRelease).toHaveBeenCalledWith("E2E_CARD", expect.any(String));
   });
 });

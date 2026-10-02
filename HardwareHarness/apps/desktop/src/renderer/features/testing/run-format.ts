@@ -66,7 +66,7 @@ export function friendlyField(field: string): string {
   return field === "value" ? "测量值" : field.replace(/^value\./, "");
 }
 
-export function summarizeValue(value: unknown): string {
+function summarizeValue(value: unknown): string {
   if (value === undefined || value === null) return "";
   if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return String(value);
   try {
@@ -78,7 +78,7 @@ export function summarizeValue(value: unknown): string {
 }
 
 /** Judgment limits in instrument notation: `11.5 ~ 12.5`, `5 ± 0.2`, `= 1`; other shapes fall back to JSON. */
-export function formatLimits(limits: unknown): string {
+function formatLimits(limits: unknown): string {
   if (!limits || typeof limits !== "object" || Array.isArray(limits)) return summarizeValue(limits);
   const { minimum, maximum, expected, tolerance, mask, ...rest } = limits as Record<string, unknown>;
   if (Object.keys(rest).length) return summarizeValue(limits);
@@ -99,7 +99,50 @@ export function resultSummary(result: TestResult): string {
     const limits = formatLimits(result.limits);
     return [verdict, actual && `实际 ${actual}`, limits && `要求 ${limits}`].filter(Boolean).join("，");
   }
+  if (result.kind === "verdict") return verdictSummary(result);
   return typeof result.message === "string" ? result.message : summarizeValue(result.value);
+}
+
+const VERDICT_LABEL: Record<string, string> = { Pass: "通过", Fail: "失败", Inconclusive: "无法判定", Error: "错误" };
+const OPERATOR_TEXT: Record<string, string> = {
+  ge: "≥", gte: "≥", le: "≤", lte: "≤", gt: ">", lt: "<", eq: "=", ne: "≠", within: "∈"
+};
+
+function record(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+/**
+ * A stream verdict (Observe / Expect / Guard) in one line: the verdict, then what decided it —
+ * each metric against its limit, the match latency, or the violation.
+ */
+function verdictSummary(result: TestResult): string {
+  const verdict = String(result.verdict ?? "");
+  const evidence = record(result.evidence);
+  const label = VERDICT_LABEL[verdict] ?? verdict;
+  const text = (value: unknown): string => {
+    if (typeof value === "number") return String(+value.toPrecision(6));
+    if (Array.isArray(value)) return `[${value.map(text).join(", ")}]`;
+    return summarizeValue(value);
+  };
+  const detail = [evidence.reason, evidence.message].filter((item) => typeof item === "string" && item).join("：");
+  if (verdict === "Inconclusive") return [label, detail].filter(Boolean).join("，");
+  const assertions = Array.isArray(evidence.assertions) ? evidence.assertions.map(record) : [];
+  if (assertions.length) {
+    const parts = assertions.map((item) => {
+      const operator = OPERATOR_TEXT[String(item.op)] ?? String(item.op ?? "");
+      return `${String(item.metric)} ${text(item.actual)} ${operator} ${text(item.value)} ${item.passed ? "✓" : "✗"}`;
+    });
+    return [label, ...parts].join("，");
+  }
+  if (result.stepType === "Guard") {
+    const violation = evidence.violation;
+    return [label, violation ? `越限 ${summarizeValue(violation)}` : "全程未越限"].join("，");
+  }
+  if (typeof evidence.latencyMs === "number") {
+    return [label, `窗口内 ${Math.round(evidence.latencyMs)} ms 满足`].join("，");
+  }
+  return [label, detail].filter(Boolean).join("，");
 }
 
 export function assertionLimits(assertions: TestResult[]): string {
@@ -112,7 +155,7 @@ const stateLabels: Record<StepRunState, string> = {
 };
 export function stateLabel(value: StepRunState): string { return stateLabels[value]; }
 
-export function stateTone(value: StepRunState): Tone {
+function stateTone(value: StepRunState): Tone {
   if (value === "running") return "run";
   if (value === "Pass") return "pass";
   if (value === "Fail" || value === "Error") return "fail";
@@ -120,8 +163,21 @@ export function stateTone(value: StepRunState): Tone {
   return "neutral";
 }
 
-const resultKindLabels: Record<string, string> = { assertion: "断言", measurement: "测量", observation: "观察", note: "备注" };
+const resultKindLabels: Record<string, string> = {
+  assertion: "断言", measurement: "测量", observation: "观察", note: "备注", verdict: "判定"
+};
 export function resultKindLabel(kind: string): string { return resultKindLabels[kind] ?? kind; }
+
+/** Evidence grades (design §7.7); S is display only and never decides a verdict. */
+const evidenceLabels: Record<string, string> = {
+  T1: "独立测量", T2: "仪器自测", T3: "仪器精密结果", P: "DUT 协议回报", M: "人工判定", S: "设定值影子，不能作为判定证据"
+};
+/** A result's evidence grade (verdicts before B14 carry it only in ``evidence``). */
+export function resultEvidence(result: TestResult): { grade: string; label: string } | undefined {
+  const grade = result.evidenceType ?? record(result.evidence).evidenceType;
+  if (typeof grade !== "string" || !(grade in evidenceLabels)) return undefined;
+  return { grade, label: evidenceLabels[grade]! };
+}
 
 const operationStateLabels: Record<string, string> = {
   accepted: "已接受", dispatched: "已派发", succeeded: "成功", failed: "失败",

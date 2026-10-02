@@ -1,15 +1,20 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from hardwareharness_device_sdk.testing import check_device, receive_until, serve
 from hh_adapter_pci1762 import DEVICE, Pci1762
-from hh_adapter_pci1762.pinout import pinout
+from hh_adapter_pci1762.pinout import appearance_diagram, pinout, port_diagram
+
+ASSETS = Path(__file__).resolve().parents[1] / "src" / "hh_adapter_pci1762" / "assets"
 
 PUBLIC_TOOLS = {
-    "get_server_info", "list_hardware", "get_hardware_info", "get_pinout", "list_streams", "get_panel",
+    "get_server_info", "list_hardware", "get_hardware_info",
+    "lease_acquire", "lease_heartbeat", "lease_release", "lease_force_release", "lease_status",
     "pci1762_set_relay", "pci1762_set_bank", "pci1762_read_bit", "pci1762_safe_state",
-    "pci1762_stream_read", "pci1762_stream_start", "pci1762_stream_stop",
+    "pci1762_stream_read",
 }
 
 
@@ -21,7 +26,9 @@ def hh():
 
 def test_entry_point_and_compliance():
     assert DEVICE is Pci1762
-    assert check_device(Pci1762) == []
+    warnings: list[str] = []
+    assert check_device(Pci1762, warnings=warnings) == []
+    assert warnings == []
 
 
 def test_public_contract(hh):
@@ -46,17 +53,62 @@ def test_invalid_relay_rejected(hh, arguments):
     assert len(hh.service.device.cli.commands) == before
 
 
-def test_relay_readback_and_stream(hh):
-    assert hh.call("set_relay", channel=9, closed=True)["data"] == {"channel": 9, "closed": True, "port": 1, "bit": 1}
+def test_relay_writes_publish_readback(hh):
+    result = hh.call("set_relay", {"operationId": "op-r"}, channel=9, closed=True)
+    assert result["data"] == {"channel": 9, "closed": True, "port": 1, "bit": 1}
+    assert [ref["streamId"] for ref in result["meta"]["streamRefs"]] == ["relay"]
     assert hh.call("read_bit", channel=9, kind="relay")["data"]["value"] is True
     assert hh.call("read_bit", channel=9, kind="DO")["data"]["value"] is True
     assert hh.call("read_bit", channel=9)["data"]["value"] is False
-    with hh.websocket("relay") as socket:
-        batch = receive_until(socket, lambda frame: frame["type"] == "batch")
-        assert batch["items"][-1]["value"] == 1 << 9
+    last = hh.call("stream_read", streamId="relay", limit=1)["data"]["records"][-1]
+    assert last["mask"] == 1 << 9 and last["op"] == "op-r"
     assert hh.call("set_bank", mask=0x8001)["data"] == {"mask": 0x8001}
+    with hh.sse("relay", cursor=-1) as events:
+        batch = receive_until(events, lambda frame: frame["type"] == "batch" and frame["records"])
+        assert batch["records"][-1]["mask"] == 0x8001
     assert hh.call("safe_state")["data"] == {"relays": "all_open"}
+    assert hh.call("stream_read", streamId="relay", limit=1)["data"]["records"][-1]["mask"] == 0
     assert hh.call("read_bit", channel=0, kind="RELAY")["data"]["value"] is False
+
+
+def test_di_is_sampled_in_one_round_trip_and_only_on_change(hh):
+    device = hh.service.device
+    assert hh.get("/device").json()["streams"] == [
+        {"id": "di", "type": "bits", "width": 16, "bitLabels": [f"IDI{n}" for n in range(16)], "rateHz": 20.0,
+         "kind": "measured"},
+        {"id": "relay", "type": "bits", "width": 16, "bitLabels": [f"R{n}" for n in range(16)],
+         "label": "Relay coil control"}]
+    assert device.mask_command is True
+    with hh.sse("di") as events:
+        events.receive()
+        device.cli.di = 0b101
+        receive_until(events, lambda frame: frame["type"] == "batch"
+                      and any(record["mask"] == 0b101 for record in frame["records"]))
+        head = device.di.buffer.head
+        receive_until(events, lambda frame: frame["type"] == "status")
+        assert device.di.buffer.head == head
+    assert not any(command["cmd"] == "read_bit" for command in device.cli.commands)
+
+
+def test_falls_back_to_bit_reads_without_read_mask():
+    from hh_adapter_pci1762.sim import SimulatedHwcli
+
+    class OldCli(SimulatedHwcli):
+        def call(self, command):
+            if command.get("cmd") == "read_mask":
+                return {"ok": False, "reachable": False, "message": "unknown read_mask", "data": None}
+            return super().call(command)
+
+    class OldPci1762(Pci1762):
+        def __init__(self, config):
+            super().__init__(config)
+            self.cli = OldCli()
+
+    with serve(OldPci1762) as harness:
+        device = harness.service.device
+        assert device.mask_command is False
+        harness.call("set_relay", channel=2, closed=True)
+        assert harness.call("stream_read", streamId="relay", limit=1)["data"]["records"][-1]["mask"] == 4
 
 
 def test_capability_details(hh):
@@ -64,15 +116,23 @@ def test_capability_details(hh):
     assert details["bankAtomic"] is False and details["contactContinuityMeasurement"] is False
 
 
-def test_panel_references(hh):
-    items = {item["id"]: item for item in hh.call("get_panel")["data"]["items"]}
-    assert items["relay0"]["write"]["tool"] == "pci1762_set_relay" and items["relay0"]["confirm"]
-    assert items["relay0"]["pins"] == [f"{hh.hardware_id}.CN1.21", f"{hh.hardware_id}.CN1.20"]
-    assert len(items["di"]["pins"]) == 16
-
-
 def test_pinout():
     data = pinout("PC1_MCP.PCI1762_CARD_0")
     assert len(data.pins) == 62 and len({pin.pinId for pin in data.pins}) == 62
     relays = {pin.functions[0].channelIndex for pin in data.pins if pin.functions[0].channelKind == "relay"}
     assert relays == set(range(16))
+
+
+def test_device_declaration(hh):
+    document = hh.get("/device").json()
+    assert document["description"].startswith("Advantech PCI-1762")
+    assert document["images"]["appearance"]["asset"] == "appearance.svg"
+    image = document["pinout"]["connectors"][0]["image"]
+    assert image["asset"] == "ports/CN1.svg" and len(image["pinPositions"]) == 62
+    assert hh.service.device.board_description == "PCI-1762,BID#0"
+
+
+def test_shipped_assets_match_pinout():
+    data = pinout("X")
+    assert (ASSETS / "ports" / "CN1.svg").read_bytes().decode().replace("\r\n", "\n") == port_diagram(data).svg
+    assert (ASSETS / "appearance.svg").read_bytes().decode().replace("\r\n", "\n") == appearance_diagram()

@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   initialSchemaValue,
   requiresJsonFallback,
-  stripSchemaProperties,
-  validateSchemaArguments
+  stripSchemaProperties
 } from "./schema-form-model.js";
+import { validateSchemaArguments } from "./schema-validation.js";
 
 describe("manual JSON Schema form model", () => {
   it("builds required nested values and optional defaults without inventing other optional fields", () => {

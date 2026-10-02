@@ -6,6 +6,7 @@ import hmac
 import socket
 from collections.abc import Callable
 from typing import Any
+from urllib.parse import parse_qs
 
 import uvicorn
 from mcp import types
@@ -16,6 +17,8 @@ from mcp.shared.version import SUPPORTED_PROTOCOL_VERSIONS as SDK_PROTOCOL_VERSI
 from pydantic import ValidationError
 from starlette.types import Receive, Scope, Send
 
+from hardwareharness_backend.application.registry import OperationRegistry
+from hardwareharness_backend.contracts.operations import MODES
 from hardwareharness_backend.contracts.validation import (
     literal,
     number,
@@ -35,7 +38,7 @@ from hardwareharness_backend.util import (
 
 from .agent_instructions import AGENT_INSTRUCTIONS as AGENT_INSTRUCTIONS
 from .redaction import redact
-from .tool_registry import ToolRegistry
+from .tool_registry import ENABLED_HARDWARE, ToolRegistry
 
 Record = dict[str, Any]
 PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05", "2024-10-07"]
@@ -82,10 +85,12 @@ class LocalMcpGateway:
         secrets: Any,
         preferred_port: int = 8000,
         request_context: Record | None = None,
+        *,
+        operations: OperationRegistry | None = None,
     ) -> None:
         self.secrets = secrets
         self._request_context = request_context or {"actor": "agent", "source": "mcp"}
-        self.registry = ToolRegistry(application)
+        self.registry = ToolRegistry(application, operations=operations)
         self.port = preferred_port
         self._active_token: str | None = None
         self._last_error: str | None = None
@@ -238,11 +243,13 @@ class LocalMcpGateway:
             ):
                 await _reply(tracked_send, 401, {"error": "unauthorized"})
                 return
-            if (
-                scope["path"] != "/mcp"
-                or scope.get("query_string")
-                or scope["method"] not in {"GET", "POST", "DELETE"}
-            ):
+            mode = _work_mode(scope.get("query_string") or b"")
+            if mode is None:
+                await _reply(
+                    tracked_send, 400, {"error": f"query must be ?mode=<{'|'.join(MODES)}>"}
+                )
+                return
+            if scope["path"] != "/mcp" or scope["method"] not in {"GET", "POST", "DELETE"}:
                 await _reply(
                     tracked_send,
                     405,
@@ -274,7 +281,9 @@ class LocalMcpGateway:
                     return {"type": "http.request", "body": data, "more_body": False}
                 return await receive()
 
-            await self._handle_session(scope, replay_receive, tracked_send, headers, body)
+            await self._handle_session(
+                scope, replay_receive, tracked_send, headers, body, mode or None
+            )
         except Exception as error:
             self._last_error = str(error)
             self._changed()
@@ -282,7 +291,13 @@ class LocalMcpGateway:
                 await _reply(tracked_send, 500, {"error": "internal error"})
 
     async def _handle_session(
-        self, scope: Scope, receive: Receive, send: Send, headers: dict[str, str], body: Any
+        self,
+        scope: Scope,
+        receive: Receive,
+        send: Send,
+        headers: dict[str, str],
+        body: Any,
+        mode: str | None = None,
     ) -> None:
         session_id = headers.get("mcp-session-id")
         created = not session_id
@@ -296,7 +311,7 @@ class LocalMcpGateway:
                 await _reply(send, 400, {"error": "missing MCP session"})
                 return
             session_id = new_uuid()
-            session = await self._create_session(session_id, body)
+            session = await self._create_session(session_id, body, mode)
         initialized = False
 
         async def session_send(message: Any) -> None:
@@ -391,7 +406,9 @@ class LocalMcpGateway:
         await asyncio.gather(*(handle(message) for message in messages))
         await send({"type": "http.response.body", "body": b"", "more_body": False})
 
-    async def _create_session(self, session_id: str, body: Record) -> Record:
+    async def _create_session(
+        self, session_id: str, body: Record, mode: str | None = None
+    ) -> Record:
         client = _client_info(body)
         name, version = client.get("name"), client.get("version")
         subject = (
@@ -399,7 +416,16 @@ class LocalMcpGateway:
             if isinstance(name, str)
             else "unknown-mcp-client"
         )
-        context = {**self._request_context, "requestId": new_uuid(), "subjectId": subject}
+        context = {
+            **self._request_context,
+            "requestId": new_uuid(),
+            "subjectId": subject,
+            # Device tools are expanded per session (design doc 8.2).
+            ENABLED_HARDWARE: [],
+        }
+        if mode:
+            # The work mode (design doc 8.2) is fixed when the session starts.
+            context["mode"] = mode
         protocol: Any = Server("hardwareharness", version="0.1.0", instructions=AGENT_INSTRUCTIONS)
 
         async def list_tools(_request: Any) -> Any:
@@ -419,6 +445,8 @@ class LocalMcpGateway:
                 self._operations.add(operation)
                 operation.add_done_callback(self._operation_finished)
                 data = await asyncio.shield(operation)
+                if request.params.name == "enable_device_tools":
+                    await protocol.request_context.session.send_tool_list_changed()
                 return types.ServerResult(
                     types.EmptyResult.model_validate(
                         {
@@ -464,7 +492,7 @@ class LocalMcpGateway:
                 async with transport.connect() as (read, write), asyncio.TaskGroup() as group:
                     initialization = protocol.create_initialization_options()
                     initialization.capabilities = types.ServerCapabilities(
-                        tools=types.ToolsCapability()
+                        tools=types.ToolsCapability(listChanged=True)
                     )
                     running = group.create_task(protocol.run(read, write, initialization))
                     ready.set_result(None)
@@ -507,6 +535,17 @@ def _client_info(body: Record) -> Record:
     params = body.get("params")
     info = params.get("clientInfo") if isinstance(params, dict) else None
     return info if isinstance(info, dict) else {}
+
+
+def _work_mode(query: bytes) -> str | None:
+    """The ``?mode=`` work mode; ``""`` without a query, ``None`` for any other query."""
+    if not query:
+        return ""
+    values = parse_qs(query.decode("latin-1"), keep_blank_values=True)
+    modes = values.get("mode", [])
+    if set(values) != {"mode"} or len(modes) != 1 or modes[0] not in MODES:
+        return None
+    return modes[0]
 
 
 def _is_initialize_request(body: Any) -> bool:

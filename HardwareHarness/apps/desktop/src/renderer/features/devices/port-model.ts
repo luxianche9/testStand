@@ -9,7 +9,7 @@ export function uniqueId(prefix: string, taken: Set<string>): string {
 }
 
 /** Positions describe physical order, so they stay contiguous when a pin in the middle goes. */
-export function renumber(pins: HardwarePort["pins"]): HardwarePort["pins"] {
+function renumber(pins: HardwarePort["pins"]): HardwarePort["pins"] {
   return pins.map((pin, index) => ({ ...pin, position: index + 1 }));
 }
 

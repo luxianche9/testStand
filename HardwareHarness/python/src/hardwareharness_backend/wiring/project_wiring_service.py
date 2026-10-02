@@ -52,6 +52,10 @@ class ProjectWiringService:
     def set_project_notifier(self, notifier: Callable[[], None]) -> None:
         self._project_notifier = notifier
 
+    def notify_project_changed(self) -> None:
+        if self._project_notifier:
+            self._project_notifier()
+
     async def initialize(self) -> None:
         session = getattr(self.projects, "session", lambda: None)()
         if not session:

@@ -88,7 +88,7 @@ function RunLogView({ log, live, syncLabel, integrityWarning, actions }: {
             actions={<>{actions}<ExportButtons log={log} /></>}
           />
         </div>
-        <div className="grid gap-3 py-4">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-3 py-4">
           {integrityWarning && <InlineWarning>{integrityWarning}</InlineWarning>}
           {trace.legacy && (
             <InlineWarning>该历史运行缺少执行实例信息，循环和并行分支按静态计划兼容显示。</InlineWarning>

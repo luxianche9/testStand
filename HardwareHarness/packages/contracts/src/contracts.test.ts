@@ -13,6 +13,8 @@ describe("public contracts", () => {
   it("applies stable defaults", () => {
     expect(remoteComputerSchema.parse({ id: "PC1", label: "PC", address: "127.0.0.1", ssh: { username: "user" } }).ssh).toMatchObject({ port: 22, shell: "powershell" });
     expect(mcpServerSchema.parse({ serverId: "S1", computerId: "PC1", label: "S", hardwareId: "H1", url: "http://127.0.0.1/mcp", lifecycle: { statusCommand: "s", startCommand: "a", stopCommand: "x", logPath: "l" } })).toMatchObject({ transport: "mcp-http" });
+    expect(mcpServerSchema.parse({ serverId: "S2", label: "S", hardwareId: "H2", url: "http://127.0.0.1/mcp" })).not.toHaveProperty("computerId");
+    expect(mcpServerSchema.safeParse({ serverId: "S3", computerId: "PC1", label: "S", hardwareId: "H3", url: "http://127.0.0.1/mcp", root: "E:\S3", lifecycle: { forceStopCommand: "k" } }).success).toBe(true);
   });
 
   it("validates managed hardware at the remote trust boundary", () => {

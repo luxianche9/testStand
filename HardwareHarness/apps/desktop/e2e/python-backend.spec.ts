@@ -1,9 +1,10 @@
 import { execFile } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { access, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { _electron as electron, expect, test, type ElectronApplication } from "@playwright/test";
+import { rendererReady } from "./renderer.js";
 
 const desktopDir = resolve(import.meta.dirname, "..");
 const execute = promisify(execFile);
@@ -27,7 +28,7 @@ async function expectExited(pid: number): Promise<void> {
   }).toBe(true);
 }
 
-test("Python reads existing safeStorage ciphertext and exits without an orphan", async () => {
+test("Python imports existing safeStorage ciphertext once and exits without an orphan", async () => {
   const userData = await mkdtemp(join(tmpdir(), "hardwareharness 中文 profile "));
   const env = { ...process.env, HARDWAREHARNESS_USER_DATA_DIR: userData,
     HARDWAREHARNESS_GATEWAY_PORT: "0", HARDWAREHARNESS_AGENT_INTEGRATION_TEST_MODE: "1" };
@@ -48,7 +49,7 @@ test("Python reads existing safeStorage ciphertext and exits without an orphan",
   let application: ElectronApplication | undefined;
   try {
     application = await launch();
-    const first = await application.firstWindow();
+    const first = await rendererReady(await application.firstWindow());
     await expect(first.getByRole("heading", { name: "最近项目" })).toBeVisible();
     const ciphertext = await application.evaluate(({ safeStorage }) =>
       safeStorage.encryptString(JSON.stringify({ apiKey: "legacy-test-key" })).toString("base64")
@@ -57,19 +58,19 @@ test("Python reads existing safeStorage ciphertext and exits without an orphan",
     await application.close();
     application = undefined;
     await expectExited(firstPid);
+    // An install from before the keyring move: Python imports the file once, then renames it.
     const path = join(userData, "secrets.json");
-    const secrets = JSON.parse(await readFile(path, "utf8"));
-    secrets.entries["opencode.llm.api-key"] = ciphertext;
-    await writeFile(path, `${JSON.stringify(secrets, null, 2)}\n`, "utf8");
+    await writeFile(path, `${JSON.stringify({ formatVersion: 1, entries: { "opencode.llm.api-key": ciphertext } }, null, 2)}\n`, "utf8");
 
     application = await launch();
-    const second = await application.firstWindow();
+    const second = await rendererReady(await application.firstWindow());
     const llm = await second.evaluate(() => window.hardwareharness.settings.getLlm());
     expect(llm.apiKeyConfigured).toBe(true);
     expect(await second.evaluate((value) => window.hardwareharness.settings.saveLlm(value), {
       baseUrl: llm.baseUrl, model: llm.model
     })).toEqual(llm);
-    expect(JSON.parse(await readFile(path, "utf8")).entries["opencode.llm.api-key"]).toBe(ciphertext);
+    await expect(access(path)).rejects.toThrow();
+    await access(`${path}.imported`);
     const secondPid = await backendPid(application);
     await application.close();
     application = undefined;

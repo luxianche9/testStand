@@ -3,6 +3,7 @@ import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { _electron as electron, expect, test, type Page } from "@playwright/test";
+import { reloadAfterLeave, rendererReady } from "./renderer.js";
 
 const desktopDir = resolve(import.meta.dirname, "..");
 const workspace = resolve(desktopDir, "../..");
@@ -39,7 +40,7 @@ test.afterAll(async () => {
 async function navigateProject(page: Page, view: "设备管理" | "工位接线"): Promise<void> {
   // Compact navigation can hide visible text, but each tab retains its accessible name.
   const tablist = page.getByRole("tablist", { name: "项目子页面" });
-  await expect(tablist.getByRole("tab")).toHaveCount(3);
+  await expect(tablist.getByRole("tab")).toHaveCount(4);
   await tablist.getByRole("tab", { name: view }).click();
 }
 
@@ -84,7 +85,7 @@ for (const theme of ["light", "dark", "system"] as const) {
         cwd: executablePath ? dirname(executablePath) : desktopDir, env
       });
       try {
-        const page = await application.firstWindow();
+        const page = await rendererReady(await application.firstWindow());
         const errors: string[] = [];
         page.on("pageerror", (error) => errors.push(error.message));
         await application.evaluate(({ BrowserWindow }, bounds) => {
@@ -113,12 +114,12 @@ for (const theme of ["light", "dark", "system"] as const) {
           await window.hardwareharness.projects.leave();
         }, { theme, projectRoot });
         await page.emulateMedia({ colorScheme: theme === "light" ? "light" : "dark" });
-        await page.reload();
+        await reloadAfterLeave(page);
         await expect(page.getByRole("heading", { name: "最近项目" })).toBeVisible();
         await expect(page.locator("html")).toHaveAttribute("data-theme", theme === "system" ? "dark" : theme);
         await capture(page, group, "welcome");
         await page.getByText("shadcn-fixture", { exact: true }).first().click();
-        await expect(page.getByText("硬件库", { exact: true })).toBeVisible();
+        await expect(page.getByRole("tab", { name: /^硬件库/ })).toBeVisible();
         await capture(page, group, "wiring");
         await navigateProject(page, "设备管理");
         await expect(page.getByRole("treeitem", { name: /DUT_A/ })).toBeVisible();

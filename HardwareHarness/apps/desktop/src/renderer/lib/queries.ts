@@ -39,12 +39,11 @@ export function useRecentProjects() {
   return useQuery({ queryKey: queryKeys.recentProjects, queryFn: () => window.hardwareharness.projects.listRecent() });
 }
 
-/** AI 发起的人工接线任务（含调用历史）。刷新由 AppShell 的 wiringTask/project 订阅驱动。 */
+/** AI 发起的人工接线任务（含调用历史）。刷新由 wiringTask/project 事件驱动（lib/event-invalidation.ts）。 */
 export function useWiringTasks() {
   return useQuery({
     queryKey: queryKeys.wiringTasks,
-    queryFn: () => window.hardwareharness.wiring.listTasks({ limit: 500 }),
-    refetchInterval: (query) => query.state.data?.some((task) => task.status === "pending") ? 5_000 : false
+    queryFn: () => window.hardwareharness.wiring.listTasks({ limit: 500 })
   });
 }
 
@@ -57,7 +56,7 @@ export function useWiringChanges() {
 }
 
 /** 功能测试项（已保存的测试计划）。刷新由 testPlan 事件驱动。 */
-export function useTestPlans() {
+function useTestPlans() {
   return useQuery({ queryKey: queryKeys.testPlans, queryFn: () => window.hardwareharness.testing.listPlans() });
 }
 
@@ -69,26 +68,16 @@ export function useTestStepCatalog() {
   });
 }
 
-const terminalRunStates = new Set(["completed", "aborted", "error"]);
-
-/** Pushed on the `testRun` channel; the poll is the dropped-event fallback (faster while live). */
+/** Refetched on `testRun` events; a dropped event arrives as `gap`, which refetches everything. */
 export function useCurrentTestRun() {
-  return useQuery({
-    queryKey: queryKeys.testRun,
-    queryFn: () => window.hardwareharness.testing.currentRun(),
-    refetchInterval: (query) => {
-      const run = query.state.data;
-      return run && !terminalRunStates.has(run.state) ? 5_000 : 15_000;
-    }
-  });
+  return useQuery({ queryKey: queryKeys.testRun, queryFn: () => window.hardwareharness.testing.currentRun() });
 }
 
-/** Current unit + per-item latest result + active batch. Pushed on testPlan/testRun/testBatch. */
+/** Current unit + per-item latest result + active batch. Refetched on testPlan/testRun/testBatch events. */
 export function useTestItemStatus() {
   return useQuery({
     queryKey: queryKeys.testItemStatus,
-    queryFn: () => window.hardwareharness.testing.listItemStatus(),
-    refetchInterval: (query) => query.state.data?.batch?.state === "running" ? 5_000 : false
+    queryFn: () => window.hardwareharness.testing.listItemStatus()
   });
 }
 
@@ -113,6 +102,35 @@ export function useTestRecoveryItems() {
   return useQuery({
     queryKey: queryKeys.testRecovery,
     queryFn: () => window.hardwareharness.testing.listRecoveryItems()
+  });
+}
+
+/** A managed device's own declaration (`/device`), as the backend last cached it. The backend
+ *  refreshes it on every server refresh, so this only has to follow that cadence. */
+export function useDeviceDefinition(hardwareId: string) {
+  return useQuery({
+    queryKey: queryKeys.deviceDefinition(hardwareId),
+    queryFn: () => window.hardwareharness.devices.getDefinition(hardwareId),
+    refetchInterval: 15_000
+  });
+}
+
+/** The adapter's release record (design doc §8.4); it only changes through this UI or the Agent. */
+export function useAdapterStatus(hardwareId: string) {
+  return useQuery({
+    queryKey: queryKeys.adapterStatus(hardwareId),
+    queryFn: () => window.hardwareharness.devices.getAdapterStatus(hardwareId),
+    refetchInterval: 15_000
+  });
+}
+
+/** Who holds the device's lease; asked of the service, so only while it is reachable. */
+export function useDeviceLease(hardwareId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.deviceLease(hardwareId),
+    queryFn: () => window.hardwareharness.streams.leaseStatus(hardwareId),
+    enabled,
+    refetchInterval: 5_000
   });
 }
 

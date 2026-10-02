@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from contextlib import AsyncExitStack, suppress
 from datetime import timedelta
 from typing import Any
@@ -16,10 +17,13 @@ from hardwareharness_backend.contracts.devices import (
 from hardwareharness_backend.contracts.errors import app_error
 from hardwareharness_backend.util import clone, json_dumps
 
+from .device_manifest import declared_streams, fetch_asset, fetch_device
 from .mcp_transport import compatible_http_client
 from .schema_validation import schema_error
 
 Record = dict[str, Any]
+
+log = logging.getLogger(__name__)
 
 
 class McpCompatibilityError(Exception):
@@ -177,6 +181,8 @@ class McpHttpTransport:
                         httpx.AsyncClient(
                             headers={"Authorization": f"Bearer {token}"},
                             timeout=httpx.Timeout(30, read=None),
+                            # Bench services are on the LAN; a desktop proxy cannot reach them.
+                            trust_env=False,
                         )
                     )
                     read, write, _ = await stack.enter_async_context(
@@ -262,6 +268,7 @@ class McpHttpTransport:
                         raise RuntimeError(f"MCP server {identifier} must expose list_hardware")
                     record = {
                         "server": clone(server),
+                        "http": http,
                         "client": _ClientAdapter(client, output_schemas, required_tasks),
                         "tools": tools,
                         "validators": validators,
@@ -285,6 +292,7 @@ class McpHttpTransport:
             session["owner"] = owner_task
             self.sessions[identifier] = session
             session["hardware"] = await self._refresh_single_hardware(session)
+            await self._refresh_device(session)
             return session
         except BaseException:
             stop.set()
@@ -371,7 +379,7 @@ class McpHttpTransport:
             result = await session["client"].call_tool(
                 name,
                 request_args,
-                meta={"hardwareharness": metadata} if metadata is not None else None,
+                meta=_request_meta(metadata, options),
                 options=request_options,
             )
         except McpCompatibilityError as failure:
@@ -422,6 +430,8 @@ class McpHttpTransport:
                 remote_error.get("message", "Remote MCP tool failed"),
                 remote_error.get("details"),
             )
+            if isinstance(structured.get("meta"), dict):
+                remote_failure.meta = structured["meta"]
             raise remote_failure
         if result.get("isError"):
             messages = [
@@ -435,8 +445,14 @@ class McpHttpTransport:
                 {"serverId": server_id, "toolName": name, "automaticRetry": False},
             )
         if isinstance(structured, dict) and "data" in structured:
-            return structured["data"]
-        return result.get("structuredContent", result.get("content"))
+            data = structured["data"]
+            meta = structured.get("meta")
+        else:
+            data = result.get("structuredContent", result.get("content"))
+            meta = None
+        if options.get("envelope"):
+            return {"data": data, "meta": meta if isinstance(meta, dict) else {}}
+        return data
 
     async def list_hardware(self, servers: list[Record]) -> list[Record]:
         output = []
@@ -468,11 +484,83 @@ class McpHttpTransport:
                 f"{item['hardwareId']}; expected {server['hardwareId']}"
             )
         return parse_managed_hardware(
-            {**item, "computerId": server["computerId"], "serverId": server["serverId"]}
+            {
+                **item,
+                "serverId": server["serverId"],
+                **({"computerId": server["computerId"]} if "computerId" in server else {}),
+            }
         )
+
+    async def describe_device(self, server: Record) -> Record | None:
+        """The service's ``/device`` declaration, fetched now (``None``: it has none)."""
+        session = await self.ensure(server)
+        await self._refresh_device(session)
+        device = session.get("device")
+        return clone(device) if isinstance(device, dict) else None
+
+    async def read_asset(self, server: Record, path: str) -> bytes:
+        """One ``/assets/<path>`` file referenced by the declaration."""
+        session = await self.ensure(server)
+        return await fetch_asset(session["http"], server["url"], path)
+
+    async def _refresh_device(self, session: Record) -> None:
+        """``/device`` is the stream list; services that predate it answer ``list_streams``."""
+        try:
+            device = await fetch_device(session["http"], session["server"]["url"])
+        except Exception as error:
+            # Not fatal: the MCP session works without it, only the declaration is missing.
+            log.warning("GET /device of %s failed: %s", session["server"]["serverId"], error)
+            device = None
+        session["device"] = device
+        session["streams"] = (
+            declared_streams(device) if device is not None else await self._list_streams(session)
+        )
+
+    async def _list_streams(self, session: Record) -> list[Record]:
+        if "list_streams" not in session["validators"]:
+            return []
+        server = session["server"]
+        data = await self.call_remote(
+            server["serverId"], "list_streams", {"hardwareId": server["hardwareId"]}
+        )
+        if not isinstance(data, list):
+            raise RuntimeError(f"MCP server {server['serverId']} list_streams must return a list")
+        return [
+            {"id": str(item["id"]), "type": str(item["type"])}
+            for item in data
+            if isinstance(item, dict) and "id" in item and "type" in item
+        ]
+
+    async def list_streams(self, server: Record) -> list[Record]:
+        session = await self.ensure(server)
+        streams: list[Record] = session.get("streams", [])
+        return [dict(item) for item in streams]
+
+    async def read_blob(self, server: Record, stream_id: str, ref: str) -> Record:
+        """Content of one blob record through the service's ``<prefix>_blob_read`` tool."""
+        session = await self.ensure(server)
+        name = next((item for item in session["validators"] if item.endswith("_blob_read")), None)
+        if name is None:
+            raise RuntimeError(f"MCP server {server['serverId']} has no blob_read tool")
+        data = await self.call_remote(
+            server["serverId"],
+            name,
+            {"hardwareId": server["hardwareId"], "streamId": stream_id, "ref": ref},
+        )
+        if not isinstance(data, dict):
+            raise RuntimeError(f"MCP server {server['serverId']} blob_read must return an object")
+        return data
 
     async def prepare_shutdown(self, server_id: str) -> Any:
         return await self.call_remote(server_id, "hardwareharness_prepare_shutdown", {})
+
+
+def _request_meta(metadata: Record | None, options: Record) -> Record | None:
+    """Request ``_meta``: service-visible operation/lease ids plus HardwareHarness metadata."""
+    meta: Record = {key: options[key] for key in ("operationId", "leaseId") if options.get(key)}
+    if metadata is not None:
+        meta["hardwareharness"] = metadata
+    return meta or None
 
 
 def _stable(value: Any) -> str:

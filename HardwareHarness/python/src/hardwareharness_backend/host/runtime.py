@@ -1,20 +1,30 @@
-"""Composition root replacing the old in-process desktop services."""
+"""Composition root of the HardwareHarness service process.
+
+Every caller (renderer, main process) runs ``@operation`` entries through one
+``OperationRegistry`` over the local HTTP API and follows events on its SSE stream
+(design doc §9.4). ``desktop.*`` are the main process's own operations.
+"""
 
 from __future__ import annotations
 
 import asyncio
-import inspect
+import contextlib
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
+from hardwareharness_backend import __version__
 from hardwareharness_backend.application import (
-    DESKTOP_METHODS,
+    NAMESPACES,
     ExecutionCoordinator,
     HardwareHarnessApplication,
 )
-from hardwareharness_backend.contracts.errors import AppError, to_wire_error
+from hardwareharness_backend.application.registry import OperationRegistry, Payload
+from hardwareharness_backend.contracts.errors import AppError
+from hardwareharness_backend.contracts.openapi import openapi_document
+from hardwareharness_backend.contracts.operations import collect_operations
 from hardwareharness_backend.devices import (
     DeviceCatalogService,
     DeviceService,
@@ -22,19 +32,41 @@ from hardwareharness_backend.devices import (
     DeviceTransportRegistry,
     McpHttpTransport,
 )
-from hardwareharness_backend.host.rpc import DesktopSecretProtector, StdioRpc
+from hardwareharness_backend.devices.leases import LeaseManager, terminal_holder
+from hardwareharness_backend.host.change_events import change_summary
+from hardwareharness_backend.host.desktop import DesktopApplication
+from hardwareharness_backend.host.http_api import EventBus, LocalApi
+from hardwareharness_backend.host.legacy_secrets import OsCryptReader
 from hardwareharness_backend.mcp_gateway import LocalMcpGateway
 from hardwareharness_backend.projects import ProjectService
-from hardwareharness_backend.storage import SecretStore, SettingsStore
+from hardwareharness_backend.projects.icd_library import IcdLibrary
+from hardwareharness_backend.storage import AuditLog, SecretBackend, SecretStore, SettingsStore
+from hardwareharness_backend.storage.secrets import FileSecretBackend
+from hardwareharness_backend.streams.live import LiveStreams
+from hardwareharness_backend.streams.source import StreamSources, server_endpoints
 from hardwareharness_backend.testing import TestEngine, TestPlanStore
 from hardwareharness_backend.testing.plugins import load_plugins
 from hardwareharness_backend.testing.resolver import DeviceToolResolver
-from hardwareharness_backend.util import UNDEFINED, clone
 from hardwareharness_backend.wiring import ProjectWiringService
 
-LLM_SECRET = "opencode.llm.api-key"
-HUMAN = {"actor": "human", "source": "desktop"}
-AGENT = {"actor": "agent", "source": "mcp"}
+SERVICE_NAMESPACES: dict[str, type] = {**NAMESPACES, "desktop": DesktopApplication}
+SERVICE_OPERATIONS = collect_operations(SERVICE_NAMESPACES)
+"""Every operation the service answers, the main process's ``desktop.*`` included."""
+TEST_SECRETS_FILE = "secrets.test.json"
+
+
+def openapi() -> dict[str, Any]:
+    return openapi_document(SERVICE_OPERATIONS, __version__)
+
+
+@dataclass
+class ServiceOptions:
+    user_data: Path
+    gateway_port: int = 8000
+    integration_test_mode: bool = False
+    gateway_test_token: str | None = None
+    secret_backend: SecretBackend | None = None
+    """``None`` is the operating system's credential store."""
 
 
 @dataclass
@@ -47,35 +79,43 @@ class Services:
     projects: ProjectService
     wiring: ProjectWiringService
     application: HardwareHarnessApplication
+    desktop: DesktopApplication
+    registry: OperationRegistry
     gateway: LocalMcpGateway
+    stream_sources: StreamSources
+    live_streams: LiveStreams
+    api: LocalApi
 
 
 class HostRuntime:
-    def __init__(self, rpc: StdioRpc) -> None:
-        self.rpc = rpc
+    def __init__(self) -> None:
+        self.bus = EventBus()
         self.services: Services | None = None
-        self.generation = 0
         self._shutdown: asyncio.Task[None] | None = None
 
     def require_services(self) -> Services:
         if self.services is None:
-            raise AppError("unavailable", "Python backend is not ready")
+            raise AppError("unavailable", "The service is not ready")
         return self.services
 
-    async def initialize(self, options: dict[str, Any]) -> dict[str, Any]:
+    async def initialize(self, options: ServiceOptions) -> Services:
         if self.services is not None:
-            raise AppError("conflict", "Python backend is already initialized")
-        root = Path(options["userData"])
+            raise AppError("conflict", "The service is already initialized")
+        root = options.user_data
         root.mkdir(parents=True, exist_ok=True)
-        protector = DesktopSecretProtector(self.rpc)
         settings = SettingsStore(root / "settings.json")
         await settings.initialize()
-        secrets = SecretStore(root / "secrets.json", protector)
+        backend = options.secret_backend
+        if backend is None and options.integration_test_mode:
+            # End-to-end runs must never touch the real credential store.
+            backend = FileSecretBackend(root / TEST_SECRETS_FILE)
+        secrets = SecretStore(root, backend, legacy=OsCryptReader.from_profile(root))
         await secrets.initialize()
         transports = DeviceTransportRegistry([McpHttpTransport(secrets)])
         store = DeviceStore(root / "devices")
         await store.initialize()
         devices = DeviceService(store, secrets, transports)
+        leases = LeaseManager(devices, terminal_holder(root))
         projects = ProjectService(settings)
         await projects.initialize()
         catalog = DeviceCatalogService(store)
@@ -84,8 +124,20 @@ class HostRuntime:
         execution = ExecutionCoordinator()
         test_step_plugins = load_plugins("hardwareharness.test_steps")
         result_listeners = load_plugins("hardwareharness.result_listeners")
-        test_resolver = DeviceToolResolver(devices, catalog)
+        test_resolver = DeviceToolResolver(devices, catalog, IcdLibrary(projects))
         test_plan_store = TestPlanStore(projects, test_resolver, test_step_plugins, wiring)
+        stream_sources = StreamSources(server_endpoints(devices, secrets))
+        live_root = root / "live-streams"
+        live_root.mkdir(exist_ok=True)
+        for stale in live_root.glob("*.sqlite*"):
+            with contextlib.suppress(OSError):
+                stale.unlink()
+        live_streams = LiveStreams(
+            stream_sources,
+            live_root,
+            list_streams=devices.list_streams,
+            fetch_blob=devices.read_blob,
+        )
         test_engine = TestEngine(
             projects,
             devices,
@@ -94,8 +146,10 @@ class HostRuntime:
             test_step_plugins,
             result_listeners,
             runtime_state=test_plan_store.runtime,
+            stream_sources=stream_sources,
+            leases=leases,
         )
-        gateway: LocalMcpGateway
+        desktop: DesktopApplication
         application = HardwareHarnessApplication(
             {
                 "devices": devices,
@@ -103,29 +157,57 @@ class HostRuntime:
                 "projects": projects,
                 "wiring": wiring,
                 "execution": execution,
-                "system": SimpleNamespace(gateway_status=lambda: gateway.status()),
+                "system": SimpleNamespace(gateway_status=lambda: desktop.gateway.status()),
                 "test_resolver": test_resolver,
                 "test_plan_store": test_plan_store,
                 "test_engine": test_engine,
                 "test_step_plugins": test_step_plugins,
+                "live_streams": live_streams,
+                "leases": leases,
             }
         )
-        gateway = LocalMcpGateway(application, secrets, options.get("gatewayPort", 8000))
-        application.projects.set_notifier(self.publish_project)
-        wiring.set_notifier(lambda task: self.publish("wiringTask", task))
-        wiring.set_project_notifier(lambda: self.publish("project", projects.current()))
-        execution.set_notifier(lambda activity: self.publish("execution", activity))
-        application.testing.set_plan_notifier(lambda event: self.publish("testPlan", event))
-        test_engine.set_notifier(lambda event: self.publish("testRun", event))
-        application.testing.set_batch_notifier(lambda event: self.publish("testBatch", event))
-        test_token = options.get("gatewayTestToken")
-        if (
-            options.get("integrationTestMode")
-            and isinstance(test_token, str)
-            and test_token.strip()
-        ):
+        desktop = DesktopApplication(
+            application.authorizer,
+            settings,
+            secrets,
+            store,
+            devices,
+            projects,
+            application,
+            self.bus.publish,
+        )
+        registry = OperationRegistry(
+            service_targets(application, desktop),
+            SERVICE_OPERATIONS,
+            audit=AuditLog(root / "audit.jsonl"),
+            confirmer=application.system.confirmations,
+        )
+        application.system.confirmations.set_notifier(self._emit("confirmation"))
+        gateway = LocalMcpGateway(application, secrets, options.gateway_port, operations=registry)
+        desktop.bind_gateway(gateway)
+
+        def publish_project(document: dict[str, Any] | None, workspace_changed: bool) -> None:
+            self.bus.publish("project", change_summary("project", document))
+            desktop.changed("project", workspaceChanged=workspace_changed)
+
+        application.projects.set_notifier(publish_project)
+        wiring.set_notifier(self._emit("wiringTask"))
+        wiring.set_project_notifier(lambda: publish_project(projects.current(), False))
+        execution.set_notifier(self._emit("execution"))
+        application.testing.set_plan_notifier(self._emit("testPlan"))
+        test_engine.set_notifier(self._emit("testRun"))
+        leases.set_notifier(self._emit("lease"))
+        application.testing.set_batch_notifier(self._emit("testBatch"))
+        test_token = options.gateway_test_token
+        if options.integration_test_mode and test_token and test_token.strip():
             await gateway.replace_token(test_token.strip())
+        api = LocalApi(self.invoke, self.bus, openapi=openapi, live=live_streams.subscribe)
         await gateway.start()
+        try:
+            await api.start()
+        except BaseException:
+            await gateway.stop()
+            raise
         self.services = Services(
             settings,
             secrets,
@@ -135,139 +217,37 @@ class HostRuntime:
             projects,
             wiring,
             application,
+            desktop,
+            registry,
             gateway,
+            stream_sources,
+            live_streams,
+            api,
         )
-        gateway.set_change_notifier(self.publish_state)
-        return {"protocolVersion": 1}
+        gateway.set_change_notifier(lambda: desktop.changed("gateway"))
+        return self.services
 
-    def snapshot(self) -> dict[str, Any] | None:
-        if self.services is None:
-            return None
-        services = self.services
-        self.generation += 1
-        result = {
-            "generation": self.generation,
-            "settings": services.settings.get(),
-            "gateway": services.gateway.status(),
-            "gatewayToken": services.gateway.token(),
-            "llmApiKeyConfigured": services.secrets.has(LLM_SECRET),
+    def _emit(self, event: str) -> Callable[[Any], None]:
+        def publish(payload: Any) -> None:
+            self.bus.publish(event, change_summary(event, payload))
+
+        return publish
+
+    def handshake(self) -> dict[str, Any]:
+        """The one stdout line the main process reads before it talks HTTP."""
+        api = self.require_services().api
+        return {
+            "port": api.port,
+            "token": api.token,
+            "hostToken": api.host_token,
+            "version": __version__,
         }
-        project = services.projects.current()
-        if project is not None:
-            result["project"] = clone(project)
-        if services.secrets.has(LLM_SECRET):
-            try:
-                key = services.secrets.get(LLM_SECRET).get("apiKey", UNDEFINED)
-                if key is not UNDEFINED:
-                    result["llmApiKey"] = key
-            except Exception as error:
-                result["llmApiKeyError"] = to_wire_error(error)
-        return result
 
-    def publish_state(self) -> None:
-        if self.services is not None:
-            self.rpc.notify("desktop.state", self.snapshot())
-
-    def publish_project(self, document: dict[str, Any] | None, workspace_changed: bool) -> None:
-        self.rpc.notify(
-            "desktop.event",
-            {
-                "event": "project",
-                "payload": document,
-                "state": self.snapshot(),
-                "workspaceChanged": workspace_changed,
-            },
-        )
-
-    def publish(self, event: str, payload: Any) -> None:
-        self.rpc.notify(
-            "desktop.event", {"event": event, "payload": payload, "state": self.snapshot()}
-        )
-
-    async def dispatch(self, method: str, params: Any) -> Any:
-        if method == "backend.initialize":
-            return await self.initialize(params)
-        if method == "backend.shutdown":
-            await self.close()
-            return UNDEFINED
+    async def invoke(self, context: dict[str, Any], name: str, payload: Payload) -> Any:
         services = self.require_services()
         if self._shutdown is not None:
-            raise AppError("unavailable", "Python backend is shutting down")
-        if method.startswith("application."):
-            target = DESKTOP_METHODS.get(method.removeprefix("application."))
-            if target is None:
-                raise AppError("invalid_argument", f"Unknown backend method: {method}")
-            args = list(params.get("args", []))
-            if not args or args[0] != HUMAN:
-                raise AppError("permission_denied", "Desktop request context must be human/desktop")
-            while args and args[-1] is UNDEFINED:
-                args.pop()
-            operation = getattr(getattr(services.application, target[0]), target[1])
-            parameters = list(inspect.signature(operation).parameters.values())
-            for index, value in enumerate(args):
-                if value is UNDEFINED:
-                    default = parameters[index].default
-                    args[index] = None if default is inspect.Parameter.empty else default
-            result = operation(*args)
-            return await result if inspect.isawaitable(result) else result
-        if method == "settings.update":
-            return await services.settings.update(params)
-        if method == "settings.saveLlm":
-            await services.settings.update(
-                {"llm": {"baseUrl": params["baseUrl"], "model": params["model"]}}
-            )
-            raw_key = params.get("apiKey")
-            api_key = raw_key.strip() if isinstance(raw_key, str) else ""
-            if params.get("clearApiKey"):
-                await services.secrets.remove(LLM_SECRET)
-            elif api_key:
-                await services.secrets.set(LLM_SECRET, {"apiKey": api_key})
-            return {
-                **services.settings.get()["llm"],
-                "apiKeyConfigured": services.secrets.has(LLM_SECRET),
-            }
-        if method == "gateway.rotateToken":
-            return await services.gateway.rotate_token()
-        if method == "gateway.replaceToken":
-            await services.gateway.replace_token(params["token"])
-            return UNDEFINED
-        if method == "assets.resolveImagePath":
-            return str(services.store.image_path(params["hardwareId"], params["assetId"]))
-        if method == "backend.probeAvailability":
-            results = await asyncio.gather(
-                *(
-                    services.application.devices.refresh_server(AGENT, server["serverId"])
-                    for server in services.devices.list_servers()
-                ),
-                return_exceptions=True,
-            )
-            return {
-                "availability": services.devices.list_availability(),
-                "servers": [result for result in results if not isinstance(result, BaseException)],
-            }
-        if method == "agents.listTools":
-            builtins = [
-                {
-                    "name": tool["name"],
-                    "kind": "builtin",
-                    "inputSchema": tool["inputSchema"],
-                    **({"description": tool["description"]} if tool.get("description") else {}),
-                }
-                for tool in services.gateway.list_builtin_tools()
-            ]
-            remote = [
-                {
-                    "name": tool["externalName"],
-                    "kind": "remote",
-                    "inputSchema": tool["inputSchema"],
-                    "serverId": tool["serverId"],
-                    "remoteName": tool["remoteName"],
-                    **({"description": tool["description"]} if tool.get("description") else {}),
-                }
-                for tool in services.application.devices.list_tools(AGENT)
-            ]
-            return [*builtins, *remote]
-        raise AppError("invalid_argument", f"Unknown backend method: {method}")
+            raise AppError("unavailable", "The service is shutting down")
+        return await services.registry.invoke(context, name, payload)
 
     async def close(self) -> None:
         if self._shutdown is None:
@@ -278,11 +258,28 @@ class HostRuntime:
         if self.services is None:
             return
         services = self.services
+        await services.api.stop()
+        self.bus.close()
+        services.application.system.confirmations.set_notifier(lambda _pending: None)
+        services.application.system.confirmations.close()
         await services.gateway.stop()
         await services.application.devices.close_calls()
         await services.application.manual.close()
+        # Design doc §4.5.2 exit order: runs abort and clean up, then the leases go.
         await services.application.testing.close()
+        await services.application.leases.close()
+        await services.live_streams.close()
+        await services.stream_sources.close()
         await services.application.projects.close()
         await services.devices.close()
         await services.transports.close()
         await services.secrets.flush()
+
+
+def service_targets(application: HardwareHarnessApplication, desktop: DesktopApplication) -> Any:
+    """What the registry dispatches on: every application namespace plus ``desktop``."""
+    return SimpleNamespace(
+        authorizer=application.authorizer,
+        desktop=desktop,
+        **{namespace: getattr(application, namespace) for namespace in NAMESPACES},
+    )

@@ -1,49 +1,282 @@
+"""The Agent's tool catalog (design doc 8.1, 8.2, 9.3).
+
+Curated tools present registry operations under Agent-oriented names and schemas; every other
+operation with work-mode ``profiles`` becomes a generated tool named after it (``.`` → ``_``).
+Operation tools run through ``OperationRegistry.invoke``, so capability, confirmation, request-id
+replay, audit and ``unknown_outcome`` apply exactly as over HTTP; remote device tools run through
+the ``devices.callTool`` operation. A session's work mode (``context["mode"]``) limits the catalog
+to the tools whose profiles contain it; without a mode every tool is listed.
+
+Device tools are not flattened into an Agent session's catalog: the session context carries
+``ENABLED_HARDWARE`` and lists, and may call, only the tools of hardware the Agent expanded with
+``enable_device_tools``. A context without it (host introspection) sees every device tool.
+"""
+
 from __future__ import annotations
 
 import hashlib
+import inspect
+import json
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from typing import Any
 
-from hardwareharness_backend.application import operation_capability
+from hardwareharness_backend import CONTRACT_REVISION
+from hardwareharness_backend.application import OPERATIONS
+from hardwareharness_backend.application.registry import OperationRegistry
+from hardwareharness_backend.application.streams import STREAM_TOOLS
 from hardwareharness_backend.application.tools import PLATFORM_TOOLS
 from hardwareharness_backend.contracts.errors import app_error
-from hardwareharness_backend.contracts.mcp import public_remote_tool, with_error_schema
-from hardwareharness_backend.contracts.operations import Tool
+from hardwareharness_backend.contracts.mcp import (
+    public_remote_tool,
+    success_schema,
+    with_error_schema,
+)
+from hardwareharness_backend.contracts.operations import OperationDefinition, Tool
 from hardwareharness_backend.testing.tools import TESTING_TOOLS
+from hardwareharness_backend.util import clone
 
 from .agent_services import AGENT_TOOLS
-from .contract_tools import CONTRACT_TOOLS, read_tool_contract
+from .contract_tools import CONTRACT_TOOLS, import_firmware, read_tool_contract
 
 Record = dict[str, Any]
+Run = Callable[[Record, Record], Awaitable[Any]]
 
-BUILTIN_TOOLS: list[Tool] = [*PLATFORM_TOOLS, *AGENT_TOOLS, *CONTRACT_TOOLS, *TESTING_TOOLS]
+BUILTIN_TOOLS: list[Tool] = [
+    *PLATFORM_TOOLS,
+    *AGENT_TOOLS,
+    *CONTRACT_TOOLS,
+    *STREAM_TOOLS,
+    *TESTING_TOOLS,
+]
+"""Curated tools; profiled operations without one are generated."""
+REMOTE_CALL = "devices.callTool"
+NOT_GENERATED = frozenset({REMOTE_CALL, "devices.listTools"})
+"""Operations the catalog represents as the remote device tools themselves."""
+ENABLED_HARDWARE = "enabledHardware"
+"""Session context key: hardware whose device tools the Agent enabled."""
+
+
+@dataclass(frozen=True)
+class _Entry:
+    definition: Record
+    capability: str
+    profiles: frozenset[str]
+    """Work modes listing the tool; empty: every mode."""
+    run: Run
+
+
+def tool_annotations(definition: OperationDefinition, open_world: bool) -> Record:
+    """MCP annotations derived from the operation's risk and idempotency (design doc 9.3)."""
+    read = definition.spec.risk == "read"
+    return {
+        "readOnlyHint": read,
+        "destructiveHint": not read,
+        "idempotentHint": read or definition.spec.idempotency != "none",
+        "openWorldHint": open_world,
+    }
+
+
+def generated_definition(definition: OperationDefinition) -> Record:
+    schema = definition.request.model_json_schema(by_alias=True)
+    schema.pop("title", None)
+    data = dict(definition.response_schema)
+    defs = data.pop("$defs", None)
+    # An untyped result is any object: MCP clients reject a boolean `true` schema here.
+    output = success_schema(data or {})
+    if defs:
+        output["$defs"] = defs
+    return {
+        "name": definition.name.replace(".", "_"),
+        "description": definition.summary or f"Operation {definition.name}.",
+        "inputSchema": schema,
+        "outputSchema": output,
+        "annotations": tool_annotations(definition, definition.spec.risk == "actuate"),
+        "_meta": {
+            "hardwareharness": {
+                "contractRevision": CONTRACT_REVISION,
+                "kind": "operation",
+                "operation": definition.name,
+                "resultMode": "data",
+            }
+        },
+    }
 
 
 class ToolRegistry:
-    def __init__(self, application: Any, tools: list[Tool] | None = None) -> None:
+    def __init__(
+        self,
+        application: Any,
+        tools: list[Tool] | None = None,
+        *,
+        operations: OperationRegistry | None = None,
+    ) -> None:
         self.application = application
-        self._builtin: dict[str, tuple[Tool, str]] = {}
-        for tool in BUILTIN_TOOLS if tools is None else tools:
-            if tool.name in self._builtin:
-                raise RuntimeError(f"Duplicate builtin MCP tool name: {tool.name}")
-            capability = tool.capability or operation_capability(tool.operation)
-            self._builtin[tool.name] = (tool, capability)
+        self.operations = operations or OperationRegistry(application, OPERATIONS)
+        self._entries: dict[str, _Entry] = {}
+        curated = BUILTIN_TOOLS if tools is None else tools
+        for tool in curated:
+            self._add(tool.name, self._curated(tool))
+        if tools is None:
+            used = {tool.operation for tool in curated}
+            for definition in self.operations.definitions.values():
+                if definition.spec.profiles and definition.name not in used | NOT_GENERATED:
+                    self._add(definition.name.replace(".", "_"), self._generated(definition))
+        self._own: dict[str, Run] = {
+            "get_tool_contract": self._tool_contract,
+            "import_firmware_artifact": self._import_firmware,
+            "list_device_tools": self._list_device_tools,
+            "enable_device_tools": self._enable_device_tools,
+        }
+
+    def _add(self, name: str, entry: _Entry) -> None:
+        if name in self._entries:
+            raise RuntimeError(f"Duplicate builtin MCP tool name: {name}")
+        self._entries[name] = entry
+
+    def _curated(self, tool: Tool) -> _Entry:
+        definition = tool.definition()
+        definition["outputSchema"] = with_error_schema(definition["outputSchema"])
+        if not tool.operation:
+            return _Entry(definition, tool.capability, tool.profiles, self._gateway_call(tool))
+        operation = self.operations.definitions.get(tool.operation)
+        if operation is None:
+            raise RuntimeError(f"{tool.name}: unknown operation {tool.operation}")
+        parameters = [wire for wire, _ in operation.parameters]
+        if len(tool.fields) > len(parameters):
+            raise RuntimeError(f"{tool.name}: more fields than {tool.operation} parameters")
+        definition["annotations"] = tool_annotations(operation, tool.open_world)
+
+        async def run(context: Record, arguments: Record) -> Any:
+            value = tool.parse(arguments)
+            if tool.check is not None:
+                checked = tool.check(self.application, context)
+                if inspect.isawaitable(checked):
+                    await checked
+            payload = tool.payload(parameters, value)
+            result = await self.operations.invoke(context, operation.name, payload)
+            return result if tool.result is None else tool.result(result)
+
+        return _Entry(definition, operation.spec.capability, operation.spec.profiles, run)
+
+    def _generated(self, definition: OperationDefinition) -> _Entry:
+        async def run(context: Record, arguments: Record) -> Any:
+            # JSON, so that bytes fields arrive base64 encoded as the input schema says.
+            return await self.operations.invoke(context, definition.name, json.dumps(arguments))
+
+        public = generated_definition(definition)
+        public["outputSchema"] = with_error_schema(public["outputSchema"])
+        return _Entry(public, definition.spec.capability, definition.spec.profiles, run)
+
+    def _gateway_call(self, tool: Tool) -> Run:
+        async def run(context: Record, arguments: Record) -> Any:
+            value = tool.parse(arguments)
+            own = self._own.get(tool.name)
+            if own is not None:
+                return await own(context, value)
+            data = await tool.execute(self.application, context, value)
+            if tool.name == "get_agent_context":
+                data["catalogRevision"] = hashlib.sha256(
+                    repr(self.list(context)).encode()
+                ).hexdigest()
+            return data
+
+        return run
+
+    async def _tool_contract(self, context: Record, value: Record) -> Any:
+        return read_tool_contract(self, context, value)
+
+    async def _import_firmware(self, context: Record, value: Record) -> Any:
+        return await import_firmware(self.application, context, value, self.call_device_tool)
+
+    def _hardware_of(self, context: Record) -> dict[str, str]:
+        """``{serverId: hardwareId}``; a server without one stands for itself."""
+        servers = self.application.devices.list_servers(context)
+        return {
+            str(item["serverId"]): str(item.get("hardwareId") or item["serverId"])
+            for item in servers
+        }
+
+    def _device_tools(self, context: Record, hardware_id: str) -> list[Record]:
+        hardware = self._hardware_of(context)
+        return [
+            tool
+            for tool in self.application.devices.list_tools(context)
+            if hardware.get(tool["serverId"], tool["serverId"]) == hardware_id
+        ]
+
+    async def _list_device_tools(self, context: Record, value: Record) -> Any:
+        hardware_id = value["hardwareId"]
+        tools = [
+            {
+                "name": tool["externalName"],
+                "description": tool.get("description", ""),
+                "kind": tool.get("kind", "unknown"),
+                **({"annotations": clone(tool["annotations"])} if tool.get("annotations") else {}),
+            }
+            for tool in self._device_tools(context, hardware_id)
+        ]
+        enabled = context.get(ENABLED_HARDWARE)
+        return {
+            "hardwareId": hardware_id,
+            "enabled": enabled is None or hardware_id in enabled,
+            "tools": tools,
+        }
+
+    async def _enable_device_tools(self, context: Record, value: Record) -> Any:
+        hardware_id = value["hardwareId"]
+        tools = self._device_tools(context, hardware_id)
+        if not tools:
+            raise app_error(
+                "not_found",
+                f"Hardware {hardware_id} exposes no device tools",
+                {
+                    "hardwareId": hardware_id,
+                    "recovery": "Check the hardware ID and that its MCP server is connected.",
+                },
+            )
+        enabled = context.get(ENABLED_HARDWARE)
+        if enabled is not None and hardware_id not in enabled:
+            enabled.append(hardware_id)
+        return {
+            "hardwareId": hardware_id,
+            "enabledHardware": list(enabled) if enabled is not None else [hardware_id],
+            "tools": [tool["externalName"] for tool in tools],
+        }
+
+    def _enabled_remote_tools(self, context: Record) -> list[Record]:
+        tools = self.application.devices.list_tools(context)
+        enabled = context.get(ENABLED_HARDWARE)
+        if enabled is None:
+            return list(tools)
+        if not enabled:
+            return []
+        hardware = self._hardware_of(context)
+        return [t for t in tools if hardware.get(t["serverId"], t["serverId"]) in enabled]
+
+    @staticmethod
+    def _in_mode(profiles: frozenset[str], context: Record) -> bool:
+        mode = context.get("mode")
+        return not mode or not profiles or mode in profiles
+
+    def _remote_visible(self, context: Record) -> bool:
+        remote = self.operations.definitions.get(REMOTE_CALL)
+        return remote is not None and self._in_mode(remote.spec.profiles, context)
 
     def list_builtin(self, context: Record) -> list[Record]:
-        output = []
-        for tool, capability in self._builtin.values():
-            if self.application.authorizer.is_allowed(context, capability):
-                definition = tool.definition()
-                output.append(
-                    {**definition, "outputSchema": with_error_schema(definition["outputSchema"])}
-                )
-        return output
+        is_allowed = self.application.authorizer.is_allowed
+        return [
+            clone(entry.definition)
+            for entry in self._entries.values()
+            if self._in_mode(entry.profiles, context) and is_allowed(context, entry.capability)
+        ]
 
     def list(self, context: Record) -> list[Record]:
         output = self.list_builtin(context)
-        if self.application.authorizer.is_allowed(context, "hardware.executeTools"):
-            output += [
-                public_remote_tool(tool) for tool in self.application.devices.list_tools(context)
-            ]
+        if self._remote_visible(context) and self.application.authorizer.is_allowed(
+            context, "hardware.executeTools"
+        ):
+            output += [public_remote_tool(tool) for tool in self._enabled_remote_tools(context)]
         names = set()
         for tool in output:
             if tool["name"] in names:
@@ -52,28 +285,32 @@ class ToolRegistry:
         return output
 
     async def invoke(self, context: Record, name: str, args: Record) -> Record:
-        builtin = self._builtin.get(name)
-        if builtin:
-            tool, capability = builtin
-            self.application.authorizer.authorize(context, capability)
-            parsed = tool.parse(args)
-            if name == "get_tool_contract":
-                return {"ok": True, "data": read_tool_contract(self, context, parsed)}
-            data = await tool.execute(self.application, context, parsed)
-            if name == "get_agent_context":
-                data["catalogRevision"] = hashlib.sha256(
-                    repr(self.list(context)).encode()
-                ).hexdigest()
-            return {"ok": True, "data": data}
-        self.application.authorizer.authorize(context, "hardware.executeTools")
-        remote = next(
-            (
-                tool
-                for tool in self.application.devices.list_tools(context)
-                if tool["externalName"] == name
-            ),
-            None,
-        )
-        if not remote:
+        entry = self._entries.get(name)
+        if entry is not None:
+            if not self._in_mode(entry.profiles, context):
+                raise app_error(
+                    "not_found",
+                    f"{name} is not available in {context.get('mode')} mode",
+                    {"tool": name, "mode": context.get("mode")},
+                )
+            self.application.authorizer.authorize(context, entry.capability)
+            return {"ok": True, "data": await entry.run(context, args)}
+        if not self._remote_visible(context):
             raise app_error("not_found", f"Unknown MCP tool: {name}")
-        return {"ok": True, "data": await self.application.devices.call_tool(context, name, args)}
+        self.application.authorizer.authorize(context, "hardware.executeTools")
+        if not any(tool["externalName"] == name for tool in self._enabled_remote_tools(context)):
+            if any(
+                tool["externalName"] == name
+                for tool in self.application.devices.list_tools(context)
+            ):
+                raise app_error(
+                    "not_found",
+                    f"Device tool {name} is not enabled in this session",
+                    {"recovery": "Call enable_device_tools for its hardware first."},
+                )
+            raise app_error("not_found", f"Unknown MCP tool: {name}")
+        return {"ok": True, "data": await self.call_device_tool(context, name, args)}
+
+    async def call_device_tool(self, context: Record, name: str, args: Record) -> Any:
+        """Call a remote device tool through the ``devices.callTool`` operation middleware."""
+        return await self.operations.invoke(context, REMOTE_CALL, {"name": name, "args": args})

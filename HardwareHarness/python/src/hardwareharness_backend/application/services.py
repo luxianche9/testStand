@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Awaitable, Callable
-from typing import TYPE_CHECKING, Any, Protocol, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Literal, Protocol, TypeVar, cast
 
 from hardwareharness_backend.contracts.devices import (
     parse_hardware,
@@ -11,9 +11,17 @@ from hardwareharness_backend.contracts.devices import (
 )
 from hardwareharness_backend.contracts.errors import app_error
 from hardwareharness_backend.contracts.operations import operation
+from hardwareharness_backend.devices.deploy import DeployService
+from hardwareharness_backend.devices.leases import LeaseManager
+from hardwareharness_backend.devices.service_registry import (
+    mcp_url,
+    probe_service,
+    register_service,
+)
 from hardwareharness_backend.util import utc_now_iso
 
 from .authorization import Authorizer, Json
+from .confirmations import ConfirmationBroker
 from .execution import ExecutionCoordinator
 
 if TYPE_CHECKING:
@@ -50,40 +58,67 @@ class DevicesApplication:
         service: DeviceService,
         catalog: DeviceCatalogService,
         execution: ExecutionCoordinator | None = None,
+        leases: LeaseManager | None = None,
+        deploy: DeployService | None = None,
     ) -> None:
         self.authorizer, self.service, self.catalog = authorizer, service, catalog
+        self.deploy = deploy or DeployService(service, catalog)
         self.execution = execution or ExecutionCoordinator()
+        self.leases = leases or LeaseManager(service, {"terminalId": "devices-application"})
         self.active: dict[asyncio.Task[Any], str] = {}
         self._calls_closed = False
 
-    @operation("devices.read")
+    @operation(
+        "devices.listComputers",
+        capability="devices.read",
+        risk="read",
+        profiles=("adapter",),
+        idempotency="natural",
+    )
     def list_computers(self, context: Json) -> list[Json]:
         return self.service.list_computers()
 
-    @operation("devices.manageComputers")
+    @operation(
+        "devices.saveComputer",
+        capability="devices.manageComputers",
+        risk="write",
+        idempotency="natural",
+    )
     async def save_computer(
         self, context: Json, input: Json, credentials: Json | None = None
     ) -> Json:
         return await self.service.save_computer(parse_remote_computer(input), credentials)
 
-    @operation("devices.manageComputers")
+    @operation(
+        "devices.removeComputer",
+        capability="devices.manageComputers",
+        risk="destructive",
+        idempotency="natural",
+        confirm=True,
+    )
     async def remove_computer(self, context: Json, computer_id: str) -> Json:
         await self.service.remove_computer(computer_id)
         return {"computerId": computer_id}
 
-    @operation("devices.read")
+    @operation(
+        "devices.getComputerStatus",
+        capability="devices.read",
+        risk="read",
+        profiles=("adapter",),
+        idempotency="natural",
+    )
     async def get_computer_status(self, context: Json, computer_id: str) -> Json:
         computer = await self.service.refresh_computer(computer_id)
         servers = await asyncio.gather(
             *(
                 self.service.refresh_server(server["serverId"])
                 for server in self.service.list_servers()
-                if server["computerId"] == computer_id
+                if server.get("computerId") == computer_id
             )
         )
         return {**computer, "servers": servers}
 
-    @operation("devices.ssh")
+    @operation("devices.executeSsh", capability="devices.ssh", risk="actuate")
     async def execute_ssh(
         self, context: Json, computer_id: str, command: str, timeout_ms: int | None = None
     ) -> Json:
@@ -91,37 +126,78 @@ class DevicesApplication:
             return await self.service.execute(computer_id, command)
         return await self.service.execute(computer_id, command, timeout_ms)
 
-    @operation("devices.read")
+    @operation(
+        "devices.listServers",
+        capability="devices.read",
+        risk="read",
+        profiles=("adapter",),
+        idempotency="natural",
+    )
     def list_servers(self, context: Json) -> list[Json]:
         return self.service.list_servers()
 
-    @operation("devices.read")
+    @operation(
+        "devices.listServersWithStatus",
+        capability="devices.read",
+        risk="read",
+        profiles=("adapter",),
+        idempotency="natural",
+    )
     async def list_servers_with_status(self, context: Json) -> Json:
         servers = self.service.list_servers()
         return {"servers": servers, "statuses": await self.service.refresh_all_servers()}
 
-    @operation("devices.manageServers")
+    @operation(
+        "devices.saveServer",
+        capability="devices.manageServers",
+        risk="write",
+        profiles=("adapter",),
+        idempotency="natural",
+    )
     async def save_server(
         self, context: Json, input: Json, credentials: Json | None = None
     ) -> Json:
         return await self.service.save_server(parse_mcp_server(input), credentials)
 
-    @operation("devices.manageServers")
+    @operation(
+        "devices.removeServer",
+        capability="devices.manageServers",
+        risk="destructive",
+        idempotency="natural",
+        confirm=True,
+    )
     async def remove_server(self, context: Json, server_id: str) -> Json:
         await self.service.remove_server(server_id)
         return {"serverId": server_id}
 
-    @operation("devices.read")
+    @operation(
+        "devices.refreshServer",
+        capability="devices.read",
+        risk="read",
+        profiles=("adapter",),
+        idempotency="natural",
+    )
     async def refresh_server(self, context: Json, server_id: str) -> Json:
         return await self.service.refresh_server(server_id)
 
-    @operation("devices.controlServers")
+    @operation(
+        "devices.serverAction",
+        capability="devices.controlServers",
+        risk="actuate",
+        profiles=("adapter",),
+    )
     async def server_action(self, context: Json, server_id: str, action: str) -> Json:
         if action == "force-stop":
             self.authorizer.authorize(context, "devices.forceStopServers")
         return await self.service.server_action(server_id, action)
 
-    @operation("devices.read")
+    @operation(
+        "devices.readServerLogs",
+        capability="devices.read",
+        risk="read",
+        profiles=("adapter",),
+        idempotency="natural",
+    )
     async def read_server_logs(
         self, context: Json, server_id: str, lines: int | None = None
     ) -> Json:
@@ -129,19 +205,166 @@ class DevicesApplication:
             return await self.service.read_server_logs(server_id)
         return await self.service.read_server_logs(server_id, lines)
 
-    @operation("hardware.read")
+    @operation(
+        "devices.discoverServices",
+        capability="devices.read",
+        risk="read",
+        profiles=("adapter",),
+        idempotency="natural",
+    )
+    async def discover_services(self, context: Json, computer_id: str) -> list[Json]:
+        return await self.service.discover_services(computer_id)
+
+    @operation(
+        "devices.importServices",
+        capability="devices.manageServers",
+        risk="write",
+        profiles=("adapter",),
+        idempotency="natural",
+    )
+    async def import_services(self, context: Json, computer_id: str, server_ids: list[str]) -> Json:
+        """Add services listed in the computer's ``services.json``; tokens come from the
+        service's own ``server.json`` straight into the keyring (design doc 4.8.3)."""
+        entries = {
+            item["serverId"]: item for item in await self.service.discover_services(computer_id)
+        }
+        imported: list[Json] = []
+        skipped: list[Json] = []
+        for server_id in dict.fromkeys(server_ids):
+            entry = entries.get(server_id)
+            if entry is None:
+                skipped.append({"serverId": server_id, "reason": "not in services.json"})
+                continue
+            if entry["added"]:
+                skipped.append({"serverId": server_id, "reason": "already added"})
+                continue
+            try:
+                token = await self.service.read_service_token(computer_id, entry["root"])
+                server = {
+                    "transport": "mcp-http",
+                    "serverId": server_id,
+                    "computerId": computer_id,
+                    "label": server_id,
+                    "hardwareId": entry["hardwareId"],
+                    "url": entry["url"],
+                    "enabled": True,
+                    "root": entry["root"],
+                }
+                imported.append(await self._register_service(server, token))
+            except Exception as error:
+                skipped.append({"serverId": server_id, "reason": str(error)})
+        return {"imported": imported, "skipped": skipped}
+
+    @operation(
+        "devices.addServerByUrl",
+        capability="devices.manageServers",
+        risk="write",
+        profiles=("adapter",),
+        idempotency="natural",
+    )
+    async def add_server_by_url(
+        self, context: Json, url: str, token: str, label: str | None = None
+    ) -> Json:
+        """An unmanaged service: usable through its URL, not started or stopped from here."""
+        endpoint = mcp_url(url)
+        identity = await probe_service(endpoint, token)
+        if any(item["serverId"] == identity["serverId"] for item in self.service.list_servers()):
+            raise app_error("conflict", f"{identity['serverId']} is already added")
+        server = {
+            "transport": "mcp-http",
+            "serverId": identity["serverId"],
+            "label": (label or "").strip() or identity["label"],
+            "hardwareId": identity["hardwareId"],
+            "url": endpoint,
+            "enabled": True,
+        }
+        return await self._register_service(server, token)
+
+    @operation(
+        "devices.listAdapters",
+        capability="devices.read",
+        risk="read",
+        profiles=("adapter",),
+        idempotency="natural",
+    )
+    async def list_adapters(self, context: Json) -> list[Json]:
+        """Adapters in the ``mcp_servers`` workspace that can be packed and deployed."""
+        return await asyncio.to_thread(self.deploy.list_adapters)
+
+    @operation(
+        "devices.deployService",
+        capability="devices.deploy",
+        risk="destructive",
+        profiles=("adapter",),
+        confirm=True,
+    )
+    async def deploy_service(self, context: Json, computer_id: str, spec: Json) -> Json:
+        """Pack, upload, install and start one service; an existing one is upgraded in place
+        and keeps its ``server.json`` and token (design doc 4.8.3)."""
+        return await self.deploy.deploy(computer_id, spec)
+
+    @operation(
+        "devices.uninstallService",
+        capability="devices.deploy",
+        risk="destructive",
+        profiles=("adapter",),
+        confirm=True,
+    )
+    async def uninstall_service(self, context: Json, server_id: str) -> Json:
+        """Safe stop, ``uninstall.ps1``, archive and delete the directory, then forget it."""
+        return await self.deploy.uninstall(server_id)
+
+    async def _register_service(self, server: Json, token: str) -> Json:
+        return await register_service(self.service, self.catalog, server, token)
+
+    @operation(
+        "devices.listManagedHardware",
+        capability="hardware.read",
+        risk="read",
+        profiles=("adapter", "plan", "explore"),
+        idempotency="natural",
+    )
     async def list_managed_hardware(self, context: Json) -> list[Json]:
         return await self.service.refresh_hardware()
 
-    @operation("hardware.read")
+    @operation(
+        "devices.listHardware",
+        capability="hardware.read",
+        risk="read",
+        profiles=("adapter", "plan", "explore"),
+        idempotency="natural",
+    )
     def list_hardware(self, context: Json) -> list[Json]:
         return self.catalog.list_hardware()
 
-    @operation("hardware.read")
+    @operation(
+        "devices.getHardware",
+        capability="hardware.read",
+        risk="read",
+        profiles=("adapter", "plan", "explore"),
+        idempotency="natural",
+    )
     def get_hardware(self, context: Json, hardware_id: str) -> Json:
         return self.catalog.get_hardware(hardware_id)
 
-    @operation("hardware.manage")
+    @operation(
+        "devices.getDefinition",
+        capability="hardware.read",
+        risk="read",
+        profiles=("adapter", "plan", "explore"),
+        idempotency="natural",
+    )
+    def get_definition(self, context: Json, hardware_id: str) -> Json | None:
+        """The managed device's ``/device`` declaration as cached (read-only, §9.7)."""
+        return self.service.get_definition(hardware_id)
+
+    @operation(
+        "devices.saveHardware",
+        capability="hardware.manage",
+        risk="write",
+        profiles=("adapter", "plan"),
+        idempotency="natural",
+    )
     async def save_hardware(self, context: Json, input: Json) -> Json:
         hardware = parse_hardware(input)
         assigned = next(
@@ -166,12 +389,84 @@ class DevicesApplication:
             )
         return await self.catalog.save_hardware(hardware)
 
-    @operation("hardware.manage")
+    @operation(
+        "devices.getAdapterStatus",
+        capability="hardware.read",
+        risk="read",
+        profiles=("adapter",),
+        idempotency="natural",
+    )
+    def get_adapter_status(self, context: Json, hardware_id: str) -> Json:
+        """Adapter release record (design doc 8.4): status, evidence and missing gates."""
+        return self.catalog.adapter_status(hardware_id)
+
+    @operation(
+        "devices.recordAdapterCheck",
+        capability="hardware.manage",
+        risk="write",
+        profiles=("adapter",),
+    )
+    async def record_adapter_check(
+        self,
+        context: Json,
+        hardware_id: str,
+        kind: Literal["check", "simulator"],
+        note: str = "",
+    ) -> Json:
+        """Record that the adapter's ``--check`` or simulator tests passed just now."""
+        return await self.catalog.record_adapter_check(hardware_id, kind, note)
+
+    @operation(
+        "devices.recordAdapterSmoke",
+        capability="hardware.releaseAdapters",
+        risk="write",
+    )
+    async def record_adapter_smoke(
+        self, context: Json, hardware_id: str, operator: str, wiring: str, observation: str
+    ) -> Json:
+        """Add a manual bench smoke record (human only): who ran it, the wiring and what
+        they observed."""
+        for name, value in (
+            ("operator", operator),
+            ("wiring", wiring),
+            ("observation", observation),
+        ):
+            if not value.strip():
+                raise app_error("invalid_argument", f"{name} must not be empty")
+        smoke = {"operator": operator, "wiring": wiring, "observation": observation}
+        return await self.catalog.record_adapter_smoke(hardware_id, smoke)
+
+    @operation(
+        "devices.setAdapterStatus",
+        capability="hardware.releaseAdapters",
+        risk="write",
+        idempotency="natural",
+    )
+    async def set_adapter_status(
+        self, context: Json, hardware_id: str, status: Literal["developing", "available"]
+    ) -> Json:
+        """Mark the adapter available (every release gate met) or back in development."""
+        return await self.catalog.set_adapter_status(hardware_id, status)
+
+    @operation(
+        "devices.removeHardware",
+        capability="hardware.manage",
+        risk="destructive",
+        profiles=("adapter", "plan"),
+        idempotency="natural",
+        confirm=True,
+    )
     async def remove_hardware(self, context: Json, hardware_id: str) -> Json:
         await self.catalog.remove_hardware(hardware_id)
         return {"hardwareId": hardware_id}
 
-    @operation("hardware.manage")
+    @operation(
+        "devices.setHardwareImageBytes",
+        capability="hardware.manage",
+        risk="write",
+        profiles=("adapter", "plan"),
+        idempotency="natural",
+    )
     async def set_hardware_image_bytes(
         self,
         context: Json,
@@ -182,31 +477,52 @@ class DevicesApplication:
     ) -> Any:
         return await self.service.store.put_image_bytes(hardware_id, port_id, data, extension_hint)
 
-    @operation("hardware.manage")
+    @operation(
+        "devices.setHardwareImageFromPath",
+        capability="hardware.manage",
+        risk="write",
+        idempotency="natural",
+    )
     async def set_hardware_image_from_path(
         self, context: Json, hardware_id: str, port_id: str | None, source_path: str
     ) -> Any:
         return await self.service.store.put_image(hardware_id, port_id, source_path)
 
-    @operation("hardware.manage")
+    @operation(
+        "devices.removeHardwareImage",
+        capability="hardware.manage",
+        risk="write",
+        profiles=("adapter", "plan"),
+        idempotency="natural",
+    )
     async def remove_hardware_image(
         self, context: Json, hardware_id: str, port_id: str | None = None
     ) -> Any:
         return await self.service.store.remove_image(hardware_id, port_id)
 
-    @operation("hardware.read")
+    @operation(
+        "devices.exportBundle",
+        capability="hardware.read",
+        risk="read",
+        idempotency="natural",
+    )
     async def export_bundle(self, context: Json, hardware_id: str) -> bytes:
         return cast(bytes, await self.service.store.export_bundle(hardware_id))
 
-    @operation("hardware.manage")
+    @operation("devices.importBundle", capability="hardware.manage", risk="write")
     async def import_bundle(self, context: Json, data: bytes) -> Json:
         return cast(Json, await self.service.store.import_bundle(data))
 
-    @operation("hardware.manage")
+    @operation(
+        "devices.inspectBundle",
+        capability="hardware.manage",
+        risk="read",
+        idempotency="natural",
+    )
     async def inspect_bundle(self, context: Json, data: bytes) -> Json:
         return cast(Json, await self.service.store.inspect_bundle(data))
 
-    @operation("hardware.manage")
+    @operation("devices.importBundleForServer", capability="hardware.manage", risk="write")
     async def import_bundle_for_server(
         self, context: Json, data: bytes, hardware_id: str, server_id: str
     ) -> Json:
@@ -228,7 +544,12 @@ class DevicesApplication:
             ),
         )
 
-    @operation("hardware.executeTools")
+    @operation(
+        "devices.callTool",
+        capability="hardware.executeTools",
+        risk="actuate",
+        profiles=("adapter", "explore"),
+    )
     async def call_tool(self, context: Json, name: str, args: Json) -> Any:
         if self._calls_closed:
             raise app_error("unavailable", "Hardware execution is shutting down")
@@ -258,7 +579,9 @@ class DevicesApplication:
                 }
             )
         )
-        task = asyncio.create_task(self.service.call_aggregated_tool(name, args))
+        task = asyncio.create_task(
+            self._leased_call(server["hardwareId"], str(tool.get("kind")), name, args)
+        )
         self.active[task] = server["hardwareId"]
         try:
             return await task
@@ -273,6 +596,13 @@ class DevicesApplication:
             if handle is not None:
                 handle.release()
 
+    async def _leased_call(self, hardware_id: str, kind: str, name: str, args: Json) -> Any:
+        """``configure`` / ``actuate`` go under the terminal's lease (design doc §4.5.2)."""
+        async with self.leases.use(hardware_id, kind) as lease_id:
+            if lease_id is None:
+                return await self.service.call_aggregated_tool(name, args)
+            return await self.service.call_aggregated_tool(name, args, {"leaseId": lease_id})
+
     async def abort_hardware(self, hardware_id: str) -> None:
         tasks = [task for task, hardware in self.active.items() if hardware == hardware_id]
         for task in tasks:
@@ -286,7 +616,13 @@ class DevicesApplication:
             task.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
 
-    @operation("hardware.executeTools")
+    @operation(
+        "devices.listTools",
+        capability="hardware.executeTools",
+        risk="read",
+        profiles=("adapter", "explore"),
+        idempotency="natural",
+    )
     def list_tools(self, context: Json) -> list[Json]:
         return self.service.list_tools()
 
@@ -312,38 +648,65 @@ class ProjectsApplication:
     def set_notifier(self, notifier: Callable[[Json | None, bool], None]) -> None:
         self._notifier = notifier
 
-    @operation("projects.read")
+    @operation(
+        "projects.document",
+        capability="projects.read",
+        risk="read",
+        profiles=("plan",),
+        idempotency="natural",
+    )
     def document(self, context: Json) -> Json | None:
         return self.projects.current()
 
-    @operation("projects.read")
+    @operation(
+        "projects.inspectFolder",
+        capability="projects.read",
+        risk="read",
+        idempotency="natural",
+    )
     async def inspect_folder(self, context: Json, root_path: str) -> Json:
         return await self.projects.inspect_folder(root_path)
 
-    @operation("projects.manage")
+    @operation(
+        "projects.initializeFolder", capability="projects.manage", risk="write", profiles=("plan",)
+    )
     async def initialize_folder(self, context: Json, root_path: str) -> Json:
         return await self._switch(lambda: self.projects.initialize_folder(root_path))
 
-    @operation("projects.manage")
+    @operation(
+        "projects.openFolder", capability="projects.manage", risk="write", profiles=("plan",)
+    )
     async def open_folder(self, context: Json, root_path: str) -> Json:
         return await self._switch(lambda: self.projects.open_folder(root_path))
 
-    @operation("projects.manage")
+    @operation(
+        "projects.saveProject", capability="projects.manage", risk="write", profiles=("plan",)
+    )
     async def save_project(self, context: Json) -> Json:
         document = await self.projects.save()
         if self._notifier:
             self._notifier(document, False)
         return document
 
-    @operation("projects.manage")
+    @operation("projects.leaveProject", capability="projects.manage", risk="write")
     async def leave_project(self, context: Json) -> None:
         await self._switch(self.projects.leave)
 
-    @operation("projects.read")
+    @operation(
+        "projects.listRecent",
+        capability="projects.read",
+        risk="read",
+        idempotency="natural",
+    )
     async def list_recent(self, context: Json) -> list[Json]:
         return await self.projects.list_recent()
 
-    @operation("projects.manage")
+    @operation(
+        "projects.forgetRecent",
+        capability="projects.manage",
+        risk="write",
+        idempotency="natural",
+    )
     async def forget_recent(self, context: Json, root_path: str) -> None:
         await self.projects.forget_recent(root_path)
 
@@ -381,19 +744,30 @@ class WiringApplication:
     ) -> None:
         self.authorizer, self.projects, self.wiring = authorizer, projects, wiring
 
-    @operation("wiring.confirm")
+    @operation(
+        "wiring.updateDocument",
+        capability="wiring.confirm",
+        risk="write",
+        idempotency="natural",
+    )
     async def update_document(self, context: Json, wiring: Json) -> Json:
         self.wiring.validate_document_connections(wiring)
         previous = self.projects.wiring()["connections"]
         document = await self.projects.update_wiring_with_layout(wiring)
         self.wiring.record_manual_changes(previous, document["file"]["wiring"]["connections"])
+        self.wiring.notify_project_changed()
         return document
 
-    @operation("projects.manage")
+    @operation(
+        "wiring.addManagedHardwareToCanvas",
+        capability="projects.manage",
+        risk="write",
+        profiles=("plan",),
+    )
     async def add_managed_hardware_to_canvas(self, context: Json, hardware_id: str) -> Json:
         return await self.wiring.add_managed_hardware_to_canvas(hardware_id)
 
-    @operation("wiring.request")
+    @operation("wiring.requestTask", capability="wiring.request", risk="write", profiles=("plan",))
     async def request_task(self, context: Json, input: Json) -> Json:
         request = {key: input[key] for key in ["portA", "portB", "action"]}
         request["pins"] = input.get("pins", [])
@@ -404,7 +778,7 @@ class WiringApplication:
             request["requestedBy"] = requested_by
         return await self.wiring.request_task(request)
 
-    @operation("wiring.confirm")
+    @operation("wiring.startTask", capability="wiring.confirm", risk="write")
     async def start_task(
         self, context: Json, task_id: str, operator_name: str | None = None
     ) -> Json:
@@ -412,25 +786,43 @@ class WiringApplication:
             return await self.wiring.start_task(task_id)
         return await self.wiring.start_task(task_id, operator_name)
 
-    @operation("wiring.confirm")
+    @operation("wiring.completeTask", capability="wiring.confirm", risk="write")
     async def complete_task(
         self, context: Json, task_id: str, outcome: str, message: str | None = None
     ) -> Json:
         return await self.wiring.complete_task(task_id, outcome, message)
 
-    @operation("wiring.request")
+    @operation("wiring.cancelTask", capability="wiring.request", risk="write", profiles=("plan",))
     async def cancel_task(self, context: Json, task_id: str, message: str | None = None) -> Json:
         return await self.wiring.cancel_task(task_id, message)
 
-    @operation("wiring.read")
+    @operation(
+        "wiring.getTask",
+        capability="wiring.read",
+        risk="read",
+        profiles=("plan",),
+        idempotency="natural",
+    )
     def get_task(self, context: Json, task_id: str) -> Json:
         return self.wiring.get_task(task_id)
 
-    @operation("wiring.read")
+    @operation(
+        "wiring.listChanges",
+        capability="wiring.read",
+        risk="read",
+        profiles=("plan",),
+        idempotency="natural",
+    )
     def list_changes(self, context: Json, input: Json | None = None) -> list[Json]:
         return self.wiring.list_changes(input)
 
-    @operation("wiring.read")
+    @operation(
+        "wiring.listTasks",
+        capability="wiring.read",
+        risk="read",
+        profiles=("plan",),
+        idempotency="natural",
+    )
     def list_tasks(self, context: Json, input: Json | None = None) -> list[Json]:
         return self.wiring.list_tasks(input)
 
@@ -442,6 +834,7 @@ class SystemApplication:
         devices: DeviceService,
         system: ApplicationSystemPort,
         execution: ExecutionCoordinator,
+        confirmations: ConfirmationBroker | None = None,
     ) -> None:
         self.authorizer, self.devices, self.system, self.execution = (
             authorizer,
@@ -449,8 +842,21 @@ class SystemApplication:
             system,
             execution,
         )
+        self.confirmations = confirmations or ConfirmationBroker()
 
-    @operation("system.read")
+    @operation(
+        "system.listConfirmations", capability="system.read", risk="read", idempotency="natural"
+    )
+    def list_confirmations(self, context: Json) -> list[Json]:
+        """The Agent's high-risk operations waiting for the operator (design doc 8.4)."""
+        return self.confirmations.pending()
+
+    @operation("system.answerConfirmation", capability="agents.manage", risk="write")
+    def answer_confirmation(self, context: Json, confirmation_id: str, approve: bool) -> Json:
+        """Approve or decline a pending confirmation; only a human holds ``agents.manage``."""
+        return self.confirmations.answer(confirmation_id, approve)
+
+    @operation("system.dashboard", capability="system.read", risk="read", idempotency="natural")
     def dashboard(self, context: Json) -> Json:
         return {
             "computers": self.devices.list_computers(),

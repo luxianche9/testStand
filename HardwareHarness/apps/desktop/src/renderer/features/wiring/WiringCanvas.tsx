@@ -19,8 +19,6 @@ import { HARDWARE_MIME } from "./HardwareLibrary.js";
 import { wiringNodeTypes } from "./HardwareNode.js";
 import type { HardwareFlowNode, ManualPair, NodeMenu, TopologyEdge } from "./wiring-model.js";
 
-export { wiringNodeTypes } from "./HardwareNode.js";
-
 const fitOptions = { padding: 0.2, maxZoom: 1 };
 
 /** The bench: dotted canvas, faceplate nodes, signal-coloured cables. */

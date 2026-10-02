@@ -2,14 +2,16 @@ import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type { Hardware, McpServerConfig, RemoteComputer, ServerStatus } from "@hardwareharness/contracts/devices";
 import {
-  CircleAlertIcon, OctagonXIcon, PencilIcon, PlayIcon, PlusIcon, RefreshCwIcon, ScrollTextIcon, SquareIcon,
-  Trash2Icon
+  ArrowUpCircleIcon, CircleAlertIcon, DownloadIcon, OctagonXIcon, PackageMinusIcon, PackagePlusIcon, PencilIcon,
+  PlayIcon, PlusIcon, RefreshCwIcon, ScrollTextIcon, SquareIcon, Trash2Icon
 } from "lucide-react";
 import { errorMessage } from "../../../lib/errors.js";
 import {
   Button, cn, Dialog, DialogBody, DialogContent, DialogFooter, IconButton, Spinner, StatusLamp, useConfirm
 } from "../../../ui";
 import { serviceStateLabel, serviceStateTone } from "./device-labels.js";
+import { DeployServiceDialog } from "./editors/DeployDialogs.js";
+import { ImportServicesDialog } from "./editors/ServiceDialogs.js";
 
 /** Reported by every action group so the inspector shows one error strip under its header. */
 export type ReportError = (message: string | null) => void;
@@ -22,6 +24,8 @@ export function ComputerActions({ computer, onEdit, onAddServer, onChanged, onEr
   onError: ReportError;
 }) {
   const [confirm, confirmNode] = useConfirm();
+  const [importOpen, setImportOpen] = useState(false);
+  const [deployOpen, setDeployOpen] = useState(false);
   const remove = useMutation({
     mutationFn: () => window.hardwareharness.devices.removeComputer(computer.id),
     onMutate: () => onError(null),
@@ -40,23 +44,45 @@ export function ComputerActions({ computer, onEdit, onAddServer, onChanged, onEr
   return (
     <>
       <Button size="xs" aria-label="添加 MCP 服务器" onClick={onAddServer}><PlusIcon />添加 MCP Server</Button>
+      {computer.ssh.shell === "powershell" && (
+        <Button size="xs" title="读取这台电脑的 services.json，导入已安装的服务" onClick={() => setImportOpen(true)}>
+          <DownloadIcon />从电脑导入
+        </Button>
+      )}
+      {computer.ssh.shell === "powershell" && (
+        <Button size="xs" title="打包适配器并安装为这台电脑上的服务" onClick={() => setDeployOpen(true)}>
+          <PackagePlusIcon />部署服务
+        </Button>
+      )}
       <IconButton label="编辑电脑信息" size="icon-sm" onClick={onEdit}><PencilIcon /></IconButton>
       <IconButton label="删除远程电脑" size="icon-sm" disabled={remove.isPending} onClick={() => void requestRemove()}>
         <Trash2Icon />
       </IconButton>
       {confirmNode}
+      {importOpen && (
+        <ImportServicesDialog computer={computer} onClose={() => setImportOpen(false)} onChanged={onChanged} />
+      )}
+      {deployOpen && (
+        <DeployServiceDialog computer={computer} onClose={() => setDeployOpen(false)} onChanged={onChanged} />
+      )}
     </>
   );
 }
 
-/** Header actions of a managed device: edit and delete the MCP Server registration. */
-export function ServerActions({ server, onEdit, onChanged, onError }: {
+/**
+ * Header actions of a managed device: edit and delete the registration; a service deployed under a
+ * root on a PowerShell computer can also be upgraded or uninstalled (§4.8.3).
+ */
+export function ServerActions({ server, computer, onEdit, onChanged, onError }: {
   server: McpServerConfig;
+  computer?: RemoteComputer | undefined;
   onEdit: () => void;
   onChanged: () => Promise<void>;
   onError: ReportError;
 }) {
   const [confirm, confirmNode] = useConfirm();
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const deployed = Boolean(server.root) && computer?.ssh.shell === "powershell";
   const remove = useMutation({
     mutationFn: () => window.hardwareharness.devices.removeServer(server.serverId),
     onMutate: () => onError(null),
@@ -72,13 +98,47 @@ export function ServerActions({ server, onEdit, onChanged, onError }: {
     });
     if (ok) remove.mutate();
   };
+  const uninstall = useMutation({
+    mutationFn: () => window.hardwareharness.devices.uninstallService(server.serverId),
+    onMutate: () => onError(null),
+    onError: (error) => onError(errorMessage(error)),
+    onSettled: () => void onChanged()
+  });
+  const requestUninstall = async () => {
+    const ok = await confirm({
+      title: "卸载服务",
+      message: `卸载 ${server.serverId}？会先安全停止服务，注销后把 ${server.root} 打包备份到 `
+        + "C:\\ProgramData\\HardwareHarness\\backup，再删除该目录和这里的配置。",
+      confirmLabel: "卸载",
+      danger: true
+    });
+    if (ok) uninstall.mutate();
+  };
   return (
     <>
+      {deployed && computer && (
+        <>
+          <Button size="xs" title="重新打包并升级这个服务，失败自动回滚" onClick={() => setUpgradeOpen(true)}>
+            <ArrowUpCircleIcon />升级
+          </Button>
+          <Button size="xs" disabled={uninstall.isPending} onClick={() => void requestUninstall()}>
+            <PackageMinusIcon />{uninstall.isPending ? "卸载中…" : "卸载"}
+          </Button>
+        </>
+      )}
       <IconButton label="编辑信息" size="icon-sm" onClick={onEdit}><PencilIcon /></IconButton>
       <IconButton label="删除 MCP Server" size="icon-sm" disabled={remove.isPending} onClick={() => void requestRemove()}>
         <Trash2Icon />
       </IconButton>
       {confirmNode}
+      {upgradeOpen && computer && (
+        <DeployServiceDialog
+          computer={computer}
+          server={server}
+          onClose={() => setUpgradeOpen(false)}
+          onChanged={onChanged}
+        />
+      )}
     </>
   );
 }
@@ -194,7 +254,7 @@ function ServiceLogDialog({ server, onClose }: { server: McpServerConfig; onClos
           )}
         </DialogBody>
         <DialogFooter>
-          <span className="tf-num mr-auto min-w-0 truncate text-2xs text-fg-3">{server.lifecycle.logPath}</span>
+          <span className="tf-num mr-auto min-w-0 truncate text-2xs text-fg-3">{logs.data?.path}</span>
           <Button onClick={onClose}>关闭</Button>
         </DialogFooter>
       </DialogContent>

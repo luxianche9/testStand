@@ -20,6 +20,7 @@ ERROR_CATEGORIES = (
     "project_uninitialized",
     "invalid_project_folder",
     "cancelled",
+    "unknown_outcome",
     "error",
 )
 error_category_schema = enum(*ERROR_CATEGORIES)
@@ -35,6 +36,8 @@ class AppError(RuntimeError):
         super().__init__(message)
         self.category = category
         self.details = details
+        # Envelope meta (timing, streamRefs) of the remote call that failed, if any.
+        self.meta: Record | None = None
 
 
 def app_error(category: str, message: str, details: Any = UNDEFINED) -> AppError:

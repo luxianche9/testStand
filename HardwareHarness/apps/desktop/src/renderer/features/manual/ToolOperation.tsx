@@ -9,7 +9,8 @@ import { queryKeys } from "../../lib/query-keys.js";
 import { Badge, Button, cn, Spinner } from "../../ui";
 import { InvocationResult, type InvocationOutcome } from "./InvocationResult.js";
 import { SchemaArgumentsForm } from "./SchemaForm.js";
-import { initialSchemaValue, validateSchemaArguments } from "./schema-form-model.js";
+import { initialSchemaValue } from "./schema-form-model.js";
+import { validateSchemaArguments } from "./schema-validation.js";
 
 const TIMEOUT_MS = 30_000;
 

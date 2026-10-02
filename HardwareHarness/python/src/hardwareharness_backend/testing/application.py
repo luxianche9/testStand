@@ -2,16 +2,19 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import getpass
 from datetime import datetime
 from typing import Any, cast
 
-from hardwareharness_backend.contracts.errors import app_error
+from hardwareharness_backend.contracts.errors import AppError, app_error
 from hardwareharness_backend.contracts.operations import operation
+from hardwareharness_backend.protocol import load_icd
 from hardwareharness_backend.util import clone, new_uuid, utc_now_iso
 
 from .batch import BatchCoordinator
 from .catalog import step_catalog
 from .models import plan_hardware_ids
+from .protocols import describe_icd, trial_decode
 
 Record = dict[str, Any]
 _UNIT_KEY = "currentUnit"
@@ -53,15 +56,33 @@ class TestingApplication:
         if self.batches.notifier:
             self.batches.notifier(event)
 
-    @operation("testing.read")
+    @operation(
+        "testing.listPlans",
+        capability="testing.read",
+        risk="read",
+        profiles=("plan", "run"),
+        idempotency="natural",
+    )
     def list_plans(self, context: Record) -> list[Record]:
         return cast(list[Record], self.store.list())
 
-    @operation("testing.read")
+    @operation(
+        "testing.loadPlan",
+        capability="testing.read",
+        risk="read",
+        profiles=("plan", "run"),
+        idempotency="natural",
+    )
     def load_plan(self, context: Record, plan_id: str) -> Record:
         return cast(Record, self.store.load(plan_id))
 
-    @operation("testing.manage")
+    @operation(
+        "testing.createPlan",
+        capability="testing.manage",
+        risk="write",
+        profiles=("plan",),
+        idempotency="request-id",
+    )
     async def create_plan(self, context: Record, input: Record) -> Record:
         request_id = _request_id(input)
         async with self._lock_for("create", request_id):
@@ -77,13 +98,25 @@ class TestingApplication:
             self._notify_plan(result["plan"], "created")
             return result
 
-    @operation("testing.manage")
+    @operation(
+        "testing.savePlan",
+        capability="testing.manage",
+        risk="write",
+        profiles=("plan",),
+        idempotency="natural",
+    )
     async def save_plan(self, context: Record, plan: Record, base_revision: int) -> Record:
         result = cast(Record, await self.store.save(plan, base_revision))
         self._notify_plan(result["plan"], "saved")
         return result
 
-    @operation("testing.manage")
+    @operation(
+        "testing.deletePlan",
+        capability="testing.manage",
+        risk="destructive",
+        idempotency="natural",
+        confirm=True,
+    )
     async def delete_plan(self, context: Record, plan_id: str) -> Record:
         if self.engine.active and self.engine.active.plan["id"] == plan_id:
             raise app_error("conflict", "Cannot delete the active test plan")
@@ -91,7 +124,13 @@ class TestingApplication:
         self._notify_plan({"id": plan_id}, "deleted")
         return result
 
-    @operation("testing.manage")
+    @operation(
+        "testing.applyPlanOperations",
+        capability="testing.manage",
+        risk="write",
+        profiles=("plan",),
+        idempotency="request-id",
+    )
     async def apply_plan_operations(self, context: Record, input: Record) -> Record:
         request_id = _request_id(input)
         async with self._lock_for("operations", request_id):
@@ -114,26 +153,128 @@ class TestingApplication:
             self._notify_plan(result["plan"], "updated")
             return result
 
-    @operation("testing.read")
+    @operation(
+        "testing.validatePlan",
+        capability="testing.read",
+        risk="read",
+        profiles=("plan",),
+        idempotency="natural",
+    )
     def validate_plan(self, context: Record, plan_id: str) -> Record:
         return cast(Record, self.store.validate(plan_id))
 
-    @operation("testing.read")
+    @operation(
+        "testing.analyzePlanDraft",
+        capability="testing.read",
+        risk="read",
+        profiles=("plan",),
+        idempotency="natural",
+    )
     def analyze_plan_draft(self, context: Record, input: Record) -> Record:
         return cast(
             Record,
             self.store.analyze(cast(Record, input["plan"]), int(input["baseRevision"])),
         )
 
-    @operation("testing.read")
+    @operation(
+        "testing.listStepCatalog",
+        capability="testing.read",
+        risk="read",
+        profiles=("plan",),
+        idempotency="natural",
+    )
     def list_step_catalog(self, context: Record) -> list[Record]:
         return step_catalog(self.plugins)
 
-    @operation("testing.read")
+    @operation(
+        "testing.listDeviceTools",
+        capability="testing.read",
+        risk="read",
+        profiles=("plan",),
+        idempotency="natural",
+    )
     def list_device_tools(self, context: Record, hardware_id: str) -> Record:
         return cast(Record, self.resolver.list_device_tools(hardware_id))
 
-    @operation("testing.execute")
+    @operation(
+        "testing.listIcds",
+        capability="testing.read",
+        risk="read",
+        profiles=("plan",),
+        idempotency="natural",
+    )
+    def list_icds(self, context: Record) -> list[Record]:
+        return cast(list[Record], self._icds().list())
+
+    @operation(
+        "testing.readIcd",
+        capability="testing.read",
+        risk="read",
+        profiles=("plan",),
+        idempotency="natural",
+    )
+    def read_icd(self, context: Record, name: str) -> Record:
+        library = self._icds()
+        result: Record = {"name": name, "text": library.read_text(name)}
+        try:
+            result.update(valid=True, icd=describe_icd(library.load(name)))
+        except AppError as error:
+            result.update(valid=False, error=str(error), issues=_issues(error))
+        return result
+
+    @operation(
+        "testing.saveIcd",
+        capability="testing.manage",
+        risk="write",
+        profiles=("plan",),
+        idempotency="natural",
+    )
+    async def save_icd(self, context: Record, input: Record) -> Record:
+        """Write ``icd/<name>.icd.yaml``; an invalid ICD is rejected and nothing is written."""
+        name, text = str(input["name"]), str(input["text"])
+        icd = await asyncio.to_thread(self._icds().save_text, name, text)
+        return {"name": name, "icd": describe_icd(icd)}
+
+    @operation(
+        "testing.checkIcd",
+        capability="testing.read",
+        risk="read",
+        profiles=("plan",),
+        idempotency="natural",
+    )
+    def check_icd(self, context: Record, input: Record) -> Record:
+        """Validate ICD text (unsaved or ``name``'s file) and trial-decode sample records."""
+        alias = input.get("alias") or None
+        try:
+            text = input.get("text")
+            icd = (
+                load_icd(str(text))
+                if isinstance(text, str)
+                else self._icds().load(str(input["name"]))
+            )
+        except AppError as error:
+            if error.category not in {"invalid_argument", "validation_failed"}:
+                raise
+            return {"valid": False, "error": str(error), "issues": _issues(error)}
+        result: Record = {"valid": True, "icd": describe_icd(icd, alias)}
+        samples = input.get("samples")
+        if isinstance(samples, list) and samples:
+            result["decoded"] = trial_decode(icd, samples, alias)
+        return result
+
+    def _icds(self) -> Any:
+        library = getattr(self.resolver, "icds", None)
+        if library is None:
+            raise app_error("unavailable", "The ICD library is not available")
+        return library
+
+    @operation(
+        "testing.startRun",
+        capability="testing.execute",
+        risk="actuate",
+        profiles=("run",),
+        idempotency="request-id",
+    )
     async def start_run(self, context: Record, input: Record) -> Record:
         request_id = _request_id(input)
         async with self._lock_for("start", request_id):
@@ -148,7 +289,8 @@ class TestingApplication:
                         "Test plan revision changed",
                         {"currentRevision": plan["revision"]},
                     )
-                compiled = self.store.compile(plan["id"])
+                parameters = _parameters(plan, input.get("parameters", {}))
+                compiled = self.store.compile(plan["id"], parameters)
                 if self.batches.running:
                     raise app_error("conflict", "A batch run is in progress")
                 if compiled["executionRevision"] != str(input.get("executionRevision", "")):
@@ -160,7 +302,6 @@ class TestingApplication:
                             "revision": plan["revision"],
                         },
                     )
-                parameters = _parameters(plan, input.get("parameters", {}))
                 result = await self._start_compiled(plan, compiled, parameters)
             except BaseException:
                 await self.store.release_request("start", request_id)
@@ -168,11 +309,20 @@ class TestingApplication:
             await self._complete_request("start", request_id, result)
             return result
 
-    async def start_item(self, plan_id: str, batch_id: str) -> Record:
-        """Start one batch item with default parameters at its latest saved revision."""
+    async def start_item(
+        self, plan_id: str, batch_id: str, station: Record | None = None
+    ) -> Record:
+        """Start one batch item at its latest saved revision; ``station`` overrides defaults."""
+        plan, parameters, compiled = self.compile_item(plan_id, station)
+        return await self._start_compiled(plan, compiled, parameters, batch_id)
+
+    def compile_item(
+        self, plan_id: str, station: Record | None = None
+    ) -> tuple[Record, Record, Record]:
+        """The saved plan, its run parameters for ``station`` and the plan compiled for them."""
         plan = self.store.load(plan_id)
-        compiled = self.store.compile(plan_id)
-        return await self._start_compiled(plan, compiled, _parameters(plan, {}), batch_id)
+        parameters = _parameters(plan, station or {})
+        return plan, parameters, self.store.compile(plan_id, parameters)
 
     async def _start_compiled(
         self, plan: Record, compiled: Record, parameters: Record, batch_id: str | None = None
@@ -183,7 +333,7 @@ class TestingApplication:
                 "Test plan has validation errors",
                 {"issues": compiled["issues"], "revision": plan["revision"]},
             )
-        self.check_wiring_gate(plan)
+        self.check_wiring_gate(compiled["compiledPlan"])
         tags = {"unitId": self.ensure_unit()["unitId"], "batchId": batch_id}
         return cast(
             Record,
@@ -228,13 +378,25 @@ class TestingApplication:
         self._notify_items({"kind": "unit", "unit": unit})
         return unit
 
-    @operation("testing.read")
+    @operation(
+        "testing.currentUnit",
+        capability="testing.read",
+        risk="read",
+        profiles=("run",),
+        idempotency="natural",
+    )
     def current_unit(self, context: Record) -> Record:
         return self.ensure_unit()
 
     # Functional test items: one saved plan per item, ordered per project.
 
-    @operation("testing.read")
+    @operation(
+        "testing.listItemStatus",
+        capability="testing.read",
+        risk="read",
+        profiles=("run",),
+        idempotency="natural",
+    )
     def list_item_status(self, context: Record) -> Record:
         unit = self.ensure_unit()
         plans = cast(list[Record], self.store.list())
@@ -259,7 +421,12 @@ class TestingApplication:
             items.append(_item_status(plan, run, plan["id"] in queued))
         return {"unit": unit, "items": items, **({"batch": batch} if batch else {})}
 
-    @operation("testing.manage")
+    @operation(
+        "testing.reorderItems",
+        capability="testing.manage",
+        risk="write",
+        idempotency="natural",
+    )
     def reorder_items(self, context: Record, input: Record) -> Record:
         self.store.runtime.set_metadata(_ORDER_KEY, list(dict.fromkeys(_plan_ids(input))))
         self._notify_items({"kind": "order"})
@@ -267,7 +434,13 @@ class TestingApplication:
 
     # Batch runs execute selected items one after another.
 
-    @operation("testing.execute")
+    @operation(
+        "testing.startBatch",
+        capability="testing.execute",
+        risk="actuate",
+        profiles=("run",),
+        idempotency="request-id",
+    )
     async def start_batch(self, context: Record, input: Record) -> Record:
         request_id = _request_id(input)
         async with self._lock_for("batch", request_id):
@@ -276,55 +449,96 @@ class TestingApplication:
                 return cached
             try:
                 stop_on_fail = bool(input.get("stopOnFail", False))
-                result = await self.batches.start(_plan_ids(input), stop_on_fail)
+                result = await self.batches.start(_plan_ids(input), stop_on_fail, _stations(input))
             except BaseException:
                 await self.store.release_request("batch", request_id)
                 raise
             await self._complete_request("batch", request_id, result)
             return result
 
-    @operation("testing.execute")
+    @operation(
+        "testing.abortBatch",
+        capability="testing.execute",
+        risk="actuate",
+        profiles=("run",),
+    )
     async def abort_batch(self, context: Record, batch_id: str) -> Record:
         return await self.batches.abort(batch_id)
 
-    @operation("testing.read")
+    @operation(
+        "testing.currentBatch",
+        capability="testing.read",
+        risk="read",
+        profiles=("run",),
+        idempotency="natural",
+    )
     def current_batch(self, context: Record) -> Record | None:
         return self.batches.current()
 
-    @operation("testing.read")
+    @operation(
+        "testing.getBatch",
+        capability="testing.read",
+        risk="read",
+        profiles=("run",),
+        idempotency="natural",
+    )
     def get_batch(self, context: Record, batch_id: str) -> Record:
         return self.batches.get(batch_id)
 
-    @operation("testing.read")
+    @operation(
+        "testing.waitForBatch",
+        capability="testing.read",
+        risk="read",
+        profiles=("run",),
+        idempotency="natural",
+    )
     async def wait_for_batch(
         self, context: Record, batch_id: str, timeout_ms: int = 30_000
     ) -> Record:
         return await self.batches.wait(batch_id, min(max(int(timeout_ms), 1), 30_000))
 
-    @operation("testing.execute")
+    @operation("testing.pauseRun", capability="testing.execute", risk="actuate", profiles=("run",))
     async def pause_run(self, context: Record, run_id: str) -> Record:
         return cast(Record, await self.engine.pause(run_id))
 
-    @operation("testing.execute")
+    @operation("testing.resumeRun", capability="testing.execute", risk="actuate", profiles=("run",))
     async def resume_run(self, context: Record, run_id: str) -> Record:
         return cast(Record, await self.engine.resume(run_id))
 
-    @operation("testing.execute")
+    @operation("testing.abortRun", capability="testing.execute", risk="actuate", profiles=("run",))
     async def abort_run(self, context: Record, run_id: str) -> Record:
         return cast(Record, await self.engine.abort(run_id))
 
-    @operation("testing.read")
+    @operation(
+        "testing.currentRun",
+        capability="testing.read",
+        risk="read",
+        profiles=("run",),
+        idempotency="natural",
+    )
     def current_run(self, context: Record) -> Record | None:
         return cast(Record | None, self.engine.current())
 
-    @operation("testing.read")
+    @operation(
+        "testing.getRun",
+        capability="testing.read",
+        risk="read",
+        profiles=("run",),
+        idempotency="natural",
+    )
     def get_run(self, context: Record, run_id: str) -> Record:
         result = cast(Record | None, self.engine.get(run_id))
         if not result:
             raise app_error("not_found", f"Test run not found: {run_id}")
         return result
 
-    @operation("testing.read")
+    @operation(
+        "testing.listRuns",
+        capability="testing.read",
+        risk="read",
+        profiles=("run",),
+        idempotency="natural",
+    )
     def list_runs(self, context: Record, input: Record | None = None) -> Record:
         query = input or {}
         return cast(
@@ -340,7 +554,13 @@ class TestingApplication:
             ),
         )
 
-    @operation("testing.read")
+    @operation(
+        "testing.readRunLog",
+        capability="testing.read",
+        risk="read",
+        profiles=("run",),
+        idempotency="natural",
+    )
     def read_run_log(
         self,
         context: Record,
@@ -361,22 +581,127 @@ class TestingApplication:
             ),
         )
 
-    @operation("testing.read")
+    @operation(
+        "testing.readRunResults",
+        capability="testing.read",
+        risk="read",
+        profiles=("run",),
+        idempotency="natural",
+    )
     def read_run_results(self, context: Record, run_id: str, after_sequence: int = 0) -> Record:
         return cast(Record, self.engine.read_results(run_id, after_sequence))
 
-    @operation("testing.read")
+    @operation(
+        "testing.listRunStreams",
+        capability="testing.read",
+        risk="read",
+        profiles=("run",),
+        idempotency="natural",
+    )
+    def list_run_streams(self, context: Record, run_id: str) -> Record:
+        return cast(Record, self.engine.list_run_streams(run_id))
+
+    @operation(
+        "testing.readRunStream",
+        capability="testing.read",
+        risk="read",
+        profiles=("run",),
+        idempotency="natural",
+    )
+    def read_run_stream(
+        self, context: Record, run_id: str, key: str, query: Record | None = None
+    ) -> Record:
+        return cast(Record, self.engine.read_run_stream(run_id, key, query or {}))
+
+    @operation(
+        "testing.getRunTimeline",
+        capability="testing.read",
+        risk="read",
+        profiles=("run",),
+        idempotency="natural",
+    )
+    def get_run_timeline(self, context: Record, run_id: str) -> Record:
+        return cast(Record, self.engine.get_run_timeline(run_id))
+
+    @operation(
+        "testing.readRunMessages",
+        capability="testing.read",
+        risk="read",
+        profiles=("run",),
+        idempotency="natural",
+    )
+    def read_run_messages(
+        self, context: Record, run_id: str, query: Record | None = None
+    ) -> Record:
+        return cast(Record, self.engine.read_run_messages(run_id, query or {}))
+
+    @operation(
+        "testing.readRunIo",
+        capability="testing.read",
+        risk="read",
+        profiles=("run",),
+        idempotency="natural",
+    )
+    def read_run_io(
+        self, context: Record, run_id: str, step_id: str | None = None, limit: int = 50
+    ) -> Record:
+        return cast(Record, self.engine.read_run_io(run_id, step_id, limit))
+
+    @operation(
+        "testing.rejudgeRun",
+        capability="testing.read",
+        risk="read",
+        profiles=("run",),
+        idempotency="natural",
+    )
+    def rejudge_run(self, context: Record, run_id: str) -> Record:
+        return cast(Record, self.engine.rejudge_run(run_id))
+
+    @operation(
+        "testing.waitForRun",
+        capability="testing.read",
+        risk="read",
+        profiles=("run",),
+        idempotency="natural",
+    )
     async def wait_for_run(
         self, context: Record, run_id: str, after_sequence: int = 0, timeout_ms: int = 30_000
     ) -> Record:
         return cast(Record, await self.engine.wait(run_id, after_sequence, timeout_ms))
 
-    @operation("testing.read")
+    @operation(
+        "testing.listRecoveryItems",
+        capability="testing.read",
+        risk="read",
+        profiles=("run",),
+        idempotency="natural",
+    )
     def list_recovery_items(self, context: Record) -> list[Record]:
         self.store.runtime.initialize()
         return cast(list[Record], self.store.runtime.operations(recovery_only=True))
 
-    @operation("testing.execute")
+    @operation("testing.answerManualCheck", capability="testing.judge", risk="actuate")
+    def answer_manual_check(self, context: Record, input: Record) -> Record:
+        """The operator's answer to a waiting ``ManualCheck`` (design §7.2); never an Agent's."""
+        operator = str(input.get("operator") or "").strip() or _login_name()
+        return cast(
+            Record,
+            self.engine.answer_manual_check(
+                str(input.get("runId", "")),
+                str(input.get("executionId", "")),
+                str(input.get("option", "")),
+                str(input.get("note") or ""),
+                operator,
+            ),
+        )
+
+    @operation(
+        "testing.reconcileOperation",
+        capability="testing.execute",
+        risk="write",
+        profiles=("run",),
+        confirm=True,
+    )
     async def reconcile_operation(self, context: Record, input: Record) -> Record:
         operation_id = str(input.get("operationId", ""))
         items = [
@@ -451,6 +776,19 @@ def _plan_ids(input: Record) -> list[str]:
     return cast(list[str], plan_ids)
 
 
+def _stations(input: Record) -> list[Record] | None:
+    stations = input.get("stations")
+    if stations is None:
+        return None
+    if (
+        not isinstance(stations, list)
+        or not stations
+        or not all(isinstance(item, dict) for item in stations)
+    ):
+        raise app_error("invalid_argument", "stations must be a non-empty list of objects")
+    return cast(list[Record], stations)
+
+
 def _ordered(plans: list[Record], order: Any) -> list[Record]:
     rank = {
         plan_id: index for index, plan_id in enumerate(order if isinstance(order, list) else [])
@@ -505,6 +843,12 @@ def _request_id(value: Record) -> str:
     return request_id.strip()
 
 
+def _issues(error: AppError) -> list[Record]:
+    """``[{path, message}]`` of an ICD validation error (empty for a YAML syntax error)."""
+    details = error.details if isinstance(error.details, dict) else {}
+    return [dict(item) for item in details.get("issues", []) if isinstance(item, dict)]
+
+
 def _parameters(plan: Record, provided: Any) -> Record:
     if not isinstance(provided, dict):
         raise app_error("invalid_argument", "Run parameters must be an object")
@@ -553,3 +897,11 @@ def _matches_parameter_type(parameter_type: str, value: Any) -> bool:
     if parameter_type == "object":
         return isinstance(value, dict)
     return True
+
+
+def _login_name() -> str:
+    """Who answers a manual check when the interface names nobody: the OS login."""
+    try:
+        return getpass.getuser()
+    except Exception:
+        return "operator"

@@ -16,6 +16,7 @@ from typing import Any
 from urllib.parse import quote
 
 from hardwareharness_backend.contracts.devices import (
+    parse_adapter_record,
     parse_hardware,
     parse_mcp_server,
     parse_remote_computer,
@@ -34,6 +35,11 @@ from hardwareharness_backend.util import (
 Record = dict[str, Any]
 Rename = Callable[[Path, Path], Awaitable[None]]
 Remove = Callable[[Path], Awaitable[None]]
+
+DEFINITION_DIR = "definition"
+DEFINITION_FILE = "device.json"
+DEFINITION_ASSETS = "assets"
+ADAPTER_FILE = "adapter.json"
 
 
 def _delete(path: Path) -> None:
@@ -92,7 +98,7 @@ class DeviceStore:
     async def remove_computer(self, identifier: str) -> list[str]:
         removed = []
         for server in self.list_servers():
-            if server["computerId"] == identifier:
+            if server.get("computerId") == identifier:
                 removed.append(str(server["serverId"]))
                 await self.remove_server(server["serverId"])
         _delete(self._computer_dir / (safe_segment(identifier) + ".json"))
@@ -113,7 +119,7 @@ class DeviceStore:
 
     async def save_server(self, value: Record) -> Record:
         server = parse_mcp_server(value)
-        if not self.get_computer(server["computerId"]):
+        if "computerId" in server and not self.get_computer(server["computerId"]):
             raise RuntimeError(f"Remote computer not found: {server['computerId']}")
         for item in self.list_servers():
             if (
@@ -159,7 +165,28 @@ class DeviceStore:
 
     def list_hardware(self) -> list[Record]:
         servers = {item["hardwareId"]: item for item in self.list_servers()}
-        return [self._derive_hardware(item, servers) for item in self.list_stored_hardware()]
+        adapters = self.list_adapters()
+        return [
+            self._derive_hardware(item, servers, adapters) for item in self.list_stored_hardware()
+        ]
+
+    def list_adapters(self) -> dict[str, Record]:
+        """Adapter release records (design doc 8.4) by hardwareId."""
+        records = self._read_all(self._hardware_dir, ADAPTER_FILE, parse_adapter_record)
+        return {item["hardwareId"]: item for item in records}
+
+    def get_adapter(self, hardware_id: str) -> Record:
+        return self.list_adapters().get(hardware_id) or parse_adapter_record(
+            {"hardwareId": hardware_id}
+        )
+
+    async def save_adapter(self, record: Record) -> Record:
+        parsed = parse_adapter_record(record)
+        if self.get_stored_hardware(parsed["hardwareId"]) is None:
+            raise RuntimeError(f"Unknown hardwareId: {parsed['hardwareId']}")
+        await atomic_json(self._hardware_path(parsed["hardwareId"]) / ADAPTER_FILE, parsed)
+        self._read_cache.clear()
+        return parsed
 
     def get_hardware(self, hardware_id: str) -> Record | None:
         return next(
@@ -224,6 +251,7 @@ class DeviceStore:
         data: bytes | bytearray,
         extension_hint: str = "",
     ) -> Record:
+        self._require_editable_images(hardware_id)
         hardware = self.require_hardware(hardware_id)
         if port_id is not None and not any(p["portId"] == port_id for p in hardware["ports"]):
             raise RuntimeError(f"Unknown portId: {port_id}")
@@ -251,6 +279,7 @@ class DeviceStore:
         return await self.save_hardware(hardware)
 
     async def remove_image(self, hardware_id: str, port_id: str | None = None) -> Record:
+        self._require_editable_images(hardware_id)
         hardware = self.require_hardware(hardware_id)
         target = (
             hardware
@@ -265,6 +294,49 @@ class DeviceStore:
 
     def image_path(self, hardware_id: str, asset_id: str) -> Path:
         return _resolve_inside(self._hardware_path(hardware_id), asset_id)
+
+    # -- server-provided definitions (design doc §9.7) ---------------------------------------
+
+    def get_definition(self, hardware_id: str) -> Record | None:
+        """``{document, fetchedAt}``: the last ``/device`` seen for a managed device."""
+        path = self._hardware_path(hardware_id) / DEFINITION_DIR / DEFINITION_FILE
+        with contextlib.suppress(OSError, ValueError):
+            value = json_loads(path.read_bytes().decode("utf-8"))
+            if isinstance(value, dict) and isinstance(value.get("document"), dict):
+                return value
+        return None
+
+    async def save_definition(
+        self, hardware_id: str, document: Record, assets: dict[str, bytes]
+    ) -> Record:
+        """Replace the cached declaration and its assets (staged, then swapped in)."""
+        directory = self._hardware_path(hardware_id)
+        directory.mkdir(parents=True, exist_ok=True)
+        staging = directory / f"{DEFINITION_DIR}.{new_uuid()}.tmp"
+        try:
+            for path, content in assets.items():
+                target = _resolve_inside(staging / DEFINITION_ASSETS, path)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                _write_bytes(target, content)
+            value = {"document": document, "fetchedAt": utc_now_iso()}
+            await atomic_json(staging / DEFINITION_FILE, value)
+            await self._remove(directory / DEFINITION_DIR)
+            await self._rename(staging, directory / DEFINITION_DIR)
+        finally:
+            with contextlib.suppress(OSError):
+                _delete(staging)
+        return value
+
+    def definition_asset_id(self, path: str) -> str:
+        """The ``hardwareharness-asset:`` asset id of a cached ``/assets`` file."""
+        return f"{DEFINITION_DIR}/{DEFINITION_ASSETS}/{path.lstrip('/')}"
+
+    def _require_editable_images(self, hardware_id: str) -> None:
+        if self.get_definition(hardware_id) is not None:
+            raise RuntimeError(
+                f"Hardware {hardware_id} takes its pictures and pinout from its MCP server; "
+                "they are read-only here"
+            )
 
     async def export_bundle(self, identifier: str) -> bytes:
         hardware = self.get_stored_hardware(identifier)
@@ -348,7 +420,12 @@ class DeviceStore:
         self._read_cache.clear()
         return {"id": stored["hardwareId"], "label": stored["label"], "replaced": replaced}
 
-    def _derive_hardware(self, stored: Record, servers: dict[str, Record] | None = None) -> Record:
+    def _derive_hardware(
+        self,
+        stored: Record,
+        servers: dict[str, Record] | None = None,
+        adapters: dict[str, Record] | None = None,
+    ) -> Record:
         server = (
             servers.get(stored["hardwareId"])
             if servers is not None
@@ -356,12 +433,19 @@ class DeviceStore:
                 (s for s in self.list_servers() if s["hardwareId"] == stored["hardwareId"]), None
             )
         )
+        adapter = (adapters if adapters is not None else self.list_adapters()).get(
+            stored["hardwareId"]
+        )
         return parse_hardware(
             {
                 **stored,
                 "kind": "managed" if server else "passive",
                 **(
-                    {"serverId": server["serverId"], "computerId": server["computerId"]}
+                    {
+                        "serverId": server["serverId"],
+                        **({"computerId": server["computerId"]} if "computerId" in server else {}),
+                        "adapterStatus": adapter["status"] if adapter else "developing",
+                    }
                     if server
                     else {}
                 ),

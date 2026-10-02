@@ -48,7 +48,7 @@ describe("test plan schema forms", () => {
     render(<StepSettingsForm
       step={step}
       catalogItem={{
-        type: "If", category: "流程控制", label: "条件", container: true, outputSchema: {},
+        type: "If", category: "流程", label: "条件", container: true, outputSchema: {},
         settingsSchema: {
           type: "object",
           properties: {

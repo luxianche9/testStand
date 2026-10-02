@@ -5,7 +5,7 @@ import { Dialog as DialogPrimitive } from "radix-ui";
 import type { ReactNode } from "react";
 import { IconButton, StatusLamp, Tooltip, type Tone } from "../../ui";
 
-export const stateLabels: Record<OpenCodeRuntimeStatus["state"], string> = {
+const stateLabels: Record<OpenCodeRuntimeStatus["state"], string> = {
   running: "已就绪",
   starting: "启动中",
   stopping: "停止中",

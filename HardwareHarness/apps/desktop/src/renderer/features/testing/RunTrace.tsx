@@ -12,15 +12,15 @@ const controlTypes = new Set(["Sequence", "Group", "If", "Repeat", "ForEach", "P
 
 export function ExecutionTimeline({ trace, activeExecutionIds }: { trace: ExecutionTrace } & Active) {
   return (
-    <div className="grid gap-5" aria-label="测试执行轨迹">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-5" aria-label="测试执行轨迹">
       {regionOrder.map((region) => (
-        <section key={region} className="grid gap-2">
+        <section key={region} className="grid grid-cols-[minmax(0,1fr)] gap-2">
           <div className="flex items-center gap-3">
             <h3 className="tf-label text-fg-2">{regionLabels[region]}</h3>
             <span className="h-px flex-1 bg-line" />
             <span className="tf-num text-2xs text-fg-3">{trace.regions[region].length} 项</span>
           </div>
-          <div className="grid gap-1.5">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-1.5">
             {trace.regions[region].map((node) => (
               <TraceNode key={node.executionId} node={node} activeExecutionIds={activeExecutionIds} />
             ))}
@@ -141,7 +141,7 @@ function ConditionalBranch({ node, activeExecutionIds }: { node: ExecutionTraceN
     : selected === "elseChildren" ? node.step.children?.length ?? 0 : 0;
   const label = selected ? `已选择${selected === "children" ? "满足条件" : "否则"}分支` : "正在计算分支";
   return (
-    <div className="grid gap-1.5">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-1.5">
       <div className="flex items-center gap-2 text-2xs text-fg-3">
         <GitBranchIcon className="size-3" />{label}
         {unselectedCount > 0 && <span className="ml-auto">另一个分支 {unselectedCount} 项未执行</span>}
@@ -163,7 +163,7 @@ function ScopedExecutions({ label, scopes, activeExecutionIds }: { label: string
   const completed = scopes.filter((scope) => scope.state === "Pass").length;
   const failed = scopes.filter((scope) => scope.state === "Fail" || scope.state === "Error").length;
   return (
-    <div className="grid gap-2">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-2">
       <div className="flex flex-wrap items-center gap-2 text-2xs text-fg-3">
         <RotateCcwIcon className="size-3" />
         <span className="tf-num">{label} {scopes.length}{scopes[0]?.count ? ` / ${scopes[0].count}` : ""}</span>
@@ -178,12 +178,13 @@ function ScopedExecutions({ label, scopes, activeExecutionIds }: { label: string
           {showAll ? "收起" : `查看全部 ${scopes.length} 次`}
         </Button>
       </div>
-      <div className="grid gap-1.5">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-1.5">
         {visible.map((scope) => (
           <div
             key={scope.index}
             className={cn(
-              "grid gap-1.5 rounded-sm border-l-2 border-l-line bg-surface-0 py-1.5 pr-1 pl-3",
+              "grid grid-cols-[minmax(0,1fr)] gap-1.5 rounded-sm border-l-2 border-l-line bg-surface-0 py-1.5 pr-1",
+              "pl-3",
               scope.state === "running" && "border-l-run",
               (scope.state === "Fail" || scope.state === "Error") && "border-l-fail"
             )}

@@ -47,6 +47,6 @@ export function MenuSeparator({ className, ...props }: React.ComponentPropsWitho
   return <MenuPrimitive.Separator className={cn("mx-1 my-1 h-px bg-line", className)} {...props} />;
 }
 
-export function MenuLabel({ className, ...props }: React.ComponentPropsWithoutRef<typeof MenuPrimitive.Label>) {
+function MenuLabel({ className, ...props }: React.ComponentPropsWithoutRef<typeof MenuPrimitive.Label>) {
   return <MenuPrimitive.Label className={cn("tf-label px-2 pt-1.5 pb-1", className)} {...props} />;
 }

@@ -4,8 +4,15 @@ from typing import Any
 
 from jsonschema import Draft202012Validator
 
-from .expression import evaluate
-from .models import BUILTIN_STEPS, CONTAINER_STEPS, STEP_ID, iter_steps
+from hardwareharness_backend.streams import judge
+
+from .bindings import expand_bindings
+from .expression import CONTEXT_NAMES, evaluate, references_context
+from .expression import check as check_expression
+from .manual import manual_check_issues
+from .models import BUILTIN_STEPS, CONTAINER_STEPS, STEP_ID, STREAM_STEPS, iter_steps
+from .protocols import PlanProtocols, encode_target
+from .protocols import resolve as resolve_protocols
 
 Record = dict[str, Any]
 
@@ -15,11 +22,45 @@ def issue(severity: str, code: str, message: str, path: str = "") -> Record:
 
 
 def validate_plan(
+    plan: Any,
+    resolver: Any | None = None,
+    plugins: list[Any] | None = None,
+    values: Record | None = None,
+) -> list[Record]:
+    """Issues of ``plan`` with its bindings (§7.6) expanded from ``values`` or the defaults."""
+    if not isinstance(plan, dict):
+        return validate_with_protocols(plan, resolver, plugins)[0]
+    expanded, binding_issues = expand_bindings(plan, values)
+    return [*binding_issues, *validate_with_protocols(expanded, resolver, plugins)[0]]
+
+
+def validate_with_protocols(
     plan: Any, resolver: Any | None = None, plugins: list[Any] | None = None
+) -> tuple[list[Record], PlanProtocols]:
+    """The issues plus the plan's resolved protocol bindings (the ICDs it will freeze).
+
+    ``plan`` must already have its device bindings expanded (``expand_bindings``).
+    """
+    if not isinstance(plan, dict):
+        return [issue("error", "plan.type", "Plan must be an object")], PlanProtocols({}, [])
+    protocols, issues = resolve_protocols(
+        plan,
+        getattr(resolver, "icd", None),
+        lambda hardware_id: _declared_streams(resolver, hardware_id),
+    )
+    return _validate(plan, resolver, plugins, protocols) + issues, protocols
+
+
+def _declared_streams(resolver: Any | None, hardware_id: str) -> dict[str, str] | None:
+    streams = getattr(resolver, "streams", None)
+    declared = streams(hardware_id) if streams is not None else None
+    return declared if isinstance(declared, dict) else None
+
+
+def _validate(
+    plan: Record, resolver: Any | None, plugins: list[Any] | None, protocols: PlanProtocols
 ) -> list[Record]:
     issues: list[Record] = []
-    if not isinstance(plan, dict):
-        return [issue("error", "plan.type", "Plan must be an object")]
     if plan.get("schemaVersion") != 2:
         issues.append(
             issue("error", "plan.schemaVersion", "schemaVersion must be 2", "/schemaVersion")
@@ -43,6 +84,7 @@ def validate_plan(
     plugin_by_type = {plugin.type_name: plugin for plugin in (plugins or [])}
     known = BUILTIN_STEPS | set(plugin_by_type)
     seen: set[str] = set()
+    anchors: set[str] = set()
     for path, step in iter_steps(plan):
         step_id = step.get("id")
         if not isinstance(step_id, str) or not STEP_ID.fullmatch(step_id):
@@ -92,6 +134,31 @@ def validate_plan(
                     path + "/children",
                 )
             )
+        if step_type == "ManualCheck":
+            issues.extend(
+                issue("error", code, message, path + relative)
+                for code, message, relative in manual_check_issues(step)
+            )
+        if step_type == "PublishResult" and "evidenceType" in step:
+            grade = step["evidenceType"]
+            if grade not in judge.EVIDENCE_TYPES:
+                issues.append(
+                    issue(
+                        "error",
+                        "evidence.type",
+                        f"evidenceType must be one of {', '.join(judge.EVIDENCE_TYPES)}",
+                        path + "/evidenceType",
+                    )
+                )
+            elif grade == "S" and step.get("verdict") in {"Pass", "Fail"}:
+                issues.append(
+                    issue(
+                        "error",
+                        "evidence.setpoint",
+                        "A setpoint shadow (S) cannot decide Pass or Fail (section 7.7)",
+                        path + "/verdict",
+                    )
+                )
         if step_type == "InvokeTool":
             if step.get("errorPolicy", "error") not in {"error", "fail"}:
                 issues.append(
@@ -126,6 +193,29 @@ def validate_plan(
                     )
                 if resolved:
                     arguments = step.get("arguments", {})
+                    if isinstance(step.get("encode"), dict) and isinstance(arguments, dict):
+                        target = encode_target(step["encode"], resolved.get("inputSchema", {}))
+                        if target is None:
+                            issues.append(
+                                issue(
+                                    "error",
+                                    "invoke.encode",
+                                    f"{step['toolName']} has no argument for the encoded frame; "
+                                    "set encode.argument",
+                                    path + "/encode",
+                                )
+                            )
+                        elif target in arguments:
+                            issues.append(
+                                issue(
+                                    "error",
+                                    "invoke.encode",
+                                    f"arguments.{target} is filled by encode; remove it",
+                                    path + f"/arguments/{target}",
+                                )
+                            )
+                        else:
+                            arguments = {**arguments, target: "00"}
                     for error in Draft202012Validator(resolved.get("inputSchema", {})).iter_errors(
                         arguments
                     ):
@@ -143,19 +233,13 @@ def validate_plan(
                                 path + "/arguments" + "".join(f"/{part}" for part in error.path),
                             )
                         )
+        if step_type == "InvokeTool":
+            issues.extend(_invoke_judging(step, path, anchors))
+        if step_type in STREAM_STEPS:
+            issues.extend(_stream_step(step, path, resolver, anchors, protocols))
         for field, expression in _expressions(step):
             if expression:
-                try:
-                    evaluate(
-                        expression,
-                        {"parameters": {}, "variables": {}, "steps": {}, "item": None, "index": 0},
-                    )
-                except Exception as error:
-                    message = str(error)
-                    if "Unknown" not in message:
-                        issues.append(
-                            issue("error", "expression.invalid", message, path + "/" + field)
-                        )
+                issues.extend(_expression_issues(expression, path + "/" + field))
         if step_type == "Retry":
             for child_path, child in _descendants(step, path):
                 if child.get("type") == "InvokeTool" and resolver:
@@ -173,6 +257,229 @@ def validate_plan(
                             )
                         )
     return issues
+
+
+def _expression_issues(expression: str, where: str) -> list[Record]:
+    """Static type check (§7.3); constant expressions are also evaluated once."""
+    found = check_expression(expression)
+    if not found and not references_context(expression):
+        try:
+            evaluate(expression, {name: None for name in CONTEXT_NAMES})
+        except Exception as error:
+            found = [("expression.invalid", str(error))]
+    return [issue("error", code, message, where) for code, message in found]
+
+
+def _invoke_judging(step: Record, path: str, anchors: set[str]) -> list[Record]:
+    issues: list[Record] = []
+    anchor = step.get("anchor")
+    if anchor is not None:
+        if not isinstance(anchor, str) or not anchor:
+            issues.append(
+                issue("error", "anchor.name", "anchor must be a non-empty string", path + "/anchor")
+            )
+        else:
+            anchors.add(anchor)
+    if "assertions" in step:
+        assertions = step["assertions"]
+        if not isinstance(assertions, list) or not assertions:
+            return [
+                *issues,
+                issue(
+                    "error",
+                    "assertions.empty",
+                    "assertions must be a non-empty array",
+                    path + "/assertions",
+                ),
+            ]
+        for index, assertion in enumerate(assertions):
+            message = None if _bound_later(assertion) else judge.assertion_error(assertion)
+            if message is None and isinstance(assertion, dict):
+                root = str(assertion.get("metric", "")).split(".")[0]
+                if root not in {"result", "timing", "arguments"}:
+                    message = "metric must start with result., timing. or arguments."
+            if message:
+                issues.append(
+                    issue("error", "assertion.invalid", message, f"{path}/assertions/{index}")
+                )
+    return issues
+
+
+def _stream_step(
+    step: Record, path: str, resolver: Any | None, anchors: set[str], protocols: PlanProtocols
+) -> list[Record]:
+    """Static checks of an Observe / Expect / Guard step against the declared streams."""
+    issues: list[Record] = []
+    kind = step["type"]
+    for field in ("hardwareId", "streamId"):
+        if not isinstance(step.get(field), str) or not step[field]:
+            issues.append(
+                issue("error", "stream.binding", f"{field} is required", path + "/" + field)
+            )
+    if issues:
+        return issues
+    declared = _declared_streams(resolver, step["hardwareId"])
+    derived = protocols.derived(step["hardwareId"], step["streamId"])
+    stream_type: str | None = derived.stream.stream_type if derived is not None else None
+    if declared is not None and derived is None:
+        declared = {**declared, **protocols.streams(step["hardwareId"])}
+        stream_type = declared.get(step["streamId"])
+        if stream_type is None:
+            names = ", ".join(sorted(declared)) or "none"
+            issues.append(
+                issue(
+                    "error",
+                    "stream.missing",
+                    f"{step['hardwareId']} has no stream {step['streamId']}; declared: {names}",
+                    path + "/streamId",
+                )
+            )
+    # §7.7: a setpoint shadow (the value last written, not a measurement) is never judgement
+    # evidence. Descriptor ``kind`` is only known here once the device's streams were listed;
+    # otherwise ``judge._graded`` downgrades such verdicts to inconclusive at run time.
+    describe = getattr(resolver, "stream_descriptors", None)
+    descriptors = describe(step["hardwareId"]) if describe is not None and derived is None else None
+    descriptor = (descriptors or {}).get(step["streamId"])
+    if isinstance(descriptor, dict) and judge.is_setpoint(descriptor):
+        issues.append(
+            issue(
+                "error",
+                "evidence.setpoint",
+                f"{step['streamId']} is a setpoint shadow stream and cannot be judgement "
+                "evidence; observe a measured stream instead",
+                path + "/streamId",
+            )
+        )
+
+    def check_anchor(name: Any, where: str) -> None:
+        if not isinstance(name, str) or not name:
+            issues.append(issue("error", "anchor.name", "anchor is required", where))
+        elif name not in anchors:
+            issues.append(
+                issue(
+                    "error",
+                    "anchor.undefined",
+                    f"anchor {name!r} is not set by an earlier InvokeTool step",
+                    where,
+                )
+            )
+
+    def check_number(value: Any, where: str, minimum: float, strict: bool = False) -> None:
+        if _bound_later(value):
+            return
+        if not _is_number(value) or value < minimum or (strict and value == minimum):
+            relation = ">" if strict else ">="
+            issues.append(
+                issue("error", "stream.number", f"must be a number {relation} {minimum:g}", where)
+            )
+
+    if kind == "Observe":
+        window = step.get("window")
+        if not isinstance(window, dict):
+            issues.append(
+                issue(
+                    "error",
+                    "observe.window",
+                    "window {anchor, startMs?, endMs} is required",
+                    path + "/window",
+                )
+            )
+        else:
+            check_anchor(window.get("anchor"), path + "/window/anchor")
+            start, end = window.get("startMs", 0), window.get("endMs")
+            if not (_bound_later(start) or _bound_later(end)) and not (
+                _is_number(start) and _is_number(end) and end > start
+            ):
+                issues.append(
+                    issue(
+                        "error",
+                        "observe.window",
+                        "window.endMs must be a number greater than startMs",
+                        path + "/window",
+                    )
+                )
+        assertions = step.get("assertions")
+        if not isinstance(assertions, list) or not assertions:
+            issues.append(
+                issue(
+                    "error",
+                    "assertions.empty",
+                    "assertions must be a non-empty array",
+                    path + "/assertions",
+                )
+            )
+        else:
+            for index, assertion in enumerate(assertions):
+                if _bound_later(assertion):
+                    continue
+                message = judge.assertion_error(assertion)
+                if message is None and stream_type is not None:
+                    message = judge.metric_error(stream_type, str(assertion["metric"]))
+                if message:
+                    issues.append(
+                        issue("error", "assertion.invalid", message, f"{path}/assertions/{index}")
+                    )
+        if "minSamples" in step:
+            check_number(step["minSamples"], path + "/minSamples", 1)
+    elif kind == "Expect":
+        check_anchor(step.get("anchor"), path + "/anchor")
+        check_number(step.get("withinMs"), path + "/withinMs", 0, strict=True)
+        if "offsetMs" in step:
+            check_number(step["offsetMs"], path + "/offsetMs", float("-inf"))
+        issues.extend(_match(step.get("match"), stream_type, path + "/match", condition=False))
+        capture = step.get("capture")
+        if capture is not None and not _bound_later(capture):
+            message = judge.capture_error(stream_type, capture)
+            if message:
+                issues.append(issue("error", "expect.capture", message, path + "/capture"))
+    else:
+        if step.get("onViolation", "abort") not in {"abort", "fail"}:
+            issues.append(
+                issue(
+                    "error",
+                    "guard.on_violation",
+                    "onViolation must be abort or fail",
+                    path + "/onViolation",
+                )
+            )
+        if not step.get("children"):
+            issues.append(
+                issue(
+                    "error",
+                    "guard.children",
+                    "Guard needs child steps to watch over",
+                    path + "/children",
+                )
+            )
+        issues.extend(
+            _match(step.get("condition"), stream_type, path + "/condition", condition=True)
+        )
+    return issues
+
+
+def _match(match: Any, stream_type: str | None, where: str, *, condition: bool) -> list[Record]:
+    what = "condition" if condition else "match"
+    if not isinstance(match, dict):
+        return [issue("error", f"stream.{what}", f"{what} must be an object", where)]
+    if stream_type is None or _bound_later(match):
+        return []
+    message = judge.match_error(stream_type, match, condition=condition)
+    return [issue("error", f"stream.{what}", message, where)] if message else []
+
+
+def _is_number(value: Any) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def _bound_later(value: Any) -> bool:
+    """``{expression}`` values (anywhere inside) are only known at run time."""
+    if isinstance(value, dict):
+        if set(value) == {"expression"}:
+            return True
+        return any(_bound_later(item) for item in value.values())
+    if isinstance(value, list):
+        return any(_bound_later(item) for item in value)
+    return False
 
 
 def _expressions(step: Record) -> list[tuple[str, str]]:

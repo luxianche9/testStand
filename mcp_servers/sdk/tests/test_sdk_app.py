@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import time
 
 import pytest
@@ -8,11 +9,13 @@ from hardwareharness_device_sdk import CONTRACT_REVISION, __version__
 from hardwareharness_device_sdk.app import DeviceService
 from hardwareharness_device_sdk.testing import check_device, dry_run_config, serve
 
-from sdk_demo import DemoDevice
+from sdk_demo import PNG, DemoDevice
 
-DEVICE_TOOLS = {"demo_set_level", "demo_read_level", "demo_configure", "demo_write_text", "demo_explode", "demo_safe_state"}
-BUILTINS = {"get_server_info", "list_hardware", "get_hardware_info", "get_pinout", "list_streams", "get_panel",
-            "hardwareharness_prepare_shutdown", "demo_stream_read", "demo_stream_start", "demo_stream_stop"}
+DEVICE_TOOLS = {"demo_set_level", "demo_read_level", "demo_configure", "demo_write_text", "demo_capture",
+                "demo_explode", "demo_safe_state"}
+BUILTINS = {"get_server_info", "list_hardware", "get_hardware_info", "lease_acquire", "lease_heartbeat",
+            "lease_release", "lease_force_release", "lease_status", "hardwareharness_prepare_shutdown",
+            "demo_stream_read", "demo_blob_read", "demo_transact"}
 
 
 def meta(tool: dict) -> dict:
@@ -48,6 +51,8 @@ def test_device_tool_schema_and_semantics(hh):
     assert hh.tools["demo_configure"]["inputSchema"]["properties"]["mode"]["enum"] == ["fast", "slow"]
     assert meta(hh.tools["hardwareharness_prepare_shutdown"]) == {"kind": "internal"}
     assert meta(hh.tools["get_server_info"])["kind"] == "management"
+    assert meta(hh.tools["demo_transact"])["operationSemantics"]["kind"] == "actuate"
+    assert meta(hh.tools["demo_stream_read"])["operationSemantics"]["kind"] == "read"
 
 
 def test_calls_return_envelopes(hh):
@@ -58,6 +63,7 @@ def test_calls_return_envelopes(hh):
     assert failed["ok"] is False
     assert failed["error"]["category"] == "device_error" and failed["error"]["details"] == {"partial": [1]}
     assert failed["error"]["retryable"] is False
+    assert failed["meta"]["operationId"].startswith("srv-")
 
 
 def test_argument_validation_is_rejected_before_the_device(hh):
@@ -77,59 +83,70 @@ def test_server_info_and_capabilities(hh):
     assert data["startupComplete"] is True and data["hardware"][0]["state"] == "open"
     caps = data["capabilities"]
     assert caps["executionMode"] == "nonphysical_driver_override" and caps["hardwareCount"] == 1
-    assert caps["streamTransport"]["path"] == "/streams/{streamId}"
+    assert caps["streamTransport"] == {"protocol": "sse", "path": "/streams/{streamId}", "timePath": "/time",
+                                       "auth": "bearer", "declaration": "/device streams",
+                                       "readTool": "demo_stream_read"}
+    assert caps["declarationPath"] == "/device" and caps["lease"] == {"timeoutMs": 10_000, "heartbeatIntervalMs": 2000}
+    assert caps["leaseTools"] == ["lease_acquire", "lease_heartbeat", "lease_release", "lease_force_release",
+                                  "lease_status"]
     info = hh.call("get_hardware_info")["data"]
-    assert info["capabilities"] == ["DO", "SERIAL"] and info["capabilityDetails"]["contractRevision"] == CONTRACT_REVISION
+    assert info["capabilities"] == ["DO", "DI", "AI", "SERIAL"]
+    assert info["capabilityDetails"]["contractRevision"] == CONTRACT_REVISION
 
 
-def test_pinout_not_supported_by_default(hh):
-    result = hh.call("get_pinout")
-    assert result["ok"] is False and result["error"]["category"] == "not_supported"
+def test_declaration_tools_are_gone(hh):
+    assert not {"get_pinout", "list_streams", "lease_renew"} & set(hh.tools)
 
 
-def test_panel_expands_tool_names(hh):
-    items = {item["id"]: item for item in hh.call("get_panel")["data"]["items"]}
-    assert items["do0"]["write"] == {"tool": "demo_set_level", "args": {"channel": 0, "level": "$value"}}
-    assert items["safe"]["write"]["tool"] == "demo_safe_state"
-    assert items["ai0"]["stream"] == "ai0" and items["ai0"]["unit"] == "V"
-
-
-def test_list_streams(hh):
-    streams = {item["streamId"]: item for item in hh.call("list_streams")["data"]}
-    assert set(streams) == {"di", "ai0", "do", "serial1"}
-    assert streams["di"]["kind"] == "sampled" and streams["di"]["state"] == "idle"
-    assert streams["serial1"]["kind"] == "bytes" and streams["serial1"]["valueSchema"]["required"]
-    assert streams["ai0"]["requires"] == ["configured"] and streams["ai0"]["channel"] == 0
-
-
-def test_stream_read_via_mcp(hh):
-    hh.call("set_level", channel=0, level=True)
+def test_stream_read_and_operation_refs(hh):
+    head = hh.service.device.out.buffer.head
+    first = hh.call("set_level", {"operationId": "op-a"}, channel=0, level=True)
     hh.call("set_level", channel=1, level=True)
-    latest = hh.call("stream_read", streamId="do")["data"]
-    assert [item["value"] for item in latest["items"]] == [1, 3]
-    assert latest["next"] == 2 and latest["epoch"] == hh.service.device.out.buffer.epoch
-    assert hh.call("stream_read", streamId="do", cursor=latest["next"])["data"]["items"] == []
+    assert first["meta"]["operationId"] == "op-a"
+    assert first["meta"]["streamRefs"] == [{"streamId": "do", "fromSeq": head, "toSeq": head}]
+    timing = first["meta"]["timing"]
+    assert timing["end"] >= timing["start"]
+    data = hh.call("stream_read", streamId="do", fromSeq=head)["data"]
+    assert [record["mask"] for record in data["records"]] == [1, 3]
+    assert data["records"][0]["op"] == "op-a" and data["records"][1]["op"].startswith("srv-")
+    assert data["next"] == head + 2 and data["epoch"] == hh.service.device.out.buffer.epoch
+    assert data["type"] == "bits" and data["status"]["state"] == "live"
+    assert hh.call("stream_read", streamId="do", fromSeq=data["next"])["data"]["records"] == []
+    latest = hh.call("stream_read", streamId="do", limit=1)["data"]["records"]
+    assert [record["mask"] for record in latest] == [3]
     unknown = hh.call("stream_read", streamId="missing")
-    assert unknown["ok"] is False and unknown["error"]["details"]["known"] == ["ai0", "di", "do", "serial1"]
+    assert unknown["ok"] is False and unknown["error"]["details"]["known"] == sorted(hh.service.device.streams)
 
 
-def test_stream_start_samples_without_viewer(hh):
-    hh.service.device.inputs = 5
-    held = hh.call("stream_start", streamId="di", seconds=5)["data"]
-    assert held["kind"] == "sampled" and held["holdSeconds"] > 4
-    deadline = time.monotonic() + 3
-    while time.monotonic() < deadline and not hh.call("stream_read", streamId="di")["data"]["items"]:
-        time.sleep(0.02)
-    items = hh.call("stream_read", streamId="di")["data"]["items"]
-    assert items and items[-1]["value"] == 5
-    assert hh.call("stream_stop", streamId="di")["data"]["holdSeconds"] == 0
-    push = hh.call("stream_start", streamId="do")
-    assert push["ok"] and push["message"]
+def test_transact_sends_and_waits_for_reply(hh):
+    result = hh.call("transact", {"operationId": "op-t"}, streamId="serial1", data="AT\r\n", expect="OK")
+    assert result["ok"] and result["data"]["matched"] is True and "OK" in result["data"]["text"]
+    assert result["data"]["sent"] == 4 and hh.service.device.sent == [b"AT\r\n"]
+    refs = result["meta"]["streamRefs"]
+    assert refs[0]["streamId"] == "serial1" and refs[0]["toSeq"] > refs[0]["fromSeq"]
+    records = hh.call("stream_read", streamId="serial1", fromSeq=refs[0]["fromSeq"])["data"]["records"]
+    assert records[0] | {"seq": 0, "t": 0} == {"seq": 0, "t": 0, "dir": "tx", "data": "41540d0a", "op": "op-t",
+                                               "text": "AT\r\n"}
+    assert records[1]["dir"] == "rx" and records[1]["text"] == "OK\r\n"
+    hexed = hh.call("transact", streamId="serial1", data="zz", encoding="hex")
+    assert hexed["ok"] is False and hexed["error"]["category"] == "invalid_argument"
+
+
+def test_blob_capture_and_read(hh):
+    ref = hh.call("capture")["data"]["ref"]
+    records = hh.call("stream_read", streamId="cam")["data"]["records"]
+    assert records[-1]["ref"] == ref
+    blob = hh.call("blob_read", streamId="cam", ref=ref)["data"]
+    assert blob["mime"] == "image/png" and base64.b64decode(blob["base64"]) == PNG and blob["size"] == len(PNG)
+    wrong = hh.call("blob_read", streamId="do", ref=ref)
+    assert wrong["ok"] is False and wrong["error"]["category"] == "invalid_argument"
 
 
 def test_auth_and_health(hh):
-    assert hh.client.get("/health").json() == {"healthy": True, "serverId": "DEMO1_MCP", "hardwareId": "DEMO1_1",
-                                               "state": "open", "sdkVersion": __version__}
+    health = hh.client.get("/health").json()
+    assert health == {"healthy": True, "serverId": "DEMO1_MCP", "hardwareId": "DEMO1_1", "state": "open",
+                      "sdkVersion": __version__, "manifestRevision": health["manifestRevision"]}
+    assert health["manifestRevision"] == hh.service.manifest().revision
     response = hh.client.post("/mcp", headers={"Authorization": "Bearer wrong"}, json={})
     assert response.status_code == 401
     assert hh.client.post("/admin/shutdown").status_code == 401
@@ -158,6 +175,7 @@ def test_lifecycle_open_safe_close(config):
         assert device.safe_calls == 1
     assert device.safe_calls == 2
     assert hh.service.manager.runtime.state == "closed"
+    assert device.di.status()["state"] == "closed"
 
 
 def test_model_mismatch_is_rejected():
@@ -177,15 +195,22 @@ def test_unknown_safety_action_is_rejected(config):
         DeviceService(Broken, config)
 
 
-def test_panel_with_unknown_tool_is_rejected(config):
-    from hardwareharness_device_sdk import PanelItem, ToolBinding
+def test_compliance_flags_unvalidated_ranges_and_streams(config):
+    from hardwareharness_device_sdk import ScalarStream, tool
 
-    class Broken(DemoDevice):
-        def panel(self):
-            return [PanelItem(id="x", label="x", widget="button", write=ToolBinding(tool="missing"))]
+    class Sloppy(DemoDevice):
+        def __init__(self, config):
+            super().__init__(config)
+            self.streams.add(ScalarStream("stuck", sample=lambda: None))
+            self.streams["stuck"].sampler._advance = lambda t: None  # noqa: SLF001 - watermark never moves
 
-    with pytest.raises(RuntimeError, match="unknown tools"):
-        DeviceService(Broken, config)
+        @tool(kind="configure", description="Set a demo voltage without checking the range the schema cannot express at all.")
+        def set_voltage(self, value: float) -> dict:
+            return {"value": value}
+
+    failures = check_device(Sloppy)
+    assert any("set_voltage.value: parameter description missing" in failure for failure in failures)
+    assert any("stream stuck: watermark did not advance" in failure for failure in failures)
 
 
 def test_cli_check_runs_compliance_in_dry_run(capsys):
@@ -194,4 +219,6 @@ def test_cli_check_runs_compliance_in_dry_run(capsys):
     from hardwareharness_device_sdk.__main__ import main
 
     assert main(["--adapter", "sdk_demo:DemoDevice", "--check", "--log-level", "warning"]) == 0
-    assert json.loads(capsys.readouterr().out) == {"adapter": "sdk_demo.DemoDevice", "ok": True, "failures": []}
+    report = json.loads(capsys.readouterr().out)
+    assert report | {"warnings": []} == {"adapter": "sdk_demo.DemoDevice", "ok": True, "failures": [], "warnings": []}
+    assert any("no appearance image" in warning for warning in report["warnings"])

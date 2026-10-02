@@ -4,24 +4,24 @@ import type {
 import { findStep, moveStep, type TestRegion } from "./plan-model.js";
 
 /** Step types that own a child list (drop targets that nest instead of inserting before). */
-export const containerTypes = new Set(["Sequence", "Group", "If", "Repeat", "ForEach", "Parallel", "Retry"]);
-export const categoryOrder = ["流程控制", "数据处理", "硬件动作", "判据"] as const;
+export const containerTypes = new Set(["Sequence", "Group", "If", "Repeat", "ForEach", "Parallel", "Retry", "Guard"]);
+/** Catalog categories as the backend names them; 硬件 lists managed hardware (InvokeTool per device). */
+export const categoryOrder = ["流程", "数据", "硬件", "判定"] as const;
 export const regionOrder: readonly TestRegion[] = ["prepare", "test", "cleanup"];
 export const regionLabels: Record<TestRegion, string> = { prepare: "准备", test: "测试", cleanup: "清理" };
 
-const verdictStepTypes = ["Equal", "Range", "Tolerance", "Bitmask", "PublishResult"];
 const terminalStates = ["completed", "aborted", "error"];
 
 export function isActiveRun(run: TestRunSnapshot | null | undefined): run is TestRunSnapshot {
   return Boolean(run && !terminalStates.includes(run.state));
 }
 
-export function newStepId(prefix: string): string {
+function newStepId(prefix: string): string {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
 }
 
 /** Gives a copied step (and all its descendants) fresh ids so the copy never aliases the original. */
-export function regenerateIds(step: TestStep): void {
+function regenerateIds(step: TestStep): void {
   step.id = newStepId(step.type.toLowerCase());
   for (const child of [...(step.children ?? []), ...(step.elseChildren ?? [])]) regenerateIds(child);
 }
@@ -111,18 +111,12 @@ export function stepIdForIssuePath(plan: TestPlan, path: string): string | undef
   return step?.id;
 }
 
-function catalogCategory(item: TestStepCatalogItem): string {
-  if (containerTypes.has(item.type)) return "流程控制";
-  if (verdictStepTypes.includes(item.type)) return "判据";
-  return "数据处理";
-}
-
 /** Groups the step catalog for the component library; InvokeTool is offered per device instead. */
 export function groupCatalog(items: TestStepCatalogItem[]): Map<string, TestStepCatalogItem[]> {
   const groups = new Map<string, TestStepCatalogItem[]>();
   for (const item of items) {
     if (item.type === "InvokeTool") continue;
-    const category = catalogCategory(item);
+    const category = item.category;
     groups.set(category, [...(groups.get(category) ?? []), item]);
   }
   return groups;
@@ -152,7 +146,7 @@ export function schemaFieldPaths(schema: Record<string, unknown>, prefix = "outp
 }
 
 /** Drop target ids: `region:<name>` for a region body, otherwise a step id. */
-export function regionFromDropId(overId: string | undefined): TestRegion | undefined {
+function regionFromDropId(overId: string | undefined): TestRegion | undefined {
   return overId?.startsWith("region:") ? overId.slice(7) as TestRegion : undefined;
 }
 

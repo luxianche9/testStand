@@ -11,3 +11,6 @@ dependencies = ["hardwareharness-device-sdk>=0.2,<0.3"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+hh_adapter_pci6208v = ["py.typed", "assets/*.svg", "assets/**/*.svg"]

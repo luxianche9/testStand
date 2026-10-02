@@ -1,10 +1,14 @@
 """Moxa CP-118U-I: 8 isolated serial ports P1..P8 via PComm.
 
 A reader thread polls every configured port and appends RX chunks to the
-``serial<N>`` byte streams; write tools append the accepted TX bytes. Those
-streams are the single receive record: ``read_rx`` concatenates the RX
-chunks after a per-channel clear cursor and never consumes them, so the
-canvas terminal and test steps see the same bytes.
+``serial<N>`` byte streams; every transmit goes through ``stream.send`` so
+the accepted TX bytes land on the same stream, and configure/clear/flush
+leave ``mark`` records. Those streams are the single traffic record:
+``read_rx`` concatenates the RX chunks after a per-channel clear cursor and
+never consumes them, so the run monitor and test steps see the same bytes.
+Every read return (an empty ``sio_read``) calls ``stream.idle()``, so a
+stream's watermark says "nothing more arrived up to here" within one poll
+interval; unconfigured ports are confirmed idle on every poll as well.
 """
 
 from __future__ import annotations
@@ -18,10 +22,10 @@ from typing import Any, Literal
 from hardwareharness_device_sdk import (
     DEVICE_UNREACHABLE,
     INVALID_ARGUMENT,
+    NOT_CONFIGURED,
     ByteStream,
     Device,
     DeviceError,
-    PanelItem,
     Pinout,
     ServerConfig,
     model,
@@ -29,7 +33,6 @@ from hardwareharness_device_sdk import (
     tool,
 )
 
-from . import panel as panel_items
 from .driver import BAUD_CODES, FLUSH_CODES, FLUSH_RX, FLUSH_TX, MAXDWORD, SIO_OK, SIO_RTS_BY_HW, PComm, PCommBackend
 from .driver import build_mode, frame
 from .pinout import pinout as build_pinout
@@ -39,6 +42,8 @@ log = logging.getLogger("hh_adapter_cp118u_i")
 
 MAX_CHANNELS = 8
 READ_CHUNK = 4096
+MAX_POLL_SECONDS = 0.1
+"""Upper bound on ``rxPollMs``: idle() must confirm the watermark at least every 200 ms."""
 
 SerialConfig = model("SerialConfiguration", channel=(int, "P1..P8."), port=(int, "PComm/Windows COM number."),
                      baud=(int, "Bits per second."),
@@ -81,14 +86,45 @@ What = param(str, "FIFO selection: rx, tx, both (case-insensitive). TX discards 
              pattern="^(?i:rx|tx|both)$")
 
 
-def configured_ports(settings: Any) -> list[int]:
-    """P1..Pn -> PComm port numbers from ``portMap`` (or MOXA_PORT_MAP), else ``basePort`` + offset."""
+MXSER_ENUM = r"SYSTEM\CurrentControlSet\Enum\MXSER"
+
+
+def registry_ports(count: int) -> list[int] | None:
+    """COM numbers Windows assigned to board 0 ports P1..Pn (``MXSERB00P00k``), or None if unavailable.
+
+    Moxa does not number the ports consecutively: P3 can be COM8 while COM5 is P6.
+    """
+    try:
+        import winreg
+    except ImportError:
+        return None
+    ports: list[int] = []
+    for index in range(count):
+        try:
+            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, rf"{MXSER_ENUM}\MXSERB00P{index:03d}") as key:
+                with winreg.OpenKey(key, rf"{winreg.EnumKey(key, 0)}\Device Parameters") as params:
+                    name = str(winreg.QueryValueEx(params, "PortName")[0])
+            ports.append(int(name.upper().removeprefix("COM")))
+        except (OSError, ValueError):
+            return None
+    return ports if len(set(ports)) == count else None
+
+
+def configured_ports(settings: Any, discover: Any = registry_ports) -> list[int]:
+    """P1..Pn -> PComm port numbers.
+
+    ``portMap`` (or MOXA_PORT_MAP) wins, then an explicit ``basePort`` (or MOXA_BASE_PORT) + offset, then the
+    Windows MXSER device registry, then COM3 + offset.
+    """
     count = int(settings.get("portCount", os.environ.get("MOXA_PORT_COUNT") or MAX_CHANNELS))
-    base = int(settings.get("basePort", os.environ.get("MOXA_BASE_PORT") or 3))
+    base_setting = settings.get("basePort", os.environ.get("MOXA_BASE_PORT"))
+    base = int(base_setting or 3)
     if not 1 <= count <= MAX_CHANNELS or base < 1:
         raise ValueError(f"basePort >= 1 and portCount in 1..{MAX_CHANNELS} required")
     raw = settings.get("portMap", os.environ.get("MOXA_PORT_MAP", ""))
     if not raw:
+        if not base_setting and (found := discover(count)):
+            return found
         return [base + offset for offset in range(count)]
     try:
         ports = [int(part) for part in (raw.split(",") if isinstance(raw, str) else raw) if str(part).strip()]
@@ -107,13 +143,18 @@ class Cp118uI(Device):
     version = "0.2.0"
     instructions = ("Moxa CP-118U-I: 8 isolated serial ports as one card, channels P1..P8. configure_port before "
                     "traffic. RS-232/422/485 is DIP-switch only; software cannot change it. write_text/write_hex "
-                    "actuate the line. RX is also published live on streams serial1..serial8.")
+                    "actuate the line. All TX, RX and configuration marks are on streams serial1..serial8; "
+                    "cp118u_transact sends and waits for a matching reply in one call.")
+    description = ("Moxa CP-118U-I PCI Express card with 8 isolated serial ports P1..P8, reached through a fan-out "
+                   "cable ending in 8 male DB9 connectors. Each port is RS-232, RS-422/4-wire RS-485 or 2-wire "
+                   "RS-485 by an on-board DIP switch that software cannot read or change; the pinout lists all three "
+                   "and activeMode is unknown. Streams serial1..serial8 carry the TX, RX and configuration marks.")
 
     def __init__(self, config: ServerConfig) -> None:
         super().__init__(config)
         settings = config.settings
         self.port_map = dict(enumerate(configured_ports(settings), start=1))
-        self.poll_seconds = max(0.001, float(settings.get("rxPollMs", 10)) / 1000)
+        self.poll_seconds = min(MAX_POLL_SECONDS, max(0.001, float(settings.get("rxPollMs", 10)) / 1000))
         self.rx_buffer_bytes = int(settings.get("rxBufferBytes", 1 << 20))
         self.pcomm: PCommBackend = self.select_driver(lambda: PComm(settings.get("dllPath")), SimulatedPComm)
         self.opened: list[int] = []
@@ -122,12 +163,8 @@ class Cp118uI(Device):
         self._stop = threading.Event()
         self._reader: threading.Thread | None = None
         for channel in self.port_map:
-            stream = ByteStream(f"serial{channel}", label=f"P{channel}", channel=channel,
-                                max_bytes=self.rx_buffer_bytes, requires=("serial_port_configured",),
-                                description=f"P{channel} traffic: rx chunks from the reader, tx bytes accepted by the "
-                                            "driver. Chunk boundaries are poll artefacts, not frames.")
-            stream.set_status("not_configured")
-            self.streams.add(stream)
+            self.streams.add(ByteStream(f"serial{channel}", writer=lambda data, ch=channel: self._send(ch, data),
+                                        max_bytes=self.rx_buffer_bytes))
 
     def _stream(self, channel: int) -> ByteStream:
         stream = self.streams[f"serial{channel}"]
@@ -156,6 +193,8 @@ class Cp118uI(Device):
             self.opened = opened
             self.configured.clear()
             self.rx_cursor = {channel: self._stream(channel).buffer.head for channel in self.port_map}
+        for channel in self.port_map:
+            self._stream(channel).set_state("not_configured")
         self._stop.clear()
         self._reader = threading.Thread(target=self._read_loop, name="cp118u-rx", daemon=True)
         self._reader.start()
@@ -174,59 +213,75 @@ class Cp118uI(Device):
             self.opened = []
             self.configured.clear()
         for channel in self.port_map:
-            self._stream(channel).set_status("not_configured")
+            self._stream(channel).set_state("closed")
         return {"closed_ports": closed}
 
     # --- receive path -------------------------------------------------
     def _drain(self, channel: int) -> None:
-        """Move everything waiting in the port's RX FIFO into its stream; caller holds io_lock."""
+        """Move everything waiting in the port's RX FIFO into its stream; caller holds io_lock.
+
+        The empty read that ends the drain is a read return: ``idle()`` confirms nothing more arrived.
+        """
         port, stream = self.port_map[channel], self._stream(channel)
         while True:
             count, data = self.pcomm.sio_read(port, READ_CHUNK)
             if count <= 0 or not data:
+                stream.idle()
                 return
             stream.rx(data)
 
     def _read_loop(self) -> None:
         while not self._stop.wait(self.poll_seconds):
-            for channel in list(self.configured):
+            for channel in self.port_map:
+                if channel not in self.configured:
+                    self._stream(channel).idle()  # not configured: nothing can arrive on the stream
+                    continue
                 try:
                     with self.io_lock:
                         self._drain(channel)
-                    self._stream(channel).set_status("live")
+                    self._stream(channel).set_state("live")
                 except Exception as exc:  # noqa: BLE001 - keep polling the other ports
                     log.warning("P%s read failed: %s", channel, exc)
-                    self._stream(channel).set_status("error", {"category": "device_error", "message": str(exc)})
+                    self._stream(channel).set_state("error", {"category": "device_error", "message": str(exc)})
 
     def _clear_rx(self, channel: int) -> None:
         """Discard hardware RX and move the read_rx cursor past everything received; caller holds io_lock."""
         rc = self.pcomm.sio_flush(self.port_map[channel], FLUSH_RX)
         if rc != SIO_OK:
             raise DeviceError(f"sio_flush(rx) failed rc={rc}", details={"rc": rc})
-        self.rx_cursor[channel] = self._stream(channel).buffer.head
+        self.rx_cursor[channel] = self._stream(channel).mark("clear_rx")["seq"] + 1
 
     def _received(self, channel: int) -> tuple[bytes, bool]:
         buffer = self._stream(channel).buffer
         cursor, head, chunks, overflow = self.rx_cursor.get(channel, 0), buffer.head, [], False
         while cursor < head:
-            result = buffer.read(cursor, max_items=READ_CHUNK)
+            result = buffer.read(cursor, READ_CHUNK)
             overflow = overflow or result.dropped is not None
-            chunks.extend(bytes.fromhex(item["hex"]) for item in result.items if item["dir"] == "rx")
-            if not result.items:
+            chunks.extend(bytes.fromhex(record["data"]) for record in result.records if record["dir"] == "rx")
+            if not result.records:
                 break
             cursor = result.next
         return b"".join(chunks), overflow
 
-    def _write(self, channel: int, data: bytes, clear_rx: bool) -> dict[str, Any]:
+    def _send(self, channel: int, data: bytes) -> int:
+        """The stream writer: returns the byte count the driver accepted. Also used by ``<prefix>_transact``."""
         port = self._port(channel)
+        if channel not in self.configured:
+            raise DeviceError(f"P{channel} is not configured; call configure_port first",
+                              category=NOT_CONFIGURED, details={"channel": channel})
+        with self.io_lock:
+            rc = self.pcomm.sio_write(port, data)
+        if rc < 0:
+            raise DeviceError(f"sio_write failed rc={rc}", details={"rc": rc})
+        return rc
+
+    def _write(self, channel: int, data: bytes, clear_rx: bool) -> dict[str, Any]:
+        self._port(channel)
         with self.io_lock:
             if clear_rx:
                 self._clear_rx(channel)
-            rc = self.pcomm.sio_write(port, data)
-            if rc < 0:
-                raise DeviceError(f"sio_write failed rc={rc}", details={"rc": rc})
-            self._stream(channel).tx(data[:rc])
-        return {"channel": channel, "bytes": rc}
+            sent = self._stream(channel).send(data)
+        return {"channel": channel, "bytes": sent}
 
     # --- tools --------------------------------------------------------
     @tool(kind="configure", output=SerialConfig, effects=("serial_port_configured",),
@@ -245,7 +300,9 @@ class Cp118uI(Device):
             if flow_rc not in (SIO_OK, SIO_RTS_BY_HW):
                 raise DeviceError(f"sio_flowctrl failed rc={flow_rc}", details={"rc": flow_rc})
             self.configured[channel] = {"baud": baud, "frame": frame(mode), "flow": flow}
-        self._stream(channel).set_status("live")
+        stream = self._stream(channel)
+        stream.mark(f"configure_port baud={baud} {frame(mode)} flow={flow}")
+        stream.set_state("live")
         return {"channel": channel, "port": port, "baud": baud, "mode": mode, "flow": flow, "flow_rc": flow_rc}
 
     @tool(kind="actuate", output=SerialWrite, requires=("serial_port_configured",),
@@ -306,8 +363,9 @@ class Cp118uI(Device):
             rc = self.pcomm.sio_flush(port, FLUSH_CODES[selection])
             if rc != SIO_OK:
                 raise DeviceError(f"sio_flush failed rc={rc}", details={"rc": rc})
+            mark = self._stream(channel).mark(f"flush {selection}")
             if selection in ("rx", "both"):
-                self.rx_cursor[channel] = self._stream(channel).buffer.head
+                self.rx_cursor[channel] = mark["seq"] + 1
         return {"channel": channel, "what": what}
 
     @tool(kind="read", output=SerialStatus, requires=("serial_port_configured",),
@@ -354,6 +412,3 @@ class Cp118uI(Device):
 
     def pinout(self) -> Pinout:
         return build_pinout(self.hardware_id)
-
-    def panel(self) -> list[PanelItem]:
-        return panel_items.items(self.hardware_id, list(self.port_map))

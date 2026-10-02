@@ -14,6 +14,7 @@ dependencies = [
   "uvicorn==0.52.4",
   "ada-url==1.15.3",
   "ruamel.yaml==0.18.15",
+  "keyring==25.7.0",
 ]
 
 [project.entry-points."hardwareharness.test_steps"]
@@ -29,8 +30,15 @@ packages = ["src/hardwareharness_backend"]
 
 [dependency-groups]
 dev = [
-  "ruff", "mypy", "pytest", "pytest-asyncio", "pytest-cov",
-  "types-paramiko", "types-jsonschema", "pyinstaller==6.22.2",
+  "ruff",
+  "mypy",
+  "pytest",
+  "pytest-asyncio",
+  "pytest-cov",
+  "types-paramiko",
+  "types-jsonschema",
+  "pyinstaller==6.22.2",
+  "import-linter==2.15",
 ]
 
 [tool.ruff]
@@ -65,3 +73,88 @@ source = ["hardwareharness_backend"]
 [tool.coverage.report]
 show_missing = true
 
+
+# Layering of the workstation service (design doc §9.2): imports only go downward.
+[tool.importlinter]
+root_package = "hardwareharness_backend"
+include_external_packages = false
+
+[[tool.importlinter.contracts]]
+name = "Access layer (HTTP, MCP gateway) is not imported from below"
+type = "forbidden"
+source_modules = [
+  "hardwareharness_backend.application",
+  "hardwareharness_backend.devices",
+  "hardwareharness_backend.projects",
+  "hardwareharness_backend.wiring",
+  "hardwareharness_backend.testing",
+  "hardwareharness_backend.streams",
+  "hardwareharness_backend.storage",
+  "hardwareharness_backend.contracts",
+]
+forbidden_modules = [
+  "hardwareharness_backend.host",
+  "hardwareharness_backend.mcp_gateway",
+]
+
+[[tool.importlinter.contracts]]
+name = "Domain layer does no I/O: no application or resource imports"
+type = "forbidden"
+source_modules = [
+  "hardwareharness_backend.testing.compiler",
+  "hardwareharness_backend.testing.interpreter",
+  "hardwareharness_backend.testing.expression",
+  "hardwareharness_backend.testing.models",
+  "hardwareharness_backend.streams.judge",
+]
+forbidden_modules = [
+  "hardwareharness_backend.application",
+  "hardwareharness_backend.devices",
+  "hardwareharness_backend.projects",
+  "hardwareharness_backend.wiring",
+  "hardwareharness_backend.storage",
+  "hardwareharness_backend.testing.application",
+  "hardwareharness_backend.testing.engine",
+  "hardwareharness_backend.testing.journal",
+  "hardwareharness_backend.testing.run_io",
+  "hardwareharness_backend.testing.runtime_state",
+  "hardwareharness_backend.testing.store",
+  "hardwareharness_backend.streams.source",
+  "hardwareharness_backend.streams.clock",
+  "hardwareharness_backend.streams.recorder",
+  "hardwareharness_backend.streams.live",
+  "hardwareharness_backend.streams.store",
+]
+
+[[tool.importlinter.contracts]]
+name = "Resource layer has no business dependencies"
+type = "forbidden"
+source_modules = [
+  "hardwareharness_backend.devices.mcp_client",
+  "hardwareharness_backend.devices.ssh",
+  "hardwareharness_backend.streams.source",
+  "hardwareharness_backend.streams.clock",
+  "hardwareharness_backend.streams.recorder",
+  "hardwareharness_backend.storage",
+]
+forbidden_modules = [
+  "hardwareharness_backend.application",
+  "hardwareharness_backend.projects",
+  "hardwareharness_backend.wiring",
+  "hardwareharness_backend.testing",
+  "hardwareharness_backend.streams.judge",
+]
+
+[[tool.importlinter.contracts]]
+name = "Contracts depend on nothing else in the service"
+type = "forbidden"
+source_modules = ["hardwareharness_backend.contracts"]
+forbidden_modules = [
+  "hardwareharness_backend.application",
+  "hardwareharness_backend.devices",
+  "hardwareharness_backend.projects",
+  "hardwareharness_backend.wiring",
+  "hardwareharness_backend.testing",
+  "hardwareharness_backend.streams",
+  "hardwareharness_backend.storage",
+]

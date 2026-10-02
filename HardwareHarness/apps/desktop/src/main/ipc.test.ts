@@ -1,70 +1,51 @@
 import { describe, expect, it, vi } from "vitest";
-import { createDesktopRouter, type DesktopIpcDependencies } from "./ipc.js";
+import { createMainHandlers, dispatchMainCall, type DesktopIpcDependencies } from "./ipc.js";
 
-/** Procedures that need main-process services; every Python operation goes through `invoke`. */
-const MAIN_PROCEDURES = [
-  "system.exportText",
-  "devices.importHardwareImage", "devices.exportBundle", "devices.importBundle", "devices.previewBundle",
-  "projects.chooseFolder",
-  ...["rotateGatewayToken", "status", "preview", "install", "remove", "test", "listTools", "openCodeStatus", "startOpenCode", "stopOpenCode", "restartOpenCode"].map((name) => `agents.${name}`),
-  ...["getTheme", "setTheme", "getProjectView", "setProjectView", "getWelcomeLayout", "setWelcomeLayout", "getLlm", "saveLlm"].map((name) => `settings.${name}`),
-  ...["minimize", "toggleMaximize", "close"].map((name) => `window.${name}`),
-  "events.subscribe"
-];
-
-describe("Desktop tRPC router", () => {
-  it("registers one generic operation procedure plus the main-process procedures", () => {
-    const router = createDesktopRouter(dependencies());
-    expect(Object.keys(router._def.procedures).sort()).toEqual(["invoke", ...MAIN_PROCEDURES].sort());
+describe("Desktop main calls", () => {
+  it("covers dialogs, agents, settings and the window, plus the backend endpoint", () => {
+    const channels = Object.keys(createMainHandlers(dependencies()));
+    expect(new Set(channels.map((channel) => channel.split(".")[0]))).toEqual(new Set(["desktop", "dialogs", "agents", "settings", "window"]));
+    expect(channels).toContain("desktop.endpoint");
+    expect(channels.some((channel) => channel.startsWith("devices.") || channel.startsWith("testing."))).toBe(false);
   });
 
-  it("validates LLM settings at the tRPC boundary", async () => {
+  it("validates and trims LLM settings before main sees them", async () => {
     const saveLlm = vi.fn(async (input) => ({ ...input, apiKeyConfigured: false }));
-    const router = createDesktopRouter(dependencies({ settings: { saveLlm } as never }));
-    const caller = router.createCaller({});
+    const handlers = createMainHandlers(dependencies({ settings: { saveLlm } as never }));
 
-    await expect(caller.settings.saveLlm({ baseUrl: "not-a-url", model: "" })).rejects.toThrow();
-    await caller.settings.saveLlm({ baseUrl: " https://example.com/v1 ", model: " model " });
+    await expect(dispatchMainCall(handlers, "settings.saveLlm", [{ baseUrl: "not-a-url", model: "" }])).resolves.toMatchObject({ ok: false, error: { category: "invalid_argument" } });
+    await dispatchMainCall(handlers, "settings.saveLlm", [{ baseUrl: " https://example.com/v1 ", model: " model " }]);
     expect(saveLlm).toHaveBeenCalledWith({ baseUrl: "https://example.com/v1", model: "model" });
   });
 
-  it("invokes operations as the desktop human with JSON-shaped arguments", async () => {
-    const invokeTool = vi.fn(async (context, input) => ({ context, input }));
-    const router = createDesktopRouter(dependencies({ application: { manual: { invokeTool } } as never }));
-    const caller = router.createCaller({});
-
-    const manualInput = { hardwareId: "HW1", toolName: "SERVER__write", arguments: { value: 1, unset: undefined }, timeoutMs: undefined };
-    await caller.invoke({ operation: "manual.invokeTool", args: [manualInput, undefined] });
-
-    expect(invokeTool).toHaveBeenCalledWith({ actor: "human", source: "desktop" }, { hardwareId: "HW1", toolName: "SERVER__write", arguments: { value: 1 } }, undefined);
-    await expect(caller.invoke({ operation: "manual.abortHardware" as never, args: [] })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  it("applies a saved theme to the window", async () => {
+    const base = dependencies({ settings: { setTheme: vi.fn(async () => undefined) } as never });
+    await expect(dispatchMainCall(createMainHandlers(base), "settings.setTheme", ["dark"])).resolves.toEqual({ ok: true, value: undefined });
+    expect(base.windows.applyTheme).toHaveBeenCalledWith("dark");
   });
 
-  it("publishes the project document after a wiring update", async () => {
-    const document = { rootPath: "P" };
-    const base = dependencies();
-    const router = createDesktopRouter({ ...base, application: { wiring: { updateDocument: vi.fn(async () => document) } } as never });
+  it("rejects unknown channels and keeps the domain error category", async () => {
+    const handlers = createMainHandlers(dependencies({
+      agents: { status: vi.fn(async () => Promise.reject(Object.assign(new Error("gone"), { category: "not_found" }))) } as never
+    }));
+    await expect(dispatchMainCall(handlers, "devices.listHardware", [])).resolves.toMatchObject({ ok: false, error: { category: "invalid_argument" } });
+    await expect(dispatchMainCall(handlers, "toString", [])).resolves.toMatchObject({ ok: false, error: { category: "invalid_argument" } });
+    await expect(dispatchMainCall(handlers, "agents.status", ["codex"])).resolves.toEqual({ ok: false, error: { category: "not_found", message: "gone" } });
+  });
 
-    await router.createCaller({}).invoke({ operation: "wiring.updateDocument", args: [{ nodes: [], connections: [] }] });
-
-    expect(base.windows.publish).toHaveBeenCalledWith("project", document);
+  it("hands out the local API endpoint", async () => {
+    const handlers = createMainHandlers(dependencies());
+    await expect(dispatchMainCall(handlers, "desktop.endpoint", [])).resolves.toEqual({ ok: true, value: { url: "http://127.0.0.1:1", token: "t" } });
   });
 });
 
 function dependencies(overrides: Partial<DesktopIpcDependencies> = {}): DesktopIpcDependencies {
   return {
-    application: {} as never,
+    endpoint: () => ({ url: "http://127.0.0.1:1", token: "t" }),
     agents: {} as never,
     settings: {} as never,
     dialogs: {} as never,
-    windows: {
-      publish: vi.fn(),
-      subscribe: vi.fn(() => () => undefined),
-      minimize: vi.fn(),
-      toggleMaximize: vi.fn(),
-      close: vi.fn(),
-      applyTheme: vi.fn()
-    },
+    windows: { minimize: vi.fn(), toggleMaximize: vi.fn(), close: vi.fn(), applyTheme: vi.fn() },
     ...overrides
   };
 }

@@ -81,7 +81,7 @@ async function verifySourceFirstBundles() {
   const businessImplementations = ["class DeviceStore", "class DeviceService", "class ProjectService", "class ProjectWiringService", "class TaskOrchestrationService", "class HardwareHarnessApplication", "class LocalMcpGateway", "class SettingsStore", "class SecretStore", "class ProjectRunLogStore"];
   const businessLeaks = businessImplementations.filter((name) => mainCode.includes(name));
   if (businessLeaks.length) throw new Error(`Python-owned business implementation leaked into Main: ${businessLeaks.join(", ")}`);
-  if (!mainCode.includes("backend.initialize") || !mainCode.includes("hardwareharness-backend.exe")) throw new Error("Main does not contain the Python child-process integration");
+  if (!mainCode.includes("--gateway-port") || !mainCode.includes("hardwareharness-backend.exe")) throw new Error("Main does not contain the Python child-process integration");
   console.log("Electron Main and Preload contain no externalized workspace package imports.");
 }
 

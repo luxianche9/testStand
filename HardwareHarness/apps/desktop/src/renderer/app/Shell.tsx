@@ -10,11 +10,14 @@ import { queryKeys } from "../lib/query-keys.js";
 import { useHardwareHarnessEvents } from "../lib/hooks/useHardwareHarnessEvents.js";
 import { useKeyboardShortcut } from "../lib/hooks/useKeyboardShortcut.js";
 import { useDirtyGuard } from "../lib/hooks/useDirtyGuard.js";
+import { onRunRequested } from "../lib/run-focus.js";
 import { isTaskActionable } from "../features/wiring/wiring-model.js";
+import { ManualCheckDialog } from "../features/testing/ManualCheckDialog.js";
 import { appNavigationReducer, initialAppNavigation, isProjectView, type AppPage } from "./app-navigation.js";
 import { readAssistantOpen, writeAssistantOpen } from "./assistant-preference.js";
 import { dispatchAppCommand } from "./commands.js";
 import { CommandPalette, paletteIcons, type PaletteCommand } from "./CommandPalette.js";
+import { AgentConfirmationDialog } from "./AgentConfirmationDialog.js";
 import { DirtyDialog } from "./DirtyDialog.js";
 import { ErrorBoundary } from "./ErrorBoundary.js";
 import { FeatureFallback } from "./FeatureFallback.js";
@@ -97,7 +100,14 @@ function Shell() {
       void window.hardwareharness.settings.setProjectView("plans");
     };
     window.addEventListener("hardwareharness:navigate-plans", openPlans);
-    return () => window.removeEventListener("hardwareharness:navigate-plans", openPlans);
+    // A run started (here or by an agent): watch it on 运行监控.
+    const stopRuns = onRunRequested(() => {
+      if (project.data) navigate({ type: "show-content", page: "runs" });
+    });
+    return () => {
+      window.removeEventListener("hardwareharness:navigate-plans", openPlans);
+      stopRuns();
+    };
   }, [project.data]);
 
   const enterProject = useCallback(async () => {
@@ -182,9 +192,9 @@ function Shell() {
     list.push({ id: "go-settings", label: "打开设置", group: "页面", icon: paletteIcons.settings, run: openSettings });
     if (currentProject) {
       list.push(
-        { id: "test-run-selected", label: "运行所选测试项", group: "功能测试", icon: paletteIcons.run,
+        { id: "test-run-selected", label: "运行所选测试项", group: "测试编排", icon: paletteIcons.run,
           keywords: "run test", run: () => runCommand("testing.run-selected", "plans") },
-        { id: "test-new-item", label: "新建测试项", group: "功能测试", icon: paletteIcons.add,
+        { id: "test-new-item", label: "新建测试项", group: "测试编排", icon: paletteIcons.add,
           keywords: "new test item", run: () => runCommand("testing.new-item", "plans") },
         { id: "wiring-new", label: "新建接线", group: "工位接线", icon: paletteIcons.add,
           keywords: "connection wire", run: () => runCommand("wiring.new-connection", "wiring") }
@@ -255,6 +265,8 @@ function Shell() {
       </div>
 
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} commands={commands} />
+      <AgentConfirmationDialog />
+      <ManualCheckDialog />
       <DirtyDialog
         pending={dirtyGuard.pending}
         onContinue={(saveFirst) => void dirtyGuard.continuePending(saveFirst)}

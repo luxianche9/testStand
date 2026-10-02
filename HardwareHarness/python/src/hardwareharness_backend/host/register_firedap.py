@@ -1,10 +1,9 @@
-"""Offline FireDAP registration; Electron supplies the existing credential protector."""
+"""Offline FireDAP registration; credentials go to the system credential store (§4.7)."""
 
 from __future__ import annotations
 
 import argparse
 import asyncio
-import base64
 import json
 import shutil
 import sys
@@ -12,12 +11,13 @@ from pathlib import Path
 from typing import Any
 
 from hardwareharness_backend.devices.device_store import DeviceStore
-from hardwareharness_backend.storage.secrets import SecretProtector, SecretStore
+from hardwareharness_backend.host.legacy_secrets import OsCryptReader
+from hardwareharness_backend.storage.secrets import SecretBackend, SecretStore
 from hardwareharness_backend.util import utc_now_iso
 
 
 async def register(
-    user_data: Path, server_root: Path, model_root: Path, protector: SecretProtector
+    user_data: Path, server_root: Path, model_root: Path, backend: SecretBackend | None = None
 ) -> dict[str, Any]:
     config = json.loads((server_root / "server.json").read_text(encoding="utf-8-sig"))
     store = DeviceStore(user_data / "devices")
@@ -40,7 +40,7 @@ async def register(
     backup = user_data / "backups" / f"firedap-{timestamp}"
     backup.mkdir(parents=True)
     for relative in (
-        "secrets.json",
+        "secret-keys.json",
         "devices/computers/LOCAL_PC.json",
         "devices/servers/FIREDAP_MCP.json",
         "devices/hardware/DUT_1",
@@ -53,7 +53,7 @@ async def register(
                 shutil.copytree(source, destination)
             else:
                 shutil.copy2(source, destination)
-    secrets = SecretStore(user_data / "secrets.json", protector)
+    secrets = SecretStore(user_data, backend, legacy=OsCryptReader.from_profile(user_data))
     await secrets.initialize()
     await store.save_computer(
         {
@@ -105,24 +105,6 @@ async def register(
     }
 
 
-class ElectronProtector:
-    def _call(self, method: str, value: str) -> str:
-        print(json.dumps({"method": method, "value": value}), flush=True)
-        response = json.loads(sys.stdin.readline())
-        if "error" in response:
-            raise RuntimeError(response["error"])
-        result = response["result"]
-        if not isinstance(result, str):
-            raise TypeError("Invalid Electron credential response")
-        return result
-
-    def encrypt(self, value: str) -> bytes:
-        return base64.b64decode(self._call("encrypt", value), validate=True)
-
-    def decrypt(self, value: bytes) -> str:
-        return self._call("decrypt", base64.b64encode(value).decode("ascii"))
-
-
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("user_data", type=Path)
@@ -130,9 +112,7 @@ def main() -> None:
     parser.add_argument("model_root", type=Path)
     args = parser.parse_args()
     try:
-        result = asyncio.run(
-            register(args.user_data, args.server_root, args.model_root, ElectronProtector())
-        )
+        result = asyncio.run(register(args.user_data, args.server_root, args.model_root))
         print(json.dumps({"result": result}), flush=True)
     except Exception as error:
         print(str(error), file=sys.stderr)

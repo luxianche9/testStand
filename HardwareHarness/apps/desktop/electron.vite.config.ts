@@ -10,9 +10,7 @@ export default defineConfig({
     ssr: { resolve: { conditions: ["hardwareharness-source", ...defaultServerConditions], externalConditions: ["hardwareharness-source", ...defaultServerConditions] } },
     plugins: [externalizeDepsPlugin({ exclude: [
       "@hardwareharness/contracts",
-      "@trpc/server",
-      "electron-log",
-      "electron-trpc"
+      "electron-log"
     ] })],
     build: {
       rollupOptions: {
@@ -23,7 +21,7 @@ export default defineConfig({
   preload: {
     resolve: { conditions: ["hardwareharness-source", ...defaultServerConditions] },
     ssr: { resolve: { conditions: ["hardwareharness-source", ...defaultServerConditions], externalConditions: ["hardwareharness-source", ...defaultServerConditions] } },
-    plugins: [externalizeDepsPlugin({ exclude: ["@hardwareharness/contracts", "@trpc/client", "@trpc/server", "electron-trpc"] })],
+    plugins: [externalizeDepsPlugin({ exclude: ["@hardwareharness/contracts"] })],
     build: {
       rollupOptions: {
         output: {

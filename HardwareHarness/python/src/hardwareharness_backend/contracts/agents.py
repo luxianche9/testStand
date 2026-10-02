@@ -14,10 +14,12 @@ CAPABILITIES = (
     "devices.manageServers",
     "devices.controlServers",
     "devices.forceStopServers",
+    "devices.deploy",
     "devices.ssh",
     "hardware.read",
     "hardware.manage",
     "hardware.executeTools",
+    "hardware.releaseAdapters",
     "projects.read",
     "projects.manage",
     "wiring.read",
@@ -28,6 +30,7 @@ CAPABILITIES = (
     "testing.read",
     "testing.manage",
     "testing.execute",
+    "testing.judge",
 )
 
 

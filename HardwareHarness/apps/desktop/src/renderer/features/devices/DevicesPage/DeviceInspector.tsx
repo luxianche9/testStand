@@ -3,11 +3,15 @@ import type { DashboardSnapshot } from "@hardwareharness/contracts/desktop";
 import type { Hardware, McpServerConfig, RemoteComputer } from "@hardwareharness/contracts/devices";
 import { MousePointerClickIcon } from "lucide-react";
 import { hardwareForServer } from "../../../lib/hardware.js";
+import { useDeviceDefinition } from "../../../lib/queries.js";
 import { EmptyState, Section, StatusLamp, toneText, cn } from "../../../ui";
 import { ManualInvokePanel } from "../../manual/index.js";
+import { AdapterRelease } from "./AdapterRelease.js";
 import { ComputerActions, HardwareActions, ServerActions, ServiceControls } from "./DeviceActions.js";
+import { DeclaredDevice, LeaseControls } from "./DeclaredDevice.js";
 import { connectionTone, hardwareRowStatus, stateLabel } from "./device-labels.js";
 import { ErrorStrip, HardwareSections, InspectorShell, Meta, Missing } from "./inspector-parts.js";
+import { LiveStreams } from "./LiveStreams.js";
 import { parseDeviceSelection } from "./selection.js";
 
 type Callbacks = {
@@ -141,35 +145,51 @@ function ManagedInspector({ server, snapshot, hardware, onEditServer, onChanged 
   const sshOnline = snapshot.statuses.find((item) => item.computerId === server.computerId)?.ssh.state === "online";
   const status = hardwareRowStatus(serverStatus, availability);
   const title = device?.label ?? server.label;
+  const online = serverStatus?.transport.state === "online";
+  // The service's own declaration wins; the catalog record is the fallback for older services.
+  const definition = useDeviceDefinition(server.hardwareId).data;
   return (
     <InspectorShell
       title={title}
       status={status}
       actions={
-        <ServerActions server={server} onEdit={() => onEditServer(server)} onChanged={onChanged} onError={setError} />
+        <ServerActions
+          server={server}
+          computer={computer}
+          onEdit={() => onEditServer(server)}
+          onChanged={onChanged}
+          onError={setError}
+        />
       }
       notice={error && <ErrorStrip message={error} />}
     >
       <Section title="基本信息">
         <Meta items={[
           { label: "硬件 ID", value: server.hardwareId },
-          { label: "所属电脑", value: computer?.label ?? server.computerId },
+          { label: "所属电脑", value: computer?.label ?? server.computerId ?? "未托管（按 URL 添加）" },
           { label: "MCP Server", value: server.serverId },
           { label: "MCP 地址", value: server.url }
         ]} />
         {status.title && <p className="text-xs break-words text-fg-3">{status.title}</p>}
       </Section>
       <Section title="服务">
-        <ServiceControls
-          server={server}
-          status={serverStatus}
-          sshOnline={sshOnline}
-          onChanged={onChanged}
-          onError={setError}
-        />
+        {server.computerId ? (
+          <ServiceControls
+            server={server}
+            status={serverStatus}
+            sshOnline={sshOnline}
+            onChanged={onChanged}
+            onError={setError}
+          />
+        ) : (
+          <p className="text-xs text-fg-3">未托管：这个服务按 URL 添加，只能使用，不能在这里启动、停止或读日志。</p>
+        )}
       </Section>
+      <AdapterRelease hardwareId={server.hardwareId} onError={setError} />
+      <LeaseControls hardwareId={server.hardwareId} online={online} onError={setError} />
+      <LiveStreams hardwareId={server.hardwareId} running={online} />
       <ManualInvokePanel hardwareId={server.hardwareId} />
-      {device && <HardwareSections hardware={device} />}
+      {definition ? <DeclaredDevice definition={definition} /> : device && <HardwareSections hardware={device} />}
     </InspectorShell>
   );
 }

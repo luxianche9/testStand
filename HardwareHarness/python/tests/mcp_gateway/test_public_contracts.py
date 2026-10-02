@@ -355,3 +355,13 @@ async def test_all_public_builtin_schemas_allow_recoverable_errors() -> None:
     }
     for tool in registry.list_builtin(CONTEXT):
         Draft202012Validator(tool["outputSchema"]).validate(error)
+
+
+async def test_listed_result_schemas_are_objects_mcp_clients_accept() -> None:
+    """The MCP SDK validates ``outputSchema.properties`` as objects; ``true`` is rejected."""
+    from .test_gateway import application
+
+    app, _, _ = application()
+    for tool in ToolRegistry(app).list_builtin(CONTEXT):
+        properties = tool["outputSchema"].get("properties", {})
+        assert all(isinstance(value, dict) for value in properties.values()), tool["name"]

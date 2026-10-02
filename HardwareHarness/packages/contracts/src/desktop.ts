@@ -1,10 +1,11 @@
-import type { AgentIntegrationPreview, AgentIntegrationStatus, AgentKind, AgentToolInfo, McpGatewayStatus, OpenCodeRuntimeStatus } from "./agents.js";
-import type { ComputerStatus, DeviceBundleApplyInput, DeviceBundleExport, DeviceBundleImport, DeviceBundleKind, DeviceBundlePreview, Hardware, HardwareAvailability, HardwareImageTarget, ManagedHardware, McpServerConfig, RemoteComputer, RemoteServiceLog, ServerStatus, ToolCatalogItem } from "./devices.js";
+import type { AgentConfirmation, AgentConfirmationAnswer, AgentIntegrationPreview, AgentIntegrationStatus, AgentKind, AgentToolInfo, McpGatewayStatus, OpenCodeRuntimeStatus } from "./agents.js";
+import type { AdapterReleaseRecord, AdapterStatus, ComputerStatus, DeviceBundleApplyInput, DeviceBundleExport, DeviceBundleImport, DeviceBundleKind, DeviceBundlePreview, DeviceLeaseStatus, Hardware, HardwareAvailability, HardwareImageTarget, ManagedDeviceDefinition, ManagedHardware, McpServerConfig, RegisteredService, RemoteComputer, RemoteServiceLog, ServerStatus, ServiceImportResult, DiscoveredService, DeployableAdapter, DeployResult, DeployServiceSpec, UninstallResult, ToolCatalogItem } from "./devices.js";
 import type { ExecutionActivity, ManualToolInvocationInput, ManualToolInvocationResult } from "./execution.js";
 
 import type { LlmSettings, LlmSettingsInput, ProjectView, ThemeChoice, WelcomeLayout } from "./storage.js";
 import type { ProjectDocument, ProjectFolderSelection, RecentProjectSummary } from "./projects.js";
 import type { ProjectWiring, RequestWiringTaskInput, WiringOutcome, WiringChange, WiringTask, WiringTaskStatus } from "./wiring.js";
+import type { DeviceStream, LiveFrame, LiveQuery, RunIo, RunRejudge, RunStreams, RunStreamWindow, RunTimeline, StreamProbe, StreamRead, StreamReadQuery } from "./observability.js";
 import type { TestDeviceTools, TestPlan, TestPlanDraftAnalysis, TestPlanMutationResult, TestPlanOperation, TestPlanSummary, TestPlanValidation, TestRunListInput, TestRunLog, TestRunPage, TestRunSnapshot, TestStepCatalogItem } from "./testing.js";
 
 export interface DashboardSnapshot {
@@ -20,10 +21,20 @@ export interface DashboardSnapshot {
   availability?: HardwareAvailability[];
 }
 
-export type HardwareHarnessEventName = "availability" | "execution" | "wiringTask" | "workspace" | "project" | "testPlan" | "testRun" | "testBatch" | "opencode" | "window-state";
+/**
+ * Every event the renderer can subscribe to. Backend domain events carry only the changed resource's key and
+ * version (design §9.4); `window-state` and `opencode` come from the main process, `gap` from the event stream.
+ */
+export const HARDWAREHARNESS_EVENT_NAMES = [
+  "availability", "execution", "wiringTask", "project", "testPlan", "testRun", "testBatch", "opencode", "lease",
+  "confirmation", "window-state", "gap"
+] as const;
+export type HardwareHarnessEventName = (typeof HARDWAREHARNESS_EVENT_NAMES)[number];
 
 export interface HardwareHarnessSystemApi {
   dashboard(): Promise<DashboardSnapshot>;
+  listConfirmations(): Promise<AgentConfirmation[]>;
+  answerConfirmation(confirmationId: string, approve: boolean): Promise<AgentConfirmationAnswer>;
   exportText(defaultPath: string, content: string): Promise<string | null>;
 }
 
@@ -36,9 +47,20 @@ export interface HardwareHarnessDevicesApi {
   refreshServer(serverId: string): Promise<ServerStatus>;
   serverAction(serverId: string, action: "start" | "stop" | "restart" | "force-stop"): Promise<ServerStatus>;
   readServerLogs(serverId: string, lines?: number): Promise<RemoteServiceLog>;
+  discoverServices(computerId: string): Promise<DiscoveredService[]>;
+  importServices(computerId: string, serverIds: string[]): Promise<ServiceImportResult>;
+  addServerByUrl(url: string, token: string, label?: string): Promise<RegisteredService>;
+  listAdapters(): Promise<DeployableAdapter[]>;
+  deployService(computerId: string, spec: DeployServiceSpec): Promise<DeployResult>;
+  uninstallService(serverId: string): Promise<UninstallResult>;
   executeSsh(computerId: string, command: string, timeoutMs?: number): Promise<unknown>;
   refreshManagedHardware(): Promise<ManagedHardware[]>;
   listHardware(): Promise<Hardware[]>;
+  getDefinition(hardwareId: string): Promise<ManagedDeviceDefinition | null>;
+  getAdapterStatus(hardwareId: string): Promise<AdapterReleaseRecord>;
+  recordAdapterCheck(hardwareId: string, kind: "check" | "simulator", note?: string): Promise<AdapterReleaseRecord>;
+  recordAdapterSmoke(hardwareId: string, operator: string, wiring: string, observation: string): Promise<AdapterReleaseRecord>;
+  setAdapterStatus(hardwareId: string, status: AdapterStatus): Promise<AdapterReleaseRecord>;
   saveHardware(hardware: Hardware): Promise<Hardware>;
   removeHardware(hardwareId: string): Promise<{ hardwareId: string }>;
   importHardwareImage(input: HardwareImageTarget): Promise<Hardware | null>;
@@ -87,6 +109,10 @@ export interface HardwareHarnessTestingApi {
   analyzePlanDraft(input: { plan: TestPlan; baseRevision: number }): Promise<TestPlanDraftAnalysis>;
   listStepCatalog(): Promise<TestStepCatalogItem[]>;
   listDeviceTools(hardwareId: string): Promise<TestDeviceTools>;
+  listIcds(): Promise<import("./testing.js").IcdSummary[]>;
+  readIcd(name: string): Promise<import("./testing.js").IcdDocument>;
+  saveIcd(input: { name: string; text: string }): Promise<import("./testing.js").IcdSaveResult>;
+  checkIcd(input: import("./testing.js").IcdCheckInput): Promise<import("./testing.js").IcdCheck>;
   startRun(input: { planId: string; revision: number; executionRevision: string; requestId: string; parameters: Record<string, unknown> }): Promise<TestRunSnapshot>;
   currentUnit(): Promise<import("./testing.js").TestUnit>;
   listItemStatus(): Promise<import("./testing.js").TestItemStatusList>;
@@ -104,8 +130,33 @@ export interface HardwareHarnessTestingApi {
   listRuns(input?: TestRunListInput): Promise<TestRunPage>;
   readRunLog(input: { runId: string; afterEventSequence?: number; afterResultSequence?: number; eventLimit?: number; resultLimit?: number }): Promise<TestRunLog>;
   readRunResults(runId: string, afterSequence?: number): Promise<unknown>;
+  listRunStreams(runId: string): Promise<RunStreams>;
+  readRunStream(runId: string, key: string, query?: StreamReadQuery): Promise<StreamRead>;
+  getRunTimeline(runId: string): Promise<RunTimeline>;
+  readRunMessages(
+    runId: string, query?: import("./observability.js").RunMessagesQuery
+  ): Promise<import("./observability.js").RunMessages>;
+  readRunIo(runId: string, stepId?: string | null, limit?: number): Promise<RunIo>;
+  rejudgeRun(runId: string): Promise<RunRejudge>;
+  answerManualCheck(input: import("./testing.js").ManualCheckAnswer): Promise<TestRunSnapshot>;
   listRecoveryItems(): Promise<import("./testing.js").TestOperationSnapshot[]>;
   reconcileOperation(input: { operationId: string; resolution: "confirmed_succeeded" | "confirmed_failed" | "safe_state_restored"; note?: string }): Promise<import("./testing.js").TestOperationSnapshot>;
+}
+
+/** Device streams: live frames (`GET /api/live`), recorded windows of a run, one-off probes. */
+export interface HardwareHarnessStreamsApi {
+  listStreams(hardwareId: string): Promise<DeviceStream[]>;
+  leaseStatus(hardwareId: string): Promise<DeviceLeaseStatus>;
+  leaseRelease(hardwareId: string): Promise<unknown>;
+  leaseForceRelease(hardwareId: string, reason: string): Promise<unknown>;
+  /**
+   * Subscribes to live frames until the returned function is called; reconnects resume after the
+   * last frame. `onGap` runs when a reconnect cannot resume (the backend restarted): drop the buffer.
+   */
+  live(query: LiveQuery, onFrame: (frame: LiveFrame) => void, onGap?: () => void): () => void;
+  window(runId: string, keys: string[], t0: number, t1: number, width: number): Promise<RunStreamWindow>;
+  observe(hardwareId: string, streamId: string, windowMs: number, assertions?: Record<string, unknown>[], minSamples?: number): Promise<StreamProbe>;
+  expect(hardwareId: string, streamId: string, withinMs: number, match: Record<string, unknown>): Promise<StreamProbe>;
 }
 
 export interface HardwareHarnessAgentsApi {
@@ -146,6 +197,7 @@ export interface HardwareHarnessEventsApi {
 export interface HardwareHarnessApi {
   system: HardwareHarnessSystemApi;
   devices: HardwareHarnessDevicesApi;
+  streams: HardwareHarnessStreamsApi;
   projects: HardwareHarnessProjectsApi;
   wiring: HardwareHarnessWiringApi;
   manual: HardwareHarnessManualApi;

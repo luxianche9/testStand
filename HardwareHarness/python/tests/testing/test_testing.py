@@ -16,6 +16,7 @@ from hardwareharness_backend.testing import TestEngine, TestingApplication, Test
 from hardwareharness_backend.testing.catalog import step_catalog
 from hardwareharness_backend.testing.compiler import compile_plan
 from hardwareharness_backend.testing.expression import evaluate
+from hardwareharness_backend.testing.journal import RunJournal
 from hardwareharness_backend.testing.models import empty_plan, schema_hash
 from hardwareharness_backend.testing.resolver import DeviceToolResolver
 from hardwareharness_backend.testing.runtime_state import RuntimeStateStore
@@ -76,7 +77,9 @@ class Devices:
         self.delay = 0.01
         self.names: list[str] = []
 
-    async def call_aggregated_tool(self, name: str, arguments: dict[str, Any]) -> Any:
+    async def call_aggregated_tool(
+        self, name: str, arguments: dict[str, Any], options: dict[str, Any] | None = None
+    ) -> Any:
         hardware = name.split("__", 1)[0]
         self.names.append(name)
         self.calls += 1
@@ -84,7 +87,8 @@ class Devices:
         self.max_active[hardware] = max(self.max_active.get(hardware, 0), self.active[hardware])
         try:
             await asyncio.sleep(self.delay)
-            return arguments.get("output", {"value": 1})
+            output = arguments.get("output", {"value": 1})
+            return {"data": output, "meta": {}} if (options or {}).get("envelope") else output
         finally:
             self.active[hardware] -= 1
 
@@ -140,7 +144,7 @@ async def finish(engine: TestEngine, snapshot: dict[str, Any]) -> dict[str, Any]
 def test_restricted_cel_supports_data_access_and_rejects_calls() -> None:
     context = {"parameters": {"limit": 3}, "variables": {"value": 2}, "steps": {}}
     assert evaluate("variables.value < parameters.limit && true", context) is True
-    with pytest.raises(AppError, match="Unsupported CEL syntax"):
+    with pytest.raises(AppError, match="Unknown function open"):
         evaluate("open('x')", context)
 
 
@@ -209,7 +213,14 @@ async def test_fail_continues_and_cleanup_always_runs(tmp_path: Path) -> None:
     devices = Devices()
     engine = TestEngine(Projects(tmp_path), devices, Resolver(), ExecutionCoordinator())
     plan = plan_with(
-        {"id": "assert_1", "type": "Equal", "actual": 1, "expected": 2},
+        {
+            "id": "assert_1",
+            "type": "InvokeTool",
+            "hardwareId": "dev",
+            "toolName": "read",
+            "arguments": {},
+            "assertions": [{"metric": "result.value", "op": "eq", "value": 2}],
+        },
         {"id": "after", "type": "PublishResult", "name": "after", "value": 7},
         cleanup=[{"id": "cleanup", "type": "PublishResult", "name": "cleanup", "value": 1}],
     )
@@ -219,11 +230,14 @@ async def test_fail_continues_and_cleanup_always_runs(tmp_path: Path) -> None:
     names = [item["name"] for item in engine.runs[snapshot["runId"]].results]
     assert names == ["assert_1", "after", "cleanup"]
     run_dir = tmp_path / ".hardwareharness" / "runs" / snapshot["runId"]
-    assert json.loads((run_dir / "summary.json").read_text(encoding="utf-8"))["verdict"] == "Fail"
-    assert (run_dir / "events.jsonl").exists()
-    snapshot = (run_dir / "plan.hhplan.yaml").read_text(encoding="utf-8")
-    assert "schemaVersion: 2" in snapshot
-    assert not (run_dir / "plan.hhplan.json").exists()
+    # One file is the run's whole evidence (design doc §9.5).
+    files = {path.name.removesuffix("-wal").removesuffix("-shm") for path in run_dir.iterdir()}
+    assert files == {"run.sqlite"}
+    journal = RunJournal(run_dir)
+    assert journal.summary()["verdict"] == "Fail"
+    assert [event["type"] for event in journal.events()][0] == "run.started"
+    assert journal.plan()["schemaVersion"] == 2
+    assert [item["name"] for item in journal.results()] == ["assert_1", "after", "cleanup"]
 
 
 async def test_error_enters_cleanup_and_output_schema_is_enforced(tmp_path: Path) -> None:
@@ -400,13 +414,7 @@ async def test_execution_instances_capture_if_retry_and_assertion_source(
             "hardwareId": "dev",
             "toolName": "read",
             "arguments": {"output": {"volts": 3.3}},
-        },
-        {
-            "id": "range",
-            "type": "Range",
-            "actualExpression": "steps.measure.volts",
-            "minimum": 3.0,
-            "maximum": 3.6,
+            "assertions": [{"metric": "result.volts", "op": "within", "value": [3.0, 3.6]}],
         },
     )
     completed = await finish(engine, await engine.start(plan, {}))
@@ -417,11 +425,10 @@ async def test_execution_instances_capture_if_retry_and_assertion_source(
     assert selected["parentExecutionId"] == branch["executionId"]
     attempt = next(item for item in run.events if item["type"] == "retry.attempt.completed")
     assert attempt["attemptIndex"] == 0
-    assertion = next(item for item in run.results if item.get("kind") == "assertion")
-    measurement_execution = next(
-        item["executionId"] for item in run.events if item.get("stepId") == "measure"
-    )
-    assert assertion["sourceMeasurementExecutionId"] == measurement_execution
+    verdict = next(item for item in run.results if item.get("kind") == "verdict")
+    assert verdict["verdict"] == "Pass"
+    assert verdict["sourceStepId"] == "measure"
+    assert verdict["judge"]["type"] == "result"
 
 
 async def test_abort_cleans_up_and_unknown_timeout_is_not_retried(tmp_path: Path) -> None:
@@ -581,8 +588,8 @@ async def test_start_gate_only_blocks_wiring_tasks_for_plan_hardware(tmp_path: P
 
     tasks.pop()
     run = await finish(engine, await app.start_run(HUMAN, {**start_input, "requestId": "run-ok"}))
-    run_dir = next((tmp_path / ".hardwareharness").rglob(f"{run['runId']}/wiring.json")).parent
-    assert json.loads((run_dir / "wiring.json").read_text(encoding="utf-8")) == projects.wiring()
+    run_dir = tmp_path / ".hardwareharness" / "runs" / run["runId"]
+    assert RunJournal(run_dir).wiring() == projects.wiring()
 
 
 def test_resolver_exposes_unwrapped_business_result_contract() -> None:
@@ -650,10 +657,8 @@ def test_compiler_rejects_missing_output_fields_and_non_dominating_steps() -> No
         },
         {
             "id": "assertion",
-            "type": "Tolerance",
-            "actualExpression": "steps.measurement.missing",
-            "expected": 1,
-            "tolerance": 0.1,
+            "type": "PublishResult",
+            "valueExpression": "steps.measurement.missing",
         },
     )
     compiled = compile_plan(plan, resolver)
@@ -789,14 +794,16 @@ async def test_cleanup_failure_recovered_by_system_safety_preserves_dut_verdict(
             return tool, issues
 
     class CleanupFailureDevices(Devices):
-        async def call_aggregated_tool(self, name: str, arguments: dict[str, Any]) -> Any:
+        async def call_aggregated_tool(
+            self, name: str, arguments: dict[str, Any], options: dict[str, Any] | None = None
+        ) -> Any:
             if name.endswith("__cleanup_fail"):
                 raise AppError(
                     "unavailable",
                     "cleanup transport disconnected",
                     {"outcomeKnown": False, "recoveryRequired": True},
                 )
-            return await super().call_aggregated_tool(name, arguments)
+            return await super().call_aggregated_tool(name, arguments, options)
 
     engine = TestEngine(
         Projects(tmp_path), CleanupFailureDevices(), SafetyResolver(), ExecutionCoordinator()
@@ -841,7 +848,9 @@ async def test_cleanup_failure_without_safety_is_separate_from_dut_verdict(
     tmp_path: Path,
 ) -> None:
     class CleanupFailureDevices(Devices):
-        async def call_aggregated_tool(self, name: str, arguments: dict[str, Any]) -> Any:
+        async def call_aggregated_tool(
+            self, name: str, arguments: dict[str, Any], options: dict[str, Any] | None = None
+        ) -> Any:
             raise AppError("unavailable", "cleanup failed", {"outcomeKnown": False})
 
     engine = TestEngine(
@@ -905,6 +914,8 @@ async def test_firmware_operations_publish_separate_traceable_evidence(tmp_path:
     completed = await finish(engine, await engine.start(plan, {}))
     evidence = engine.runs[completed["runId"]].results[0]
     assert evidence["kind"] == "observation"
+    assert evidence["evidenceType"] == "T2"  # §7.7: the programmer reports on its own job
+    assert evidence["operationEvidence"] == "firmware_job_status"
     assert evidence["firmware"] == {
         "sha256": "a" * 64,
         "targetHardwareId": "dut",
@@ -1058,3 +1069,13 @@ def test_read_run_log_restores_plan_and_incremental_artifacts(tmp_path: Path) ->
     assert first_page["hasMoreResults"] is True
     assert first_page["latestEventSequence"] == 2
     assert first_page["latestResultSequence"] == 2
+
+
+def test_latest_run_and_batch_are_none_without_an_open_project() -> None:
+    class Closed:
+        def session(self) -> None:
+            return None
+
+    state = RuntimeStateStore(Closed())
+    assert state.latest_run() is None
+    assert state.latest_batch() is None

@@ -5,17 +5,16 @@ import {
   type DragEndEvent, type DragStartEvent
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { ArrowLeftIcon } from "lucide-react";
 import type { Hardware } from "@hardwareharness/contracts/devices";
-import type { TestPlan, TestStep, TestStepCatalogItem } from "@hardwareharness/contracts/testing";
-import { Button, HeaderTabs, Splitter, useConfirm } from "../../ui";
+import type { TestPlan, TestRunSnapshot, TestStep, TestStepCatalogItem } from "@hardwareharness/contracts/testing";
+import { HeaderTabs, Splitter, useConfirm } from "../../ui";
 import { onAppCommand } from "../../app/commands.js";
 import { useResizableWidth } from "../../lib/resizable.js";
 import { useCurrentTestRun, useTestItemStatus } from "../../lib/queries.js";
 import { queryKeys } from "../../lib/query-keys.js";
+import { openRunMonitor } from "../../lib/run-focus.js";
 import { BatchFooter } from "./BatchFooter.js";
 import { ComponentLibrary, type DragDescriptor } from "./ComponentLibrary.js";
-import { RunControls } from "./EditorToolbar.js";
 import { ItemPromptDialog } from "./ItemDialogs.js";
 import { ItemList } from "./ItemList.js";
 import { IssuesDialog, RunParametersDialog } from "./PlanDialogs.js";
@@ -24,18 +23,16 @@ import { PropertiesPanel } from "./PropertiesPanel.js";
 import { insertStepAt, invokeStepFor, isActiveRun, moveStepTo, stepIdForIssuePath } from "./plan-helpers.js";
 import { createStep, findStep } from "./plan-model.js";
 import { RecoveryDialog } from "./RecoveryDialog.js";
-import { TestRunLogPage } from "./TestRunLogPage.js";
 import { useItemActions } from "./useItemActions.js";
 import { usePlanEditor } from "./usePlanEditor.js";
 
 type SideTab = "items" | "library";
 
-/** 功能测试: 测试项 / 组件库 on the left · flow editor (属性 below) or run view. */
+/** 测试编排: 测试项 / 组件库 on the left · flow editor with 属性 below. Runs open in 运行监控. */
 export function TestPlanPage() {
   const client = useQueryClient();
   const [confirm, confirmDialog] = useConfirm();
-  const [viewRunId, setViewRunId] = useState<string>();
-  const editor = usePlanEditor({ confirm, onRunStarted: setViewRunId });
+  const editor = usePlanEditor({ confirm, onRunStarted: openRunMonitor });
   const status = useTestItemStatus();
   const currentRun = useCurrentTestRun();
   const items = status.data?.items ?? [];
@@ -63,13 +60,16 @@ export function TestPlanPage() {
     if (!selectedPlanId && firstPlanId) void loadPlan(firstPlanId);
   }, [selectedPlanId, loadPlan, firstPlanId]);
 
-  // Follow a newly started run (single run or the current batch item) in the center column.
-  const followedRun = useRef<string | undefined>(undefined);
+  // A run started while this page is open (another batch item, the agent) is shown in 运行监控;
+  // the run already going when the page opened is not.
+  const seenRun = useRef<string | null | undefined>(currentRun.isFetched ? activeId(run) : undefined);
   useEffect(() => {
-    if (!isActiveRun(run) || followedRun.current === run.runId) return;
-    followedRun.current = run.runId;
-    setViewRunId(run.runId);
-  }, [run]);
+    if (!currentRun.isFetched) return;
+    const runId = activeId(run);
+    if (seenRun.current === undefined) { seenRun.current = runId; return; }
+    if (runId && runId !== seenRun.current) openRunMonitor(runId);
+    seenRun.current = runId;
+  }, [run, currentRun.isFetched]);
 
   const commandState = useRef(actions);
   commandState.current = actions;
@@ -125,11 +125,8 @@ export function TestPlanPage() {
     void currentRun.refetch();
     void client.invalidateQueries({ queryKey: queryKeys.testItemStatus });
   };
-  const openItem = async (planId: string) => {
-    if (await editor.selectPlan(planId)) setViewRunId(undefined);
-  };
+  const openItem = async (planId: string) => { await editor.selectPlan(planId); };
   const issues = editor.dirty ? editor.draftAnalysis?.issues ?? [] : editor.issues;
-  const live = Boolean(viewRunId && run?.runId === viewRunId && isActiveRun(run));
   const busy = isActiveRun(run) || batch?.state === "running";
 
   return (
@@ -183,7 +180,7 @@ export function TestPlanPage() {
           ) : (
             <div id="testing-side-library" role="tabpanel" className="min-h-0 flex-1 overflow-y-auto">
               <ComponentLibrary
-                enabled={Boolean(editor.draft) && !viewRunId}
+                enabled={Boolean(editor.draft)}
                 onAdd={addCatalog}
                 onAddServer={addServer}
               />
@@ -191,39 +188,22 @@ export function TestPlanPage() {
           )}
         </div>
         <Splitter label="拖拽调整测试侧栏宽度" {...left.separatorProps} />
-        {viewRunId ? (
-          <main aria-label="运行视图" className="min-h-0 min-w-0">
-            <TestRunLogPage
-              runId={viewRunId}
-              live={live}
-              actions={(
-                <>
-                  {live && <RunControls run={run} confirm={confirm} onStart={() => undefined} onChanged={refreshRun} />}
-                  <Button size="xs" variant="outline" onClick={() => setViewRunId(undefined)}>
-                    <ArrowLeftIcon />返回编辑
-                  </Button>
-                </>
-              )}
-            />
-          </main>
-        ) : (
-          <div
-            className="grid min-h-0 min-w-0"
-            style={{ gridTemplateRows: `minmax(0,1fr) 1px ${bottom.width}px` }}
-          >
-            <PlanEditorPane
-              editor={editor}
-              run={run}
-              confirm={confirm}
-              onParameters={() => setDialog("parameters")}
-              onIssues={() => setDialog("issues")}
-              onRecovery={() => setDialog("recovery")}
-              onRunChanged={refreshRun}
-            />
-            <Splitter label="拖拽调整属性栏高度" {...bottom.separatorProps} />
-            <PropertiesPanel editor={editor} />
-          </div>
-        )}
+        <div
+          className="grid min-h-0 min-w-0"
+          style={{ gridTemplateRows: `minmax(0,1fr) 1px ${bottom.width}px` }}
+        >
+          <PlanEditorPane
+            editor={editor}
+            run={run}
+            confirm={confirm}
+            onParameters={() => setDialog("parameters")}
+            onIssues={() => setDialog("issues")}
+            onRecovery={() => setDialog("recovery")}
+            onRunChanged={refreshRun}
+          />
+          <Splitter label="拖拽调整属性栏高度" {...bottom.separatorProps} />
+          <PropertiesPanel editor={editor} />
+        </div>
         <DragOverlay>
           {activeDrag && (
             <div className="rounded-sm border border-signal bg-surface-2 px-3 py-1.5 text-xs text-fg shadow-overlay">
@@ -260,6 +240,10 @@ export function TestPlanPage() {
       </div>
     </DndContext>
   );
+}
+
+function activeId(run: TestRunSnapshot | null | undefined): string | null {
+  return isActiveRun(run) ? run.runId : null;
 }
 
 function defaultName(): string {

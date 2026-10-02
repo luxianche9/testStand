@@ -80,6 +80,9 @@ class SimulatedHwcli:
             kind = str(command.get("kind", "DI"))
             register = self.do if kind.upper() == "DO" else self.di
             return _ok("read_bit", {"kind": kind, "channel": channel, "value": bool(register >> channel & 1)})
+        if name == "read_mask":
+            kind = str(command.get("kind", "DI")).upper()
+            return _ok("read_mask", {"kind": kind, "mask": self.do if kind == "DO" else self.di})
         if name == "safe_state":
             self.do = self.safe_do_mask
             return _ok("DO safe_state applied", {"safe_do_mask": self.safe_do_mask})

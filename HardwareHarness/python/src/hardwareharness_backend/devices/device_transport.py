@@ -24,6 +24,10 @@ class DeviceTransport(Protocol):
         self, server: Record, name: str, args: Record, options: Record | None = None
     ) -> Any: ...
     async def describe_hardware(self, server: Record) -> Record: ...
+    async def list_streams(self, server: Record) -> list[Record]: ...
+    async def describe_device(self, server: Record) -> Record | None: ...
+    async def read_asset(self, server: Record, path: str) -> bytes: ...
+    async def read_blob(self, server: Record, stream_id: str, ref: str) -> Record: ...
     async def prepare_shutdown(self, server_id: str) -> Any: ...
 
 
@@ -79,6 +83,28 @@ class DeviceTransportRegistry:
             *(describe(server) for server in servers if server["enabled"]), return_exceptions=True
         )
         return [item for item in results if not isinstance(item, BaseException)]
+
+    async def list_streams(self, server: Record) -> list[Record]:
+        transport = self._require_transport(server["transport"])
+        self._server_kinds[server["serverId"]] = server["transport"]
+        return await transport.list_streams(server)
+
+    async def read_blob(self, server: Record, stream_id: str, ref: str) -> Record:
+        return await self._require_transport(server["transport"]).read_blob(server, stream_id, ref)
+
+    async def describe_device(self, server: Record) -> Record | None:
+        """``/device`` of the service; ``None`` when its transport has no declarations."""
+        transport = self._require_transport(server["transport"])
+        describe = getattr(transport, "describe_device", None)
+        if describe is None:
+            return None
+        self._server_kinds[server["serverId"]] = server["transport"]
+        result: Record | None = await describe(server)
+        return result
+
+    async def read_asset(self, server: Record, path: str) -> bytes:
+        data: bytes = await self._require_transport(server["transport"]).read_asset(server, path)
+        return data
 
     async def prepare_shutdown(self, server: Record) -> Any:
         return await self._require_transport(server["transport"]).prepare_shutdown(

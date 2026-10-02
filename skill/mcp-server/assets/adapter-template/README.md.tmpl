@@ -2,22 +2,25 @@
 
 服务标识：`__SERVER_ID__`。包 `__PACKAGE__`，入口 `python -m hardwareharness_device_sdk --adapter __PACKAGE__`。
 
-一个服务进程只管理一个硬件。公共工具（`get_server_info`、`list_hardware`、`get_hardware_info`、`get_pinout`、`list_streams`、`get_panel`、`__PREFIX___stream_read/start/stop`）和信封格式由 SDK 提供，见 `mcp_servers/README.md`。超时或错误不表示物理动作没有发生：保留原错误，查询当前状态并取证后再决定下一步。
+一个服务进程只管理一个硬件。公共工具（`get_server_info`、`list_hardware`、`get_hardware_info`、`lease_acquire/heartbeat/release/force_release/status`、`__PREFIX___stream_read`）、`/device` 设备声明（描述、引脚、流、图片）、`/assets` 和信封格式由 SDK 提供，见 `mcp_servers/README.md`。服务只报告测量值和状态，不判定通过 / 失败。超时或错误不表示物理动作没有发生：保留原错误，查询当前状态并取证后再决定下一步。
 
 ## 设备语义
 
 TODO(new_device)：逐条写出每个工具的通道编号、单位、范围、证据类型（控制器状态、软件影子还是测量值），以及 `safe_state` 把输出置成什么值。资料来源：手册名称和版本。
 
-## 流与面板
+## 流
 
-TODO(new_device)：列出每个流（`streamId`、类型、单位、采样率、前置状态）和面板模板。
+TODO(new_device)：列出每个流在 `/device.streams` 里的声明（`id`、`type`、`unit`、`label`、`kind`、`width` / `bitLabels`），采样型还是写路径发布、默认采样率（`settings` 键）、前置状态（未满足时 `not_configured`）。位图写明 bit i 对应哪一路；字节流写明哪些事件写 `mark`、读线程何时调 `idle()`。流协议见 `skill/mcp-server/references/streams.md`。
+
+## 图片
+
+TODO(new_device)：`assets/appearance.svg`（外观）和 `assets/ports/CN1.svg`（端口，带 `pinPositions`）由 `pinout.py` 从引脚数据生成（`uv run python -c "from __PACKAGE__.pinout import write_assets; write_assets()"`），是示意图，不按比例；写明视图方向是否核实。有厂商照片或图纸时改用它们。
 
 ## 构建、测试与部署
 
 ```powershell
 cd mcp_servers
 .\test.ps1 -Target __ADAPTER__                 # pytest + dry-run 合规检查
-uv run python tools\assemble.py __ADAPTER__    # 生成 dist\__ADAPTER__\ 部署包（需先登记 servers.json）
 ```
 
-部署到台架必须由人执行 `.\deploy.ps1 -Server __ADAPTER__`。远端 `server.json`（身份、端口、token、`settings`）不会被部署覆盖。
+部署到台架由人在 HardwareHarness 终端的设备页点“部署服务”发起（维护者也可用 `.\deploy.ps1`），终端先打包再部署，失败自动回滚。远端 `server.json`（身份、端口、token、`settings`）由 HardwareHarness 终端在首次安装时生成，不会被部署覆盖，也不进仓库。

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import base64
-import inspect
 import os
 from typing import Any
 
@@ -12,11 +11,14 @@ from hardwareharness_backend.contracts.errors import app_error
 from hardwareharness_backend.contracts.operations import PLATFORM_META, WHOLE, Tool
 from hardwareharness_backend.contracts.validation import (
     array,
+    boolean,
     custom_issue,
     number,
     obj,
+    record,
     string,
     union,
+    unknown,
 )
 from hardwareharness_backend.contracts.wiring import (
     pin_pair_schema,
@@ -55,6 +57,8 @@ GLOSSARY = {
     "remove images.",
     "appearanceAssetId": "appearanceAssetId in the hardware record; preserve the schema type "
     "and existing identifier values.",
+    "adapterStatus": "Managed hardware only: developing or available (design doc 8.4). Derived "
+    "from the adapter release record; ignored when saving.",
     "imageBase64": "PNG/JPEG/WebP bytes as base64 or a data URL; the entire gateway request is "
     "limited to 1 MiB.",
     "fileName": "Original image filename used as metadata/format hint, not a path to read.",
@@ -72,6 +76,13 @@ GLOSSARY = {
     "status": "Filter by the exact lifecycle status; a successful program exit is not a test "
     "verdict.",
     "limit": "Maximum records in this response; use pagination or a narrower filter for more.",
+    "adapter": "Adapter directory name copied from list_deployable_adapters, e.g. cp118u_i.",
+    "port": "TCP port the service listens on; an upgrade keeps the port in the remote server.json.",
+    "root": "Windows install directory such as E:\\cp118u_server; omit to keep the registered "
+    "one or use the default.",
+    "settings": "Adapter settings written once into the new server.json; ignored on upgrade.",
+    "dryRun": "Start the service without touching hardware (adapter dry-run mode).",
+    "autostart": "Register the service to start with Windows; default true.",
 }
 
 
@@ -201,64 +212,46 @@ def _decode_image(value: str) -> bytes:
     return result
 
 
-def _switch_project(method: str) -> Any:
-    async def call(app: Any, context: Record, value: Record) -> Any:
-        if app.system.dashboard(context)["execution"]["state"] != "idle":
-            raise app_error("conflict", "Finish the active execution before switching projects")
-        if (app.projects.document(context) or {}).get("dirty"):
-            raise app_error("conflict", "Save the current project before switching projects")
-        return await getattr(app.projects, method)(context, value["rootPath"])
-
-    return call
+def _no_project_switch(app: Any, context: Record) -> None:
+    if app.system.dashboard(context)["execution"]["state"] != "idle":
+        raise app_error("conflict", "Finish the active execution before switching projects")
+    if (app.projects.document(context) or {}).get("dirty"):
+        raise app_error("conflict", "Save the current project before switching projects")
 
 
 def _server_action(action: str) -> Any:
-    def call(app: Any, context: Record, value: Record) -> Any:
-        return app.devices.server_action(context, value["serverId"], action)
-
-    return call
+    return lambda value: {"serverId": value["serverId"], "action": action}
 
 
-async def _list_hardware(app: Any, context: Record, method: str) -> list[Record]:
-    items = getattr(app.devices, method)(context)
-    if inspect.isawaitable(items):
-        items = await items
+def _hardware_list(items: list[Record]) -> list[Record]:
     return [_with_endpoints(item) for item in items]
 
 
-async def _get_hardware(app: Any, context: Record, value: Record) -> Record:
-    hardware = app.devices.get_hardware(context, value["hardwareId"])
-    if inspect.isawaitable(hardware):
-        hardware = await hardware
-    return _with_endpoints(hardware)
+def _image(value: Record) -> Record:
+    payload = {
+        "hardwareId": value["hardwareId"],
+        "data": _decode_image(value["imageBase64"]),
+        "extensionHint": value["fileName"],
+    }
+    return payload | ({"portId": value["portId"]} if value.get("portId") else {})
 
 
-def _set_image(app: Any, context: Record, value: Record) -> Any:
-    return app.devices.set_hardware_image_bytes(
-        context,
-        value["hardwareId"],
-        value.get("portId"),
-        _decode_image(value["imageBase64"]),
-        value["fileName"],
-    )
+def _deploy(value: Record) -> Record:
+    spec = {key: item for key, item in value.items() if key != "computerId"}
+    return {"computerId": value["computerId"], "spec": spec}
 
 
-def _request_wiring(app: Any, context: Record, value: Record) -> Any:
+def _wiring_request(value: Record) -> Record:
     value = dict(value)
     for key in ("portA", "portB"):
         if isinstance(value[key], dict):
             value[key] = f"{value[key]['hardwareId']}.{value[key]['portId']}"
-    return app.wiring.request_task(context, value)
+    return {"input": value}
 
 
 def _platform(*args: Any, **options: Any) -> Tool:
     return Tool(*args, **{**options, "meta": PLATFORM_META, "glossary": GLOSSARY})
 
-
-_READ: dict[str, Any] = {"read_only": True}
-_EDIT: dict[str, Any] = {"destructive": True, "idempotent": False}
-_REMOTE_READ: dict[str, Any] = {"read_only": True, "open_world": True}
-_REMOTE_EDIT: dict[str, Any] = {"destructive": True, "idempotent": False, "open_world": True}
 
 PLATFORM_TOOLS = [
     _platform(
@@ -268,7 +261,6 @@ PLATFORM_TOOLS = [
         _EMPTY,
         {"anyOf": [_PROJECT, {"type": "null"}]},
         operation="projects.document",
-        **_READ,
     ),
     _platform(
         "initialize_project",
@@ -276,8 +268,9 @@ PLATFORM_TOOLS = [
         "不会自动配置接线或完成 Python 依赖初始化；成功后检查工程状态。",
         _ROOT,
         _PROJECT,
-        call=_switch_project("initialize_folder"),
-        capability="projects.manage",
+        operation="projects.initializeFolder",
+        fields=("rootPath",),
+        check=_no_project_switch,
     ),
     _platform(
         "open_project",
@@ -285,8 +278,9 @@ PLATFORM_TOOLS = [
         "会话状态；不要假设上个工程的待办仍有效。",
         _ROOT,
         _PROJECT,
-        call=_switch_project("open_folder"),
-        capability="projects.manage",
+        operation="projects.openFolder",
+        fields=("rootPath",),
+        check=_no_project_switch,
     ),
     _platform(
         "save_project",
@@ -294,8 +288,7 @@ PLATFORM_TOOLS = [
         "Python 源文件的写入状态与工程文档的保存状态分别核对。",
         _EMPTY,
         _PROJECT,
-        operation="projects.save_project",
-        **_EDIT,
+        operation="projects.saveProject",
     ),
     _platform(
         "list_remote_computers",
@@ -314,8 +307,8 @@ PLATFORM_TOOLS = [
                 ["id", "label", "address", "ssh"],
             )
         ),
-        operation="devices.list_computers",
-        **_REMOTE_READ,
+        operation="devices.listComputers",
+        open_world=True,
     ),
     _platform(
         "get_remote_computer_status",
@@ -326,9 +319,9 @@ PLATFORM_TOOLS = [
             {"computerId": _STRING, "ssh": _STATE, "servers": _array(_SERVICE)},
             ["computerId", "ssh", "servers"],
         ),
-        operation="devices.get_computer_status",
+        operation="devices.getComputerStatus",
         fields=("computerId",),
-        **_REMOTE_READ,
+        open_world=True,
     ),
     _platform(
         "list_mcp_servers",
@@ -354,8 +347,7 @@ PLATFORM_TOOLS = [
             },
             ["servers", "statuses"],
         ),
-        operation="devices.list_servers_with_status",
-        **_READ,
+        operation="devices.listServersWithStatus",
     ),
     _platform(
         "get_remote_mcp_service",
@@ -363,9 +355,9 @@ PLATFORM_TOOLS = [
         "表示尚无法确认，不应解释为停止或成功。",
         _SERVER_ID,
         _SERVICE,
-        operation="devices.refresh_server",
+        operation="devices.refreshServer",
         fields=("serverId",),
-        **_REMOTE_READ,
+        open_world=True,
     ),
     _platform(
         "start_remote_mcp_service",
@@ -373,9 +365,8 @@ PLATFORM_TOOLS = [
         "未启动；先查询状态再决定下一步。",
         _SERVER_ID,
         _SERVICE,
-        call=_server_action("start"),
-        capability="devices.controlServers",
-        idempotent=False,
+        operation="devices.serverAction",
+        arguments=_server_action("start"),
         open_world=True,
     ),
     _platform(
@@ -384,9 +375,9 @@ PLATFORM_TOOLS = [
         "运行；成功与安全收尾结果分别检查。",
         _SERVER_ID,
         _SERVICE,
-        call=_server_action("stop"),
-        capability="devices.controlServers",
-        **_REMOTE_EDIT,
+        operation="devices.serverAction",
+        arguments=_server_action("stop"),
+        open_world=True,
     ),
     _platform(
         "restart_remote_mcp_service",
@@ -394,9 +385,9 @@ PLATFORM_TOOLS = [
         "状态，避免重复重启。",
         _SERVER_ID,
         _SERVICE,
-        call=_server_action("restart"),
-        capability="devices.controlServers",
-        **_REMOTE_EDIT,
+        operation="devices.serverAction",
+        arguments=_server_action("restart"),
+        open_world=True,
     ),
     _platform(
         "read_remote_mcp_logs",
@@ -406,9 +397,73 @@ PLATFORM_TOOLS = [
             strict=True,
         ),
         _object({"lines": _array(_STRING), "truncated": _BOOLEAN}, ["lines", "truncated"]),
-        operation="devices.read_server_logs",
+        operation="devices.readServerLogs",
         fields=("serverId", "lines"),
-        **_REMOTE_READ,
+        open_world=True,
+    ),
+    _platform(
+        "list_deployable_adapters",
+        "列出终端 mcp_servers 源码中可以打包部署的适配器。adapter 字段用于 "
+        "deploy_remote_mcp_service；只读，不连接任何电脑。",
+        _EMPTY,
+        _array(
+            _object(
+                {"adapter": _STRING, "package": _STRING, "version": _STRING},
+                ["adapter", "package", "version"],
+            )
+        ),
+        operation="devices.listAdapters",
+    ),
+    _platform(
+        "deploy_remote_mcp_service",
+        "在一台 Windows 电脑上部署或升级一个 MCP 服务：本地打包、上传校验、备份、安全停止旧"
+        "服务、替换、安装、合规检查、启动并核对 /health 与 /device；任一步失败恢复旧版本。"
+        "首次部署生成令牌写入远端 server.json 和凭据库；升级沿用远端配置。耗时数分钟，超时后"
+        "先查询服务状态，不要重复部署。",
+        obj(
+            {
+                "computerId": string(1),
+                "serverId": string(1),
+                "hardwareId": string(1),
+                "adapter": string(1),
+                "port": number(1, 65535, integer=True),
+                "root": string(1).optional(),
+                "label": string(1).optional(),
+                "settings": record(unknown()).optional(),
+                "dryRun": boolean().optional(),
+                "autostart": boolean().optional(),
+            },
+            strict=True,
+        ),
+        _object(
+            {
+                "root": _STRING,
+                "port": _INTEGER,
+                "createdConfig": _BOOLEAN,
+                "upgraded": _BOOLEAN,
+                "steps": _array(_object({"step": _STRING, "ok": _BOOLEAN}, ["step", "ok"])),
+                "server": _object({}),
+                "status": _object({}),
+            },
+            ["root", "port", "steps", "server"],
+        ),
+        operation="devices.deployService",
+        arguments=_deploy,
+        open_world=True,
+    ),
+    _platform(
+        "uninstall_remote_mcp_service",
+        "卸载一个由终端部署的服务：安全停止、运行 uninstall.ps1、把目录打包备份到 "
+        "C:\\ProgramData\\HardwareHarness\\backup 后删除，再移除服务记录和对应的受管硬件。"
+        "卸载前核对没有活跃运行。",
+        _SERVER_ID,
+        _object(
+            {"serverId": _STRING, "root": _STRING, "archive": _STRING},
+            ["serverId", "root", "archive"],
+        ),
+        operation="devices.uninstallService",
+        fields=("serverId",),
+        open_world=True,
     ),
     _platform(
         "list_managed_hardware",
@@ -428,9 +483,8 @@ PLATFORM_TOOLS = [
                 ["hardwareId", "serverId", "computerId", "state", "health"],
             )
         ),
-        call=lambda app, context, value: _list_hardware(app, context, "list_managed_hardware"),
-        capability="hardware.read",
-        **_READ,
+        operation="devices.listManagedHardware",
+        result=_hardware_list,
     ),
     _platform(
         "list_hardware_catalog",
@@ -438,9 +492,8 @@ PLATFORM_TOOLS = [
         "工具时复用规范端点引用，不自行拼接 ID。",
         _EMPTY,
         _array(_HARDWARE),
-        call=lambda app, context, value: _list_hardware(app, context, "list_hardware"),
-        capability="hardware.read",
-        **_READ,
+        operation="devices.listHardware",
+        result=_hardware_list,
     ),
     _platform(
         "get_hardware_definition",
@@ -448,9 +501,9 @@ PLATFORM_TOOLS = [
         "本工具不验证实物版本或当前跳帽状态。",
         _HARDWARE_ID,
         _HARDWARE,
-        call=_get_hardware,
-        capability="hardware.read",
-        **_READ,
+        operation="devices.getHardware",
+        fields=("hardwareId",),
+        result=_with_endpoints,
     ),
     _platform(
         "save_hardware_definition",
@@ -458,9 +511,8 @@ PLATFORM_TOOLS = [
         "提交；修改已有端口/引脚 ID 前检查关联接线。",
         obj({"hardware": hardware_schema}, strict=True),
         _HARDWARE,
-        operation="devices.save_hardware",
+        operation="devices.saveHardware",
         fields=("hardware",),
-        **_EDIT,
     ),
     _platform(
         "remove_hardware_definition",
@@ -468,9 +520,8 @@ PLATFORM_TOOLS = [
         "返回结果。",
         _HARDWARE_ID,
         _object({"hardwareId": _STRING}, ["hardwareId"]),
-        operation="devices.remove_hardware",
+        operation="devices.removeHardware",
         fields=("hardwareId",),
-        **_EDIT,
     ),
     _platform(
         "set_hardware_image",
@@ -486,9 +537,8 @@ PLATFORM_TOOLS = [
             strict=True,
         ),
         _HARDWARE,
-        call=_set_image,
-        capability="hardware.manage",
-        **_EDIT,
+        operation="devices.setHardwareImageBytes",
+        arguments=_image,
     ),
     _platform(
         "remove_hardware_image",
@@ -496,9 +546,8 @@ PLATFORM_TOOLS = [
         "物理接线。",
         obj({"hardwareId": string(1), "portId": string(1).optional()}, strict=True),
         _HARDWARE,
-        operation="devices.remove_hardware_image",
+        operation="devices.removeHardwareImage",
         fields=("hardwareId", "portId"),
-        **_EDIT,
     ),
     _platform(
         "add_managed_hardware_to_canvas",
@@ -509,9 +558,8 @@ PLATFORM_TOOLS = [
             {"added": _BOOLEAN, "node": _object({}), "dirty": _BOOLEAN},
             ["added", "node", "dirty"],
         ),
-        operation="wiring.add_managed_hardware_to_canvas",
+        operation="wiring.addManagedHardwareToCanvas",
         fields=("hardwareId",),
-        idempotent=True,
     ),
     _platform(
         "request_wiring_task",
@@ -533,8 +581,8 @@ PLATFORM_TOOLS = [
             strict=True,
         ),
         _TASK,
-        call=_request_wiring,
-        capability="wiring.request",
+        operation="wiring.requestTask",
+        arguments=_wiring_request,
     ),
     _platform(
         "cancel_wiring_task",
@@ -542,9 +590,8 @@ PLATFORM_TOOLS = [
         "检查返回的当前状态。",
         obj({"wiringTaskId": string(1), "message": string().optional()}, strict=True),
         _TASK,
-        operation="wiring.cancel_task",
+        operation="wiring.cancelTask",
         fields=("wiringTaskId", "message"),
-        **_EDIT,
     ),
     _platform(
         "get_wiring_task",
@@ -552,9 +599,8 @@ PLATFORM_TOOLS = [
         "不是电气测量。重启后任务可能不存在。",
         _WIRING_TASK_ID,
         _TASK,
-        operation="wiring.get_task",
+        operation="wiring.getTask",
         fields=("wiringTaskId",),
-        **_READ,
     ),
     _platform(
         "list_wiring_tasks",
@@ -568,8 +614,7 @@ PLATFORM_TOOLS = [
             strict=True,
         ),
         _array(_TASK),
-        operation="wiring.list_tasks",
+        operation="wiring.listTasks",
         fields=(WHOLE,),
-        **_READ,
     ),
 ]

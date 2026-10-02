@@ -21,8 +21,8 @@ import type { AppPage } from "./app-navigation.js";
 export const PROJECT_VIEWS: { view: ProjectView; label: string; icon: ReactNode }[] = [
   { view: "manual", label: "设备管理", icon: <ServerIcon /> },
   { view: "wiring", label: "工位接线", icon: <CableIcon /> },
-  { view: "plans", label: "功能测试", icon: <FlaskConicalIcon /> },
-  { view: "runs", label: "运行日志", icon: <ScrollTextIcon /> }
+  { view: "plans", label: "测试编排", icon: <FlaskConicalIcon /> },
+  { view: "runs", label: "运行监控", icon: <ScrollTextIcon /> }
 ];
 
 export type ProjectAction = "save" | "open" | "welcome";
@@ -121,13 +121,13 @@ function Brand() {
       <span
         aria-hidden
         className={cn(
-          "grid size-5 place-items-center rounded-sm border border-signal/60 bg-signal/12",
-          "font-mono text-[10px] leading-none font-bold text-signal"
+          "grid size-5 place-items-center rounded-xs bg-signal",
+          "text-[10px] leading-none font-bold text-signal-fg"
         )}
       >
         HH
       </span>
-      <span className="text-sm font-semibold tracking-tight text-fg max-[1100px]:hidden">HardwareHarness</span>
+      <span className="text-sm font-semibold text-fg max-[1100px]:hidden">HardwareHarness</span>
       <span aria-hidden className="text-fg-3">/</span>
     </span>
   );
@@ -145,7 +145,7 @@ function ViewTabs({ value, dimmed, pendingTaskCount, onChange }: {
       role="tablist"
       aria-label="项目子页面"
       className={cn(
-        "absolute top-0 left-1/2 flex h-full -translate-x-1/2 items-stretch gap-1",
+        "absolute top-0 left-1/2 flex h-full -translate-x-1/2 items-stretch",
         noDrag
       )}
     >
@@ -163,8 +163,8 @@ function ViewTabs({ value, dimmed, pendingTaskCount, onChange }: {
             className={cn(
               "relative inline-flex items-center gap-1.5 px-3 text-xs whitespace-nowrap text-fg-2",
               "transition-colors duration-120 hover:text-fg [&_svg]:size-3.5",
-              "after:absolute after:inset-x-2 after:-bottom-px after:h-0.5 after:rounded-full after:content-['']",
-              lit ? "font-medium text-fg after:bg-signal" : "after:bg-transparent"
+              "after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:content-['']",
+              lit ? "bg-surface-0 font-medium text-fg after:bg-signal" : "hover:bg-surface-2 after:bg-transparent"
             )}
           >
             <span className={lit ? "text-signal" : "text-fg-3"}>{item.icon}</span>

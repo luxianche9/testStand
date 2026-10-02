@@ -1,18 +1,23 @@
 from __future__ import annotations
 
 import math
+import time
+from pathlib import Path
 
 import pytest
 
 from hardwareharness_device_sdk.testing import check_device, dry_run_config, serve
 from hh_adapter_pci6208v import DEVICE, Pci6208v
 from hh_adapter_pci6208v.adapter import clamp_volts, configured_safe_volts
-from hh_adapter_pci6208v.pinout import pinout
+from hh_adapter_pci6208v.pinout import appearance_diagram, pinout, port_diagram
+
+ASSETS = Path(__file__).resolve().parents[1] / "src" / "hh_adapter_pci6208v" / "assets"
 
 PUBLIC_TOOLS = {
-    "get_server_info", "list_hardware", "get_hardware_info", "get_pinout", "list_streams", "get_panel",
-    "pci6208v_set_voltage", "pci6208v_read_last", "pci6208v_safe_state",
-    "pci6208v_stream_read", "pci6208v_stream_start", "pci6208v_stream_stop",
+    "get_server_info", "list_hardware", "get_hardware_info",
+    "lease_acquire", "lease_heartbeat", "lease_release", "lease_force_release", "lease_status",
+    "pci6208v_set_voltage", "pci6208v_set_waveform", "pci6208v_stop_waveform", "pci6208v_read_last",
+    "pci6208v_safe_state", "pci6208v_stream_read",
 }
 
 
@@ -24,7 +29,9 @@ def hh():
 
 def test_entry_point_and_compliance():
     assert DEVICE is Pci6208v
-    assert check_device(Pci6208v) == []
+    warnings: list[str] = []
+    assert check_device(Pci6208v, warnings=warnings) == []
+    assert warnings == []
 
 
 def test_public_contract(hh):
@@ -62,17 +69,89 @@ def test_invalid_channel_rejected(hh):
     assert result.get("isError") or not result["structuredContent"]["ok"]
 
 
-def test_write_read_last_and_stream(hh):
-    ok = hh.call("set_voltage", channel=3, volts=2.5)
+def test_write_publishes_to_stream_and_read_last(hh):
+    ok = hh.call("set_voltage", {"operationId": "op-ao"}, channel=3, volts=2.5)
     assert ok["ok"] and "error" not in ok
     assert ok["data"]["channel"] == 3 and ok["data"]["volts"] == 2.5
+    assert [ref["streamId"] for ref in ok["meta"]["streamRefs"]] == ["ao3"]
     assert hh.call("read_last", channel=3)["data"]["volts"] == 2.5
-    read = hh.call("stream_read", streamId="ao3", cursor=0)["data"]
-    assert read["items"][-1]["value"] == 2.5
-    assert read["items"][-1]["source"] == "software_shadow"
-    with hh.websocket("ao3", cursor=0) as ws:
-        hello = ws.receive_json()
-        assert hello["type"] == "hello" and hello["unit"] == "V"
+    last = hh.call("stream_read", streamId="ao3", limit=1)["data"]["records"][-1]
+    assert last["v"] == 2.5 and last["op"] == "op-ao"
+    with hh.sse("ao3", cursor=0) as events:
+        hello = events.receive()
+        assert hello["type"] == "hello" and hello["streamType"] == "scalar"
+
+
+def test_streams_are_ao_setpoints(hh):
+    assert hh.get("/device").json()["streams"] == [
+        {"id": f"ao{n}", "type": "scalar", "unit": "V", "label": f"AO{n}", "kind": "setpoint"} for n in range(8)]
+
+
+def test_device_declaration_images(hh):
+    document = hh.get("/device").json()
+    assert document["images"]["appearance"]["asset"] == "appearance.svg"
+    assert "no output readback" in document["description"]
+    image = document["pinout"]["connectors"][0]["image"]
+    assert image["asset"] == "ports/CN1.svg" and image["mediaType"] == "image/svg+xml"
+    assert len(image["pinPositions"]) == 37
+    assert hh.get("/assets/ports/CN1.svg").status_code == 200
+
+
+def test_shipped_assets_match_pinout():
+    data = pinout("X")
+    assert (ASSETS / "ports" / "CN1.svg").read_bytes().decode().replace("\r\n", "\n") == port_diagram(data).svg
+    assert (ASSETS / "appearance.svg").read_bytes().decode().replace("\r\n", "\n") == appearance_diagram()
+    for pin in data.pins:
+        assert f">{pin.position}</text>" in port_diagram(data).svg
+
+
+def wait_for(predicate, timeout: float = 2.0) -> None:
+    deadline = time.monotonic() + timeout
+    while not predicate() and time.monotonic() < deadline:
+        time.sleep(0.01)
+    assert predicate()
+
+
+def test_waveform_writes_and_publishes_setpoints(hh):
+    driver = hh.service.device.driver
+    started = hh.call("set_waveform", channel=2, shape="square", frequencyHz=10.0, amplitude=2.0, offset=1.0)
+    assert started["ok"], started
+    assert started["data"]["mode"] == "software" and started["data"]["updateHz"] == 200.0
+    wait_for(lambda: len({volts for channel, volts in driver.writes if channel == 2}) >= 2)
+    values = {volts for channel, volts in driver.writes if channel == 2}
+    assert values <= {3.0, -1.0, 0.0}
+    stopped = hh.call("stop_waveform", channel=2)["data"]
+    assert stopped == {"channel": 2, "stopped": True, "holdValue": 1.0}
+    count = len(driver.writes)
+    time.sleep(0.05)
+    assert len(driver.writes) == count and driver.writes[-1] == (2, 1.0)
+    assert hh.call("read_last", channel=2)["data"]["volts"] == 1.0
+    records = hh.call("stream_read", streamId="ao2", limit=5)["data"]["records"]
+    assert records[-1]["v"] == 1.0
+
+
+def test_waveform_limits(hh):
+    for arguments in ({"frequencyHz": 25.0}, {"offset": 9.0, "amplitude": 2.0}, {"channel": 8}):
+        call = {"channel": 0, "shape": "sine", "frequencyHz": 1.0, "amplitude": 1.0, "offset": 0.0} | arguments
+        result = hh.mcp.call_raw("pci6208v_set_waveform", {"hardwareId": hh.hardware_id, **call})
+        assert result.get("isError") or not result["structuredContent"]["ok"], arguments
+    details = hh.call("get_hardware_info")["data"]["capabilityDetails"]["waveform"]
+    assert details["mode"] == "software" and details["maxUpdateHz"] == 200.0 and details["maxFrequencyHz"] == 20.0
+    assert details["channels"] == list(range(8))
+
+
+def test_safe_state_and_static_write_stop_waveforms(hh):
+    device = hh.service.device
+    hh.call("set_waveform", channel=0, shape="sine", frequencyHz=5.0, amplitude=1.0, offset=0.0)
+    hh.call("set_waveform", channel=1, shape="triangle", frequencyHz=5.0, amplitude=1.0, offset=0.0)
+    assert hh.call("set_voltage", channel=1, volts=2.0)["ok"]
+    assert set(device.waveform.running()) == {0}
+    assert hh.call("safe_state")["ok"]
+    assert device.waveform.running() == {}
+    count = len(device.driver.writes)
+    time.sleep(0.05)
+    assert len(device.driver.writes) == count
+    assert device.last_volts == [0.0] * 8
 
 
 def test_read_last_after_safe_state_reports_safe_value(hh):
@@ -113,14 +192,6 @@ def test_capability_details(hh):
     assert details["outputAdcReadback"] is False
     assert details["effectiveSafeVolts"] == 0.0
     assert details["safeValueSource"] == "open_session"
-
-
-def test_panel_binds_every_channel(hh):
-    items = hh.call("get_panel")["data"]["items"]
-    numbers = [item for item in items if item["widget"] == "number"]
-    assert [item["stream"] for item in numbers] == [f"ao{n}" for n in range(8)]
-    assert all(item["write"]["tool"] == "pci6208v_set_voltage" and item["confirm"] for item in numbers)
-    assert numbers[0]["pins"] == [f"{hh.hardware_id}.CN1.19"]
 
 
 def test_pinout():

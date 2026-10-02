@@ -5,16 +5,16 @@ import { verdictLabels, verdictTone } from "./status";
 
 export function Badge({ tone = "neutral", mono, className, ...props }: React.ComponentPropsWithoutRef<"span"> & {
   tone?: Tone;
-  /** Mono uppercase style for codes, verdicts and counters. */
+  /** Mono style for codes, verdicts and counters. */
   mono?: boolean;
 }) {
   return (
     <span
       data-tone={tone}
       className={cn(
-        "inline-flex h-[18px] shrink-0 items-center gap-1 rounded-sm px-1.5 text-2xs leading-none font-medium",
+        "inline-flex h-[18px] shrink-0 items-center gap-1 rounded-sm border px-1.5 text-2xs leading-none font-medium",
         "whitespace-nowrap",
-        mono && "font-mono tracking-wide uppercase",
+        mono && "font-mono uppercase",
         toneSurface[tone],
         className
       )}

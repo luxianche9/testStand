@@ -17,7 +17,7 @@ import { SidebarNotice } from "./RuntimeStates";
 import { Thread } from "./Thread";
 import { ThreadList } from "./ThreadList";
 import { FallbackTool } from "./tools/OpenCodeTools";
-import { isTaskActionable } from "../wiring/wiring-model.js";
+import { isTaskActionable } from "../wiring/index.js";
 
 function AutoInitializeThread({ onError }: { onError: (reason: unknown) => void }) {
   const aui = useAui();

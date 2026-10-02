@@ -14,6 +14,7 @@ from typing import Any, Literal
 from .device import Device
 from .envelope import iso_now
 from .errors import DEVICE_ERROR, DEVICE_UNREACHABLE, INVALID_ARGUMENT, SERVICE_UNAVAILABLE, DeviceError
+from .operation import current
 from .pinout import Pinout
 
 HardwareState = Literal["initializing", "open", "unreachable", "faulted", "closing", "closed"]
@@ -21,10 +22,17 @@ HardwareState = Literal["initializing", "open", "unreachable", "faulted", "closi
 log = logging.getLogger("hardwareharness_device_sdk.lifecycle")
 
 
-async def call_blocking(fn: Callable[..., Any], /, *args: Any, **kwargs: Any) -> Any:
-    if inspect.iscoroutinefunction(fn):
-        return await fn(*args, **kwargs)
-    return await asyncio.to_thread(fn, *args, **kwargs)
+def _device_call(device: Device, fn: Callable[..., Any], kwargs: dict[str, Any]) -> Any:
+    """Worker-thread body of a tool call: hold ``io_lock`` and time the driver work for the operation."""
+    op = current()
+    with device.io_lock:
+        if op is not None:
+            op.begin()
+        try:
+            return fn(**kwargs)
+        finally:
+            if op is not None:
+                op.finish()
 
 
 @dataclass
@@ -84,8 +92,8 @@ class HardwareManager:
     async def _open_runtime(self, runtime: HardwareRuntime) -> None:
         runtime.state = "initializing"
         try:
-            await call_blocking(runtime.device.open)
-            await call_blocking(runtime.device.safe_state)
+            await asyncio.to_thread(_device_call, runtime.device, runtime.device.open, {})
+            await asyncio.to_thread(_device_call, runtime.device, runtime.device.safe_state, {})
             runtime.state = "open"
             runtime.last_error = None
             runtime.retry_index = 0
@@ -108,11 +116,11 @@ class HardwareManager:
         async with runtime.operation_lock:
             runtime.state = "closing"
             try:
-                await call_blocking(runtime.device.safe_state)
+                await asyncio.to_thread(_device_call, runtime.device, runtime.device.safe_state, {})
             except Exception:
                 log.exception("Safe state failed during shutdown: %s", runtime.device.hardware_id)
             try:
-                await call_blocking(runtime.device.close)
+                await asyncio.to_thread(_device_call, runtime.device, runtime.device.close, {})
                 runtime.state = "closed"
             except Exception as exc:
                 runtime.state = "faulted"
@@ -139,16 +147,15 @@ class HardwareManager:
             if runtime.state != "open":
                 raise DeviceError(f"Hardware is not available: {runtime.state}", category=DEVICE_UNREACHABLE,
                                   details=runtime.snapshot())
-            return await call_blocking(fn, **kwargs)
-
-    async def sample(self, fn: Callable[[], Any]) -> Any:
-        return await self.invoke(self.device.hardware_id, fn)
+            if inspect.iscoroutinefunction(fn):
+                return await fn(**kwargs)
+            return await asyncio.to_thread(_device_call, runtime.device, fn, kwargs)
 
     async def safe_all(self) -> list[dict[str, Any]]:
-        """Safe-state every device regardless of draining; used by prepare_shutdown."""
+        """Safe-state every device regardless of draining; used by prepare_shutdown and lease expiry."""
         runtime = self.runtime
         async with runtime.operation_lock:
-            result = await call_blocking(runtime.device.safe_state)
+            result = await asyncio.to_thread(_device_call, runtime.device, runtime.device.safe_state, {})
             return [{"hardwareId": runtime.device.hardware_id, "safeResult": result}]
 
     def get_pinout(self, hardware_id: str) -> Pinout:

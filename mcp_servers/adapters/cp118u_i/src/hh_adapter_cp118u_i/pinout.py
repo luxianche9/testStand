@@ -1,12 +1,32 @@
 """CP-118U-I: eight male DB9 ports whose electrical mode is set by DIP switch.
 
 Reference: Moxa CP-118U/138U Quick Installation Guide v6.
+
+``assets/ports/DB9.svg`` (shared by P1..P8) is rendered from this data by
+:func:`port_diagram` and ``assets/appearance.svg`` by :func:`appearance_diagram`
+(the adapter tests keep the shipped files in sync).
 """
 
 from __future__ import annotations
 
-from hardwareharness_device_sdk import Connector, ModeDefinition, Pin, PinFunction, Pinout, function, nc
+from hardwareharness_device_sdk import (
+    Connector,
+    ModeDefinition,
+    Pin,
+    PinFunction,
+    Pinout,
+    PortDiagram,
+    attach_port_image,
+    dsub,
+    function,
+    nc,
+    render_board,
+    render_port,
+)
 
+PORT_IMAGE = "ports/DB9.svg"
+PORT_NOTE = ("Labels: RS-232 / RS-422, 4-wire RS-485 / 2-wire RS-485 (per-port DIP switch). Schematic, not to "
+             "scale; the view (mating face or solder side) is not verified.")
 CHANNELS = range(1, 9)
 MODES = (
     ModeDefinition(mode="rs232", label="RS-232"),
@@ -50,6 +70,20 @@ def pinout(hardware_id: str) -> Pinout:
                             functions=tuple(functions)))
         connectors.append(Connector(connectorId=connector, name=f"P{channel}", connectorType="DB9", gender="male",
                                     channelIndex=channel, pinIds=port_pins(hardware_id, channel)))
-    return Pinout(hardwareId=hardware_id, manufacturer="Moxa", model="CP-118U-I", connectors=tuple(connectors),
+    data = Pinout(hardwareId=hardware_id, manufacturer="Moxa", model="CP-118U-I", connectors=tuple(connectors),
                   pins=tuple(pins), activeMode="unknown", modeSelection="hardware_dip", modes=MODES,
                   sources=("Moxa CP-118U/138U Quick Installation Guide v6",))
+    return attach_port_image(data, [f"P{channel}" for channel in CHANNELS], PORT_IMAGE, port_diagram(data))
+
+
+def port_diagram(data: Pinout) -> PortDiagram:
+    return render_port(data, "P1", dsub(9), title="Moxa CP-118U-I  P1..P8 (DB9 male, same pinout)", note=PORT_NOTE)
+
+
+def appearance_diagram() -> str:
+    return render_board("Moxa CP-118U-I  8-port isolated serial card", (
+        "8 x isolated serial port (P1..P8)",
+        "RS-232 / RS-422 / RS-485 per port",
+        "mode set by DIP switch, not software",
+        "fan-out cable to 8 x DB9 male",
+    ), ("multiport connector",))

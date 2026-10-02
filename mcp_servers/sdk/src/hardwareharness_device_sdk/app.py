@@ -1,38 +1,41 @@
-"""Server assembly: FastMCP tools, Bearer auth, health/admin routes and the stream channel."""
+"""Server assembly: FastMCP tools, Bearer auth, leases, the /device declaration, health/admin routes and streams."""
 
 from __future__ import annotations
 
 import asyncio
+import base64
 import hmac
 import inspect
 import logging
 import os
+import re
 import signal
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import Any, Literal
 
 from mcp.server.fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 from starlette.applications import Starlette
 from starlette.requests import Request
-from starlette.responses import JSONResponse
-from starlette.routing import WebSocketRoute
+from starlette.responses import JSONResponse, Response
 from starlette.types import ASGIApp, Receive, Scope, Send
-from starlette.websockets import WebSocket
 
 from ._version import __version__
+from .clock import now_ms
 from .config import ServerConfig
 from .device import Device
 from .envelope import CONTRACT_REVISION, TIMEOUT_RECOVERY, envelope, error, model, ok
-from .errors import INVALID_ARGUMENT, DeviceError
+from .errors import INVALID_ARGUMENT, NOT_SUPPORTED, DeviceError
+from . import lease as lease_rules
+from .lease import HEARTBEAT_INTERVAL_MS, Lease, LeaseTable
 from .lifecycle import HardwareManager
-from .panel import PanelItem, expand
-from .pinout import Pinout, page
+from .manifest import AssetError, Manifest, build_manifest, media_type, resolve_asset
+from .operation import CURRENT, Operation
 from .sim import execution_mode
-from .streams import SampledStream
+from .sse import stream_events
+from .streams import BlobStream, ByteStream, Stream
 from .tool import OPERATE, READ_ONLY, HardwareId, ToolSpec, collect_tools, method_parameters, param
-from .ws import stream_socket
 
 log = logging.getLogger("hardwareharness_device_sdk")
 
@@ -41,6 +44,8 @@ Hardware = model("HardwareInfo", hardwareId=(str, "Stable device identifier retu
                  health=(str, "Last service/driver health, not end-to-end experiment validation."),
                  capabilities=(list[str], "Declared device capabilities.", []),
                  capabilityDetails=(dict[str, Any], "Versioned limits, effective settings and evidence semantics.", {}),
+                 lease=(dict[str, Any], "Configure/actuate lease status {held, holder?, acquiredAt?, lastHeartbeatAt?}.",
+                        None),
                  lastError=(dict[str, Any] | None, "Last lifecycle/job error.", None))
 ServerInfo = model("ServerInfo", name=(str, "Service name."), version=(str, "Installed adapter package version."),
                    serverId=(str, "Service identity."), computerId=(str, "Configured host identity."),
@@ -52,52 +57,84 @@ ServerInfo = model("ServerInfo", name=(str, "Service name."), version=(str, "Ins
                    sdkVersion=(str, "hardwareharness-device-sdk version.", None),
                    adapter=(str, "Adapter model implemented by this service.", None),
                    sourceRevision=(str, "Source revision of the assembled bundle, when known.", None))
-StreamInfo = model("StreamInfo", streamId=(str, "Exact identifier for stream_read and the WebSocket channel."),
-                   kind=(str, "sampled=polled while watched; push=published on change; bytes=serial traffic."),
-                   label=(str, "Human-readable name."), description=(str, "Evidence semantics of entries.", ""),
-                   unit=(str, "Physical unit of value, when numeric.", None),
-                   valueSchema=(dict[str, Any], "JSON Schema of one entry's payload fields.", {}),
-                   requires=(list[str], "State requirements before entries are produced.", []),
-                   state=(str, "idle, running, live, not_configured, unavailable, error or closed."),
-                   error=(dict[str, Any] | None, "Last sampling error.", None),
+StreamStatus = model("StreamStatus", state=(str, "live, sampling, idle, not_configured, unavailable, error or closed."),
+                     sampling=(bool, "Records are being produced now."), errors=(int, "Failed sample attempts."),
+                     lastError=(dict[str, Any], "Last sampling error {category, message, at}.", None),
+                     watermark=(float, "No record with t at or before this service time (Unix ms) will follow."))
+GapRange = model("GapRange", fromSeq=(int, "First evicted sequence number."), toSeq=(int, "Last evicted sequence number."))
+StreamRead = model("StreamRead", streamId=(str, "Stream identifier."), type=(str, "Record type."),
                    epoch=(str, "Buffer identity; cursors are only valid within one epoch."),
-                   head=(int, "Next sequence number to be assigned."), tail=(int, "Oldest retained sequence number."),
-                   capacity=(int, "Maximum retained entries."), rateHz=(float, "Sampling rate while running.", None),
-                   channel=(int, "Hardware channel the stream observes.", None))
-StreamRead = model("StreamRead", streamId=(str, "Stream identifier."), epoch=(str, "Buffer identity."),
-                   items=(list[dict[str, Any]], "Entries {seq, t (UNIX s), ...payload} in sequence order."),
-                   next=(int, "Cursor for the following read."), head=(int, "Next sequence number."),
+                   records=(list[dict[str, Any]], "Records {seq, t (Unix ms), op?, ...payload}; bytes add decoded text."),
+                   next=(int, "fromSeq for the following read."), head=(int, "Next sequence number to be assigned."),
                    tail=(int, "Oldest retained sequence number."),
-                   dropped=(dict[str, int] | None, "Evicted range {from,to} skipped before this read.", None),
-                   reset=(bool, "Cursor belonged to another epoch; reading restarted at tail.", False))
-StreamHold = model("StreamHold", streamId=(str, "Stream identifier."), kind=(str, "Stream kind."),
-                   holdSeconds=(float, "Remaining explicit sampling hold; push/bytes streams are always live."),
-                   state=(str, "Current stream state."))
-Panel = model("Panel", hardwareId=(str, "Device the templates bind to."),
-              items=(list[PanelItem], "Widget templates for the canvas; tools and streams are exact names."))
+                   watermark=(float, "Every record with t at or before this time has been returned or evicted."),
+                   status=(StreamStatus, "Stream production state."),
+                   dropped=(GapRange, "Evicted range skipped before this read.", None),
+                   reset=(bool, "fromSeq was ahead of head; reading restarted at tail.", False))
+BlobRead = model("BlobRead", ref=(str, "Blob reference (sha256)."), mime=(str, "Media type."), size=(int, "Byte length."),
+                 base64=(str, "Content, base64 encoded."))
+TransactResult = model("TransactResult", sent=(int, "Bytes accepted by the writer."),
+                       matched=(bool, "expect matched the received text (true when expect is omitted)."),
+                       text=(str, "Text received after sending, until match or timeout."),
+                       elapsedMs=(float, "Time from send to match or timeout."))
+LeaseHolder = model("LeaseHolder", terminalId=(str, "Persistent UUID of the terminal instance holding the lease."),
+                    user=(str, "User logged in at the terminal.", None), host=(str, "Terminal host name.", None),
+                    label=(str, "Display label, for example the terminal or run name.", None))
+LeaseGrant = model("LeaseGrant", leaseId=(str, "Pass as _meta.leaseId on configure/actuate calls; holder only."),
+                   holder=(LeaseHolder, "Holder that owns the lease."),
+                   acquiredAt=(float, "Service time (Unix ms) the lease was granted."),
+                   heartbeatIntervalMs=(int, "Send lease_heartbeat (or any call with _meta.leaseId) this often."),
+                   timeoutMs=(int, "The lease ends, with safe state, after this long without a heartbeat."))
+LeaseHeartbeat = model("LeaseHeartbeat", leaseId=(str, "The lease that is still held."),
+                       lastHeartbeatAt=(float, "Service time (Unix ms) of this heartbeat."))
+LeaseStatus = model("LeaseStatus", held=(bool, "A holder currently leases configure/actuate access."),
+                    holder=(LeaseHolder, "Current holder; the leaseId is never disclosed.", None),
+                    acquiredAt=(float, "Service time (Unix ms) the lease was granted.", None),
+                    lastHeartbeatAt=(float, "Service time (Unix ms) of the last heartbeat.", None))
+LeaseEnd = model("LeaseEnd", held=(bool, "False: the device is free after this call."),
+                 released=(bool, "A lease ended because of this call (false: nothing was held)."),
+                 holder=(LeaseHolder, "Holder of the lease that ended.", None),
+                 safeResult=(list[dict[str, Any]], "safe_state results; every lease end drives the device safe.", None))
 
-StreamId = param(str, "Exact streamId from list_streams.", min_length=1, max_length=64)
+StreamId = param(str, "Exact streamId from /device streams.", min_length=1, max_length=64)
+LeaseId = param(str, "leaseId returned by lease_acquire.", min_length=1, max_length=64)
 DESCRIPTIONS = {
     "get_server_info": "Read service version, readiness and nonsecret effective capabilities without signal actuation. One service manages exactly one active device; ready does not prove the physical experiment or wiring.",
     "list_hardware": "Discover the single device managed by this service. Use its hardwareId in subsequent calls; presence and service health do not verify every channel or external cable.",
-    "get_hardware_info": "Read device identity, lifecycle health, capability limits and effective settings. Static declarations and software state are not physical measurements.",
-    "get_pinout": "Read packaged connector/pin functions and sources, optionally filtering one connector and paging pins. This reference cannot detect cable position or DIP switches; use returned identifiers verbatim and verify connector orientation against the cited manual.",
-    "list_streams": "List the read-only data streams this device publishes (sampled readings, pushed values, serial traffic) with units, entry schema and buffer cursors. Streams never actuate hardware.",
-    "get_panel": "Read widget templates suggested for the canvas: each binds a display to a stream and/or manual control to exact tool names. Templates are declarations; they do not prove wiring or current values.",
-    "stream_read": "Read buffered stream entries after cursor without consuming them; omit cursor for the latest max_items entries. Entries carry seq and UNIX time t. dropped reports evicted data; sampled streams only produce entries while watched or started.",
-    "stream_start": "Keep a sampled stream polling for the given seconds so stream_read collects history without a live viewer. Sampling interleaves with tool calls under the device lock and never actuates outputs.",
-    "stream_stop": "Release an explicit stream_start hold. Sampling continues while live viewers are subscribed; buffered entries are kept.",
+    "get_hardware_info": "Read device identity, lifecycle health, lease status, capability limits and effective settings. Static declarations and software state are not physical measurements.",
+    "lease_acquire": "Internal: lease exclusive configure/actuate access for a terminal instance. The lease has no deadline but ends without a heartbeat for timeoutMs; acquiring again with the same terminalId returns the same leaseId. Another holder gets busy with details.holder.",
+    "lease_heartbeat": "Internal: prove the lease holder is alive (every heartbeatIntervalMs); any tool call carrying _meta.leaseId counts as well. busy means the lease is lost (timed out, released or force released): stop using the device and acquire again.",
+    "lease_release": "Internal: end the caller's lease. Every lease end, including timeout and force release, drives the device to its safe state; the safe_state results are returned. Releasing a lease that is no longer held reports released=false.",
+    "lease_force_release": "Internal: end whatever lease is held, for any authenticated client, after the user confirmed it. The original holder and the reason are logged, and the device is driven to its safe state; the holder's next call fails with busy.",
+    "lease_status": "Read whether configure/actuate access is leased, by which holder, since when and the last heartbeat. Read and safe tools and stream subscriptions are never blocked by a lease; the leaseId is never disclosed.",
+    "stream_read": "Read buffered records from fromSeq (omit for the latest records) without consuming them. Records carry seq, t (Unix ms) and op when a tool call produced them; bytes records add decoded text. Sampled streams only produce records while watched: status.state idle means nobody watches; HardwareHarness recordings and /streams/{id} subscribers start sampling.",
+    "blob_read": "Read the content of one blob record (screenshot, capture file) by its ref as base64 with its media type. Blobs are kept in memory and old ones are evicted; the ref comes from stream_read or a tool result.",
+    "transact": "Send data on a byte stream and wait until the received text matches the expect regex or timeoutMs passes. Sending is a physical output: it needs the lease when one is held and is never retried automatically; the tx/rx records are tagged with this call's operation.",
     "hardwareharness_prepare_shutdown": "Internal shutdown hook: drive the device to its safe state, refuse new operations and exit the process shortly after. Not for AI or test steps.",
 }
 PARAMS = {
-    "connector_id": param(str | None, "Exact connectorId from this reference; omitted selects all connectors."),
-    "offset": param(int, "Zero-based pin/section-item offset in the filtered result.", ge=0),
-    "limit": param(int | None, "Maximum returned pins/items; omitted preserves full legacy response.", ge=1, le=200),
-    "cursor": param(int | None, "Sequence number to read from (use the previous next); omitted returns the latest entries.", ge=0),
-    "max_items": param(int, "Maximum entries returned.", ge=1, le=2000),
-    "seconds": param(float, "Hold duration in seconds.", gt=0, le=3600),
+    "fromSeq": param(int | None, "Sequence number to read from (the previous next); omitted returns the latest records.",
+                     ge=0),
+    "records": param(int, "Maximum records returned.", ge=1, le=2000),
+    "ref": param(str, "Blob ref from a blob record.", min_length=1, max_length=128),
+    "timeoutMs": param(float, "Maximum wait in milliseconds.", gt=0, le=60000),
+    "data": param(str, "Payload to send, interpreted by encoding.", max_length=65536),
+    "encoding": param(Literal["text", "hex"], "text sends the string as UTF-8 (include \\r\\n yourself); hex sends raw bytes."),
+    "expect": param(str | None, "Regex the received text must match; omitted only sends and collects until timeout."),
+    "holder": param(str | LeaseHolder, "Lease holder {terminalId, user?, host?, label?} (strings of at most 128 "
+                    "characters); a plain string is taken as the terminalId."),
+    "reason": param(str, "Why the lease is forced free (logged with the original holder), 1..512 characters.",
+                    min_length=1, max_length=512),
 }
-STREAM_START = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False)
+LEASE = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False)
+LEASED_KINDS = frozenset({"configure", "actuate"})
+LEASE_TOOLS = ("lease_acquire", "lease_heartbeat", "lease_release", "lease_force_release", "lease_status")
+INTERNAL_TOOLS = frozenset({"lease_acquire", "lease_heartbeat", "lease_release", "lease_force_release",
+                            "hardwareharness_prepare_shutdown"})
+"""Reported as kind ``internal`` in ``/device.tools`` (platform plumbing, not test steps)."""
+POLL_INTERVAL = 0.02
+LEASE_SWEEP_INTERVAL = 0.1
+MAX_BLOB_BYTES = 8 << 20
 
 
 def _parameter(name: str, annotation: Any, default: Any = inspect.Parameter.empty) -> inspect.Parameter:
@@ -109,7 +146,7 @@ def _interrupt_process() -> None:
 
 
 class BearerAuth:
-    """Pure ASGI Bearer check for HTTP and WebSocket scopes; fails closed without a token."""
+    """Pure ASGI Bearer check for HTTP scopes; fails closed without a token."""
 
     def __init__(self, app: ASGIApp, token: str, public_paths: frozenset[str] = frozenset({"/health"})) -> None:
         self.app = app
@@ -117,26 +154,18 @@ class BearerAuth:
         self.public_paths = public_paths
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] not in {"http", "websocket"} or scope["path"] in self.public_paths:
+        if scope["type"] != "http" or scope["path"] in self.public_paths:
             await self.app(scope, receive, send)
             return
         supplied = dict(scope.get("headers") or []).get(b"authorization", b"")
         if self.expected is not None and hmac.compare_digest(supplied, self.expected):
             await self.app(scope, receive, send)
             return
-        denied = JSONResponse({"error": "unauthorized"}, status_code=401)
-        if scope["type"] == "http":
-            await denied(scope, receive, send)
-            return
-        websocket = WebSocket(scope, receive, send)
-        if "websocket.http.response" in scope.get("extensions", {}):
-            await websocket.send_denial_response(denied)
-        else:
-            await websocket.close(1008)
+        await JSONResponse({"error": "unauthorized"}, status_code=401)(scope, receive, send)
 
 
 class DeviceService:
-    """One device, its lifecycle manager, the FastMCP server and the stream channel."""
+    """One device, its lifecycle manager, lease table, the FastMCP server and the stream channel."""
 
     def __init__(
         self,
@@ -156,17 +185,21 @@ class DeviceService:
         self.config = config
         self.device = device_cls(config)
         self.manager = HardwareManager(self.device, retry_delays=retry_delays, watchdog_interval=watchdog_interval)
+        self.leases = LeaseTable()
         self.closing = False
         self._request_exit = request_exit or _interrupt_process
         self._exit_delay = exit_delay
         self._background: set[asyncio.Task[Any]] = set()
+        self._lease_sweeper: asyncio.Task[None] | None = None
         self.mcp = FastMCP(name=config.server_id, instructions=device_cls.instructions, host=config.host,
                            port=config.port or 8000, streamable_http_path="/mcp", json_response=True,
                            stateless_http=False)
         self.tool_specs: dict[str, ToolSpec] = {}
+        self.tool_kinds: dict[str, str] = {}
+        """Tool name -> kind (read, configure, actuate, safe, internal) for ``/device.tools``."""
+        self._lease_end_lock = asyncio.Lock()
         self._register_builtin_tools()
         self._register_device_tools()
-        self.panel_items = self._resolve_panel()
 
     # --- registration -------------------------------------------------
     def _add_tool(self, name: str, handler: Callable[..., Awaitable[dict[str, Any]]], params: list[inspect.Parameter],
@@ -175,6 +208,8 @@ class DeviceService:
         text = description or DESCRIPTIONS[name.removeprefix(f"{self.device.prefix}_")]
 
         async def call(**kwargs: Any) -> dict[str, Any]:
+            # Any call carrying the holder's _meta.leaseId is a heartbeat.
+            self.leases.touch(self._request_meta().get("leaseId"))
             return await handler(**kwargs)
         call.__name__ = call.__qualname__ = name
         setattr(call, "__signature__", inspect.Signature(params, return_annotation=envelope(name, output)))  # noqa: B010
@@ -186,40 +221,51 @@ class DeviceService:
         meta.update(extra_meta or {})
         self.mcp.add_tool(call, name=name, description=text, annotations=annotations,
                           meta={"hardwareharness": meta}, structured_output=True)
+        self.tool_kinds[name] = ("internal" if kind == "internal" or name in INTERNAL_TOOLS
+                                 else (semantics or {}).get("kind", "read"))
 
     def _management(self, name: str, handler: Callable[..., Awaitable[dict[str, Any]]], params: list[inspect.Parameter],
-                    output: Any, evidence: str = "controller_state") -> None:
+                    output: Any, evidence: str = "controller_state", annotations: ToolAnnotations = READ_ONLY) -> None:
         spec = ToolSpec(name=name, kind="read", description=DESCRIPTIONS[name], output=output, attr=name, evidence=evidence)
-        self._add_tool(name, handler, params, output, annotations=READ_ONLY, kind="management",
+        self._add_tool(name, handler, params, output, annotations=annotations, kind="management",
                        semantics=spec.semantics(self.device.prefix))
+
+    def _stream_tool(self, name: str, handler: Callable[..., Awaitable[dict[str, Any]]],
+                     params: list[inspect.Parameter], output: Any, kind: Literal["read", "actuate"] = "read") -> None:
+        spec = ToolSpec(name=name, kind=kind, description=DESCRIPTIONS[name], output=output, attr=name,
+                        evidence="stream_buffer" if kind == "read" else "observation")
+        self._add_tool(f"{self.device.prefix}_{name}", handler, params, output, annotations=spec.annotations(),
+                       kind="hardware", semantics=spec.semantics(self.device.prefix))
 
     def _register_builtin_tools(self) -> None:
         hid = _parameter("hardwareId", HardwareId)
         self._management("get_server_info", self._get_server_info, [], ServerInfo)
         self._management("list_hardware", self._list_hardware, [], list[Hardware])
         self._management("get_hardware_info", self._get_hardware_info, [hid], Hardware)
-        self._management("get_pinout", self._get_pinout, [
-            hid, _parameter("connector_id", PARAMS["connector_id"], None), _parameter("offset", PARAMS["offset"], 0),
-            _parameter("limit", PARAMS["limit"], None)], Pinout, evidence="declaration")
-        self._management("list_streams", self._list_streams, [hid], list[StreamInfo], evidence="declaration")
-        self._management("get_panel", self._get_panel, [hid], Panel, evidence="declaration")
+        lid = _parameter("leaseId", LeaseId)
+        self._management("lease_acquire", self._lease_acquire, [hid, _parameter("holder", PARAMS["holder"])],
+                         LeaseGrant, annotations=LEASE)
+        self._management("lease_heartbeat", self._lease_heartbeat, [hid, lid], LeaseHeartbeat, annotations=LEASE)
+        self._management("lease_release", self._lease_release, [hid, lid], LeaseEnd, annotations=LEASE)
+        self._management("lease_force_release", self._lease_force_release,
+                         [hid, _parameter("reason", PARAMS["reason"])], LeaseEnd, annotations=LEASE)
+        self._management("lease_status", self._lease_status, [hid], LeaseStatus)
         self._add_tool("hardwareharness_prepare_shutdown", self._prepare_shutdown_tool, [], dict[str, Any] | list[Any],
                        annotations=OPERATE, kind="internal")
-        if not self.device.streams:
+        streams = self.device.streams
+        if not streams:
             return
-        prefix = self.device.prefix
         sid = _parameter("streamId", StreamId)
-        read = ToolSpec(name="stream_read", kind="read", description=DESCRIPTIONS["stream_read"], output=StreamRead,
-                        attr="stream_read", evidence="stream_buffer")
-        hold = ToolSpec(name="stream_start", kind="configure", description=DESCRIPTIONS["stream_start"],
-                        output=StreamHold, attr="stream_start", evidence="observation")
-        self._add_tool(f"{prefix}_stream_read", self._stream_read, [
-            hid, sid, _parameter("cursor", PARAMS["cursor"], None), _parameter("max_items", PARAMS["max_items"], 200)],
-            StreamRead, annotations=READ_ONLY, kind="hardware", semantics=read.semantics(prefix))
-        self._add_tool(f"{prefix}_stream_start", self._stream_start, [hid, sid, _parameter("seconds", PARAMS["seconds"], 60.0)],
-                       StreamHold, annotations=STREAM_START, kind="hardware", semantics=hold.semantics(prefix))
-        self._add_tool(f"{prefix}_stream_stop", self._stream_stop, [hid, sid], StreamHold, annotations=STREAM_START,
-                       kind="hardware", semantics=hold.semantics(prefix))
+        self._stream_tool("stream_read", self._stream_read, [
+            hid, sid, _parameter("fromSeq", PARAMS["fromSeq"], None), _parameter("limit", PARAMS["records"], 200)],
+            StreamRead)
+        if any(isinstance(stream, BlobStream) for stream in streams.values()):
+            self._stream_tool("blob_read", self._blob_read, [hid, sid, _parameter("ref", PARAMS["ref"])], BlobRead)
+        if any(isinstance(stream, ByteStream) and stream.writer is not None for stream in streams.values()):
+            self._stream_tool("transact", self._transact, [
+                hid, sid, _parameter("data", PARAMS["data"]), _parameter("encoding", PARAMS["encoding"], "text"),
+                _parameter("expect", PARAMS["expect"], None), _parameter("timeoutMs", PARAMS["timeoutMs"], 2000.0)],
+                TransactResult, kind="actuate")
 
     def _register_device_tools(self) -> None:
         prefix = self.device.prefix
@@ -230,14 +276,12 @@ class DeviceService:
             method = getattr(self.device, spec.attr)
             params = [_parameter("hardwareId", HardwareId), *method_parameters(method)]
 
-            def bind(method: Callable[..., Any]) -> Callable[..., Awaitable[dict[str, Any]]]:
+            def bind(method: Callable[..., Any], kind: str) -> Callable[..., Awaitable[dict[str, Any]]]:
                 async def handler(hardwareId: str, **kwargs: Any) -> dict[str, Any]:  # noqa: N803
-                    try:
-                        return ok(await self.manager.invoke(hardwareId, method, **kwargs))
-                    except Exception as exc:
-                        return error(exc)
+                    return await self._operate(kind, lambda: self.manager.invoke(hardwareId, method, **kwargs))
                 return handler
-            self._add_tool(name, bind(method), params, spec.output if spec.output is not None else dict[str, Any],
+            self._add_tool(name, bind(method, spec.kind), params,
+                           spec.output if spec.output is not None else dict[str, Any],
                            annotations=spec.annotations(), kind="hardware", semantics=spec.semantics(prefix),
                            description=spec.description, extra_meta={"safeAction": True} if spec.kind == "safe" else None)
             self.tool_specs[name] = spec
@@ -246,20 +290,29 @@ class DeviceService:
             if action is not None and action["toolName"] not in self.tool_specs:
                 raise RuntimeError(f"{name} declares unknown safety_action {action['toolName']}")
 
-    def _resolve_panel(self) -> list[PanelItem]:
-        known = set(self.mcp._tool_manager._tools)  # noqa: SLF001
-        items = [expand(item, self.device.prefix, known) for item in self.device.panel()]
-        seen: set[str] = set()
-        for item in items:
-            if item.id in seen:
-                raise RuntimeError(f"Duplicate panel item {item.id}")
-            seen.add(item.id)
-            missing = [tool for tool in item.tools() if tool not in known]
-            if missing:
-                raise RuntimeError(f"Panel item {item.id} references unknown tools {missing}")
-            if item.stream is not None and item.stream not in self.device.streams:
-                raise RuntimeError(f"Panel item {item.id} references unknown stream {item.stream}")
-        return items
+    # --- operation context --------------------------------------------
+    def _request_meta(self) -> dict[str, Any]:
+        """``_meta`` of the current MCP request (``operationId``, ``leaseId``); empty outside a request."""
+        try:
+            meta = self.mcp.get_context().request_context.meta
+        except (LookupError, ValueError):
+            return {}
+        return meta.model_dump(exclude_none=True) if meta is not None else {}
+
+    async def _operate(self, kind: str, run: Callable[[], Awaitable[Any]]) -> dict[str, Any]:
+        """Run one tool call under its operation: lease check by kind, then envelope with op meta."""
+        request = self._request_meta()
+        operation_id = request.get("operationId")
+        op = Operation(operation_id if isinstance(operation_id, str) and operation_id else None)
+        token = CURRENT.set(op)
+        try:
+            if kind in LEASED_KINDS:
+                self.leases.check(request.get("leaseId"))
+            return ok(await run(), meta=op.meta())
+        except Exception as exc:
+            return error(exc, meta=op.meta())
+        finally:
+            CURRENT.reset(token)
 
     # --- builtin handlers ---------------------------------------------
     def capability_details(self) -> dict[str, Any]:
@@ -267,11 +320,15 @@ class DeviceService:
         common: dict[str, Any] = {"contractRevision": CONTRACT_REVISION, "hardwareCount": 1,
                                   "executionMode": execution_mode(self.config.dry_run),
                                   "concurrentHardwareOperations": 1,
-                                  "hardwareRevision": "unknown", "driverVersion": "unknown",
-                                  "pinoutSource": "get_pinout",
+                                  "hardwareRevision": type(self.device).hardware_revision or "unknown",
+                                  "driverVersion": "unknown", "declarationPath": "/device",
+                                  "leaseTools": list(LEASE_TOOLS),
+                                  "lease": {"timeoutMs": lease_rules.LEASE_TIMEOUT_MS,
+                                            "heartbeatIntervalMs": HEARTBEAT_INTERVAL_MS},
                                   "evidence": "Declared limits and process configuration; not physical measurements."}
         if self.device.streams:
-            common["streamTransport"] = {"path": "/streams/{streamId}", "auth": "bearer", "listTool": "list_streams",
+            common["streamTransport"] = {"protocol": "sse", "path": "/streams/{streamId}", "timePath": "/time",
+                                         "auth": "bearer", "declaration": "/device streams",
                                          "readTool": f"{self.device.prefix}_stream_read"}
         common.update(self.device.capability_details())
         return common
@@ -296,83 +353,172 @@ class DeviceService:
 
     async def _get_hardware_info(self, hardwareId: str) -> dict[str, Any]:  # noqa: N803
         try:
-            return ok({**self.manager.get_hardware(hardwareId), "capabilityDetails": self.capability_details()})
+            return ok({**self.manager.get_hardware(hardwareId), "capabilityDetails": self.capability_details(),
+                       "lease": self.leases.status()})
         except Exception as exc:
             return error(exc)
 
-    async def _get_pinout(self, hardwareId: str, connector_id: str | None = None, offset: int = 0,  # noqa: N803
-                          limit: int | None = None) -> dict[str, Any]:
+    # --- leases ---------------------------------------------------------
+    async def _end_lease(self, lease: Lease | None, how: str) -> dict[str, Any]:
+        """Every lease end (release, timeout, force release) drives the device to its safe state."""
+        if lease is None:
+            return {"held": False, "released": False}
+        log.warning("Lease %s of %s ended (%s); driving %s to its safe state", lease.lease_id, lease.holder, how,
+                    self.device.hardware_id)
         try:
-            pinout = self.manager.get_pinout(hardwareId)
+            results: list[dict[str, Any]] = await self.manager.safe_all()
+        except Exception as exc:
+            log.exception("Safe state after lease end failed")
+            results = [{"hardwareId": self.device.hardware_id, "safeResult": error(exc)}]
+        return {"held": False, "released": True, "holder": dict(lease.holder), "safeResult": results}
+
+    async def _end_expired(self) -> None:
+        async with self._lease_end_lock:
+            lease = self.leases.expire()
+            if lease is not None:
+                await self._end_lease(lease, f"no heartbeat for {lease_rules.LEASE_TIMEOUT_MS} ms")
+
+    async def _lease_acquire(self, hardwareId: str, holder: Any) -> dict[str, Any]:  # noqa: N803
+        try:
+            self.manager.get_hardware(hardwareId)
+            await self._end_expired()
+            return ok(self.leases.acquire(holder))
+        except Exception as exc:
+            return error(exc)
+
+    async def _lease_heartbeat(self, hardwareId: str, leaseId: str) -> dict[str, Any]:  # noqa: N803
+        try:
+            self.manager.get_hardware(hardwareId)
+            return ok(self.leases.heartbeat(leaseId))
+        except Exception as exc:
+            return error(exc)
+
+    async def _lease_release(self, hardwareId: str, leaseId: str) -> dict[str, Any]:  # noqa: N803
+        try:
+            self.manager.get_hardware(hardwareId)
+            async with self._lease_end_lock:
+                return ok(await self._end_lease(self.leases.release(leaseId), "released by its holder"))
+        except Exception as exc:
+            return error(exc)
+
+    async def _lease_force_release(self, hardwareId: str, reason: str) -> dict[str, Any]:  # noqa: N803
+        try:
+            self.manager.get_hardware(hardwareId)
+            async with self._lease_end_lock:
+                lease = self.leases.force_release()
+                if lease is not None:
+                    log.warning("Lease %s of %s force released: %s", lease.lease_id, lease.holder, reason)
+                return ok(await self._end_lease(lease, f"force released: {reason}"))
+        except Exception as exc:
+            return error(exc)
+
+    async def _lease_status(self, hardwareId: str) -> dict[str, Any]:  # noqa: N803
+        try:
+            self.manager.get_hardware(hardwareId)
+            return ok(self.leases.status())
+        except Exception as exc:
+            return error(exc)
+
+    async def _sweep_leases(self) -> None:
+        while True:
+            await asyncio.sleep(LEASE_SWEEP_INTERVAL)
             try:
-                return ok(page(pinout, connector_id, offset, limit))
-            except KeyError:
-                raise DeviceError("Unknown connector_id; select an exact connectorId from get_pinout",
-                                  category=INVALID_ARGUMENT) from None
-        except Exception as exc:
-            return error(exc)
+                await self._end_expired()
+            except Exception:
+                log.exception("Lease sweep failed")
 
-    async def _list_streams(self, hardwareId: str) -> dict[str, Any]:  # noqa: N803
-        try:
-            self.manager.get_hardware(hardwareId)
-            return ok(self.device.streams.describe())
-        except Exception as exc:
-            return error(exc)
+    # --- declaration ----------------------------------------------------
+    def manifest(self) -> Manifest:
+        """The generated ``/device`` document (software state only; never touches the driver)."""
+        return build_manifest(self)
 
-    async def _get_panel(self, hardwareId: str) -> dict[str, Any]:  # noqa: N803
-        try:
-            self.manager.get_hardware(hardwareId)
-            return ok({"hardwareId": self.device.hardware_id, "items": self.panel_items})
-        except Exception as exc:
-            return error(exc)
+    # --- stream tools ---------------------------------------------------
+    def _stream(self, hardwareId: str, streamId: str) -> Stream:  # noqa: N803
+        self.manager.get_hardware(hardwareId)
+        return self.device.streams.require(streamId)
 
-    async def _stream_read(self, hardwareId: str, streamId: str, cursor: int | None = None,  # noqa: N803
-                           max_items: int = 200) -> dict[str, Any]:
+    async def _stream_read(self, hardwareId: str, streamId: str, fromSeq: int | None = None,  # noqa: N803
+                           limit: int = 200) -> dict[str, Any]:
         try:
-            self.manager.get_hardware(hardwareId)
-            stream = self.device.streams.require(streamId)
-            result = stream.buffer.read(-max_items if cursor is None else cursor, max_items)
-            data: dict[str, Any] = {"streamId": streamId, "epoch": stream.buffer.epoch, "items": result.items,
-                                    "next": result.next, "head": result.head, "tail": result.tail, "reset": result.reset}
+            stream = self._stream(hardwareId, streamId)
+            result = stream.buffer.read(-limit if fromSeq is None else fromSeq, limit)
+            data: dict[str, Any] = {
+                "streamId": streamId, "type": stream.type, "epoch": stream.buffer.epoch,
+                "records": [stream.present(record) for record in result.records], "next": result.next,
+                "head": result.head, "tail": result.tail, "watermark": result.watermark,
+                "status": {**stream.status(), "watermark": result.watermark}, "reset": result.reset}
             if result.dropped:
-                data["dropped"] = {"from": result.dropped[0], "to": result.dropped[1]}
+                data["dropped"] = {"fromSeq": result.dropped[0], "toSeq": result.dropped[1]}
             return ok(data)
         except Exception as exc:
             return error(exc)
 
-    def _hold_result(self, streamId: str) -> dict[str, Any]:  # noqa: N803
-        stream = self.device.streams.require(streamId)
-        described = stream.describe()
-        return {"streamId": streamId, "kind": stream.kind, "holdSeconds": described.get("holdSeconds", 0.0),
-                "state": described["state"]}
-
-    async def _stream_start(self, hardwareId: str, streamId: str, seconds: float = 60.0) -> dict[str, Any]:  # noqa: N803
+    async def _blob_read(self, hardwareId: str, streamId: str, ref: str) -> dict[str, Any]:  # noqa: N803
         try:
-            self.manager.get_hardware(hardwareId)
-            stream = self.device.streams.require(streamId)
-            stream.hold(seconds)
-            message = "" if isinstance(stream, SampledStream) else "Stream is always live; no hold needed."
-            return ok(self._hold_result(streamId), message)
+            stream = self._stream(hardwareId, streamId)
+            if not isinstance(stream, BlobStream):
+                raise DeviceError(f"{streamId} is a {stream.type} stream, not blob", category=INVALID_ARGUMENT)
+            mime, content = stream.read(ref)
+            if len(content) > MAX_BLOB_BYTES:
+                raise DeviceError(f"Blob is {len(content)} bytes, above the {MAX_BLOB_BYTES} byte tool limit",
+                                  category=NOT_SUPPORTED, details={"size": len(content), "mime": mime})
+            return ok({"ref": ref, "mime": mime, "size": len(content),
+                       "base64": base64.b64encode(content).decode("ascii")})
         except Exception as exc:
             return error(exc)
 
-    async def _stream_stop(self, hardwareId: str, streamId: str) -> dict[str, Any]:  # noqa: N803
-        try:
-            self.manager.get_hardware(hardwareId)
-            self.device.streams.require(streamId).unhold()
-            return ok(self._hold_result(streamId))
-        except Exception as exc:
-            return error(exc)
+    async def _transact(self, hardwareId: str, streamId: str, data: str, encoding: str = "text",  # noqa: N803
+                        expect: str | None = None, timeoutMs: float = 2000.0) -> dict[str, Any]:
+        async def run() -> dict[str, Any]:
+            stream = self._stream(hardwareId, streamId)
+            if not isinstance(stream, ByteStream) or stream.writer is None:
+                raise DeviceError(f"{streamId} is not a writable bytes stream", category=NOT_SUPPORTED)
+            try:
+                payload = data.encode("utf-8") if encoding == "text" else bytes.fromhex(data)
+            except ValueError:
+                raise DeviceError("data is not valid hex", category=INVALID_ARGUMENT) from None
+            try:
+                pattern = re.compile(expect) if expect else None
+            except re.error as exc:
+                raise DeviceError(f"expect is not a valid regex: {exc}", category=INVALID_ARGUMENT) from None
+            op = CURRENT.get()
+            cursor = stream.buffer.head
+            sent = await self.manager.invoke(hardwareId, stream.send, data=payload)
+            started = now_ms()
+            matched = False
+            text = ""
+            while not matched and now_ms() - started < timeoutMs and not self.closing:
+                result = stream.buffer.read(cursor, 500)
+                cursor = result.next
+                for record in result.records:
+                    if record["dir"] != "rx":
+                        continue
+                    if op is not None:
+                        op.record(streamId, record["seq"])
+                    text += bytes.fromhex(record["data"]).decode("utf-8", "replace")
+                    if pattern is not None and pattern.search(text):
+                        matched = True
+                        break
+                if not matched and not result.records:
+                    await asyncio.sleep(POLL_INTERVAL)
+            return {"sent": sent, "matched": matched or expect is None, "text": text,
+                    "elapsedMs": round(now_ms() - started, 3)}
+        return await self._operate("actuate", run)
 
     # --- lifecycle ------------------------------------------------------
     async def start(self) -> None:
         self.closing = False
-        self.device.streams.bind(self.manager)
+        self.device.streams.bind(lambda: self.manager.available, self.device.io_lock)
         await self.manager.start()
+        self._lease_sweeper = asyncio.create_task(self._sweep_leases(), name="lease-sweeper")
 
     async def stop(self) -> None:
         self.closing = True
-        await self.device.streams.aclose()
+        if self._lease_sweeper is not None:
+            self._lease_sweeper.cancel()
+            await asyncio.gather(self._lease_sweeper, return_exceptions=True)
+            self._lease_sweeper = None
+        await asyncio.to_thread(self.device.streams.close)
         await self.manager.stop()
 
     async def prepare_shutdown(self) -> dict[str, Any]:
@@ -411,17 +557,37 @@ class DeviceService:
         async def health(_: Request) -> JSONResponse:
             item = self.manager.list_hardware()[0]
             return JSONResponse({"healthy": item["state"] == "open", "serverId": self.config.server_id,
-                                 "hardwareId": item["hardwareId"], "state": item["state"], "sdkVersion": __version__})
+                                 "hardwareId": item["hardwareId"], "state": item["state"], "sdkVersion": __version__,
+                                 "manifestRevision": self.manifest().revision})
+
+        async def device(_: Request) -> JSONResponse:
+            return JSONResponse(self.manifest().document)
+
+        async def asset(request: Request) -> Response:
+            path = request.path_params["path"]
+            try:
+                target = resolve_asset(type(self.device).assets_dir(), path)
+                content = await asyncio.to_thread(target.read_bytes)
+            except FileNotFoundError:
+                return JSONResponse({"error": "not_found", "path": path}, status_code=404)
+            except AssetError as exc:
+                return JSONResponse({"error": "invalid_asset", "message": str(exc)}, status_code=400)
+            return Response(content, media_type=media_type(path),
+                            headers={"Cache-Control": "no-cache", "X-Content-Type-Options": "nosniff",
+                                     "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'"})
 
         async def admin_shutdown(_: Request) -> JSONResponse:
             return JSONResponse(await self.prepare_shutdown())
 
-        async def streams(websocket: WebSocket) -> None:
-            await stream_socket(websocket, self)
+        async def server_time(_: Request) -> JSONResponse:
+            return JSONResponse({"serverTime": now_ms()})
 
         app.add_route("/health", health, methods=["GET"])
+        app.add_route("/device", device, methods=["GET"])
+        app.add_route("/assets/{path:path}", asset, methods=["GET"])
         app.add_route("/admin/shutdown", admin_shutdown, methods=["POST"])
-        app.router.routes.append(WebSocketRoute("/streams/{streamId}", streams))
+        app.add_route("/time", server_time, methods=["GET"])
+        app.add_route("/streams/{streamId}", stream_events, methods=["GET"])
         app.add_middleware(BearerAuth, token=self.config.token)
         app.state.service = self
         return app

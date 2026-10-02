@@ -32,7 +32,7 @@ export function ComponentLibrary({ enabled, onAdd, onAddServer }: {
       {categoryOrder.map((category) => (
         <Section key={category} title={category}>
           <div className="grid gap-1">
-            {category !== "硬件动作"
+            {category !== "硬件"
               ? (grouped.get(category) ?? []).map((item) => (
                 <CatalogRow key={item.type} item={item} disabled={!enabled} onAdd={() => onAdd(item)} />
               ))
@@ -45,7 +45,7 @@ export function ComponentLibrary({ enabled, onAdd, onAddServer }: {
                   onAdd={() => onAddServer(item)}
                 />
               ))}
-            {category === "硬件动作" && !managed.length && (
+            {category === "硬件" && !managed.length && (
               <EmptyState compact title="没有受管设备" description="在设备管理中添加 managed hardware。" />
             )}
           </div>

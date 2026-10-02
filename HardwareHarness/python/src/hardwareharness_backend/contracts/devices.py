@@ -39,12 +39,15 @@ remote_computer_schema = obj(
         else []
     )
 )
+# Overrides only (design doc 4.8.2): a service installed from a bundle derives every command from
+# its ``root``; non-standard installs (FireDAP, a local process) name theirs here.
 server_lifecycle_schema = obj(
     {
-        "statusCommand": string(1),
-        "startCommand": string(1),
-        "stopCommand": string(1),
-        "logPath": string(1),
+        "statusCommand": string(1).optional(),
+        "startCommand": string(1).optional(),
+        "stopCommand": string(1).optional(),
+        "forceStopCommand": string(1).optional(),
+        "logPath": string(1).optional(),
     },
     strict=True,
 )
@@ -52,19 +55,49 @@ mcp_http_server_schema = obj(
     {
         "transport": literal("mcp-http"),
         "serverId": string(1),
-        "computerId": string(1),
+        # Absent: an unmanaged service added by URL + token; usable, but not started or stopped.
+        "computerId": string(1).optional(),
         "label": string(1),
         "hardwareId": string(1),
         "url": string(url=True),
         "enabled": boolean().default(True),
-        "lifecycle": server_lifecycle_schema,
+        # Install directory on the computer (``services.json`` ``root``); lifecycle derives from it.
+        "root": string(1).optional(),
+        "lifecycle": server_lifecycle_schema.optional(),
     },
     strict=True,
 )
+# Adapter release (design doc 8.4): "developing" until --check, the simulator tests and a manual
+# bench smoke record (operator, time, wiring, observation) all exist.
+adapter_status_schema = enum("developing", "available")
+adapter_evidence_schema = obj(
+    {"at": string(datetime=True, offset=True), "note": string().default("")}, strict=True
+)
+adapter_smoke_schema = obj(
+    {
+        "operator": string(1),
+        "at": string(datetime=True, offset=True),
+        "wiring": string(1),
+        "observation": string(1),
+    },
+    strict=True,
+)
+adapter_record_schema = obj(
+    {
+        "hardwareId": string(1),
+        "status": adapter_status_schema.default("developing"),
+        "check": adapter_evidence_schema.optional(),
+        "simulator": adapter_evidence_schema.optional(),
+        "smoke": array(adapter_smoke_schema).default([]),
+    },
+    strict=True,
+)
+ADAPTER_GATES = ("check", "simulator", "smoke")
+"""What an adapter needs before it may be marked available."""
 hardware_state_schema = enum("initializing", "open", "unreachable", "faulted", "closing", "closed")
 _managed_fields = {
     "hardwareId": string(1),
-    "computerId": string(1),
+    "computerId": string(1).optional(),
     "serverId": string(1),
     "state": hardware_state_schema,
     "health": string(),
@@ -110,8 +143,8 @@ stored_hardware_definition_schema = obj(
 
 def _hardware_issues(value: Any) -> list[Record]:
     issues: list[Record] = []
-    if value["kind"] == "managed" and (not value.get("serverId") or not value.get("computerId")):
-        issues.append(custom_issue("Managed hardware requires serverId and computerId"))
+    if value["kind"] == "managed" and not value.get("serverId"):
+        issues.append(custom_issue("Managed hardware requires serverId"))
     if value["kind"] == "passive" and (value.get("serverId") or value.get("computerId")):
         issues.append(custom_issue("Passive hardware cannot reference remote infrastructure"))
     ports: set[str] = set()
@@ -139,6 +172,8 @@ hardware_schema = obj(
         "computerId": string(1).optional(),
         "ports": array(hardware_port_schema).default([]),
         "appearanceAssetId": string(1).optional(),
+        # Managed hardware only, derived from the adapter record; ignored when saving.
+        "adapterStatus": adapter_status_schema.optional(),
     }
 ).refine(_hardware_issues)
 hardware_image_target_schema = obj(
@@ -182,6 +217,15 @@ def parse_managed_hardware(value: Any) -> Record:
 
 def parse_reported_managed_hardware(value: Any) -> Record:
     return parse_record(reported_managed_hardware_schema, value)
+
+
+def parse_adapter_record(value: Any) -> Record:
+    return parse_record(adapter_record_schema, value)
+
+
+def adapter_release_gaps(record: Record) -> list[str]:
+    """The release gates (``ADAPTER_GATES``) the adapter record does not meet yet."""
+    return [gate for gate in ADAPTER_GATES if not record.get(gate)]
 
 
 def parse_hardware_image_target(value: Any) -> Record:

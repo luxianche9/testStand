@@ -1,16 +1,11 @@
 """Removed workflow APIs must not remain reachable through desktop or Agent transports."""
 
-import io
 from pathlib import Path
-from types import SimpleNamespace
-from typing import cast
 
 import pytest
 
-from hardwareharness_backend.contracts.errors import AppError
 from hardwareharness_backend.contracts.execution import parse_execution_activity
-from hardwareharness_backend.host.rpc import StdioRpc
-from hardwareharness_backend.host.runtime import HUMAN, HostRuntime, Services
+from hardwareharness_backend.host.runtime import SERVICE_OPERATIONS
 from hardwareharness_backend.mcp_gateway.redaction import redact
 from hardwareharness_backend.mcp_gateway.tool_registry import BUILTIN_TOOLS
 from hardwareharness_backend.storage import SettingsStore
@@ -31,11 +26,9 @@ async def test_old_page_preferences_fall_back_without_losing_settings(
 
 
 @pytest.mark.parametrize("method", ["listFlows", "startFlow", "startRun", "listRuns", "deleteRun"])
-async def test_retired_desktop_routes_are_rejected(method: str) -> None:
-    runtime = HostRuntime(StdioRpc(io.BytesIO(), io.BytesIO()))
-    runtime.services = cast(Services, SimpleNamespace())
-    with pytest.raises(AppError, match="Unknown backend method"):
-        await runtime.dispatch(f"application.applications.{method}", {"args": [HUMAN]})
+def test_retired_desktop_routes_are_not_operations(method: str) -> None:
+    assert f"applications.{method}" not in SERVICE_OPERATIONS
+    assert not any(name.startswith("applications.") for name in SERVICE_OPERATIONS)
 
 
 def test_agent_catalog_has_testing_but_no_legacy_workflow_or_script_tools() -> None:

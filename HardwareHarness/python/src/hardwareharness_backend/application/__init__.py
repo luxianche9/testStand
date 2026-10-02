@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from hardwareharness_backend.contracts.operations import desktop_methods
+from hardwareharness_backend.contracts.operations import collect_operations
+from hardwareharness_backend.devices.leases import LeaseManager
+from hardwareharness_backend.projects.icd_library import IcdLibrary
 from hardwareharness_backend.testing import TestEngine, TestingApplication, TestPlanStore
 from hardwareharness_backend.testing.resolver import DeviceToolResolver
 
@@ -41,23 +43,19 @@ from .services import (
 from .services import (
     WiringApplication as WiringApplication,
 )
+from .streams import StreamsApplication as StreamsApplication
 
 NAMESPACES: dict[str, type] = {
     "devices": DevicesApplication,
+    "streams": StreamsApplication,
     "projects": ProjectsApplication,
     "wiring": WiringApplication,
     "manual": ManualControlApplication,
     "testing": TestingApplication,
     "system": SystemApplication,
 }
-DESKTOP_METHODS = desktop_methods(NAMESPACES)
-"""Wire name ``namespace.camelMethod`` to ``(namespace, snake_method)`` for every operation."""
-
-
-def operation_capability(path: str) -> str:
-    """Capability declared by the ``@operation`` on ``namespace.snake_method``."""
-    namespace, method = path.split(".")
-    return str(getattr(NAMESPACES[namespace], method).capability)
+OPERATIONS = collect_operations(NAMESPACES)
+"""Every ``@operation`` by its wire name ``namespace.camelMethod``, collected once."""
 
 
 class HardwareHarnessApplication:
@@ -66,7 +64,7 @@ class HardwareHarnessApplication:
     def __init__(self, dependencies: dict[str, Any]) -> None:
         execution = dependencies.get("execution") or ExecutionCoordinator()
         test_resolver = dependencies.get("test_resolver") or DeviceToolResolver(
-            dependencies["devices"], dependencies["catalog"]
+            dependencies["devices"], dependencies["catalog"], IcdLibrary(dependencies["projects"])
         )
         test_plan_store = dependencies.get("test_plan_store") or TestPlanStore(
             dependencies["projects"],
@@ -74,6 +72,12 @@ class HardwareHarnessApplication:
             dependencies.get("test_step_plugins", []),
             dependencies.get("wiring"),
         )
+        leases = dependencies.get("leases") or getattr(
+            dependencies.get("test_engine"), "leases", None
+        )
+        if not isinstance(leases, LeaseManager):
+            leases = LeaseManager(dependencies["devices"], {"terminalId": "application"})
+        self.leases = leases
         test_engine = dependencies.get("test_engine") or TestEngine(
             dependencies["projects"],
             dependencies["devices"],
@@ -81,10 +85,18 @@ class HardwareHarnessApplication:
             execution,
             dependencies.get("test_step_plugins", []),
             runtime_state=test_plan_store.runtime,
+            leases=leases,
         )
         self.authorizer: Authorizer = dependencies.get("authorizer") or DefaultAuthorizer()
         self.devices = DevicesApplication(
-            self.authorizer, dependencies["devices"], dependencies["catalog"], execution
+            self.authorizer, dependencies["devices"], dependencies["catalog"], execution, leases
+        )
+        self.streams = StreamsApplication(
+            self.authorizer,
+            dependencies["devices"],
+            dependencies.get("live_streams"),
+            leases,
+            runs=test_engine,
         )
         self.projects = ProjectsApplication(
             self.authorizer,
@@ -96,7 +108,7 @@ class HardwareHarnessApplication:
             self.authorizer, dependencies["projects"], dependencies["wiring"]
         )
         self.manual = ManualControlApplication(
-            self.authorizer, dependencies["devices"], dependencies["catalog"], execution
+            self.authorizer, dependencies["devices"], dependencies["catalog"], execution, leases
         )
         self.testing = TestingApplication(
             self.authorizer,
@@ -107,5 +119,9 @@ class HardwareHarnessApplication:
             dependencies.get("test_step_plugins", []),
         )
         self.system = SystemApplication(
-            self.authorizer, dependencies["devices"], dependencies["system"], execution
+            self.authorizer,
+            dependencies["devices"],
+            dependencies["system"],
+            execution,
+            dependencies.get("confirmations"),
         )

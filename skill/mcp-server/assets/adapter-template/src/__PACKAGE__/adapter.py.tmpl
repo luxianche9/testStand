@@ -6,9 +6,11 @@ shadow, measured value) and what it does not prove.
 
 The skeleton is a digital I/O card: ``set_output`` drives one output,
 ``read_inputs`` reads the input bitmap, ``safe_state`` drives every output to
-its safe level. ``di`` is sampled while someone watches it; ``do`` pushes the
-software shadow after each accepted write. Replace them with the real device's
-operations; keep the patterns.
+its safe level. ``di`` is a sampled bits stream (the SDK polls it only while
+someone watches, and publishes only changes); ``do`` is published by the write
+path after every accepted write. Replace them with the real device's
+operations; keep the patterns. The service reports levels and state only;
+pass/fail judging belongs to the test step.
 """
 
 from __future__ import annotations
@@ -18,19 +20,16 @@ from typing import Any
 from hardwareharness_device_sdk import (
     DEVICE_UNREACHABLE,
     INVALID_ARGUMENT,
+    BitsStream,
     Device,
     DeviceError,
-    PanelItem,
     Pinout,
-    SampledStream,
     ServerConfig,
-    Stream,
     model,
     param,
     tool,
 )
 
-from . import panel as panel_items
 from .driver import VendorDriver
 from .pinout import pinout as build_pinout
 from .sim import SimulatedDriver
@@ -45,7 +44,7 @@ Inputs = model("InputsResult", bits=(int, "Input bitmap read from the controller
                count=(int, "Number of valid bits."))
 SafeOutputs = model("SafeOutputsResult", mask=(int, "Output bitmap after the safe action, bit0=DO0; all low."))
 
-OutputChannel = param(int, f"Zero-based output channel 0..{OUTPUT_COUNT - 1}; see get_pinout channelIndex.",
+OutputChannel = param(int, f"Zero-based output channel 0..{OUTPUT_COUNT - 1}; see the /device pinout channelIndex.",
                       ge=0, le=OUTPUT_COUNT - 1)
 Level = param(bool, "true drives the output high (active), false low. No pulse, no auto-reset.")
 
@@ -58,6 +57,8 @@ class __CLASS__(Device):
     version = "0.1.0"
     instructions = ("__MANUFACTURER__ __MODEL__. TODO(new_device): two sentences for the AI: what the device does, "
                     "which tool to call first, what every output does physically.")
+    description = ("__MANUFACTURER__ __MODEL__. TODO(new_device): one paragraph for /device from the manual: bus, "
+                   "channel counts and ranges, connectors, hardware switches software cannot see.")
 
     def __init__(self, config: ServerConfig) -> None:
         super().__init__(config)
@@ -66,14 +67,16 @@ class __CLASS__(Device):
         self.driver = self.select_driver(lambda: VendorDriver(config.settings.get("dllPath")), SimulatedDriver)
         self.handle: int | None = None
         self.shadow = 0
-        self.do = self.streams.add(Stream(
-            "do", label=f"DO0..{OUTPUT_COUNT - 1}", value_schema={"type": "integer", "minimum": 0},
-            description="Software shadow of accepted writes, bit0=DO0; not a line measurement.",
-            meta={"bits": OUTPUT_COUNT}, capacity=1024))
-        self.streams.add(SampledStream(
-            "di", label=f"DI0..{INPUT_COUNT - 1}", rate_hz=float(config.settings.get("inputRateHz", 5)),
-            sample=self._sample_inputs, value_schema={"type": "integer", "minimum": 0},
-            description="Input bitmap read from the controller, bit0=DI0.", meta={"bits": INPUT_COUNT}))
+        self.input_rate_hz = float(config.settings.get("inputRateHz", 20))
+        # Stream ids match the tool channel naming; the metadata (bit labels, label, kind) is declared in
+        # /device.streams and is never linked to tools or pins in code.
+        # do: bit i = DO i, published by the write path (this card has no output readback): a setpoint shadow.
+        self.do = self.streams.add(BitsStream("do", bit_labels=[f"DO{n}" for n in range(OUTPUT_COUNT)],
+                                              label="Accepted output mask", kind="setpoint"))
+        # di: bit i = DI i; one register read per sample, only changes are recorded.
+        self.di = self.streams.add(BitsStream("di", sample=self._sample_inputs, publish_on_change=True,
+                                              rate_hz=self.input_rate_hz,
+                                              bit_labels=[f"DI{n}" for n in range(INPUT_COUNT)], kind="measured"))
 
     # --- lifecycle ----------------------------------------------------
     def open(self) -> dict[str, Any]:
@@ -105,10 +108,11 @@ class __CLASS__(Device):
             raise DeviceError(f"write_outputs failed rc={rc}", details={"rc": rc, "requested": mask,
                                                                          "last_accepted": self.shadow})
         self.shadow = mask
-        self.do.publish(mask, source="software_shadow")
+        # Write-then-publish: with a readback primitive, publish the readback in a finally block instead.
+        self.do.publish(mask)
 
     def _sample_inputs(self) -> int:
-        # Runs under the device operation lock, interleaved with tool calls; must not actuate anything.
+        # Runs on the SDK sampler thread under io_lock, interleaved with tool calls; must not actuate anything.
         rc, bits = self.driver.read_inputs(self._require_open())
         if rc != 0:
             raise DeviceError(f"read_inputs failed rc={rc}", details={"rc": rc})
@@ -118,7 +122,7 @@ class __CLASS__(Device):
     @tool(kind="actuate", output=Output, safety_action="safe_state", effects=("output_driven",),
           description="Drive one digital output high or low. The result is the level the driver accepted, not a "
                       "measured line state; other outputs keep their level. Never re-send after a timeout: read "
-                      "the do stream or measure first.")
+                      "the do stream first.")
     def set_output(self, channel: OutputChannel, level: Level) -> dict[str, Any]:
         # Schema validation already rejects this; keep the driver unreachable for direct callers too.
         if not 0 <= channel < OUTPUT_COUNT:
@@ -149,6 +153,7 @@ class __CLASS__(Device):
             "inputs": {"minimum": 0, "maximum": INPUT_COUNT - 1},
             "safeOutputLevel": "low",
             "outputReadback": False,
+            "inputRateHz": self.input_rate_hz,
         }
 
     def pinout(self) -> Pinout:
@@ -156,6 +161,3 @@ class __CLASS__(Device):
         if result is None:
             return super().pinout()  # not_supported until the connector table is filled in
         return result
-
-    def panel(self) -> list[PanelItem]:
-        return panel_items.items(OUTPUT_COUNT, INPUT_COUNT)

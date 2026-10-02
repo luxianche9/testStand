@@ -28,3 +28,7 @@ playwright-report/
 test-results/
 
 examples/
+
+# build outputs
+build/
+.import_linter_cache/

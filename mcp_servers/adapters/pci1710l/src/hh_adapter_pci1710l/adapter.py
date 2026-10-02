@@ -1,4 +1,10 @@
-"""Advantech PCI-1710L: 16 AI + 16 DI + 16 DO (the L model has no AO), via hwcli_pci1710l."""
+"""Advantech PCI-1710L: 16 AI + 16 DI + 16 DO (the L model has no AO), via hwcli_pci1710l.
+
+Streams: ``ai0..15`` (scalar, one scan group sharing ``t``; unconfigured
+channels report ``not_configured``; ``read_voltage`` results are published
+too), ``di`` (bits, sampled, only on change) and ``do`` (bits, controller
+readback published right after every output write).
+"""
 
 from __future__ import annotations
 
@@ -7,12 +13,12 @@ from typing import Any, Literal
 
 from hardwareharness_device_sdk import (
     NOT_CONFIGURED,
+    BitsStream,
     Device,
     DeviceError,
     JsonLineBackend,
-    PanelItem,
     Pinout,
-    SampledStream,
+    ScalarStream,
     ServerConfig,
     model,
     param,
@@ -20,7 +26,6 @@ from hardwareharness_device_sdk import (
     unwrap,
 )
 
-from . import panel as panel_items
 from .driver import hwcli
 from .pinout import pinout as build_pinout
 from .sim import SimulatedHwcli
@@ -46,7 +51,7 @@ Level = model("LevelResult", channel=(int, "DO channel 0..15."), level=(bool, "C
 SafeDo = model("SafeDoResult", safe_do_mask=(int, "Effective configured 16-bit output safe mask; not necessarily zero."))
 
 Channel = param(int, "Zero-based hardware channel; use the pinout's channelIndex.", ge=0, le=CHANNELS - 1)
-SignalType = param(Literal[0, 1], "0=SingleEnded; 1=Differential. Check physical pairing in get_pinout/manual.")
+SignalType = param(Literal[0, 1], "0=SingleEnded; 1=Differential. Check physical pairing in the /device pinout or manual.")
 ValueRange = param(Literal[1, 2, 3, 4, 12, 7, 8, 9, 10],
                    "V ranges: 1=±10, 2=±5, 3=±2.5, 4=±1.25, 12=±0.625, 7=0..10, 8=0..5, 9=0..2.5, 10=0..1.25. "
                    "Driver validates model support.")
@@ -70,32 +75,29 @@ class Pci1710l(Device):
     version = "0.2.0"
     instructions = ("One MCP Server controls exactly one PCI-1710L. configure_ai before read_voltage; "
                     "set_level actuates DO; safe_state applies the configured safe DO mask.")
+    description = ("Advantech PCI-1710L multifunction PCI card: 16 single-ended / 8 differential 12-bit analog "
+                   "inputs, 16 digital inputs and 16 digital outputs on a 68-pin SCSI connector (CN1). The L model "
+                   "has no analog output. AI readings are ADC samples; DO values are controller readback, not a "
+                   "measurement at the load.")
 
     def __init__(self, config: ServerConfig) -> None:
         super().__init__(config)
         settings = config.settings
-        self.description = str(settings.get("description", os.environ.get("ADVANTECH_PCI1710L_DESC",
-                                                                          DEFAULT_DESCRIPTION)))
+        self.board_description = str(settings.get("description", os.environ.get("ADVANTECH_PCI1710L_DESC",
+                                                                                DEFAULT_DESCRIPTION)))
         self.startup_safe_mask = configured_safe_mask(settings)
         self.active_safe_mask: int | None = None
         self.cli: JsonLineBackend = self.select_driver(lambda: hwcli(settings), SimulatedHwcli)
         self.ai_config: dict[int, dict[str, Any]] = {}
-        rate = float(settings.get("aiRateHz", 10))
-        for channel in range(CHANNELS):
-            self.streams.add(SampledStream(
-                f"ai{channel}", label=f"AI{channel}", unit="V", channel=channel, rate_hz=rate,
-                sample=lambda channel=channel: self._sample_ai(channel), requires=("analog_input_configured",),
-                value_schema={"type": "number"}, description="ADC sample in V; configure_ai first.",
-                capacity=4096))
-        bits = float(settings.get("bitRateHz", 5))
-        self.streams.add(SampledStream("di", label="DI0..15", rate_hz=bits, sample=lambda: self._sample_bits("DI"),
-                                       value_schema={"type": "integer", "minimum": 0, "maximum": 0xFFFF},
-                                       description="Input bitmap, bit0=DI0.", meta={"bits": CHANNELS}))
-        self.streams.add(SampledStream("do", label="DO0..15 readback", rate_hz=bits,
-                                       sample=lambda: self._sample_bits("DO"),
-                                       value_schema={"type": "integer", "minimum": 0, "maximum": 0xFFFF},
-                                       description="DO controller readback bitmap, bit0=DO0; not load voltage.",
-                                       meta={"bits": CHANNELS}))
+        self.mask_command = True
+        self.ai = [self.streams.add(ScalarStream(f"ai{channel}", unit="V", label=f"AI{channel}", kind="measured"))
+                   for channel in range(CHANNELS)]
+        self.streams.scan(self.ai, self._scan_ai, rate_hz=float(settings.get("aiRateHz", 20)))
+        self.di = self.streams.add(BitsStream("di", sample=lambda: self._read_mask("DI"), publish_on_change=True,
+                                              rate_hz=float(settings.get("bitRateHz", 20)),
+                                              bit_labels=[f"DI{bit}" for bit in range(CHANNELS)], kind="measured"))
+        self.do = self.streams.add(BitsStream("do", bit_labels=[f"DO{bit}" for bit in range(CHANNELS)],
+                                              label="DO controller readback"))
 
     def _request(self, command: dict[str, Any]) -> Any:
         return unwrap(self.cli.call(command))
@@ -103,9 +105,11 @@ class Pci1710l(Device):
     # --- lifecycle ----------------------------------------------------
     def open(self) -> Any:
         self.ai_config.clear()
-        result = self._request({"cmd": "open", "description": self.description,
+        result = self._request({"cmd": "open", "description": self.board_description,
                                 "safe_do_mask": self.startup_safe_mask})
         self.active_safe_mask = self.startup_safe_mask
+        # read_mask reads a whole kind in one round trip; older hwcli builds only know read_bit.
+        self.mask_command = bool(self.cli.call({"cmd": "read_mask", "kind": "DI"}).get("ok"))
         return result
 
     def close(self) -> Any:
@@ -117,17 +121,36 @@ class Pci1710l(Device):
             self.cli.stop()
 
     # --- sampling -----------------------------------------------------
-    def _sample_ai(self, channel: int) -> float:
-        if channel not in self.ai_config:
-            raise DeviceError(f"AI{channel} is not configured; call configure_ai first", category=NOT_CONFIGURED)
-        return float(self._request({"cmd": "read_voltage", "channel": channel})["volts"])
+    def _read_ai(self, channel: int) -> dict[str, Any]:
+        result = self._request({"cmd": "read_voltage", "channel": channel})
+        self.ai[channel].publish(float(result["volts"]))
+        return result
 
-    def _sample_bits(self, kind: str) -> int:
+    def _scan_ai(self) -> list[float | None]:
+        """One scan over the configured channels; the others yield ``None`` (not_configured)."""
+        if not self.ai_config:
+            raise DeviceError("No AI channel configured; call configure_ai first", category=NOT_CONFIGURED)
+        return [float(self._request({"cmd": "read_voltage", "channel": channel})["volts"])
+                if channel in self.ai_config else None for channel in range(CHANNELS)]
+
+    def _read_mask(self, kind: str) -> int:
+        if self.mask_command:
+            return int(self._request({"cmd": "read_mask", "kind": kind})["mask"])
         mask = 0
         for channel in range(CHANNELS):
             if self._request({"cmd": "read_bit", "channel": channel, "kind": kind}).get("value"):
                 mask |= 1 << channel
         return mask
+
+    def _write(self, command: dict[str, Any]) -> Any:
+        """Send a DO write, then publish the controller readback so the stream shows the effect at once."""
+        try:
+            return self._request(command)
+        finally:
+            try:
+                self.do.publish(self._read_mask("DO"))
+            except DeviceError:
+                pass  # the write error (if any) is the one that matters
 
     # --- tools --------------------------------------------------------
     @tool(kind="configure", output=AiConfig, effects=("analog_input_configured",),
@@ -145,7 +168,7 @@ class Pci1710l(Device):
                       "reading alone does not identify the connected source, validate ground wiring or prove the DUT "
                       "behavior.")
     def read_voltage(self, channel: Channel) -> Any:
-        return self._request({"cmd": "read_voltage", "channel": channel})
+        return self._read_ai(channel)
 
     @tool(kind="read", output=Bit, evidence="measurement",
           description="Read DI or DO-controller feedback on channel 0..15. DI is an electrical input sample; DO is "
@@ -157,14 +180,14 @@ class Pci1710l(Device):
           description="Drive one DO channel 0..15 to the requested logic level. This changes real electrical outputs; "
                       "successful driver acceptance is not a measurement of the load.")
     def set_level(self, channel: Channel, level: LevelParam) -> Any:
-        return self._request({"cmd": "set_level", "channel": channel, "level": level})
+        return self._write({"cmd": "set_level", "channel": channel, "level": level})
 
     @tool(kind="safe", output=SafeDo,
           description="Apply the configured safe_do_mask to all 16 digital outputs. The mask can be nonzero; "
                       "get_hardware_info publishes its effective value. Failure may leave a partial state; do not "
                       "assume outputs are de-energized.")
     def safe_state(self) -> Any:
-        return self._request({"cmd": "safe_state"})
+        return self._write({"cmd": "safe_state"})
 
     # --- declarations -------------------------------------------------
     def capability_details(self) -> dict[str, Any]:
@@ -182,6 +205,3 @@ class Pci1710l(Device):
 
     def pinout(self) -> Pinout:
         return build_pinout(self.hardware_id)
-
-    def panel(self) -> list[PanelItem]:
-        return panel_items.items(self.hardware_id)

@@ -41,7 +41,7 @@ export function IssuesDialog({ open, issues, onSelect, onClose }: {
 }
 
 /** Validation issues grouped by category (结构 / 类型 / 设备 / 接线 / 安全 / 覆盖). */
-export function IssueList({ issues, onSelect }: {
+function IssueList({ issues, onSelect }: {
   issues: TestPlanIssue[];
   onSelect?: (issue: TestPlanIssue) => void;
 }) {

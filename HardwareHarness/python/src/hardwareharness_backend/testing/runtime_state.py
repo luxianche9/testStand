@@ -11,7 +11,17 @@ from typing import Any, cast
 from hardwareharness_backend.contracts.errors import app_error
 from hardwareharness_backend.util import clone, utc_now_iso
 
+from .journal import read_summary
+
 Record = dict[str, Any]
+
+
+_CALL_FIELDS = ("arguments", "timing", "streamRefs", "error")
+
+
+def _call(operation: Record) -> Record:
+    """The call-record fields kept as JSON: arguments, timing, stream refs and error."""
+    return {key: operation[key] for key in _CALL_FIELDS if key in operation}
 
 
 def payload_hash(value: Any) -> str:
@@ -37,6 +47,11 @@ class RuntimeStateStore:
         if self._initialized_path == current:
             return
         with self._connect() as database:
+            columns = {
+                str(row[1]) for row in database.execute("PRAGMA table_info(operations)").fetchall()
+            }
+            if columns and "call_json" not in columns:
+                database.execute("DROP TABLE operations")
             database.executescript(
                 """
                 CREATE TABLE IF NOT EXISTS requests (
@@ -46,9 +61,11 @@ class RuntimeStateStore:
                 );
                 CREATE TABLE IF NOT EXISTS operations (
                     operation_id TEXT PRIMARY KEY, run_id TEXT NOT NULL, hardware_id TEXT NOT NULL,
-                    tool_name TEXT NOT NULL, input_hash TEXT NOT NULL, state TEXT NOT NULL,
+                    tool_name TEXT NOT NULL, call_json TEXT NOT NULL, state TEXT NOT NULL,
                     outcome_known INTEGER NOT NULL, recovery_required INTEGER NOT NULL,
-                    result_json TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+                    result_json TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+                    resolved_by_operation_id TEXT, resolved_at TEXT, step_id TEXT,
+                    execution_id TEXT
                 );
                 CREATE INDEX IF NOT EXISTS operations_run_idx ON operations(run_id);
                 CREATE TABLE IF NOT EXISTS runs (
@@ -71,17 +88,6 @@ class RuntimeStateStore:
                 );
                 """
             )
-            operation_columns = {
-                str(row[1]) for row in database.execute("PRAGMA table_info(operations)").fetchall()
-            }
-            if "resolved_by_operation_id" not in operation_columns:
-                database.execute("ALTER TABLE operations ADD COLUMN resolved_by_operation_id TEXT")
-            if "resolved_at" not in operation_columns:
-                database.execute("ALTER TABLE operations ADD COLUMN resolved_at TEXT")
-            if "step_id" not in operation_columns:
-                database.execute("ALTER TABLE operations ADD COLUMN step_id TEXT")
-            if "execution_id" not in operation_columns:
-                database.execute("ALTER TABLE operations ADD COLUMN execution_id TEXT")
             self._recover_interrupted(database)
             self._import_legacy_requests(database)
         self._initialized_path = current
@@ -132,7 +138,7 @@ class RuntimeStateStore:
         with self._connect() as database:
             database.execute(
                 "INSERT INTO operations "
-                "(operation_id,run_id,hardware_id,tool_name,input_hash,state,"
+                "(operation_id,run_id,hardware_id,tool_name,call_json,state,"
                 "outcome_known,recovery_required,result_json,created_at,updated_at,"
                 "step_id,execution_id) "
                 "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
@@ -141,7 +147,7 @@ class RuntimeStateStore:
                     operation["runId"],
                     operation["hardwareId"],
                     operation["toolName"],
-                    operation["inputHash"],
+                    json.dumps(_call(operation), ensure_ascii=False),
                     operation["state"],
                     int(operation.get("outcomeKnown", True)),
                     int(operation.get("recoveryRequired", False)),
@@ -165,10 +171,14 @@ class RuntimeStateStore:
             "resolvedAt",
         }
         values = {key: value for key, value in changes.items() if key in allowed}
-        if not values:
+        call = {key: value for key, value in changes.items() if key in _CALL_FIELDS}
+        if not values and not call:
             return
         assignments: list[str] = []
         parameters: list[Any] = []
+        if call:
+            assignments.append("call_json=json_patch(call_json,?)")
+            parameters.append(json.dumps(call, ensure_ascii=False))
         for key, value in values.items():
             column = {
                 "outcomeKnown": "outcome_known",
@@ -195,7 +205,7 @@ class RuntimeStateStore:
         query = (
             "SELECT operation_id,run_id,hardware_id,tool_name,state,outcome_known,"
             "recovery_required,result_json,resolved_by_operation_id,resolved_at,"
-            "step_id,execution_id FROM operations"
+            "step_id,execution_id,call_json FROM operations"
         )
         clauses, parameters = [], []
         if run_id:
@@ -217,6 +227,7 @@ class RuntimeStateStore:
                 "state": row[4],
                 "outcomeKnown": bool(row[5]),
                 "recoveryRequired": bool(row[6]),
+                **json.loads(row[12]),
                 **({"result": json.loads(row[7])} if row[7] else {}),
                 **({"resolvedByOperationId": row[8]} if row[8] else {}),
                 **({"resolvedAt": row[9]} if row[9] else {}),
@@ -250,6 +261,8 @@ class RuntimeStateStore:
         return self.normalize_run(clone(json.loads(row[0]))) if row else None
 
     def latest_run(self) -> Record | None:
+        if not self.projects.session():
+            return None
         with self._connect() as database:
             row = database.execute(
                 "SELECT snapshot_json FROM runs ORDER BY updated_at DESC LIMIT 1"
@@ -349,6 +362,8 @@ class RuntimeStateStore:
         return cast(Record, json.loads(row[0])) if row else None
 
     def latest_batch(self) -> Record | None:
+        if not self.projects.session():
+            return None
         self.initialize()
         with self._connect() as database:
             row = database.execute(
@@ -409,15 +424,12 @@ class RuntimeStateStore:
             return
         with self._connect() as database:
             known = {row[0] for row in database.execute("SELECT run_id FROM runs").fetchall()}
-            for summary_path in runs_path.glob("*/summary.json"):
-                run_id = summary_path.parent.name
-                if run_id in known:
+            for run_dir in runs_path.iterdir():
+                run_id = run_dir.name
+                if run_id in known or not run_dir.is_dir():
                     continue
-                try:
-                    snapshot = json.loads(summary_path.read_text(encoding="utf-8"))
-                except (OSError, json.JSONDecodeError):
-                    continue
-                if not isinstance(snapshot, dict):
+                snapshot = read_summary(run_dir)
+                if snapshot is None:
                     continue
                 snapshot.setdefault("runId", run_id)
                 if not isinstance(snapshot.get("planId"), str):

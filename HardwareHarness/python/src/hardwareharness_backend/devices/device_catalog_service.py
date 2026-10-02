@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from hardwareharness_backend.contracts.devices import adapter_release_gaps
 from hardwareharness_backend.contracts.errors import app_error
-from hardwareharness_backend.util import json_dumps
+from hardwareharness_backend.util import json_dumps, utc_now_iso
 
 from .device_store import DeviceStore
 
@@ -33,6 +34,55 @@ class DeviceCatalogService:
     async def remove_hardware(self, hardware_id: str) -> None:
         await self.store.remove_hardware(hardware_id)
         self._port_index_signature = ""
+
+    def _managed(self, hardware_id: str) -> Record:
+        hardware = self.store.get_hardware(hardware_id)
+        if hardware is None:
+            raise app_error("not_found", f"Hardware {hardware_id} does not exist")
+        if hardware["kind"] != "managed":
+            raise app_error(
+                "invalid_argument", f"Hardware {hardware_id} has no adapter (it is passive)"
+            )
+        return hardware
+
+    def adapter_status(self, hardware_id: str) -> Record:
+        """The adapter release record (design doc 8.4) and the gates it still misses."""
+        self._managed(hardware_id)
+        record = self.store.get_adapter(hardware_id)
+        return {**record, "gaps": adapter_release_gaps(record)}
+
+    async def record_adapter_check(self, hardware_id: str, kind: str, note: str = "") -> Record:
+        """``kind`` (``check`` / ``simulator``) passed now."""
+        self._managed(hardware_id)
+        record = self.store.get_adapter(hardware_id)
+        record[kind] = {"at": utc_now_iso(), "note": note}
+        await self.store.save_adapter(record)
+        return self.adapter_status(hardware_id)
+
+    async def record_adapter_smoke(self, hardware_id: str, smoke: Record) -> Record:
+        self._managed(hardware_id)
+        record = self.store.get_adapter(hardware_id)
+        record["smoke"] = [*record["smoke"], {"at": utc_now_iso(), **smoke}]
+        await self.store.save_adapter(record)
+        return self.adapter_status(hardware_id)
+
+    async def set_adapter_status(self, hardware_id: str, status: str) -> Record:
+        self._managed(hardware_id)
+        record = self.store.get_adapter(hardware_id)
+        gaps = adapter_release_gaps(record)
+        if status == "available" and gaps:
+            raise app_error(
+                "conflict",
+                f"Adapter {hardware_id} cannot be marked available yet",
+                {
+                    "gaps": gaps,
+                    "recovery": "Record --check, simulator tests and a manual bench smoke run.",
+                },
+            )
+        record["status"] = status
+        await self.store.save_adapter(record)
+        self._port_index_signature = ""
+        return self.adapter_status(hardware_id)
 
     def hardware_for_server(self, server_id: str) -> Record | None:
         return next(

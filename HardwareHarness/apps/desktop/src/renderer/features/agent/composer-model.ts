@@ -3,7 +3,7 @@ import { type OpencodeClient, type Session, useOpenCodeSession } from "@assistan
 import { useEffect, useRef, useState } from "react";
 import { errorMessage } from "../../lib/errors.js";
 
-export type OpenCodeModelOption = {
+type OpenCodeModelOption = {
   providerID: string;
   modelID: string;
   name: string;
@@ -11,7 +11,7 @@ export type OpenCodeModelOption = {
   context?: number;
 };
 
-export type OpenCodeAgentOption = {
+type OpenCodeAgentOption = {
   id: string;
   description?: string;
   mode: "subagent" | "primary" | "all";
@@ -118,7 +118,7 @@ export function useOpenCodeCatalog(client: OpencodeClient, fallbackModelID: stri
   return catalog;
 }
 
-export function readRecentFiles() {
+function readRecentFiles() {
   try {
     const value = JSON.parse(localStorage.getItem(RECENT_FILES_KEY) ?? "[]");
     if (!Array.isArray(value)) return [];

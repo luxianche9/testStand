@@ -22,12 +22,16 @@ def load_device(spec: str) -> type[Device]:
 
 
 def check(device_cls: type[Device]) -> int:
-    """Run the compliance suite in-process against the dry-run simulator; never touches hardware."""
+    """Run the compliance suite in-process against the dry-run simulator; never touches hardware.
+
+    Failures break the contract (exit 1); warnings (missing pictures or description) do not.
+    """
     from .testing import check_device, dry_run_config
 
-    failures = check_device(device_cls, dry_run_config(device_cls))
+    warnings: list[str] = []
+    failures = check_device(device_cls, dry_run_config(device_cls), warnings=warnings)
     print(json.dumps({"adapter": f"{device_cls.__module__}.{device_cls.__name__}", "ok": not failures,
-                      "failures": failures}, ensure_ascii=False))
+                      "failures": failures, "warnings": warnings}, ensure_ascii=False))
     return 1 if failures else 0
 
 

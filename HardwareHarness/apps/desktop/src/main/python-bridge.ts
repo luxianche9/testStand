@@ -1,12 +1,23 @@
-import type { ChildProcessWithoutNullStreams } from "node:child_process";
-import { StringDecoder } from "node:string_decoder";
 import type { McpGatewayStatus } from "@hardwareharness/contracts/agents";
-import type { HardwareHarnessEventName } from "@hardwareharness/contracts/desktop";
-import { appError, toWireError, type WireError } from "@hardwareharness/contracts/errors";
+import type { HostOperation } from "@hardwareharness/contracts/application";
+import { appError, type WireError } from "@hardwareharness/contracts/errors";
 import type { ProjectDocument } from "@hardwareharness/contracts/projects";
 import type { UserSettings } from "@hardwareharness/contracts/storage";
-import { decodeProcessValue, encodeProcessValue } from "./python-codec.js";
+import type { LocalApiEndpoint } from "../shared/desktop-ipc.js";
+import { startEventStream } from "../shared/event-stream.js";
+import { createOperationClient, type OperationCall } from "../shared/operation-client.js";
 
+/** The one stdout line the service prints once it listens (design doc §9.4). */
+export interface BackendHandshake {
+  port: number;
+  /** The renderer's token. */
+  token: string;
+  /** Main's own token; only it may call `desktop.*`. */
+  hostToken: string;
+  version: string;
+}
+
+/** `desktop.state`: what main reads synchronously (OpenCode, the gateway, the theme). */
 export interface BackendState {
   generation: number;
   settings: UserSettings;
@@ -18,36 +29,59 @@ export interface BackendState {
   llmApiKeyError?: WireError;
 }
 
-interface BridgeOptions {
-  hostCall(method: string, params: unknown): Promise<unknown>;
-  event(name: HardwareHarnessEventName, payload: unknown, workspaceChanged?: boolean): void;
-  log(message: string): void;
-  failed?(error: Error): void;
+interface BackendProcess {
+  stdin: { end(): void };
+  kill(): boolean;
+  readonly exited: Promise<void>;
 }
 
-export class PythonBridge {
-  private readonly pending = new Map<string, { resolve(value: unknown): void; reject(error: Error): void }>();
-  private counter = 0;
-  private buffered = "";
-  private readonly decoder = new StringDecoder("utf8");
-  private currentState: BackendState | undefined;
-  private failure: Error | undefined;
-  private readonly exited: Promise<void>;
-  private resolveExited!: () => void;
+export interface BackendClientOptions {
+  handshake: BackendHandshake;
+  process: BackendProcess;
+  /** Every backend event, after the state it announces has been fetched. */
+  event(event: string, payload: unknown): void;
+  log(message: string, error?: unknown): void;
+  fetch?: typeof fetch;
+  shutdownTimeoutMs?: number;
+}
 
-  constructor(private readonly child: ChildProcessWithoutNullStreams, private readonly options: BridgeOptions) {
-    this.exited = new Promise((resolve) => { this.resolveExited = resolve; });
-    child.stdout.on("data", (chunk: Buffer) => this.read(this.decoder.write(chunk)));
-    child.stderr.setEncoding("utf8");
-    child.stderr.on("data", (chunk: string) => options.log(chunk));
-    child.on("error", (error) => this.fail(error));
-    child.on("exit", (code, signal) => {
-      this.fail(appError("unavailable", `Python backend exited (${String(code ?? signal)})`));
-      this.resolveExited();
+/**
+ * Main's view of the Python service: `desktop.*` over HTTP with the host token, a cached
+ * `desktop.state` refetched after each of those calls and on every `state`/`gap` event, and
+ * the SSE stream from its first event so nothing published during startup is missed.
+ */
+export class BackendClient {
+  /** The renderer's endpoint, handed to the preload over IPC. */
+  readonly api: LocalApiEndpoint;
+  private readonly request: OperationCall;
+  private currentState: BackendState | undefined;
+  private stopEvents: (() => void) | undefined;
+  private refreshing: Promise<void> | undefined;
+  private refreshAgain = false;
+
+  constructor(private readonly options: BackendClientOptions) {
+    const url = `http://127.0.0.1:${options.handshake.port}`;
+    this.api = { url, token: options.handshake.token };
+    const host: LocalApiEndpoint = { url, token: options.handshake.hostToken };
+    this.request = createOperationClient({ endpoint: async () => host, ...(options.fetch ? { fetch: options.fetch } : {}) });
+  }
+
+  /** Fetch the first state and follow the event stream. */
+  async start(): Promise<void> {
+    await this.refresh();
+    const host: LocalApiEndpoint = { url: this.api.url, token: this.options.handshake.hostToken };
+    this.stopEvents = startEventStream({
+      endpoint: async () => host,
+      forgetEndpoint: () => undefined,
+      dispatch: (event, payload) => void this.receive(event, payload),
+      after: "0",
+      ...(this.options.fetch ? { fetch: this.options.fetch } : {})
     });
-    child.on("close", () => this.resolveExited());
-    child.stdin.on("error", (error) => this.fail(error));
-    child.stdout.on("end", () => this.fail(appError("unavailable", "Python backend pipe closed")));
+  }
+
+  /** Both tokens, for log redaction. */
+  get tokens(): string[] {
+    return [this.options.handshake.token, this.options.handshake.hostToken];
   }
 
   get state(): BackendState {
@@ -55,81 +89,65 @@ export class PythonBridge {
     return this.currentState;
   }
 
-  call<T = unknown>(method: string, params?: unknown): Promise<T> {
-    if (this.failure) return Promise.reject(this.failure);
-    const id = `main:${++this.counter}`;
-    return new Promise<T>((resolve, reject) => {
-      this.pending.set(id, { resolve: (value) => resolve(value as T), reject });
-      try { this.send({ jsonrpc: "2.0", id, method, params: encodeProcessValue(params) }); }
-      catch (error) { this.pending.delete(id); reject(error); }
-    });
-  }
-
-  async shutdown(): Promise<void> {
+  /** A `desktop.*` operation; the state is refetched afterwards, even when it failed, because a
+   * partial commit (settings saved, credential not) must still become visible. */
+  async call<T = unknown>(operation: HostOperation, ...args: unknown[]): Promise<T> {
     try {
-      if (!this.failure) await this.call("backend.shutdown");
+      return await this.request(operation, args) as T;
     } finally {
-      this.child.stdin.end();
-      await this.exited;
+      await this.refresh().catch((error: unknown) => this.options.log("Backend state refresh failed", error));
     }
   }
 
-  private send(frame: Record<string, unknown>): void {
-    this.child.stdin.write(JSON.stringify(frame) + "\n");
-  }
-
-  private applyState(raw: unknown): void {
-    if (raw === undefined) return;
-    const state = decodeProcessValue(raw) as BackendState | null;
-    if (state && typeof state.generation === "number" && (!this.currentState || state.generation >= this.currentState.generation)) this.currentState = state;
-  }
-
-  private read(chunk: string): void {
-    this.buffered += chunk;
-    for (;;) {
-      const index = this.buffered.indexOf("\n");
-      if (index < 0) return;
-      const line = this.buffered.slice(0, index);
-      this.buffered = this.buffered.slice(index + 1);
-      try { this.receive(JSON.parse(line) as Record<string, unknown>); }
-      catch (error) { this.fail(appError("unavailable", `Invalid Python backend frame: ${String(error)}`)); }
+  /** Refetch `desktop.state`; overlapping requests coalesce into one more fetch. */
+  refresh(): Promise<void> {
+    if (this.refreshing) {
+      this.refreshAgain = true;
+      return this.refreshing;
     }
-  }
-
-  private receive(frame: Record<string, unknown>): void {
-    this.applyState(frame.state);
-    if (typeof frame.method === "string") {
-      const params = decodeProcessValue(frame.params);
-      if (typeof frame.id === "string") {
-        // No global await queue: reverse crypto must run while application calls wait.
-        void this.options.hostCall(frame.method, params).then(
-          (value) => this.send({ jsonrpc: "2.0", id: frame.id, result: encodeProcessValue(value) }),
-          (error: unknown) => this.send({ jsonrpc: "2.0", id: frame.id, error: encodeProcessValue(toWireError(error)) })
-        );
-      } else if (frame.method === "desktop.state") {
-        this.applyState(frame.params);
-      } else if (frame.method === "desktop.event") {
-        const value = params as { event: HardwareHarnessEventName; payload: unknown; state?: BackendState; workspaceChanged?: boolean };
-        if (value.state) this.applyState(encodeProcessValue(value.state));
-        if (value.workspaceChanged === undefined) this.options.event(value.event, value.payload);
-        else this.options.event(value.event, value.payload, value.workspaceChanged);
+    this.refreshing = (async () => {
+      try {
+        do {
+          this.refreshAgain = false;
+          this.apply(await this.request("desktop.state", []) as BackendState);
+        } while (this.refreshAgain);
+      } finally {
+        this.refreshing = undefined;
       }
-      return;
-    }
-    const request = this.pending.get(String(frame.id));
-    if (!request) return;
-    this.pending.delete(String(frame.id));
-    if (frame.error !== undefined) {
-      const error = decodeProcessValue(frame.error) as WireError;
-      request.reject(appError(error.category, error.message, error.details));
-    } else request.resolve(decodeProcessValue(frame.result));
+    })();
+    return this.refreshing;
   }
 
-  private fail(error: Error): void {
-    if (this.failure) return;
-    this.failure = "category" in error ? error : appError("unavailable", error.message);
-    for (const request of this.pending.values()) request.reject(this.failure);
-    this.pending.clear();
-    this.options.failed?.(this.failure);
+  /** Closing stdin is the shutdown signal: the service releases devices, then exits. */
+  async shutdown(): Promise<void> {
+    this.stopEvents?.();
+    this.options.process.stdin.end();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<"timeout">((resolve) => { timer = setTimeout(() => resolve("timeout"), this.options.shutdownTimeoutMs ?? 15_000); });
+    try {
+      if (await Promise.race([this.options.process.exited, timeout]) === "timeout") {
+        this.options.log("Python backend did not exit; killing it");
+        this.options.process.kill();
+        await this.options.process.exited;
+      }
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  private apply(state: BackendState): void {
+    if (typeof state?.generation !== "number") throw appError("invalid_response", "desktop.state without a generation");
+    if (!this.currentState || state.generation >= this.currentState.generation) this.currentState = state;
+  }
+
+  private async receive(event: string, payload: unknown): Promise<void> {
+    if (event === "state" || event === "gap") {
+      try {
+        await this.refresh();
+      } catch (error) {
+        this.options.log("Backend state refresh failed", error);
+      }
+    }
+    this.options.event(event, payload);
   }
 }

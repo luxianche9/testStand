@@ -202,6 +202,7 @@ _OPERATION = discriminated(
 _EMPTY = obj({}, strict=True)
 _SAVED_PLAN_ID = obj({"planId": string(1).describe("Saved plan id.")}, strict=True)
 _RUN_ID = obj({"runId": string(1).describe("Run id.")}, strict=True)
+_ICD_NAME = obj({"name": string(1).describe("ICD name (file icd/<name>.icd.yaml).")}, strict=True)
 _BATCH_OUTPUT = _open_object(
     {
         "batchId": {"type": "string"},
@@ -219,34 +220,28 @@ def _testing(*args: Any, **options: Any) -> Tool:
     return Tool(*args, **{**options, "glossary": GLOSSARY})
 
 
-_READ: dict[str, Any] = {"read_only": True}
-_MUTATE: dict[str, Any] = {"idempotent": True}
-
 TESTING_TOOLS = [
     _testing(
         "list_test_plans",
         "List saved test plans with revision, validity and step count.",
         _EMPTY,
         _ANY_LIST,
-        operation="testing.list_plans",
-        **_READ,
+        operation="testing.listPlans",
     ),
     _testing(
         "get_test_plan",
         "Read one complete saved test plan. Re-read before generating revisioned operations.",
         _SAVED_PLAN_ID,
         _PLAN_OUTPUT,
-        operation="testing.load_plan",
+        operation="testing.loadPlan",
         fields=("planId",),
-        **_READ,
     ),
     _testing(
         "get_test_step_catalog",
         "Read built-in and trusted plugin step contracts.",
         _EMPTY,
         _ANY_LIST,
-        operation="testing.list_step_catalog",
-        **_READ,
+        operation="testing.listStepCatalog",
     ),
     _testing(
         "list_test_device_tools",
@@ -256,9 +251,57 @@ TESTING_TOOLS = [
             {"hardwareId": {"type": "string"}, "tools": _ANY_LIST, "issues": _ISSUES},
             ["hardwareId", "tools", "issues"],
         ),
-        operation="testing.list_device_tools",
+        operation="testing.listDeviceTools",
         fields=("hardwareId",),
-        **_READ,
+    ),
+    _testing(
+        "list_icds",
+        "List the project's ICD files (icd/<name>.icd.yaml) with validity, hash and messages.",
+        _EMPTY,
+        _ANY_LIST,
+        operation="testing.listIcds",
+    ),
+    _testing(
+        "get_icd",
+        "Read one ICD file's YAML text plus its messages, encoders and derived streams.",
+        _ICD_NAME,
+        _open_object({"name": {"type": "string"}, "text": {"type": "string"}}, ["name", "text"]),
+        operation="testing.readIcd",
+        fields=("name",),
+    ),
+    _testing(
+        "check_icd",
+        "Validate ICD YAML (unsaved text or a saved name) and trial-decode sample raw records. "
+        "Use before save_icd and before binding it in a plan.",
+        obj(
+            {
+                "text": string().optional().describe("ICD YAML text; omit to check name's file."),
+                "name": string(1).optional().describe("Saved ICD name when text is omitted."),
+                "alias": string(1).optional().describe("Alias for derived stream ids."),
+                "samples": array(unknown())
+                .default([])
+                .describe("Raw records to decode: hex strings or {data, dir?, id?, t?} objects."),
+            },
+            strict=True,
+        ),
+        _open_object({"valid": {"type": "boolean"}}, ["valid"]),
+        operation="testing.checkIcd",
+        fields=(WHOLE,),
+    ),
+    _testing(
+        "save_icd",
+        "Write icd/<name>.icd.yaml. The text must be a valid ICD declaring the same name; "
+        "an invalid ICD is rejected and nothing is written.",
+        obj(
+            {
+                "name": string(1).describe("ICD name (file icd/<name>.icd.yaml)."),
+                "text": string(1).describe("Complete ICD YAML text."),
+            },
+            strict=True,
+        ),
+        _open_object({"name": {"type": "string"}, "icd": _open_object({})}, ["name", "icd"]),
+        operation="testing.saveIcd",
+        fields=(WHOLE,),
     ),
     _testing(
         "validate_test_plan",
@@ -284,18 +327,16 @@ TESTING_TOOLS = [
                 "coverage",
             ],
         ),
-        operation="testing.validate_plan",
+        operation="testing.validatePlan",
         fields=("planId",),
-        **_READ,
     ),
     _testing(
         "get_test_run",
         "Read current state and Verdict for a test run.",
         _RUN_ID,
         _RUN_OUTPUT,
-        operation="testing.get_run",
+        operation="testing.getRun",
         fields=("runId",),
-        **_READ,
     ),
     _testing(
         "list_test_runs",
@@ -313,9 +354,8 @@ TESTING_TOOLS = [
             strict=True,
         ),
         _object({"items": _ANY_LIST, "nextCursor": {"type": "string"}}, ["items"]),
-        operation="testing.list_runs",
+        operation="testing.listRuns",
         fields=(WHOLE,),
-        **_READ,
     ),
     _testing(
         "read_test_run_events",
@@ -364,9 +404,8 @@ TESTING_TOOLS = [
                 "hasMoreResults",
             ],
         ),
-        operation="testing.read_run_log",
+        operation="testing.readRunLog",
         fields=("runId", "afterEventSequence", "afterResultSequence", "eventLimit", "resultLimit"),
-        **_READ,
     ),
     _testing(
         "read_test_run_results",
@@ -388,9 +427,8 @@ TESTING_TOOLS = [
             },
             ["runId", "results", "nextSequence"],
         ),
-        operation="testing.read_run_results",
+        operation="testing.readRunResults",
         fields=("runId", "afterSequence"),
-        **_READ,
     ),
     _testing(
         "wait_for_test_run",
@@ -408,9 +446,8 @@ TESTING_TOOLS = [
             strict=True,
         ),
         _object({"run": _RUN_OUTPUT, "events": _ANY_LIST}, ["run", "events"]),
-        operation="testing.wait_for_run",
+        operation="testing.waitForRun",
         fields=("runId", "afterSequence", "timeoutMs"),
-        **_READ,
     ),
     _testing(
         "create_test_plan",
@@ -424,13 +461,25 @@ TESTING_TOOLS = [
                 "parameters": array(record(unknown()))
                 .default([])
                 .describe("Typed run parameter definitions."),
+                "protocolBindings": array(record(unknown()))
+                .optional()
+                .describe(
+                    "ICD bindings {icd, alias, source: {hardwareId, streamId}}; steps name "
+                    "the derived streams as <alias>.<message>[.<field>]."
+                ),
+                "bindings": record(record(unknown()))
+                .optional()
+                .describe(
+                    "Logical device names {name: {hardwareId, streamId?}}; a step's hardwareId "
+                    "may name a binding. ${param} in a binding takes that run parameter, so a "
+                    "batch can run the plan once per station."
+                ),
             },
             strict=True,
         ),
         _object({"plan": _PLAN_OUTPUT, "issues": _ISSUES}, ["plan", "issues"]),
-        operation="testing.create_plan",
+        operation="testing.createPlan",
         fields=(WHOLE,),
-        **_MUTATE,
     ),
     _testing(
         "apply_test_plan_operations",
@@ -455,9 +504,8 @@ TESTING_TOOLS = [
             },
             ["plan", "issues", "appliedOperations"],
         ),
-        operation="testing.apply_plan_operations",
+        operation="testing.applyPlanOperations",
         fields=(WHOLE,),
-        **_MUTATE,
     ),
     _testing(
         "start_test_run",
@@ -476,44 +524,101 @@ TESTING_TOOLS = [
             strict=True,
         ),
         _RUN_OUTPUT,
-        operation="testing.start_run",
+        operation="testing.startRun",
         fields=(WHOLE,),
-        **_MUTATE,
     ),
     _testing(
         "pause_test_run",
         "Pause a run at its next cooperative step boundary.",
         _RUN_ID,
         _RUN_OUTPUT,
-        operation="testing.pause_run",
+        operation="testing.pauseRun",
         fields=("runId",),
-        **_MUTATE,
     ),
     _testing(
         "resume_test_run",
         "Resume a paused test run.",
         _RUN_ID,
         _RUN_OUTPUT,
-        operation="testing.resume_run",
+        operation="testing.resumeRun",
         fields=("runId",),
-        **_MUTATE,
     ),
     _testing(
         "abort_test_run",
         "Cancel active calls and enter the cleanup region.",
         _RUN_ID,
         _RUN_OUTPUT,
-        operation="testing.abort_run",
+        operation="testing.abortRun",
         fields=("runId",),
-        **_MUTATE,
+    ),
+    _testing(
+        "testing_read_run_io",
+        "Read what a run sent and saw: tool calls with arguments, results and backend "
+        "times, verdict windows, guard violations, and every recorded stream (sampled "
+        "streams as count/mean/min/max/p2p/std, byte/frame/event streams as records). "
+        "With stepId only that step's executions and time span.",
+        obj(
+            {
+                "runId": string(1).describe("Run id."),
+                "stepId": string(1).optional().describe("Only this plan step."),
+                "limit": number(1, 500, integer=True)
+                .default(50)
+                .describe("Records per byte/frame/event stream."),
+            },
+            strict=True,
+        ),
+        _open_object(
+            {
+                "runId": {"type": "string"},
+                "calls": _ANY_LIST,
+                "windows": _ANY_LIST,
+                "violations": _ANY_LIST,
+                "streams": _ANY_LIST,
+            },
+            ["runId", "calls", "windows", "violations", "streams"],
+        ),
+        operation="testing.readRunIo",
+        fields=("runId", "stepId", "limit"),
+    ),
+    _testing(
+        "testing_read_run_messages",
+        "Read a run's protocol traffic: every frame on a protocol-bound stream decoded with "
+        "the ICD frozen in the recording (raw hex, message name, fields, checksumOk), plus "
+        "undecodable frames (kind error, with reason) and unframed bytes, in backend-time "
+        "order. t0/t1 are backend times (tb) and bound the rows.",
+        obj(
+            {
+                "runId": string(1).describe("Run id."),
+                "t0": number().optional().describe("Earliest backend time (tb)."),
+                "t1": number().optional().describe("Latest backend time (tb)."),
+                "limit": number(1, 10_000, integer=True).default(200).describe("Most rows."),
+            },
+            strict=True,
+        ),
+        _open_object(
+            {
+                "runId": {"type": "string"},
+                "bindings": _ANY_LIST,
+                "messages": _ANY_LIST,
+                "total": {"type": "integer"},
+                "truncated": {"type": "boolean"},
+            },
+            ["runId", "bindings", "messages", "total", "truncated"],
+        ),
+        operation="testing.readRunMessages",
+        arguments=lambda value: {
+            "runId": value["runId"],
+            "query": {
+                key: value[key] for key in ("t0", "t1", "limit") if value.get(key) is not None
+            },
+        },
     ),
     _testing(
         "list_test_recovery_items",
         "List physical operations whose outcome or final safety state requires handling.",
         _EMPTY,
         _ANY_LIST,
-        operation="testing.list_recovery_items",
-        **_READ,
+        operation="testing.listRecoveryItems",
     ),
     _testing(
         "reconcile_test_operation",
@@ -529,9 +634,8 @@ TESTING_TOOLS = [
             strict=True,
         ),
         _open_object({}, []),
-        operation="testing.reconcile_operation",
+        operation="testing.reconcileOperation",
         fields=(WHOLE,),
-        **_MUTATE,
     ),
     _testing(
         "get_test_item_status",
@@ -539,26 +643,29 @@ TESTING_TOOLS = [
         "current unit under test. stale=true means the plan changed after that run.",
         _EMPTY,
         _open_object({"unit": _open_object({}, []), "items": _ANY_LIST}, ["unit", "items"]),
-        operation="testing.list_item_status",
-        **_READ,
+        operation="testing.listItemStatus",
     ),
     _testing(
         "start_test_batch",
         "Run several functional test items one after another with default parameters. "
-        "All items are prechecked first. Fail continues unless stopOnFail; Error or Aborted "
+        "With stations, every item runs once per station with those run parameters (they "
+        "fill ${param} in plan bindings). All items are prechecked first. "
+        "Fail continues unless stopOnFail; Error or Aborted "
         "always stops the batch. requestId makes retries idempotent.",
         obj(
             {
                 "requestId": string(1).describe("Unique physical-run idempotency key."),
                 "planIds": array(string(1), 1).describe("Ordered test item plan ids."),
                 "stopOnFail": boolean().default(False).describe("Stop after the first Fail."),
+                "stations": array(record(unknown()), 1)
+                .optional()
+                .describe("Run parameters per station, for example [{station: 1}, {station: 2}]."),
             },
             strict=True,
         ),
         _BATCH_OUTPUT,
-        operation="testing.start_batch",
+        operation="testing.startBatch",
         fields=(WHOLE,),
-        **_MUTATE,
     ),
     _testing(
         "wait_for_test_batch",
@@ -573,17 +680,15 @@ TESTING_TOOLS = [
             strict=True,
         ),
         _BATCH_OUTPUT,
-        operation="testing.wait_for_batch",
+        operation="testing.waitForBatch",
         fields=("batchId", "timeoutMs"),
-        **_READ,
     ),
     _testing(
         "abort_test_batch",
         "Abort the active run of a batch and skip its remaining items.",
         obj({"batchId": string(1).describe("Batch id.")}, strict=True),
         _BATCH_OUTPUT,
-        operation="testing.abort_batch",
+        operation="testing.abortBatch",
         fields=("batchId",),
-        **_MUTATE,
     ),
 ]

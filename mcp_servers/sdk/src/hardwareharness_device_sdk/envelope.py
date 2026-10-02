@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, create_model, model_serialize
 
 from .errors import INTERNAL, RETRYABLE_CATEGORIES, DeviceError
 
-CONTRACT_REVISION = "2026-09-24.1"
+CONTRACT_REVISION = "2026-10-01.1"
 TIMEOUT_RECOVERY = (
     "Query current status/evidence before replaying any physical action; "
     "an RPC timeout does not prove non-execution."
@@ -51,7 +51,14 @@ Error = model("ToolError", category=(str, "Stable error category."), message=(st
               retryable=(bool, "Transport retry advice only; never authorizes replaying a physical action.", False),
               details=(Any, "Original driver detail, including partial results when available.", None),
               recovery=(str, "Next evidence to obtain before retrying.", None))
-Meta = model("ToolMeta", timestamp=(str, "UTC response observation time in ISO 8601."))
+StreamRef = model("StreamRef", streamId=(str, "Stream the call appended to."),
+                  fromSeq=(int, "First appended sequence number."), toSeq=(int, "Last appended sequence number."))
+Timing = model("ToolTiming", start=(float, "Service clock (Unix ms) when driver work began."),
+               end=(float, "Service clock (Unix ms) when driver work ended; the anchor of this call."))
+Meta = model("ToolMeta", timestamp=(str, "UTC response observation time in ISO 8601."),
+             operationId=(str, "Operation this call ran under (_meta.operationId or server-generated).", None),
+             timing=(Timing, "Driver work interval on the service clock.", None),
+             streamRefs=(list[StreamRef], "Stream records appended during the call, tagged with op.", None))
 
 
 def envelope(name: str, data_type: Any) -> type[ContractModel]:
@@ -73,15 +80,15 @@ def envelope(name: str, data_type: Any) -> type[ContractModel]:
     return Response
 
 
-def ok(data: Any, message: str = "") -> dict[str, Any]:
-    return {"ok": True, "message": message, "data": data, "meta": {"timestamp": iso_now()}}
+def ok(data: Any, message: str = "", meta: dict[str, Any] | None = None) -> dict[str, Any]:
+    return {"ok": True, "message": message, "data": data, "meta": {"timestamp": iso_now(), **(meta or {})}}
 
 
-def error(exc: BaseException) -> dict[str, Any]:
+def error(exc: BaseException, meta: dict[str, Any] | None = None) -> dict[str, Any]:
     if isinstance(exc, DeviceError):
         category, details = exc.category, exc.details
     else:
         category, details = INTERNAL, None
         log.error("Unhandled tool error", exc_info=exc)
     return {"ok": False, "error": {"category": category, "message": str(exc), "retryable": category in RETRYABLE_CATEGORIES,
-            "details": details, "recovery": ERROR_RECOVERY}, "meta": {"timestamp": iso_now()}}
+            "details": details, "recovery": ERROR_RECOVERY}, "meta": {"timestamp": iso_now(), **(meta or {})}}

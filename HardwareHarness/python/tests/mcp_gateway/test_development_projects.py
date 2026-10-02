@@ -13,7 +13,7 @@ from hardwareharness_backend.application.authorization import (
 )
 from hardwareharness_backend.application.services import ProjectsApplication
 from hardwareharness_backend.contracts.validation import ValidationError
-from hardwareharness_backend.mcp_gateway.tool_registry import BUILTIN_TOOLS
+from hardwareharness_backend.mcp_gateway.tool_registry import ToolRegistry
 
 
 def setup(dirty: bool = False, state: str = "idle") -> tuple[Any, Any]:
@@ -24,13 +24,14 @@ def setup(dirty: bool = False, state: str = "idle") -> tuple[Any, Any]:
         save_project=AsyncMock(return_value={"dirty": False}),
     )
     application = SimpleNamespace(
+        authorizer=DefaultAuthorizer(),
         projects=projects,
         system=SimpleNamespace(dashboard=lambda context: {"execution": {"state": state}}),
     )
+    registry = ToolRegistry(application)
 
     async def invoke(name: str, value: dict[str, Any]) -> Any:
-        tool = next(item for item in BUILTIN_TOOLS if item.name == name)
-        return await tool.execute(application, AGENT_REQUEST_CONTEXT, tool.parse(value))
+        return (await registry.invoke(AGENT_REQUEST_CONTEXT, name, value))["data"]
 
     return projects, invoke
 
@@ -42,7 +43,7 @@ async def test_project_tools_forward_agent_context(tmp_path: Path) -> None:
         ("open_project", projects.open_folder),
     ]:
         await invoke(name, {"rootPath": str(tmp_path)})
-        method.assert_awaited_once_with(AGENT_REQUEST_CONTEXT, str(tmp_path))
+        method.assert_awaited_once_with(AGENT_REQUEST_CONTEXT, root_path=str(tmp_path))
     assert await invoke("get_project", {}) == {"dirty": False}
     projects.document.assert_called_with(AGENT_REQUEST_CONTEXT)
     await invoke("save_project", {})

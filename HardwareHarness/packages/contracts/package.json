@@ -53,6 +53,11 @@
       "hardwareharness-source": "./src/testing.ts",
       "types": "./dist/testing.d.ts",
       "default": "./dist/testing.js"
+    },
+    "./observability": {
+      "hardwareharness-source": "./src/observability.ts",
+      "types": "./dist/observability.d.ts",
+      "default": "./dist/observability.js"
     }
   },
   "typesVersions": {
@@ -86,6 +91,9 @@
       ],
       "testing": [
         "./dist/testing.d.ts"
+      ],
+      "observability": [
+        "./dist/observability.d.ts"
       ]
     }
   },

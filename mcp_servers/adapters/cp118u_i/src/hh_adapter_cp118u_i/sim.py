@@ -4,7 +4,7 @@ Modelled: which ports are open, each port's UART configuration (so
 get_line_status reports what configure_port set) and the RX/TX FIFOs that
 flush acts on. Not modelled: the peer. Nothing ever arrives on RX unless
 ``HARDWARE_DRY_RUN_SERIAL_LOOPBACK=1`` opts into echoing every accepted TX
-byte back, which demos the terminal widget without a loopback plug.
+byte back, which demos the serial streams and transact without a loopback plug.
 """
 
 from __future__ import annotations

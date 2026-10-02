@@ -1,35 +1,5 @@
 import * as React from "react";
-import { Tabs as TabsPrimitive } from "radix-ui";
 import { cn } from "./cn";
-
-export const Tabs = TabsPrimitive.Root;
-export const TabsContent = TabsPrimitive.Content;
-
-/** Underlined tab strip used for panel headers. */
-export function TabsList({ className, ...props }: React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>) {
-  return (
-    <TabsPrimitive.List
-      className={cn("flex h-9 shrink-0 items-stretch gap-3 border-b border-line px-3", className)}
-      {...props}
-    />
-  );
-}
-
-export function TabsTrigger({ className, ...props }: React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>) {
-  return (
-    <TabsPrimitive.Trigger
-      className={cn(
-        "relative -mb-px inline-flex items-center gap-1.5 border-b-2 border-transparent text-sm text-fg-2",
-        "transition-colors duration-120 outline-none hover:text-fg",
-        "focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-signal",
-        "data-[state=active]:border-signal data-[state=active]:text-fg",
-        "[&_svg]:size-3.5",
-        className
-      )}
-      {...props}
-    />
-  );
-}
 
 /**
  * Panel header whose title is a tab strip: click a title to switch what the panel shows.

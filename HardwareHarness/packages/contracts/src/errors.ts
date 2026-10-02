@@ -18,6 +18,7 @@ export const errorCategorySchema = z.enum([
   "project_uninitialized",
   "invalid_project_folder",
   "cancelled",
+  "unknown_outcome",
   "error"
 ]);
 export type ErrorCategory = z.infer<typeof errorCategorySchema>;

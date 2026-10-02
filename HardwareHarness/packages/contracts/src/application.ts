@@ -1,11 +1,12 @@
-import type { RequestContext } from "./agents.js";
+import type { AgentConfirmation, AgentConfirmationAnswer, RequestContext } from "./agents.js";
 import type { DashboardSnapshot } from "./desktop.js";
-import type { ConnectionStatus, Hardware, ManagedHardware, McpServerConfig, RemoteComputer, RemoteServiceLog, ServerStatus, StoredHardwareDefinition, ToolCatalogItem } from "./devices.js";
+import type { AdapterReleaseRecord, AdapterStatus, ConnectionStatus, DeviceLeaseStatus, Hardware, ManagedDeviceDefinition, ManagedHardware, McpServerConfig, RegisteredService, RemoteComputer, RemoteServiceLog, ServerStatus, ServiceImportResult, DiscoveredService, DeployableAdapter, DeployResult, DeployServiceSpec, UninstallResult, StoredHardwareDefinition, ToolCatalogItem } from "./devices.js";
 import type { ManualToolInvocationInput, ManualToolInvocationResult } from "./execution.js";
 
 import type { ProjectDocument, ProjectFolderSelection, RecentProjectSummary } from "./projects.js";
 import type { ProjectCanvasNode, ProjectWiring, RequestWiringTaskInput, WiringChange, WiringTask, WiringTaskStatus } from "./wiring.js";
 import type { DesktopOperation } from "./operations.generated.js";
+import type { DeviceStream, RunIo, RunRejudge, RunStreams, RunStreamWindow, RunTimeline, StreamProbe, StreamRead, StreamReadQuery } from "./observability.js";
 import type { TestDeviceTools, TestPlan, TestPlanMutationResult, TestPlanOperation, TestPlanSummary, TestPlanValidation, TestRunSnapshot, TestStepCatalogItem } from "./testing.js";
 
 interface SshCredential {
@@ -40,9 +41,20 @@ export interface BackendApplication {
     refreshServer(context: RequestContext, serverId: string): Promise<ServerStatus>;
     serverAction(context: RequestContext, serverId: string, action: "start" | "stop" | "restart" | "force-stop"): Promise<ServerStatus>;
     readServerLogs(context: RequestContext, serverId: string, lines?: number): Promise<RemoteServiceLog>;
+    discoverServices(context: RequestContext, computerId: string): Promise<DiscoveredService[]>;
+    importServices(context: RequestContext, computerId: string, serverIds: string[]): Promise<ServiceImportResult>;
+    addServerByUrl(context: RequestContext, url: string, token: string, label?: string): Promise<RegisteredService>;
+    listAdapters(context: RequestContext): Promise<DeployableAdapter[]>;
+    deployService(context: RequestContext, computerId: string, spec: DeployServiceSpec): Promise<DeployResult>;
+    uninstallService(context: RequestContext, serverId: string): Promise<UninstallResult>;
     listManagedHardware(context: RequestContext): Promise<ManagedHardware[]>;
     listHardware(context: RequestContext): Hardware[];
     getHardware(context: RequestContext, hardwareId: string): Hardware;
+    getDefinition(context: RequestContext, hardwareId: string): ManagedDeviceDefinition | null;
+    getAdapterStatus(context: RequestContext, hardwareId: string): AdapterReleaseRecord;
+    recordAdapterCheck(context: RequestContext, hardwareId: string, kind: "check" | "simulator", note?: string): Promise<AdapterReleaseRecord>;
+    recordAdapterSmoke(context: RequestContext, hardwareId: string, operator: string, wiring: string, observation: string): Promise<AdapterReleaseRecord>;
+    setAdapterStatus(context: RequestContext, hardwareId: string, status: AdapterStatus): Promise<AdapterReleaseRecord>;
     saveHardware(context: RequestContext, input: Hardware): Promise<Hardware>;
     removeHardware(context: RequestContext, hardwareId: string): Promise<{ hardwareId: string }>;
     setHardwareImageBytes(context: RequestContext, hardwareId: string, portId: string | undefined, bytes: Uint8Array, extensionHint?: string): Promise<Hardware>;
@@ -54,6 +66,15 @@ export interface BackendApplication {
     importBundleForServer(context: RequestContext, data: Uint8Array, hardwareId: string, serverId: string): Promise<BundleImport>;
     callTool(context: RequestContext, name: string, args: Record<string, unknown>): Promise<unknown>;
     listTools(context: RequestContext): ToolCatalogItem[];
+  };
+  readonly streams: {
+    listStreams(context: RequestContext, hardwareId: string): Promise<DeviceStream[]>;
+    leaseStatus(context: RequestContext, hardwareId: string): Promise<DeviceLeaseStatus>;
+    leaseRelease(context: RequestContext, hardwareId: string): Promise<unknown>;
+    leaseForceRelease(context: RequestContext, hardwareId: string, reason: string): Promise<unknown>;
+    window(context: RequestContext, runId: string, keys: string[], t0: number, t1: number, width: number): RunStreamWindow;
+    observe(context: RequestContext, hardwareId: string, streamId: string, windowMs: number, assertions?: Record<string, unknown>[], minSamples?: number): Promise<StreamProbe>;
+    expect(context: RequestContext, hardwareId: string, streamId: string, withinMs: number, match: Record<string, unknown>): Promise<StreamProbe>;
   };
   readonly projects: {
     document(context: RequestContext): ProjectDocument | null;
@@ -93,6 +114,10 @@ export interface BackendApplication {
     analyzePlanDraft(context: RequestContext, input: { plan: TestPlan; baseRevision: number }): import("./testing.js").TestPlanDraftAnalysis;
     listStepCatalog(context: RequestContext): TestStepCatalogItem[];
     listDeviceTools(context: RequestContext, hardwareId: string): TestDeviceTools;
+    listIcds(context: RequestContext): import("./testing.js").IcdSummary[];
+    readIcd(context: RequestContext, name: string): import("./testing.js").IcdDocument;
+    saveIcd(context: RequestContext, input: { name: string; text: string }): Promise<import("./testing.js").IcdSaveResult>;
+    checkIcd(context: RequestContext, input: import("./testing.js").IcdCheckInput): import("./testing.js").IcdCheck;
     startRun(context: RequestContext, input: { planId: string; revision: number; executionRevision: string; requestId: string; parameters: Record<string, unknown> }): Promise<TestRunSnapshot>;
     currentUnit(context: RequestContext): import("./testing.js").TestUnit;
     listItemStatus(context: RequestContext): import("./testing.js").TestItemStatusList;
@@ -110,17 +135,28 @@ export interface BackendApplication {
     listRuns(context: RequestContext, input?: import("./testing.js").TestRunListInput): import("./testing.js").TestRunPage;
     readRunLog(context: RequestContext, runId: string, afterEventSequence?: number, afterResultSequence?: number, eventLimit?: number, resultLimit?: number): import("./testing.js").TestRunLog;
     readRunResults(context: RequestContext, runId: string, afterSequence?: number): unknown;
+    listRunStreams(context: RequestContext, runId: string): RunStreams;
+    readRunStream(context: RequestContext, runId: string, key: string, query?: StreamReadQuery): Promise<StreamRead>;
+    getRunTimeline(context: RequestContext, runId: string): RunTimeline;
+    readRunMessages(
+      context: RequestContext, runId: string, query?: import("./observability.js").RunMessagesQuery
+    ): import("./observability.js").RunMessages;
+    readRunIo(context: RequestContext, runId: string, stepId?: string | null, limit?: number): RunIo;
+    rejudgeRun(context: RequestContext, runId: string): RunRejudge;
+    answerManualCheck(context: RequestContext, input: import("./testing.js").ManualCheckAnswer): TestRunSnapshot;
     waitForRun(context: RequestContext, runId: string, afterSequence?: number, timeoutMs?: number): Promise<unknown>;
     listRecoveryItems(context: RequestContext): import("./testing.js").TestOperationSnapshot[];
     reconcileOperation(context: RequestContext, input: { operationId: string; resolution: "confirmed_succeeded" | "confirmed_failed" | "safe_state_restored"; note?: string }): Promise<import("./testing.js").TestOperationSnapshot>;
   };
 
   readonly system: {
+    listConfirmations(context: RequestContext): AgentConfirmation[];
+    answerConfirmation(context: RequestContext, confirmationId: string, approve: boolean): AgentConfirmationAnswer;
     dashboard(context: RequestContext): DashboardSnapshot;
   };
 }
 
-export { DESKTOP_OPERATIONS, type DesktopOperation } from "./operations.generated.js";
+export { DESKTOP_OPERATIONS, HOST_OPERATIONS, OPERATIONS, type DesktopOperation, type HostOperation, type OperationMetadata, type OperationName } from "./operations.generated.js";
 
 /** Process lifecycle members owned by the host rather than exposed as desktop operations. */
 type LifecycleMember = "projects.close" | "manual.abortHardware" | "manual.close";

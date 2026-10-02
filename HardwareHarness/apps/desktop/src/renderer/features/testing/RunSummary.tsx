@@ -86,7 +86,7 @@ export function RunSummary({
 }
 
 /** Side statuses worth a user's attention; the normal outcome of each one stays silent. */
-export function runWarnings(log: TestRunLog): { label: string; tone: Tone }[] {
+function runWarnings(log: TestRunLog): { label: string; tone: Tone }[] {
   const { run } = log;
   const finished = !activeStates[run.state];
   const warnings: { label: string; tone: Tone }[] = [];

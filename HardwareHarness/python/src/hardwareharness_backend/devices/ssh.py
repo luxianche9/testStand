@@ -5,7 +5,8 @@ import base64
 import hashlib
 import io
 import time
-from typing import Any
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 import paramiko
 
@@ -14,6 +15,7 @@ from hardwareharness_backend.util import json_dumps
 Record = dict[str, Any]
 SshCredential = Record
 SshResult = Record
+T = TypeVar("T")
 
 
 def fingerprint(key: bytes) -> str:
@@ -146,6 +148,16 @@ class SshManager:
         except TimeoutError as error:
             await self.disconnect(computer["id"])
             raise RuntimeError(f"SSH command timed out after {timeout_ms} ms") from error
+
+    async def sftp(self, computer: Record, action: Callable[[paramiko.SFTPClient], T]) -> T:
+        """Run ``action`` on an SFTP session of the shared connection (in a worker thread)."""
+        client = await self._connect(computer)
+
+        def work() -> T:
+            with client.open_sftp() as session:
+                return action(session)
+
+        return await asyncio.to_thread(work)
 
 
 def _private_key(value: str, passphrase: str | None) -> paramiko.PKey:

@@ -16,22 +16,22 @@ const choices: Array<{ value: ThemeChoice; title: string; body: string }> = [
  */
 const palettes = {
   dark: {
-    "--tf-surface-0": "oklch(0.155 0.006 250)",
-    "--tf-surface-1": "oklch(0.185 0.006 250)",
-    "--tf-surface-2": "oklch(0.225 0.007 250)",
-    "--tf-line": "oklch(1 0 0 / 8%)",
-    "--tf-fg-3": "oklch(0.54 0.01 250)",
-    "--tf-signal": "oklch(0.8 0.15 75)",
-    "--tf-pass": "oklch(0.77 0.16 152)"
+    "--tf-surface-0": "oklch(0.205 0.004 260)",
+    "--tf-surface-1": "oklch(0.235 0.005 260)",
+    "--tf-surface-2": "oklch(0.275 0.006 260)",
+    "--tf-line": "oklch(1 0 0 / 10%)",
+    "--tf-fg-3": "oklch(0.6 0.008 260)",
+    "--tf-signal": "oklch(0.62 0.15 255)",
+    "--tf-pass": "oklch(0.72 0.15 150)"
   },
   light: {
-    "--tf-surface-0": "oklch(0.972 0.003 90)",
-    "--tf-surface-1": "oklch(0.995 0.001 90)",
-    "--tf-surface-2": "oklch(0.952 0.004 90)",
-    "--tf-line": "oklch(0.2 0.01 250 / 10%)",
-    "--tf-fg-3": "oklch(0.57 0.012 250)",
-    "--tf-signal": "oklch(0.62 0.15 60)",
-    "--tf-pass": "oklch(0.55 0.15 150)"
+    "--tf-surface-0": "oklch(0.955 0.004 255)",
+    "--tf-surface-1": "oklch(1 0 0)",
+    "--tf-surface-2": "oklch(0.945 0.005 255)",
+    "--tf-line": "oklch(0.3 0.02 255 / 16%)",
+    "--tf-fg-3": "oklch(0.55 0.012 255)",
+    "--tf-signal": "oklch(0.52 0.17 255)",
+    "--tf-pass": "oklch(0.52 0.14 150)"
   }
 } as const;
 

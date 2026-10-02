@@ -2,28 +2,28 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import re
 from typing import Any
 
+from hardwareharness_backend.streams import judge
 from hardwareharness_backend.util import clone, new_uuid, utc_now_iso
 
 Record = dict[str, Any]
 STEP_ID = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,63}$")
 VERDICTS = ("NotSet", "Pass", "Inconclusive", "Fail", "Aborted", "Error")
 VERDICT_RANK = {value: index for index, value in enumerate(VERDICTS)}
-CONTAINER_STEPS = {"Sequence", "Group", "If", "Repeat", "ForEach", "Parallel", "Retry"}
+CONTAINER_STEPS = {"Sequence", "Group", "If", "Repeat", "ForEach", "Parallel", "Retry", "Guard"}
+HARDWARE_STEPS = {"InvokeTool", "Observe", "Expect", "Guard"}
+STREAM_STEPS = {"Observe", "Expect", "Guard"}
 BUILTIN_STEPS = {
     *CONTAINER_STEPS,
+    *HARDWARE_STEPS,
     "SetVariable",
     "Evaluate",
     "Delay",
-    "WaitUntil",
-    "InvokeTool",
-    "Equal",
-    "Range",
-    "Tolerance",
-    "Bitmask",
     "PublishResult",
+    "ManualCheck",
 }
 
 
@@ -72,6 +72,17 @@ def plan_hardware_ids(plan: Record) -> list[str]:
         {
             str(step["hardwareId"])
             for _, step in iter_steps(plan)
+            if step.get("type") in HARDWARE_STEPS and isinstance(step.get("hardwareId"), str)
+        }
+    )
+
+
+def plan_invoked_hardware_ids(plan: Record) -> list[str]:
+    """Hardware the plan calls tools on: what a run leases (streams need no lease)."""
+    return sorted(
+        {
+            str(step["hardwareId"])
+            for _, step in iter_steps(plan)
             if step.get("type") == "InvokeTool" and isinstance(step.get("hardwareId"), str)
         }
     )
@@ -83,3 +94,22 @@ def aggregate_verdict(current: str, incoming: str) -> str:
 
 def public_plan(plan: Record) -> Record:
     return clone(plan)
+
+
+STREAM_VERDICTS = {judge.PASS: "Pass", judge.FAIL: "Fail", judge.INCONCLUSIVE: "Inconclusive"}
+
+
+def step_verdict(result: Record) -> str:
+    """The step verdict of a judge result (``pass`` / ``fail`` / ``inconclusive``)."""
+    return STREAM_VERDICTS.get(str(result.get("verdict")), "Inconclusive")
+
+
+def finite(value: Any) -> Any:
+    """JSON-safe copy: NaN / infinity become ``None`` (unknown-clock windows)."""
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    if isinstance(value, dict):
+        return {key: finite(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [finite(item) for item in value]
+    return value

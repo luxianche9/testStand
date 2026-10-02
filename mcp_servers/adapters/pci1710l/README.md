@@ -2,7 +2,7 @@
 
 服务标识：`PCI1710L_MCP`。包 `hh_adapter_pci1710l`，入口 `python -m hardwareharness_device_sdk --adapter hh_adapter_pci1710l`。
 
-一个服务进程只管理一个硬件。公共工具（`get_server_info`、`list_hardware`、`get_hardware_info`、`get_pinout`、`list_streams`、`get_panel`、`<prefix>_stream_read/start/stop`）和信封格式由 SDK 提供，见 `mcp_servers/README.md`。超时或错误不表示物理动作没有发生：保留原错误，查询当前状态并取证后再决定下一步。
+一个服务进程只管理一个硬件。公共工具（`get_server_info`、`list_hardware`、`get_hardware_info`、`lease_*` 心跳租约、`<prefix>_stream_read`）、信封格式、`/device` 声明（身份、说明、图片、引脚、流、能力）、`/assets/{path}` 和 `/streams/{id}` 数据通道由 SDK 提供，见 `mcp_servers/README.md`。超时或错误不表示物理动作没有发生：保留原错误，查询当前状态并取证后再决定下一步。
 
 ## 设备语义
 
@@ -12,11 +12,17 @@
 - `read_voltage` 是 ADC 样本，DI 是输入采样；DO 回读是控制状态，不证明负载端电压。
 - `safe_state` 应用当前已打开会话的 `effectiveSafeDoMask`，未打开时查询返回启动配置；安全掩码可以非零。
 
-## 流与面板
+## 流
 
-- 流：`ai0`–`ai15` 电压采样（需先 `configure_ai`，否则 `status: not_configured`）、`di` 16 位位图、`do` 控制回读。采样只在有订阅或 `pci1710l_stream_start` 后进行，走设备锁。
+- `ai0`–`ai15`（scalar，`unit: "V"`，`kind: "measured"`）：一个扫描组，一次扫描读全部已配置通道并共享时间戳（`settings.aiRateHz`，默认 20 Hz）；未配置通道 `status: not_configured`。`read_voltage` 的读数也发布到对应流并带调用的 `op`。
+- `di`（bits，`width: 16`，`bitLabels` DI0–DI15）：16 位输入位图，仅变化时发布（`settings.bitRateHz`，默认 20 Hz）。
+- `do`（bits，`width: 16`，`bitLabels` DO0–DO15）：每次 `set_level` / `safe_state` 后立即读回控制位图并发布。
+- 采样只在有订阅时进行，与工具调用共用设备锁。位图用 hwcli 的 `read_mask` 命令一次读取；打开时探测，旧版 hwcli 退回 16 次 `read_bit`。
 - dry-run 下 AI 默认读 0.0 V；`HARDWARE_DRY_RUN_AI_NOISE=1` 时返回带噪声的演示值。
-- 面板模板：AI readout、DI lamp、DO toggle、`configure_ai` 表单、`safe_state` 按钮。
+
+## 图片
+
+`assets/appearance.svg`（板卡示意轮廓）和 `assets/ports/CN1.svg`（68 针 SCSI 引脚图）由 `pinout.py` 的 `appearance_diagram()`、`port_diagram()` 从引脚数据生成，是示意图而非照片；连接器视向（插合面/焊接面）未核实。修改引脚数据后用这两个函数重新生成文件，测试 `test_shipped_assets_match_pinout` 保证文件与数据一致。
 
 ## 构建、测试与部署
 
@@ -25,7 +31,6 @@
 ```powershell
 cd mcp_servers
 .\test.ps1 -Target pci1710l                 # pytest + dry-run 合规检查
-uv run python tools\assemble.py pci1710l    # 生成 dist\pci1710l\ 部署包
 ```
 
-部署到台架必须由人执行 `.\deploy.ps1 -Server pci1710l`。远端 `server.json`（身份、端口、token、`settings`）和 `app\native\build\` 下已编译的厂商 CLI 不会被部署覆盖。
+部署到台架由人在 HardwareHarness 终端的设备页发起（电脑上的“部署服务”，已部署服务的“升级 / 卸载”），维护者也可用 `.\deploy.ps1`（参数见 `mcp_servers/README.md`）；终端先打包再部署，失败自动回滚。远端 `server.json`（身份、端口、token、`settings`）和 `native\build\`（旧安装为 `app\native\build\`）下已编译的厂商 CLI 不会被部署覆盖。

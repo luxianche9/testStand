@@ -33,7 +33,7 @@ class BatchCoordinator:
     def set_notifier(self, notifier: Any) -> None:
         self.notifier = notifier
 
-    def precheck(self, plan_ids: list[str]) -> list[Record]:
+    def precheck(self, plan_ids: list[str], stations: list[Record] | None = None) -> list[Record]:
         """Return every reason the batch cannot start; an empty list means it can."""
         issues: list[Record] = []
         if self.running:
@@ -46,28 +46,38 @@ class BatchCoordinator:
         if len(set(plan_ids)) != len(plan_ids):
             issues.append({"message": "A test item is selected more than once"})
         for plan_id in plan_ids:
-            try:
-                plan = self.testing.store.load(plan_id)
-                compiled = self.testing.store.compile(plan_id)
-                if not compiled["valid"]:
-                    issues.append({"planId": plan_id, "message": "Test plan has validation errors"})
-                    continue
-                self.testing.check_wiring_gate(plan)
-                self.testing.check_recovery_gate(compiled["compiledPlan"])
-            except Exception as error:
-                issues.append({"planId": plan_id, "message": str(getattr(error, "message", error))})
+            for station in stations or [{}]:
+                where: Record = {"planId": plan_id, **({"station": station} if station else {})}
+                try:
+                    _, _, compiled = self.testing.compile_item(plan_id, station)
+                    if not compiled["valid"]:
+                        issues.append({**where, "message": "Test plan has validation errors"})
+                        continue
+                    self.testing.check_wiring_gate(compiled["compiledPlan"])
+                    self.testing.check_recovery_gate(compiled["compiledPlan"])
+                except Exception as error:
+                    issues.append({**where, "message": str(getattr(error, "message", error))})
         return issues
 
-    async def start(self, plan_ids: list[str], stop_on_fail: bool) -> Record:
-        issues = self.precheck(plan_ids)
+    async def start(
+        self, plan_ids: list[str], stop_on_fail: bool, stations: list[Record] | None = None
+    ) -> Record:
+        """Run every item in order; with ``stations`` (§7.6) each item runs once per station."""
+        issues = self.precheck(plan_ids, stations)
         if issues:
             raise app_error("validation_failed", "Batch cannot start", {"issues": issues})
         items = []
         for plan_id in plan_ids:
             plan = self.testing.store.load(plan_id)
-            items.append(
-                {"planId": plan_id, "planName": plan.get("name", plan_id), "state": "queued"}
-            )
+            for station in stations or [{}]:
+                item: Record = {
+                    "planId": plan_id,
+                    "planName": plan.get("name", plan_id),
+                    "state": "queued",
+                }
+                if station:
+                    item["station"] = clone(station)
+                items.append(item)
         self.abort_requested = False
         self.active = {
             "batchId": new_uuid(),
@@ -159,7 +169,9 @@ class BatchCoordinator:
         batch["currentPlanId"] = item["planId"]
         self._persist()
         try:
-            snapshot = await self.testing.start_item(item["planId"], batch["batchId"])
+            snapshot = await self.testing.start_item(
+                item["planId"], batch["batchId"], item.get("station")
+            )
         except Exception as error:
             item.update({"state": "done", "verdict": "Error"})
             item["message"] = str(getattr(error, "message", error))

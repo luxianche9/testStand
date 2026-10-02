@@ -6,7 +6,7 @@ import { FeatureFallback } from "../../app/FeatureFallback.js";
 const WiringPage = lazy(() => import("../wiring/index.js").then((module) => ({ default: module.WiringPage })));
 const DevicesPage = lazy(() => import("../devices/index.js").then((module) => ({ default: module.DevicesPage })));
 const TestPlanPage = lazy(() => import("../testing/index.js").then((module) => ({ default: module.TestPlanPage })));
-const RunLogPage = lazy(() => import("../testing/index.js").then((module) => ({ default: module.RunLogPage })));
+const RunMonitorPage = lazy(() => import("../testing/index.js").then((module) => ({ default: module.RunMonitorPage })));
 
 export function ProjectWorkspace({ view }: { view: ProjectView }) {
   return (
@@ -15,7 +15,7 @@ export function ProjectWorkspace({ view }: { view: ProjectView }) {
         <Suspense fallback={<FeatureFallback />}>
           {view === "wiring" ? <WiringPage />
             : view === "plans" ? <TestPlanPage />
-              : view === "runs" ? <RunLogPage />
+              : view === "runs" ? <RunMonitorPage />
                 : <DevicesPage />}
         </Suspense>
       </ErrorBoundary>

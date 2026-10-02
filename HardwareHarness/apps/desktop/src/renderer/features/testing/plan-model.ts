@@ -1,5 +1,8 @@
 import type { TestPlan, TestStep, TestStepCatalogItem } from "@hardwareharness/contracts/testing";
 
+/** Steps that name a device: tool calls and the steps that judge one of its streams. */
+const deviceStepTypes = new Set(["InvokeTool", "Observe", "Expect", "Guard"]);
+
 export type TestRegion = "prepare" | "test" | "cleanup";
 type Branch = "children" | "elseChildren";
 export type StepLocation = {
@@ -60,8 +63,20 @@ export function removeStep(plan: TestPlan, stepId: string): void {
 
 export function planHardwareIds(plan: TestPlan): string[] {
   const ids = new Set<string>();
-  visitSteps(plan, (step) => { if (step.type === "InvokeTool" && step.hardwareId) ids.add(step.hardwareId); });
+  visitSteps(plan, (step) => { if (deviceStepTypes.has(step.type) && step.hardwareId) ids.add(step.hardwareId); });
   return [...ids].sort();
+}
+
+/** Anchors set by tool calls (`anchor` on InvokeTool); Observe / Expect time their windows from them. */
+export function planAnchors(plan: TestPlan): { name: string; hardwareId: string | undefined; stepId: string }[] {
+  const anchors: { name: string; hardwareId: string | undefined; stepId: string }[] = [];
+  const seen = new Set<string>();
+  visitSteps(plan, (step) => {
+    if (step.type !== "InvokeTool" || typeof step.anchor !== "string" || !step.anchor || seen.has(step.anchor)) return;
+    seen.add(step.anchor);
+    anchors.push({ name: step.anchor, hardwareId: step.hardwareId, stepId: step.id });
+  });
+  return anchors;
 }
 
 export function createStep(item: TestStepCatalogItem): TestStep {
@@ -74,10 +89,16 @@ export function createStep(item: TestStepCatalogItem): TestStep {
   if (item.type === "ForEach") step.itemsExpression = "[]";
   if (item.type === "Retry") step.attempts = 2;
   if (item.type === "Delay") step.durationMs = 1000;
-  if (item.type === "WaitUntil") { step.condition = "false"; step.timeoutMs = 30_000; step.pollIntervalMs = 100; }
   if (item.type === "Evaluate") step.expression = "null";
   if (item.type === "SetVariable") { step.variable = "value"; step.valueExpression = "null"; }
   if (item.type === "InvokeTool") { step.arguments = {}; step.timeoutMs = 30_000; }
+  if (item.type === "Observe") {
+    step.window = { anchor: "", startMs: 0, endMs: 100 };
+    step.assertions = [];
+    step.minSamples = 3;
+  }
+  if (item.type === "Expect") { step.anchor = ""; step.offsetMs = 0; step.withinMs = 1000; step.match = {}; }
+  if (item.type === "Guard") { step.condition = {}; step.onViolation = "abort"; }
   return step;
 }
 

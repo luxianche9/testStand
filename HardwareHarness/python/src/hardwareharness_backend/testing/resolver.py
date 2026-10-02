@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from hardwareharness_backend.contracts.mcp import business_result_schema
+from hardwareharness_backend.protocol import Icd
 from hardwareharness_backend.util import clone
 
 from .models import schema_hash
@@ -12,8 +13,13 @@ Record = dict[str, Any]
 
 
 class DeviceToolResolver:
-    def __init__(self, devices: Any, catalog: Any) -> None:
+    def __init__(self, devices: Any, catalog: Any, icds: Any | None = None) -> None:
         self.devices, self.catalog = devices, catalog
+        self.icds = icds
+
+    def icd(self, name: str) -> Icd | None:
+        """The project's ICD of that name (``icd/<name>.icd.yaml``), if valid."""
+        return self.icds.get(name) if self.icds is not None else None
 
     def resolve(self, hardware_id: str, tool_name: str) -> tuple[Record | None, list[Record]]:
         hardware = self.catalog.find_hardware(hardware_id)
@@ -79,6 +85,22 @@ class DeviceToolResolver:
             }
         )
         return resolved, []
+
+    def streams(self, hardware_id: str) -> dict[str, str] | None:
+        """``{streamId: type}`` last listed for the hardware (``None``: not listed yet)."""
+        known = getattr(self.devices, "known_streams", None)
+        streams = known(hardware_id) if known is not None else None
+        if streams is None:
+            return None
+        return {str(item["id"]): str(item["type"]) for item in streams}
+
+    def stream_descriptors(self, hardware_id: str) -> dict[str, Record] | None:
+        """``{streamId: descriptor}`` (optional ``kind``/``unit``/``width`` ...) or ``None``."""
+        known = getattr(self.devices, "known_streams", None)
+        streams = known(hardware_id) if known is not None else None
+        if streams is None:
+            return None
+        return {str(item["id"]): dict(item) for item in streams}
 
     def list_device_tools(self, hardware_id: str) -> Record:
         hardware = self.catalog.find_hardware(hardware_id)

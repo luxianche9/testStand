@@ -323,6 +323,7 @@ AGENT_TOOLS = [
         call=_read_reference,
         capability="references.read",
         read_only=True,
+        profiles=frozenset({"adapter", "plan", "explore"}),
     ),
     Tool(
         "register_reference",
@@ -349,6 +350,7 @@ AGENT_TOOLS = [
         _ANY_OBJECT,
         call=_register_reference,
         capability="references.manage",
+        profiles=frozenset({"adapter", "plan", "explore"}),
     ),
     Tool(
         "get_execution_availability",
@@ -380,6 +382,7 @@ AGENT_TOOLS = [
         call=_availability,
         capability="hardware.read",
         read_only=True,
+        profiles=frozenset({"plan", "run", "explore"}),
     ),
     Tool(
         "wait_for_status",

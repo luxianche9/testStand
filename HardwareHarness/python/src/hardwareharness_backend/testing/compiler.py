@@ -3,19 +3,29 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from hardwareharness_backend.streams import judge
 from hardwareharness_backend.util import clone
 
-from .models import iter_steps, schema_hash
-from .validation import issue, validate_plan
+from .bindings import expand_bindings
+from .models import STREAM_STEPS, iter_steps, schema_hash
+from .validation import issue, validate_with_protocols
 
 Record = dict[str, Any]
 _STEP_REF = re.compile(r"\bsteps\.([A-Za-z][A-Za-z0-9_-]{0,63})((?:\.[A-Za-z_][A-Za-z0-9_]*)*)")
 
 
 def compile_plan(
-    plan: Record, resolver: Any | None, plugins: list[Any] | None = None, wiring: Any | None = None
+    plan: Record,
+    resolver: Any | None,
+    plugins: list[Any] | None = None,
+    wiring: Any | None = None,
+    values: Record | None = None,
 ) -> Record:
-    issues = validate_plan(plan, resolver, plugins)
+    """Compile ``plan`` for the run parameters ``values`` (one station of a batch, §7.6)."""
+    source = plan
+    plan, binding_issues = expand_bindings(source, values)
+    issues, protocols = validate_with_protocols(plan, resolver, plugins)
+    issues = [*binding_issues, *issues]
     bindings: Record = {}
     output_schemas: Record = {}
     available: set[str] = set()
@@ -75,7 +85,7 @@ def compile_plan(
             else:
                 output_schemas[step_id] = _builtin_output_schema(step)
             kind = step.get("type")
-            if kind in {"Sequence", "Group"}:
+            if kind in {"Sequence", "Group", "Guard"}:  # Guard runs its children in order
                 current, current_state = compile_steps(
                     step.get("children", []),
                     step_path + "/children",
@@ -135,9 +145,14 @@ def compile_plan(
     coverage = _coverage_summary(plan)
     compiled = clone(plan)
     compiled["resolvedBindings"] = bindings
+    # §6.4: the run decodes with (and records) exactly the ICDs compiled here.
+    frozen = protocols.snapshot()["icds"]
+    compiled["icds"] = frozen
     fingerprint = {
-        "plan": {key: value for key, value in plan.items() if key not in {"updatedAt"}},
+        # The source plan: which station a run uses is a run input, like its parameters.
+        "plan": {key: value for key, value in source.items() if key not in {"updatedAt"}},
         "bindings": {key: value.get("bindingRevision") for key, value in bindings.items()},
+        "icds": {name: entry["icdHash"] for name, entry in frozen.items()},
         "wiringRevision": wiring_revision,
         "issues": issues,
     }
@@ -497,17 +512,36 @@ def _compatible_types(actual: Record, expected: Record) -> bool:
 
 def _builtin_output_schema(step: Record) -> Record:
     kind = step.get("type")
-    if kind in {"Equal", "Range", "Tolerance", "Bitmask"}:
+    if kind in STREAM_STEPS:
+        properties: Record = {
+            "verdict": {"type": "string", "enum": ["pass", "fail", "inconclusive"]},
+            "reason": {"type": "string"},
+            "message": {"type": "string"},
+            "metrics": {"type": "object"},
+            "evidenceType": {"type": "string", "enum": list(judge.EVIDENCE_TYPES)},
+        }
+        capture = step.get("capture")
+        if kind == "Expect":
+            properties.update(
+                matchT={"type": "number"}, latencyMs={"type": "number"}, record={"type": "object"}
+            )
+        if kind == "Expect" and isinstance(capture, dict) and capture:
+            # §7.5: only declared names exist, so steps.<id>.captures.<typo> fails to compile.
+            properties["captures"] = {
+                "type": "object",
+                "properties": {
+                    str(name): {"type": ["string", "null"]}
+                    if isinstance(spec, dict) and "regex" in spec
+                    else {}
+                    for name, spec in capture.items()
+                },
+                "additionalProperties": False,
+            }
         return {
             "type": "object",
-            "properties": {
-                "name": {"type": "string"},
-                "actual": {},
-                "passed": {"type": "boolean"},
-                "limits": {"type": "object"},
-            },
-            "required": ["name", "actual", "passed", "limits"],
-            "additionalProperties": False,
+            "properties": properties,
+            "required": ["verdict"],
+            "additionalProperties": True,
         }
     if kind in {"Repeat", "ForEach", "Retry"}:
         return {
@@ -531,7 +565,9 @@ def _coverage_summary(plan: Record) -> Record:
     }
     linked = {identifier: 0 for identifier in requirements}
     for _, step in iter_steps(plan):
-        if step.get("type") not in {"Equal", "Range", "Tolerance", "Bitmask"}:
+        if step.get("type") not in STREAM_STEPS and not (
+            step.get("type") == "InvokeTool" and step.get("assertions")
+        ):
             continue
         for identifier in step.get("requirementIds", []):
             if str(identifier) in linked:

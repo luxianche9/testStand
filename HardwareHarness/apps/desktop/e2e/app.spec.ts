@@ -6,6 +6,7 @@ import { promisify } from "node:util";
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from "@playwright/test";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { reloadAfterLeave, rendererReady } from "./renderer.js";
 
 const desktopDir = resolve(import.meta.dirname, "..");
 const workspaceDir = resolve(desktopDir, "../..");
@@ -34,7 +35,7 @@ test.describe.serial("HardwareHarness folder project desktop", () => {
     };
     delete env.ELECTRON_RUN_AS_NODE;
     application = await electron.launch({ args: [desktopDir], cwd: desktopDir, env, timeout: 90_000 });
-    page = await application.firstWindow({ timeout: 90_000 });
+    page = await rendererReady(await application.firstWindow({ timeout: 90_000 }));
     page.setDefaultTimeout(60_000);
     page.on("pageerror", (error) => rendererErrors.push(error.stack ?? error.message));
     page.on("console", (message) => { if (message.type() === "error") rendererErrors.push(message.text()); });
@@ -72,14 +73,14 @@ test.describe.serial("HardwareHarness folder project desktop", () => {
     const document = await page.evaluate((rootPath) => window.hardwareharness.projects.initializeFolder(rootPath), projectRoot);
     expect(document.path.replaceAll("\\", "/")).toMatch(/\/\.hardwareharness\/project\.json$/);
     await page.evaluate(() => window.hardwareharness.projects.leave());
-    await page.reload();
+    await reloadAfterLeave(page);
     // Every launch still returns to the welcome page even when recent projects exist.
     await expect(page.getByRole("heading", { name: "最近项目" })).toBeVisible();
     await page.getByText("project-a", { exact: true }).first().click();
     await expect(page.getByRole("tab", { name: "工位接线", exact: true })).toBeVisible();
     await expect(page.getByRole("tab", { name: "动作编排", exact: true })).toHaveCount(0);
     await expect(page.getByRole("tab", { name: "设备管理", exact: true })).toBeVisible();
-    await expect(page.getByRole("tab", { name: "运行日志", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("tab", { name: "运行监控", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "打开 AI 侧栏" })).toBeVisible();
   });
 
@@ -108,8 +109,6 @@ test.describe.serial("HardwareHarness folder project desktop", () => {
     expect(result.beforeSave?.dirty).toBe(true);
     expect(result.afterSave.dirty).toBe(false);
     expect(result.beforeSave?.file.wiring.connections[0]?.pins).toEqual([{ a: "1", b: "1" }, { a: "2", b: "2" }]);
-    const seededTask = page.getByRole("dialog", { name: "接线任务", exact: true });
-    if (await seededTask.isVisible()) await seededTask.getByRole("button", { name: "关闭", exact: true }).last().click();
 
     await page.getByRole("tab", { name: "设备管理", exact: true }).click();
     await expect(page.getByRole("heading", { name: "设备管理" })).toBeVisible();
@@ -117,8 +116,9 @@ test.describe.serial("HardwareHarness folder project desktop", () => {
     await page.screenshot({ path: resolve(artifactDir, "devices-page.png"), fullPage: true });
 
     await page.getByRole("tab", { name: "工位接线", exact: true }).click();
-    await expect(page.getByText("硬件库")).toBeVisible();
-    await expect(page.getByRole("region", { name: "接线任务列表" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: /^硬件库/ })).toBeVisible();
+    await page.getByRole("tab", { name: /^接线日志/ }).click();
+    await expect(page.getByRole("tabpanel", { name: "接线日志" }).getByRole("region", { name: "历史记录" })).toBeVisible();
     await expect(page.getByRole("button", { name: "信箱" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "命令面板" })).toHaveCount(0);
     await page.screenshot({ path: resolve(artifactDir, "project-wiring.png") });
@@ -141,22 +141,25 @@ test.describe.serial("HardwareHarness folder project desktop", () => {
       return [connect.wiringTaskId, disconnect.wiringTaskId];
     });
 
-    for (let index = 0; index < taskIds.length; index++) {
-      const modal = page.getByRole("dialog", { name: /^(接线|断线)任务$/ });
-      const confirm = modal.getByRole("button", { name: "完成", exact: true });
+    await expect(page.getByLabel("2 条待处理接线任务")).toBeVisible();
+    await page.getByRole("tab", { name: "工位接线", exact: true }).click();
+    await page.getByRole("tab", { name: /^接线日志/ }).click();
+    const pending = page.getByRole("tabpanel", { name: "接线日志" }).getByRole("region", { name: "待处理" });
+    for (let remaining = taskIds.length; remaining > 0; remaining--) {
+      const cards = pending.getByRole("region", { name: /^(接线|断线)任务$/ });
+      await expect(cards).toHaveCount(remaining);
+      const confirm = cards.first().getByRole("button", { name: "完成", exact: true });
       await expect(confirm).toBeEnabled();
       await confirm.click();
-      await expect(modal.getByText("已完成", { exact: true })).toBeVisible();
-      await modal.getByRole("button", { name: "关闭", exact: true }).last().click();
     }
 
-    await expect(page.getByRole("dialog", { name: /^(接线|断线)任务$/ })).toHaveCount(0);
+    await expect(pending).toHaveCount(0);
     const completed = await page.evaluate(async (ids) => Promise.all(ids.map((id) => window.hardwareharness.wiring.getTask(id))), taskIds);
     expect(completed.map((task) => task.status)).toEqual(["confirmed", "confirmed"]);
   });
 
   test("uses settings as the only configuration surface and switches themes", async () => {
-    await page.getByRole("button", { name: "设置" }).click();
+    await page.getByRole("button", { name: "设置", exact: true }).click();
     await expect(page.getByRole("heading", { name: "外观" })).toBeVisible();
     await page.getByRole("button", { name: "深色 始终使用深色界面。" }).click();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
@@ -171,7 +174,9 @@ test.describe.serial("HardwareHarness folder project desktop", () => {
     await expect(page.getByText("Codex", { exact: true }).first()).toBeVisible();
 
     await page.getByRole("tab", { name: "工位接线", exact: true }).click();
-    await page.getByRole("button", { name: "打开 AI 侧栏" }).click();
+    const openAssistant = page.getByRole("button", { name: "打开 AI 侧栏" });
+    if (await openAssistant.isVisible()) await openAssistant.click();
+    await expect(page.getByRole("button", { name: "关闭 AI 侧栏" })).toBeVisible();
     const sidebar = page.locator(".tf-agent-sidebar");
     await expect(sidebar).toBeVisible();
     await expect(sidebar.getByRole("button", { name: "打开模型设置" })).toHaveCount(0);
@@ -251,7 +256,7 @@ test.describe.serial("HardwareHarness folder project desktop", () => {
       const results = mcpData(await client.callTool({ name: "read_test_run_results", arguments: { runId: started.runId, afterSequence: 0 } }));
       expect(results.results).toEqual(expect.arrayContaining([expect.objectContaining({ name: "安全清理", value: "done" })]));
 
-      await page.getByRole("tab", { name: "功能测试", exact: true }).click();
+      await page.getByRole("tab", { name: "测试编排", exact: true }).click();
       await expect(page.getByText("Agent 编排计划", { exact: true }).first()).toBeVisible();
       await expect(page.getByRole("list", { name: "功能测试项" }).getByText("中止", { exact: true }).first()).toBeVisible();
     } finally {

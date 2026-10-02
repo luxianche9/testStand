@@ -7,7 +7,8 @@ import {
   groupMeasurements, type ExecutionTraceNode, type MeasurementSeries, type StepRunState
 } from "./run-log-model.js";
 import {
-  assertionLimits, formatNumber, formatTime, friendlyField, operationStateLabel, resultKindLabel, resultSummary,
+  assertionLimits, formatNumber, formatTime, friendlyField, operationStateLabel, resultEvidence, resultKindLabel,
+  resultSummary,
   sparkPath
 } from "./run-format.js";
 
@@ -66,7 +67,7 @@ export function StepEvidence({ node }: { node: ExecutionTraceNode }) {
     result.kind !== "measurement" || groupMeasurements([result]).length === 0);
   const nested = node.children.length > 0 || node.iterations.length > 0 || node.attempts.length > 0;
   return (
-    <div className={cn("grid gap-2", nested && "mb-2")}>
+    <div className={cn("grid grid-cols-[minmax(0,1fr)] gap-2", nested && "mb-2")}>
       {series.map((item) => <SeriesInline key={item.key} series={item} assertions={node.relatedAssertions} />)}
       {otherResults.map((result) => <ResultRow key={result.sequence} result={result} />)}
       {node.operations.map((operation) => <OperationRow key={operation.operationId} operation={operation} />)}
@@ -90,7 +91,7 @@ function SeriesInline({ series, assertions }: { series: MeasurementSeries; asser
   }
   const unit = series.unit ? { unit: series.unit } : {};
   return (
-    <div className="grid gap-2 rounded-md border border-line bg-surface-0 px-3 py-2">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-2 rounded-md border border-line bg-surface-0 px-3 py-2">
       <div className="flex items-center gap-2">
         <strong className="text-xs font-medium text-fg">{name}</strong>
         {series.unit && <span className="text-2xs text-fg-3">{series.unit}</span>}
@@ -116,11 +117,12 @@ function SeriesInline({ series, assertions }: { series: MeasurementSeries; asser
   );
 }
 
-export function ResultRow({ result }: { result: TestResult }) {
+function ResultRow({ result }: { result: TestResult }) {
   const kind = String(result.kind ?? "note");
   const summary = resultSummary(result);
   const failed = kind === "assertion" && result.passed === false;
   const tone = kind === "assertion" ? (result.passed ? "pass" : "fail") : "neutral";
+  const evidence = resultEvidence(result);
   return (
     <details
       className={cn(
@@ -131,6 +133,11 @@ export function ResultRow({ result }: { result: TestResult }) {
       <summary className="flex cursor-pointer list-none items-center gap-2">
         <Badge tone={tone}>{resultKindLabel(kind)}</Badge>
         <strong className="min-w-0 truncate font-medium text-fg">{result.name}</strong>
+        {evidence && (
+          <Badge mono tone={evidence.grade === "S" ? "invalid" : "neutral"} title={`证据等级：${evidence.label}`}>
+            {evidence.grade}
+          </Badge>
+        )}
         {summary && <span className="min-w-0 flex-1 truncate text-2xs text-fg-3">{summary}</span>}
         <span className="tf-num ml-auto text-2xs text-fg-3">{formatTime(result.at)}</span>
       </summary>
@@ -146,7 +153,7 @@ export function ResultRow({ result }: { result: TestResult }) {
   );
 }
 
-export function OperationRow({ operation }: { operation: TestOperationSnapshot }) {
+function OperationRow({ operation }: { operation: TestOperationSnapshot }) {
   const uncertain = !operation.outcomeKnown || operation.recoveryRequired;
   return (
     <details
@@ -156,13 +163,17 @@ export function OperationRow({ operation }: { operation: TestOperationSnapshot }
         uncertain ? "border-l-fail" : "border-l-line"
       )}
     >
-      <summary className="flex cursor-pointer list-none items-center gap-2">
-        <RadioIcon className="size-3.5 text-fg-3" />
-        <strong className="font-mono font-medium text-fg">{operation.hardwareId}</strong>
-        <span className="font-mono text-fg-3">{operation.toolName}</span>
-        <Badge className="ml-auto" tone={uncertain ? "fail" : "neutral"}>{operationStateLabel(operation.state)}</Badge>
+      <summary className="flex min-w-0 cursor-pointer list-none items-center gap-2">
+        <RadioIcon className="size-3.5 shrink-0 text-fg-3" />
+        <strong className="min-w-0 truncate font-mono font-medium text-fg" title={operation.hardwareId}>
+          {operation.hardwareId}
+        </strong>
+        <span className="min-w-0 truncate font-mono text-fg-3" title={operation.toolName}>{operation.toolName}</span>
+        <Badge className="ml-auto shrink-0" tone={uncertain ? "fail" : "neutral"}>
+          {operationStateLabel(operation.state)}
+        </Badge>
       </summary>
-      <div className="mt-2 grid gap-1 border-t border-line pt-2 text-2xs text-fg-3">
+      <div className="mt-2 grid grid-cols-[minmax(0,1fr)] gap-1 border-t border-line pt-2 text-2xs text-fg-3">
         <CopyableId label="operationId" value={operation.operationId} />
         <span>{operation.outcomeKnown ? "物理结果已确认" : "物理结果未知"}</span>
         {operation.resolvedByOperationId && (
@@ -187,7 +198,7 @@ export function UnmatchedRecords({ results, operations }: {
       <summary className="cursor-pointer px-3 py-2 text-xs font-medium text-fg">
         未关联记录 <span className="ml-2 text-2xs font-normal text-fg-3">无法可靠归属到某次执行</span>
       </summary>
-      <div className="grid gap-2 border-t border-line p-3">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-2 border-t border-line p-3">
         {results.map((result) => <ResultRow key={result.sequence} result={result} />)}
         {operations.map((operation) => <OperationRow key={operation.operationId} operation={operation} />)}
       </div>

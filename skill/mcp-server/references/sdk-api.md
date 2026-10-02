@@ -7,14 +7,14 @@
 ```
 mcp_servers/adapters/<adapter>/
   pyproject.toml              依赖 hardwareharness-device-sdk>=0.2,<0.3
-  README.md                   设备语义、流与面板、构建与部署
+  README.md                   设备语义、流、构建与部署
   src/hh_adapter_<adapter>/
     __init__.py               DEVICE = <类>
     adapter.py                Device 子类：工具、流、声明
     driver.py                 厂商调用的类型化封装
     sim.py                    与驱动同接口的模拟器
-    pinout.py                 连接器表（来自手册）
-    panel.py                  控件模板
+    pinout.py                 连接器表（来自手册）、端口图和外观图的生成函数
+    assets/                   appearance.svg、ports/<连接器>.svg（package-data，由 /assets 提供）
     py.typed
   tests/test_<adapter>_adapter.py
 ```
@@ -29,6 +29,9 @@ class Pci1234(Device):
     capabilities = ("digital_output",)
     version = "0.1.0"              # 适配器版本
     instructions = "给 AI 的两三句说明：设备做什么、先调哪个工具、每个输出的物理效果。"
+    description = "给人和 AI 的一段设备描述：接口、通道、连接器、限制。出现在 /device.description。"
+    hardware_revision = None       # 已知的硬件版本；None 时 /device 省略
+    appearance_image = None        # 相对 assets/；None 时用约定文件 assets/appearance.(png|jpg|webp|svg)
 
     def __init__(self, config: ServerConfig) -> None:
         super().__init__(config)                 # 必须先调用：建立 self.streams 和 self.io_lock
@@ -39,16 +42,16 @@ class Pci1234(Device):
 |---|---|
 | `config: ServerConfig` | 见下文 |
 | `hardware_id`、`dry_run` | 来自配置 |
-| `streams: StreamRegistry` | `self.streams.add(stream)` 返回该流，重复 id 报错 |
-| `io_lock: threading.RLock` | 后台线程（串口读线程）访问驱动时必须持有；工具调用之间已由 SDK 的操作锁串行 |
+| `streams: StreamRegistry` | `self.streams.add(stream)` 返回该流，重复 id 报错；`self.streams.scan(streams, fn, rate_hz=)` 建扫描组。见 `streams.md` |
+| `io_lock: threading.RLock` | SDK 采样线程持有它调用 `sample()`；适配器自己的后台线程（串口读线程）和字节流写入器访问驱动时也必须持有。工具调用之间已由 SDK 的操作锁串行 |
 | `select_driver(real, simulated)` | dry-run 时构造模拟器，否则构造真实驱动；两者都是无参可调用对象 |
 | `tool_name(name)` | `f"{prefix}_{name}"` |
 | `open()` | 阻塞：打开设备、取句柄、清影子。失败抛 `DeviceError(category=DEVICE_UNREACHABLE)`，SDK 会重试 |
 | `close()` | 阻塞：释放句柄、停止后台线程 |
 | `safe_state()` | 默认什么都不做；有输出的设备必须用 `@tool(kind="safe")` 覆盖 |
 | `capability_details()` | 非秘密的限值和生效设置；**不能访问驱动**，设备不可达时也要能返回 |
-| `pinout()` | 默认抛 `NOT_SUPPORTED` |
-| `panel()` | 默认空列表 |
+| `pinout()` | 默认抛 `NOT_SUPPORTED`；返回的 `Pinout` 可以给连接器带 `image`（见"示意图"） |
+| `description`、`hardware_revision`、`appearance_image`、`assets_path` | 类属性，进入 `/device`。`assets_path` 覆盖图片目录（默认适配器模块旁的 `assets/`），`assets_dir()` 返回它 |
 
 所有生命周期方法和工具都在工作线程里运行，写普通阻塞代码即可；也可以写成 `async def`。
 
@@ -56,7 +59,7 @@ class Pci1234(Device):
 
 ```python
 @tool(kind="actuate", output=Voltage, safety_action="safe_state", effects=("voltage_output_active",),
-      description="Set one AO channel ... Never re-send after a timeout: read ao<n> or measure first.")
+      description="Set one AO channel ... Never re-send after a timeout: read the ao<n> stream first.")
 def set_voltage(self, channel: AoChannel, volts: Volts) -> dict[str, Any]:
     ...
     return {"channel": channel, "volts": volts}
@@ -73,6 +76,8 @@ def set_voltage(self, channel: AoChannel, volts: Volts) -> dict[str, Any]:
 | `safety_action` | 短名或 `{"toolName": ..., "arguments": {...}}`；必须指向已存在的工具，否则启动失败 |
 
 方法参数不能用 `*args/**kwargs`，每个参数必须用 `param()` 标注。返回值是信封的 `data`。
+
+`configure` 和 `actuate` 工具受租约约束（被他人租用或 `_meta.leaseId` 已失效时 SDK 直接返回 `busy`，不调用方法）；`read` 和 `safe` 不受限。租约的心跳、超时和结束时的 `safe_state` 全部由 SDK 处理。工具只报告测量值和状态，不接收期望值、不返回通过 / 失败。工具运行期间写入的流记录自动带本次操作号，并进入结果 `meta.streamRefs`；适配器什么都不用做。
 
 ## `param` 与 `model`
 
@@ -105,7 +110,7 @@ raise DeviceError(f"AO_VWriteChannel failed rc={rc}", category=DEVICE_ERROR,
 
 ## `ServerConfig`
 
-来自远端 `server.json`（不在仓库里，由人维护）：
+来自远端 `server.json`（不在仓库里，由 HardwareHarness 终端在首次安装时生成）：
 
 | 字段 | 说明 |
 |---|---|
@@ -116,6 +121,52 @@ raise DeviceError(f"AO_VWriteChannel failed rc={rc}", category=DEVICE_ERROR,
 | `build` | 组装时生成的 `build.json`（源码版本、SDK 版本） |
 
 读 `settings` 时给出默认值，并在 `capability_details()` 里报告生效值。可以兼容历史环境变量（如 `ADLINK_SAFE_VOLTS`），但新设置优先放 `settings`。
+
+## 示意图（`diagram`）
+
+没有厂商图片时，用 SDK 从引脚数据生成示意 SVG（标明 "Schematic, not to scale"），放进 `assets/`：
+
+```python
+from hardwareharness_device_sdk import PortDiagram, attach_port_image, dsub, render_board, render_port
+
+PORT_IMAGE = "ports/CN1.svg"
+
+def pinout(hardware_id: str) -> Pinout:
+    data = Pinout(...)
+    return attach_port_image(data, "CN1", PORT_IMAGE, port_diagram(data))   # 多个同型连接器传名字列表
+
+def port_diagram(data: Pinout) -> PortDiagram:
+    return render_port(data, "CN1", dsub(37), title="Acme PCI-1234  CN1 (37-pin D-sub)")
+
+def appearance_diagram() -> str:
+    return render_board("Acme PCI-1234  digital I/O card", ("32 x DO", "32 x DI"), ("CN1 37-pin D-sub",))
+```
+
+| 函数 | 说明 |
+|---|---|
+| `dsub(count, high_density=False)` | D-sub 针位布局（9/15/25/37/50；高密度 15/26/44/62/78） |
+| `dual_row(count, kind=None)` | 双排针布局（1..n/2 在上，n/2+1..n 在下），如 SCSI-68、IDC |
+| `render_port(pinout, connector, layout, *, title, note=)` | 画一个连接器：针脚按方向着色（多模式方向不同为 `mode-dependent`），标信号名、图例和说明；布局与连接器针脚不一致时抛 `ValueError`。返回 `PortDiagram(svg, positions)` |
+| `attach_port_image(pinout, connectors, asset, diagram)` | 给指定连接器设 `ConnectorImage(asset, pinPositions)`；连接器名不存在时抛 `ValueError` |
+| `render_board(title, facts, bracket, *, note=)` | 板卡外观示意图（外形、金手指、挡板连接器标签），返回 SVG 文本 |
+
+生成的文件写进 `assets/`，在 `pyproject.toml` 里列为 package-data（`"assets/*.svg", "assets/**/*.svg"`），并加一条测试保证仓库里的文件等于重新生成的结果（比较前把 `\r\n` 规范为 `\n`）。视图方向（插座面 / 焊接面）手册没写时在 `note` 里说明未核实。有厂商照片或图纸时优先用它们（PNG / JPEG / WebP / SVG，不超过 2 MB）。
+
+## 软件波形（`waveform`）
+
+没有 FIFO 或硬件时钟的静态输出（如 AO 卡）用 `SoftwareWaveform` 出低频波形：
+
+```python
+self.waveform = SoftwareWaveform(self._waveform_write, lock=self.io_lock,
+                                 streams={ch: self.ao[ch] for ch in CHANNELS},   # kind="setpoint" 的 scalar 流
+                                 limits=(-10.0, 10.0), max_update_hz=200.0, max_frequency_hz=20.0)
+```
+
+- `write(channel, value)` 是一次阻塞的驱动写，由生成线程持 `lock` 调用；每个写出的值发布到对应的流。相位按服务时钟相对 `startAt` 计算，不累积漂移，迟到的点跳过。
+- `set(channel, shape, frequency_hz, amplitude, offset, *, duty_cycle=, phase_deg=, start_at=)` 启动或替换，返回生效参数；`shape` 为 `SHAPES`（`sine` / `square` / `triangle` / `sawtooth` / `dc`），`amplitude` 是相对 `offset` 的峰值，超出 `limits` 或 `max_frequency_hz` 报 `INVALID_ARGUMENT`。
+- `stop(channel, hold_value=None)` 停止并保持静态值；静态写工具先 `cancel(channel)` 取消该通道的波形；`stop_all()` 必须在 `safe_state` 最前面调用；`running()` 报告正在运行的通道；`close()` 在设备的 `close()` 里调用。
+- `capability_details()` 里合入 `waveform_capability(channels, mode="software", max_update_hz=...)`，得到 `{"waveform": {channels, mode, shapes, maxUpdateHz, maxSampleRateHz, maxArbitrarySamples, timingAccuracy}}`。软件波形的 `maxUpdateHz` 不超过 `MAX_SOFTWARE_UPDATE_HZ`（200）。
+- 工具命名 `set_waveform` / `stop_waveform`，`kind="actuate"`、`safety_action="safe_state"`；完整示例见 `pci6208v`。
 
 ## 模拟器（`sim.py`）
 
@@ -128,14 +179,16 @@ raise DeviceError(f"AO_VWriteChannel failed rc={rc}", category=DEVICE_ERROR,
 
 | 函数 | 说明 |
 |---|---|
-| `check_device(cls)` | 运行合规套件，返回失败列表；`[]` 表示通过 |
+| `check_device(cls, warnings=[])` | 运行合规套件，返回失败列表；`[]` 表示通过。传入列表收集非致命警告（缺外观图、端口图、描述，字节流不调 `idle()`）；交付时应为空 |
 | `serve(cls)` | 上下文管理器，dry-run 启动服务，返回 harness |
 | `harness.call("set_output", channel=1, level=True)` | 按短名调用，返回信封 |
+| `harness.call("set_output", {"operationId": "op-1", "leaseId": ...}, channel=1, level=True)` | 第二个位置参数是请求 `_meta` |
 | `harness.mcp.call_raw(full_name, arguments)` | 原始 MCP 调用，用于越界等失败路径 |
 | `harness.tools` | 工具名 → 工具定义 |
+| `harness.get(path, token=...)` | 带令牌的 HTTP GET，如 `hh.get("/device").json()`、`hh.get("/assets/ports/CN1.svg")` |
 | `harness.service.device` | 设备实例（可以直接改模拟器状态） |
-| `harness.websocket(stream_id, cursor=0)` | 连接流通道 |
-| `receive_until(socket, predicate)` | 读帧直到谓词成立 |
+| `harness.sse(stream_id, cursor=0, since=None, last_event_id=None)` | 订阅流通道（真实 uvicorn + httpx）；`cursor` 省略为 `latest`；`events.receive()` 返回 `{"type": 事件名, **data}`，`events.last_id` 是最后的事件 id |
+| `receive_until(events, predicate)` | 读事件直到谓词成立 |
 | `dry_run_config(cls, **overrides)` | 直接构造设备做单元测试 |
 
-命令行等价物：`uv run python -m hardwareharness_device_sdk --adapter hh_adapter_<adapter> --check`。
+命令行等价物：`uv run python -m hardwareharness_device_sdk --adapter hh_adapter_<adapter> --check`，输出 `{failures, warnings}`；有失败时退出码 1，警告不影响退出码。

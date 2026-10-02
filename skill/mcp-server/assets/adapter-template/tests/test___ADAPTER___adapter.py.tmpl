@@ -3,11 +3,13 @@ from __future__ import annotations
 import pytest
 from hardwareharness_device_sdk.testing import check_device, dry_run_config, receive_until, serve
 from __PACKAGE__ import DEVICE, __CLASS__
+from __PACKAGE__.pinout import ASSETS, LAYOUT, PORT_IMAGE, appearance_diagram, pinout, port_diagram
 
 PUBLIC_TOOLS = {
-    "get_server_info", "list_hardware", "get_hardware_info", "get_pinout", "list_streams", "get_panel",
+    "get_server_info", "list_hardware", "get_hardware_info",
+    "lease_acquire", "lease_heartbeat", "lease_release", "lease_force_release", "lease_status",
     "__PREFIX___set_output", "__PREFIX___read_inputs", "__PREFIX___safe_state",
-    "__PREFIX___stream_read", "__PREFIX___stream_start", "__PREFIX___stream_stop",
+    "__PREFIX___stream_read",
 }
 
 
@@ -19,7 +21,10 @@ def hh():
 
 def test_entry_point_and_compliance():
     assert DEVICE is __CLASS__
-    assert check_device(__CLASS__) == []
+    warnings: list[str] = []
+    assert check_device(__CLASS__, warnings=warnings) == []
+    # Until the pinout is filled in the connector is not_supported; afterwards every connector needs its image.
+    assert warnings == []
 
 
 def test_public_contract(hh):
@@ -41,26 +46,65 @@ def test_out_of_range_channel_never_reaches_driver(hh):
     assert driver.writes == before
 
 
-def test_write_publishes_shadow(hh):
-    assert hh.call("set_output", channel=2, level=True)["ok"]
-    assert hh.service.device.driver.outputs == 0b100
-    read = hh.call("stream_read", streamId="do", cursor=0)["data"]
-    assert read["items"][-1]["value"] == 0b100
-    assert read["items"][-1]["source"] == "software_shadow"
+def test_stream_declarations(hh):
+    assert hh.get("/device").json()["streams"] == [
+        {"id": "do", "type": "bits", "width": 8, "bitLabels": [f"DO{n}" for n in range(8)],
+         "label": "Accepted output mask", "kind": "setpoint"},
+        {"id": "di", "type": "bits", "width": 8, "bitLabels": [f"DI{n}" for n in range(8)], "rateHz": 20.0,
+         "kind": "measured"}]
+
+
+def test_device_declaration(hh):
+    document = hh.get("/device").json()
+    assert document["description"].startswith("__MANUFACTURER__ __MODEL__")
+    assert document["images"]["appearance"]["asset"] == "appearance.svg"
+    assert hh.get("/assets/appearance.svg").headers["content-type"].startswith("image/svg+xml")
+    assert {tool["name"]: tool["kind"] for tool in document["tools"]}["__PREFIX___set_output"] == "actuate"
+
+
+def test_shipped_assets_match_pinout():
+    # Regenerate with: uv run python -c "from __PACKAGE__.pinout import write_assets; write_assets()"
+    assert (ASSETS / "appearance.svg").read_bytes().decode().replace("\r\n", "\n") == appearance_diagram()
+    data = pinout("X")
+    if data is not None and LAYOUT is not None:
+        assert (ASSETS / PORT_IMAGE).read_bytes().decode().replace("\r\n", "\n") == port_diagram(data).svg
+
+
+def test_write_publishes_output_mask(hh):
+    result = hh.call("set_output", {"operationId": "op-1"}, channel=2, level=True)
+    assert result["ok"] and hh.service.device.driver.outputs == 0b100
+    refs = result["meta"]["streamRefs"]
+    assert [ref["streamId"] for ref in refs] == ["do"]
+    records = hh.call("stream_read", streamId="do", fromSeq=refs[0]["fromSeq"])["data"]["records"]
+    assert records[-1]["mask"] == 0b100 and records[-1]["op"] == "op-1"
 
 
 def test_inputs_stream_samples_the_controller(hh):
     hh.service.device.driver.inputs = 0b1010
     assert hh.call("read_inputs")["data"] == {"bits": 0b1010, "count": 8}
-    with hh.websocket("di", cursor=0) as socket:
-        batch = receive_until(socket, lambda frame: frame["type"] == "batch" and frame["items"])
-    assert batch["items"][-1]["value"] == 0b1010
+    with hh.sse("di", cursor=0) as events:
+        assert receive_until(events, lambda event: event["type"] == "hello")["streamType"] == "bits"
+        batch = receive_until(events, lambda event: event["type"] == "batch" and event["records"])
+    assert batch["records"][-1]["mask"] == 0b1010
 
 
 def test_safe_state_drives_every_output_low(hh):
     hh.call("set_output", channel=0, level=True)
     assert hh.call("safe_state")["data"] == {"mask": 0}
     assert hh.service.device.driver.outputs == 0
+
+
+def test_lease_blocks_other_holders_and_release_is_safe(hh):
+    grant = hh.call("lease_acquire", holder={"terminalId": "terminal-1", "label": "run-1"})["data"]
+    lease_id = grant["leaseId"]
+    assert (grant["heartbeatIntervalMs"], grant["timeoutMs"]) == (2_000, 10_000)
+    assert hh.call("set_output", channel=0, level=True)["error"]["category"] == "busy"
+    assert hh.call("set_output", {"leaseId": lease_id}, channel=0, level=True)["ok"]
+    assert hh.call("read_inputs")["ok"]
+    assert hh.call("lease_heartbeat", leaseId=lease_id)["ok"]
+    released = hh.call("lease_release", leaseId=lease_id)["data"]
+    assert released["released"] and hh.service.device.driver.outputs == 0  # every lease end runs safe_state
+    assert hh.call("lease_heartbeat", leaseId=lease_id)["error"]["category"] == "busy"
 
 
 def test_failed_write_keeps_last_accepted_state():
@@ -70,9 +114,3 @@ def test_failed_write_keeps_last_accepted_state():
     with pytest.raises(Exception, match="rc=-1") as caught:
         device.set_output(1, True)
     assert caught.value.details == {"rc": -1, "requested": 0b10, "last_accepted": 0}
-
-
-def test_panel_binds_existing_tools_and_streams(hh):
-    items = {item["id"]: item for item in hh.call("get_panel")["data"]["items"]}
-    assert items["do0"]["write"]["tool"] == "__PREFIX___set_output" and items["do0"]["confirm"]
-    assert items["di"]["stream"] == "di" and items["di"]["bits"] == 8

@@ -14,8 +14,8 @@ from hardwareharness_backend.testing.runtime_state import RuntimeStateStore
 
 from .test_testing import HUMAN, Devices, Projects, Resolver, finish
 
-PASS = {"id": "ok", "type": "Equal", "actual": 1, "expected": 1}
-FAIL = {"id": "bad", "type": "Equal", "actual": 1, "expected": 2}
+PASS = {"id": "ok", "type": "PublishResult", "value": 1, "verdict": "Pass"}
+FAIL = {"id": "bad", "type": "PublishResult", "value": 1, "verdict": "Fail"}
 SLOW = {"id": "slow", "type": "Delay", "durationMs": 2000}
 
 

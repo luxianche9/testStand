@@ -1,11 +1,12 @@
 import { vi } from "vitest";
+import type { RunMessages } from "@hardwareharness/contracts/observability";
 import type {
-  TestBatch, TestItemStatus, TestPlan, TestRunSnapshot, TestRunSummary
+  IcdCheck, IcdDocument, IcdSummary, TestBatch, TestItemStatus, TestPlan, TestRunSnapshot, TestRunSummary
 } from "@hardwareharness/contracts/testing";
 
 /** Test-only fake of `window.hardwareharness` for the 功能测试 page tests. */
 
-export const startedAt = "2026-09-17T00:00:00.000Z";
+const startedAt = "2026-09-17T00:00:00.000Z";
 
 export function makePlan(id = "plan", name = "台架冒烟测试"): TestPlan {
   return {
@@ -69,7 +70,7 @@ export function makeSummary(runId: string, planName: string, at: string): TestRu
   };
 }
 
-export function makeBatch(planIds: string[], stopOnFail: boolean): TestBatch {
+function makeBatch(planIds: string[], stopOnFail: boolean): TestBatch {
   return {
     batchId: "batch",
     state: "running",
@@ -113,7 +114,7 @@ export function installTestingApi(plans: TestPlan[], items: TestItemStatus[]) {
     pauseRun: vi.fn(),
     resumeRun: vi.fn(),
     abortRun: vi.fn(),
-    currentRun: vi.fn(async () => null),
+    currentRun: vi.fn(async (): Promise<TestRunSnapshot | null> => null),
     getRun: vi.fn(),
     listRuns: vi.fn(async (): Promise<{ items: TestRunSummary[]; nextCursor?: string }> => ({ items: [] })),
     readRunLog: vi.fn(async () => ({
@@ -136,7 +137,26 @@ export function installTestingApi(plans: TestPlan[], items: TestItemStatus[]) {
     currentBatch: vi.fn(async () => null),
     getBatch: vi.fn(),
     listRecoveryItems: vi.fn(async () => []),
-    reconcileOperation: vi.fn()
+    reconcileOperation: vi.fn(),
+    listRunStreams: vi.fn(async (runId: string) => ({ runId, recording: false, streams: [] })),
+    readRunStream: vi.fn(async () => ({ mode: "records", records: [], next: null, recording: false })),
+    getRunTimeline: vi.fn(async (runId: string) => ({
+      runId, tb0: null, tb1: null, steps: [], calls: [], anchors: [], windows: [], violations: [], marks: [],
+      streams: [], gaps: []
+    })),
+    readRunIo: vi.fn(),
+    readRunMessages: vi.fn(async (runId: string): Promise<RunMessages> => ({
+      runId, bindings: [], messages: [], total: 0, truncated: false
+    })),
+    listIcds: vi.fn(async (): Promise<IcdSummary[]> => []),
+    readIcd: vi.fn(async (name: string): Promise<IcdDocument> => ({ name, text: "", valid: false })),
+    checkIcd: vi.fn(async (): Promise<IcdCheck> => ({ valid: false })),
+    saveIcd: vi.fn(async (input: { name: string; text: string }) => ({
+      name: input.name,
+      icd: { name: input.name, icdHash: "h", transport: "bytes" as const, messages: [], encoders: [], streams: [] }
+    })),
+    rejudgeRun: vi.fn(async (runId: string) => ({ runId, results: [], consistent: true })),
+    answerManualCheck: vi.fn(async (input: { runId: string }) => makeRun(first, { runId: input.runId }))
   };
   Object.defineProperty(window, "hardwareharness", {
     configurable: true,
@@ -150,6 +170,12 @@ export function installTestingApi(plans: TestPlan[], items: TestItemStatus[]) {
       },
       devices: { listHardware: vi.fn(async () => []), hardwareImageUrl: vi.fn(() => "") },
       testing,
+      streams: {
+        live: vi.fn(() => () => undefined),
+        window: vi.fn(async (runId: string, _keys: string[], t0: number, t1: number) => ({
+          runId, t0, t1, colMs: 1, recording: false, streams: {}
+        }))
+      },
       events: {
         subscribe: vi.fn((name: string, callback: Subscriber) => {
           subscribers.set(name, callback);
