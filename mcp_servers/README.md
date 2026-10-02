@@ -174,9 +174,7 @@ pipeline (design 4.8.3):
 
 The default root is `E:\<serverid lower>_server`. Progress lines go to stderr and
 the final `{"result": ...}` line to stdout; tokens are never printed. The command
-line reads the SSH password from the terminal's secret store only: passwords still
-held in the old Electron `safeStorage` are migrated the next time the desktop app
-starts, so start it once before using the command line on an old profile.
+line reads the SSH password from the system credential store only.
 
 Each deploy, for one service:
 

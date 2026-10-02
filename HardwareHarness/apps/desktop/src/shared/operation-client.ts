@@ -2,9 +2,8 @@ import { OPERATIONS, type OperationName } from "@hardwareharness/contracts/appli
 import type { AppError, ErrorCategory, WireError } from "@hardwareharness/contracts/errors";
 import type { LocalApiEndpoint } from "./desktop-ipc.js";
 
-/** `POST /api/ops/{name}` of the Python service (design doc §9.4), for the preload (renderer
- * token) and main (host token). Only web globals: the sandboxed preload has no `Buffer` and
- * cannot load zod. */
+/** `POST /api/ops/{name}` of the Python service (design doc §9.4), for the renderer (renderer
+ * token) and main (host token). Only web globals, so the same code runs in both processes. */
 export interface OperationClientOptions {
   endpoint(): Promise<LocalApiEndpoint>;
   /** Called when the endpoint was refused or unreachable, so the next call asks again. */

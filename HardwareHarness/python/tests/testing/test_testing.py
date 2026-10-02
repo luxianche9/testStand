@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import sqlite3
 from pathlib import Path
 from types import SimpleNamespace
@@ -983,48 +982,28 @@ def test_run_history_indexes_artifacts_filters_and_pages(tmp_path: Path) -> None
     state.initialize()
     for index, verdict in enumerate(("Pass", "Fail", "Pass")):
         run_id = f"run-{index}"
-        run_dir = tmp_path / ".hardwareharness" / "runs" / run_id
-        run_dir.mkdir(parents=True)
-        (run_dir / "summary.json").write_text(
-            json.dumps(
-                {
-                    "runId": run_id,
-                    "planId": "plan-a" if index < 2 else "plan-b",
-                    "planName": f"Plan {index}",
-                    "revision": 1,
-                    "state": "completed",
-                    "verdict": verdict,
-                    "startedAt": f"2026-09-18T00:00:0{index}Z",
-                    "cleanupStatus": "Succeeded",
-                    "outcomeKnown": True,
-                    "recoveryRequired": False,
-                }
-            ),
-            encoding="utf-8",
+        journal = RunJournal(tmp_path / ".hardwareharness" / "runs" / run_id)
+        journal.create({"id": "plan"})
+        journal.finish(
+            {
+                "runId": run_id,
+                "planId": "plan-a" if index < 2 else "plan-b",
+                "planName": f"Plan {index}",
+                "revision": 1,
+                "state": "completed",
+                "verdict": verdict,
+                "startedAt": f"2026-09-18T00:00:0{index}Z",
+                "cleanupStatus": "Succeeded",
+                "outcomeKnown": True,
+                "recoveryRequired": False,
+            },
+            [],
         )
     first = state.list_runs(limit=1, verdict="Pass")
     assert [item["runId"] for item in first["items"]] == ["run-2"]
     second = state.list_runs(limit=1, verdict="Pass", cursor=first["nextCursor"])
     assert [item["runId"] for item in second["items"]] == ["run-0"]
     assert state.list_runs(plan_id="plan-a")["items"][0]["runId"] == "run-1"
-
-
-def test_legacy_run_classification_is_added_without_rewriting_verdict(tmp_path: Path) -> None:
-    state = RuntimeStateStore(Projects(tmp_path))
-    legacy = state.normalize_run(
-        {
-            "runId": "legacy",
-            "planId": "plan",
-            "revision": 1,
-            "state": "error",
-            "verdict": "Error",
-            "sequence": 1,
-            "resultSequence": 0,
-        }
-    )
-    assert legacy["verdict"] == "Error"
-    assert legacy["executionStatus"] == "Failed"
-    assert legacy["legacyClassification"] is True
 
 
 def test_read_run_log_restores_plan_and_incremental_artifacts(tmp_path: Path) -> None:
@@ -1043,20 +1022,15 @@ def test_read_run_log_restores_plan_and_incremental_artifacts(tmp_path: Path) ->
         "resultSequence": 2,
     }
     state.save_run(snapshot)
-    run_dir = tmp_path / ".hardwareharness" / "runs" / "run"
-    run_dir.mkdir(parents=True)
-    (run_dir / "plan.hhplan.yaml").write_text(
-        "id: plan\nname: Plan\nregions:\n  prepare: []\n  test: []\n  cleanup: []\n",
-        encoding="utf-8",
+    journal = RunJournal(tmp_path / ".hardwareharness" / "runs" / "run")
+    journal.create(
+        {"id": "plan", "name": "Plan", "regions": {"prepare": [], "test": [], "cleanup": []}}
     )
-    (run_dir / "events.jsonl").write_text(
-        '{"sequence":1,"type":"run.started"}\n{"sequence":2,"type":"run.completed"}\n',
-        encoding="utf-8",
-    )
-    (run_dir / "results.jsonl").write_text(
-        '{"sequence":1,"name":"old"}\n{"sequence":2,"name":"new"}\n',
-        encoding="utf-8",
-    )
+    journal.append_event({"sequence": 1, "type": "run.started"})
+    journal.append_event({"sequence": 2, "type": "run.completed"})
+    journal.append_result({"sequence": 1, "name": "old"})
+    journal.append_result({"sequence": 2, "name": "new"})
+    journal.close()
     engine = TestEngine(
         projects, Devices(), Resolver(), ExecutionCoordinator(), runtime_state=state
     )

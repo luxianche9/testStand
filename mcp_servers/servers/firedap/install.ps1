@@ -34,4 +34,4 @@ $config = @{
     jobDirectory=(Join-Path $root 'run\jobs');pinoutPath=(Join-Path $manuals 'firedap.pinout.json')
 }
 $config | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $configPath -Encoding utf8
-Write-Host 'Installed. Run start.ps1 and register-hardwareharness.cjs. Token is kept in server.json.'
+Write-Host 'Installed. Run start.ps1, then python -m hardwareharness_backend.host.register_firedap (see README). Token is kept in server.json.'

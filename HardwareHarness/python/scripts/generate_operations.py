@@ -1,6 +1,6 @@
 """Write the TypeScript operation metadata and ``openapi.json`` from the Python registry.
 
-``OPERATIONS`` gives the preload what it needs to turn a positional call into the named
+``OPERATIONS`` gives the HTTP clients what they need to turn a positional call into the named
 JSON body of ``POST /api/ops/{name}``: the wire parameter names in order, which of them are
 bytes (base64 on the wire) and whether the result is bytes. ``DESKTOP_OPERATIONS`` are the
 renderer's; ``HOST_OPERATIONS`` (``desktop.*``) only the main process may call.

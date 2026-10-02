@@ -1,7 +1,7 @@
-"""Enforce retained package line and branch floors independently of generated reports.
+"""Enforce per-package line and branch floors from ``coverage-baseline.json``.
 
-Different coverage engines count different constructs; passing these floors complements
-the behavioral tests and differential fixtures, and does not prove semantic equivalence.
+The floors are ``[covered, total]`` per ``hardwareharness_backend`` subpackage; a package's
+coverage ratio may not fall below its recorded ratio.
 """
 
 from __future__ import annotations
@@ -18,16 +18,16 @@ def main() -> None:
     coverage = json.loads((reports / "python-coverage.json").read_text("utf-8"))
     output: dict[str, Any] = {}
     failures = []
-    for package, original in baseline.items():
+    for package, floor in baseline.items():
         summaries = [
             file["summary"]
             for name, file in coverage["files"].items()
-            if "/" + package.replace("-", "_") + "/" in name.replace("\\", "/")
+            if "/" + package + "/" in name.replace("\\", "/")
         ]
         if not summaries:
             failures.append(f"{package}: no coverage data")
             continue
-        translated = {
+        actual = {
             "lines": [
                 sum(s["covered_lines"] for s in summaries),
                 sum(s["num_statements"] for s in summaries),
@@ -37,18 +37,19 @@ def main() -> None:
                 sum(s["num_branches"] for s in summaries),
             ],
         }
-        output[package] = {"minimum": original, "python": translated}
-        for metric, (covered, total) in translated.items():
-            ts_covered, ts_total = original[metric]
+        output[package] = {"minimum": floor, "actual": actual}
+        for metric, (covered, total) in actual.items():
+            floor_covered, floor_total = floor[metric]
             percent = covered / total if total else 1
-            if percent + 1e-12 < ts_covered / ts_total:
-                failures.append(f"{package} {metric}: {percent:.2%} < {ts_covered / ts_total:.2%}")
+            minimum = floor_covered / floor_total if floor_total else 1
+            if percent + 1e-12 < minimum:
+                failures.append(f"{package} {metric}: {percent:.2%} < {minimum:.2%}")
     (reports / "coverage-comparison.json").write_text(
         json.dumps(output, indent=2) + "\n", encoding="utf-8"
     )
     if failures:
         raise SystemExit("Coverage regressions:\n" + "\n".join(failures))
-    print("Retained packages meet original floors; reference workspace meets 90%")
+    print("All packages meet their coverage floors")
 
 
 if __name__ == "__main__":

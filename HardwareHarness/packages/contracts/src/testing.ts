@@ -150,7 +150,7 @@ export interface TestRunSnapshot {
   currentStepId?: string; activeExecutionIds?: string[]; pauseRequested: boolean; abortRequested: boolean; hardwareIds: string[];
   executionRevision?: string; executionStatus: TestExecutionStatus; cleanupStatus: TestCleanupStatus; safetyStatus: TestSafetyStatus;
   outcomeKnown: boolean; recoveryRequired: boolean; coverage: { requirements: RequirementCoverage[]; total: number };
-  primaryError?: TestRunPrimaryError; legacyClassification?: boolean;
+  primaryError?: TestRunPrimaryError;
   operations: TestOperationSnapshot[];
   /** ManualCheck steps waiting for the operator (design §7.2). */
   manualChecks?: ManualCheckRequest[];
@@ -191,7 +191,7 @@ export interface TestRunSummary {
   runId: string; planId: string; planName: string; revision: number; state: TestRunState; verdict: TestVerdict;
   startedAt: string; completedAt?: string; executionStatus: TestExecutionStatus; cleanupStatus: TestCleanupStatus; safetyStatus: TestSafetyStatus;
   outcomeKnown: boolean; recoveryRequired: boolean;
-  legacyClassification?: boolean;
+ 
 }
 export interface TestRunPage { items: TestRunSummary[]; nextCursor?: string }
 export interface TestRunLog {

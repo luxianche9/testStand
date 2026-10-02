@@ -1,7 +1,6 @@
 """SecretStore over a credential-store backend (design doc §4.7)."""
 
 import asyncio
-import base64
 import json
 from pathlib import Path
 from typing import Any, cast
@@ -17,28 +16,6 @@ from hardwareharness_backend.storage.secrets import (
     MemorySecretBackend,
 )
 from hardwareharness_backend.util import UNDEFINED
-
-
-class Legacy:
-    """Stands in for the safeStorage reader: the "ciphertext" is the UTF-8 plaintext."""
-
-    def __init__(self, broken: frozenset[str] = frozenset()) -> None:
-        self.broken = broken
-
-    def decrypt(self, value: bytes) -> str:
-        text = value.decode("utf-8")
-        if text in self.broken:
-            raise RuntimeError("bad ciphertext")
-        return text
-
-
-async def legacy_file(root: Path, entries: dict[str, Any]) -> Path:
-    path = root / "secrets.json"
-    encoded = {
-        key: base64.b64encode(json.dumps(value).encode()).decode() for key, value in entries.items()
-    }
-    await atomic_json(path, {"formatVersion": 1, "entries": encoded})
-    return path
 
 
 @pytest.mark.ts_case(
@@ -149,45 +126,6 @@ async def test_a_missing_chunk_drops_only_that_secret(tmp_path: Path) -> None:
     await reopened.initialize()
     assert not reopened.has("long")
     assert reopened.get("short") == "ok"
-
-
-async def test_legacy_file_is_imported_once_and_renamed(tmp_path: Path) -> None:
-    path = await legacy_file(tmp_path, {"gateway": {"token": "t"}, "ssh:pc": {"password": "p"}})
-    backend = MemorySecretBackend()
-    store = SecretStore(tmp_path, backend, legacy=Legacy())
-    await store.initialize()
-    assert store.get("gateway") == {"token": "t"}
-    assert store.get("ssh:pc") == {"password": "p"}
-    assert not path.exists()
-    assert path.with_name("secrets.json.imported").exists()
-    assert (await read_json(tmp_path / INDEX_FILE))["keys"] == ["gateway", "ssh:pc"]
-    reopened = SecretStore(tmp_path, backend)
-    await reopened.initialize()
-    assert reopened.get("ssh:pc") == {"password": "p"}
-
-
-async def test_legacy_import_never_overwrites_and_keeps_the_file_on_failure(
-    tmp_path: Path,
-) -> None:
-    backend = MemorySecretBackend()
-    store = SecretStore(tmp_path, backend)
-    await store.initialize()
-    await store.set("gateway", {"token": "current"})
-    path = await legacy_file(tmp_path, {"gateway": {"token": "old"}, "broken": "b", "ok": 1})
-    reopened = SecretStore(tmp_path, backend, legacy=Legacy(frozenset({'"b"'})))
-    await reopened.initialize()
-    assert reopened.get("gateway") == {"token": "current"}
-    assert reopened.get("ok") == 1
-    assert not reopened.has("broken")
-    assert path.exists()  # Retried on the next start.
-
-
-async def test_legacy_file_without_a_reader_is_left_alone(tmp_path: Path) -> None:
-    path = await legacy_file(tmp_path, {"gateway": {"token": "t"}})
-    store = SecretStore(tmp_path, MemorySecretBackend())
-    await store.initialize()
-    assert not store.has("gateway")
-    assert path.exists()
 
 
 async def test_file_backend_persists_for_integration_tests(tmp_path: Path) -> None:

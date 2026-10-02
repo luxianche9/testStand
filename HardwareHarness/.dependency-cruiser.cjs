@@ -50,14 +50,7 @@ module.exports = {
           ? "^apps/desktop/src/renderer/features/(?:[^/]+/index\\.ts|wiring/TopologyPreview\\.tsx)$"
           : "^apps/desktop/src/renderer/features/[^/]+/index\\.ts$"
       }
-    })),
-    {
-      name: "packages-must-not-depend-on-theia",
-      comment: "Domain packages must stay Theia-agnostic; only the IDE shell may reference @theia/*.",
-      severity: "error",
-      from: { path: "^packages/" },
-      to: { path: "node_modules/@theia/" }
-    }
+    }))
   ],
   options: {
     doNotFollow: { path: "node_modules" },

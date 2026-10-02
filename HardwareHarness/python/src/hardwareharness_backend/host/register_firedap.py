@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import Any
 
 from hardwareharness_backend.devices.device_store import DeviceStore
-from hardwareharness_backend.host.legacy_secrets import OsCryptReader
 from hardwareharness_backend.storage.secrets import SecretBackend, SecretStore
 from hardwareharness_backend.util import utc_now_iso
 
@@ -53,7 +52,7 @@ async def register(
                 shutil.copytree(source, destination)
             else:
                 shutil.copy2(source, destination)
-    secrets = SecretStore(user_data, backend, legacy=OsCryptReader.from_profile(user_data))
+    secrets = SecretStore(user_data, backend)
     await secrets.initialize()
     await store.save_computer(
         {

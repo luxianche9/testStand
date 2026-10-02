@@ -36,7 +36,6 @@ from hardwareharness_backend.devices.leases import LeaseManager, terminal_holder
 from hardwareharness_backend.host.change_events import change_summary
 from hardwareharness_backend.host.desktop import DesktopApplication
 from hardwareharness_backend.host.http_api import EventBus, LocalApi
-from hardwareharness_backend.host.legacy_secrets import OsCryptReader
 from hardwareharness_backend.mcp_gateway import LocalMcpGateway
 from hardwareharness_backend.projects import ProjectService
 from hardwareharness_backend.projects.icd_library import IcdLibrary
@@ -109,7 +108,7 @@ class HostRuntime:
         if backend is None and options.integration_test_mode:
             # End-to-end runs must never touch the real credential store.
             backend = FileSecretBackend(root / TEST_SECRETS_FILE)
-        secrets = SecretStore(root, backend, legacy=OsCryptReader.from_profile(root))
+        secrets = SecretStore(root, backend)
         await secrets.initialize()
         transports = DeviceTransportRegistry([McpHttpTransport(secrets)])
         store = DeviceStore(root / "devices")

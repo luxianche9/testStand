@@ -106,11 +106,8 @@ class DeviceStore:
         return removed
 
     def list_servers(self) -> list[Record]:
-        flat = self._read_all(self._server_dir, "", parse_mcp_server)
-        legacy = self._read_all(self._server_dir, "server.json", parse_mcp_server)
-        unique = {item["serverId"]: item for item in [*legacy, *flat]}
         return sorted(
-            unique.values(),
+            self._read_all(self._server_dir, "", parse_mcp_server),
             key=lambda item: item["serverId"],
         )
 
@@ -132,7 +129,6 @@ class DeviceStore:
                 )
         segment = safe_segment(server["serverId"])
         await atomic_json(self._server_dir / (segment + ".json"), server)
-        await _remove(self._server_dir / segment)
         self._read_cache.clear()
         if self.get_stored_hardware(server["hardwareId"]) is None:
             await self._save_stored_hardware(
@@ -148,7 +144,6 @@ class DeviceStore:
     async def remove_server(self, server_id: str) -> None:
         segment = safe_segment(server_id)
         await _remove(self._server_dir / (segment + ".json"))
-        await _remove(self._server_dir / segment)
         self._read_cache.clear()
 
     def list_stored_hardware(self) -> list[Record]:

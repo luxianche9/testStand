@@ -1,6 +1,6 @@
 """The operation registry and its middleware (design doc §9.3).
 
-Every entry point (HTTP, and later the MCP gateway and CLI) calls ``OperationRegistry.invoke``
+Every entry point (HTTP and the Agent MCP gateway) calls ``OperationRegistry.invoke``
 with a request context, an operation name and a payload. The steps run in a fixed order:
 
 1. parse and validate the request model (``invalid_argument``);

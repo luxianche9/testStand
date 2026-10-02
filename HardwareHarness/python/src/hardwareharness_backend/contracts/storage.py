@@ -7,7 +7,6 @@ from hardwareharness_backend.contracts.validation import (
     literal,
     obj,
     parse_record,
-    record,
     string,
 )
 from hardwareharness_backend.util import Record
@@ -40,9 +39,6 @@ llm_settings_input_schema = obj(
         "clearApiKey": boolean().optional(),
     }
 )
-encrypted_secret_file_schema = obj(
-    {"formatVersion": literal(1).default(1), "entries": record(string())}
-)
 
 
 def parse_user_settings(value: Any) -> Record:
@@ -51,7 +47,3 @@ def parse_user_settings(value: Any) -> Record:
 
 def parse_llm_settings_input(value: Any) -> Record:
     return parse_record(llm_settings_input_schema, value)
-
-
-def parse_encrypted_secret_file(value: Any) -> Record:
-    return parse_record(encrypted_secret_file_schema, value)

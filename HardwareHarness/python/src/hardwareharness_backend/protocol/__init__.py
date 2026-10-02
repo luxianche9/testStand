@@ -2,7 +2,7 @@
 
 Domain layer (§9.2): pure logic over records and bytes, no I/O. Depends only on the standard
 library, Pydantic and :mod:`hardwareharness_backend.contracts` (plus ``ruamel.yaml`` in
-:mod:`.loader` for parsing ICD text and the optional ``cantools`` in :mod:`.can`).
+:mod:`.loader` for parsing ICD text).
 
 * :mod:`.icd`       — ICD schema (Pydantic models), JSON Schema export, canonical hash
 * :mod:`.checksums` — named checksum/CRC table with RevEng check values (§6.3)
@@ -10,7 +10,6 @@ library, Pydantic and :mod:`hardwareharness_backend.contracts` (plus ``ruamel.ya
 * :mod:`.codec`     — checksum verification, message matching, field decoding, frame building
 * :mod:`.derived`   — derived field streams from raw records (§6.4)
 * :mod:`.loader`    — ``load_icd(yaml_text)``
-* :mod:`.can`       — CAN DBC decoding via optional cantools
 """
 
 from __future__ import annotations

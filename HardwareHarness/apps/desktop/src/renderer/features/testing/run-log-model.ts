@@ -46,7 +46,6 @@ export interface ExecutionTraceNode extends StepProjection {
 export interface ExecutionTrace {
   regions: Record<"prepare" | "test" | "cleanup", ExecutionTraceNode[]>;
   byExecutionId: Map<string, ExecutionTraceNode>;
-  legacy: boolean;
   unmatchedResults: TestResult[];
   unmatchedOperations: TestOperationSnapshot[];
 }
@@ -65,10 +64,6 @@ export function buildExecutionTrace(
   operations: TestOperationSnapshot[]
 ): ExecutionTrace {
   const orderedEvents = [...events].sort((left, right) => left.sequence - right.sequence);
-  const hasInstances = orderedEvents
-    .some((event) => typeof event.executionId === "string" && event.type.startsWith("step."));
-  if (!hasInstances) return buildLegacyTrace(plan, orderedEvents, results, operations);
-
   const stepIndex = indexPlanSteps(plan);
   const byExecutionId = new Map<string, ExecutionTraceNode>();
   for (const event of orderedEvents) {
@@ -117,7 +112,7 @@ export function buildExecutionTrace(
   const unmatchedResults = attachResults(results, byExecutionId);
   attachRelatedAssertions(results, byExecutionId);
   const unmatchedOperations = attachOperations(operations, byExecutionId);
-  return { regions, byExecutionId, legacy: false, unmatchedResults, unmatchedOperations };
+  return { regions, byExecutionId, unmatchedResults, unmatchedOperations };
 }
 
 export function projectStepStates(plan: TestPlan, events: TestRunEvent[]): Record<string, StepProjection> {
@@ -168,34 +163,6 @@ export function downsample(points: MeasurementPoint[], maxPoints = 2000): Measur
   const last = points.at(-1)!;
   if (output.at(-1)?.sequence !== last.sequence) output.push(last);
   return output.length <= maxPoints ? output : [...output.slice(0, maxPoints - 1), last];
-}
-
-function buildLegacyTrace(
-  plan: TestPlan,
-  events: TestRunEvent[],
-  results: TestResult[],
-  operations: TestOperationSnapshot[]
-): ExecutionTrace {
-  const states = projectStepStates(plan, events);
-  const byExecutionId = new Map<string, ExecutionTraceNode>();
-  const regions: ExecutionTrace["regions"] = { prepare: [], test: [], cleanup: [] };
-  const build = (step: TestStep, region: Region, parentExecutionId?: string): ExecutionTraceNode => {
-    const executionId = `legacy:${step.id}`;
-    const projection = states[step.id] ?? { state: "waiting" as const };
-    const node: ExecutionTraceNode = {
-      executionId, stepId: step.id, step, region, ...emptyCollections(),
-      pending: projection.state === "waiting", ...projection,
-      ...(parentExecutionId ? { parentExecutionId } : {})
-    };
-    byExecutionId.set(executionId, node);
-    node.children = [...(step.children ?? []), ...(step.elseChildren ?? [])]
-      .map((child) => build(child, region, executionId));
-    return node;
-  };
-  for (const region of regionNames) regions[region] = plan.regions[region].map((step) => build(step, region));
-  const unmatchedResults = attachResults(results, byExecutionId);
-  const unmatchedOperations = attachOperations(operations, byExecutionId);
-  return { regions, byExecutionId, legacy: true, unmatchedResults, unmatchedOperations };
 }
 
 function createNode(step: TestStep, event: TestRunEvent): ExecutionTraceNode {

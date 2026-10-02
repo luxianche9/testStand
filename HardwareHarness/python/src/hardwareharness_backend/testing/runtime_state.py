@@ -89,7 +89,6 @@ class RuntimeStateStore:
                 """
             )
             self._recover_interrupted(database)
-            self._import_legacy_requests(database)
         self._initialized_path = current
 
     def claim_request(self, scope: str, request_id: str, payload: Any) -> Record | None:
@@ -102,7 +101,7 @@ class RuntimeStateStore:
                 (scope, request_id),
             ).fetchone()
             if row:
-                if row[0] not in {digest, "legacy-unknown"}:
+                if row[0] != digest:
                     raise app_error(
                         "conflict",
                         "requestId was already used with different input",
@@ -469,7 +468,6 @@ class RuntimeStateStore:
             "safetyStatus",
             "outcomeKnown",
             "recoveryRequired",
-            "legacyClassification",
             "unitId",
             "batchId",
         )
@@ -487,7 +485,6 @@ class RuntimeStateStore:
     @staticmethod
     def normalize_run(snapshot: Record) -> Record:
         result = clone(snapshot)
-        legacy = "executionStatus" not in result or "safetyStatus" not in result
         state = str(result.get("state", "completed"))
         if "executionStatus" not in result:
             result["executionStatus"] = (
@@ -505,8 +502,6 @@ class RuntimeStateStore:
         )
         result.setdefault("outcomeKnown", True)
         result.setdefault("recoveryRequired", False)
-        if legacy:
-            result["legacyClassification"] = True
         return result
 
     @staticmethod
@@ -569,38 +564,3 @@ class RuntimeStateStore:
                 "UPDATE runs SET state='error',snapshot_json=?,updated_at=? WHERE run_id=?",
                 (json.dumps(snapshot, ensure_ascii=False), now, run_id),
             )
-
-    def _import_legacy_requests(self, database: sqlite3.Connection) -> None:
-        marker = database.execute(
-            "SELECT value FROM metadata WHERE key='legacy_requests_imported'"
-        ).fetchone()
-        if marker:
-            return
-        legacy = self.path().parent / "testing-requests.json"
-        if legacy.exists():
-            try:
-                value = json.loads(legacy.read_text(encoding="utf-8"))
-                for scope, entries in value.get("requests", {}).items():
-                    for request_id, entry in entries.items():
-                        state = entry.get("state", "pending")
-                        result = entry.get("result")
-                        if state != "completed":
-                            state = "needs_review"
-                        now = entry.get("completedAt") or entry.get("claimedAt") or utc_now_iso()
-                        database.execute(
-                            "INSERT OR IGNORE INTO requests VALUES (?,?,?,?,?,?,?)",
-                            (
-                                scope,
-                                request_id,
-                                "legacy-unknown",
-                                state,
-                                json.dumps(result, ensure_ascii=False)
-                                if result is not None
-                                else None,
-                                now,
-                                now,
-                            ),
-                        )
-            except (OSError, json.JSONDecodeError):
-                pass
-        database.execute("INSERT OR REPLACE INTO metadata VALUES ('legacy_requests_imported','1')")

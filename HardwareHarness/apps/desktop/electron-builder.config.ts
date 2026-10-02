@@ -17,11 +17,6 @@ const config: Configuration = {
   files: ["out/**/*", "package.json"],
   extraResources: [
     {
-      from: resolve(desktopDir, "../../docs/shadcn"),
-      to: "third-party/shadcn",
-      filter: ["LICENSE.md", "README.md"]
-    },
-    {
       from: resolve(desktopDir, "../../python/dist/hardwareharness-backend"),
       to: "backend"
     },

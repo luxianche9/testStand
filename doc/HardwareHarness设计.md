@@ -402,7 +402,7 @@ MCP 规范在 `tools/call` 的 `params` 中保留 `_meta` 字段，用来放不�
 - **禁止**把 `server.json` 或任何令牌、密码提交到仓库，也禁止从远端拉回到仓库目录。
 - 终端的密钥存储条目：`ssh:<computerId>` 保存 SSH 密码或私钥，`mcp:<serverId>` 保存 `{token}`。
 - 【目标】密钥存储由工作站服务自己通过 Python `keyring` 访问系统凭据库（Windows 上是“凭据管理器”），服务名固定为 `HardwareHarness`。这样服务不经过界面也能取到令牌。
-- 【现状】密钥用 Electron `safeStorage` 加密，后端经 stdio JSON-RPC 回调主进程读写（`host/rpc.py`）。迁移时由服务一次性把旧条目导入系统凭据库，之后删除回调。
+- 【现状】密钥存于系统凭据库（Python `keyring`），由后端直接读写；旧 `safeStorage` 条目不导入（D5，旧数据不迁移）。
 
 ### 4.8 部署与服务管理【目标：统一由终端提供】
 
@@ -687,7 +687,7 @@ Last-Event-ID: <epoch>:<seq>          （可选，重连时由客户端带上）
 - 运行开始前预录 1000 ms，结束后补录 500 ms。
 - 录制的是**原始记录**。协议层派生的字段不单独存储，需要时由 ICD 重新计算（第 6.4 节）。
 - 以上均为【现状】，见 `B\streams\recorder.py`、`store.py`。
-- 【现状】流记录与运行日志已合并进同一个文件 `runs/<runId>/run.sqlite`（第 9.5 节），流表结构不变，只是多了日志表；旧运行目录中的 `streams.sqlite` 只读可用。
+- 【现状】流记录与运行日志已合并进同一个文件 `runs/<runId>/run.sqlite`（第 9.5 节），流表结构不变，只是多了日志表。旧运行目录不再读取。
 
 #### 5.9.3 实时显示
 
@@ -1115,9 +1115,11 @@ run.ended(outcome)
 - 项目文件（计划、ICD、接线、工位绑定表）是项目目录下的 YAML 文本，可以用 git 比较和评审，也方便 Agent 直接编辑。服务负责校验、建索引，并在文件变化时发事件。运行开始时把用到的文件快照进 `run.sqlite`，之后修改项目文件不影响已有运行。
 - 【现状】
   - 引擎已拆为 `testing\compiler.py`、`interpreter.py`（只经端口调用设备、读流、写日志，测试注入假实现）和 `journal.py`；
-  - 每次运行一个 `runs\<runId>un.sqlite`（WAL）：`journal`、`results`、`snapshots`（plan、wiring、summary）以及流表；不再写 `run.log`；
-  - 旧布局（`events.jsonl`、`results.jsonl`、`plan.hhplan.yaml`、`wiring.json`、`summary.json`、`streams.sqlite`）只读可用，不转换；
-  - 【目标】跨运行的操作账本、运行索引、请求和接线任务仍在项目级 `.hardwareharnessuntime.sqlite3`（作为索引）；恢复和待核销列表尚未完全由日志折叠推导。
+  - 每次运行一个 `runs\<runId>
+un.sqlite`（WAL）：`journal`、`results`、`snapshots`（plan、wiring、summary）以及流表；不再写 `run.log`；
+  - 旧布局（`events.jsonl`、`results.jsonl` 等）不再读取，不转换；
+  - 【目标】跨运行的操作账本、运行索引、请求和接线任务仍在项目级 `.hardwareharness
+untime.sqlite3`（作为索引）；恢复和待核销列表尚未完全由日志折叠推导。
 
 ### 9.6 前端
 
@@ -1295,8 +1297,8 @@ run.ended(outcome)
 | T1 | 9.3 | `@operation(capability)` 只做授权；`DESKTOP_METHODS` 映射方法名 | 注册表：`@operation(name, capability, risk, profiles, idempotency, confirm)`；请求和响应用 Pydantic 模型；按字段名传参；中间件（校验、能力、确认、幂等、审计、未知结果不重试） | `B/contracts/operations.py`、`B/application/` |
 | T2 | 9.3、9.4 | `POST /api/invoke {operation, args[]}`，调用时反射查找，位置参数，带类型标记的编解码；TS 类型手写 | 新增 `POST /api/ops/{name}` 和 `GET /api/openapi.json`；构建时生成 TS 类型和客户端，CI 检查是否过期；前端改用生成的客户端；全部迁完后删除 `/api/invoke`、`invoke_operation`、`DESKTOP_METHODS`、`host/codec.py` 的类型标记 | `B/host/http_api.py`、`runtime.py`、`codec.py`、`D/preload/transport.ts`、`D/renderer/lib/` |
 | T3 | 8.1、8.2、9.3 | 网关内置工具用 `Tool` 数据类另写一遍（`BUILTIN_TOOLS`） | 内置工具由注册表生成；工作模式由 `profiles` 决定；设备工具的调用也经过注册表中间件 | `B/mcp_gateway/tool_registry.py`、`contract_tools.py` |
-| T4 | 4.7、9.4 | 密钥由 Electron `safeStorage` 加密，后端经 stdio JSON-RPC 回调；`backend.initialize` 握手 | 改用 Python `keyring`；首次启动导入旧条目；启动握手改为 stdout 一行 `{port, token, version}`；删除 stdio JSON-RPC 和 `desktop.event` 通知 | `B/storage/secrets.py`、`B/host/rpc.py`、`__main__.py`、`D/main/python-bridge.ts`、`python-runtime.ts` |
-| T5 | 9.5 | `events.jsonl`、`results.jsonl`、`.hardwareharness/runtime.sqlite3`、`streams.sqlite` 分开存放 | 合并为 `runs/<runId>/run.sqlite`（日志表 + 快照 + 流表）；运行状态、恢复、待核销列表、报告、重新判定都从日志推导；提供旧运行目录的只读导入 | `B/testing/engine.py`、`runtime_state.py`、`store.py`、`B/streams/recorder.py`、`store.py` |
+| T4 | 4.7、9.4 | 密钥由 Electron `safeStorage` 加密，后端经 stdio JSON-RPC 回调；`backend.initialize` 握手 | 改用 Python `keyring`（旧条目不导入）；启动握手改为 stdout 一行 `{port, token, version}`；删除 stdio JSON-RPC 和 `desktop.event` 通知 | `B/storage/secrets.py`、`B/host/rpc.py`、`__main__.py`、`D/main/python-bridge.ts`、`python-runtime.ts` |
+| T5 | 9.5 | `events.jsonl`、`results.jsonl`、`.hardwareharness/runtime.sqlite3`、`streams.sqlite` 分开存放 | 合并为 `runs/<runId>/run.sqlite`（日志表 + 快照 + 流表）；运行状态、恢复、待核销列表、报告、重新判定都从日志推导；旧运行目录不读取 | `B/testing/engine.py`、`runtime_state.py`、`store.py`、`B/streams/recorder.py`、`store.py` |
 | T6 | 9.2、9.5 | `engine.py` 约 1700 行，执行、状态、写文件混在一起 | 拆为编译器、解释器、日志存储；解释器只通过接口调用 MCP、读流、写日志；模拟测试注入假实现 | `B/testing/`（新建 `interpreter.py`、`journal.py`） |
 | T7 | 5.9.3 | `streams.read` 长轮询，会话 60 s 回收 | SSE `GET /api/live`，服务端 min/max 抽稀；`streams.window` 用于回看；删除长轮询和会话回收 | `B/application/streams.py`、`B/streams/live.py`、`D/renderer/features/streams/` |
 | T10 | 9.6 | 事件处理已集中在 `useHardwareHarnessEvents.ts`，但 `project` 事件携带完整文档并直接写缓存，另有 15 s 兜底轮询；计划编辑器按步骤类型手写表单 | 事件只带资源键和版本号，映射表改为声明式数据并加覆盖测试，删除兜底轮询；步骤表单由 JSON Schema 生成（复用 `SchemaForm`）+ Monaco YAML 视图；预加载脚本只保留第 9.6.1 节列出的能力 | `D/renderer/lib/hooks/useHardwareHarnessEvents.ts`、`query-keys.ts`、`D/renderer/features/testing/`、`D/preload/api.ts` |

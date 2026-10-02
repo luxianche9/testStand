@@ -32,9 +32,3 @@ export const llmSettingsInputSchema = z.object({
 });
 export type LlmSettingsInput = z.infer<typeof llmSettingsInputSchema>;
 export interface LlmSettings { baseUrl: string; model: string; apiKeyConfigured: boolean }
-
-export const encryptedSecretFileSchema = z.object({
-  formatVersion: z.literal(1).default(1),
-  entries: z.record(z.string())
-});
-export type EncryptedSecretFile = z.infer<typeof encryptedSecretFileSchema>;

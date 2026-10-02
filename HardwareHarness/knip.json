@@ -1,5 +1,5 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "ignoreDependencies": ["electron", "electron-vite"],
-  "ignore": ["apps/desktop/src/renderer/global.d.ts", "apps/desktop/src/renderer/shared/**"]
+  "ignore": ["apps/desktop/src/renderer/global.d.ts"]
 }

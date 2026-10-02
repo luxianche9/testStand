@@ -21,7 +21,7 @@ export function useDeviceCatalog() {
 }
 
 /** Remote availability is pushed on the `availability` channel; this poll is the dropped-event
- *  fallback described in docs/architecture.md. */
+ *  fallback. */
 export function useDashboard() {
   return useQuery({
     queryKey: queryKeys.dashboard,
@@ -30,7 +30,7 @@ export function useDashboard() {
   });
 }
 
-/** Main-process project document buffer: path, dirty flag, and the single file contents. */
+/** The open project document: path, dirty flag, and the single file contents. */
 export function useProjectDocument() {
   return useQuery({ queryKey: queryKeys.projectDocument, queryFn: () => window.hardwareharness.projects.current() });
 }

@@ -25,14 +25,14 @@
 
 安装脚本创建 `.venv`、安装依赖，并在只有一个 FireDAP 时选择其完整序列号。多下载器时用 `-ProbeSerial` 指定。已有 `server.json` 会保留，不自动覆盖配置。`server.json`、固件、日志、运行记录均不入 Git。
 
-首次注册前，在 `hardwareHarness` 目录运行 `pnpm python:setup`，关闭 HardwareHarness，然后用仓库 Electron 运行 `register-hardwareharness.cjs`：
+首次注册前，在 `HardwareHarness` 目录运行 `pnpm python:setup` 并关闭 HardwareHarness（网关端口占用时其内存中的凭据会覆盖本次修改），然后直接运行 Python 后端的注册模块：
 
 ```powershell
-# 工作目录为本仓库根目录；若环境中存在 ELECTRON_RUN_AS_NODE，请先移除该变量。
-& '.\hardwareHarness\apps\desktop\node_modules\electron\dist\electron.exe' '.\mcp_servers\servers\firedap\register-hardwareharness.cjs'
+# 工作目录为本仓库根目录
+uv run --project HardwareHarness\python python -m hardwareharness_backend.host.register_firedap "$env:APPDATA\HardwareHarness" mcp_servers\servers\firedap mcp_servers\hardware-manuals\stm32-batianhu-v2
 ```
 
-注册由 Python 后端的 DeviceStore、校验规则和硬件包导入实现；Electron 脚本仅启动 Python 并提供 safeStorage 加解密回调。原硬件及凭据先备份到用户目录 `backups/firedap-时间戳`。`DUT_1` 保留原标识、CAN/RS485 端口标识；其他已有硬件不变。然后正常打开 HardwareHarness。
+注册由 Python 后端的 DeviceStore、校验规则和硬件包导入实现，令牌写入系统凭据库。原硬件及凭据先备份到用户目录 `backups/firedap-时间戳`。`DUT_1` 保留原标识、CAN/RS485 端口标识；其他已有硬件不变。然后正常打开 HardwareHarness。
 
 可用 `verify-desktop.cjs` 启动已构建的桌面端进行真实 API 验证；它不开放调试端口，验证后保留正常桌面窗口。报告写入 `run/desktop-verification.json`。
 

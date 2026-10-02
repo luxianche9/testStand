@@ -15,7 +15,6 @@ export default defineConfig({
       exclude: [
         "**/*.test.{ts,tsx}",
         "**/*.d.ts",
-        "apps/desktop/src/renderer/main.tsx",
         "apps/desktop/src/renderer/global.d.ts"
       ],
       thresholds: {

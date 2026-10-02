@@ -9,10 +9,6 @@ One SQLite file (WAL) is the whole evidence of a run:
 - the stream-recording tables of :mod:`hardwareharness_backend.streams.store`, written
   by the run's recorder through its own connection to the same file.
 
-Runs recorded before this layout (``events.jsonl``, ``results.jsonl``,
-``plan.hhplan.yaml``, ``wiring.json``, ``summary.json``, ``streams.sqlite``) stay
-readable, read-only; nothing converts or rewrites them.
-
 The interpreter writes through :class:`RunJournal`; the engine reads finished runs back
 from it. Nothing here interprets the records.
 """
@@ -26,19 +22,11 @@ from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
 
-from ruamel.yaml import YAML
-
 from hardwareharness_backend.util import clone
 
 Record = dict[str, Any]
 
 RUN_FILE = "run.sqlite"
-LEGACY_PLAN_FILE = "plan.hhplan.yaml"
-LEGACY_WIRING_FILE = "wiring.json"
-LEGACY_EVENTS_FILE = "events.jsonl"
-LEGACY_RESULTS_FILE = "results.jsonl"
-LEGACY_SUMMARY_FILE = "summary.json"
-LEGACY_STREAMS_FILE = "streams.sqlite"
 EMPTY_PLAN: Record = {
     "id": "unknown",
     "name": "历史测试计划",
@@ -61,12 +49,11 @@ def recording_path(run_dir: Path) -> Path | None:
     path = run_dir / RUN_FILE
     if path.exists() and "records" in _tables(path):
         return path
-    legacy = run_dir / LEGACY_STREAMS_FILE
-    return legacy if legacy.exists() else None
+    return None
 
 
 def read_summary(run_dir: Path) -> Record | None:
-    """The final summary of a finished run (either layout), ``None`` if there is none."""
+    """The final summary of a finished run, ``None`` if there is none."""
     value = RunJournal(run_dir).summary()
     return value if isinstance(value, dict) else None
 
@@ -132,8 +119,6 @@ class RunJournal:
 
     def reconciled(self, event: Record, summary: Record) -> None:
         """An operation of a finished run was reconciled after the fact."""
-        if not self.path.exists():
-            return  # Runs recorded before ``run.sqlite`` are read-only.
         self.append_event(event)
         self._snapshot("summary", summary)
         self.close()
@@ -165,23 +150,13 @@ class RunJournal:
     # -- reading (finished runs) ------------------------------------------------------------
 
     def events(self, after_sequence: int = 0) -> list[Record]:
-        if self.path.exists():
-            return self._rows("journal", after_sequence)
-        return _read_jsonl(self.run_dir / LEGACY_EVENTS_FILE, after_sequence)
+        return self._rows("journal", after_sequence)
 
     def results(self, after_sequence: int = 0) -> list[Record]:
-        if self.path.exists():
-            return self._rows("results", after_sequence)
-        return _read_jsonl(self.run_dir / LEGACY_RESULTS_FILE, after_sequence)
+        return self._rows("results", after_sequence)
 
     def plan(self) -> Record:
-        if self.path.exists():
-            value = self._snapshot_value("plan")
-        else:
-            path = self.run_dir / LEGACY_PLAN_FILE
-            if not path.exists():
-                return clone(EMPTY_PLAN)
-            value = YAML(typ="safe").load(path.read_text(encoding="utf-8"))
+        value = self._snapshot_value("plan")
         if value is None:
             return clone(EMPTY_PLAN)
         return (
@@ -191,14 +166,10 @@ class RunJournal:
         )
 
     def wiring(self) -> Any:
-        if self.path.exists():
-            return self._snapshot_value("wiring")
-        return _read_json(self.run_dir / LEGACY_WIRING_FILE)
+        return self._snapshot_value("wiring")
 
     def summary(self) -> Any:
-        if self.path.exists():
-            return self._snapshot_value("summary")
-        return _read_json(self.run_dir / LEGACY_SUMMARY_FILE)
+        return self._snapshot_value("summary")
 
     def _rows(self, table: str, after_sequence: int) -> list[Record]:
         output: list[Record] = []
@@ -273,21 +244,3 @@ def _tables(path: Path) -> set[str]:
 def _table_names(database: sqlite3.Connection) -> set[str]:
     rows = database.execute("SELECT name FROM sqlite_master WHERE type = 'table'").fetchall()
     return {str(row[0]) for row in rows}
-
-
-def _read_json(path: Path) -> Any:
-    with contextlib.suppress(OSError, json.JSONDecodeError):
-        return json.loads(path.read_text(encoding="utf-8"))
-    return None
-
-
-def _read_jsonl(path: Path, after_sequence: int) -> list[Record]:
-    if not path.exists():
-        return []
-    output: list[Record] = []
-    for line in path.read_text(encoding="utf-8").splitlines():
-        with contextlib.suppress(json.JSONDecodeError):
-            item = json.loads(line)
-            if isinstance(item, dict) and int(item.get("sequence", 0)) > after_sequence:
-                output.append(item)
-    return output

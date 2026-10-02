@@ -90,9 +90,6 @@ function RunLogView({ log, live, syncLabel, integrityWarning, actions }: {
         </div>
         <div className="grid grid-cols-[minmax(0,1fr)] gap-3 py-4">
           {integrityWarning && <InlineWarning>{integrityWarning}</InlineWarning>}
-          {trace.legacy && (
-            <InlineWarning>该历史运行缺少执行实例信息，循环和并行分支按静态计划兼容显示。</InlineWarning>
-          )}
           {live && <LiveReadings series={series} />}
           {hasStepEvents
             ? <ExecutionTimeline trace={trace} activeExecutionIds={new Set(activeExecutionIds)} />

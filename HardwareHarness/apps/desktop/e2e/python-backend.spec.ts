@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { access, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
@@ -28,7 +28,7 @@ async function expectExited(pid: number): Promise<void> {
   }).toBe(true);
 }
 
-test("Python imports existing safeStorage ciphertext once and exits without an orphan", async () => {
+test("Python backend exits with the window and leaves no orphan", async () => {
   const userData = await mkdtemp(join(tmpdir(), "hardwareharness 中文 profile "));
   const env = { ...process.env, HARDWAREHARNESS_USER_DATA_DIR: userData,
     HARDWAREHARNESS_GATEWAY_PORT: "0", HARDWAREHARNESS_AGENT_INTEGRATION_TEST_MODE: "1" };
@@ -51,30 +51,10 @@ test("Python imports existing safeStorage ciphertext once and exits without an o
     application = await launch();
     const first = await rendererReady(await application.firstWindow());
     await expect(first.getByRole("heading", { name: "最近项目" })).toBeVisible();
-    const ciphertext = await application.evaluate(({ safeStorage }) =>
-      safeStorage.encryptString(JSON.stringify({ apiKey: "legacy-test-key" })).toString("base64")
-    );
-    const firstPid = await backendPid(application);
+    const pid = await backendPid(application);
     await application.close();
     application = undefined;
-    await expectExited(firstPid);
-    // An install from before the keyring move: Python imports the file once, then renames it.
-    const path = join(userData, "secrets.json");
-    await writeFile(path, `${JSON.stringify({ formatVersion: 1, entries: { "opencode.llm.api-key": ciphertext } }, null, 2)}\n`, "utf8");
-
-    application = await launch();
-    const second = await rendererReady(await application.firstWindow());
-    const llm = await second.evaluate(() => window.hardwareharness.settings.getLlm());
-    expect(llm.apiKeyConfigured).toBe(true);
-    expect(await second.evaluate((value) => window.hardwareharness.settings.saveLlm(value), {
-      baseUrl: llm.baseUrl, model: llm.model
-    })).toEqual(llm);
-    await expect(access(path)).rejects.toThrow();
-    await access(`${path}.imported`);
-    const secondPid = await backendPid(application);
-    await application.close();
-    application = undefined;
-    await expectExited(secondPid);
+    await expectExited(pid);
   } finally {
     await application?.close();
     await rm(userData, { recursive: true, force: true });

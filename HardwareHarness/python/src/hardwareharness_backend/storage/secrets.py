@@ -8,9 +8,6 @@ on the credential store.
 
 A Windows credential blob holds about 1280 characters, so a longer value is split into
 ``<key>#1`` … ``<key>#n`` with a head entry ``{"v": 1, "chunks": n}``.
-
-The first start after the move from Electron ``safeStorage`` imports the old
-``secrets.json`` once (``LegacySecretReader``) and renames it ``secrets.json.imported``.
 """
 
 from __future__ import annotations
@@ -25,7 +22,6 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Protocol, TypeVar
 
-from hardwareharness_backend.contracts.storage import parse_encrypted_secret_file
 from hardwareharness_backend.storage.file_storage import atomic_json, read_json
 from hardwareharness_backend.storage.serialized_writer import SerializedWriter
 from hardwareharness_backend.storage.settings_store import JsonWriter
@@ -34,7 +30,6 @@ from hardwareharness_backend.util import UNDEFINED, Record, clone, json_dumps, j
 T = TypeVar("T")
 SERVICE = "HardwareHarness"
 INDEX_FILE = "secret-keys.json"
-LEGACY_FILE = "secrets.json"
 CHUNK = 1000
 """Characters per credential blob, under the Windows limit of 2560 bytes of UTF-16."""
 _log = logging.getLogger(__name__)
@@ -46,12 +41,6 @@ class SecretBackend(Protocol):
     def get_password(self, service: str, username: str) -> str | None: ...
     def set_password(self, service: str, username: str, password: str) -> None: ...
     def delete_password(self, service: str, username: str) -> None: ...
-
-
-class LegacySecretReader(Protocol):
-    """Decrypts one ``safeStorage`` blob of the old ``secrets.json``."""
-
-    def decrypt(self, value: bytes) -> str: ...
 
 
 class MemorySecretBackend:
@@ -108,13 +97,11 @@ class SecretStore:
         backend: SecretBackend | None = None,
         *,
         service: str = SERVICE,
-        legacy: LegacySecretReader | None = None,
         write_json: JsonWriter = atomic_json,
     ) -> None:
         self.root = Path(root)
         self.service = service
         self._backend = backend
-        self._legacy = legacy
         self._write_json = write_json
         self._values: Record = {}
         self._writer = SerializedWriter()
@@ -136,7 +123,6 @@ class SecretStore:
                     if value is not UNDEFINED:
                         values[name] = value
             self._values = values
-            await self._import_legacy()
             await self._write_index(self._values)
 
         await self._writer.enqueue(operation)
@@ -264,31 +250,3 @@ class SecretStore:
         # keyring raises PasswordDeleteError for a missing entry.
         with contextlib.suppress(Exception):
             self._store.delete_password(self.service, name)
-
-    # One-time import of the safeStorage file ------------------------------------------
-
-    async def _import_legacy(self) -> None:
-        path = self.root / LEGACY_FILE
-        if not path.exists():
-            return
-        if self._legacy is None:
-            _log.warning("%s needs importing but no legacy reader is available", path)
-            return
-        try:
-            stored = parse_encrypted_secret_file(await read_json(path))
-        except Exception as error:
-            _log.warning("Cannot read %s: %s", path, error)
-            return
-        failed = 0
-        for key, encoded in stored["entries"].items():
-            if key in self._values:
-                continue
-            try:
-                value = json_loads(self._legacy.decrypt(base64.b64decode(encoded)))
-                await asyncio.to_thread(self._write, key, value)
-                self._values[key] = value
-            except Exception as error:
-                failed += 1
-                _log.warning("Cannot import secret %s: %s", key, error)
-        if failed == 0:
-            path.replace(path.with_name(LEGACY_FILE + ".imported"))

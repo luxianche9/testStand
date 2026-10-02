@@ -107,7 +107,6 @@ _RUN_OUTPUT = _open_object(
             },
             ["phase", "category", "message", "recovered"],
         ),
-        "legacyClassification": {"type": "boolean"},
         "operations": {
             "type": "array",
             "items": _open_object(
