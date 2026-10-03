@@ -1,4 +1,4 @@
-"""testStand MCP adapter for the ADLINK PCI-6208V analog output card."""
+"""testStand device plugin for the ADLINK PCI-6208V analog output card."""
 
 from .adapter import Pci6208v
 

@@ -1,4 +1,4 @@
-"""testStand MCP adapter for the Moxa CP-118U-I 8-port serial card."""
+"""testStand device plugin for the Moxa CP-118U-I 8-port serial card."""
 
 from .adapter import Cp118uI
 

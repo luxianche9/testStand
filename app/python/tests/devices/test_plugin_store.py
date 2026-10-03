@@ -192,7 +192,10 @@ def test_tampered_wheel_fails_its_hash() -> None:
         (package(sdk=">=9"), "needs device SDK"),
         (package(wheels=[wheel(requires=("teststand-device-sdk>=9",))]), "Adapter needs"),
         (package(wheels=[wheel(requires=("teststand-device-sdk", "numpy"))]), "numpy is not in"),
-        (package(wheels=[wheel(), wheel("pydantic", "2.0", "", ())]), "would shadow pydantic"),
+        (
+            package(wheels=[wheel(requires=("teststand-device-sdk", "pydantic<2"))]),
+            "ships pydantic",
+        ),
         (package(wheels=[wheel(tag="cp312-cp312-linux_x86_64")]), "not built for CPython 3.11"),
         (package(type="other"), "says other"),
         (package(wheels=[wheel(device_type="")]), "No wheel declares"),
@@ -330,3 +333,23 @@ async def test_type_listing_reports_duplicates_and_broken_packages(
     importlib.invalidate_caches()
     [listed] = [item for item in installed_device_types() if item["type"] == "fake"]
     assert "declared twice" in listed["error"]
+
+
+async def test_dependencies_testStand_ships_are_left_out(tmp_path: Path, isolated: Any) -> None:
+    adapter = wheel(requires=("teststand-device-sdk", "pydantic>=2", "extra-dep"))
+    data = package(
+        wheels=[adapter, wheel("pydantic", "2.0", "", ()), wheel("extra_dep", "1", "", ())]
+    )
+    plugins = await store(tmp_path)
+    report = plugins.inspect(data)
+    assert report["problems"] == []
+    assert {item["name"].split("-")[0]: item["skipped"] for item in report["files"]} == {
+        "pydantic": True,
+        "extra_dep": False,
+        "teststand_adapter_fake": False,
+    }
+    await plugins.install(data)
+    [site] = (tmp_path / "plugins" / "fake").glob("*/site")
+    assert (site / "extra_dep-1.dist-info").is_dir() and not (
+        site / "pydantic-2.0.dist-info"
+    ).exists()

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "teststand-adapter-cp118u-i"
 version = "0.2.0"
-description = "testStand MCP adapter for the Moxa CP-118U-I 8-port serial card"
+description = "testStand device plugin for the Moxa CP-118U-I 8-port serial card"
 requires-python = ">=3.11"
 dependencies = ["teststand-device-sdk>=0.2,<0.3"]
 
@@ -17,3 +17,8 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 teststand_adapter_cp118u_i = ["py.typed"]
+
+# Read by devices/pack.py into the .tsdev manifest.
+[tool.teststand.package]
+vendorDrivers = ["Moxa PComm Lite"]
+requiredFiles = []

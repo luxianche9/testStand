@@ -1,4 +1,4 @@
-"""testStand MCP adapter for the Advantech PCI-1710L multifunction DAQ card."""
+"""testStand device plugin for the Advantech PCI-1710L multifunction DAQ card."""
 
 from .adapter import Pci1710l
 

@@ -308,9 +308,21 @@ class PluginStore:
                 return str(item.dist.metadata["Name"])
         return None
 
-    def _check(self, manifest: Record, wheels: dict[str, bytes]) -> list[str]:
-        """Reasons the package cannot be installed here; empty when it can."""
+    def _shipped(self, key: str) -> str | None:
+        """Version of distribution ``key`` when testStand itself ships it (outside the store)."""
+        try:
+            found = distribution(key)
+        except PackageNotFoundError:
+            return None
+        if _is_under(Path(str(found.locate_file(""))), self.root):
+            return None
+        return str(found.version)
+
+    def _check(self, manifest: Record, wheels: dict[str, bytes]) -> tuple[list[str], set[str]]:
+        """Reasons the package cannot be installed here (empty when it can), and the dependency
+        wheels to leave out because testStand already ships that distribution."""
         problems: list[str] = []
+        skipped: set[str] = set()
         provided: dict[str, str] = {}
         adapter: tuple[str, list[str], dict[str, str]] | None = None
         for name, content in sorted(wheels.items()):
@@ -327,7 +339,7 @@ class PluginStore:
                     problems.append("More than one wheel declares teststand.devices entry points")
                 adapter = (dist, requires, devices)
         if adapter is None:
-            return [*problems, "No wheel declares a teststand.devices entry point"]
+            return [*problems, "No wheel declares a teststand.devices entry point"], skipped
         dist, requires, devices = adapter
         if canonicalize_name(dist) != canonicalize_name(manifest["distribution"]):
             problems.append(
@@ -357,22 +369,21 @@ class PluginStore:
             if key == SDK_DISTRIBUTION:
                 if SDK_VERSION not in requirement.specifier:
                     problems.append(f"Adapter needs {raw}; testStand has {SDK_VERSION}")
+            elif (shipped := self._shipped(key)) is not None:
+                if shipped not in requirement.specifier:
+                    problems.append(f"Adapter needs {raw}; testStand ships {key} {shipped}")
             elif key not in provided:
                 problems.append(f"Dependency {requirement.name} is not in the package")
         for key, name in provided.items():
             if key == SDK_DISTRIBUTION:
                 problems.append("The package must not carry the device SDK; testStand provides it")
-                continue
-            try:
-                found = distribution(key)
-            except PackageNotFoundError:
-                continue
-            if not _is_under(Path(str(found.locate_file(""))), self.root):
-                problems.append(f"{name} would shadow {key}, which testStand already ships")
+            elif self._shipped(key) is not None:
+                # testStand's own copy is already on the path ahead of any package site.
+                skipped.add(name)
         owner = self._builtin_owner(manifest["type"])
         if owner is not None:
             problems.append(f"Device type {manifest['type']} is built in ({owner})")
-        return problems
+        return problems, skipped
 
     def _current(self, device_type: str) -> Record | None:
         change = self.state["pending"].get(device_type)
@@ -386,6 +397,7 @@ class PluginStore:
     def inspect(self, data: bytes) -> Record:
         """What installing ``data`` would do, for the confirmation dialog. Writes nothing."""
         manifest, wheels = _read_archive(data)
+        problems, skipped = self._check(manifest, wheels)
         current = self._current(manifest["type"])
         action = (
             "install"
@@ -399,13 +411,18 @@ class PluginStore:
             "sha256": _sha256(data),
             "size": len(data),
             "files": [
-                {"name": name, "size": len(content), "sha256": manifest["files"][name]}
+                {
+                    "name": name,
+                    "size": len(content),
+                    "sha256": manifest["files"][name],
+                    "skipped": name in skipped,
+                }
                 for name, content in sorted(wheels.items())
             ],
             "action": action,
             "installedVersion": current["version"] if current else None,
             "restartRequired": manifest["type"] in self.state["types"],
-            "problems": self._check(manifest, wheels),
+            "problems": problems,
         }
 
     async def install(self, data: bytes) -> Record:
@@ -423,7 +440,10 @@ class PluginStore:
             target = self.root / device_type / directory
             staging = Path(tempfile.mkdtemp(prefix=".install-", dir=self.root))
             try:
-                for content in wheels.values():
+                skipped = {item["name"] for item in report["files"] if item["skipped"]}
+                for name, content in wheels.items():
+                    if name in skipped:
+                        continue
                     await asyncio.to_thread(_extract_wheel, content, staging / "site")
                 if target.exists():
                     _remove(target)

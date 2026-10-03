@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "teststand-adapter-pci1762"
 version = "0.2.0"
-description = "testStand MCP adapter for the Advantech PCI-1762 relay card (16 relays, 16 isolated DI)"
+description = "testStand device plugin for the Advantech PCI-1762 relay card (16 relays, 16 isolated DI)"
 requires-python = ">=3.11"
 dependencies = ["teststand-device-sdk>=0.2,<0.3"]
 
@@ -17,3 +17,8 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 teststand_adapter_pci1762 = ["py.typed", "bin/*.exe"]
+
+# Read by devices/pack.py into the .tsdev manifest.
+[tool.teststand.package]
+vendorDrivers = ["Advantech DAQNavi"]
+requiredFiles = ["bin/hwcli_pci1762.exe"]

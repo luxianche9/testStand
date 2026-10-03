@@ -50,7 +50,8 @@ export interface DevicePackageInspection {
   manifest: DevicePackageManifest;
   sha256: string;
   size: number;
-  files: { name: string; size: number; sha256: string }[];
+  /** `skipped`: a dependency testStand already ships; its own copy is used instead. */
+  files: { name: string; size: number; sha256: string; skipped: boolean }[];
   action: "install" | "upgrade" | "reinstall";
   installedVersion: string | null;
   restartRequired: boolean;
