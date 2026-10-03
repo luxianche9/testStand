@@ -29,6 +29,7 @@ from teststand_backend.devices import (
     DeviceCatalogService,
     DeviceService,
     DeviceStore,
+    PluginStore,
     PluginTransport,
 )
 from teststand_backend.host.agents import AgentsApplication
@@ -126,10 +127,13 @@ class HostRuntime:
             backend = FileSecretBackend(root / TEST_SECRETS_FILE)
         secrets = SecretStore(root, backend)
         await secrets.initialize()
+        # Installed device packages go on sys.path before any device type is imported.
+        packages = PluginStore(root / "plugins")
+        await packages.initialize()
         plugins = PluginTransport()
         store = DeviceStore(root / "devices")
         await store.initialize()
-        devices = DeviceService(store, plugins)
+        devices = DeviceService(store, plugins, packages)
         projects = ProjectService(settings)
         await projects.initialize()
         catalog = DeviceCatalogService(store)

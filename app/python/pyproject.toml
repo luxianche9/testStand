@@ -14,6 +14,7 @@ dependencies = [
   "ada-url==1.15.3",
   "ruamel.yaml==0.18.15",
   "keyring==25.7.0",
+  "packaging==26.3",
   "teststand-device-sdk",
   "teststand-adapter-pci1710l",
   "teststand-adapter-pci1762",

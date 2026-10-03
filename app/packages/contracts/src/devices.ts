@@ -21,7 +21,66 @@ export interface DeviceType {
   model?: string;
   isolation?: "inproc" | "subprocess";
   description?: string;
+  /** Adapter distribution version. */
+  version?: string;
+  /** `package`: installed from a `.tsdev` file; `builtin`: shipped in the backend environment. */
+  source?: "builtin" | "package";
   error?: string;
+}
+
+/** The manifest (`package.json`) of a `.tsdev` device package. */
+export interface DevicePackageManifest {
+  formatVersion: 1;
+  kind: "devicePlugin";
+  type: string;
+  distribution: string;
+  version: string;
+  manufacturer: string;
+  model: string;
+  isolation: "inproc" | "subprocess";
+  description: string;
+  sdk: string;
+  vendorDrivers: string[];
+  files: Record<string, string>;
+  builtAt?: string;
+}
+
+/** What installing a `.tsdev` would do (`devices.inspectPackage`); nothing is written. */
+export interface DevicePackageInspection {
+  manifest: DevicePackageManifest;
+  sha256: string;
+  size: number;
+  files: { name: string; size: number; sha256: string }[];
+  action: "install" | "upgrade" | "reinstall";
+  installedVersion: string | null;
+  restartRequired: boolean;
+  /** Reasons it cannot be installed here; empty when it can. */
+  problems: string[];
+}
+
+/** An installed device package (`devices.listPackages`). */
+export interface InstalledDevicePackage {
+  type: string;
+  version: string;
+  distribution: string;
+  manufacturer: string;
+  model: string;
+  isolation: "inproc" | "subprocess";
+  description: string;
+  vendorDrivers: string[];
+  sha256: string;
+  installedAt: string;
+  /** False until the next start when this is an install waiting to replace nothing. */
+  active: boolean;
+  /** A change that takes effect at the next start of testStand. */
+  pending?: { action: "install"; version: string } | { action: "uninstall" };
+}
+
+export interface DevicePackageChange {
+  type: string;
+  version?: string;
+  action?: "install" | "upgrade" | "reinstall";
+  restartRequired: boolean;
 }
 export type StoredDevice = DeviceInstance;
 export const deviceIdInputSchema = z.object({ id: z.string().min(1) }).strict();

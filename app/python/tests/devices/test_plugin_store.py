@@ -1,0 +1,332 @@
+"""Device packages (.tsdev): inspect, install, upgrade and uninstall across restarts."""
+
+from __future__ import annotations
+
+import hashlib
+import io
+import json
+import sys
+import zipfile
+from pathlib import Path
+from typing import Any
+
+import pytest
+from teststand_device_sdk import PLUGINS_ENV, load_device
+
+from teststand_backend.contracts.errors import AppError
+from teststand_backend.devices.plugin_store import PluginStore
+from teststand_backend.devices.plugin_transport import installed_device_types
+
+MODULE = """from teststand_device_sdk import Device
+
+
+class Fake(Device):
+    manufacturer = "Acme"
+    model = "FAKE-{version}"
+    prefix = "fake"
+    description = "Packaged test device."
+
+
+DEVICE = Fake
+"""
+
+
+def wheel(
+    dist: str = "teststand_adapter_fake",
+    version: str = "1.0.0",
+    device_type: str = "fake",
+    requires: tuple[str, ...] = ("teststand-device-sdk>=0.2,<0.3",),
+    extra: dict[str, bytes] | None = None,
+    tag: str = "py3-none-any",
+) -> tuple[str, bytes]:
+    name = f"{dist}-{version}-{tag}.whl"
+    info = f"{dist}-{version}.dist-info"
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        if device_type:
+            archive.writestr(f"{dist}/__init__.py", MODULE.format(version=version))
+        metadata = [
+            "Metadata-Version: 2.1",
+            f"Name: {dist.replace('_', '-')}",
+            f"Version: {version}",
+        ]
+        metadata += [f"Requires-Dist: {item}" for item in requires]
+        archive.writestr(f"{info}/METADATA", "\n".join(metadata) + "\n")
+        archive.writestr(f"{info}/WHEEL", "Wheel-Version: 1.0\nRoot-Is-Purelib: true\n")
+        if device_type:
+            archive.writestr(
+                f"{info}/entry_points.txt", f"[teststand.devices]\n{device_type} = {dist}:DEVICE\n"
+            )
+        for path, content in (extra or {}).items():
+            archive.writestr(path, content)
+    return name, buffer.getvalue()
+
+
+def package(
+    wheels: list[tuple[str, bytes]] | None = None,
+    entries: dict[str, bytes] | None = None,
+    **manifest: Any,
+) -> bytes:
+    wheels = wheels or [wheel(version=manifest.get("version", "1.0.0"))]
+    document = {
+        "formatVersion": 1,
+        "kind": "devicePlugin",
+        "type": "fake",
+        "distribution": "teststand-adapter-fake",
+        "version": "1.0.0",
+        "manufacturer": "Acme",
+        "model": "FAKE-1",
+        "isolation": "inproc",
+        "sdk": ">=0.2,<0.3",
+        "vendorDrivers": ["Acme driver"],
+        "files": {name: hashlib.sha256(content).hexdigest() for name, content in wheels},
+        **manifest,
+    }
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("package.json", json.dumps(document))
+        for name, content in wheels:
+            archive.writestr(f"wheels/{name}", content)
+        for path, content in (entries or {}).items():
+            archive.writestr(path, content)
+    return buffer.getvalue()
+
+
+@pytest.fixture
+def isolated(monkeypatch: pytest.MonkeyPatch) -> Any:
+    monkeypatch.setattr(sys, "path", list(sys.path))
+    monkeypatch.setenv(PLUGINS_ENV, "")
+    yield
+    for name in [name for name in sys.modules if name.startswith("teststand_adapter_fake")]:
+        del sys.modules[name]
+
+
+async def store(tmp_path: Path) -> PluginStore:
+    plugins = PluginStore(tmp_path / "plugins")
+    await plugins.initialize()
+    return plugins
+
+
+async def test_install_makes_a_new_type_available_at_once(tmp_path: Path, isolated: Any) -> None:
+    plugins = await store(tmp_path)
+    data = package()
+    report = plugins.inspect(data)
+    assert report["problems"] == [] and report["action"] == "install"
+    assert report["manifest"]["vendorDrivers"] == ["Acme driver"]
+    assert report["files"][0]["sha256"] == hashlib.sha256(package_wheel(data)).hexdigest()
+    assert not (tmp_path / "plugins" / "fake").exists()  # inspecting writes nothing
+    result = await plugins.install(data)
+    assert result == {
+        "type": "fake",
+        "version": "1.0.0",
+        "action": "install",
+        "restartRequired": False,
+    }
+    assert load_device("fake").model == "FAKE-1.0.0"
+    listed = next(item for item in installed_device_types() if item["type"] == "fake")
+    assert listed["source"] == "package" and listed["version"] == "1.0.0"
+    [installed] = plugins.list_packages()
+    assert installed["active"] and "pending" not in installed and installed["model"] == "FAKE-1"
+
+
+async def test_upgrade_and_uninstall_wait_for_the_next_start(tmp_path: Path, isolated: Any) -> None:
+    plugins = await store(tmp_path)
+    await plugins.install(package())
+    upgrade = package(wheels=[wheel(version="1.1.0")], version="1.1.0")
+    assert plugins.inspect(upgrade)["action"] == "upgrade"
+    assert (await plugins.install(upgrade))["restartRequired"] is True
+    [entry] = plugins.list_packages()
+    assert entry["version"] == "1.0.0" and entry["pending"] == {
+        "action": "install",
+        "version": "1.1.0",
+    }
+    assert len(list((tmp_path / "plugins" / "fake").iterdir())) == 2
+
+    restarted = await store(tmp_path)
+    [entry] = restarted.list_packages()
+    assert entry["version"] == "1.1.0" and "pending" not in entry
+    assert len(list((tmp_path / "plugins" / "fake").iterdir())) == 1  # old version pruned
+
+    assert (await restarted.uninstall("fake"))["restartRequired"] is True
+    assert restarted.list_packages()[0]["pending"] == {"action": "uninstall"}
+    after = await store(tmp_path)
+    assert after.list_packages() == [] and not (tmp_path / "plugins" / "fake").exists()
+    with pytest.raises(AppError, match="not installed"):
+        await after.uninstall("fake")
+
+
+def package_wheel(data: bytes) -> bytes:
+    with zipfile.ZipFile(io.BytesIO(data)) as archive:
+        return archive.read(next(n for n in archive.namelist() if n.endswith(".whl")))
+
+
+@pytest.mark.parametrize(
+    ("data", "message"),
+    [
+        (b"not a zip", "ZIP"),
+        (package(entries={"evil.py": b""}), "Unexpected entry"),
+        (package(entries={"../escape": b""}), "Unsafe path"),
+        (package(files={"other.whl": "0" * 64}), "do not match"),
+        (package(kind="hardware"), "Invalid package.json"),
+    ],
+)
+async def test_malformed_packages_are_rejected(
+    tmp_path: Path, isolated: Any, data: bytes, message: str
+) -> None:
+    plugins = await store(tmp_path)
+    with pytest.raises(AppError, match=message):
+        plugins.inspect(data)
+
+
+def test_tampered_wheel_fails_its_hash() -> None:
+    name, content = wheel()
+    data = package(wheels=[(name, content)], files={name: hashlib.sha256(b"x").hexdigest()})
+    with pytest.raises(AppError, match="SHA-256 mismatch"):
+        PluginStore("unused").inspect(data)
+
+
+@pytest.mark.parametrize(
+    ("data", "problem"),
+    [
+        (package(type="pci1762", wheels=[wheel(device_type="pci1762")]), "is built in"),
+        (package(sdk=">=9"), "needs device SDK"),
+        (package(wheels=[wheel(requires=("teststand-device-sdk>=9",))]), "Adapter needs"),
+        (package(wheels=[wheel(requires=("teststand-device-sdk", "numpy"))]), "numpy is not in"),
+        (package(wheels=[wheel(), wheel("pydantic", "2.0", "", ())]), "would shadow pydantic"),
+        (package(wheels=[wheel(tag="cp312-cp312-linux_x86_64")]), "not built for CPython 3.11"),
+        (package(type="other"), "says other"),
+        (package(wheels=[wheel(device_type="")]), "No wheel declares"),
+        (
+            package(wheels=[wheel(extra={"teststand_adapter_fake-1.0.0.data/scripts/x": b""})]),
+            None,
+        ),
+    ],
+)
+async def test_packages_that_do_not_fit_this_testStand_are_refused(
+    tmp_path: Path, isolated: Any, data: bytes, problem: str | None
+) -> None:
+    plugins = await store(tmp_path)
+    if problem is None:
+        with pytest.raises(AppError, match="outside the package"):
+            await plugins.install(data)
+        assert not (tmp_path / "plugins" / "fake").exists()
+        return
+    assert any(problem in item for item in plugins.inspect(data)["problems"])
+    with pytest.raises(AppError, match="cannot be installed"):
+        await plugins.install(data)
+
+
+async def test_wheel_data_purelib_is_unpacked_into_the_site(tmp_path: Path, isolated: Any) -> None:
+    extra = {"teststand_adapter_fake-1.0.0.data/purelib/fake_extra.py": b"VALUE = 7\n"}
+    plugins = await store(tmp_path)
+    await plugins.install(package(wheels=[wheel(extra=extra)]))
+    [site] = (tmp_path / "plugins" / "fake").glob("*/site")
+    assert (site / "fake_extra.py").read_text() == "VALUE = 7\n"
+
+
+async def test_device_package_operations(tmp_path: Path, isolated: Any) -> None:
+    from types import SimpleNamespace
+
+    from teststand_backend.application import DefaultAuthorizer, DevicesApplication
+    from teststand_backend.application.authorization import (
+        AGENT_REQUEST_CONTEXT as AGENT,
+    )
+    from teststand_backend.application.authorization import (
+        HUMAN_REQUEST_CONTEXT as HUMAN,
+    )
+    from teststand_backend.contracts.operations import operation_spec
+
+    changes: list[str] = []
+    store = SimpleNamespace(changed=lambda: changes.append("devices"))
+    service = SimpleNamespace(store=store, packages=await store_for(tmp_path))
+    app = DevicesApplication(DefaultAuthorizer(), service, SimpleNamespace())  # type: ignore[arg-type]
+    data = package()
+    assert app.inspect_package(HUMAN, data)["action"] == "install"
+    assert (await app.install_package(HUMAN, data))["type"] == "fake"
+    assert [item["type"] for item in app.list_packages(HUMAN)] == ["fake"]
+    assert (await app.uninstall_package(HUMAN, "fake"))["restartRequired"] is True
+    assert changes == ["devices", "devices"]
+    # Installing runs code in the backend: an agent may list packages but never install them.
+    for method in (app.inspect_package, app.install_package, app.uninstall_package):
+        spec = operation_spec(method)
+        assert spec is not None and not DefaultAuthorizer().is_allowed(AGENT, spec.capability)
+    listing = operation_spec(app.list_packages)
+    assert listing is not None and DefaultAuthorizer().is_allowed(AGENT, listing.capability)
+    bare = DevicesApplication(
+        DefaultAuthorizer(),
+        SimpleNamespace(packages=None),  # type: ignore[arg-type]
+        SimpleNamespace(),  # type: ignore[arg-type]
+    )
+    with pytest.raises(AppError, match="not available"):
+        bare.list_packages(HUMAN)
+
+
+store_for = store
+
+
+@pytest.mark.parametrize(
+    ("data", "problem"),
+    [
+        (package(wheels=[wheel(), wheel("other_adapter", device_type="fake2")]), "More than one"),
+        (package(distribution="someone-else"), "package.json says someone-else"),
+        (package(sdk="not a range"), "Invalid SDK range"),
+        (
+            package(wheels=[wheel(requires=("teststand-device-sdk", "bad requirement!!"))]),
+            "Invalid",
+        ),
+        (
+            package(wheels=[wheel(), wheel("teststand_device_sdk", "0.2.0", "", ())]),
+            "must not carry",
+        ),
+        (package(wheels=[wheel(requires=("pywin32; sys_platform == 'nothing'",))]), None),
+    ],
+)
+async def test_more_package_checks(
+    tmp_path: Path, isolated: Any, data: bytes, problem: str | None
+) -> None:
+    problems = (await store(tmp_path)).inspect(data)["problems"]
+    if problem is None:
+        assert problems == []  # a requirement whose marker does not apply is skipped
+    else:
+        assert any(problem in item for item in problems), problems
+
+
+async def test_inspect_compares_with_a_pending_upgrade(tmp_path: Path, isolated: Any) -> None:
+    plugins = await store(tmp_path)
+    await plugins.install(package())
+    upgrade = package(wheels=[wheel(version="1.1.0")], version="1.1.0")
+    await plugins.install(upgrade)
+    report = plugins.inspect(upgrade)
+    assert report["action"] == "reinstall" and report["installedVersion"] == "1.1.0"
+    await plugins.uninstall("fake")
+    assert plugins.inspect(upgrade)["action"] == "install"
+
+
+async def test_type_listing_reports_duplicates_and_broken_packages(
+    tmp_path: Path, isolated: Any
+) -> None:
+    plugins = await store(tmp_path)
+    broken = wheel(dist="teststand_adapter_fake", device_type="fake")
+    name, content = broken
+    with zipfile.ZipFile(io.BytesIO(content)) as source:
+        files = {item: source.read(item) for item in source.namelist()}
+    files["teststand_adapter_fake/__init__.py"] = b"raise ImportError('vendor DLL missing')\n"
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as target:
+        for item, value in files.items():
+            target.writestr(item, value)
+    await plugins.install(package(wheels=[(name, buffer.getvalue())]))
+    [listed] = [item for item in installed_device_types() if item["type"] == "fake"]
+    assert listed["source"] == "package" and "vendor DLL missing" in listed["error"]
+
+    second = tmp_path / "elsewhere"
+    info = second / "twin-1.0.dist-info"
+    info.mkdir(parents=True)
+    (info / "METADATA").write_text("Metadata-Version: 2.1\nName: twin\nVersion: 1.0\n")
+    (info / "entry_points.txt").write_text("[teststand.devices]\nfake = twin:DEVICE\n")
+    sys.path.append(str(second))
+    import importlib
+
+    importlib.invalidate_caches()
+    [listed] = [item for item in installed_device_types() if item["type"] == "fake"]
+    assert "declared twice" in listed["error"]

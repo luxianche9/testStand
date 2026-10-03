@@ -1,8 +1,8 @@
 {
-  "application": { "lines": [740, 765], "branches": [138, 158] },
+  "application": { "lines": [761, 786], "branches": [140, 160] },
   "contracts": { "lines": [754, 835], "branches": [251, 310] },
-  "devices": { "lines": [665, 739], "branches": [139, 190] },
-  "host": { "lines": [918, 1154], "branches": [187, 256] },
+  "devices": { "lines": [977, 1066], "branches": [257, 322] },
+  "host": { "lines": [918, 1156], "branches": [187, 256] },
   "mcp_gateway": { "lines": [615, 644], "branches": [161, 186] },
   "projects": { "lines": [235, 260], "branches": [36, 50] },
   "protocol": { "lines": [1271, 1287], "branches": [466, 480] },

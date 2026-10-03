@@ -10,14 +10,18 @@ drives it to its safe state right after ``open``). Disconnecting drives it safe 
 from __future__ import annotations
 
 import asyncio
+import os
 import sys
 from collections.abc import Callable
+from importlib.metadata import EntryPoint, entry_points
+from pathlib import Path
 from typing import Any
 
 from teststand_device_sdk import (
+    ENTRY_POINT_GROUP,
+    PLUGINS_ENV,
     DeviceConfig,
     DeviceHandle,
-    device_types,
     load_device,
     open_device,
 )
@@ -78,14 +82,33 @@ def plugin_config(instance: Record) -> DeviceConfig:
 
 
 def installed_device_types() -> list[Record]:
-    """``[{type, manufacturer, model, isolation, description}]``; a type that fails to import
-    is reported with its ``error`` so the device page can say why it cannot be added."""
+    """``[{type, manufacturer, model, isolation, description, version, source}]``; ``source`` is
+    ``package`` for an installed ``.tsdev`` and ``builtin`` for one shipped in this environment.
+    A type that fails to import, or that two distributions both declare, is reported with its
+    ``error`` so the device page can say why it cannot be added."""
+    root = os.environ.get(PLUGINS_ENV)
+    providers: dict[str, list[EntryPoint]] = {}
+    for item in entry_points(group=ENTRY_POINT_GROUP):
+        providers.setdefault(item.name, []).append(item)
     output: list[Record] = []
-    for name in sorted(device_types()):
+    for name in sorted(providers):
+        items = providers[name]
+        dist = items[0].dist
+        if len(items) > 1:
+            owners = ", ".join(
+                sorted(str(item.dist.name if item.dist else item.value) for item in items)
+            )
+            output.append({"type": name, "error": f"Device type is declared twice ({owners})"})
+            continue
+        source = (
+            "package"
+            if root and dist is not None and _within(Path(str(dist.locate_file(""))), Path(root))
+            else "builtin"
+        )
         try:
             device_cls = load_device(name)
         except Exception as error:
-            output.append({"type": name, "error": str(error)})
+            output.append({"type": name, "source": source, "error": str(error)})
             continue
         output.append(
             {
@@ -94,9 +117,18 @@ def installed_device_types() -> list[Record]:
                 "model": device_cls.model,
                 "isolation": device_cls.isolation,
                 "description": device_cls.description,
+                "version": dist.version if dist is not None else device_cls.version,
+                "source": source,
             }
         )
     return output
+
+
+def _within(path: Path, root: Path) -> bool:
+    try:
+        return path.resolve().is_relative_to(root.resolve())
+    except OSError:
+        return False
 
 
 def _open(device_type: str, config: DeviceConfig) -> DeviceHandle:

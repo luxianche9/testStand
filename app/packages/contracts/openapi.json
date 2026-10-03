@@ -254,6 +254,36 @@
         "title": "DevicesInspectBundleRequest",
         "type": "object"
       },
+      "DevicesInspectPackageRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "format": "base64url",
+            "title": "Data",
+            "type": "string"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "DevicesInspectPackageRequest",
+        "type": "object"
+      },
+      "DevicesInstallPackageRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "format": "base64url",
+            "title": "Data",
+            "type": "string"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "DevicesInstallPackageRequest",
+        "type": "object"
+      },
       "DevicesListDeviceTypesRequest": {
         "additionalProperties": false,
         "properties": {},
@@ -282,6 +312,12 @@
         "additionalProperties": false,
         "properties": {},
         "title": "DevicesListManagedHardwareRequest",
+        "type": "object"
+      },
+      "DevicesListPackagesRequest": {
+        "additionalProperties": false,
+        "properties": {},
+        "title": "DevicesListPackagesRequest",
         "type": "object"
       },
       "DevicesListToolsRequest": {
@@ -440,6 +476,20 @@
           "status"
         ],
         "title": "DevicesSetAdapterStatusRequest",
+        "type": "object"
+      },
+      "DevicesUninstallPackageRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "deviceType": {
+            "title": "Devicetype",
+            "type": "string"
+          }
+        },
+        "required": [
+          "deviceType"
+        ],
+        "title": "DevicesUninstallPackageRequest",
         "type": "object"
       },
       "ManualInvokeToolRequest": {
@@ -2719,6 +2769,112 @@
         "x-confirm": false
       }
     },
+    "/api/ops/devices.inspectPackage": {
+      "post": {
+        "operationId": "devices.inspectPackage",
+        "summary": "What installing a ``.tsdev`` would do: manifest, files, SHA-256 and any problems.",
+        "tags": [
+          "devices"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DevicesInspectPackageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/WireError"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-risk": "read",
+        "x-capability": "devices.manageDevices",
+        "x-profiles": [],
+        "x-idempotency": "natural",
+        "x-confirm": false
+      }
+    },
+    "/api/ops/devices.installPackage": {
+      "post": {
+        "operationId": "devices.installPackage",
+        "summary": "Install a device package (human only: it runs code in the backend).",
+        "tags": [
+          "devices"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DevicesInstallPackageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/WireError"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-risk": "write",
+        "x-capability": "devices.manageDevices",
+        "x-profiles": [],
+        "x-idempotency": "none",
+        "x-confirm": false
+      }
+    },
     "/api/ops/devices.listDeviceTypes": {
       "post": {
         "operationId": "devices.listDeviceTypes",
@@ -3007,6 +3163,64 @@
           "adapter",
           "explore",
           "plan"
+        ],
+        "x-idempotency": "natural",
+        "x-confirm": false
+      }
+    },
+    "/api/ops/devices.listPackages": {
+      "post": {
+        "operationId": "devices.listPackages",
+        "summary": "Installed device packages (``.tsdev``), with any change waiting for a restart.",
+        "tags": [
+          "devices"
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DevicesListPackagesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/WireError"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-risk": "read",
+        "x-capability": "devices.read",
+        "x-profiles": [
+          "adapter"
         ],
         "x-idempotency": "natural",
         "x-confirm": false
@@ -3504,6 +3718,59 @@
         "x-capability": "hardware.releaseAdapters",
         "x-profiles": [],
         "x-idempotency": "natural",
+        "x-confirm": false
+      }
+    },
+    "/api/ops/devices.uninstallPackage": {
+      "post": {
+        "operationId": "devices.uninstallPackage",
+        "summary": "Remove an installed device package; takes effect at the next start.",
+        "tags": [
+          "devices"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DevicesUninstallPackageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/WireError"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-risk": "write",
+        "x-capability": "devices.manageDevices",
+        "x-profiles": [],
+        "x-idempotency": "none",
         "x-confirm": false
       }
     },

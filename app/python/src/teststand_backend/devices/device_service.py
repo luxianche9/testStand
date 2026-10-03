@@ -8,6 +8,7 @@ from teststand_backend.contracts.devices import parse_device_instance
 from teststand_backend.contracts.errors import app_error
 from teststand_backend.util import utc_now_iso
 
+from .plugin_store import PluginStore
 from .plugin_transport import PluginTransport, declared_streams
 
 Record = dict[str, Any]
@@ -17,8 +18,12 @@ SAFE_ALL_TIMEOUT_S = 5.0
 
 
 class DeviceService:
-    def __init__(self, store: Any, transport: PluginTransport) -> None:
+    def __init__(
+        self, store: Any, transport: PluginTransport, packages: PluginStore | None = None
+    ) -> None:
         self.store, self.transport = store, transport
+        self.packages = packages
+        """The installed device packages (:class:`PluginStore`), when the host has a store."""
         self._device_refreshes: dict[str, asyncio.Task[Record]] = {}
         self._device_statuses: dict[str, Record] = {}
         self._hardware: list[Record] = []

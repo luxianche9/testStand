@@ -3,17 +3,22 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import sys
+from pathlib import Path
 
 import pytest
 
 from teststand_device_sdk import (
+    PLUGINS_ENV,
     DeviceHost,
     InprocDevice,
     SubprocessDevice,
+    activate_plugins,
     device_types,
     load_device,
     open_device,
+    plugin_sites,
 )
 from teststand_device_sdk.testing import dry_run_config
 
@@ -105,3 +110,53 @@ async def test_child_process_exits_safely_when_stdin_closes():
     assert await asyncio.wait_for(process.wait(), 10) == 0
     with pytest.raises(Exception, match="not running|exited"):
         await device.call("pci6208v_safe_state", {"hardwareId": device.config.hardware_id})
+
+
+def _installed_package(root, name="tsplug", version="1.0.0"):
+    """An unpacked device package as the backend installs it: ``<root>/<type>/<version>/site``."""
+    site = root / name / version / "site"
+    (site / "tsplug_demo").mkdir(parents=True)
+    (site / "tsplug_demo" / "__init__.py").write_text(
+        "from sdk_demo import DemoDevice\n\n\nclass Isolated(DemoDevice):\n    isolation = 'subprocess'\n\n\n"
+        "DEVICE = Isolated\n", encoding="utf-8")
+    info = site / f"tsplug_demo-{version}.dist-info"
+    info.mkdir()
+    (info / "METADATA").write_text(f"Metadata-Version: 2.1\nName: tsplug-demo\nVersion: {version}\n", encoding="utf-8")
+    (info / "entry_points.txt").write_text(f"[teststand.devices]\n{name} = tsplug_demo:DEVICE\n", encoding="utf-8")
+    (root / "installed.json").write_text(json.dumps({"types": {name: {"version": version}}}), encoding="utf-8")
+    return site
+
+
+@pytest.fixture
+def isolated_path(monkeypatch):
+    monkeypatch.setattr(sys, "path", list(sys.path))
+    yield
+    sys.modules.pop("tsplug_demo", None)
+
+
+def test_activate_plugins_puts_installed_packages_on_the_path(tmp_path, monkeypatch, isolated_path):
+    monkeypatch.delenv(PLUGINS_ENV, raising=False)
+    assert activate_plugins() == []
+    site = _installed_package(tmp_path)
+    assert plugin_sites(tmp_path) == [site]
+    assert activate_plugins(tmp_path) == [site]
+    assert activate_plugins(tmp_path) == []  # already on the path
+    assert device_types()["tsplug"] == "tsplug_demo:DEVICE"
+    assert load_device("tsplug").isolation == "subprocess"
+    (tmp_path / "installed.json").write_text("not json", encoding="utf-8")
+    assert plugin_sites(tmp_path) == []
+
+
+async def test_isolated_child_activates_the_same_packages(tmp_path, monkeypatch, isolated_path):
+    _installed_package(tmp_path)
+    activate_plugins(tmp_path)
+    monkeypatch.setenv(PLUGINS_ENV, str(tmp_path))
+    # The child imports sdk_demo from this test directory, like an adapter importing its own modules.
+    monkeypatch.setenv("PYTHONPATH", str(Path(__file__).parent))
+    device = SubprocessDevice("tsplug", dry_run_config(load_device("tsplug")))
+    await device.start()
+    try:
+        names = {tool["name"] for tool in (await device.describe())["tools"]}
+        assert "demo_set_level" in names
+    finally:
+        await device.stop()

@@ -325,6 +325,10 @@ class DeviceStore:
         await atomic_json(directory / "hardware.json", parsed)
         self._changed()
 
+    def changed(self) -> None:
+        """Tell subscribers the device data changed (also used when device types change)."""
+        self._changed()
+
     def _changed(self) -> None:
         self._read_cache.clear()
         if self._notifier is not None:

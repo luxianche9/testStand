@@ -30,7 +30,7 @@ from collections.abc import Sequence
 from typing import Any, Protocol
 
 from .config import DeviceConfig
-from .device_types import load_device
+from .device_types import activate_plugins, load_device
 from .errors import DEVICE_UNREACHABLE, DeviceError
 from .host import DeviceHost
 
@@ -345,6 +345,7 @@ def child_main() -> int:
     sys.stdout = sys.stderr
     logging.basicConfig(level=logging.INFO, stream=sys.stderr,
                         format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    activate_plugins()
     asyncio.run(_Child(out).run())
     return 0
 

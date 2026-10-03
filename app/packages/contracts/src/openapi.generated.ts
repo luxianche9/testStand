@@ -340,6 +340,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ops/devices.inspectPackage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** What installing a ``.tsdev`` would do: manifest, files, SHA-256 and any problems. */
+        post: operations["devices.inspectPackage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ops/devices.installPackage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Install a device package (human only: it runs code in the backend). */
+        post: operations["devices.installPackage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ops/devices.listDevices": {
         parameters: {
             query?: never;
@@ -419,6 +453,23 @@ export interface paths {
         put?: never;
         /** devices.listManagedHardware */
         post: operations["devices.listManagedHardware"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ops/devices.listPackages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Installed device packages (``.tsdev``), with any change waiting for a restart. */
+        post: operations["devices.listPackages"];
         delete?: never;
         options?: never;
         head?: never;
@@ -575,6 +626,23 @@ export interface paths {
         put?: never;
         /** Mark the adapter available (every release gate met) or back in development. */
         post: operations["devices.setAdapterStatus"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ops/devices.uninstallPackage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Remove an installed device package; takes effect at the next start. */
+        post: operations["devices.uninstallPackage"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1890,6 +1958,22 @@ export interface components {
              */
             data: Uint8Array;
         };
+        /** DevicesInspectPackageRequest */
+        DevicesInspectPackageRequest: {
+            /**
+             * Data
+             * Format: base64url
+             */
+            data: Uint8Array;
+        };
+        /** DevicesInstallPackageRequest */
+        DevicesInstallPackageRequest: {
+            /**
+             * Data
+             * Format: base64url
+             */
+            data: Uint8Array;
+        };
         /** DevicesListDevicesRequest */
         DevicesListDevicesRequest: Record<string, never>;
         /** DevicesListDevicesWithStatusRequest */
@@ -1900,6 +1984,8 @@ export interface components {
         DevicesListHardwareRequest: Record<string, never>;
         /** DevicesListManagedHardwareRequest */
         DevicesListManagedHardwareRequest: Record<string, never>;
+        /** DevicesListPackagesRequest */
+        DevicesListPackagesRequest: Record<string, never>;
         /** DevicesListToolsRequest */
         DevicesListToolsRequest: Record<string, never>;
         /** DevicesRecordAdapterCheckRequest */
@@ -1962,6 +2048,11 @@ export interface components {
              * @enum {string}
              */
             status: "developing" | "available";
+        };
+        /** DevicesUninstallPackageRequest */
+        DevicesUninstallPackageRequest: {
+            /** Devicetype */
+            deviceType: string;
         };
         /** ManualInvokeToolRequest */
         ManualInvokeToolRequest: {
@@ -3084,6 +3175,72 @@ export interface operations {
             };
         };
     };
+    "devices.inspectPackage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DevicesInspectPackageRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": object;
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: components["schemas"]["WireError"];
+                    };
+                };
+            };
+        };
+    };
+    "devices.installPackage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DevicesInstallPackageRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": object;
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: components["schemas"]["WireError"];
+                    };
+                };
+            };
+        };
+    };
     "devices.listDevices": {
         parameters: {
             query?: never;
@@ -3226,6 +3383,39 @@ export interface operations {
         requestBody?: {
             content: {
                 "application/json": components["schemas"]["DevicesListManagedHardwareRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": object[];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: components["schemas"]["WireError"];
+                    };
+                };
+            };
+        };
+    };
+    "devices.listPackages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DevicesListPackagesRequest"];
             };
         };
         responses: {
@@ -3523,6 +3713,39 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["DevicesSetAdapterStatusRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": object;
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: components["schemas"]["WireError"];
+                    };
+                };
+            };
+        };
+    };
+    "devices.uninstallPackage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DevicesUninstallPackageRequest"];
             };
         };
         responses: {

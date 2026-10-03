@@ -13,7 +13,8 @@ from ._version import __version__
 from .clock import now_ms
 from .config import DeviceConfig, env_flag
 from .device import Device
-from .device_types import ENTRY_POINT_GROUP, device_types, load_device
+from .device_types import (ENTRY_POINT_GROUP, INSTALLED_FILE, PLUGINS_ENV, activate_plugins, device_types,
+                           load_device, plugin_sites)
 from .envelope import CONTRACT_REVISION, ContractModel, envelope, error, iso_now, model, ok
 from .errors import (
     DEVICE_ERROR,
@@ -66,11 +67,11 @@ __all__ = [
     "NOT_CONFIGURED", "NOT_SUPPORTED", "SERVICE_UNAVAILABLE", "SHAPES", "STREAM_KINDS", "STREAM_TYPES",
     "AdapterError", "BitsStream", "BlobStream", "BlockStream", "ByteStream", "Connector",
     "ContractModel", "Device", "DeviceError", "DeviceHandle", "DeviceHost", "ENTRY_POINT_GROUP",
-    "HostTool", "InprocDevice", "SubprocessDevice", "FrameStream", "HardwareId",
+    "HostTool", "INSTALLED_FILE", "InprocDevice", "PLUGINS_ENV", "SubprocessDevice", "FrameStream", "HardwareId",
     "JsonLineBackend", "JsonLineCli", "Manifest", "ModeDefinition", "Operation", "Pin", "PinFunction",
     "Pinout", "ReadResult", "RingBuffer", "Sampler", "ScalarStream",
     "DeviceConfig", "SoftwareWaveform", "Stream", "StreamRegistry", "ToolSpec", "WaveformParams", "__version__",
-    "build_manifest", "device_types", "env_flag", "envelope", "error",
-    "find_executable", "function", "iso_now", "load_device", "model", "nc", "now_ms", "ok", "open_device", "param",
+    "activate_plugins", "build_manifest", "device_types", "env_flag", "envelope", "error",
+    "find_executable", "function", "iso_now", "load_device", "model", "nc", "now_ms", "ok", "open_device", "param", "plugin_sites",
     "sample_value", "single_connector_pinout", "tool", "unwrap", "waveform_capability",
 ]
