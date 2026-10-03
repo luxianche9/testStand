@@ -57,28 +57,17 @@ class FakeJournal:
 class FakeStreams:
     def __init__(self) -> None:
         self.started: list[str] | None = None
-        self.leased: list[str] | None = None
         self.stopped = False
         self.locks: dict[str, asyncio.Lock] = {}
-        self.lost: Any = None
 
-    async def start(
-        self, hardware_ids: list[str], leased: list[str], protocols: Any = None
-    ) -> None:
+    async def start(self, hardware_ids: list[str], protocols: Any = None) -> None:
         self.started = hardware_ids
-        self.leased = leased
 
     async def stop(self) -> None:
         self.stopped = True
 
-    def lease_for(self, hardware_id: str) -> str | None:
-        return "lease-1"
-
     def device_lock(self, hardware_id: str) -> asyncio.Lock:
         return self.locks.setdefault(hardware_id, asyncio.Lock())
-
-    def on_lease_lost(self, listener: Any) -> None:
-        self.lost = listener
 
     def timing(
         self, hardware_id: str, backend_start: float, backend_end: float, meta: Record | None
@@ -154,10 +143,10 @@ async def test_runs_a_plan_through_its_ports_only() -> None:
         (
             "H.read",
             {"channel": 5},
-            {"envelope": True, "operationId": run.last_operation_id, "leaseId": "lease-1"},
+            {"envelope": True, "operationId": run.last_operation_id},
         )
     ]
-    assert streams.started == ["H"] and streams.leased == ["H"]
+    assert streams.started == ["H"]
     assert streams.stopped and execution.released
     assert journal.plan == plan and journal.summary is not None
     assert journal.summary["verdict"] == "Pass"
@@ -169,20 +158,35 @@ async def test_runs_a_plan_through_its_ports_only() -> None:
     await asyncio.sleep(0)
 
 
-async def test_a_lost_lease_aborts_the_run_inconclusive() -> None:
+async def test_an_aborted_run_drives_actuated_hardware_safe() -> None:
     operations, journal, streams = FakeOperations(), FakeJournal(), FakeStreams()
+    blocked = asyncio.Event()
 
-    class LosingDevices(FakeDevices):
+    class BlockingDevices(FakeDevices):
         async def call_aggregated_tool(
             self, name: str, arguments: Record, options: Record
         ) -> Record:
-            streams.lost("H", "lease_lost")
-            await asyncio.sleep(10)
-            return {}
+            self.calls.append((name, arguments, options))
+            if name == "H.wait":
+                blocked.set()
+                await asyncio.sleep(10)
+            return {"data": {}, "meta": {}}
 
+    class SafetyResolver(FakeResolver):
+        def resolve(self, hardware_id: str, tool_name: str) -> tuple[Record, list[Record]]:
+            semantics: dict[str, Record] = {
+                "set": {"kind": "actuate", "safetyAction": {"toolName": "safe_state"}},
+                "safe_state": {"kind": "safe"},
+            }
+            return {
+                "externalName": f"{hardware_id}.{tool_name}",
+                "operationSemantics": semantics.get(tool_name, {}),
+            }, []
+
+    devices = BlockingDevices()
     ports = RunPorts(
-        devices=LosingDevices(),
-        resolver=FakeResolver(),
+        devices=devices,
+        resolver=SafetyResolver(),
         execution=FakeExecution(),
         operations=operations,
         step_plugins={},
@@ -197,17 +201,19 @@ async def test_a_lost_lease_aborts_the_run_inconclusive() -> None:
         "revision": "r1",
         "regions": {
             "prepare": [],
-            "test": [{"id": "on", "type": "InvokeTool", "hardwareId": "H", "toolName": "set"}],
+            "test": [
+                {"id": "on", "type": "InvokeTool", "hardwareId": "H", "toolName": "set"},
+                {"id": "hold", "type": "InvokeTool", "hardwareId": "H", "toolName": "wait"},
+            ],
             "cleanup": [],
         },
     }
     run = RunInterpreter(ports, plan, {})
-    await asyncio.wait_for(run.execute(), 5)
+    task = asyncio.create_task(run.execute())
+    await asyncio.wait_for(blocked.wait(), 5)
+    run.request_abort()
+    await asyncio.wait_for(task, 5)
 
-    assert run.state == "aborted" and run.verdict == "Inconclusive"
-    assert run.primary_error is not None and run.primary_error["category"] == "unavailable"
-    lost = [event for event in journal.events if event["type"] == "lease.lost"]
-    assert lost and lost[0]["reason"] == "lease_lost"
-    step = next(event for event in journal.events if event["type"] == "step.completed")
-    assert step["verdict"] == "Inconclusive" and step["reason"] == "lease_lost"
-    assert step["outcomeKnown"] is False
+    assert run.state == "aborted" and run.verdict == "Aborted"
+    assert [name for name, _, _ in devices.calls] == ["H.set", "H.wait", "H.safe_state"]
+    assert run.safety_status == "Verified"

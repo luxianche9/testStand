@@ -75,7 +75,7 @@ def set_voltage(self, channel: AoChannel, volts: Volts) -> dict[str, Any]:
 
 方法参数不能用 `*args/**kwargs`，每个参数必须用 `param()` 标注。返回值是信封的 `data`。
 
-`configure` 和 `actuate` 工具受租约约束（被他人租用或 `_meta.leaseId` 已失效时 SDK 直接返回 `busy`，不调用方法）；`read` 和 `safe` 不受限。租约的心跳、超时和结束时的 `safe_state` 全部由 SDK 处理。工具只报告测量值和状态，不接收期望值、不返回通过 / 失败。工具运行期间写入的流记录自动带本次操作号，并进入结果 `meta.streamRefs`；适配器什么都不用做。
+工具只报告测量值和状态，不接收期望值、不返回通过 / 失败。工具运行期间写入的流记录自动带本次操作号，并进入结果 `meta.streamRefs`；适配器什么都不用做。
 
 ## `param` 与 `model`
 
@@ -150,7 +150,7 @@ self.waveform = SoftwareWaveform(self._waveform_write, lock=self.io_lock,
 | `check_device(cls, warnings=[])` | 运行合规套件，返回失败列表；`[]` 表示通过。传入列表收集非致命警告（缺外观图、端口图、描述，字节流不调 `idle()`）；交付时应为空 |
 | `serve(cls)` | 上下文管理器，dry-run 启动服务，返回 harness |
 | `harness.call("set_output", channel=1, level=True)` | 按短名调用，返回信封 |
-| `harness.call("set_output", {"operationId": "op-1", "leaseId": ...}, channel=1, level=True)` | 第二个位置参数是请求 `_meta` |
+| `harness.call("set_output", {"operationId": "op-1"}, channel=1, level=True)` | 第二个位置参数是请求 `_meta` |
 | `harness.mcp.call_raw(full_name, arguments)` | 原始 MCP 调用，用于越界等失败路径 |
 | `harness.tools` | 工具名 → 工具定义 |
 | `harness.get(path, token=...)` | 带令牌的 HTTP GET，如 `hh.get("/device").json()` |

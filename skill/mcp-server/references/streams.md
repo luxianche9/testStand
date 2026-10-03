@@ -165,7 +165,7 @@ def _drain(self, channel):          # 调用方持 io_lock
 | 工具 | 何时有 | 说明 |
 |---|---|---|
 | `<prefix>_stream_read(streamId, fromSeq?, limit=200)` | 总有 | 不消费地读；省略 `fromSeq` 取最新 `limit` 条；返回 `records, next, head, tail, watermark, epoch, status, reset, dropped?`；字节记录额外附 `text` |
-| `<prefix>_transact(streamId, data, encoding, expect?, timeoutMs)` | 有写入器的字节流 | 发送并等应答（`expect` 是正则，在累计的 rx 文本上搜索，只决定何时停止等待，不是判定）；`kind=actuate`，受租约约束，从不自动重试 |
+| `<prefix>_transact(streamId, data, encoding, expect?, timeoutMs)` | 有写入器的字节流 | 发送并等应答（`expect` 是正则，在累计的 rx 文本上搜索，只决定何时停止等待，不是判定）；`kind=actuate`，从不自动重试 |
 | `<prefix>_blob_read(streamId, ref)` | 有 `BlobStream` | `{ref, mime, size, base64}` |
 
 这些工具给 AI 和手动调试用。流的声明从 `/device.streams` 读，没有 `list_streams`。窗口统计、等待条件和通过 / 失败判定由测试步骤在录制数据上计算，AI 经网关工具使用，SDK 不提供。

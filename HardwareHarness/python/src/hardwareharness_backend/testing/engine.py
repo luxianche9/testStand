@@ -15,7 +15,6 @@ from pathlib import Path
 from typing import Any
 
 from hardwareharness_backend.contracts.errors import app_error
-from hardwareharness_backend.devices.leases import LeaseManager
 from hardwareharness_backend.streams import judge
 from hardwareharness_backend.streams.clock import backend_ms
 from hardwareharness_backend.streams.store import (
@@ -26,7 +25,7 @@ from hardwareharness_backend.streams.store import (
     points,
     read_query,
 )
-from hardwareharness_backend.util import clone, new_uuid, utc_now_iso
+from hardwareharness_backend.util import clone, utc_now_iso
 
 from .derived_views import DerivedViews
 from .interpreter import RunInterpreter, RunPorts
@@ -74,7 +73,6 @@ class TestEngine:
         listeners: list[Any] | None = None,
         runtime_state: RuntimeStateStore | None = None,
         stream_sources: Any = None,
-        leases: LeaseManager | None = None,
     ) -> None:
         self.projects, self.devices, self.resolver, self.execution = (
             projects,
@@ -83,8 +81,6 @@ class TestEngine:
             execution,
         )
         self.stream_sources = stream_sources
-        # Terminal-level leases (design doc §4.5.2); runs only borrow them.
-        self.leases = leases or LeaseManager(devices, {"terminalId": f"engine-{new_uuid()}"})
         self.listeners = listeners or []
         self.runtime = runtime_state or RuntimeStateStore(projects)
         self.step_plugins = {plugin.type_name: plugin for plugin in (step_plugins or [])}
@@ -511,9 +507,7 @@ class TestEngine:
         return RunJournal(self._run_path(run_id), wiring if callable(wiring) else None)
 
     def _streams(self, run_id: str, emit: Callable[[str, Record], None]) -> RunIO:
-        io = RunIO(
-            self.devices, self.stream_sources, self._run_path(run_id), run_id, emit, self.leases
-        )
+        io = RunIO(self.devices, self.stream_sources, self._run_path(run_id), run_id, emit)
         self.recordings[run_id] = io
         return io
 

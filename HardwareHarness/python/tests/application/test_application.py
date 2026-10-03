@@ -155,10 +155,10 @@ async def test_human_allowed() -> None:
 
 
 @pytest.mark.ts_case(
-    "packages/application/src/execution-control.test.ts::allows disjoint leases "
+    "packages/application/src/execution-control.test.ts::allows disjoint activities "
     "and publishes a complete aggregate activity"
 )
-def test_disjoint_leases() -> None:
+def test_disjoint_hardware_activities() -> None:
     execution = ExecutionCoordinator()
     states: list[str] = []
     execution.set_notifier(lambda activity: states.append(activity["state"]))
@@ -194,7 +194,7 @@ def test_disjoint_leases() -> None:
 @pytest.mark.ts_case(
     "packages/application/src/execution-control.test.ts::acquires multiple hardware keys atomically"
 )
-def test_atomic_lease() -> None:
+def test_atomic_acquire() -> None:
     execution = ExecutionCoordinator()
     hw2 = execution.acquire(
         {
@@ -398,8 +398,7 @@ async def test_management_tool_offline() -> None:
 
 
 @pytest.mark.ts_case(
-    "packages/application/src/execution-control.test.ts::releases its hardware "
-    "lease after a remote error"
+    "packages/application/src/execution-control.test.ts::releases its hardware after a remote error"
 )
 async def test_manual_remote_error() -> None:
     error = Exception("remote rejected")
@@ -450,11 +449,11 @@ async def test_manual_shutdown() -> None:
 
 @pytest.mark.ts_case(
     "packages/application/src/execution-control.test.ts::rejects a valid manual "
-    "call while a Run lease is active"
+    "call while a Run is active"
 )
 async def test_concurrent_call_blocks_manual() -> None:
     manual, execution, call = manual_fixture()
-    lease = execution.acquire(
+    active = execution.acquire(
         {
             "state": "manual",
             "toolName": "write",
@@ -466,4 +465,4 @@ async def test_concurrent_call_blocks_manual() -> None:
         await manual.invoke_tool(HUMAN, invocation())
     assert getattr(caught.value, "category", None) == "conflict"
     call.assert_not_called()
-    lease.release()
+    active.release()

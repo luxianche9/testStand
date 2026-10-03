@@ -2,7 +2,7 @@
 
 服务标识：`PCI6208V_MCP`。包 `hh_adapter_pci6208v`，入口 `python -m hardwareharness_device_sdk --adapter hh_adapter_pci6208v`。
 
-一个服务进程只管理一个硬件。公共工具（`get_server_info`、`list_hardware`、`get_hardware_info`、`lease_*` 心跳租约、`<prefix>_stream_read`）、信封格式、`/device` 声明（身份、说明、引脚、流、能力）和 `/streams/{id}` 数据通道由 SDK 提供，见 `mcp_servers/README.md`。超时或错误不表示物理动作没有发生：保留原错误，查询当前状态并取证后再决定下一步。
+一个服务进程只管理一个硬件。公共工具（`get_server_info`、`list_hardware`、`get_hardware_info`、`<prefix>_stream_read`）、信封格式、`/device` 声明（身份、说明、引脚、流、能力）和 `/streams/{id}` 数据通道由 SDK 提供，见 `mcp_servers/README.md`。超时或错误不表示物理动作没有发生：保留原错误，查询当前状态并取证后再决定下一步。
 
 ## 设备语义
 
@@ -10,7 +10,7 @@
 - `read_last` 只返回当前打开会话最后成功写入的软件影子；该接口没有 ADC 回读。无写入记录时失败，不推断物理电压。
 - `get_hardware_info.capabilityDetails.effectiveSafeVolts` 是实际会话安全配置；`safe_state` 将全部 8 路设置为此值，可能非 0 V。
 - 写入成功表示驱动接受，物理输出和接线仍须独立测量。安全操作失败时 `error.details` 保留失败通道。
-- 板卡没有 FIFO 和硬件时钟，`set_waveform` 使用 SDK 软件波形（`mode: "software"`）：服务线程在 `io_lock` 下以最多 200 次/秒写入，形状 sine/square/triangle/sawtooth/dc，频率 ≤20 Hz（每周期至少 10 点），`offset ± amplitude` 必须在 [-10,10] V 内，时序抖动约 ±5 ms。`startAt`（服务时间，见 `/time`）用于同步启动。`stop_waveform` 停止并保持 `holdValue`（缺省为波形 offset）。`set_voltage`、`safe_state`、关闭和任何租约结束都会先停止波形。能力见 `capabilityDetails.waveform`。
+- 板卡没有 FIFO 和硬件时钟，`set_waveform` 使用 SDK 软件波形（`mode: "software"`）：服务线程在 `io_lock` 下以最多 200 次/秒写入，形状 sine/square/triangle/sawtooth/dc，频率 ≤20 Hz（每周期至少 10 点），`offset ± amplitude` 必须在 [-10,10] V 内，时序抖动约 ±5 ms。`startAt`（服务时间，见 `/time`）用于同步启动。`stop_waveform` 停止并保持 `holdValue`（缺省为波形 offset）。`set_voltage`、`safe_state` 和关闭都会先停止波形。能力见 `capabilityDetails.waveform`。
 - 波形是否达到目标只能由独立测量判断（例如 PCI-1710L AI），服务不做判定。
 
 ## 流

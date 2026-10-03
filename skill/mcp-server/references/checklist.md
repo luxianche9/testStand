@@ -61,7 +61,7 @@
 
 - [ ] `check_adapter.ps1 -Adapter <adapter>` 通过（pytest、`--check` 合规、无 `TODO(new_device)`）
 - [ ] `check_device(cls, warnings=warnings)` 无失败且 `warnings == []`
-- [ ] 测试覆盖：公共工具集合（含 5 个 `lease_*` 工具与内置流工具，不含 `get_pinout` / `list_streams` / `lease_renew`）、越界拒绝、未配置门槛、`safe_state` 幂等、`/device` 的 `streams`（含元数据）、`description`、图片与 `/assets`、写工具的 `meta.streamRefs` 与记录 `op`、采样流经 SSE 通道出值、字节流的 `idle()` 水位
+- [ ] 测试覆盖：公共工具集合（含内置流工具，不含 `get_pinout` / `list_streams`）、越界拒绝、未配置门槛、`safe_state` 幂等、`/device` 的 `streams`（含元数据）、`description`、图片与 `/assets`、写工具的 `meta.streamRefs` 与记录 `op`、采样流经 SSE 通道出值、字节流的 `idle()` 水位
 - [ ] README 写明：设备语义、流、`settings` 字段、构建原生程序的方法、部署注意事项
 - [ ] 仓库中没有 `server.json`、令牌、密码（远端 `server.json` 由终端生成）
 - [ ] 部署到真实台架由人在终端设备页（“部署服务”）或 `deploy.ps1` 发起，本技能不部署

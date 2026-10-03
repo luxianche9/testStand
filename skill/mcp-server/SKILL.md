@@ -1,11 +1,11 @@
 ---
 name: mcp-server
-description: Create, extend, review and troubleshoot HardwareHarness hardware MCP servers built on the hardwareharness_device_sdk (mcp_servers/sdk + mcp_servers/adapters/<model>), from a device manual, vendor SDK header/DLL or native CLI. Covers the Device subclass, @tool operation semantics, parameter ranges and units, safe_state, typed read-only streams (scalar/bits/bytes/frames/block/blob: sampled readings, scan groups, write-then-publish readback, serial byte traffic with writer/transact/idle, stream metadata), heartbeat leases, the /device declaration (description, pinout with port images, appearance image) and /assets, schematic diagrams, software waveforms, dry-run simulators, compliance tests and bundle assembly. Use for explicit $mcp-server requests and for any task that adds or changes a hardware service under mcp_servers/. Do not use for FireDAP (still the legacy layout) or for the desktop app itself.
+description: Create, extend, review and troubleshoot HardwareHarness hardware MCP servers built on the hardwareharness_device_sdk (mcp_servers/sdk + mcp_servers/adapters/<model>), from a device manual, vendor SDK header/DLL or native CLI. Covers the Device subclass, @tool operation semantics, parameter ranges and units, safe_state, typed read-only streams (scalar/bits/bytes/frames/block/blob: sampled readings, scan groups, write-then-publish readback, serial byte traffic with writer/transact/idle, stream metadata), the /device declaration (description, pinout with port images, appearance image) and /assets, schematic diagrams, software waveforms, dry-run simulators, compliance tests and bundle assembly. Use for explicit $mcp-server requests and for any task that adds or changes a hardware service under mcp_servers/. Do not use for FireDAP (still the legacy layout) or for the desktop app itself.
 ---
 
 # HardwareHarness 硬件 MCP 服务
 
-本技能把一台硬件变成一个 HardwareHarness MCP 服务。服务由 SDK 包 `hardwareharness_device_sdk` 加一个适配器组成。SDK 已经提供传输、鉴权、公共工具、结果信封、心跳租约、生命周期、`safe_state` 调度、`/device` 设备声明与 `/assets` 图片、流的时间戳 / 缓冲 / 采样线程 / 操作号 / 水位 / SSE 通道、示意图生成、软件波形和合规测试；适配器只写三件事：驱动映射、声明（设备描述、工具语义、流及其元数据、引脚与图片）、模拟器。
+本技能把一台硬件变成一个 HardwareHarness MCP 服务。服务由 SDK 包 `hardwareharness_device_sdk` 加一个适配器组成。SDK 已经提供传输、鉴权、公共工具、结果信封、生命周期、`safe_state` 调度、`/device` 设备声明与 `/assets` 图片、流的时间戳 / 缓冲 / 采样线程 / 操作号 / 水位 / SSE 通道、示意图生成、软件波形和合规测试；适配器只写三件事：驱动映射、声明（设备描述、工具语义、流及其元数据、引脚与图片）、模拟器。
 
 只以本技能的 `references/`、`assets/`、`scripts/` 和仓库里的 `mcp_servers/sdk`、`mcp_servers/adapters/*` 为依据。手册里没有的事实（引脚、量程、安全值、上电状态）不要编：写成 `TODO(new_device)`，或者返回 `not_supported`，再向用户要资料或实测结果。
 
@@ -56,7 +56,7 @@ description: Create, extend, review and troubleshoot HardwareHarness hardware MC
 
 ## 参考资料
 
-- `references/contract.md`：服务契约（`contractRevision` `2026-10-01.1`）、`/device`、公共工具、请求 `_meta`、心跳租约、信封 `meta`、错误类别、操作语义字段。
+- `references/contract.md`：服务契约（`contractRevision` `2026-10-01.1`）、`/device`、公共工具、请求 `_meta`、信封 `meta`、错误类别、操作语义字段。
 - `references/sdk-api.md`：`Device`（含 `description`）、`@tool`、`param`、`model`、配置、软件波形、模拟器、测试工具、生命周期。
 - `references/streams.md`：流类型与记录、流元数据、采样与扫描组、写即发布、字节流配方与 `idle()`、状态、SSE 事件与水位、内置 `stream_read` / `transact`。
 - `references/vendor-bindings.md`：ctypes `WinDLL`/`CDLL`、hwcli JSON 行子进程、厂商 stdout。

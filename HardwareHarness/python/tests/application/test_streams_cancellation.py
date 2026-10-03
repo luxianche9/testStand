@@ -19,7 +19,6 @@ from hardwareharness_backend.application.cancellation import (
 def streams(live: Any = None) -> tuple[StreamsApplication, Mock]:
     devices = Mock(
         list_streams=AsyncMock(return_value=[{"id": "ain0", "type": "scalar"}]),
-        call_management=AsyncMock(return_value={"leased": False}),
     )
     return StreamsApplication(DefaultAuthorizer(), devices, live), devices
 
@@ -32,8 +31,6 @@ async def test_streams_delegate_to_devices_live_streams_and_runs() -> None:
     app, devices = streams(live)
 
     assert await app.list_streams(HUMAN, "H") == [{"id": "ain0", "type": "scalar"}]
-    assert await app.lease_status(HUMAN, "H") == {"leased": False, "heldByThisTerminal": False}
-    devices.call_management.assert_awaited_with("H", "lease_status", {})
     await app.observe(HUMAN, "H", "ain0", 100, [{"metric": "mean", "op": "gt", "expected": 1}])
     assert live.observe.await_args.kwargs["window_ms"] == 100
     await app.expect(HUMAN, "H", "uart", 50, {"dir": "rx", "contains": "OK"})

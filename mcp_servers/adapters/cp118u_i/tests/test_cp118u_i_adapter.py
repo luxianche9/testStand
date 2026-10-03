@@ -13,7 +13,6 @@ from hh_adapter_cp118u_i.pinout import pinout
 
 PUBLIC_TOOLS = {
     "get_server_info", "list_hardware", "get_hardware_info",
-    "lease_acquire", "lease_heartbeat", "lease_release", "lease_force_release", "lease_status",
     "cp118u_configure_port", "cp118u_write_text", "cp118u_write_hex", "cp118u_read_rx", "cp118u_clear_rx",
     "cp118u_flush", "cp118u_get_line_status", "cp118u_safe_state",
     "cp118u_stream_read", "cp118u_transact",

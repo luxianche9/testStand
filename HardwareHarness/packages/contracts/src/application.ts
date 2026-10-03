@@ -1,6 +1,6 @@
 import type { AgentConfirmation, AgentConfirmationAnswer, RequestContext } from "./agents.js";
 import type { DashboardSnapshot } from "./desktop.js";
-import type { AdapterReleaseRecord, AdapterStatus, ConnectionStatus, DeviceLeaseStatus, Hardware, ManagedDeviceDefinition, ManagedHardware, McpServerConfig, RegisteredService, RemoteComputer, RemoteServiceLog, ServerStatus, ServiceImportResult, DiscoveredService, DeployableAdapter, DeployResult, DeployServiceSpec, UninstallResult, StoredHardwareDefinition, ToolCatalogItem } from "./devices.js";
+import type { AdapterReleaseRecord, AdapterStatus, ConnectionStatus, Hardware, ManagedDeviceDefinition, ManagedHardware, McpServerConfig, RegisteredService, RemoteComputer, RemoteServiceLog, ServerStatus, ServiceImportResult, DiscoveredService, DeployableAdapter, DeployResult, DeployServiceSpec, UninstallResult, StoredHardwareDefinition, ToolCatalogItem } from "./devices.js";
 import type { ManualToolInvocationInput, ManualToolInvocationResult } from "./execution.js";
 
 import type { ProjectDocument, ProjectFolderSelection, RecentProjectSummary } from "./projects.js";
@@ -66,9 +66,6 @@ export interface BackendApplication {
   };
   readonly streams: {
     listStreams(context: RequestContext, hardwareId: string): Promise<DeviceStream[]>;
-    leaseStatus(context: RequestContext, hardwareId: string): Promise<DeviceLeaseStatus>;
-    leaseRelease(context: RequestContext, hardwareId: string): Promise<unknown>;
-    leaseForceRelease(context: RequestContext, hardwareId: string, reason: string): Promise<unknown>;
     window(context: RequestContext, runId: string, keys: string[], t0: number, t1: number, width: number): RunStreamWindow;
     observe(context: RequestContext, hardwareId: string, streamId: string, windowMs: number, assertions?: Record<string, unknown>[], minSamples?: number): Promise<StreamProbe>;
     expect(context: RequestContext, hardwareId: string, streamId: string, withinMs: number, match: Record<string, unknown>): Promise<StreamProbe>;

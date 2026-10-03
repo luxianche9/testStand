@@ -32,7 +32,6 @@ from hardwareharness_backend.devices import (
     DeviceTransportRegistry,
     McpHttpTransport,
 )
-from hardwareharness_backend.devices.leases import LeaseManager, terminal_holder
 from hardwareharness_backend.host.change_events import change_summary
 from hardwareharness_backend.host.desktop import DesktopApplication
 from hardwareharness_backend.host.http_api import EventBus, LocalApi
@@ -114,7 +113,6 @@ class HostRuntime:
         store = DeviceStore(root / "devices")
         await store.initialize()
         devices = DeviceService(store, secrets, transports)
-        leases = LeaseManager(devices, terminal_holder(root))
         projects = ProjectService(settings)
         await projects.initialize()
         catalog = DeviceCatalogService(store)
@@ -146,7 +144,6 @@ class HostRuntime:
             result_listeners,
             runtime_state=test_plan_store.runtime,
             stream_sources=stream_sources,
-            leases=leases,
         )
         desktop: DesktopApplication
         application = HardwareHarnessApplication(
@@ -162,7 +159,6 @@ class HostRuntime:
                 "test_engine": test_engine,
                 "test_step_plugins": test_step_plugins,
                 "live_streams": live_streams,
-                "leases": leases,
             }
         )
         desktop = DesktopApplication(
@@ -194,7 +190,6 @@ class HostRuntime:
         execution.set_notifier(self._emit("execution"))
         application.testing.set_plan_notifier(self._emit("testPlan"))
         test_engine.set_notifier(self._emit("testRun"))
-        leases.set_notifier(self._emit("lease"))
         application.testing.set_batch_notifier(self._emit("testBatch"))
         test_token = options.gateway_test_token
         if options.integration_test_mode and test_token and test_token.strip():
@@ -263,9 +258,9 @@ class HostRuntime:
         await services.gateway.stop()
         await services.application.devices.close_calls()
         await services.application.manual.close()
-        # Design doc §4.5.2 exit order: runs abort and clean up, then the leases go.
+        # Exit order: runs abort and clean up (their safe_state), then every device goes safe.
         await services.application.testing.close()
-        await services.application.leases.close()
+        await services.devices.safe_all()
         await services.live_streams.close()
         await services.stream_sources.close()
         await services.application.projects.close()

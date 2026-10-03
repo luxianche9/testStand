@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "hardwareharness-device-sdk"
 version = "0.2.0"
-description = "SDK for HardwareHarness single-device MCP servers: tools, streams, leases and lifecycle."
+description = "SDK for HardwareHarness single-device MCP servers: tools, streams and lifecycle."
 requires-python = ">=3.11"
 dependencies = ["mcp>=1.26,<2", "uvicorn>=0.30,<1"]
 

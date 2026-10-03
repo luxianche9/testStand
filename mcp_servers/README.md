@@ -10,7 +10,7 @@ directory; the remote directories are deployment artifacts, not source.
 
 ```
 sdk/                     hardwareharness_device_sdk: transport, auth, builtin tools, envelope,
-                         lifecycle, safe_state, heartbeat leases, streams (ring buffer + SSE),
+                         lifecycle, safe_state, streams (ring buffer + SSE),
                          /device manifest, waveform player, compliance
 adapters/<adapter>/      hh_adapter_<adapter>: adapter.py, driver.py, sim.py, pinout.py, tests/
 templates/*.ps1          install / uninstall / start / stop / status / runner, rendered per server
@@ -55,22 +55,16 @@ Simulation switches, all off by default so simulated inputs read idle values:
 | `/time` | `{serverTime}` for clock-offset estimation, same token |
 
 Contract revision `2026-10-01.1`. Builtin tools: `get_server_info`, `list_hardware`,
-`get_hardware_info`, the lease tools `lease_acquire(hardwareId, holder)`,
-`lease_heartbeat(hardwareId, leaseId)`, `lease_release(hardwareId, leaseId)`,
-`lease_force_release(hardwareId, reason)`, `lease_status(hardwareId)`,
-`<prefix>_stream_read`, plus `<prefix>_transact` when a byte stream has a writer and
-`<prefix>_blob_read` when a blob stream exists, and `hardwareharness_prepare_shutdown`.
-`get_pinout`, `list_streams` and `lease_renew` are gone: the pinout, the stream
-declarations and the images are read once from `/device`, and `manifestRevision`
-(sha256 over the canonical declaration plus the asset bytes, also in `/health`) says
-when to read it again.
+`get_hardware_info`, `<prefix>_stream_read`, plus `<prefix>_transact` when a byte
+stream has a writer and `<prefix>_blob_read` when a blob stream exists, and
+`hardwareharness_prepare_shutdown`. `get_pinout` and `list_streams` are gone: the
+pinout, the stream declarations and the images are read once from `/device`, and
+`manifestRevision` (sha256 over the canonical declaration plus the asset bytes, also
+in `/health`) says when to read it again.
 
-A lease lives 10 s without a heartbeat; the holder heartbeats every 2 s, and a call
-carrying `_meta.leaseId` counts as a heartbeat. Every way a lease ends (release,
-timeout, force release) runs `safe_state`. Every call may carry `_meta.operationId`
-(tags the stream records it causes) and `_meta.leaseId`; the result `meta` returns
-`operationId`, `timing` and `streamRefs`. Each device tool declares
-`operationSemantics` explicitly. Servers report measurements and state; pass/fail
+Every call may carry `_meta.operationId` (tags the stream records it causes); the
+result `meta` returns `operationId`, `timing` and `streamRefs`. Each device tool
+declares `operationSemantics` explicitly. Servers report measurements and state; pass/fail
 judging belongs to the test step, not the server. See
 `skill/mcp-server/references/contract.md` for the full contract and `streams.md` for
 stream types, stream metadata and SSE events.

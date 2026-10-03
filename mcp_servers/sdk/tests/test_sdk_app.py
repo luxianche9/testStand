@@ -13,8 +13,7 @@ from sdk_demo import PNG, DemoDevice
 
 DEVICE_TOOLS = {"demo_set_level", "demo_read_level", "demo_configure", "demo_write_text", "demo_capture",
                 "demo_explode", "demo_safe_state"}
-BUILTINS = {"get_server_info", "list_hardware", "get_hardware_info", "lease_acquire", "lease_heartbeat",
-            "lease_release", "lease_force_release", "lease_status", "hardwareharness_prepare_shutdown",
+BUILTINS = {"get_server_info", "list_hardware", "get_hardware_info", "hardwareharness_prepare_shutdown",
             "demo_stream_read", "demo_blob_read", "demo_transact"}
 
 
@@ -86,16 +85,14 @@ def test_server_info_and_capabilities(hh):
     assert caps["streamTransport"] == {"protocol": "sse", "path": "/streams/{streamId}", "timePath": "/time",
                                        "auth": "bearer", "declaration": "/device streams",
                                        "readTool": "demo_stream_read"}
-    assert caps["declarationPath"] == "/device" and caps["lease"] == {"timeoutMs": 10_000, "heartbeatIntervalMs": 2000}
-    assert caps["leaseTools"] == ["lease_acquire", "lease_heartbeat", "lease_release", "lease_force_release",
-                                  "lease_status"]
+    assert caps["declarationPath"] == "/device"
     info = hh.call("get_hardware_info")["data"]
     assert info["capabilities"] == ["DO", "DI", "AI", "SERIAL"]
     assert info["capabilityDetails"]["contractRevision"] == CONTRACT_REVISION
 
 
 def test_declaration_tools_are_gone(hh):
-    assert not {"get_pinout", "list_streams", "lease_renew"} & set(hh.tools)
+    assert not {"get_pinout", "list_streams"} & set(hh.tools)
 
 
 def test_stream_read_and_operation_refs(hh):

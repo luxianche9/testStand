@@ -8,7 +8,7 @@ import { EmptyState, Section, StatusLamp, toneText, cn } from "../../../ui";
 import { ManualInvokePanel } from "../../manual/index.js";
 import { AdapterRelease } from "./AdapterRelease.js";
 import { ComputerActions, HardwareActions, ServerActions, ServiceControls } from "./DeviceActions.js";
-import { DeclaredDevice, LeaseControls } from "./DeclaredDevice.js";
+import { DeclaredDevice } from "./DeclaredDevice.js";
 import { connectionTone, hardwareRowStatus, stateLabel } from "./device-labels.js";
 import { ErrorStrip, HardwareSections, InspectorShell, Meta, Missing } from "./inspector-parts.js";
 import { LiveStreams } from "./LiveStreams.js";
@@ -186,7 +186,6 @@ function ManagedInspector({ server, snapshot, hardware, onEditServer, onChanged 
         )}
       </Section>
       <AdapterRelease hardwareId={server.hardwareId} onError={setError} />
-      <LeaseControls hardwareId={server.hardwareId} online={online} onError={setError} />
       <LiveStreams hardwareId={server.hardwareId} running={online} />
       <ManualInvokePanel hardwareId={server.hardwareId} />
       {definition ? <DeclaredDevice definition={definition} /> : device && <HardwareSections hardware={device} />}

@@ -29,7 +29,6 @@ from .models import (
     aggregate_verdict,
     finite,
     plan_hardware_ids,
-    plan_invoked_hardware_ids,
     step_verdict,
 )
 from .protocols import PlanProtocols, encode_target
@@ -74,22 +73,16 @@ class GuardWatch(Protocol):
 
 
 class RunStreams(Protocol):
-    """A run's device session: leases, the stream recording, anchors and stream verdicts."""
+    """A run's device session: the stream recording, anchors and stream verdicts."""
 
     async def start(
-        self, hardware_ids: list[str], leased: list[str], protocols: PlanProtocols | None = None
+        self, hardware_ids: list[str], protocols: PlanProtocols | None = None
     ) -> None: ...
 
     async def stop(self) -> None: ...
 
-    def lease_for(self, hardware_id: str) -> str | None: ...
-
     def device_lock(self, hardware_id: str) -> asyncio.Lock:
-        """The terminal-wide mutex for ``configure`` / ``actuate`` on one device."""
-        ...
-
-    def on_lease_lost(self, listener: Callable[[str, str], None]) -> None:
-        """Call ``listener(hardwareId, reason)`` when a borrowed lease is lost."""
+        """The run's mutex for ``configure`` / ``actuate`` on one device."""
         ...
 
     def timing(
@@ -219,31 +212,11 @@ class RunInterpreter:
         self.manual_checks: dict[str, tuple[Record, asyncio.Future[Record]]] = {}
         self.guard_violation = False
         self.guard_stopping = 0
-        self.lease_lost: Record | None = None
         self.journal = ports.journal(self.run_id)
         self.io = ports.streams(self.run_id, self.emit)
-        self.io.on_lease_lost(self._lease_lost)
-
-    def _lease_lost(self, hardware_id: str, reason: str) -> None:
-        """Design doc §4.5.2: abort at once; unfinished verdicts are Inconclusive, never resumed."""
-        if self.done or self.lease_lost is not None:
-            return
-        self.lease_lost = {"hardwareId": hardware_id, "reason": reason}
-        self.emit("lease.lost", {"hardwareId": hardware_id, "reason": reason})
-        self._record_primary_error(
-            app_error(
-                "unavailable",
-                f"Lost the lease on hardware {hardware_id} ({reason})",
-                {"reason": "lease_lost", "hardwareId": hardware_id, "cause": reason},
-            ),
-            phase=self.current_phase,
-        )
-        self.request_abort()
 
     def _aborted_verdict(self) -> str:
-        if self.guard_violation:
-            return "Fail"
-        return "Inconclusive" if self.lease_lost is not None else "Aborted"
+        return "Fail" if self.guard_violation else "Aborted"
 
     def request_abort(self) -> None:
         self.abort_requested = True
@@ -306,11 +279,7 @@ class RunInterpreter:
                 }
             )
             try:
-                await self.io.start(
-                    hardware_ids,
-                    plan_invoked_hardware_ids(self.plan),
-                    self.protocols,
-                )
+                await self.io.start(hardware_ids, self.protocols)
             except Exception:
                 self.activity_handle.release()
                 self.activity_handle = None
@@ -326,8 +295,7 @@ class RunInterpreter:
             if self.verdict != "Error":
                 await self._region("test", self.plan["regions"]["test"])
         except _AbortRun:
-            # A Guard that aborts the run fails it, a lost lease leaves it Inconclusive and a
-            # user abort leaves it Aborted.
+            # A Guard that aborts the run fails it; a user abort leaves it Aborted.
             self.verdict = aggregate_verdict(self.verdict, self._aborted_verdict())
             self.execution_status = "Aborted"
         except Exception as error:
@@ -559,11 +527,6 @@ class RunInterpreter:
                 "durationMs": duration_ms,
                 "outcomeKnown": outcome_known,
                 "output": output,
-                **(
-                    {"reason": "lease_lost"}
-                    if self.lease_lost is not None and verdict == "Inconclusive"
-                    else {}
-                ),
             }
             self.active_executions.pop(execution_id, None)
             self.emit("step.completed", event)
@@ -1116,12 +1079,7 @@ class RunInterpreter:
             }
             self.ports.operations.record_operation(operation)
             self.emit("operation.accepted", {"operation": operation})
-            lease_id = self.io.lease_for(hardware_id)
-            options = {
-                "envelope": True,
-                "operationId": operation_id,
-                **({"leaseId": lease_id} if lease_id else {}),
-            }
+            options = {"envelope": True, "operationId": operation_id}
             backend_start = self.ports.clock()
             task = asyncio.create_task(
                 self.ports.devices.call_aggregated_tool(tool["externalName"], arguments, options)

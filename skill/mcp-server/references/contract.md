@@ -22,18 +22,13 @@
 |---|---|---|
 | `get_server_info` | read | 版本、就绪状态、`capabilities`（含 `streamTransport`）、`sdkVersion`、`adapter`、`sourceRevision` |
 | `list_hardware` | read | 唯一硬件及其生命周期状态 |
-| `get_hardware_info(hardwareId)` | read | 状态、租约 + `capabilityDetails`（SDK 通用字段 + 适配器 `capability_details()`） |
-| `lease_acquire(hardwareId, holder)` | internal | 独占 configure/actuate 权限，返回 `{leaseId, holder, acquiredAt, heartbeatIntervalMs, timeoutMs}` |
-| `lease_heartbeat(hardwareId, leaseId)` | internal | 心跳，返回 `{leaseId, lastHeartbeatAt}`；租约已失效时 `busy` |
-| `lease_release(hardwareId, leaseId)` | internal | 释放并执行安全态，返回 `{held, released, holder, safeResult}` |
-| `lease_force_release(hardwareId, reason)` | internal | 用户确认后强制释放任何人的租约，记录原持有者和原因，执行安全态 |
-| `lease_status(hardwareId)` | read | `{held, holder?, acquiredAt?, lastHeartbeatAt?}`；从不透露 `leaseId` |
+| `get_hardware_info(hardwareId)` | read | 状态 + `capabilityDetails`（SDK 通用字段 + 适配器 `capability_details()`） |
 | `<prefix>_stream_read` | read | 见 `streams.md` |
 | `<prefix>_transact` | actuate | 仅当有带写入器的字节流 |
 | `<prefix>_blob_read` | read | 仅当有 `BlobStream` |
 | `hardwareharness_prepare_shutdown` | internal | 仅供后端停服务，不给 AI 或测试步骤 |
 
-`get_pinout`、`list_streams` 和 `lease_renew` 已删除：引脚和流声明一次性从 `/device` 读取。表中的类型是 `/device.tools[].kind`；租约工具在 MCP `_meta.hardwareharness` 里仍标为 `management`，由终端调用，不给 AI 或测试步骤。
+`get_pinout` 和 `list_streams` 已删除：引脚和流声明一次性从 `/device` 读取。表中的类型是 `/device.tools[].kind`。
 
 ## 请求 `_meta`
 
@@ -42,7 +37,6 @@
 | 字段 | 说明 |
 |---|---|
 | `operationId` | 调用方的操作号（引擎用它关联步骤）。SDK 放进上下文，该调用期间写入的流记录都带 `op`；省略时服务生成 `srv-*` |
-| `leaseId` | 设备被租用时，configure/actuate 调用必须带上持有的租约号；带上它的任何调用同时算一次心跳。设备空闲时可以不带；带了已失效的租约号则返回 `busy` |
 
 适配器不读 `_meta`，全部由 SDK 处理。
 
@@ -57,7 +51,7 @@
  "pinout": {"...": "Pinout 模型", "connectors": [{"connectorId": "...", "name": "CN1", "pinIds": ["..."]}]},
  "streams": [{"id": "ao0", "type": "scalar", "unit": "V", "label": "AO0", "kind": "setpoint"}],
  "capabilities": {"...": "capabilityDetails"},
- "tools": [{"name": "pci6208v_set_voltage", "kind": "actuate"}, {"name": "lease_acquire", "kind": "internal"}]}
+ "tools": [{"name": "pci6208v_set_voltage", "kind": "actuate"}, {"name": "hardwareharness_prepare_shutdown", "kind": "internal"}]}
 ```
 
 - `identity.hardwareRevision` 来自 `Device.hardware_revision`，未设置时省略；`dryRun` 表示实际使用了模拟驱动。
@@ -65,14 +59,6 @@
 - `streams` 是每个流的 `describe()`，见 `streams.md`。
 - `tools[].kind` 为 `read` / `configure` / `actuate` / `safe` / `internal`。
 - `manifestRevision` 是规范化 JSON 声明的 sha256，同时出现在 `/health`。它变了就重新读 `/device`（声明变了，或 `capability_details()` 的生效设置变了）。
-
-## 租约
-
-- 同一时刻最多一个租约，持有者是一个终端实例：`holder` 为 `terminalId` 字符串或 `{terminalId, user?, host?, label?}`（每项不超过 128 字符）。同一 `terminalId` 再次 `lease_acquire` 返回同一个 `leaseId`（幂等）；其他持有者得到 `busy`，`details` 带 `{held, holder, acquiredAt, lastHeartbeatAt}`。
-- 租约没有期限，只靠心跳维持：`heartbeatIntervalMs` = 2000，`timeoutMs` = 10000（也在 `capabilityDetails.lease` 里）。持有者每 2 s 调 `lease_heartbeat`，或任何带 `_meta.leaseId` 的调用；10 s 没有心跳租约结束。
-- 租约的每一种结束方式（释放、心跳超时、强制释放）都由 SDK 执行 `safe_state`，并记录日志。超时的租约由后台清扫结束；清扫之前新的 `lease_acquire` 返回 `busy`（"安全态待执行"），稍后重试。
-- 被租用时 `configure` / `actuate` 工具（包括 `transact`）返回 `busy`；`read`、`safe` 工具和流订阅不受租约限制。租约失效后原持有者的下一次调用（心跳或带 `leaseId` 的调用）返回 `busy`，此时停止使用设备并重新获取。
-- 适配器不接触租约。
 
 ## 设备工具（适配器提供）
 
@@ -119,7 +105,6 @@
 |---|---|---|---|
 | `INVALID_ARGUMENT` | `invalid_argument` | 参数越界、组合非法；驱动未被调用 | 否 |
 | `NOT_CONFIGURED` | `not_configured` | 前置配置缺失，如未 `configure_ai` 就读 | 否 |
-| `BUSY` | `busy` | 设备被他人租用，租约已失效，或上一租约的安全态尚未执行 | 否 |
 | `DEVICE_ERROR` | `device_error` | 驱动返回错误码（默认类别） | 否 |
 | `DEVICE_UNREACHABLE` | `device_unreachable` | 打开失败、设备未打开、CLI 不存在或退出 | 是 |
 | `SERVICE_UNAVAILABLE` | `service_unavailable` | 服务正在停机 | 是 |

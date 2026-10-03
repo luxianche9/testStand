@@ -1,10 +1,6 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type {
-  DeviceDeclaredConnector, DeviceDeclaredPin, DeviceLeaseStatus, ManagedDeviceDefinition
+  DeviceDeclaredConnector, DeviceDeclaredPin, ManagedDeviceDefinition
 } from "@hardwareharness/contracts/devices";
-import { errorMessage } from "../../../lib/errors.js";
-import { useDeviceLease } from "../../../lib/queries.js";
-import { queryKeys } from "../../../lib/query-keys.js";
 import { Badge, Button, Section, useConfirm } from "../../../ui";
 import type { ReportError } from "./DeviceActions.js";
 import { Meta } from "./inspector-parts.js";
@@ -97,79 +93,6 @@ function DeclaredConnector({ connector, pins }: {
       )}
     </article>
   );
-}
-
-/** Lease holder and the release / force-release actions (§4.5). */
-export function LeaseControls({ hardwareId, online, onError }: {
-  hardwareId: string;
-  online: boolean;
-  onError: ReportError;
-}) {
-  const client = useQueryClient();
-  const lease = useDeviceLease(hardwareId, online);
-  const [confirm, confirmNode] = useConfirm();
-  const settled = () => void client.invalidateQueries({ queryKey: queryKeys.deviceLease(hardwareId) });
-  const release = useMutation({
-    mutationFn: () => window.hardwareharness.streams.leaseRelease(hardwareId),
-    onMutate: () => onError(null),
-    onError: (error) => onError(errorMessage(error)),
-    onSettled: settled
-  });
-  const forceRelease = useMutation({
-    mutationFn: () => window.hardwareharness.streams.leaseForceRelease(hardwareId, "forced from the device page"),
-    onMutate: () => onError(null),
-    onError: (error) => onError(errorMessage(error)),
-    onSettled: settled
-  });
-  const requestForceRelease = async (status: DeviceLeaseStatus) => {
-    const holder = holderLabel(status);
-    const first = await confirm({
-      title: "强制释放租约",
-      message: `设备正被 ${holder} 占用。强制释放会中断对方正在进行的操作，服务会把设备驱动到安全状态。`,
-      confirmLabel: "继续",
-      danger: true
-    });
-    if (!first) return;
-    const second = await confirm({
-      title: "再次确认强制释放",
-      message: `确定要从 ${holder} 手中收回这台设备吗？此操作无法撤销。`,
-      confirmLabel: "强制释放",
-      danger: true
-    });
-    if (second) forceRelease.mutate();
-  };
-
-  const status = lease.data;
-  const busy = release.isPending || forceRelease.isPending;
-  return (
-    <Section title="租约">
-      {!online && <p className="text-xs text-fg-3">服务不可达，无法查询租约。</p>}
-      {online && !status && <p className="text-xs text-fg-3">{lease.isError ? errorMessage(lease.error) : "查询中…"}</p>}
-      {online && status && (
-        <div className="flex items-center gap-2 text-xs">
-          <span className="min-w-0 flex-1 truncate text-fg-2">
-            {!status.held ? "空闲" : status.heldByThisTerminal ? "本终端持有" : `被 ${holderLabel(status)} 持有`}
-          </span>
-          {status.held && status.heldByThisTerminal && (
-            <Button size="xs" disabled={busy} onClick={() => release.mutate()}>释放</Button>
-          )}
-          {status.held && !status.heldByThisTerminal && (
-            <Button size="xs" variant="danger" disabled={busy} onClick={() => void requestForceRelease(status)}>
-              强制释放
-            </Button>
-          )}
-        </div>
-      )}
-      {confirmNode}
-    </Section>
-  );
-}
-
-function holderLabel(status: DeviceLeaseStatus): string {
-  const holder = status.holder;
-  if (!holder) return "其他终端";
-  if (holder.user && holder.host) return `${holder.user}@${holder.host}`;
-  return holder.label ?? holder.user ?? holder.host ?? holder.terminalId;
 }
 
 function shortRevision(revision: string): string {

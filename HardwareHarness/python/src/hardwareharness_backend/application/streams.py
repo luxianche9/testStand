@@ -17,7 +17,6 @@ from hardwareharness_backend.contracts.validation import (
     string,
     unknown,
 )
-from hardwareharness_backend.devices.leases import LeaseManager
 from hardwareharness_backend.streams.judge import MIN_SAMPLES
 
 from .authorization import Authorizer, Json
@@ -34,13 +33,11 @@ class StreamsApplication:
         authorizer: Authorizer,
         devices: DeviceService,
         live: LiveStreams | None = None,
-        leases: LeaseManager | None = None,
         *,
         runs: TestEngine | None = None,
     ) -> None:
         self.authorizer, self.devices, self._live = authorizer, devices, live
         self.runs = runs
-        self.leases = leases or LeaseManager(devices, {"terminalId": "streams-application"})
 
     @property
     def live(self) -> LiveStreams:
@@ -57,38 +54,6 @@ class StreamsApplication:
     )
     async def list_streams(self, context: Json, hardware_id: str) -> list[Json]:
         return await self.devices.list_streams(hardware_id)
-
-    @operation(
-        "streams.leaseStatus",
-        capability="hardware.read",
-        risk="read",
-        profiles=("adapter", "run", "explore"),
-        idempotency="natural",
-    )
-    async def lease_status(self, context: Json, hardware_id: str) -> Json:
-        """``{held, holder?, acquiredAt?, lastHeartbeatAt?, heldByThisTerminal}``."""
-        return await self.leases.status(hardware_id)
-
-    @operation(
-        "streams.leaseRelease",
-        capability="hardware.executeTools",
-        risk="actuate",
-        profiles=("explore",),
-    )
-    async def lease_release(self, context: Json, hardware_id: str) -> Json:
-        """Release this terminal's lease; the service drives the device to its safe state."""
-        return await self.leases.release(hardware_id)
-
-    @operation(
-        "streams.leaseForceRelease",
-        capability="hardware.executeTools",
-        risk="actuate",
-        profiles=("explore",),
-        confirm=True,
-    )
-    async def lease_force_release(self, context: Json, hardware_id: str, reason: str) -> Json:
-        """End whoever holds the device; the UI must have confirmed twice (design doc §4.5.1)."""
-        return await self.leases.force_release(hardware_id, reason)
 
     @operation(
         "streams.window",

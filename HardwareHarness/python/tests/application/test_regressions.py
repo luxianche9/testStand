@@ -79,8 +79,8 @@ async def test_manual_hardware_abort_is_scoped() -> None:
     await asyncio.sleep(0)
     await manual.abort_hardware("OTHER", "other")
     assert not pending.done()
-    await manual.abort_hardware("HW1", "lease lost")
-    with pytest.raises(AbortError, match="lease lost"):
+    await manual.abort_hardware("HW1", "device unplugged")
+    with pytest.raises(AbortError, match="device unplugged"):
         await pending
     assert execution.current()["state"] == "idle"
 

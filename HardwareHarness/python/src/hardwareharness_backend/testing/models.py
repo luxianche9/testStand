@@ -77,17 +77,6 @@ def plan_hardware_ids(plan: Record) -> list[str]:
     )
 
 
-def plan_invoked_hardware_ids(plan: Record) -> list[str]:
-    """Hardware the plan calls tools on: what a run leases (streams need no lease)."""
-    return sorted(
-        {
-            str(step["hardwareId"])
-            for _, step in iter_steps(plan)
-            if step.get("type") == "InvokeTool" and isinstance(step.get("hardwareId"), str)
-        }
-    )
-
-
 def aggregate_verdict(current: str, incoming: str) -> str:
     return incoming if VERDICT_RANK.get(incoming, 0) > VERDICT_RANK.get(current, 0) else current
 

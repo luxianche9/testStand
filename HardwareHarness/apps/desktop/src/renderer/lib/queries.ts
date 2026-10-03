@@ -123,16 +123,6 @@ export function useAdapterStatus(hardwareId: string) {
   });
 }
 
-/** Who holds the device's lease; asked of the service, so only while it is reachable. */
-export function useDeviceLease(hardwareId: string, enabled: boolean) {
-  return useQuery({
-    queryKey: queryKeys.deviceLease(hardwareId),
-    queryFn: () => window.hardwareharness.streams.leaseStatus(hardwareId),
-    enabled,
-    refetchInterval: 5_000
-  });
-}
-
 /** Embedded OpenCode runtime. Pushed on the `opencode` channel; the poll covers dropped events. */
 export function useOpenCodeStatus() {
   return useQuery({

@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Any
 
 from hardwareharness_backend.contracts.operations import collect_operations
-from hardwareharness_backend.devices.leases import LeaseManager
 from hardwareharness_backend.projects.icd_library import IcdLibrary
 from hardwareharness_backend.testing import TestEngine, TestingApplication, TestPlanStore
 from hardwareharness_backend.testing.resolver import DeviceToolResolver
@@ -72,12 +71,6 @@ class HardwareHarnessApplication:
             dependencies.get("test_step_plugins", []),
             dependencies.get("wiring"),
         )
-        leases = dependencies.get("leases") or getattr(
-            dependencies.get("test_engine"), "leases", None
-        )
-        if not isinstance(leases, LeaseManager):
-            leases = LeaseManager(dependencies["devices"], {"terminalId": "application"})
-        self.leases = leases
         test_engine = dependencies.get("test_engine") or TestEngine(
             dependencies["projects"],
             dependencies["devices"],
@@ -85,17 +78,15 @@ class HardwareHarnessApplication:
             execution,
             dependencies.get("test_step_plugins", []),
             runtime_state=test_plan_store.runtime,
-            leases=leases,
         )
         self.authorizer: Authorizer = dependencies.get("authorizer") or DefaultAuthorizer()
         self.devices = DevicesApplication(
-            self.authorizer, dependencies["devices"], dependencies["catalog"], execution, leases
+            self.authorizer, dependencies["devices"], dependencies["catalog"], execution
         )
         self.streams = StreamsApplication(
             self.authorizer,
             dependencies["devices"],
             dependencies.get("live_streams"),
-            leases,
             runs=test_engine,
         )
         self.projects = ProjectsApplication(
@@ -108,7 +99,7 @@ class HardwareHarnessApplication:
             self.authorizer, dependencies["projects"], dependencies["wiring"]
         )
         self.manual = ManualControlApplication(
-            self.authorizer, dependencies["devices"], dependencies["catalog"], execution, leases
+            self.authorizer, dependencies["devices"], dependencies["catalog"], execution
         )
         self.testing = TestingApplication(
             self.authorizer,

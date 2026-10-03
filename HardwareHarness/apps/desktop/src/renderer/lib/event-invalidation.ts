@@ -37,7 +37,6 @@ export const eventInvalidations: Record<HardwareHarnessEventName, readonly Inval
   ],
   testBatch: [{ key: queryKeys.testBatch }, { key: queryKeys.testItemStatus }],
   // A lease was acquired, released or lost (possibly taken by another terminal).
-  lease: [{ key: queryKeys.deviceLeaseAll }],
   // An Agent's high-risk operation started or stopped waiting for the operator.
   confirmation: [{ key: queryKeys.agentConfirmations }],
   opencode: [{ key: queryKeys.openCodeStatus }],

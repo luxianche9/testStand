@@ -1,5 +1,5 @@
 import type { AgentConfirmation, AgentConfirmationAnswer, AgentIntegrationPreview, AgentIntegrationStatus, AgentKind, AgentToolInfo, McpGatewayStatus, OpenCodeRuntimeStatus } from "./agents.js";
-import type { AdapterReleaseRecord, AdapterStatus, ComputerStatus, DeviceBundleApplyInput, DeviceBundleExport, DeviceBundleImport, DeviceBundleKind, DeviceBundlePreview, DeviceLeaseStatus, Hardware, HardwareAvailability, ManagedDeviceDefinition, ManagedHardware, McpServerConfig, RegisteredService, RemoteComputer, RemoteServiceLog, ServerStatus, ServiceImportResult, DiscoveredService, DeployableAdapter, DeployResult, DeployServiceSpec, UninstallResult, ToolCatalogItem } from "./devices.js";
+import type { AdapterReleaseRecord, AdapterStatus, ComputerStatus, DeviceBundleApplyInput, DeviceBundleExport, DeviceBundleImport, DeviceBundleKind, DeviceBundlePreview, Hardware, HardwareAvailability, ManagedDeviceDefinition, ManagedHardware, McpServerConfig, RegisteredService, RemoteComputer, RemoteServiceLog, ServerStatus, ServiceImportResult, DiscoveredService, DeployableAdapter, DeployResult, DeployServiceSpec, UninstallResult, ToolCatalogItem } from "./devices.js";
 import type { ExecutionActivity, ManualToolInvocationInput, ManualToolInvocationResult } from "./execution.js";
 
 import type { LlmSettings, LlmSettingsInput, ProjectView, ThemeChoice, WelcomeLayout } from "./storage.js";
@@ -26,7 +26,7 @@ export interface DashboardSnapshot {
  * version (design §9.4); `window-state` and `opencode` come from the main process, `gap` from the event stream.
  */
 export const HARDWAREHARNESS_EVENT_NAMES = [
-  "availability", "execution", "wiringTask", "project", "testPlan", "testRun", "testBatch", "opencode", "lease",
+  "availability", "execution", "wiringTask", "project", "testPlan", "testRun", "testBatch", "opencode",
   "confirmation", "window-state", "gap"
 ] as const;
 export type HardwareHarnessEventName = (typeof HARDWAREHARNESS_EVENT_NAMES)[number];
@@ -143,9 +143,6 @@ export interface HardwareHarnessTestingApi {
 /** Device streams: live frames (`GET /api/live`), recorded windows of a run, one-off probes. */
 export interface HardwareHarnessStreamsApi {
   listStreams(hardwareId: string): Promise<DeviceStream[]>;
-  leaseStatus(hardwareId: string): Promise<DeviceLeaseStatus>;
-  leaseRelease(hardwareId: string): Promise<unknown>;
-  leaseForceRelease(hardwareId: string, reason: string): Promise<unknown>;
   /**
    * Subscribes to live frames until the returned function is called; reconnects resume after the
    * last frame. `onGap` runs when a reconnect cannot resume (the backend restarted): drop the buffer.

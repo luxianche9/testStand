@@ -342,12 +342,6 @@ class McpHttpTransport:
             resolved["session"]["server"]["serverId"], resolved["tool"]["remoteName"], args, options
         )
 
-    async def call_internal(
-        self, server: Record, name: str, args: Record, options: Record | None = None
-    ) -> Any:
-        session = await self.ensure(server)
-        return await self.call_remote(session["server"]["serverId"], name, args, options)
-
     async def call_remote(
         self, server_id: str, name: str, args: Record, options: Record | None = None
     ) -> Any:
@@ -551,8 +545,8 @@ class McpHttpTransport:
 
 
 def _request_meta(metadata: Record | None, options: Record) -> Record | None:
-    """Request ``_meta``: service-visible operation/lease ids plus HardwareHarness metadata."""
-    meta: Record = {key: options[key] for key in ("operationId", "leaseId") if options.get(key)}
+    """Request ``_meta``: the service-visible operation id plus HardwareHarness metadata."""
+    meta: Record = {"operationId": options["operationId"]} if options.get("operationId") else {}
     if metadata is not None:
         meta["hardwareharness"] = metadata
     return meta or None

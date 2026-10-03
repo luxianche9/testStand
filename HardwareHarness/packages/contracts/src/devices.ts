@@ -256,13 +256,3 @@ export interface ManagedDeviceDefinition {
   offline: boolean;
   document: DeviceDeclaration;
 }
-
-/** Who holds a managed device's configure/actuate lease (`streams.leaseStatus`, §4.5). */
-export interface DeviceLeaseHolder { terminalId: string; user?: string; host?: string; label?: string }
-export interface DeviceLeaseStatus {
-  held: boolean;
-  holder?: DeviceLeaseHolder;
-  acquiredAt?: string;
-  lastHeartbeatAt?: string;
-  heldByThisTerminal: boolean;
-}

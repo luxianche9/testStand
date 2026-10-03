@@ -181,3 +181,29 @@ async def test_direct_tool_metadata_and_faulted_hardware_refresh() -> None:
     service.store.get_computer.return_value = None
     with pytest.raises(RuntimeError, match="Remote computer not found"):
         await service.refresh_computer("missing")
+
+
+async def test_safe_all_calls_every_safe_tool_and_tolerates_failures() -> None:
+    servers = [
+        {"serverId": "A", "hardwareId": "HA", "enabled": True},
+        {"serverId": "B", "hardwareId": "HB", "enabled": True},
+    ]
+    tools = [
+        {"externalName": "A__a_safe_state", "serverId": "A", "kind": "safe"},
+        {"externalName": "A__a_set", "serverId": "A", "kind": "actuate"},
+        {"externalName": "B__b_safe_state", "serverId": "B", "kind": "safe"},
+    ]
+    calls: list[str] = []
+
+    async def call_tool(name: str, args: dict[str, Any], options: dict[str, Any]) -> Any:
+        calls.append(name)
+        if name.startswith("B__"):
+            raise RuntimeError("offline")
+        return {}
+
+    store = Mock(
+        get_server=lambda server_id: next(s for s in servers if s["serverId"] == server_id)
+    )
+    transports = Mock(list_tools=Mock(return_value=tools), call_tool=call_tool)
+    await DeviceService(store, Mock(), transports).safe_all()
+    assert sorted(calls) == ["A__a_safe_state", "B__b_safe_state"]

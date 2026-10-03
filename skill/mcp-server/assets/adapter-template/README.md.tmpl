@@ -2,7 +2,7 @@
 
 服务标识：`__SERVER_ID__`。包 `__PACKAGE__`，入口 `python -m hardwareharness_device_sdk --adapter __PACKAGE__`。
 
-一个服务进程只管理一个硬件。公共工具（`get_server_info`、`list_hardware`、`get_hardware_info`、`lease_acquire/heartbeat/release/force_release/status`、`__PREFIX___stream_read`）、`/device` 设备声明（描述、引脚、流、图片）、`/assets` 和信封格式由 SDK 提供，见 `mcp_servers/README.md`。服务只报告测量值和状态，不判定通过 / 失败。超时或错误不表示物理动作没有发生：保留原错误，查询当前状态并取证后再决定下一步。
+一个服务进程只管理一个硬件。公共工具（`get_server_info`、`list_hardware`、`get_hardware_info`、`__PREFIX___stream_read`）、`/device` 设备声明（描述、引脚、流、图片）、`/assets` 和信封格式由 SDK 提供，见 `mcp_servers/README.md`。服务只报告测量值和状态，不判定通过 / 失败。超时或错误不表示物理动作没有发生：保留原错误，查询当前状态并取证后再决定下一步。
 
 ## 设备语义
 

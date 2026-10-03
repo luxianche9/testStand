@@ -10,7 +10,6 @@ from hh_adapter_pci1762.pinout import pinout
 
 PUBLIC_TOOLS = {
     "get_server_info", "list_hardware", "get_hardware_info",
-    "lease_acquire", "lease_heartbeat", "lease_release", "lease_force_release", "lease_status",
     "pci1762_set_relay", "pci1762_set_bank", "pci1762_read_bit", "pci1762_safe_state",
     "pci1762_stream_read",
 }

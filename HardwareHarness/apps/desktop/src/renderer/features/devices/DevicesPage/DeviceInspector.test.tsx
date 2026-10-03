@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DashboardSnapshot } from "@hardwareharness/contracts/desktop";
 import type {
-  AdapterReleaseRecord, DeviceLeaseStatus, Hardware, ManagedDeviceDefinition
+  AdapterReleaseRecord, Hardware, ManagedDeviceDefinition
 } from "@hardwareharness/contracts/devices";
 import type { LiveFrame, LiveQuery } from "@hardwareharness/contracts/observability";
 import { hardwareStatus } from "../../../lib/hardware-status.js";
@@ -81,10 +81,7 @@ const invokeTool = vi.fn();
 const stopLive = vi.fn();
 const streamsApi = {
   listStreams: vi.fn(async () => [{ id: "uart", type: "bytes" }]),
-  live: vi.fn((_query: LiveQuery, _onFrame: (frame: LiveFrame) => void) => stopLive),
-  leaseStatus: vi.fn(async (): Promise<DeviceLeaseStatus> => ({ held: false, heldByThisTerminal: false })),
-  leaseRelease: vi.fn(async () => ({ released: true })),
-  leaseForceRelease: vi.fn(async () => ({ released: true }))
+  live: vi.fn((_query: LiveQuery, _onFrame: (frame: LiveFrame) => void) => stopLive)
 };
 const getDefinition = vi.fn(async () => null as ManagedDeviceDefinition | null);
 const developing: AdapterReleaseRecord = {
@@ -406,27 +403,5 @@ describe("device inspector", () => {
     await userEvent.click(within(section).getByRole("button", { name: "标记为可用" }));
     expect(adapterApi.setAdapterStatus).toHaveBeenCalledWith("E2E_CARD", "available");
     expect(await within(section).findByRole("button", { name: "退回开发中" })).toBeTruthy();
-  });
-
-  it("releases this terminal's lease and force-releases another holder only after two confirmations", async () => {
-    streamsApi.leaseStatus.mockResolvedValueOnce({ held: true, heldByThisTerminal: true });
-    const view = renderInspector("s:E2E_MCP");
-    await userEvent.click(await screen.findByRole("button", { name: "释放" }));
-    expect(streamsApi.leaseRelease).toHaveBeenCalledWith("E2E_CARD");
-    view.unmount();
-
-    streamsApi.leaseStatus.mockResolvedValue({
-      held: true,
-      heldByThisTerminal: false,
-      holder: { terminalId: "t-2", user: "alice", host: "bench-2" }
-    });
-    renderInspector("s:E2E_MCP");
-    expect(await screen.findByText("被 alice@bench-2 持有")).toBeTruthy();
-    await userEvent.click(screen.getByRole("button", { name: "强制释放" }));
-    await userEvent.click(await screen.findByRole("button", { name: "继续" }));
-    expect(streamsApi.leaseForceRelease).not.toHaveBeenCalled();
-    const dialog = await screen.findByRole("dialog", { name: "再次确认强制释放" });
-    await userEvent.click(within(dialog).getByRole("button", { name: "强制释放" }));
-    expect(streamsApi.leaseForceRelease).toHaveBeenCalledWith("E2E_CARD", expect.any(String));
   });
 });

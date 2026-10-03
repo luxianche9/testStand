@@ -86,8 +86,8 @@ async def test_generated_tools_come_from_profiled_operations() -> None:
         "openWorldHint": False,
     }
     assert definition["inputSchema"]["required"] == ["hardwareId"]
-    force = tools["streams_leaseForceRelease"]["annotations"]
-    assert force["destructiveHint"] and force["openWorldHint"] and not force["readOnlyHint"]
+    save = tools["testing_savePlan"]["annotations"]
+    assert save["destructiveHint"] and save["idempotentHint"] and not save["readOnlyHint"]
     # Operations without profiles and the remote-call operations are never generated.
     assert "devices_removeComputer" not in tools and "devices_callTool" not in tools
     result = await registry.invoke(AGENT, "devices_getDefinition", {"hardwareId": "H"})

@@ -9,7 +9,6 @@ from hardwareharness_backend.application.cancellation import AbortController, Ab
 from hardwareharness_backend.contracts.errors import app_error
 from hardwareharness_backend.contracts.execution import parse_manual_tool_invocation_input
 from hardwareharness_backend.contracts.operations import operation
-from hardwareharness_backend.devices.leases import LeaseManager
 from hardwareharness_backend.util import (
     utc_now_iso,
 )
@@ -30,7 +29,6 @@ class ManualControlApplication:
         devices: DeviceService,
         catalog: DeviceCatalogService,
         execution: ExecutionCoordinator,
-        leases: LeaseManager | None = None,
     ) -> None:
         self.authorizer, self.devices, self.catalog, self.execution = (
             authorizer,
@@ -38,7 +36,6 @@ class ManualControlApplication:
             catalog,
             execution,
         )
-        self.leases = leases or LeaseManager(devices, {"terminalId": "manual-control"})
         self.active: dict[asyncio.Task[Json], tuple[str, AbortController]] = {}
 
     @operation(
@@ -100,17 +97,15 @@ class ManualControlApplication:
 
         async def invoke() -> Json:
             try:
-                async with self.leases.use(input["hardwareId"], str(tool.get("kind"))) as lease_id:
-                    output = await self.devices.call_tool(
-                        input["toolName"],
-                        input["arguments"],
-                        {
-                            "timeoutMs": input["timeoutMs"],
-                            "signal": controller.signal,
-                            "metadata": {"hardwareId": input["hardwareId"]},
-                            **({"leaseId": lease_id} if lease_id else {}),
-                        },
-                    )
+                output = await self.devices.call_tool(
+                    input["toolName"],
+                    input["arguments"],
+                    {
+                        "timeoutMs": input["timeoutMs"],
+                        "signal": controller.signal,
+                        "metadata": {"hardwareId": input["hardwareId"]},
+                    },
+                )
                 return {
                     "hardwareId": input["hardwareId"],
                     "toolName": input["toolName"],

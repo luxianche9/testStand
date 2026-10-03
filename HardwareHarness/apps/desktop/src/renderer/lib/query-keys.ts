@@ -21,8 +21,6 @@ export const queryKeys = {
   deviceStreams: (hardwareId: string) => ["device-streams", hardwareId] as const,
   deviceDefinition: (hardwareId: string) => ["device-definition", hardwareId] as const,
   adapterStatus: (hardwareId: string) => ["adapter-status", hardwareId] as const,
-  deviceLeaseAll: ["device-lease"] as const,
-  deviceLease: (hardwareId: string) => ["device-lease", hardwareId] as const,
 
   openCodeStatus: ["opencode-status"] as const,
   llmSettings: ["llm-settings"] as const,

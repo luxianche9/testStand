@@ -213,9 +213,6 @@ async def test_real_mcp_session_metadata_validation_and_no_delete(remote: Remote
             0
         ]["serverId"] == "S"
         assert await pool.prepare_shutdown("S") == [{"type": "text", "text": "ready"}]
-        assert await pool.call_internal(server(remote), "hardwareharness_prepare_shutdown", {}) == [
-            {"type": "text", "text": "ready"}
-        ]
         remote.result = {"content": []}
         with pytest.raises(McpCompatibilityError, match="did not return structured"):
             await pool.call("S__measure", {"channel": 2}, {"metadata": {"hardwareId": "H"}})
@@ -344,7 +341,6 @@ async def test_registry_routes_isolates_and_closes() -> None:
     assert await registry.call_tool("x", {}) == 1
     with pytest.raises(RuntimeError, match="Unknown aggregated"):
         await registry.call_tool("missing", {})
-    assert await registry.call_internal(a, "name", {}) == 2
     assert await registry.prepare_shutdown(a) == 3
     assert await registry.list_hardware([a, {**a, "serverId": "B"}, {**a, "enabled": False}]) == [
         {"hardwareId": "A"}

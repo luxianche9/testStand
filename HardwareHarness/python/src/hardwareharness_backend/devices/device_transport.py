@@ -20,9 +20,6 @@ class DeviceTransport(Protocol):
     async def call(
         self, external_name: str, args: Record, options: Record | None = None
     ) -> Any: ...
-    async def call_internal(
-        self, server: Record, name: str, args: Record, options: Record | None = None
-    ) -> Any: ...
     async def describe_hardware(self, server: Record) -> Record: ...
     async def list_streams(self, server: Record) -> list[Record]: ...
     async def describe_device(self, server: Record) -> Record | None: ...
@@ -63,14 +60,6 @@ class DeviceTransportRegistry:
         if not transport:
             raise RuntimeError(f"Unknown aggregated tool: {name}")
         return await transport.call(name, args, options)
-
-    async def call_internal(
-        self, server: Record, name: str, args: Record, options: Record | None = None
-    ) -> Any:
-        transport = self._require_transport(server["transport"])
-        await transport.connect(server)
-        self._server_kinds[server["serverId"]] = server["transport"]
-        return await transport.call_internal(server, name, args, options)
 
     async def list_hardware(self, servers: list[Record]) -> list[Record]:
         async def describe(server: Record) -> Record:

@@ -18,6 +18,7 @@ from .ssh import SshManager
 Record = dict[str, Any]
 
 log = logging.getLogger(__name__)
+SAFE_ALL_TIMEOUT_S = 5.0
 
 
 class DeviceService:
@@ -464,12 +465,22 @@ class DeviceService:
                 streams = declared_streams(cached["document"])
         return list(streams) if streams is not None else None
 
-    async def call_management(self, hardware_id: str, name: str, args: Record) -> Any:
-        """Unprefixed SDK management tools (``lease_acquire``, ``lease_status`` ...)."""
-        server = self.server_for(hardware_id)
-        return await self.transports.call_internal(
-            server, name, {"hardwareId": hardware_id, **args}
-        )
+    async def safe_all(self, timeout_s: float = SAFE_ALL_TIMEOUT_S) -> None:
+        """Call every connected device's ``safe`` tool; failures are logged, never raised.
+
+        Normal exit runs this so no output is left energized (a crash cannot, by design).
+        """
+        tools = [tool for tool in self.list_tools() if tool.get("kind") == "safe"]
+
+        async def safe(tool: Record) -> None:
+            try:
+                await asyncio.wait_for(
+                    self.call_aggregated_tool(tool["externalName"], {}), timeout_s
+                )
+            except Exception as error:
+                log.warning("safe_state of %s failed: %s", tool["serverId"], error)
+
+        await asyncio.gather(*(safe(tool) for tool in tools))
 
     async def read_blob(self, hardware_id: str, stream_id: str, ref: str) -> Record:
         return dict(await self.transports.read_blob(self.server_for(hardware_id), stream_id, ref))

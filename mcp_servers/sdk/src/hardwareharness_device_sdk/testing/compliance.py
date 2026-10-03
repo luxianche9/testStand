@@ -30,13 +30,11 @@ from typing import Any
 import httpx
 import uvicorn
 
-from .. import lease as lease_module
 from ..app import DeviceService
 from ..clock import now_ms
 from ..config import ServerConfig
 from ..device import Device
 from ..envelope import CONTRACT_REVISION
-from ..lease import HEARTBEAT_INTERVAL_MS
 from ..streams import IDLE_INTERVAL_MS, STREAM_KINDS, STREAM_TYPES, ByteStream, FrameStream
 
 TOKEN = "compliance-token"
@@ -50,10 +48,8 @@ REVISION = re.compile(r"^sha256:[0-9a-f]{64}$")
 TOOL_KINDS = {"read", "configure", "actuate", "safe", "internal"}
 MANIFEST_KEYS = {"manifestRevision", "contractRevision", "identity", "description", "pinout", "streams",
                  "capabilities", "tools"}
-REMOVED_TOOLS = ("get_pinout", "list_streams", "lease_renew")
-"""Replaced by ``/device`` and heartbeat leases (contract 2026-10-01.1)."""
-TEST_LEASE_TIMEOUT_MS = 400
-"""Lease timeout used while checking timeout semantics (patched into :mod:`..lease`)."""
+REMOVED_TOOLS = ("get_pinout", "list_streams")
+"""Replaced by ``/device`` (contract 2026-10-01.1)."""
 IDLE_SLACK_MS = 150
 """Scheduling allowance on top of ``IDLE_INTERVAL_MS`` for idle-driven watermarks."""
 
@@ -521,139 +517,6 @@ def _check_ranges(hh: Harness, failures: list[str]) -> None:
                 failures.append(f"{name}.{key}={bound + 1}: out-of-range input must be rejected with an error")
 
 
-HOLDER = {"terminalId": "compliance-terminal", "user": "compliance", "host": "localhost", "label": "check"}
-
-
-def _busy(result: Mapping[str, Any]) -> bool:
-    return not result.get("ok") and (result.get("error") or {}).get("category") == "busy"
-
-
-@contextmanager
-def _count_safe_states(hh: Harness) -> Iterator[list[int]]:
-    """Count ``safe_state`` runs (``counter[0]``) while the block runs."""
-    device = hh.service.device
-    original = device.safe_state
-    counter = [0]
-
-    def counted(*args: Any, **kwargs: Any) -> Any:
-        counter[0] += 1
-        return original(*args, **kwargs)
-    device.safe_state = counted  # type: ignore[method-assign]
-    try:
-        yield counter
-    finally:
-        del device.safe_state
-
-
-def _wait(predicate: Any, seconds: float) -> bool:
-    deadline = time.monotonic() + seconds
-    while time.monotonic() < deadline:
-        if predicate():
-            return True
-        time.sleep(0.02)
-    return bool(predicate())
-
-
-def _check_lease_ends(hh: Harness, failures: list[str]) -> None:
-    """Release, force release and heartbeat timeout all end the lease and run safe_state."""
-    with _count_safe_states(hh) as safe:
-        lease_id = hh.call("lease_acquire", holder=HOLDER).get("data", {}).get("leaseId")
-        before = safe[0]
-        forced = hh.call("lease_force_release", reason="compliance check")
-        data = forced.get("data") or {}
-        if not forced.get("ok") or not data.get("released") or (data.get("holder") or {}).get("terminalId") != \
-                HOLDER["terminalId"]:
-            failures.append(f"lease_force_release must end the lease and report the original holder, got {forced}")
-        if safe[0] <= before:
-            failures.append("lease_force_release must drive the device to its safe state")
-        if not _busy(hh.call("lease_heartbeat", leaseId=lease_id or "x")):
-            failures.append("lease_heartbeat after a force release must fail with busy")
-
-        original = lease_module.LEASE_TIMEOUT_MS
-        lease_module.LEASE_TIMEOUT_MS = TEST_LEASE_TIMEOUT_MS
-        try:
-            grant = hh.call("lease_acquire", holder=HOLDER).get("data") or {}
-            if grant.get("timeoutMs") != TEST_LEASE_TIMEOUT_MS:
-                failures.append("lease_acquire timeoutMs must report the server constant LEASE_TIMEOUT_MS")
-            # Any call carrying _meta.leaseId is a heartbeat.
-            for _ in range(int(TEST_LEASE_TIMEOUT_MS * 2 / 100)):
-                hh.call("lease_status", {"leaseId": grant.get("leaseId")})
-                time.sleep(0.1)
-            if not (hh.call("lease_status").get("data") or {}).get("held"):
-                failures.append("a tool call carrying _meta.leaseId must count as a lease heartbeat")
-            before = safe[0]
-            if not _wait(lambda: not (hh.call("lease_status").get("data") or {}).get("held"),
-                         TEST_LEASE_TIMEOUT_MS / 1000 + 3):
-                failures.append("a lease without heartbeat for LEASE_TIMEOUT_MS must be released")
-            elif not _wait(lambda: safe[0] > before, 2):
-                failures.append("a lease that timed out must drive the device to its safe state")
-            if not _busy(hh.call("lease_heartbeat", leaseId=grant.get("leaseId") or "x")):
-                failures.append("lease_heartbeat after a timeout must fail with busy")
-        finally:
-            lease_module.LEASE_TIMEOUT_MS = original
-            hh.call("lease_force_release", reason="compliance cleanup")
-
-
-def _check_lease(hh: Harness, safe_tools: list[str], failures: list[str]) -> None:
-    acquired = hh.call("lease_acquire", holder=HOLDER)
-    grant = acquired.get("data") or {}
-    lease_id = grant.get("leaseId")
-    if not acquired.get("ok") or not lease_id:
-        failures.append(f"lease_acquire failed: {acquired.get('error')}")
-        return
-    if grant.get("holder") != HOLDER or grant.get("heartbeatIntervalMs") != HEARTBEAT_INTERVAL_MS or \
-            grant.get("timeoutMs") != lease_module.LEASE_TIMEOUT_MS or not _number(grant.get("acquiredAt")):
-        failures.append(f"lease_acquire must return {{leaseId, holder, acquiredAt, heartbeatIntervalMs, timeoutMs}}, "
-                        f"got {grant}")
-    released_ok = False
-    try:
-        again = hh.call("lease_acquire", holder=HOLDER["terminalId"])
-        if (again.get("data") or {}).get("leaseId") != lease_id:
-            failures.append("lease_acquire by the same terminalId must return the existing leaseId")
-        status = hh.call("lease_status").get("data") or {}
-        if not status.get("held") or (status.get("holder") or {}).get("terminalId") != HOLDER["terminalId"] or \
-                "leaseId" in status or not _number(status.get("lastHeartbeatAt")):
-            failures.append(f"lease_status must report {{held, holder, acquiredAt, lastHeartbeatAt}} without the "
-                            f"leaseId, got {status}")
-        beat = hh.call("lease_heartbeat", leaseId=lease_id)
-        if not beat.get("ok") or (beat.get("data") or {}).get("leaseId") != lease_id or \
-                not _number((beat.get("data") or {}).get("lastHeartbeatAt")):
-            failures.append(f"lease_heartbeat must return {{leaseId, lastHeartbeatAt}}, got {beat}")
-        if not _busy(hh.call("lease_heartbeat", leaseId="lease-unknown")):
-            failures.append("lease_heartbeat with an unknown leaseId must fail with busy")
-        second = hh.call("lease_acquire", holder={"terminalId": "other-terminal"})
-        details = (second.get("error") or {}).get("details") or {}
-        if not _busy(second) or (details.get("holder") or {}).get("terminalId") != HOLDER["terminalId"]:
-            failures.append("lease_acquire by a second holder must fail with busy and details.holder")
-        for name in safe_tools:
-            if not hh.call(name).get("ok"):
-                failures.append(f"{name}: safe tools must not be blocked by another holder's lease")
-        for name, item in hh.tools.items():
-            arguments = valid_arguments(item.get("inputSchema") or {})
-            if _semantics(item) in {"configure", "actuate"} and arguments is not None:
-                refused = hh.call(name, **arguments)
-                if (refused.get("error") or {}).get("category") != "busy":
-                    failures.append(f"{name}: configure/actuate without the holder's leaseId must fail with busy")
-                allowed = hh.call(name, {"leaseId": lease_id}, **arguments)
-                if (allowed.get("error") or {}).get("category") == "busy":
-                    failures.append(f"{name}: configure/actuate with the holder's leaseId must not be busy")
-                break
-        with _count_safe_states(hh) as safe:
-            released = hh.call("lease_release", leaseId=lease_id)
-            released_ok = True
-            data = released.get("data") or {}
-            if not released.get("ok") or data.get("held") or not data.get("released"):
-                failures.append(f"lease_release did not release the lease: {released}")
-            if safe[0] < 1:
-                failures.append("lease_release must drive the device to its safe state")
-        if not _busy(hh.call("lease_heartbeat", leaseId=lease_id)):
-            failures.append("lease_heartbeat after lease_release must fail with busy")
-    finally:
-        if not released_ok:
-            hh.call("lease_release", leaseId=lease_id)
-    _check_lease_ends(hh, failures)
-
-
 def check_device(device_cls: type[Device], config: ServerConfig | None = None, *,
                  warnings: list[str] | None = None, **options: Any) -> list[str]:
     """Failures of the contract (empty: compliant); non-fatal findings are appended to ``warnings``."""
@@ -683,7 +546,7 @@ def check_device(device_cls: type[Device], config: ServerConfig | None = None, *
                 failures.append(f"list_hardware must return exactly one hardware, got {listed}")
             elif data[0]["hardwareId"] != hh.hardware_id or data[0]["state"] != "open":
                 failures.append(f"list_hardware: expected open {hh.hardware_id}, got {data[0]}")
-        for name in ("get_server_info", "get_hardware_info", "lease_status"):
+        for name in ("get_server_info", "get_hardware_info"):
             result = call(name)
             if result is not None and not result.get("ok"):
                 failures.append(f"{name}: not ok: {result.get('error')}")
@@ -706,7 +569,6 @@ def check_device(device_cls: type[Device], config: ServerConfig | None = None, *
         if safe_tools:
             _check_operation(hh, safe_tools[0], failures)
         _check_ranges(hh, failures)
-        _check_lease(hh, safe_tools, failures)
         if safe_tools:
             hh.call(safe_tools[0])
     return failures

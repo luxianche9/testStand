@@ -12,7 +12,6 @@ from hardwareharness_backend.contracts.devices import (
 from hardwareharness_backend.contracts.errors import app_error
 from hardwareharness_backend.contracts.operations import operation
 from hardwareharness_backend.devices.deploy import DeployService
-from hardwareharness_backend.devices.leases import LeaseManager
 from hardwareharness_backend.devices.service_registry import (
     mcp_url,
     probe_service,
@@ -58,13 +57,11 @@ class DevicesApplication:
         service: DeviceService,
         catalog: DeviceCatalogService,
         execution: ExecutionCoordinator | None = None,
-        leases: LeaseManager | None = None,
         deploy: DeployService | None = None,
     ) -> None:
         self.authorizer, self.service, self.catalog = authorizer, service, catalog
         self.deploy = deploy or DeployService(service, catalog)
         self.execution = execution or ExecutionCoordinator()
-        self.leases = leases or LeaseManager(service, {"terminalId": "devices-application"})
         self.active: dict[asyncio.Task[Any], str] = {}
         self._calls_closed = False
 
@@ -539,9 +536,7 @@ class DevicesApplication:
                 }
             )
         )
-        task = asyncio.create_task(
-            self._leased_call(server["hardwareId"], str(tool.get("kind")), name, args)
-        )
+        task = asyncio.create_task(self.service.call_aggregated_tool(name, args))
         self.active[task] = server["hardwareId"]
         try:
             return await task
@@ -555,13 +550,6 @@ class DevicesApplication:
             self.active.pop(task, None)
             if handle is not None:
                 handle.release()
-
-    async def _leased_call(self, hardware_id: str, kind: str, name: str, args: Json) -> Any:
-        """``configure`` / ``actuate`` go under the terminal's lease (design doc §4.5.2)."""
-        async with self.leases.use(hardware_id, kind) as lease_id:
-            if lease_id is None:
-                return await self.service.call_aggregated_tool(name, args)
-            return await self.service.call_aggregated_tool(name, args, {"leaseId": lease_id})
 
     async def abort_hardware(self, hardware_id: str) -> None:
         tasks = [task for task, hardware in self.active.items() if hardware == hardware_id]

@@ -152,7 +152,7 @@ class HardwareManager:
             return await asyncio.to_thread(_device_call, runtime.device, fn, kwargs)
 
     async def safe_all(self) -> list[dict[str, Any]]:
-        """Safe-state every device regardless of draining; used by prepare_shutdown and lease expiry."""
+        """Safe-state every device regardless of draining; used by prepare_shutdown."""
         runtime = self.runtime
         async with runtime.operation_lock:
             result = await asyncio.to_thread(_device_call, runtime.device, runtime.device.safe_state, {})

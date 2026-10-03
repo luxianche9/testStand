@@ -1,10 +1,8 @@
-"""Per-run device I/O: leases, the stream recording, anchors and stream verdicts.
+"""Per-run device I/O: the stream recording, anchors and stream verdicts.
 
-A run borrows the terminal's lease of every hardware it touches (design doc
-§4.5.2: the terminal, not the run, holds leases), records every declared stream
-of that hardware into the run's ``runs/<runId>/run.sqlite`` and judges ``Observe`` /
-``Expect`` / ``Guard`` steps from that recording only, so ``rejudge`` over the
-same file reproduces each verdict.
+A run records every declared stream of the hardware it touches into the run's
+``runs/<runId>/run.sqlite`` and judges ``Observe`` / ``Expect`` / ``Guard`` steps from
+that recording only, so ``rejudge`` over the same file reproduces each verdict.
 """
 
 from __future__ import annotations
@@ -15,7 +13,7 @@ import logging
 import math
 from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from hardwareharness_backend.contracts.errors import app_error
 from hardwareharness_backend.streams import judge
@@ -29,9 +27,6 @@ from hardwareharness_backend.streams.store import StreamStore
 from .journal import RUN_FILE
 from .models import step_verdict
 from .protocols import DerivedRef, PlanProtocols, derived_data, live_decoder
-
-if TYPE_CHECKING:
-    from hardwareharness_backend.devices.leases import LeaseManager
 
 Record = dict[str, Any]
 Emit = Callable[[str, Record], None]
@@ -52,14 +47,9 @@ class RunIO:
         run_dir: Path,
         run_id: str,
         emit: Emit,
-        leases: LeaseManager | None = None,
     ) -> None:
         self.devices, self.sources = devices, sources
         self.run_dir, self.run_id, self.emit = run_dir, run_id, emit
-        self.lease_manager = leases
-        self.leases: dict[str, str] = {}
-        self._lost_listener: Callable[[str, str], None] | None = None
-        self._unsubscribe: list[Callable[[], None]] = []
         self._locks: dict[str, asyncio.Lock] = {}
         self.anchors: dict[str, Anchor] = {}
         self.stream_types: dict[str, str] = {}
@@ -71,18 +61,11 @@ class RunIO:
 
     # -- lifecycle -----------------------------------------------------------------------------
 
-    async def start(
-        self,
-        hardware_ids: list[str],
-        leased: list[str] | None = None,
-        protocols: PlanProtocols | None = None,
-    ) -> None:
-        """Borrow the leases, then start recording. A lease that cannot be had fails the start."""
+    async def start(self, hardware_ids: list[str], protocols: PlanProtocols | None = None) -> None:
+        """Start recording the streams of ``hardware_ids``."""
         if protocols is not None:
             self.protocols = protocols
         try:
-            for hardware_id in hardware_ids if leased is None else leased:
-                await self._borrow(hardware_id)
             if self.sources is not None:
                 await self._record(hardware_ids)
         except BaseException:
@@ -98,31 +81,8 @@ class RunIO:
         for release in self._holds:
             release()
         self._holds.clear()
-        # The terminal keeps the leases; the run only stops listening for their loss.
-        for unsubscribe in self._unsubscribe:
-            unsubscribe()
-        self._unsubscribe.clear()
-        self.leases.clear()
         if self.store is not None:
             self.store.close()
-
-    def on_lease_lost(self, listener: Callable[[str, str], None]) -> None:
-        self._lost_listener = listener
-
-    async def _borrow(self, hardware_id: str) -> None:
-        if self.lease_manager is None:
-            return
-        lease_id = await self.lease_manager.acquire(hardware_id)
-        if lease_id is None:
-            return
-        self.leases[hardware_id] = lease_id
-        self._unsubscribe.append(self.lease_manager.on_lost(hardware_id, self._lost))
-        self.emit("lease.acquired", {"hardwareId": hardware_id})
-
-    def _lost(self, hardware_id: str, reason: str) -> None:
-        self.leases.pop(hardware_id, None)
-        if self._lost_listener is not None:
-            self._lost_listener(hardware_id, reason)
 
     async def _record(self, hardware_ids: list[str]) -> None:
         assert self.sources is not None
@@ -168,12 +128,7 @@ class RunIO:
 
     # -- calls and anchors ---------------------------------------------------------------------
 
-    def lease_for(self, hardware_id: str) -> str | None:
-        return self.leases.get(hardware_id)
-
     def device_lock(self, hardware_id: str) -> asyncio.Lock:
-        if self.lease_manager is not None:
-            return self.lease_manager.device_lock(hardware_id)
         return self._locks.setdefault(hardware_id, asyncio.Lock())
 
     def clock_snapshot(self, hardware_id: str) -> Record:

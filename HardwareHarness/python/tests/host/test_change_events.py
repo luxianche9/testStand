@@ -33,7 +33,7 @@ def test_wiring_batch_and_confirmation_events_drop_the_resource_body() -> None:
 def test_already_small_events_keep_their_scalar_fields() -> None:
     run = {"runId": "R", "eventSequence": 3, "resultSequence": 1, "state": "running"}
     assert change_summary("testRun", run) == run
-    assert change_summary("lease", {"change": "lost", "hardwareId": "H", "extra": {"a": 1}}) == {
-        "change": "lost",
-        "hardwareId": "H",
+    assert change_summary("wiringChange", {"entryId": "E", "kind": "added", "extra": {"a": 1}}) == {
+        "entryId": "E",
+        "kind": "added",
     }
