@@ -15,7 +15,7 @@
 
 - `di`（bits，`width: 16`，`bitLabels` IDI0–IDI15，`kind: "measured"`）：16 位输入位图，有人订阅时采样（`settings.bitRateHz`，默认 20 Hz），仅变化时发布。
 - `relay`（bits，`width: 16`，`bitLabels` R0–R15）：每次 `set_relay` / `set_bank` / `safe_state` 后立即读回线圈控制位图并发布（写失败也发布实际回读）；不是触点通断测量。
-- 位图用 hwcli 的 `read_mask` 命令一次读取；打开时探测，旧版 hwcli 不支持则退回 16 次 `read_bit`（重新编译 `native/` 以获得单次读取）。
+- 位图用 hwcli 的 `read_mask` 命令一次读取。继电器回读比写入晚几毫秒，桥接程序在每次写后等回读一致（最多 50 ms）再应答。
 
 
 ## 构建与测试
@@ -27,4 +27,4 @@ cd mcp_servers
 .\test.ps1 -Target pci1762                 # pytest + dry-run 合规检查
 ```
 
-真机模式需要已编译的厂商 CLI `hwcli_pci1762`：用 `settings.hwcliPath` 或环境变量 `PCI1762_HWCLI_PATH` / `HWCLI_PATH` 指定路径。
+真机模式使用 DAQNavi 桥接程序 `hwcli_pci1762.exe`：源码在 `mcp_servers/native/hwcli_pci1762.cpp`，用 `python mcp_servers/native/build.py`（MinGW-w64 g++ + DAQNavi SDK 头文件）编译到本包的 `bin/` 下，适配器默认从那里启动；也可用 `settings.hwcliPath` 或环境变量 `PCI1762_HWCLI_PATH` / `HWCLI_PATH` 指定。

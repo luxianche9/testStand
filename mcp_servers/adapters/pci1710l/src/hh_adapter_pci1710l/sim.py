@@ -1,6 +1,6 @@
 """Dry-run hwcli_pci1710l.
 
-Payload shapes match native/hwcli_pci1710l.cpp field for field: a dry run
+Payload shapes match mcp_servers/native/hwcli_pci1710l.cpp field for field: a dry run
 whose shape differs from the real board validates a graph that will not run.
 
 Modelled: the open gate, the DO register (readback of your own stimulus) and

@@ -62,7 +62,6 @@ class Pci1762(Device):
         self.board_description = str(settings.get("description", os.environ.get("ADVANTECH_PCI1762_DESC",
                                                                                 DEFAULT_DESCRIPTION)))
         self.cli: JsonLineBackend = self.select_driver(lambda: hwcli(settings), SimulatedHwcli)
-        self.mask_command = True
         self.di = self.streams.add(BitsStream("di", sample=lambda: self._read_mask("DI"), publish_on_change=True,
                                               rate_hz=float(settings.get("bitRateHz", 20)),
                                               bit_labels=[f"IDI{bit}" for bit in range(CHANNELS)], kind="measured"))
@@ -74,10 +73,7 @@ class Pci1762(Device):
 
     # --- lifecycle ----------------------------------------------------
     def open(self) -> Any:
-        result = self._request({"cmd": "open", "description": self.board_description})
-        # read_mask reads a whole kind in one round trip; older hwcli builds only know read_bit.
-        self.mask_command = bool(self.cli.call({"cmd": "read_mask", "kind": "DI"}).get("ok"))
-        return result
+        return self._request({"cmd": "open", "description": self.board_description})
 
     def close(self) -> Any:
         try:
@@ -86,13 +82,7 @@ class Pci1762(Device):
             self.cli.stop()
 
     def _read_mask(self, kind: str) -> int:
-        if self.mask_command:
-            return int(self._request({"cmd": "read_mask", "kind": kind})["mask"])
-        mask = 0
-        for channel in range(CHANNELS):
-            if self._request({"cmd": "read_bit", "channel": channel, "kind": kind}).get("value"):
-                mask |= 1 << channel
-        return mask
+        return int(self._request({"cmd": "read_mask", "kind": kind})["mask"])
 
     def _write(self, command: dict[str, Any]) -> Any:
         """Send a relay write, then publish the coil-control readback so the stream shows the effect at once."""

@@ -16,4 +16,4 @@ pci1710l = "hh_adapter_pci1710l:DEVICE"
 where = ["src"]
 
 [tool.setuptools.package-data]
-hh_adapter_pci1710l = ["py.typed"]
+hh_adapter_pci1710l = ["py.typed", "bin/*.exe"]

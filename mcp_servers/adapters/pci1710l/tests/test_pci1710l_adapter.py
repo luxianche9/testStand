@@ -66,7 +66,6 @@ def test_streams(hh):
                            "rateHz": 20.0, "kind": "measured"}
     assert streams[17] == {"id": "do", "type": "bits", "width": 16, "bitLabels": [f"DO{n}" for n in range(16)],
                            "label": "DO controller readback"}
-    assert hh.host.device.mask_command is True
 
 
 def test_do_write_publishes_readback(hh):

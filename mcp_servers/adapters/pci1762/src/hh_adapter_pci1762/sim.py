@@ -1,6 +1,6 @@
 """Dry-run hwcli_pci1762.
 
-Payload shapes match native/hwcli_pci1762.cpp field for field. Modelled: the
+Payload shapes match mcp_servers/native/hwcli_pci1762.cpp field for field. Modelled: the
 open gate and the relay register a readback depends on. Not modelled: the
 sixteen isolated DI lines, which come from whatever is wired; they read low.
 """

@@ -21,8 +21,6 @@ tmp/
 /mcp-server/
 run/
 sim_hardware/servers/*/server.json
-mcp_servers/servers/firedap/server.json
-mcp_servers/servers/firedap/firmware/
 
 playwright-report/
 test-results/
@@ -32,3 +30,6 @@ examples/
 # build outputs
 build/
 .import_linter_cache/
+
+# DAQNavi bridges built by mcp_servers/native/build.py
+mcp_servers/adapters/*/src/*/bin/

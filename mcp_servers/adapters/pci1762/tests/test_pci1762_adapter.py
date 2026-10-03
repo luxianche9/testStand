@@ -75,7 +75,6 @@ def test_di_is_sampled_in_one_round_trip_and_only_on_change(hh):
          "kind": "measured"},
         {"id": "relay", "type": "bits", "width": 16, "bitLabels": [f"R{n}" for n in range(16)],
          "label": "Relay coil control"}]
-    assert device.mask_command is True
     with hh.subscribe("di") as events:
         events.receive()
         device.cli.di = 0b101
@@ -85,27 +84,6 @@ def test_di_is_sampled_in_one_round_trip_and_only_on_change(hh):
         receive_until(events, lambda frame: frame["type"] == "status")
         assert device.di.buffer.head == head
     assert not any(command["cmd"] == "read_bit" for command in device.cli.commands)
-
-
-def test_falls_back_to_bit_reads_without_read_mask():
-    from hh_adapter_pci1762.sim import SimulatedHwcli
-
-    class OldCli(SimulatedHwcli):
-        def call(self, command):
-            if command.get("cmd") == "read_mask":
-                return {"ok": False, "reachable": False, "message": "unknown read_mask", "data": None}
-            return super().call(command)
-
-    class OldPci1762(Pci1762):
-        def __init__(self, config):
-            super().__init__(config)
-            self.cli = OldCli()
-
-    with serve(OldPci1762) as harness:
-        device = harness.host.device
-        assert device.mask_command is False
-        harness.call("set_relay", channel=2, closed=True)
-        assert harness.call("stream_read", streamId="relay", limit=1)["data"]["records"][-1]["mask"] == 4
 
 
 def test_capability_details(hh):

@@ -17,7 +17,7 @@
 - `ai0`–`ai15`（scalar，`unit: "V"`，`kind: "measured"`）：一个扫描组，一次扫描读全部已配置通道并共享时间戳（`settings.aiRateHz`，默认 20 Hz）；未配置通道 `status: not_configured`。`read_voltage` 的读数也发布到对应流并带调用的 `op`。
 - `di`（bits，`width: 16`，`bitLabels` DI0–DI15）：16 位输入位图，仅变化时发布（`settings.bitRateHz`，默认 20 Hz）。
 - `do`（bits，`width: 16`，`bitLabels` DO0–DO15）：每次 `set_level` / `safe_state` 后立即读回控制位图并发布。
-- 采样只在有订阅时进行，与工具调用共用设备锁。位图用 hwcli 的 `read_mask` 命令一次读取；打开时探测，旧版 hwcli 退回 16 次 `read_bit`。
+- 采样只在有订阅时进行，与工具调用共用设备锁。位图用 hwcli 的 `read_mask` 命令一次读取。
 - dry-run 下 AI 默认读 0.0 V；`HARDWARE_DRY_RUN_AI_NOISE=1` 时返回带噪声的演示值。
 
 
@@ -30,4 +30,4 @@ cd mcp_servers
 .\test.ps1 -Target pci1710l                 # pytest + dry-run 合规检查
 ```
 
-真机模式需要已编译的厂商 CLI `hwcli_pci1710l`：用 `settings.hwcliPath` 或环境变量 `PCI1710L_HWCLI_PATH` / `HWCLI_PATH` 指定路径。
+真机模式使用 DAQNavi 桥接程序 `hwcli_pci1710l.exe`：源码在 `mcp_servers/native/hwcli_pci1710l.cpp`，用 `python mcp_servers/native/build.py`（MinGW-w64 g++ + DAQNavi SDK 头文件）编译到本包的 `bin/` 下，适配器默认从那里启动；也可用 `settings.hwcliPath` 或环境变量 `PCI1710L_HWCLI_PATH` / `HWCLI_PATH` 指定。

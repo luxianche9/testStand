@@ -89,7 +89,6 @@ class Pci1710l(Device):
         self.active_safe_mask: int | None = None
         self.cli: JsonLineBackend = self.select_driver(lambda: hwcli(settings), SimulatedHwcli)
         self.ai_config: dict[int, dict[str, Any]] = {}
-        self.mask_command = True
         self.ai = [self.streams.add(ScalarStream(f"ai{channel}", unit="V", label=f"AI{channel}", kind="measured"))
                    for channel in range(CHANNELS)]
         self.streams.scan(self.ai, self._scan_ai, rate_hz=float(settings.get("aiRateHz", 20)))
@@ -108,8 +107,6 @@ class Pci1710l(Device):
         result = self._request({"cmd": "open", "description": self.board_description,
                                 "safe_do_mask": self.startup_safe_mask})
         self.active_safe_mask = self.startup_safe_mask
-        # read_mask reads a whole kind in one round trip; older hwcli builds only know read_bit.
-        self.mask_command = bool(self.cli.call({"cmd": "read_mask", "kind": "DI"}).get("ok"))
         return result
 
     def close(self) -> Any:
@@ -134,13 +131,7 @@ class Pci1710l(Device):
                 if channel in self.ai_config else None for channel in range(CHANNELS)]
 
     def _read_mask(self, kind: str) -> int:
-        if self.mask_command:
-            return int(self._request({"cmd": "read_mask", "kind": kind})["mask"])
-        mask = 0
-        for channel in range(CHANNELS):
-            if self._request({"cmd": "read_bit", "channel": channel, "kind": kind}).get("value"):
-                mask |= 1 << channel
-        return mask
+        return int(self._request({"cmd": "read_mask", "kind": kind})["mask"])
 
     def _write(self, command: dict[str, Any]) -> Any:
         """Send a DO write, then publish the controller readback so the stream shows the effect at once."""
