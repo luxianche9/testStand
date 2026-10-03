@@ -27,14 +27,6 @@ export function createHardwareHarnessApi(transport: DesktopTransport): HardwareH
       ...devices,
       refreshComputer: devices.getComputerStatus,
       refreshManagedHardware: devices.listManagedHardware,
-      removeHardwareImage: (input) => devices.removeHardwareImage(input.hardwareId, input.portId),
-      hardwareImageUrl: async (hardwareId, assetId) =>
-        `hardwareharness-asset://local/${encodeURIComponent(hardwareId)}/`
-        + assetId.split("/").map(encodeURIComponent).join("/"),
-      importHardwareImage: async (input) => {
-        const path = await main("dialogs.chooseHardwareImage");
-        return path ? await devices.setHardwareImageFromPath(input.hardwareId, input.portId, path) : null;
-      },
       exportBundle: async (kind, id) => main("dialogs.saveBundle", kind, id, await devices.exportBundle(id)),
       importBundle: async (kind) => {
         const data = await main("dialogs.openBundle", kind);

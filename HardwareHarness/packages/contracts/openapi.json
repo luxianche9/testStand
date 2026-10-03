@@ -33,25 +33,6 @@
         "title": "DesktopReplaceGatewayTokenRequest",
         "type": "object"
       },
-      "DesktopResolveImagePathRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "hardwareId": {
-            "title": "Hardwareid",
-            "type": "string"
-          },
-          "assetId": {
-            "title": "Assetid",
-            "type": "string"
-          }
-        },
-        "required": [
-          "hardwareId",
-          "assetId"
-        ],
-        "title": "DesktopResolveImagePathRequest",
-        "type": "object"
-      },
       "DesktopRotateGatewayTokenRequest": {
         "additionalProperties": false,
         "properties": {},
@@ -533,32 +514,6 @@
         "title": "DevicesRemoveComputerRequest",
         "type": "object"
       },
-      "DevicesRemoveHardwareImageRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "hardwareId": {
-            "title": "Hardwareid",
-            "type": "string"
-          },
-          "portId": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Portid"
-          }
-        },
-        "required": [
-          "hardwareId"
-        ],
-        "title": "DevicesRemoveHardwareImageRequest",
-        "type": "object"
-      },
       "DevicesRemoveHardwareRequest": {
         "additionalProperties": false,
         "properties": {
@@ -700,74 +655,6 @@
           "status"
         ],
         "title": "DevicesSetAdapterStatusRequest",
-        "type": "object"
-      },
-      "DevicesSetHardwareImageBytesRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "hardwareId": {
-            "title": "Hardwareid",
-            "type": "string"
-          },
-          "portId": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Portid"
-          },
-          "data": {
-            "format": "base64url",
-            "title": "Data",
-            "type": "string"
-          },
-          "extensionHint": {
-            "default": "",
-            "title": "Extensionhint",
-            "type": "string"
-          }
-        },
-        "required": [
-          "hardwareId",
-          "data"
-        ],
-        "title": "DevicesSetHardwareImageBytesRequest",
-        "type": "object"
-      },
-      "DevicesSetHardwareImageFromPathRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "hardwareId": {
-            "title": "Hardwareid",
-            "type": "string"
-          },
-          "portId": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Portid"
-          },
-          "sourcePath": {
-            "title": "Sourcepath",
-            "type": "string"
-          }
-        },
-        "required": [
-          "hardwareId",
-          "sourcePath"
-        ],
-        "title": "DevicesSetHardwareImageFromPathRequest",
         "type": "object"
       },
       "DevicesUninstallServiceRequest": {
@@ -2070,58 +1957,6 @@
         },
         "x-risk": "write",
         "x-capability": "agents.manage",
-        "x-profiles": [],
-        "x-idempotency": "none",
-        "x-confirm": false
-      }
-    },
-    "/api/ops/desktop.resolveImagePath": {
-      "post": {
-        "operationId": "desktop.resolveImagePath",
-        "summary": "Local path of a hardware image, for the ``hardwareharness-asset:`` protocol.",
-        "tags": [
-          "desktop"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DesktopResolveImagePathRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "read",
-        "x-capability": "system.manage",
         "x-profiles": [],
         "x-idempotency": "none",
         "x-confirm": false
@@ -3845,59 +3680,6 @@
         "x-confirm": true
       }
     },
-    "/api/ops/devices.removeHardwareImage": {
-      "post": {
-        "operationId": "devices.removeHardwareImage",
-        "summary": "devices.removeHardwareImage",
-        "tags": [
-          "devices"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DevicesRemoveHardwareImageRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "write",
-        "x-capability": "hardware.manage",
-        "x-profiles": [
-          "adapter",
-          "plan"
-        ],
-        "x-idempotency": "natural",
-        "x-confirm": false
-      }
-    },
     "/api/ops/devices.removeServer": {
       "post": {
         "operationId": "devices.removeServer",
@@ -4218,109 +4000,6 @@
         },
         "x-risk": "write",
         "x-capability": "hardware.releaseAdapters",
-        "x-profiles": [],
-        "x-idempotency": "natural",
-        "x-confirm": false
-      }
-    },
-    "/api/ops/devices.setHardwareImageBytes": {
-      "post": {
-        "operationId": "devices.setHardwareImageBytes",
-        "summary": "devices.setHardwareImageBytes",
-        "tags": [
-          "devices"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DevicesSetHardwareImageBytesRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "write",
-        "x-capability": "hardware.manage",
-        "x-profiles": [
-          "adapter",
-          "plan"
-        ],
-        "x-idempotency": "natural",
-        "x-confirm": false
-      }
-    },
-    "/api/ops/devices.setHardwareImageFromPath": {
-      "post": {
-        "operationId": "devices.setHardwareImageFromPath",
-        "summary": "devices.setHardwareImageFromPath",
-        "tags": [
-          "devices"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DevicesSetHardwareImageFromPathRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "write",
-        "x-capability": "hardware.manage",
         "x-profiles": [],
         "x-idempotency": "natural",
         "x-confirm": false

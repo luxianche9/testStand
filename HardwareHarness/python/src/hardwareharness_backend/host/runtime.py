@@ -169,7 +169,6 @@ class HostRuntime:
             application.authorizer,
             settings,
             secrets,
-            store,
             devices,
             projects,
             application,

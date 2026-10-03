@@ -4,7 +4,6 @@
   "kind": "managed",
   "serverId": "FIREDAP_MCP",
   "computerId": "LOCAL_PC",
-  "appearanceAssetId": "appearance.png",
   "label": "野火 FireDAP · STM32 烧录器（本机）",
   "ports": [
     {

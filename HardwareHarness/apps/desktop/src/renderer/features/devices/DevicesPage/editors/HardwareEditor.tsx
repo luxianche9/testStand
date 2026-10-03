@@ -5,9 +5,8 @@ import type { Hardware, HardwarePort } from "@hardwareharness/contracts/devices"
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { errorMessage } from "../../../../lib/errors.js";
-import { useDeviceCatalog } from "../../../../lib/queries.js";
 import { Button, Dialog, DialogBody, DialogContent, DialogFooter, Input } from "../../../../ui";
-import { AppearanceImage, PortEditor } from "../../PortEditor.js";
+import { PortEditor } from "../../PortEditor.js";
 import { BundleActions } from "../BundleActions.js";
 import { EditorAlert, EditorField, EditorNote, EditorPanel, editorGrid } from "./EditorField.js";
 
@@ -19,14 +18,13 @@ const hardwareEditorSchema = z.object({
 type HardwareEditorValues = z.infer<typeof hardwareEditorSchema>;
 const blankHardware: HardwareEditorValues = { hardwareId: "DUT_1", label: "被测对象" };
 
-/** DUTs, fixtures and breakout boards: no MCP Server, just ports and photos. */
+/** DUTs, fixtures and breakout boards: no MCP Server, just ports. */
 export function HardwareEditor({ open, hardware, onClose, onChanged }: {
   open: boolean;
   hardware?: Hardware | undefined;
   onClose: () => void;
   onChanged: () => Promise<void>;
 }) {
-  const catalog = useDeviceCatalog();
   const [ports, setPorts] = useState<HardwarePort[]>([]);
   const { register, reset, watch, handleSubmit, formState } = useForm<HardwareEditorValues>({
     resolver: zodResolver(hardwareEditorSchema),
@@ -35,10 +33,6 @@ export function HardwareEditor({ open, hardware, onClose, onChanged }: {
   });
   const { errors, isValid } = formState;
   const hardwareId = watch("hardwareId");
-  // Image uploads update the catalog; read the stored record so the asset ids stay current.
-  const live = hardware
-    ? (catalog.data?.hardware.find((item) => item.hardwareId === hardware.hardwareId) ?? hardware)
-    : undefined;
 
   useEffect(() => {
     if (!open) return;
@@ -54,8 +48,7 @@ export function HardwareEditor({ open, hardware, onClose, onChanged }: {
         hardwareId: normalizedId,
         label: values.label.trim() || normalizedId,
         kind: "passive",
-        ports,
-        ...(live?.appearanceAssetId ? { appearanceAssetId: live.appearanceAssetId } : {})
+        ports
       });
     },
     onSuccess: async () => {
@@ -64,7 +57,6 @@ export function HardwareEditor({ open, hardware, onClose, onChanged }: {
     }
   });
   const submit = handleSubmit(async (values) => { await save.mutateAsync(values); });
-  const syncPorts = (item: Hardware) => setPorts(structuredClone(item.ports));
 
   return (
     <Dialog open={open} onOpenChange={(value) => { if (!value) onClose(); }}>
@@ -84,19 +76,7 @@ export function HardwareEditor({ open, hardware, onClose, onChanged }: {
             </EditorField>
             <EditorNote>被动硬件不由 MCP Server 控制，仅用于接线建模。</EditorNote>
             <EditorPanel>
-              <AppearanceImage
-                hardwareId={hardwareId}
-                assetId={live?.appearanceAssetId}
-                saved={Boolean(live)}
-                onChanged={syncPorts}
-              />
-              <PortEditor
-                hardwareId={hardwareId}
-                ports={ports}
-                saved={Boolean(live)}
-                onChange={setPorts}
-                onImageChanged={syncPorts}
-              />
+              <PortEditor ports={ports} onChange={setPorts} />
             </EditorPanel>
             {save.isError && <EditorAlert message={errorMessage(save.error)} />}
           </form>
@@ -105,7 +85,7 @@ export function HardwareEditor({ open, hardware, onClose, onChanged }: {
           <BundleActions
             kind="hardware"
             id={hardwareId}
-            saved={Boolean(live)}
+            saved={Boolean(hardware)}
             disabled={save.isPending}
             onImported={async () => { await onChanged(); onClose(); }}
           />

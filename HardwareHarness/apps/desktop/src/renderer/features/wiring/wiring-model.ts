@@ -13,8 +13,6 @@ import type { Tone } from "../../ui/cn.js";
 type CanvasNodeData = {
   hardware: Hardware;
   resolved: boolean;
-  imageUrl?: string | undefined;
-  showImage: boolean;
   portPositions: Record<string, PortPosition>;
   portEditing: boolean;
   interactive?: boolean;
@@ -29,13 +27,9 @@ export type NodeMenu = { hardwareId: string; x: number; y: number };
 export const DEFAULT_CARD_WIDTH = 220;
 export const DEFAULT_CARD_HEIGHT = 168;
 export const MIN_CARD_WIDTH = 96;
-export const MIN_CARD_HEIGHT_WITH_IMAGE = 96;
-export const MIN_CARD_HEIGHT_LABEL = 32;
+export const MIN_CARD_HEIGHT = 32;
 export const MAX_CARD_WIDTH = 640;
 export const MAX_CARD_HEIGHT = 480;
-
-/** assetIds are unique per device, not globally, so the cache key has to carry the owner. */
-export function assetKey(hardwareId: string, assetId: string): string { return `${hardwareId}:${assetId}`; }
 
 /** Splits a `<hardwareId>.<portId>` reference, longest hardwareId first so `DUT_1` never shadows
  *  `DUT_10`. Returns undefined when the device is not registered. */
@@ -113,9 +107,8 @@ export function clampOffset(offset: number): number { return Math.min(0.92, Math
 export function clampCardWidth(width: number): number {
   return Math.min(MAX_CARD_WIDTH, Math.max(MIN_CARD_WIDTH, Math.round(width)));
 }
-export function clampCardHeight(height: number, showImage: boolean): number {
-  const min = showImage ? MIN_CARD_HEIGHT_WITH_IMAGE : MIN_CARD_HEIGHT_LABEL;
-  return Math.min(MAX_CARD_HEIGHT, Math.max(min, Math.round(height)));
+export function clampCardHeight(height: number): number {
+  return Math.min(MAX_CARD_HEIGHT, Math.max(MIN_CARD_HEIGHT, Math.round(height)));
 }
 /** React Flow's `Position` enum values equal our port sides; a type-only mapping keeps xyflow out of the shell. */
 export function reactFlowPosition(side: PortSide): Position {

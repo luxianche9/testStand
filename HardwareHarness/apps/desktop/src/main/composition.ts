@@ -19,7 +19,6 @@ export interface DesktopComposition {
   agents: HardwareHarnessAgentsApi;
   settings: HardwareHarnessSettingsApi;
   theme(): "system" | "light" | "dark";
-  resolveImagePath(hardwareId: string, assetId: string): Promise<string>;
   connectionInfo(): { url: string; password: string } | undefined;
   probeAvailability(): Promise<{ availability: unknown[]; servers: unknown[] }>;
   autoStartAgentRuntime(): Promise<void>;
@@ -94,7 +93,6 @@ export async function createDesktopComposition(windows: DesktopWindows): Promise
   let shutdownPromise: Promise<void> | undefined;
   return {
     endpoint: api, agents, settings: settingsApi, theme: () => backend.state.settings.theme,
-    resolveImagePath: (hardwareId, assetId) => backend.call<string>("desktop.resolveImagePath", hardwareId, assetId),
     connectionInfo: () => openCodeRuntime.connectionInfo(),
     probeAvailability: () => backend.call("desktop.probeAvailability"),
     autoStartAgentRuntime: async () => { await autoStartOpenCode(openCodeRuntime, llmApiKey(), Boolean(backend.state.project)); },

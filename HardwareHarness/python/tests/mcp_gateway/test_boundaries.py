@@ -63,20 +63,6 @@ _CASES: list[tuple[str, dict[str, Any], str, str, list[Any]]] = [
     ),
     ("remove_hardware_definition", {"hardwareId": "H"}, "devices", "remove_hardware", ["H"]),
     (
-        "set_hardware_image",
-        {"hardwareId": "H", "imageBase64": "data:image/png;base64,aGk"},
-        "devices",
-        "set_hardware_image_bytes",
-        ["H", None, b"hi", ""],
-    ),
-    (
-        "remove_hardware_image",
-        {"hardwareId": "H", "portId": "P"},
-        "devices",
-        "remove_hardware_image",
-        ["H", "P"],
-    ),
-    (
         "add_managed_hardware_to_canvas",
         {"hardwareId": "H"},
         "wiring",
@@ -146,11 +132,6 @@ async def test_zod_argument_errors_and_nested_stripping() -> None:
         ("invalid_type", ["lines"]),
         ("unrecognized_keys", []),
     ]
-    for value, message in [(" ", "is required"), ("!!", "not valid base64")]:
-        with pytest.raises(Exception, match=message):
-            await gateway.invoke_tool(
-                "set_hardware_image", {"hardwareId": "H", "imageBase64": value}
-            )
 
 
 def test_permissions_duplicate_builtin_and_snapshot_copy() -> None:

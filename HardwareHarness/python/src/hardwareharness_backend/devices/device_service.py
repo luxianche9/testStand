@@ -8,7 +8,7 @@ from hardwareharness_backend.contracts.devices import parse_mcp_server, parse_re
 from hardwareharness_backend.contracts.errors import app_error
 from hardwareharness_backend.util import json_loads, now_ms, utc_now_iso
 
-from .device_manifest import asset_paths, declared_streams
+from .device_manifest import declared_streams
 from .lifecycle import is_managed, lifecycle_command
 from .local_shell import execute_local_shell
 from .remote_shell import remote_shell_for
@@ -272,7 +272,7 @@ class DeviceService:
         return status
 
     async def _sync_definition(self, server: Record, hardware_id: str) -> None:
-        """Cache the service's ``/device`` (and its assets) when its revision changed."""
+        """Cache the service's ``/device`` when its revision changed."""
         try:
             document = await self.transports.describe_device(server)
             if not isinstance(document, dict):
@@ -280,25 +280,9 @@ class DeviceService:
             self._streams[hardware_id] = declared_streams(document)
             cached = self.store.get_definition(hardware_id)
             revision = document.get("manifestRevision")
-            paths = asset_paths(document)
-            if (
-                cached is not None
-                and cached["document"].get("manifestRevision") == revision
-                and all(
-                    self.store.image_path(
-                        hardware_id, self.store.definition_asset_id(path)
-                    ).is_file()
-                    for path in paths
-                )
-            ):
+            if cached is not None and cached["document"].get("manifestRevision") == revision:
                 return
-            assets: dict[str, bytes] = {}
-            for path in paths:
-                try:
-                    assets[path] = await self.transports.read_asset(server, path)
-                except Exception as error:
-                    log.warning("Asset %s of %s is unavailable: %s", path, hardware_id, error)
-            await self.store.save_definition(hardware_id, document, assets)
+            await self.store.save_definition(hardware_id, document)
         except Exception as error:
             log.warning("Could not refresh the declaration of %s: %s", hardware_id, error)
 
@@ -306,20 +290,11 @@ class DeviceService:
         """The managed device's declaration as last cached, read-only (design doc §9.7).
 
         ``offline`` says the service is not reachable now, so this is the cached version.
-        Image entries carry the ``assetId`` of their cached file.
         """
         cached = self.store.get_definition(hardware_id)
         if cached is None:
             return None
         document = cached["document"]
-        images = document.get("images")
-        appearance = images.get("appearance") if isinstance(images, dict) else None
-        self._attach_asset_id(appearance)
-        pinout = document.get("pinout")
-        connectors = pinout.get("connectors") if isinstance(pinout, dict) else None
-        for connector in connectors if isinstance(connectors, list) else []:
-            if isinstance(connector, dict):
-                self._attach_asset_id(connector.get("image"))
         server = next(
             (item for item in self.store.list_servers() if item["hardwareId"] == hardware_id),
             None,
@@ -333,10 +308,6 @@ class DeviceService:
             "offline": not online,
             "document": document,
         }
-
-    def _attach_asset_id(self, image: Any) -> None:
-        if isinstance(image, dict) and isinstance(image.get("asset"), str):
-            image["assetId"] = self.store.definition_asset_id(image["asset"])
 
     async def refresh_all_servers(self) -> list[Record]:
         results = await asyncio.gather(

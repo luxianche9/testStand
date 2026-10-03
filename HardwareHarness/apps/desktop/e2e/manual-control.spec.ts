@@ -45,7 +45,7 @@ test.describe.serial("manual control and Agent hardware calls", () => {
         ports: [{ portId: "AO", name: "AO", pins: [{ pinId: "0", position: 1, label: "AO0" }] }]
       });
       await window.hardwareharness.devices.refreshServer("E2E_MCP");
-      await window.hardwareharness.wiring.update({ nodes: [{ hardwareId: "E2E_CARD", x: 20, y: 20, showImage: true, portPositions: {} }], connections: [] });
+      await window.hardwareharness.wiring.update({ nodes: [{ hardwareId: "E2E_CARD", x: 20, y: 20, portPositions: {} }], connections: [] });
       await window.hardwareharness.projects.save();
       await window.hardwareharness.projects.leave();
     }, { projectRoot, fixtureUrl: fixture.url, token: fixture.token });

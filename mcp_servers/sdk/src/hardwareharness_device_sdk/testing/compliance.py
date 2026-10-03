@@ -6,9 +6,8 @@ means compliant). Adapter tests usually just assert it is empty::
     def test_compliance():
         assert check_device(Pci6208v) == []
 
-Pass ``warnings=[]`` to collect non-fatal findings as well (missing appearance
-or port images, missing description, event streams whose reader never calls
-``idle()``).
+Pass ``warnings=[]`` to collect non-fatal findings as well (missing
+description, event streams whose reader never calls ``idle()``).
 
 ``serve()`` exposes the same server (uvicorn on an ephemeral 127.0.0.1 port in
 a background thread) for adapter-specific tests. Requires the ``test`` extra
@@ -38,7 +37,6 @@ from ..config import ServerConfig
 from ..device import Device
 from ..envelope import CONTRACT_REVISION
 from ..lease import HEARTBEAT_INTERVAL_MS
-from ..manifest import MEDIA_TYPES
 from ..streams import IDLE_INTERVAL_MS, STREAM_KINDS, STREAM_TYPES, ByteStream, FrameStream
 
 TOKEN = "compliance-token"
@@ -50,7 +48,7 @@ WATCH_SECONDS = 1.5
 HEX = re.compile(r"^(?:[0-9a-f]{2})*$")
 REVISION = re.compile(r"^sha256:[0-9a-f]{64}$")
 TOOL_KINDS = {"read", "configure", "actuate", "safe", "internal"}
-MANIFEST_KEYS = {"manifestRevision", "contractRevision", "identity", "description", "images", "pinout", "streams",
+MANIFEST_KEYS = {"manifestRevision", "contractRevision", "identity", "description", "pinout", "streams",
                  "capabilities", "tools"}
 REMOVED_TOOLS = ("get_pinout", "list_streams", "lease_renew")
 """Replaced by ``/device`` and heartbeat leases (contract 2026-10-01.1)."""
@@ -430,21 +428,8 @@ def _check_streams(hh: Harness, failures: list[str]) -> None:
             failures.append(f"stream channel with a wrong token returned HTTP {denied.status_code}, expected 401")
 
 
-def _check_asset(hh: Harness, image: Mapping[str, Any], where: str, failures: list[str]) -> None:
-    asset = image.get("asset")
-    if not isinstance(asset, str) or image.get("mediaType") not in MEDIA_TYPES.values():
-        failures.append(f"/device {where}: image needs asset and a PNG/JPEG/WebP/SVG mediaType, got {image}")
-        return
-    response = hh.get(f"/assets/{asset}")
-    if response.status_code != 200:
-        failures.append(f"/assets/{asset} ({where}) returned HTTP {response.status_code}")
-    elif response.headers.get("content-type", "").split(";")[0] != image["mediaType"]:
-        failures.append(f"/assets/{asset}: content-type {response.headers.get('content-type')} "
-                        f"does not match {image['mediaType']}")
-
-
 def _check_manifest(hh: Harness, failures: list[str], warnings: list[str]) -> None:
-    """``/device`` shape, revision, identity, streams, tools and every referenced asset."""
+    """``/device`` shape, revision, identity, streams and tools."""
     for name in REMOVED_TOOLS:
         if name in hh.tools:
             failures.append(f"{name}: removed from the contract; the declaration lives in /device")
@@ -494,23 +479,9 @@ def _check_manifest(hh: Harness, failures: list[str], warnings: list[str]) -> No
             failures.append(f"/device tool {name}: kind {kind!r} must be {semantics or 'one of ' + str(TOOL_KINDS)}")
     if not isinstance(document["capabilities"], dict):
         failures.append("/device capabilities must be an object (the former capabilityDetails)")
-    appearance = (document["images"] or {}).get("appearance")
-    if appearance is not None:
-        _check_asset(hh, appearance, "images.appearance", failures)
     pinout = document["pinout"]
-    if pinout is not None:
-        if not isinstance(pinout, dict) or not {"connectors", "pins"} <= set(pinout):
-            failures.append("/device pinout must be the SDK Pinout model")
-        else:
-            for connector in pinout["connectors"]:
-                if connector.get("image") is not None:
-                    _check_asset(hh, connector["image"], f"connector {connector.get('connectorId')}", failures)
-    for path in ("%2E%2E/pyproject.toml", "..%2Fserver.json", "missing.png", "notes.txt"):
-        status = hh.get(f"/assets/{path}").status_code
-        if status not in {400, 404}:
-            failures.append(f"/assets/{path} must be refused (400/404), got HTTP {status}")
-    if hh.get(f"/assets/{appearance['asset']}" if appearance else "/assets/x.png", token="").status_code != 401:
-        failures.append("/assets must require the Bearer token")
+    if pinout is not None and (not isinstance(pinout, dict) or not {"connectors", "pins"} <= set(pinout)):
+        failures.append("/device pinout must be the SDK Pinout model")
 
 
 def _check_operation(hh: Harness, safe_tool: str, failures: list[str]) -> None:

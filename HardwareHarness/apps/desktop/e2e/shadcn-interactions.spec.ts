@@ -44,20 +44,16 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
       for (const hardwareId of ["DUT_A", "DUT_B"]) {
         await window.hardwareharness.devices.saveHardware({
           formatVersion: 2, hardwareId, label: hardwareId, kind: "passive",
-          ...(hardwareId === "DUT_A" ? { appearanceAssetId: "appearance.png" } : {}),
           ports: [{ portId: "J1", name: "信号接口", pins: [{ pinId: "1", position: 1, label: "信号" }] }]
         });
       }
       await window.hardwareharness.wiring.update({ nodes: [
-        { hardwareId: "DUT_A", x: 20, y: 20, width: 220, height: 140, showImage: true, portPositions: { J1: { side: "right", offset: 0.5 } } },
-        { hardwareId: "DUT_B", x: 360, y: 60, width: 160, height: 48, showImage: false, portPositions: { J1: { side: "left", offset: 0.5 } } }
+        { hardwareId: "DUT_A", x: 20, y: 20, width: 220, height: 140, portPositions: { J1: { side: "right", offset: 0.5 } } },
+        { hardwareId: "DUT_B", x: 360, y: 60, width: 160, height: 48, portPositions: { J1: { side: "left", offset: 0.5 } } }
       ], connections: [] });
       await window.hardwareharness.projects.save();
       await window.hardwareharness.projects.leave();
     }, projectRoot);
-    await writeFile(join(userData, "devices/hardware/DUT_A/appearance.png"), Buffer.from(
-      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZQMcAAAAASUVORK5CYII=", "base64"
-    ));
     await reloadAfterLeave(page);
     await page.getByText("interaction-fixture", { exact: true }).first().click();
     await expect(page.locator('[data-hardware-id="DUT_A"]')).toBeVisible();
@@ -233,18 +229,13 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
     });
   });
 
-  test("shows a hardware photo inline and discards unsaved editor changes on Escape", async () => {
+  test("discards unsaved hardware editor changes on Escape", async () => {
     await page.getByRole("tab", { name: "设备管理", exact: true }).click();
     const hardware = page.getByRole("tree", { name: "硬件列表" }).getByRole("treeitem", { name: /DUT_A/ });
     await hardware.click();
-    const photo = page.getByRole("img", { name: "DUT_A 外观图" });
-    await expect(photo).toBeVisible();
-    await expect.poll(() => photo.evaluate((element: HTMLImageElement) => element.naturalWidth)).toBeGreaterThan(0);
     await page.getByRole("button", { name: "编辑", exact: true }).click();
     const editor = page.getByRole("dialog", { name: "编辑硬件", exact: true });
     await editor.getByLabel("显示名称").fill("Unsaved keyboard edit");
-    await expect(editor.getByRole("img", { name: "外观图" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "预览", exact: true })).toHaveCount(0);
     await page.keyboard.press("Escape");
     await expect(editor).toBeHidden();
     await expect(hardware).toContainText("DUT_A");

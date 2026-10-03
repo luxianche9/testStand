@@ -6,7 +6,6 @@ import { queryKeys } from "../../lib/query-keys.js";
 import {
   DEFAULT_CARD_HEIGHT,
   DEFAULT_CARD_WIDTH,
-  MIN_CARD_HEIGHT_LABEL,
   clampCardHeight,
   clampCardWidth,
   clampOffset,
@@ -55,7 +54,6 @@ export function useWiringDocument() {
         y: position?.y ?? 80 + Math.floor(index / 3) * 240,
         width: DEFAULT_CARD_WIDTH,
         height: DEFAULT_CARD_HEIGHT,
-        showImage: true,
         portPositions: defaultPortPositions(ports)
       }]
     });
@@ -85,20 +83,8 @@ export function useWiringDocument() {
     mapNodes(hardwareId, (node) => ({
       ...node,
       width: clampCardWidth(width),
-      height: clampCardHeight(height, node.showImage !== false)
+      height: clampCardHeight(height)
     }));
-  }, [mapNodes]);
-
-  const toggleNodeImage = useCallback((hardwareId: string) => {
-    mapNodes(hardwareId, (node) => {
-      const showImage = node.showImage === false;
-      const width = node.width ?? DEFAULT_CARD_WIDTH;
-      // Collapse to a label strip when hiding the image; restore a usable card when showing it again.
-      const height = showImage
-        ? Math.max(node.height ?? DEFAULT_CARD_HEIGHT, DEFAULT_CARD_HEIGHT)
-        : Math.min(node.height ?? MIN_CARD_HEIGHT_LABEL, MIN_CARD_HEIGHT_LABEL + 8);
-      return { ...node, showImage, width, height };
-    });
   }, [mapNodes]);
 
   const removeConnection = useCallback((connectionId: string) => {
@@ -132,7 +118,7 @@ export function useWiringDocument() {
     wiring,
     hardware,
     edits: {
-      addNode, removeNode, moveNode, movePort, resizeNode, toggleNodeImage,
+      addNode, removeNode, moveNode, movePort, resizeNode,
       removeConnection, createConnection, updateConnectionPins
     }
   };

@@ -221,4 +221,3 @@ def test_cli_check_runs_compliance_in_dry_run(capsys):
     assert main(["--adapter", "sdk_demo:DemoDevice", "--check", "--log-level", "warning"]) == 0
     report = json.loads(capsys.readouterr().out)
     assert report | {"warnings": []} == {"adapter": "sdk_demo.DemoDevice", "ok": True, "failures": [], "warnings": []}
-    assert any("no appearance image" in warning for warning in report["warnings"])

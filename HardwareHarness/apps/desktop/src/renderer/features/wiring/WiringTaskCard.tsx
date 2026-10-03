@@ -1,25 +1,21 @@
 import { useEffect, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import type { Hardware } from "@hardwareharness/contracts/devices";
 import type { WiringTask } from "@hardwareharness/contracts/wiring";
-import { ArrowRightIcon, CableIcon, CheckIcon, ImageOffIcon, UnplugIcon, XIcon } from "lucide-react";
+import { ArrowRightIcon, CableIcon, CheckIcon, UnplugIcon, XIcon } from "lucide-react";
 import { errorMessage } from "../../lib/errors.js";
 import { pinText, resolvePortRef } from "../../lib/hardware.js";
-import { queryKeys } from "../../lib/query-keys.js";
-import { Badge, Button, ImageViewer, cn } from "../../ui/index.js";
+import { Badge, Button, cn } from "../../ui/index.js";
 import { isTaskActionable, taskStatusLabel, taskTone } from "./wiring-model.js";
 
-type Preview = { url: string; title: string };
-
-/** Compact work order for one wiring request: both connector photos, the pin map and the operator's answer.
- *  Embedded in the agent conversation (and the wiring log); photos open in a zoom / rotate viewer. */
+/** Compact work order for one wiring request: both connectors, the pin map and the operator's answer.
+ *  Embedded in the agent conversation (and the wiring log). */
 export function WiringTaskCard({ task, hardware, onChanged, className }: {
   task: WiringTask;
   hardware: Hardware[];
   onChanged?: () => Promise<void> | void;
   className?: string;
 }) {
-  const [preview, setPreview] = useState<Preview>();
   const complete = useMutation({
     mutationFn: (outcome: "confirmed" | "rejected") =>
       window.hardwareharness.wiring.completeTask(task.wiringTaskId, outcome),
@@ -30,8 +26,6 @@ export function WiringTaskCard({ task, hardware, onChanged, className }: {
   const actionable = isTaskActionable(task);
   const samePort = task.portA === task.portB;
   const disconnect = task.action === "disconnect";
-  // Each endpoint already says 无端口图, so the catalog's missing-photo warnings would only repeat it.
-  const warnings = [...new Set(task.warnings)].filter((warning) => !warning.includes("端口图"));
   const tone = taskTone(task.status);
   return (
     <section
@@ -52,10 +46,10 @@ export function WiringTaskCard({ task, hardware, onChanged, className }: {
         {task.status === "pending" && <Countdown expiresAt={task.expiresAt} />}
       </header>
       <div className={cn("grid items-center gap-2", !samePort && "grid-cols-[minmax(0,1fr)_14px_minmax(0,1fr)]")}>
-        <Endpoint portRef={task.portA} hardware={hardware} onPreview={setPreview} />
+        <Endpoint portRef={task.portA} hardware={hardware} />
         {!samePort && <>
           <ArrowRightIcon aria-hidden className="size-3.5 text-fg-3" />
-          <Endpoint portRef={task.portB} hardware={hardware} onPreview={setPreview} />
+          <Endpoint portRef={task.portB} hardware={hardware} />
         </>}
       </div>
       {task.pins.length > 0 && (
@@ -76,7 +70,6 @@ export function WiringTaskCard({ task, hardware, onChanged, className }: {
           ))}
         </ol>
       )}
-      {warnings.length > 0 && <p className="text-invalid">{warnings.join("；")}</p>}
       {task.message && (
         <p role={task.status === "failed" ? "alert" : undefined} className="break-words text-fail">{task.message}</p>
       )}
@@ -93,56 +86,18 @@ export function WiringTaskCard({ task, hardware, onChanged, className }: {
           </Button>
         </footer>
       )}
-      <ImageViewer
-        src={preview?.url}
-        title={preview?.title ?? "端口图"}
-        open={Boolean(preview)}
-        onOpenChange={(open) => { if (!open) setPreview(undefined); }}
-      />
     </section>
   );
 }
 
-/** One end of the cable: connector thumbnail (opens the viewer) beside its name. */
-function Endpoint({ portRef, hardware, onPreview }: {
-  portRef: string; hardware: Hardware[]; onPreview: (image: Preview) => void;
-}) {
+/** One end of the cable: device label above its port name. */
+function Endpoint({ portRef, hardware }: { portRef: string; hardware: Hardware[] }) {
   const { hardware: owner, port } = resolvePortRef(portRef, hardware);
-  const assetId = port?.imageAssetId;
-  const url = useQuery({
-    queryKey: queryKeys.hardwareImage(owner?.hardwareId ?? "", assetId ?? ""),
-    queryFn: () => window.hardwareharness.devices.hardwareImageUrl(owner!.hardwareId, assetId!),
-    enabled: Boolean(owner && assetId),
-    staleTime: Infinity
-  });
-  const title = `${owner?.label ?? portRef} · ${port?.name ?? "未知端口"}`;
   return (
-    <div className="flex min-w-0 items-center gap-2">
-      {url.data ? (
-        <button
-          type="button"
-          aria-label={`查看全图：${title}`}
-          className={cn(
-            "size-12 shrink-0 cursor-zoom-in overflow-hidden rounded-sm border border-line bg-surface-0 outline-none",
-            "hover:border-signal focus-visible:outline-2 focus-visible:outline-signal"
-          )}
-          onClick={() => onPreview({ url: url.data!, title })}
-        >
-          <img className="size-full object-cover" src={url.data} alt={title} />
-        </button>
-      ) : (
-        <span
-          title={assetId ? url.isError ? "端口图加载失败" : "正在加载端口图…" : "暂无端口图"}
-          className="grid size-12 shrink-0 place-items-center rounded-sm border border-dashed border-line text-fg-3"
-        >
-          <ImageOffIcon aria-hidden className="size-4" />
-        </span>
-      )}
-      <span className="min-w-0">
-        <span className="block truncate text-fg">{owner?.label ?? portRef}</span>
-        <span className="block truncate font-mono text-2xs text-fg-3">{port?.name ?? "未知端口"}</span>
-      </span>
-    </div>
+    <span className="min-w-0">
+      <span className="block truncate text-fg">{owner?.label ?? portRef}</span>
+      <span className="block truncate font-mono text-2xs text-fg-3">{port?.name ?? "未知端口"}</span>
+    </span>
   );
 }
 

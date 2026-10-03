@@ -8,8 +8,7 @@
 |---|---|
 | MCP | Streamable HTTP，路径 `/mcp`，`Authorization: Bearer <token>`；无令牌返回 401 |
 | 健康检查 | `GET /health` 不需要令牌，返回 `{healthy, serverId, hardwareId, state, sdkVersion, manifestRevision}` |
-| 设备声明 | `GET /device`，同一令牌：设备描述、引脚、流、图片和工具分类，见下文 |
-| 图片 | `GET /assets/{path}`，同一令牌：适配器 `assets/` 目录下的 PNG / JPEG / WebP / SVG，单个不超过 2 MB；路径相对于 `assets/`、用正斜杠，不能含 `..` / `.` / 空段、`\`、`:` 或以 `/` 开头，也不能越出 `assets/`（400），不存在为 404；响应带 `Cache-Control: no-cache`、`X-Content-Type-Options: nosniff` 和限制性 CSP |
+| 设备声明 | `GET /device`，同一令牌：设备描述、引脚、流和工具分类，见下文 |
 | 停机 | `POST /admin/shutdown`（需令牌）或内部工具 `hardwareharness_prepare_shutdown`：先 `safe_state`，拒绝新操作，然后退出 |
 | 流 | SSE `/streams/{streamId}?from=<seq或latest>&since=<t>`，`Last-Event-ID` 续传，同一令牌；只读，见 `streams.md` |
 | 时钟 | `GET /time` → `{serverTime}`，同一令牌；后端据此估计时钟偏移 |
@@ -34,7 +33,7 @@
 | `<prefix>_blob_read` | read | 仅当有 `BlobStream` |
 | `hardwareharness_prepare_shutdown` | internal | 仅供后端停服务，不给 AI 或测试步骤 |
 
-`get_pinout`、`list_streams` 和 `lease_renew` 已删除：引脚、流声明和图片一次性从 `/device` 读取。表中的类型是 `/device.tools[].kind`；租约工具在 MCP `_meta.hardwareharness` 里仍标为 `management`，由终端调用，不给 AI 或测试步骤。
+`get_pinout`、`list_streams` 和 `lease_renew` 已删除：引脚和流声明一次性从 `/device` 读取。表中的类型是 `/device.tools[].kind`；租约工具在 MCP `_meta.hardwareharness` 里仍标为 `management`，由终端调用，不给 AI 或测试步骤。
 
 ## 请求 `_meta`
 
@@ -55,22 +54,17 @@
               "hardwareRevision": "...", "adapter": {"name": "hh_adapter_pci6208v", "version": "0.2.0"},
               "sdkVersion": "0.2.0", "dryRun": false},
  "description": "Device.description 的一段文字",
- "images": {"appearance": {"asset": "appearance.svg", "mediaType": "image/svg+xml", "width": 560, "height": 300}},
- "pinout": {"...": "Pinout 模型", "connectors": [{"connectorId": "...", "name": "CN1", "pinIds": ["..."],
-            "image": {"asset": "ports/CN1.svg", "mediaType": "image/svg+xml",
-                      "pinPositions": [{"pinId": "...CN1.1", "x": 0.12, "y": 0.34}]}}]},
+ "pinout": {"...": "Pinout 模型", "connectors": [{"connectorId": "...", "name": "CN1", "pinIds": ["..."]}]},
  "streams": [{"id": "ao0", "type": "scalar", "unit": "V", "label": "AO0", "kind": "setpoint"}],
  "capabilities": {"...": "capabilityDetails"},
  "tools": [{"name": "pci6208v_set_voltage", "kind": "actuate"}, {"name": "lease_acquire", "kind": "internal"}]}
 ```
 
 - `identity.hardwareRevision` 来自 `Device.hardware_revision`，未设置时省略；`dryRun` 表示实际使用了模拟驱动。
-- `images.appearance` 来自 `Device.appearance_image` 或约定文件 `assets/appearance.(png|jpg|webp|svg)`；`width`/`height` 能从文件读出时才有。没有外观图时省略 `images.appearance`，合规检查给出警告。
-- `pinout` 是适配器 `pinout()` 的结果（`not_supported` 时为 `null`），`None` 字段省略。`connectors[].image` 可选，`pinPositions` 的 `x`、`y` 是图片上的归一化坐标（0–1），`pinId` 必须是该连接器的针脚。缺少端口图给出警告。
+- `pinout` 是适配器 `pinout()` 的结果（`not_supported` 时为 `null`），`None` 字段省略。
 - `streams` 是每个流的 `describe()`，见 `streams.md`。
 - `tools[].kind` 为 `read` / `configure` / `actuate` / `safe` / `internal`。
-- `manifestRevision` 是规范化 JSON 声明加上所有引用图片字节的 sha256，同时出现在 `/health`。它变了就重新读 `/device`（声明或图片变了，或 `capability_details()` 的生效设置变了）。
-- 引用的图片必须存在、类型受支持、不超过 2 MB，`mediaType` 与扩展名一致，`pinPositions` 只能指向该连接器的针脚，否则 `--check` 失败。
+- `manifestRevision` 是规范化 JSON 声明的 sha256，同时出现在 `/health`。它变了就重新读 `/device`（声明变了，或 `capability_details()` 的生效设置变了）。
 
 ## 租约
 

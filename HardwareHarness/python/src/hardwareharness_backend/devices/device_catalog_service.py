@@ -96,8 +96,8 @@ class DeviceCatalogService:
 
     def resolve_port(self, port_ref: str) -> Record:
         hardware = self.list_hardware()
-        # Approved TS bug exception: imports/image writes bypass the catalog, so ids alone
-        # cannot identify the cached objects. Include contents to invalidate those updates.
+        # Imports bypass the catalog, so ids alone cannot identify the cached objects.
+        # Include contents to invalidate those updates.
         signature = json_dumps(hardware)
         if signature != self._port_index_signature:
             self._port_index = {
@@ -174,15 +174,3 @@ class DeviceCatalogService:
             if key in seen:
                 raise app_error("invalid_argument", f"Duplicate pin pair {pair['a']} - {pair['b']}")
             seen.add(key)
-
-    def warnings_for_ports(self, port_a: str, port_b: str) -> list[str]:
-        warnings = []
-        for reference in dict.fromkeys([port_a, port_b]):
-            try:
-                resolved = self.resolve_port(reference)
-                hardware, port = resolved["hardware"], resolved["port"]
-                if not port.get("imageAssetId"):
-                    warnings.append(f"{hardware['label']} 的端口 {port['name']} 还没有上传端口图")
-            except Exception as error:
-                warnings.append(str(error))
-        return warnings

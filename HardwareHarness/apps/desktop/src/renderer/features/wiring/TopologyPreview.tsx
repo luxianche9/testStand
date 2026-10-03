@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { Background, BackgroundVariant, ConnectionMode, ReactFlow } from "@xyflow/react";
 import type { Hardware } from "@hardwareharness/contracts/devices";
 import type { RecentProjectSummary } from "@hardwareharness/contracts/projects";
-import { useHardwareImageUrls } from "../../lib/queries.js";
 import { wiringNodeTypes } from "./HardwareNode.js";
 import { fallbackHardware, toFlowEdges, toFlowNode, type FlowNodeOptions } from "./flow-elements.js";
 import type { HardwareFlowNode, TopologyEdge } from "./wiring-model.js";
@@ -13,14 +12,7 @@ const noop = () => undefined;
 export function TopologyPreview({ project, hardware, compact }: {
   project: RecentProjectSummary; hardware: Hardware[]; compact: boolean;
 }) {
-  const imageRefs = useMemo(
-    () => hardware
-      .filter((item) => project.preview.nodes.some((node) => node.hardwareId === item.hardwareId))
-      .map((item) => ({ hardwareId: item.hardwareId, assetId: item.appearanceAssetId })),
-    [hardware, project.preview.nodes]
-  );
-  const imageUrls = useHardwareImageUrls(imageRefs);
-  const topology = useMemo(() => buildPreviewTopology(project, hardware, imageUrls), [hardware, imageUrls, project]);
+  const topology = useMemo(() => buildPreviewTopology(project, hardware), [hardware, project]);
   return (
     <div
       className={compact ? "topology-preview compact" : "topology-preview"}
@@ -64,10 +56,10 @@ export function TopologyPreview({ project, hardware, compact }: {
   );
 }
 
-function buildPreviewTopology(project: RecentProjectSummary, hardware: Hardware[], imageUrls: Record<string, string>) {
+function buildPreviewTopology(project: RecentProjectSummary, hardware: Hardware[]) {
   const { nodes: source, connections } = project.preview;
   if (!source.length) return { nodes: [] as HardwareFlowNode[], edges: [] as TopologyEdge[] };
-  const options: FlowNodeOptions = { imageUrls, interactive: false, movePort: noop, resizeNode: noop };
+  const options: FlowNodeOptions = { interactive: false, movePort: noop, resizeNode: noop };
   const nodes = source.map((node) => {
     const item = hardware.find((entry) => entry.hardwareId === node.hardwareId);
     const fallback = fallbackHardware(node.hardwareId, portsFromConnections(node.hardwareId, connections));

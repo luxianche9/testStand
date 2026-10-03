@@ -53,9 +53,7 @@ async def fixture(root: Path) -> tuple[ProjectWiringService, ProjectService, lis
     await projects.initialize_folder(root)
     projects.update_wiring(
         {
-            "nodes": [
-                {"hardwareId": "DUT_A", "x": 10, "y": 20, "showImage": True, "portPositions": {}}
-            ],
+            "nodes": [{"hardwareId": "DUT_A", "x": 10, "y": 20, "portPositions": {}}],
             "connections": [
                 {
                     "connectionId": "C1",
@@ -118,7 +116,7 @@ async def test_task_cable(tmp_path: Path) -> None:
     task = await service.request_task(
         {"portA": "DUT_A.P1", "portB": "DUT_B.P1", "pins": pins, "action": "connect"}
     )
-    assert task["status"] == "pending" and task["warnings"]
+    assert task["status"] == "pending"
     assert (await service.start_task(task["wiringTaskId"], "tester"))["status"] == "in_progress"
     assert (await service.complete_task(task["wiringTaskId"], "confirmed"))["status"] == "confirmed"
     assert len(projects.wiring()["connections"]) == 1

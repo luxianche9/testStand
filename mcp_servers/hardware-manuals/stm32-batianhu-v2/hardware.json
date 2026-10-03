@@ -3,7 +3,6 @@
   "hardwareId": "DUT_1",
   "label": "野火 STM32F407 霸天虎 V2（STM32F407ZGT6）",
   "kind": "passive",
-  "appearanceAssetId": "appearance.png",
   "ports": [
     {
       "portId": "DUT_1.J1",
@@ -34,8 +33,7 @@
           "position": 5,
           "label": "NRST"
         }
-      ],
-      "imageAssetId": "ports/DUT_1.J1.png"
+      ]
     },
     {
       "portId": "DUT_1.J45",
@@ -141,8 +139,7 @@
           "position": 20,
           "label": "GND"
         }
-      ],
-      "imageAssetId": "ports/DUT_1.J45.png"
+      ]
     },
     {
       "portId": "DUT_1.CN2",
@@ -448,8 +445,7 @@
           "position": 60,
           "label": "3V3"
         }
-      ],
-      "imageAssetId": "ports/DUT_1.CN2.png"
+      ]
     },
     {
       "portId": "DUT_1.CN3",
@@ -755,8 +751,7 @@
           "position": 60,
           "label": "VBAT"
         }
-      ],
-      "imageAssetId": "ports/DUT_1.CN3.png"
+      ]
     },
     {
       "portId": "DUT_1.J87",
@@ -802,8 +797,7 @@
           "position": 8,
           "label": "GND"
         }
-      ],
-      "imageAssetId": "ports/DUT_1.J87.png"
+      ]
     },
     {
       "portId": "DUT_1.JACK1",
@@ -819,8 +813,7 @@
           "position": 2,
           "label": "GND_OUTER_SLEEVE"
         }
-      ],
-      "imageAssetId": "ports/DUT_1.JACK1.png"
+      ]
     },
     {
       "portId": "DUT_1.J8",
@@ -851,8 +844,7 @@
           "position": 5,
           "label": "GND"
         }
-      ],
-      "imageAssetId": "ports/DUT_1.J8.png"
+      ]
     },
     {
       "portId": "DUT_1.J24",
@@ -883,8 +875,7 @@
           "position": 5,
           "label": "GND"
         }
-      ],
-      "imageAssetId": "ports/DUT_1.J24.png"
+      ]
     },
     {
       "portId": "J1",
@@ -900,8 +891,7 @@
           "position": 2,
           "label": "CANH"
         }
-      ],
-      "imageAssetId": "ports/J1.png"
+      ]
     },
     {
       "portId": "251574e3-45eb-4ccd-9a0d-be332ee3ac06.J1",
@@ -917,8 +907,7 @@
           "position": 2,
           "label": "485B"
         }
-      ],
-      "imageAssetId": "ports/251574e3-45eb-4ccd-9a0d-be332ee3ac06.J1.png"
+      ]
     },
     {
       "portId": "DUT_1.CON1",
@@ -969,8 +958,7 @@
           "position": 9,
           "label": "NC"
         }
-      ],
-      "imageAssetId": "ports/DUT_1.CON1.png"
+      ]
     },
     {
       "portId": "DUT_1.CON2",
@@ -1021,8 +1009,7 @@
           "position": 9,
           "label": "NC"
         }
-      ],
-      "imageAssetId": "ports/DUT_1.CON2.png"
+      ]
     },
     {
       "portId": "DUT_1.J82",
@@ -1058,8 +1045,7 @@
           "position": 6,
           "label": "PF10"
         }
-      ],
-      "imageAssetId": "ports/DUT_1.J82.png"
+      ]
     },
     {
       "portId": "DUT_1.J5",
@@ -1085,8 +1071,7 @@
           "position": 4,
           "label": "GND"
         }
-      ],
-      "imageAssetId": "ports/DUT_1.J5.png"
+      ]
     }
   ]
 }

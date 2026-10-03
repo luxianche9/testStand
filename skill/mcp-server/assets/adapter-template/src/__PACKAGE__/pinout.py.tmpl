@@ -1,75 +1,22 @@
-"""__MODEL__ connector table for the ``/device`` pinout, plus its schematic images.
+"""__MODEL__ connector table for the ``/device`` pinout.
 
 TODO(new_device): fill ``FUNCTIONS`` from the manual's connector table and set
 ``SOURCE`` to the document title and revision. Until then ``pinout`` returns
 None and ``/device`` reports ``pinout: null`` (``not_supported``) — never guess
 pin numbers. Every position without an entry is published as NC.
-
-Images live in ``assets/`` (package data, served by ``/assets``):
-``assets/appearance.svg`` from :func:`appearance_diagram` and, once ``LAYOUT``
-is set, ``assets/ports/CN1.svg`` from :func:`port_diagram`. Regenerate both after
-every change; the adapter tests keep the shipped files equal to a fresh rendering::
-
-    uv run python -c "from __PACKAGE__.pinout import write_assets; write_assets()"
-
-Prefer a vendor photo or drawing when one is available (PNG/JPEG/WebP/SVG, at
-most 2 MB).
 """
 
 from __future__ import annotations
 
-from pathlib import Path
-
-from hardwareharness_device_sdk import (
-    PinFunction,
-    Pinout,
-    PortDiagram,
-    PortLayout,
-    attach_port_image,
-    render_board,
-    render_port,
-    single_connector_pinout,
-)
+from hardwareharness_device_sdk import PinFunction, Pinout, single_connector_pinout
 
 PIN_COUNT = 0
 SOURCE = ""
 # position -> functions, e.g. 1: (function("DO0", "output", "digital_logic", channel_kind="DO", channel_index=0),)
 FUNCTIONS: dict[int, tuple[PinFunction, ...]] = {}
-# TODO(new_device): the connector's pin layout from the manual, e.g. dsub(37) or dual_row(68, "SCSI-68").
-LAYOUT: PortLayout | None = None
-PORT_IMAGE = "ports/CN1.svg"
-ASSETS = Path(__file__).resolve().parent / "assets"
 
 
 def pinout(hardware_id: str) -> Pinout | None:
     if not PIN_COUNT or not SOURCE:
         return None
-    data = single_connector_pinout(hardware_id, "__MANUFACTURER__", "__MODEL__", PIN_COUNT, FUNCTIONS, SOURCE)
-    if LAYOUT is None:
-        return data  # --check warns: connector without a port image
-    return attach_port_image(data, "CN1", PORT_IMAGE, port_diagram(data))
-
-
-def port_diagram(data: Pinout) -> PortDiagram:
-    assert LAYOUT is not None
-    return render_port(data, "CN1", LAYOUT, title="__MANUFACTURER__ __MODEL__  CN1")
-
-
-def appearance_diagram() -> str:
-    # TODO(new_device): three or four short facts and the bracket connectors, from the manual.
-    return render_board("__MANUFACTURER__ __MODEL__", ("TODO(new_device): facts from the manual",), ("CN1",))
-
-
-def write_assets() -> list[Path]:
-    """Render the images into ``assets/`` (LF line endings, like the committed files)."""
-    written = [ASSETS / "appearance.svg"]
-    written[0].parent.mkdir(parents=True, exist_ok=True)
-    written[0].write_text(appearance_diagram(), encoding="utf-8", newline="\n")
-    data = pinout("X")
-    if data is not None and LAYOUT is not None:
-        target = ASSETS / PORT_IMAGE
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(port_diagram(data).svg, encoding="utf-8", newline="\n")
-        written.append(target)
-    return written
-
+    return single_connector_pinout(hardware_id, "__MANUFACTURER__", "__MODEL__", PIN_COUNT, FUNCTIONS, SOURCE)

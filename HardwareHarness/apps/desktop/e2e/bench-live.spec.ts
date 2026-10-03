@@ -68,7 +68,7 @@ test("project, servers and live streams", async () => {
     await api.projects.initializeFolder(projectRoot);
     const ids = Object.values(cards);
     await api.wiring.update({
-      nodes: ids.map((hardwareId, index) => ({ hardwareId, x: 40 + index * 320, y: 40, showImage: false, portPositions: {} })),
+      nodes: ids.map((hardwareId, index) => ({ hardwareId, x: 40 + index * 320, y: 40, portPositions: {} })),
       connections: []
     });
     await api.projects.save();

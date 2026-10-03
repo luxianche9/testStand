@@ -4,7 +4,6 @@ import { CheckIcon, CpuIcon, RefreshCwIcon } from "lucide-react";
 import { useDashboard } from "../../lib/queries.js";
 import { hardwareStatus } from "../../lib/hardware-status.js";
 import { IconButton, Panel, PanelBody, PanelHeader, StatusLamp, cn, type Tone } from "../../ui/index.js";
-import { assetKey } from "./wiring-model.js";
 
 export const HARDWARE_MIME = "application/hardwareharness-hardware";
 
@@ -17,9 +16,8 @@ const statusTone: Record<ReturnType<typeof hardwareStatus>["tone"], Tone> = {
 
 type LibraryStatus = { label: string; tone: Tone; title?: string | undefined; pulse?: boolean };
 
-export function HardwareLibrary({ hardware, assetUrls, placed, onAdd, onRefresh, header, ...props }: {
+export function HardwareLibrary({ hardware, placed, onAdd, onRefresh, header, ...props }: {
   hardware: Hardware[];
-  assetUrls: Record<string, string>;
   placed: Set<string>;
   onAdd: (hardwareId: string) => void;
   onRefresh: () => void;
@@ -78,9 +76,6 @@ export function HardwareLibrary({ hardware, assetUrls, placed, onAdd, onRefresh,
                 <LibraryRow
                   key={item.hardwareId}
                   item={item}
-                  url={item.appearanceAssetId
-                    ? assetUrls[assetKey(item.hardwareId, item.appearanceAssetId)]
-                    : undefined}
                   status={statusOf(item)}
                   onCanvas={placed.has(item.hardwareId)}
                   onAdd={onAdd}
@@ -102,9 +97,8 @@ export function HardwareLibrary({ hardware, assetUrls, placed, onAdd, onRefresh,
   );
 }
 
-function LibraryRow({ item, url, status, onCanvas, onAdd }: {
+function LibraryRow({ item, status, onCanvas, onAdd }: {
   item: Hardware;
-  url: string | undefined;
   status: LibraryStatus | undefined;
   onCanvas: boolean;
   onAdd: (hardwareId: string) => void;
@@ -130,13 +124,8 @@ function LibraryRow({ item, url, status, onCanvas, onAdd }: {
           !onCanvas && "cursor-grab"
         )}
       >
-        <span
-          className={cn(
-            "grid size-5 shrink-0 place-items-center overflow-hidden rounded-sm border border-line bg-surface-0",
-            "text-fg-3 [&_img]:size-full [&_img]:object-contain"
-          )}
-        >
-          {url ? <img src={url} alt="" /> : <CpuIcon className="size-3" />}
+        <span className="grid size-5 shrink-0 place-items-center rounded-sm border border-line bg-surface-0 text-fg-3">
+          <CpuIcon className="size-3" />
         </span>
         <span className={cn("min-w-0 flex-1 truncate text-sm", onCanvas ? "text-fg-2" : "text-fg")}>{item.label}</span>
         {onCanvas && (

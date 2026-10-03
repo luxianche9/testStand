@@ -1,20 +1,15 @@
 import type { HardwarePort } from "@hardwareharness/contracts/devices";
-import { ChevronRightIcon, ImageIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { ChevronRightIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { Badge, Button, cn, IconButton, Input } from "../../ui";
-import { HardwareImage } from "./HardwareImage.js";
-import { addPin, removePin, renamePort, updatePin, withoutImage } from "./port-model.js";
+import { addPin, removePin, updatePin } from "./port-model.js";
 
-/** One port: id/name row with its photo, and (expanded) its pin list. */
-export function PortRow({ hardwareId, port, saved, open, imageBusy, onToggle, onChange, onRemove, onImage }: {
-  hardwareId: string;
+/** One port: id/name row and (expanded) its pin list. */
+export function PortRow({ port, open, onToggle, onChange, onRemove }: {
   port: HardwarePort;
-  saved: boolean;
   open: boolean;
-  imageBusy: boolean;
   onToggle: () => void;
   onChange: (port: HardwarePort) => void;
   onRemove: () => void;
-  onImage: (action: "import" | "remove") => void;
 }) {
   return (
     <article className={cn("rounded-md border border-line bg-surface-1", open && "border-line-strong")}>
@@ -32,7 +27,7 @@ export function PortRow({ hardwareId, port, saved, open, imageBusy, onToggle, on
           className="h-6 w-24 flex-none font-mono text-xs"
           value={port.portId}
           aria-label="端口 ID"
-          onChange={(event) => onChange(renamePort(port, event.target.value))}
+          onChange={(event) => onChange({ ...port, portId: event.target.value })}
         />
         <Input
           className="h-6 min-w-[100px] flex-1 basis-[120px] text-xs"
@@ -42,36 +37,9 @@ export function PortRow({ hardwareId, port, saved, open, imageBusy, onToggle, on
           onChange={(event) => onChange({ ...port, name: event.target.value })}
         />
         <Badge mono>{port.pins.length ? `${port.pins.length} 针` : "无针脚"}</Badge>
-        {saved && port.imageAssetId && (
-          <HardwareImage
-            hardwareId={hardwareId}
-            assetId={port.imageAssetId}
-            alt={`${port.name} 端口图`}
-            className="size-10 rounded-sm border border-line object-cover"
-          />
-        )}
-        <span className="ml-auto flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="xs"
-            disabled={!saved || imageBusy}
-            title={saved ? "上传或更换该端口的照片" : "保存设备后可上传端口图"}
-            onClick={() => onImage("import")}
-          >
-            <ImageIcon />{port.imageAssetId ? "更换" : "端口图"}
-          </Button>
-          {port.imageAssetId && (
-            <Button
-              variant="ghost"
-              size="xs"
-              disabled={imageBusy}
-              onClick={() => (saved ? onImage("remove") : onChange(withoutImage(port)))}
-            >
-              移除图
-            </Button>
-          )}
-        </span>
-        <IconButton label={`删除端口 ${port.name}`} size="icon-sm" onClick={onRemove}><Trash2Icon /></IconButton>
+        <IconButton label={`删除端口 ${port.name}`} size="icon-sm" className="ml-auto" onClick={onRemove}>
+          <Trash2Icon />
+        </IconButton>
       </div>
       {open && (
         <div className="grid gap-1 border-t border-line bg-surface-0/60 py-1.5 pr-1.5 pl-[30px]">

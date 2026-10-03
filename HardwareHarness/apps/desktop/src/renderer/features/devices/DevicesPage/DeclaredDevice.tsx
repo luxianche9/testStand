@@ -6,19 +6,17 @@ import { errorMessage } from "../../../lib/errors.js";
 import { useDeviceLease } from "../../../lib/queries.js";
 import { queryKeys } from "../../../lib/query-keys.js";
 import { Badge, Button, Section, useConfirm } from "../../../ui";
-import { HardwareImage } from "../HardwareImage.js";
 import type { ReportError } from "./DeviceActions.js";
 import { Meta } from "./inspector-parts.js";
 
 /**
- * What a managed device says about itself (`/device`, design doc §9.7): identity, pictures and
- * pinout come from the service and are read-only here. Offline, the cached copy is shown and
+ * What a managed device says about itself (`/device`, design doc §9.7): identity and pinout
+ * come from the service and are read-only here. Offline, the cached copy is shown and
  * labelled as such.
  */
 export function DeclaredDevice({ definition }: { definition: ManagedDeviceDefinition }) {
-  const { document, hardwareId } = definition;
+  const { document } = definition;
   const identity = document.identity;
-  const appearance = document.images?.appearance;
   const connectors = document.pinout?.connectors ?? [];
   const pins = new Map((document.pinout?.pins ?? []).map((pin) => [pin.pinId, pin]));
   const adapter = identity.adapter ? `${identity.adapter.name} ${identity.adapter.version}` : undefined;
@@ -47,18 +45,6 @@ export function DeclaredDevice({ definition }: { definition: ManagedDeviceDefini
           { label: "获取时间", value: definition.fetchedAt }
         ]} />
       </Section>
-      {appearance?.assetId && (
-        <Section title="外观图">
-          <figure className="overflow-hidden rounded-md border border-line bg-surface-0">
-            <HardwareImage
-              hardwareId={hardwareId}
-              assetId={appearance.assetId}
-              alt={`${identity.model ?? hardwareId} 外观图`}
-              className="mx-auto max-h-[280px] w-full"
-            />
-          </figure>
-        </Section>
-      )}
       <Section
         title="端口"
         actions={<span className="tf-num text-2xs text-fg-3">{connectors.length} 端口 · {pins.size} 针 · 由服务声明</span>}
@@ -67,7 +53,6 @@ export function DeclaredDevice({ definition }: { definition: ManagedDeviceDefini
         {connectors.map((connector) => (
           <DeclaredConnector
             key={connector.connectorId}
-            hardwareId={hardwareId}
             connector={connector}
             pins={connector.pinIds.flatMap((pinId) => pins.get(pinId) ?? [])}
           />
@@ -77,8 +62,7 @@ export function DeclaredDevice({ definition }: { definition: ManagedDeviceDefini
   );
 }
 
-function DeclaredConnector({ hardwareId, connector, pins }: {
-  hardwareId: string;
+function DeclaredConnector({ connector, pins }: {
   connector: DeviceDeclaredConnector;
   pins: DeviceDeclaredPin[];
 }) {
@@ -89,14 +73,6 @@ function DeclaredConnector({ hardwareId, connector, pins }: {
         <span className="tf-num text-2xs text-fg-3">{connector.connectorType}</span>
         <Badge className="ml-auto" mono>{pins.length ? `${pins.length} 针` : "无针脚"}</Badge>
       </header>
-      {connector.image?.assetId && (
-        <HardwareImage
-          hardwareId={hardwareId}
-          assetId={connector.image.assetId}
-          alt={`${connector.name} 端口图`}
-          className="mx-2 mt-2 max-h-[160px] rounded-sm"
-        />
-      )}
       {pins.length > 0 && (
         <table className="w-full text-xs">
           <thead className="text-left text-2xs text-fg-3">

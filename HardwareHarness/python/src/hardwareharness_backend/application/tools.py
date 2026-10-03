@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import base64
 import os
 from typing import Any
 
@@ -46,22 +45,14 @@ GLOSSARY = {
     "kind": "Hardware category: managed devices belong to an MCP service; passive objects "
     "contain local reference data.",
     "ports": "Physical connector definitions. Preserve stable IDs already referenced by wiring.",
-    "portId": "Exact local portId in the hardware definition, not the canonical endpointRef. "
-    "Omit for the hardware image.",
+    "portId": "Exact local portId in the hardware definition, not the canonical endpointRef.",
     "name": "Human-readable port name.",
     "pins": "Physical pins of this port; pinId values are referenced by wiring pin pairs.",
     "pinId": "Stable local pin identifier copied into wiring pin pairs.",
     "position": "position in the pins record; preserve the schema type and existing identifier "
     "values.",
-    "imageAssetId": "Existing managed image asset identifier; use image tools to create or "
-    "remove images.",
-    "appearanceAssetId": "appearanceAssetId in the hardware record; preserve the schema type "
-    "and existing identifier values.",
     "adapterStatus": "Managed hardware only: developing or available (design doc 8.4). Derived "
     "from the adapter release record; ignored when saving.",
-    "imageBase64": "PNG/JPEG/WebP bytes as base64 or a data URL; the entire gateway request is "
-    "limited to 1 MiB.",
-    "fileName": "Original image filename used as metadata/format hint, not a path to read.",
     "portA": "Copy ports[].endpointRef from get_hardware_definition, or supply exact "
     "hardwareId/portId. Same-port wiring needs distinct pin pairs.",
     "portB": "Second canonical endpointRef or structured endpoint; same-port loopback is "
@@ -197,21 +188,6 @@ def _with_endpoints(hardware: Record) -> Record:
     return result
 
 
-def _decode_image(value: str) -> bytes:
-    trimmed = value.strip()
-    payload = trimmed[trimmed.find(",") + 1 :] if trimmed.startswith("data:") else trimmed
-    if not payload:
-        raise app_error("invalid_argument", "imageBase64 is required")
-    # Buffer.from(base64) accepts whitespace, URL alphabet and missing padding.
-    alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/-_"
-    filtered = "".join(character for character in payload.split("=")[0] if character in alphabet)
-    filtered = filtered[: len(filtered) - (1 if len(filtered) % 4 == 1 else 0)]
-    result = base64.b64decode(filtered + "=" * (-len(filtered) % 4), altchars=b"-_")
-    if not result:
-        raise app_error("invalid_argument", "imageBase64 is not valid base64")
-    return result
-
-
 def _no_project_switch(app: Any, context: Record) -> None:
     if app.system.dashboard(context)["execution"]["state"] != "idle":
         raise app_error("conflict", "Finish the active execution before switching projects")
@@ -225,15 +201,6 @@ def _server_action(action: str) -> Any:
 
 def _hardware_list(items: list[Record]) -> list[Record]:
     return [_with_endpoints(item) for item in items]
-
-
-def _image(value: Record) -> Record:
-    payload = {
-        "hardwareId": value["hardwareId"],
-        "data": _decode_image(value["imageBase64"]),
-        "extensionHint": value["fileName"],
-    }
-    return payload | ({"portId": value["portId"]} if value.get("portId") else {})
 
 
 def _deploy(value: Record) -> Record:
@@ -522,32 +489,6 @@ PLATFORM_TOOLS = [
         _object({"hardwareId": _STRING}, ["hardwareId"]),
         operation="devices.removeHardware",
         fields=("hardwareId",),
-    ),
-    _platform(
-        "set_hardware_image",
-        "为硬件外观或指定端口设置 PNG/JPEG/WebP 图片。imageBase64 是图片编码，portId 使用"
-        "目录中的原值；此动作只修改资料图片。",
-        obj(
-            {
-                "hardwareId": string(1),
-                "portId": string(1).optional(),
-                "imageBase64": string(1),
-                "fileName": string().default(""),
-            },
-            strict=True,
-        ),
-        _HARDWARE,
-        operation="devices.setHardwareImageBytes",
-        arguments=_image,
-    ),
-    _platform(
-        "remove_hardware_image",
-        "移除指定硬件外观图或端口图；省略 portId 时作用于硬件外观图。不会删除硬件定义或改变"
-        "物理接线。",
-        obj({"hardwareId": string(1), "portId": string(1).optional()}, strict=True),
-        _HARDWARE,
-        operation="devices.removeHardwareImage",
-        fields=("hardwareId", "portId"),
     ),
     _platform(
         "add_managed_hardware_to_canvas",

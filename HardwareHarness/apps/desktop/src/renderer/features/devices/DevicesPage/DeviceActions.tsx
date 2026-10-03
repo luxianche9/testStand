@@ -278,7 +278,7 @@ export function HardwareActions({ hardware, onEdit, onChanged, onError }: {
   const requestRemove = async () => {
     const ok = await confirm({
       title: "移除硬件",
-      message: `移除 ${hardware.label}？端口、针脚和照片会一并删除，画布上引用它的节点会显示为未解析。`,
+      message: `移除 ${hardware.label}？端口和针脚会一并删除，画布上引用它的节点会显示为未解析。`,
       confirmLabel: "移除",
       danger: true
     });

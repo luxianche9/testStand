@@ -28,6 +28,5 @@ export const queryKeys = {
   llmSettings: ["llm-settings"] as const,
   agentTools: ["agent-tools"] as const,
   agentConfirmations: ["agent-confirmations"] as const,
-  agentIntegration: (agent: string) => ["agent-integration", agent] as const,
-  hardwareImage: (hardwareId: string, assetId: string) => ["hardware-image", hardwareId, assetId] as const
+  agentIntegration: (agent: string) => ["agent-integration", agent] as const
 };

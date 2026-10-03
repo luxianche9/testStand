@@ -59,9 +59,7 @@ async def test_save_damage(tmp_path: Path) -> None:
     await service.initialize_folder(folder)
     service.update_wiring(
         {
-            "nodes": [
-                {"hardwareId": "DUT", "x": 10, "y": 20, "showImage": True, "portPositions": {}}
-            ],
+            "nodes": [{"hardwareId": "DUT", "x": 10, "y": 20, "portPositions": {}}],
             "connections": [],
         }
     )
@@ -110,7 +108,6 @@ async def test_recent(tmp_path: Path) -> None:
             "y": 0,
             "width": 260,
             "height": 190,
-            "showImage": True,
             "portPositions": {"J1": {"side": "right", "offset": 0.35}},
         },
         {
@@ -119,7 +116,6 @@ async def test_recent(tmp_path: Path) -> None:
             "y": 100,
             "width": 150,
             "height": 40,
-            "showImage": False,
             "portPositions": {"J1": {"side": "left", "offset": 0.65}},
         },
     ]

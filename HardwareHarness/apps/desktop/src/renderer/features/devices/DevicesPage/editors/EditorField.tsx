@@ -31,7 +31,7 @@ export function EditorNote({ children }: { children: ReactNode }) {
   return <p className="col-span-2 text-xs leading-5 text-fg-3">{children}</p>;
 }
 
-/** Framed block for the photo + port editors inside an editor dialog. */
+/** Framed block for the port editor inside an editor dialog. */
 export function EditorPanel({ children }: { children: ReactNode }) {
   return (
     <div className="col-span-2 grid gap-3 rounded-md border border-line bg-surface-0/60 p-3">{children}</div>

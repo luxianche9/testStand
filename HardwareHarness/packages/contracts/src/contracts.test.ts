@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { agentKindInputSchema } from "./agents.js";
 import { appError, toWireError } from "./errors.js";
-import { assetIdInputSchema, computerIdInputSchema, deviceBundleIdInputSchema, hardwareIdInputSchema, hardwareSchema, managedHardwareSchema, mcpServerSchema, remoteComputerSchema, serverIdInputSchema } from "./devices.js";
+import { computerIdInputSchema, deviceBundleIdInputSchema, hardwareIdInputSchema, hardwareSchema, managedHardwareSchema, mcpServerSchema, remoteComputerSchema, serverIdInputSchema } from "./devices.js";
 import { projectFileSchema, projectRootPathInputSchema } from "./projects.js";
 import { wiringTaskIdInputSchema } from "./wiring.js";
 
@@ -34,7 +34,7 @@ describe("public contracts", () => {
   });
 
   it("uses strict named id inputs for IPC procedures", () => {
-    const schemas = [computerIdInputSchema, serverIdInputSchema, hardwareIdInputSchema, assetIdInputSchema, deviceBundleIdInputSchema, projectRootPathInputSchema, wiringTaskIdInputSchema];
+    const schemas = [computerIdInputSchema, serverIdInputSchema, hardwareIdInputSchema, deviceBundleIdInputSchema, projectRootPathInputSchema, wiringTaskIdInputSchema];
     for (const schema of schemas) {
       expect(schema.parse({ id: "ID" })).toEqual({ id: "ID" });
       expect(schema.safeParse({ id: "ID", extra: true }).success).toBe(false);

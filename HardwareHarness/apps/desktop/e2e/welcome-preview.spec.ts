@@ -7,7 +7,6 @@ import { rendererReady } from "./renderer.js";
 const desktopDir = resolve(import.meta.dirname, "..");
 const artifactPath = resolve(desktopDir, "../../output/playwright/welcome-reactflow-preview.png");
 const gatewayPort = 18081;
-const pixelPng = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZQMcAAAAASUVORK5CYII=", "base64");
 
 test("renders the saved wiring canvas as a recent-project React Flow preview", async () => {
   const userDataDir = await mkdtemp(resolve(tmpdir(), "hardwareharness-welcome-preview-"));
@@ -24,8 +23,7 @@ test("renders the saved wiring canvas as a recent-project React Flow preview", a
         hardwareId: "DUT_A",
         label: "主控工位",
         kind: "passive",
-        ports: [{ portId: "J1", name: "控制口", pins: [] }],
-        appearanceAssetId: "appearance.png"
+        ports: [{ portId: "J1", name: "控制口", pins: [] }]
       });
       await window.hardwareharness.devices.saveHardware({
         formatVersion: 2,
@@ -35,14 +33,12 @@ test("renders the saved wiring canvas as a recent-project React Flow preview", a
         ports: [{ portId: "J1", name: "输入口", pins: [] }]
       });
     });
-    await mkdir(join(userDataDir, "devices", "hardware", "DUT_A"), { recursive: true });
-    await writeFile(join(userDataDir, "devices", "hardware", "DUT_A", "appearance.png"), pixelPng);
     const file = await page.evaluate(async (rootPath) => {
       await window.hardwareharness.projects.initializeFolder(rootPath);
       const document = await window.hardwareharness.wiring.update({
         nodes: [
-          { hardwareId: "DUT_A", x: 10, y: 10, width: 260, height: 190, showImage: true, portPositions: { J1: { side: "right", offset: 0.35 } } },
-          { hardwareId: "DUT_B", x: 360, y: 90, width: 170, height: 40, showImage: false, portPositions: { J1: { side: "left", offset: 0.65 } } }
+          { hardwareId: "DUT_A", x: 10, y: 10, width: 260, height: 190, portPositions: { J1: { side: "right", offset: 0.35 } } },
+          { hardwareId: "DUT_B", x: 360, y: 90, width: 170, height: 40, portPositions: { J1: { side: "left", offset: 0.65 } } }
         ],
         connections: [{
           connectionId: "preview-connection",
@@ -78,10 +74,7 @@ test("renders the saved wiring canvas as a recent-project React Flow preview", a
     });
     await expect(edgePath).toHaveCSS("stroke", edgeColor);
     await expect(edgePath).toHaveCSS("stroke-width", "3.5px");
-    await expect(preview.locator('[data-hardware-id="DUT_A"]')).toHaveAttribute("data-show-image", "true");
-    await expect(preview.locator('[data-hardware-id="DUT_A"] img')).toHaveCount(1);
     await expect(preview.locator('[data-hardware-id="DUT_A"]')).toContainText("主控工位");
-    await expect(preview.locator('[data-hardware-id="DUT_B"]')).toHaveAttribute("data-show-image", "false");
     await expect(preview.locator('[data-hardware-id="DUT_B"]')).toContainText("负载工位");
     await expect(preview.locator('.react-flow__node[data-id="DUT_A"]')).toHaveCSS("width", "260px");
     await expect(preview.locator('.react-flow__node[data-id="DUT_B"]')).toHaveCSS("height", "40px");

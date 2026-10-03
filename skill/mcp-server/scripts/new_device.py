@@ -6,15 +6,12 @@ Creates ``mcp_servers/adapters/<adapter>/`` and registers the package in the
 ``mcp_servers`` uv workspace (``pyproject.toml``). The generated adapter is a
 digital I/O skeleton that already passes the dry-run compliance suite; every
 ``TODO(new_device)`` marker must be resolved from the manual before review.
-The schematic appearance image is rendered into ``assets/`` by the generated
-``pinout.py`` (run through ``uv run --project mcp_servers`` so the SDK imports).
 It never touches the terminal registry, never creates ``server.json`` and never deploys.
 """
 
 from __future__ import annotations
 
 import argparse
-import importlib
 import re
 import sys
 import tomllib
@@ -62,21 +59,6 @@ def render(dest: Path, values: dict[str, str]) -> list[Path]:
         target.write_text(substitute(source.read_text(encoding="utf-8"), values), encoding="utf-8", newline="\n")
         written.append(target)
     return written
-
-
-def render_assets(dest: Path, package: str) -> list[Path]:
-    """Render ``assets/`` with the generated ``pinout.write_assets``; empty when the SDK cannot be imported."""
-    source = str(dest / "src")
-    sys.path.insert(0, source)
-    try:
-        module = importlib.import_module(f"{package}.pinout")
-        return list(module.write_assets())
-    except ImportError as exc:
-        command = f'uv run python -c "from {package}.pinout import write_assets; write_assets()"'
-        print(f"warning: images not rendered ({exc}); run `{command}` after `uv sync`", file=sys.stderr)
-        return []
-    finally:
-        sys.path.remove(source)
 
 
 def register(pyproject: Path, dist: str) -> bool:
@@ -138,7 +120,6 @@ def main(argv: list[str] | None = None) -> int:
         "__MANUFACTURER__": args.manufacturer, "__SERVER_ID__": server_id, "__SDK_RANGE__": sdk_range(root),
     }
     written = render(dest, values)
-    written += render_assets(dest, package)
     registered = False if args.no_register else register(root / "pyproject.toml", dist)
 
     print(f"Created {dest} ({len(written)} files).")
@@ -146,9 +127,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Registered {dist} in {root / 'pyproject.toml'}; run `uv sync` in {root}.")
     print(f"""
 Next steps (see skill/mcp-server/SKILL.md):
-  1. Replace every TODO(new_device) and the hypothetical digital I/O tools with the manual's operations;
-     after editing pinout.py regenerate the images:
-     uv run python -c "from {package}.pinout import write_assets; write_assets()"
+  1. Replace every TODO(new_device) and the hypothetical digital I/O tools with the manual's operations.
   2. Run skill/mcp-server/scripts/check_adapter.ps1 -Adapter {adapter}  (pytest + compliance + TODO scan).
   3. Deployment to the bench is done by a human with the deploy button on the HardwareHarness
      Devices page (adapter "{adapter}", serverId "{server_id}", hardwareId, port) or with mcp_servers\\deploy.ps1.

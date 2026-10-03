@@ -173,7 +173,7 @@ class ProjectService:
             current = self._require_document()
             next_wiring = parse_project_wiring(wiring)
             previous = {node["hardwareId"]: node for node in current["file"]["wiring"]["nodes"]}
-            layout_keys = ("x", "y", "width", "height", "showImage", "portPositions")
+            layout_keys = ("x", "y", "width", "height", "portPositions")
             changes = {
                 node["hardwareId"]: {
                     key: node[key]

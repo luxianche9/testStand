@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -43,21 +43,6 @@ describe("DesktopDialogs", () => {
 
     electron.showSaveDialog.mockResolvedValueOnce({ canceled: true });
     await expect(dialogs.exportText("run.json", "ignored")).resolves.toBeNull();
-  });
-
-  it("validates image signatures instead of trusting file extensions", async () => {
-    const root = await temporaryDirectory();
-    const valid = join(root, "panel.png");
-    const disguised = join(root, "panel.jpg");
-    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
-    await writeFile(valid, png);
-    await writeFile(disguised, png);
-    const dialogs = new DesktopDialogs(() => ({}) as never);
-
-    electron.showOpenDialog.mockResolvedValueOnce({ canceled: false, filePaths: [valid] });
-    await expect(dialogs.chooseHardwareImage()).resolves.toBe(valid);
-    electron.showOpenDialog.mockResolvedValueOnce({ canceled: false, filePaths: [disguised] });
-    await expect(dialogs.chooseHardwareImage()).rejects.toThrow(/does not match/i);
   });
 
   it("round-trips device bundle bytes without JSON conversion", async () => {

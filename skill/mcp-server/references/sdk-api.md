@@ -13,8 +13,7 @@ mcp_servers/adapters/<adapter>/
     adapter.py                Device 子类：工具、流、声明
     driver.py                 厂商调用的类型化封装
     sim.py                    与驱动同接口的模拟器
-    pinout.py                 连接器表（来自手册）、端口图和外观图的生成函数
-    assets/                   appearance.svg、ports/<连接器>.svg（package-data，由 /assets 提供）
+    pinout.py                 连接器表（来自手册）
     py.typed
   tests/test_<adapter>_adapter.py
 ```
@@ -31,7 +30,6 @@ class Pci1234(Device):
     instructions = "给 AI 的两三句说明：设备做什么、先调哪个工具、每个输出的物理效果。"
     description = "给人和 AI 的一段设备描述：接口、通道、连接器、限制。出现在 /device.description。"
     hardware_revision = None       # 已知的硬件版本；None 时 /device 省略
-    appearance_image = None        # 相对 assets/；None 时用约定文件 assets/appearance.(png|jpg|webp|svg)
 
     def __init__(self, config: ServerConfig) -> None:
         super().__init__(config)                 # 必须先调用：建立 self.streams 和 self.io_lock
@@ -50,8 +48,8 @@ class Pci1234(Device):
 | `close()` | 阻塞：释放句柄、停止后台线程 |
 | `safe_state()` | 默认什么都不做；有输出的设备必须用 `@tool(kind="safe")` 覆盖 |
 | `capability_details()` | 非秘密的限值和生效设置；**不能访问驱动**，设备不可达时也要能返回 |
-| `pinout()` | 默认抛 `NOT_SUPPORTED`；返回的 `Pinout` 可以给连接器带 `image`（见"示意图"） |
-| `description`、`hardware_revision`、`appearance_image`、`assets_path` | 类属性，进入 `/device`。`assets_path` 覆盖图片目录（默认适配器模块旁的 `assets/`），`assets_dir()` 返回它 |
+| `pinout()` | 默认抛 `NOT_SUPPORTED` |
+| `description`、`hardware_revision` | 类属性，进入 `/device` |
 
 所有生命周期方法和工具都在工作线程里运行，写普通阻塞代码即可；也可以写成 `async def`。
 
@@ -122,36 +120,6 @@ raise DeviceError(f"AO_VWriteChannel failed rc={rc}", category=DEVICE_ERROR,
 
 读 `settings` 时给出默认值，并在 `capability_details()` 里报告生效值。可以兼容历史环境变量（如 `ADLINK_SAFE_VOLTS`），但新设置优先放 `settings`。
 
-## 示意图（`diagram`）
-
-没有厂商图片时，用 SDK 从引脚数据生成示意 SVG（标明 "Schematic, not to scale"），放进 `assets/`：
-
-```python
-from hardwareharness_device_sdk import PortDiagram, attach_port_image, dsub, render_board, render_port
-
-PORT_IMAGE = "ports/CN1.svg"
-
-def pinout(hardware_id: str) -> Pinout:
-    data = Pinout(...)
-    return attach_port_image(data, "CN1", PORT_IMAGE, port_diagram(data))   # 多个同型连接器传名字列表
-
-def port_diagram(data: Pinout) -> PortDiagram:
-    return render_port(data, "CN1", dsub(37), title="Acme PCI-1234  CN1 (37-pin D-sub)")
-
-def appearance_diagram() -> str:
-    return render_board("Acme PCI-1234  digital I/O card", ("32 x DO", "32 x DI"), ("CN1 37-pin D-sub",))
-```
-
-| 函数 | 说明 |
-|---|---|
-| `dsub(count, high_density=False)` | D-sub 针位布局（9/15/25/37/50；高密度 15/26/44/62/78） |
-| `dual_row(count, kind=None)` | 双排针布局（1..n/2 在上，n/2+1..n 在下），如 SCSI-68、IDC |
-| `render_port(pinout, connector, layout, *, title, note=)` | 画一个连接器：针脚按方向着色（多模式方向不同为 `mode-dependent`），标信号名、图例和说明；布局与连接器针脚不一致时抛 `ValueError`。返回 `PortDiagram(svg, positions)` |
-| `attach_port_image(pinout, connectors, asset, diagram)` | 给指定连接器设 `ConnectorImage(asset, pinPositions)`；连接器名不存在时抛 `ValueError` |
-| `render_board(title, facts, bracket, *, note=)` | 板卡外观示意图（外形、金手指、挡板连接器标签），返回 SVG 文本 |
-
-生成的文件写进 `assets/`，在 `pyproject.toml` 里列为 package-data（`"assets/*.svg", "assets/**/*.svg"`），并加一条测试保证仓库里的文件等于重新生成的结果（比较前把 `\r\n` 规范为 `\n`）。视图方向（插座面 / 焊接面）手册没写时在 `note` 里说明未核实。有厂商照片或图纸时优先用它们（PNG / JPEG / WebP / SVG，不超过 2 MB）。
-
 ## 软件波形（`waveform`）
 
 没有 FIFO 或硬件时钟的静态输出（如 AO 卡）用 `SoftwareWaveform` 出低频波形：
@@ -185,7 +153,7 @@ self.waveform = SoftwareWaveform(self._waveform_write, lock=self.io_lock,
 | `harness.call("set_output", {"operationId": "op-1", "leaseId": ...}, channel=1, level=True)` | 第二个位置参数是请求 `_meta` |
 | `harness.mcp.call_raw(full_name, arguments)` | 原始 MCP 调用，用于越界等失败路径 |
 | `harness.tools` | 工具名 → 工具定义 |
-| `harness.get(path, token=...)` | 带令牌的 HTTP GET，如 `hh.get("/device").json()`、`hh.get("/assets/ports/CN1.svg")` |
+| `harness.get(path, token=...)` | 带令牌的 HTTP GET，如 `hh.get("/device").json()` |
 | `harness.service.device` | 设备实例（可以直接改模拟器状态） |
 | `harness.sse(stream_id, cursor=0, since=None, last_event_id=None)` | 订阅流通道（真实 uvicorn + httpx）；`cursor` 省略为 `latest`；`events.receive()` 返回 `{"type": 事件名, **data}`，`events.last_id` 是最后的事件 id |
 | `receive_until(events, predicate)` | 读事件直到谓词成立 |

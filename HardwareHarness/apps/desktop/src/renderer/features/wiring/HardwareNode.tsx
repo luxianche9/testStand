@@ -1,13 +1,11 @@
 import { useEffect, useRef, type CSSProperties, type PointerEvent } from "react";
 import { Handle, NodeResizer, useUpdateNodeInternals, type NodeProps } from "@xyflow/react";
 import type { PortPosition, PortSide } from "@hardwareharness/contracts/wiring";
-import { CableIcon } from "lucide-react";
 import { cn } from "../../ui/index.js";
 import {
   MAX_CARD_HEIGHT,
   MAX_CARD_WIDTH,
-  MIN_CARD_HEIGHT_LABEL,
-  MIN_CARD_HEIGHT_WITH_IMAGE,
+  MIN_CARD_HEIGHT,
   MIN_CARD_WIDTH,
   nearestPortPosition,
   portSignal,
@@ -15,26 +13,23 @@ import {
   type HardwareFlowNode
 } from "./wiring-model.js";
 
-/** A device on the bench, drawn as an instrument faceplate: photo window, mono caption, and one
- *  connector pin per port sitting on the card edge. */
+/** A device on the bench, drawn as an instrument faceplate: mono caption and one connector pin per
+ *  port sitting on the card edge. */
 function HardwareNode({ id, data, selected, width, height }: NodeProps<HardwareFlowNode>) {
   const updateNodeInternals = useUpdateNodeInternals();
-  const showImage = data.showImage;
   const interactive = data.interactive !== false;
   useEffect(() => {
     updateNodeInternals(id);
-  }, [data.portPositions, data.showImage, height, id, updateNodeInternals, width]);
+  }, [data.portPositions, height, id, updateNodeInternals, width]);
   const portSummary = data.resolved ? `${data.hardware.ports.length} 个端口` : "设备资料未解析";
   return (
     <div
       data-hardware-id={id}
       data-connector-editing={data.portEditing ? "true" : "false"}
-      data-show-image={showImage ? "true" : "false"}
       className={cn(
         "flow-hardware-node",
         selected && "selected",
         data.portEditing && "connector-editing",
-        !showImage && "image-hidden",
         !data.resolved && "unresolved"
       )}
       title={`${data.hardware.label}\n${portSummary}`}
@@ -43,18 +38,13 @@ function HardwareNode({ id, data, selected, width, height }: NodeProps<HardwareF
       <NodeResizer
         isVisible={interactive && selected}
         minWidth={MIN_CARD_WIDTH}
-        minHeight={showImage ? MIN_CARD_HEIGHT_WITH_IMAGE : MIN_CARD_HEIGHT_LABEL}
+        minHeight={MIN_CARD_HEIGHT}
         maxWidth={MAX_CARD_WIDTH}
         maxHeight={MAX_CARD_HEIGHT}
         autoScale
         onResizeEnd={(_event, params) => data.resizeNode(id, params.width, params.height)}
       />
       <div className="flow-node-body">
-        {showImage && (
-          <div className="flow-node-image">
-            {data.imageUrl ? <img src={data.imageUrl} alt={data.hardware.label} /> : <CableIcon className="size-8" />}
-          </div>
-        )}
         <div className="flow-node-caption">{data.hardware.label}</div>
       </div>
       {data.hardware.ports.map((port) => (

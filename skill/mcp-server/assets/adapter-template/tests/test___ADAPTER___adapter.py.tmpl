@@ -3,7 +3,6 @@ from __future__ import annotations
 import pytest
 from hardwareharness_device_sdk.testing import check_device, dry_run_config, receive_until, serve
 from __PACKAGE__ import DEVICE, __CLASS__
-from __PACKAGE__.pinout import ASSETS, LAYOUT, PORT_IMAGE, appearance_diagram, pinout, port_diagram
 
 PUBLIC_TOOLS = {
     "get_server_info", "list_hardware", "get_hardware_info",
@@ -23,7 +22,6 @@ def test_entry_point_and_compliance():
     assert DEVICE is __CLASS__
     warnings: list[str] = []
     assert check_device(__CLASS__, warnings=warnings) == []
-    # Until the pinout is filled in the connector is not_supported; afterwards every connector needs its image.
     assert warnings == []
 
 
@@ -57,17 +55,7 @@ def test_stream_declarations(hh):
 def test_device_declaration(hh):
     document = hh.get("/device").json()
     assert document["description"].startswith("__MANUFACTURER__ __MODEL__")
-    assert document["images"]["appearance"]["asset"] == "appearance.svg"
-    assert hh.get("/assets/appearance.svg").headers["content-type"].startswith("image/svg+xml")
     assert {tool["name"]: tool["kind"] for tool in document["tools"]}["__PREFIX___set_output"] == "actuate"
-
-
-def test_shipped_assets_match_pinout():
-    # Regenerate with: uv run python -c "from __PACKAGE__.pinout import write_assets; write_assets()"
-    assert (ASSETS / "appearance.svg").read_bytes().decode().replace("\r\n", "\n") == appearance_diagram()
-    data = pinout("X")
-    if data is not None and LAYOUT is not None:
-        assert (ASSETS / PORT_IMAGE).read_bytes().decode().replace("\r\n", "\n") == port_diagram(data).svg
 
 
 def test_write_publishes_output_mask(hh):

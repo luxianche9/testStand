@@ -2,9 +2,6 @@ import { join } from "node:path";
 import { app } from "electron";
 import { startDesktop } from "./lifecycle.js";
 import { initializeLogger, logger } from "./logger.js";
-import { registerAssetScheme } from "./protocols.js";
-
-registerAssetScheme();
 
 app.setName("HardwareHarness");
 app.setPath("userData", process.env.HARDWAREHARNESS_USER_DATA_DIR ?? join(app.getPath("appData"), "HardwareHarness"));

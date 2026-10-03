@@ -461,46 +461,6 @@ class DevicesApplication:
         return {"hardwareId": hardware_id}
 
     @operation(
-        "devices.setHardwareImageBytes",
-        capability="hardware.manage",
-        risk="write",
-        profiles=("adapter", "plan"),
-        idempotency="natural",
-    )
-    async def set_hardware_image_bytes(
-        self,
-        context: Json,
-        hardware_id: str,
-        port_id: str | None,
-        data: bytes,
-        extension_hint: str = "",
-    ) -> Any:
-        return await self.service.store.put_image_bytes(hardware_id, port_id, data, extension_hint)
-
-    @operation(
-        "devices.setHardwareImageFromPath",
-        capability="hardware.manage",
-        risk="write",
-        idempotency="natural",
-    )
-    async def set_hardware_image_from_path(
-        self, context: Json, hardware_id: str, port_id: str | None, source_path: str
-    ) -> Any:
-        return await self.service.store.put_image(hardware_id, port_id, source_path)
-
-    @operation(
-        "devices.removeHardwareImage",
-        capability="hardware.manage",
-        risk="write",
-        profiles=("adapter", "plan"),
-        idempotency="natural",
-    )
-    async def remove_hardware_image(
-        self, context: Json, hardware_id: str, port_id: str | None = None
-    ) -> Any:
-        return await self.service.store.remove_image(hardware_id, port_id)
-
-    @operation(
         "devices.exportBundle",
         capability="hardware.read",
         risk="read",

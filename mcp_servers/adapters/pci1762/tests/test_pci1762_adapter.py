@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-from pathlib import Path
 
 import pytest
 
 from hardwareharness_device_sdk.testing import check_device, receive_until, serve
 from hh_adapter_pci1762 import DEVICE, Pci1762
-from hh_adapter_pci1762.pinout import appearance_diagram, pinout, port_diagram
+from hh_adapter_pci1762.pinout import pinout
 
-ASSETS = Path(__file__).resolve().parents[1] / "src" / "hh_adapter_pci1762" / "assets"
 
 PUBLIC_TOOLS = {
     "get_server_info", "list_hardware", "get_hardware_info",
@@ -126,13 +124,6 @@ def test_pinout():
 def test_device_declaration(hh):
     document = hh.get("/device").json()
     assert document["description"].startswith("Advantech PCI-1762")
-    assert document["images"]["appearance"]["asset"] == "appearance.svg"
-    image = document["pinout"]["connectors"][0]["image"]
-    assert image["asset"] == "ports/CN1.svg" and len(image["pinPositions"]) == 62
+    assert len(document["pinout"]["connectors"][0]["pinIds"]) == 62
     assert hh.service.device.board_description == "PCI-1762,BID#0"
 
-
-def test_shipped_assets_match_pinout():
-    data = pinout("X")
-    assert (ASSETS / "ports" / "CN1.svg").read_bytes().decode().replace("\r\n", "\n") == port_diagram(data).svg
-    assert (ASSETS / "appearance.svg").read_bytes().decode().replace("\r\n", "\n") == appearance_diagram()

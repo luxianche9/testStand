@@ -1,10 +1,10 @@
 # 四块板卡资料
 
-这些 PDF 用于人工查看和截取接线管理所需的硬件、端口图片，不会进入 AI Agent 或 MCP 工具上下文。
+这些 PDF 供人工查看针脚定义，适配器 `pinout.py` 的引脚数据据此录入；PDF 不会进入 AI Agent 或 MCP 工具上下文。
 
-## 推荐截图页
+## 针脚图所在页
 
-| 硬件 | 文档 | 推荐 PDF 页 | 内容 |
+| 硬件 | 文档 | PDF 页 | 内容 |
 | --- | --- | ---: | --- |
 | PCI-1710L | `Advantech_PCI-1710_Series_User_Manual.pdf` | 32 | 68 针 I/O Connector 完整针脚图，并注明 PCI-1710L 的 AO 相关针脚未定义 |
 | PCI-1762 | `Advantech_PCI-1762_User_Manual_Edition_1.pdf` | 16 | 62 针 I/O Connector 完整针脚图 |
@@ -18,8 +18,3 @@
 - PCI/cPCI-6208/6216-GL Series User Manual Rev. 4.02: ADLINK 厂商手册归档镜像，修订历史包含 3.22，PCI-6208V 针脚图已核对
 - CP-118U/138U Series Quick Installation Guide v6: Moxa QIG v6 镜像，Sixth Edition, May 2009
 
-截图后可在 HardwareHarness 接线管理的硬件库中展开对应硬件：
-
-1. 上传整块板卡或设备照片作为“硬件外观图”。
-2. 上传从上述页面截取的端口针脚图作为 Connector 的“端口图”。
-3. HardwareHarness 不校验图片内容，只在人工接线确认弹窗中展示端口图。

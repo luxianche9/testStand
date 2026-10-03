@@ -12,7 +12,6 @@ import pytest
 from hardwareharness_backend.devices import DeviceStore
 
 PREFIX = "packages/devices/src/device-store.test.ts::"
-PNG = bytes.fromhex("89504e470d0a1a0a0000000d49484452")
 
 
 def hardware(identifier: str) -> dict[str, Any]:
@@ -142,19 +141,16 @@ async def test_cascade(tmp_path: Path) -> None:
     assert store.require_hardware("CARD")["kind"] == "passive"
 
 
-@pytest.mark.ts_case(PREFIX + "round-trips a canonical hardware-only bundle with images")
+@pytest.mark.ts_case(PREFIX + "round-trips a canonical hardware-only bundle")
 async def test_bundle_roundtrip(tmp_path: Path) -> None:
     store = await fixture(tmp_path)
     await store.save_hardware(hardware("DUT_1"))
-    image = tmp_path / "port.png"
-    image.write_bytes(PNG)
-    await store.put_image("DUT_1", "J1", image)
     data = await store.export_bundle("DUT_1")
     assert b"credential" not in data
     await store.remove_hardware("DUT_1")
     result = await store.import_bundle(data)
     assert result["id"] == "DUT_1" and result["replaced"] is False
-    assert store.image_path("DUT_1", "ports/J1.png").read_bytes() == PNG
+    assert store.require_hardware("DUT_1")["ports"] == hardware("DUT_1")["ports"]
 
 
 @pytest.mark.ts_case(PREFIX + "previews a validated bundle without creating passive hardware")
@@ -199,31 +195,18 @@ async def test_unknown_fields(tmp_path: Path) -> None:
     assert "extra" not in raw and "kind" not in raw
 
 
-@pytest.mark.ts_case(PREFIX + "stores appearance images from raw bytes with magic-byte validation")
-async def test_image_bytes(tmp_path: Path) -> None:
-    store = await fixture(tmp_path)
-    await store.save_hardware(hardware("DUT_1"))
-    await store.put_image_bytes("DUT_1", None, PNG)
-    assert store.image_path("DUT_1", "appearance.png").read_bytes() == PNG
-    with pytest.raises(Exception, match="PNG, JPEG and WebP"):
-        await store.put_image_bytes("DUT_1", None, bytes([1, 2, 3]))
-
-
 @pytest.mark.ts_case(
     PREFIX + "validates a replacement bundle before touching the existing hardware directory"
 )
 async def test_validate_before_replace(tmp_path: Path) -> None:
     store = await fixture(tmp_path)
     await store.save_hardware(hardware("DUT_1"))
-    image = tmp_path / "port.png"
-    image.write_bytes(PNG)
-    await store.put_image("DUT_1", "J1", image)
     with zipfile.ZipFile(io.BytesIO(await store.export_bundle("DUT_1"))) as file:
-        entries = {name: file.read(name) for name in file.namelist() if name != "ports/J1.png"}
-    with pytest.raises(Exception, match="missing image"):
+        entries = {name: file.read(name) for name in file.namelist()}
+    entries["ports/J1.png"] = b"unexpected"
+    with pytest.raises(Exception, match="unexpected entry"):
         await store.import_bundle(archive(entries))
-    assert store.require_hardware("DUT_1")["ports"][0]["imageAssetId"] == "ports/J1.png"
-    assert store.image_path("DUT_1", "ports/J1.png").read_bytes() == PNG
+    assert store.require_hardware("DUT_1")["label"] == hardware("DUT_1")["label"]
 
 
 @pytest.mark.ts_case(

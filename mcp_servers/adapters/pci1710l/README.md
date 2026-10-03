@@ -2,7 +2,7 @@
 
 服务标识：`PCI1710L_MCP`。包 `hh_adapter_pci1710l`，入口 `python -m hardwareharness_device_sdk --adapter hh_adapter_pci1710l`。
 
-一个服务进程只管理一个硬件。公共工具（`get_server_info`、`list_hardware`、`get_hardware_info`、`lease_*` 心跳租约、`<prefix>_stream_read`）、信封格式、`/device` 声明（身份、说明、图片、引脚、流、能力）、`/assets/{path}` 和 `/streams/{id}` 数据通道由 SDK 提供，见 `mcp_servers/README.md`。超时或错误不表示物理动作没有发生：保留原错误，查询当前状态并取证后再决定下一步。
+一个服务进程只管理一个硬件。公共工具（`get_server_info`、`list_hardware`、`get_hardware_info`、`lease_*` 心跳租约、`<prefix>_stream_read`）、信封格式、`/device` 声明（身份、说明、引脚、流、能力）和 `/streams/{id}` 数据通道由 SDK 提供，见 `mcp_servers/README.md`。超时或错误不表示物理动作没有发生：保留原错误，查询当前状态并取证后再决定下一步。
 
 ## 设备语义
 
@@ -20,9 +20,6 @@
 - 采样只在有订阅时进行，与工具调用共用设备锁。位图用 hwcli 的 `read_mask` 命令一次读取；打开时探测，旧版 hwcli 退回 16 次 `read_bit`。
 - dry-run 下 AI 默认读 0.0 V；`HARDWARE_DRY_RUN_AI_NOISE=1` 时返回带噪声的演示值。
 
-## 图片
-
-`assets/appearance.svg`（板卡示意轮廓）和 `assets/ports/CN1.svg`（68 针 SCSI 引脚图）由 `pinout.py` 的 `appearance_diagram()`、`port_diagram()` 从引脚数据生成，是示意图而非照片；连接器视向（插合面/焊接面）未核实。修改引脚数据后用这两个函数重新生成文件，测试 `test_shipped_assets_match_pinout` 保证文件与数据一致。
 
 ## 构建、测试与部署
 

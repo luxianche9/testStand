@@ -57,9 +57,6 @@ export interface BackendApplication {
     setAdapterStatus(context: RequestContext, hardwareId: string, status: AdapterStatus): Promise<AdapterReleaseRecord>;
     saveHardware(context: RequestContext, input: Hardware): Promise<Hardware>;
     removeHardware(context: RequestContext, hardwareId: string): Promise<{ hardwareId: string }>;
-    setHardwareImageBytes(context: RequestContext, hardwareId: string, portId: string | undefined, bytes: Uint8Array, extensionHint?: string): Promise<Hardware>;
-    setHardwareImageFromPath(context: RequestContext, hardwareId: string, portId: string | undefined, sourcePath: string): Promise<Hardware>;
-    removeHardwareImage(context: RequestContext, hardwareId: string, portId?: string): Promise<Hardware>;
     exportBundle(context: RequestContext, hardwareId: string): Promise<Uint8Array>;
     importBundle(context: RequestContext, data: Uint8Array): Promise<BundleImport>;
     inspectBundle(context: RequestContext, data: Uint8Array): Promise<StoredHardwareDefinition>;

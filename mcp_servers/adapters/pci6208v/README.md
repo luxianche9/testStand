@@ -2,7 +2,7 @@
 
 服务标识：`PCI6208V_MCP`。包 `hh_adapter_pci6208v`，入口 `python -m hardwareharness_device_sdk --adapter hh_adapter_pci6208v`。
 
-一个服务进程只管理一个硬件。公共工具（`get_server_info`、`list_hardware`、`get_hardware_info`、`lease_*` 心跳租约、`<prefix>_stream_read`）、信封格式、`/device` 声明（身份、说明、图片、引脚、流、能力）、`/assets/{path}` 和 `/streams/{id}` 数据通道由 SDK 提供，见 `mcp_servers/README.md`。超时或错误不表示物理动作没有发生：保留原错误，查询当前状态并取证后再决定下一步。
+一个服务进程只管理一个硬件。公共工具（`get_server_info`、`list_hardware`、`get_hardware_info`、`lease_*` 心跳租约、`<prefix>_stream_read`）、信封格式、`/device` 声明（身份、说明、引脚、流、能力）和 `/streams/{id}` 数据通道由 SDK 提供，见 `mcp_servers/README.md`。超时或错误不表示物理动作没有发生：保留原错误，查询当前状态并取证后再决定下一步。
 
 ## 设备语义
 
@@ -17,15 +17,6 @@
 
 - `ao0`–`ao7`（scalar，`unit: "V"`，`kind: "setpoint"`）：每次成功写入（含 `safe_state` 和每个软件波形点）即发布软件影子，记录带调用的 `op`；不访问硬件，也不是测量值。
 
-## 图片
-
-`assets/appearance.svg`（板卡示意轮廓）和 `assets/ports/CN1.svg`（37 针 D-sub 引脚图）由 `pinout.py` 的 `appearance_diagram()`、`port_diagram()` 从引脚数据生成，是示意图而非照片；连接器视向（插合面/焊接面）未核实。修改引脚数据后重新生成：
-
-```powershell
-uv run python -c "from hh_adapter_pci6208v.pinout import *; open('adapters/pci6208v/src/hh_adapter_pci6208v/assets/ports/CN1.svg','w',newline='\n').write(port_diagram(pinout('X')).svg)"
-```
-
-测试 `test_shipped_assets_match_pinout` 保证文件与数据一致。
 
 ## 构建、测试与部署
 

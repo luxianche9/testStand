@@ -53,7 +53,6 @@ async def test_direct_completion_saves_same_port_pins_and_history(tmp_path: Path
             "pins": [{"a": "2", "b": "1"}, {"a": "3", "b": "4"}],
         }
     )
-    assert len(task["warnings"]) == 1
     assert projects.wiring()["connections"] == []
     result = await service.complete_task(task["wiringTaskId"], "confirmed")
     assert result["status"] == "confirmed"

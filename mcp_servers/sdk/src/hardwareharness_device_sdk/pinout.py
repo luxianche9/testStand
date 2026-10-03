@@ -1,15 +1,13 @@
 """Connector/pin reference models; each adapter ships its own data.
 
-The pinout is published inside ``/device`` (``pinout``); a connector may
-reference a port diagram in the adapter's ``assets/`` directory through
-:class:`ConnectorImage`, optionally with normalized pin positions on it.
+The pinout is published inside ``/device`` (``pinout``).
 """
 
 from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
 Direction = Literal["input", "output", "bidirectional", "passive", "power", "ground", "nc"]
 
@@ -35,29 +33,6 @@ class Pin(BaseModel):
     functions: tuple[PinFunction, ...]
 
 
-class PinPosition(BaseModel):
-    """Where a pin sits on its connector image, normalized to 0..1 (x right, y down)."""
-
-    model_config = ConfigDict(frozen=True)
-
-    pinId: str
-    x: float = Field(ge=0.0, le=1.0)
-    y: float = Field(ge=0.0, le=1.0)
-
-
-class ConnectorImage(BaseModel):
-    """Port diagram: ``asset`` is relative to the adapter package's ``assets/`` directory.
-
-    ``mediaType`` is derived from the file extension when omitted.
-    """
-
-    model_config = ConfigDict(frozen=True)
-
-    asset: str
-    mediaType: str | None = None
-    pinPositions: tuple[PinPosition, ...] = ()
-
-
 class Connector(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -66,7 +41,6 @@ class Connector(BaseModel):
     connectorType: str
     gender: str | None = None
     channelIndex: int | None = None
-    image: ConnectorImage | None = None
     pinIds: tuple[str, ...]
 
 
@@ -125,8 +99,6 @@ def single_connector_pinout(
     count: int,
     functions: dict[int, tuple[PinFunction, ...]],
     source: str,
-    *,
-    image: ConnectorImage | None = None,
 ) -> Pinout:
     connector_id = f"{hardware_id}.CN1"
     pins = tuple(
@@ -142,7 +114,6 @@ def single_connector_pinout(
         connectorId=connector_id,
         name="CN1",
         connectorType=f"{count}-pin",
-        image=image,
         pinIds=tuple(pin.pinId for pin in pins),
     )
     return Pinout(

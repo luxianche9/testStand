@@ -38,7 +38,6 @@ export function createMainHandlers(dependencies: DesktopIpcDependencies): Deskto
   return {
     "desktop.endpoint": handler(none, () => dependencies.endpoint()),
     "dialogs.exportText": handler(z.tuple([z.string().min(1), z.string()]), (path, content) => dialogs.exportText(path, content)),
-    "dialogs.chooseHardwareImage": handler(none, () => dialogs.chooseHardwareImage()),
     "dialogs.saveBundle": handler(
       z.tuple([deviceBundleKindSchema, z.string().min(1), z.instanceof(Uint8Array)]),
       (kind, id, data) => dialogs.saveBundle(kind, id, data)

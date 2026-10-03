@@ -24,7 +24,7 @@ def load_device(spec: str) -> type[Device]:
 def check(device_cls: type[Device]) -> int:
     """Run the compliance suite in-process against the dry-run simulator; never touches hardware.
 
-    Failures break the contract (exit 1); warnings (missing pictures or description) do not.
+    Failures break the contract (exit 1); warnings (missing description, idle streams) do not.
     """
     from .testing import check_device, dry_run_config
 

@@ -2,7 +2,6 @@ from typing import Any
 
 from hardwareharness_backend.contracts.validation import (
     array,
-    boolean,
     enum,
     number,
     obj,
@@ -22,7 +21,6 @@ project_canvas_node_schema = obj(
         "y": number(finite=True),
         "width": number(positive=True, finite=True).optional(),
         "height": number(positive=True, finite=True).optional(),
-        "showImage": boolean().default(True),
         "portPositions": record(port_position_schema).default({}),
     }
 )

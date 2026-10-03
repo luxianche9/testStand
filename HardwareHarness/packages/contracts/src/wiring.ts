@@ -12,7 +12,6 @@ export const projectCanvasNodeSchema = z.object({
   y: z.number().finite(),
   width: z.number().positive().finite().optional(),
   height: z.number().positive().finite().optional(),
-  showImage: z.boolean().default(true),
   portPositions: z.record(portPositionSchema).default({})
 });
 export type ProjectCanvasNode = z.infer<typeof projectCanvasNodeSchema>;
@@ -50,7 +49,6 @@ export interface WiringTask {
   completedAt?: string;
   operatorName?: string;
   message?: string;
-  warnings: string[];
 }
 /** One operator edit of a connection on the wiring canvas, kept in the project's runtime store. */
 export interface WiringChange {

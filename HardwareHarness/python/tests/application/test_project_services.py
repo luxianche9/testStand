@@ -57,9 +57,7 @@ async def test_documentary_canvas(tmp_path: Path) -> None:
     projects, wiring, _ = await fixture(tmp_path)
     projects.update_wiring(
         {
-            "nodes": [
-                {"hardwareId": "DUT_A", "x": 10, "y": 20, "showImage": True, "portPositions": {}}
-            ],
+            "nodes": [{"hardwareId": "DUT_A", "x": 10, "y": 20, "portPositions": {}}],
             "connections": [],
         }
     )
@@ -67,7 +65,7 @@ async def test_documentary_canvas(tmp_path: Path) -> None:
     task = await wiring.request_task(
         {"portA": "DUT_A.J1", "portB": "DUT_B.J1", "pins": pins, "action": "connect"}
     )
-    assert task["status"] == "pending" and len(task["warnings"]) > 0
+    assert task["status"] == "pending"
     assert (await wiring.start_task(task["wiringTaskId"], "tester"))["status"] == "in_progress"
     assert (await wiring.complete_task(task["wiringTaskId"], "confirmed"))["status"] == "confirmed"
     assert (

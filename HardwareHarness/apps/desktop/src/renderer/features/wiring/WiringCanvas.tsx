@@ -127,11 +127,9 @@ export function WiringCanvas({
 }
 
 /** Right-click menu for one node. Focuses its first item so the keyboard can drive it. */
-export function NodeContextMenu({ menu, showingImage, onEditPorts, onToggleImage, onRemove }: {
+export function NodeContextMenu({ menu, onEditPorts, onRemove }: {
   menu: NodeMenu;
-  showingImage: boolean;
   onEditPorts: () => void;
-  onToggleImage: () => void;
   onRemove: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -152,9 +150,6 @@ export function NodeContextMenu({ menu, showingImage, onEditPorts, onToggleImage
       style={{ left: menu.x, top: menu.y }}
     >
       <button type="button" role="menuitem" className={itemClass} onClick={onEditPorts}>改变端口位置</button>
-      <button type="button" role="menuitem" className={itemClass} onClick={onToggleImage}>
-        {showingImage ? "隐藏图片" : "显示图片"}
-      </button>
       <div role="separator" className="my-0.5 h-px bg-line" />
       <button
         type="button"

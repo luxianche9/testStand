@@ -127,7 +127,6 @@ hardware_port_schema = obj(
         "portId": string(1),
         "name": string(1),
         "pins": array(hardware_pin_schema).default([]),
-        "imageAssetId": string(1).optional(),
     }
 )
 stored_hardware_definition_schema = obj(
@@ -136,7 +135,6 @@ stored_hardware_definition_schema = obj(
         "hardwareId": string(1),
         "label": string(1),
         "ports": array(hardware_port_schema).default([]),
-        "appearanceAssetId": string(1).optional(),
     }
 )
 
@@ -171,14 +169,10 @@ hardware_schema = obj(
         "serverId": string(1).optional(),
         "computerId": string(1).optional(),
         "ports": array(hardware_port_schema).default([]),
-        "appearanceAssetId": string(1).optional(),
         # Managed hardware only, derived from the adapter record; ignored when saving.
         "adapterStatus": adapter_status_schema.optional(),
     }
 ).refine(_hardware_issues)
-hardware_image_target_schema = obj(
-    {"hardwareId": string(1), "portId": string(1).optional()}, strict=True
-)
 device_bundle_kind_schema = literal("hardware")
 device_bundle_apply_input_schema = obj(
     {
@@ -228,10 +222,6 @@ def adapter_release_gaps(record: Record) -> list[str]:
     return [gate for gate in ADAPTER_GATES if not record.get(gate)]
 
 
-def parse_hardware_image_target(value: Any) -> Record:
-    return parse_record(hardware_image_target_schema, value)
-
-
 def parse_device_bundle_apply_input(value: Any) -> Record:
     return parse_record(device_bundle_apply_input_schema, value)
 
@@ -239,5 +229,4 @@ def parse_device_bundle_apply_input(value: Any) -> Record:
 parse_computer_id_input = parse_id_input
 parse_server_id_input = parse_id_input
 parse_hardware_id_input = parse_id_input
-parse_asset_id_input = parse_id_input
 parse_device_bundle_id_input = parse_id_input

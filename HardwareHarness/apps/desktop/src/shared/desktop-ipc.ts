@@ -15,7 +15,6 @@ export interface LocalApiEndpoint {
 
 export interface DesktopDialogsPort {
   exportText(defaultPath: string, content: string): Promise<string | null>;
-  chooseHardwareImage(): Promise<string | null>;
   saveBundle(kind: DeviceBundleKind, id: string, data: Uint8Array): Promise<DeviceBundleExport | null>;
   openBundle(kind: DeviceBundleKind): Promise<Uint8Array | null>;
   chooseProjectFolder(): Promise<string | null>;

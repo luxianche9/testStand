@@ -29,20 +29,6 @@ def documents() -> dict[str, bytes]:
     }
 
 
-async def test_image_filesystem_failures_raise_os_errors(tmp_path: Path) -> None:
-    store = DeviceStore(tmp_path)
-    await store.initialize()
-    with pytest.raises(FileNotFoundError):
-        await store.put_image("H", None, tmp_path / "missing.png")
-    with pytest.raises(OSError):
-        await store.put_image("H", None, tmp_path)
-    await store.save_hardware({"hardwareId": "H", "label": "Hardware", "kind": "passive"})
-    store.image_path("H", "appearance.png").mkdir()
-    with pytest.raises(IsADirectoryError):
-        await store.put_image_bytes("H", None, b"\x89PNG\r\n\x1a\n")
-    assert "appearanceAssetId" not in store.require_hardware("H")
-
-
 async def test_bundle_json_decoding_order_bom_and_zod_required(tmp_path: Path) -> None:
     store = DeviceStore(tmp_path)
     await store.initialize()

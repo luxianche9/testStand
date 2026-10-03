@@ -4,8 +4,6 @@ import { resolvePortRef } from "../../lib/hardware.js";
 import {
   DEFAULT_CARD_HEIGHT,
   DEFAULT_CARD_WIDTH,
-  MIN_CARD_HEIGHT_LABEL,
-  assetKey,
   clampCardHeight,
   clampCardWidth,
   connectionSignal,
@@ -17,7 +15,6 @@ import {
 
 /** Shared by the editable canvas and the read-only welcome-page preview. */
 export type FlowNodeOptions = {
-  imageUrls: Record<string, string>;
   interactive: boolean;
   editingHardwareId?: string | undefined;
   movePort: (hardwareId: string, portId: string, side: PortSide, offset: number) => void;
@@ -40,12 +37,8 @@ export function toFlowNode(
   fallback: Hardware,
   options: FlowNodeOptions
 ): HardwareFlowNode {
-  const showImage = node.showImage !== false;
   const width = clampCardWidth(node.width ?? DEFAULT_CARD_WIDTH);
-  const height = clampCardHeight(
-    node.height ?? (showImage ? DEFAULT_CARD_HEIGHT : MIN_CARD_HEIGHT_LABEL + 8),
-    showImage
-  );
+  const height = clampCardHeight(node.height ?? DEFAULT_CARD_HEIGHT);
   const readOnly = options.interactive ? {} : { draggable: false, selectable: false, focusable: false };
   return {
     id: node.hardwareId,
@@ -59,10 +52,6 @@ export function toFlowNode(
     data: {
       hardware: item ?? fallback,
       resolved: Boolean(item),
-      imageUrl: item?.appearanceAssetId
-        ? options.imageUrls[assetKey(item.hardwareId, item.appearanceAssetId)]
-        : undefined,
-      showImage,
       // Nodes placed by the Agent or older projects may carry no positions; never stack ports on one spot.
       portPositions: {
         ...defaultPortPositions((item ?? fallback).ports.map((port) => port.portId)),

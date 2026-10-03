@@ -140,16 +140,14 @@ export type HardwarePin = z.infer<typeof hardwarePinSchema>;
 export const hardwarePortSchema = z.object({
   portId: z.string().min(1),
   name: z.string().min(1),
-  pins: z.array(hardwarePinSchema).default([]),
-  imageAssetId: z.string().min(1).optional()
+  pins: z.array(hardwarePinSchema).default([])
 });
 export type HardwarePort = z.infer<typeof hardwarePortSchema>;
 
 const hardwareFields = {
   hardwareId: z.string().min(1),
   label: z.string().min(1),
-  ports: z.array(hardwarePortSchema).default([]),
-  appearanceAssetId: z.string().min(1).optional()
+  ports: z.array(hardwarePortSchema).default([])
 };
 export const storedHardwareDefinitionSchema = z.object({ formatVersion: z.literal(2).default(2), ...hardwareFields });
 export type StoredHardwareDefinition = z.infer<typeof storedHardwareDefinitionSchema>;
@@ -179,7 +177,6 @@ export const hardwareSchema = z.object({
   serverId: z.string().min(1).optional(),
   computerId: z.string().min(1).optional(),
   ports: z.array(hardwarePortSchema).default([]),
-  appearanceAssetId: z.string().min(1).optional(),
   /** Managed hardware only, derived by the backend from the adapter record. */
   adapterStatus: adapterStatusSchema.optional()
 }).superRefine((value, context) => {
@@ -198,10 +195,6 @@ export const hardwareSchema = z.object({
 });
 export type Hardware = z.infer<typeof hardwareSchema>;
 export const hardwareIdInputSchema = z.object({ id: z.string().min(1) }).strict();
-export const assetIdInputSchema = z.object({ id: z.string().min(1) }).strict();
-
-export const hardwareImageTargetSchema = z.object({ hardwareId: z.string().min(1), portId: z.string().min(1).optional() }).strict();
-export type HardwareImageTarget = z.infer<typeof hardwareImageTargetSchema>;
 export type HardwareAvailabilityState = "checking" | "available" | "unavailable" | "faulted";
 export interface HardwareAvailability {
   hardwareId: string;
@@ -226,7 +219,6 @@ export const deviceBundleApplyInputSchema = z.object({
 export type DeviceBundleApplyInput = z.infer<typeof deviceBundleApplyInputSchema>;
 
 /** A managed device's own declaration (`GET /device`), as the terminal last cached it (§9.7). */
-export interface DeviceDeclaredImage { asset: string; assetId?: string; mediaType: string; width?: number; height?: number }
 export interface DeviceDeclaredPinFunction { signal: string; direction: string; electricalType: string; channelKind?: string; channelIndex?: number; mode?: string; description?: string }
 export interface DeviceDeclaredPin { pinId: string; connectorId: string; position: number | string; functions: DeviceDeclaredPinFunction[] }
 export interface DeviceDeclaredConnector {
@@ -235,7 +227,6 @@ export interface DeviceDeclaredConnector {
   connectorType: string;
   gender?: string;
   channelIndex?: number;
-  image?: DeviceDeclaredImage & { pinPositions?: { pinId: string; x: number; y: number }[] };
   pinIds: string[];
 }
 export interface DeviceDeclaration {
@@ -252,7 +243,6 @@ export interface DeviceDeclaration {
     dryRun?: boolean;
   };
   description?: string;
-  images?: { appearance?: DeviceDeclaredImage };
   pinout?: { connectors: DeviceDeclaredConnector[]; pins: DeviceDeclaredPin[]; activeMode?: string; modes?: unknown; hardwareRevision?: string } | null;
   streams?: Record<string, unknown>[];
   capabilities?: Record<string, unknown>;

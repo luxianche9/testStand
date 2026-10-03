@@ -18,7 +18,7 @@ from mcp.server.fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 from starlette.applications import Starlette
 from starlette.requests import Request
-from starlette.responses import JSONResponse, Response
+from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from ._version import __version__
@@ -30,7 +30,7 @@ from .errors import INVALID_ARGUMENT, NOT_SUPPORTED, DeviceError
 from . import lease as lease_rules
 from .lease import HEARTBEAT_INTERVAL_MS, Lease, LeaseTable
 from .lifecycle import HardwareManager
-from .manifest import AssetError, Manifest, build_manifest, media_type, resolve_asset
+from .manifest import Manifest, build_manifest
 from .operation import CURRENT, Operation
 from .sim import execution_mode
 from .sse import stream_events
@@ -563,19 +563,6 @@ class DeviceService:
         async def device(_: Request) -> JSONResponse:
             return JSONResponse(self.manifest().document)
 
-        async def asset(request: Request) -> Response:
-            path = request.path_params["path"]
-            try:
-                target = resolve_asset(type(self.device).assets_dir(), path)
-                content = await asyncio.to_thread(target.read_bytes)
-            except FileNotFoundError:
-                return JSONResponse({"error": "not_found", "path": path}, status_code=404)
-            except AssetError as exc:
-                return JSONResponse({"error": "invalid_asset", "message": str(exc)}, status_code=400)
-            return Response(content, media_type=media_type(path),
-                            headers={"Cache-Control": "no-cache", "X-Content-Type-Options": "nosniff",
-                                     "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'"})
-
         async def admin_shutdown(_: Request) -> JSONResponse:
             return JSONResponse(await self.prepare_shutdown())
 
@@ -584,7 +571,6 @@ class DeviceService:
 
         app.add_route("/health", health, methods=["GET"])
         app.add_route("/device", device, methods=["GET"])
-        app.add_route("/assets/{path:path}", asset, methods=["GET"])
         app.add_route("/admin/shutdown", admin_shutdown, methods=["POST"])
         app.add_route("/time", server_time, methods=["GET"])
         app.add_route("/streams/{streamId}", stream_events, methods=["GET"])

@@ -246,7 +246,7 @@ async def test_events_stream_over_sse_and_resume_after_the_last_id(
     assert received == [events[1]]
 
 
-async def test_binary_bundle_and_omitted_image_port(client: Client) -> None:
+async def test_binary_bundle_round_trip(client: Client) -> None:
     await client.invoke(
         "devices.saveHardware",
         {
@@ -259,16 +259,6 @@ async def test_binary_bundle_and_omitted_image_port(client: Client) -> None:
             }
         },
     )
-    png = bytes.fromhex("89504e470d0a1a0a0000000d49484452")
-    saved = await client.invoke(
-        "devices.setHardwareImageBytes",
-        {"hardwareId": "CARD", "data": base64.b64encode(png).decode(), "extensionHint": ".png"},
-    )
-    path = await client.host(
-        "desktop.resolveImagePath",
-        {"hardwareId": "CARD", "assetId": saved["appearanceAssetId"]},
-    )
-    assert Path(path).read_bytes() == png
     exported = base64.b64decode(await client.invoke("devices.exportBundle", {"hardwareId": "CARD"}))
     assert exported.startswith(b"PK")
     await client.invoke("devices.removeHardware", {"hardwareId": "CARD"})
@@ -276,7 +266,6 @@ async def test_binary_bundle_and_omitted_image_port(client: Client) -> None:
         "devices.importBundle", {"data": base64.b64encode(exported).decode()}
     )
     assert imported == {"id": "CARD", "label": "中文卡", "replaced": False}
-    assert Path(path).read_bytes() == png
 
 
 async def test_partial_settings_commit_is_visible_after_a_failed_save(

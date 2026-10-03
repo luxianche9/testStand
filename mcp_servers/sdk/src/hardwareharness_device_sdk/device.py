@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import sys
 import threading
 from collections.abc import Callable
-from pathlib import Path
 from typing import Any, ClassVar, TypeVar
 
 from .config import ServerConfig
@@ -31,10 +29,7 @@ class Device:
     right after ``open`` and before ``close``, and retries a failed ``open``.
 
     ``/device`` is generated from the class attributes, :meth:`pinout`,
-    :meth:`capability_details`, the stream registry and the package's
-    ``assets/`` directory (next to the module defining the class):
-    ``appearance_image`` names the device picture relative to ``assets/``;
-    when unset, the first ``assets/appearance.{png,jpg,jpeg,webp,svg}`` is used.
+    :meth:`capability_details` and the stream registry.
     """
 
     manufacturer: ClassVar[str] = ""
@@ -46,10 +41,6 @@ class Device:
     description: ClassVar[str] = ""
     """One-paragraph human description for ``/device.description``."""
     hardware_revision: ClassVar[str | None] = None
-    appearance_image: ClassVar[str | None] = None
-    """Device picture relative to ``assets/``; ``None`` uses the ``assets/appearance.*`` convention."""
-    assets_path: ClassVar[str | Path | None] = None
-    """Override the ``assets/`` directory (default: ``assets`` next to the adapter module)."""
 
     def __init__(self, config: ServerConfig) -> None:
         self.config = config
@@ -72,15 +63,6 @@ class Device:
             self.simulated_driver = True
             return simulated()
         return real()
-
-    @classmethod
-    def assets_dir(cls) -> Path:
-        """Directory ``/assets/{path}`` serves from; nothing outside it is ever served."""
-        if cls.assets_path is not None:
-            return Path(cls.assets_path)
-        module = sys.modules.get(cls.__module__)
-        source = getattr(module, "__file__", None)
-        return (Path(source).parent if source else Path.cwd()) / "assets"
 
     def tool_name(self, name: str) -> str:
         return f"{self.prefix}_{name}"

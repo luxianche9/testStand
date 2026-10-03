@@ -86,12 +86,6 @@ async def register(
     await store.save_server(server)
     firedap = json.loads((model_root / "firedap.hardware.json").read_text(encoding="utf-8"))
     await store.save_hardware(firedap)
-    await store.put_image_bytes(
-        firedap["hardwareId"],
-        None,
-        (model_root / "images/firedap-appearance.png").read_bytes(),
-        "appearance.png",
-    )
     await store.import_bundle(bundle)
     shutil.copyfile(model_root / "model.json", user_data / "devices/hardware/DUT_1/model.json")
     await secrets.flush()

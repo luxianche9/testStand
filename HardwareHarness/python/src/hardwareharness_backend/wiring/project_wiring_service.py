@@ -32,7 +32,6 @@ class WiringHardwareCatalogPort(Protocol):
     def get_hardware(self, hardware_id: str) -> Record: ...
     def resolve_port(self, port_ref: str) -> Record: ...
     def validate_pins(self, port_a: str, port_b: str, pins: list[Record]) -> None: ...
-    def warnings_for_ports(self, port_a: str, port_b: str) -> list[str]: ...
 
 
 class ProjectWiringService:
@@ -96,7 +95,6 @@ class ProjectWiringService:
                 "y": 80 + math.floor(index / 3) * 240,
                 "width": 220,
                 "height": 168,
-                "showImage": True,
                 "portPositions": default_port_positions(
                     [port["portId"] for port in hardware["ports"]]
                 ),
@@ -149,7 +147,6 @@ class ProjectWiringService:
             "status": "pending",
             "requestedAt": iso_from_ms(now),
             "expiresAt": iso_from_ms(now + timeout_ms),
-            "warnings": self.catalog.warnings_for_ports(port_a, port_b),
         }
         if input.get("requestedBy"):
             task["operatorName"] = input["requestedBy"]

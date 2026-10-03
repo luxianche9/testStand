@@ -2,7 +2,7 @@
 
 服务标识：`CP118U_I_MCP`。包 `hh_adapter_cp118u_i`，入口 `python -m hardwareharness_device_sdk --adapter hh_adapter_cp118u_i`。
 
-一个服务进程只管理一个硬件。公共工具（`get_server_info`、`list_hardware`、`get_hardware_info`、`lease_*` 心跳租约、`<prefix>_stream_read/transact`）、信封格式、`/device` 声明（身份、说明、图片、引脚、流、能力）、`/assets/{path}` 和 `/streams/{id}` 数据通道由 SDK 提供，见 `mcp_servers/README.md`。超时或错误不表示物理动作没有发生：保留原错误，查询当前状态并取证后再决定下一步。
+一个服务进程只管理一个硬件。公共工具（`get_server_info`、`list_hardware`、`get_hardware_info`、`lease_*` 心跳租约、`<prefix>_stream_read/transact`）、信封格式、`/device` 声明（身份、说明、引脚、流、能力）和 `/streams/{id}` 数据通道由 SDK 提供，见 `mcp_servers/README.md`。超时或错误不表示物理动作没有发生：保留原错误，查询当前状态并取证后再决定下一步。
 
 ## 设备语义
 
@@ -21,9 +21,6 @@
 - `cp118u_safe_state` 丢弃全部端口待发送 TX，保留 RX 证据；原服务没有安全工具，SDK 合规要求提供。
 - dry-run 默认不产生 RX；设置 `HARDWARE_DRY_RUN_SERIAL_LOOPBACK=1` 让 TX 回环到 RX，便于无回环插头演示。
 
-## 图片
-
-`assets/appearance.svg`（板卡示意轮廓）和 `assets/ports/DB9.svg`（P1–P8 共用，引脚标签按 RS-232 / RS-422、4 线 RS-485 / 2 线 RS-485 排列）由 `pinout.py` 的 `appearance_diagram()`、`port_diagram()` 从引脚数据生成，是示意图而非照片；连接器视向（插合面/焊接面）未核实。修改引脚数据后用这两个函数重新生成文件，测试 `test_shipped_assets_match_pinout` 保证文件与数据一致。
 
 ## 构建、测试与部署
 

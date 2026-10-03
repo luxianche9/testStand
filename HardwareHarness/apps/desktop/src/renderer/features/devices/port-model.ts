@@ -13,20 +13,6 @@ function renumber(pins: HardwarePort["pins"]): HardwarePort["pins"] {
   return pins.map((pin, index) => ({ ...pin, position: index + 1 }));
 }
 
-/**
- * The image lives at a path derived from portId, so a rename would orphan it. Dropping the
- * reference is honest: the picture no longer belongs to a port that exists.
- */
-export function renamePort(port: HardwarePort, portId: string): HardwarePort {
-  const { imageAssetId: _dropped, ...rest } = port;
-  return { ...(port.imageAssetId ? rest : port), portId };
-}
-
-export function withoutImage(port: HardwarePort): HardwarePort {
-  const { imageAssetId: _removed, ...rest } = port;
-  return rest;
-}
-
 export function addPin(port: HardwarePort): HardwarePort {
   const pinId = uniqueId("", new Set(port.pins.map((entry) => entry.pinId)));
   return { ...port, pins: [...port.pins, { pinId, position: port.pins.length + 1, label: "" }] };

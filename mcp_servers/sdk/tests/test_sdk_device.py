@@ -1,60 +1,30 @@
-"""/device declaration, /assets and heartbeat leases (contract 2026-10-01.1)."""
+"""/device declaration and heartbeat leases (contract 2026-10-01.1)."""
 
 from __future__ import annotations
 
 import hashlib
-import struct
 import time
-import zlib
-from pathlib import Path
 
-import pytest
 
 from hardwareharness_device_sdk import (
     CONTRACT_REVISION,
-    ConnectorImage,
-    PinPosition,
     __version__,
     function,
     single_connector_pinout,
 )
 from hardwareharness_device_sdk import lease as lease_rules
-from hardwareharness_device_sdk.manifest import AssetError, canonical_json, image_size, resolve_asset
+from hardwareharness_device_sdk.manifest import canonical_json
 from hardwareharness_device_sdk.testing import check_device, serve
 
 from sdk_demo import DemoDevice
 
-SVG = b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200"><rect width="320" height="200"/></svg>'
+class Pinned(DemoDevice):
+    hardware_revision = "B1"
 
-
-def png(width: int, height: int) -> bytes:
-    def chunk(kind: bytes, data: bytes) -> bytes:
-        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
-    raw = b"".join(b"\0" + b"\0\0\0" * width for _ in range(height))
-    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
-            + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b""))
-
-
-@pytest.fixture
-def pictured(tmp_path: Path) -> type[DemoDevice]:
-    (tmp_path / "ports").mkdir()
-    (tmp_path / "appearance.svg").write_bytes(SVG)
-    (tmp_path / "ports" / "CN1.png").write_bytes(png(4, 2))
-    (tmp_path.parent / "secret.png").write_bytes(png(1, 1))
-
-    class Pictured(DemoDevice):
-        assets_path = tmp_path
-        hardware_revision = "B1"
-
-        def pinout(self):
-            outputs = {index + 1: (function(f"DO{index}", "output", "ttl", channel_kind="DO", channel_index=index),)
-                       for index in range(4)}
-            image = ConnectorImage(asset="ports/CN1.png", pinPositions=(
-                PinPosition(pinId=f"{self.hardware_id}.CN1.1", x=0.1, y=0.5),))
-            return single_connector_pinout(self.hardware_id, self.manufacturer, self.model, 5, outputs,
-                                           "demo manual", image=image)
-
-    return Pictured
+    def pinout(self):
+        outputs = {index + 1: (function(f"DO{index}", "output", "ttl", channel_kind="DO", channel_index=index),)
+                   for index in range(4)}
+        return single_connector_pinout(self.hardware_id, self.manufacturer, self.model, 5, outputs, "demo manual")
 
 
 def test_device_declaration_shape(hh):
@@ -66,7 +36,7 @@ def test_device_declaration_shape(hh):
                                     "model": "DEMO-1", "adapter": {"name": "sdk_demo", "version": "1.2.3"},
                                     "sdkVersion": __version__, "dryRun": True}
     assert document["description"].startswith("Demo board")
-    assert document["images"] == {} and document["pinout"] is None
+    assert document["pinout"] is None
     assert document["streams"] == [
         {"id": "di", "type": "bits", "width": 4, "bitLabels": ["DI0", "DI1", "DI2", "DI3"], "rateHz": 50.0},
         {"id": "ai0", "type": "scalar", "unit": "V", "rateHz": 50.0, "label": "AI0"},
@@ -91,66 +61,12 @@ def test_manifest_revision_is_sha256_of_canonical_body(hh):
     assert hh.client.get("/health").json()["manifestRevision"] == revision
 
 
-def test_device_declaration_with_assets(pictured):
-    with serve(pictured) as hh:
+def test_device_declaration_with_pinout():
+    with serve(Pinned) as hh:
         document = hh.get("/device").json()
         assert document["identity"]["hardwareRevision"] == "B1"
-        assert document["images"] == {"appearance": {"asset": "appearance.svg", "mediaType": "image/svg+xml",
-                                                     "width": 320, "height": 200}}
-        connector = document["pinout"]["connectors"][0]
-        assert connector["image"] == {"asset": "ports/CN1.png", "mediaType": "image/png",
-                                      "pinPositions": [{"pinId": "DEMO1_1.CN1.1", "x": 0.1, "y": 0.5}]}
-        # The revision covers the asset bytes as well as the JSON.
-        body = {key: value for key, value in document.items() if key != "manifestRevision"}
-        digest = hashlib.sha256(canonical_json(body))
-        for path in ("appearance.svg", "ports/CN1.png"):
-            digest.update(b"\0" + path.encode() + b"\0" + (pictured.assets_path / path).read_bytes())
-        assert document["manifestRevision"] == f"sha256:{digest.hexdigest()}"
-        before = document["manifestRevision"]
-        (pictured.assets_path / "ports" / "CN1.png").write_bytes(png(8, 2))
-        assert hh.get("/device").json()["manifestRevision"] != before
-
-        served = hh.get("/assets/appearance.svg")
-        assert served.status_code == 200 and served.content == SVG
-        assert served.headers["content-type"].startswith("image/svg+xml")
-        assert served.headers["x-content-type-options"] == "nosniff"
-        assert "default-src 'none'" in served.headers["content-security-policy"]
-        assert hh.get("/assets/ports/CN1.png").content[:8] == b"\x89PNG\r\n\x1a\n"
-        assert hh.get("/assets/appearance.svg", token="").status_code == 401
-        assert hh.get("/assets/missing.svg").status_code == 404
-        for bad in ("%2E%2E/secret.png", "ports/%2E%2E/%2E%2E/secret.png", "ports%5CCN1.png", "notes.txt"):
-            assert hh.get(f"/assets/{bad}").status_code == 400, bad
-    warnings: list[str] = []
-    assert check_device(pictured, warnings=warnings) == []
-    assert not any("image" in warning for warning in warnings)
-
-
-def test_invalid_asset_references_fail_compliance(pictured):
-    class Broken(pictured):
-        appearance_image = "../outside.png"
-
-        def pinout(self):
-            image = ConnectorImage(asset="ports/CN1.png", mediaType="image/jpeg",
-                                   pinPositions=(PinPosition(pinId="elsewhere.1", x=0, y=0),))
-            return single_connector_pinout(self.hardware_id, self.manufacturer, self.model, 2, {}, "x", image=image)
-
-    failures = check_device(Broken)
-    assert any("appearance_image" in failure and ".." in failure for failure in failures)
-    assert any("mediaType image/jpeg does not match image/png" in failure for failure in failures)
-    assert any("pinPositions name pins not on this connector" in failure for failure in failures)
-
-
-def test_resolve_asset_rules(tmp_path):
-    (tmp_path / "a.svg").write_bytes(SVG)
-    (tmp_path / "big.png").write_bytes(b"\0" * ((2 << 20) + 1))
-    assert resolve_asset(tmp_path, "a.svg") == (tmp_path / "a.svg").resolve()
-    for bad in ("", "/a.svg", "../a.svg", "./a.svg", "x/../a.svg", "a\\b.svg", "C:a.svg", "a.txt", "big.png"):
-        with pytest.raises(AssetError):
-            resolve_asset(tmp_path, bad)
-    with pytest.raises(FileNotFoundError):
-        resolve_asset(tmp_path, "gone.webp")
-    assert image_size(png(3, 7), "image/png") == (3, 7)
-    assert image_size(b'<svg width="10px" height="20">', "image/svg+xml") == (10, 20)
+        assert document["pinout"]["connectors"][0]["pinIds"][0] == "DEMO1_1.CN1.1"
+    assert check_device(Pinned) == []
 
 
 # --- leases -------------------------------------------------------------

@@ -1,6 +1,6 @@
-"""Rebuild the HardwareHarness catalog, detailed model and source crops from the user's PDFs.
+"""Rebuild the HardwareHarness catalog and detailed model from the user's PDFs.
 
-Run with a Python containing pymupdf and openpyxl; --docs selects the document root.
+Run with a Python containing openpyxl; --docs selects the document root.
 Connector pin numbers are schematic/contact numbers, never an inferred viewing order.
 """
 from __future__ import annotations
@@ -13,7 +13,6 @@ import zipfile
 from pathlib import Path
 
 import openpyxl
-import pymupdf
 
 OUT = Path(__file__).resolve().parent
 HID = "DUT_1"
@@ -74,13 +73,6 @@ PORTS = [
 # above are source notes, not exported hardware ports.
 COMMON_REFS = {"J1", "J45", "CN2", "CN3", "J87", "JACK1", "J8", "J24", "J13", "J15", "CON1", "CON2", "J82", "J5"}
 JUMPER_REFS = {"J40", "J69", "J70", "J80", "J81", "J63", "J64", "J65", "J66", "J83", "J84", "J85", "J73", "J77", "J78"}
-# Clip rectangles in the 1.7x preview coordinate system, scaled back to PDF points.
-CROPS = {"J1":(442,720,620,970), "J45":(25,720,429,972), "CN2":(53,115,683,628),
-         "CN3":(737,115,1369,625), "J87":(1033,689,1382,834), "JACK1":(42,46,378,270),
-         "J8":(50,110,230,427), "J24":(34,464,310,707), "J13":(244,527,638,722),
-         "J15":(57,765,657,965), "CON1":(1140,46,1384,249), "CON2":(1140,248,1384,515),
-         "J82":(753,751,1050,958), "J5":(50,508,480,719)}
-
 RESOURCES = [
     {"ref":"U19", "name":"STM32F407ZGT6", "kind":"MCU", "clockHzMax":168000000,
      "flashBytes":1048576, "sramBytes":196608, "sramBreakdown":"112 KiB SRAM1 + 16 KiB SRAM2 + 64 KiB CCM; separate 4 KiB backup SRAM",
@@ -149,20 +141,7 @@ def build(docs: Path):
     dap = next(docs.glob("5-*/*DAP高速*/1-*.pdf"))
     sources = [{"id":key,"path":str(path),"sha256":hashlib.sha256(path.read_bytes()).hexdigest()}
                for key,path in [("schematic",schematic),("spec",spec),("io",xlsx),("dap",dap)]]
-    doc = pymupdf.open(schematic)
-    images = OUT / "images"
-    images.mkdir(exist_ok=True)
-    specdoc = pymupdf.open(spec)
-    # Largest embedded bitmap on the board appearance page, excluding the company logo.
-    img = max(specdoc[9].get_images(full=True), key=lambda item: item[2] * item[3])
-    pix = pymupdf.Pixmap(specdoc, img[0])
-    if pix.n > 4:
-        pix = pymupdf.Pixmap(pymupdf.csRGB, pix)
-    pix.save(images / "appearance.png")
     selected = [entry for entry in PORTS if entry[0] in COMMON_REFS]
-    for ref,_,_,page,_ in selected:
-        box = pymupdf.Rect([v / 1.7 for v in CROPS[ref]])
-        doc[page-1].get_pixmap(matrix=pymupdf.Matrix(2.5,2.5),clip=box).save(images / f"{ref}.png")
     # All GPIO alternates and package pin numbers in the vendor spreadsheet are preserved.
     workbook = openpyxl.load_workbook(xlsx, data_only=True)
     io_rows = [{"sheet":sheet.title,"row":index,"values":list(row)} for sheet in workbook
@@ -184,12 +163,12 @@ def build(docs: Path):
         for index,signal in enumerate(signals.split(),1):
             pin_id=f"{port_id}.{index}"
             pins.append({"pinId":pin_id,"position":index,"label":signal})
-        ports.append({"portId":port_id,"name":f"{ref} · {title}","pins":pins,"imageAssetId":f"ports/{port_id}.png"})
+        ports.append({"portId":port_id,"name":f"{ref} · {title}","pins":pins})
         detailed.append({"ref":ref,"portId":port_id,"title":title,"connectorType":connector,
                          "pinNumbering":"External contact labels: 1=center positive, 2=outer ground; schematic pads 2/3 both connect to ground" if ref == "JACK1" else "Connector contact/pin numbers as shown in the schematic; not an arbitrary photo viewing order",
                          "source":{"id":"schematic","page":page},"pins":[{**pin,"net":pin["label"].split('/')[0],
                          **({"mcu":alternates[pin["label"].split('/')[0]]} if pin["label"].split('/')[0] in alternates else {})} for pin in pins]})
-    hardware={"formatVersion":2,"hardwareId":HID,"label":"野火 STM32F407 霸天虎 V2（STM32F407ZGT6）","kind":"passive","appearanceAssetId":"appearance.png","ports":ports}
+    hardware={"formatVersion":2,"hardwareId":HID,"label":"野火 STM32F407 霸天虎 V2（STM32F407ZGT6）","kind":"passive","ports":ports}
     save(OUT / "hardware.json", hardware)
     configurations = [{"ref":ref,"name":title,"sourcePage":page,
                        "contacts":[{"position":i,"signal":s} for i,s in enumerate(signals.split(),1)]}
@@ -222,9 +201,6 @@ def build(docs: Path):
     with zipfile.ZipFile(OUT / "stm32-batianhu-v2.hhhw", "w",zipfile.ZIP_DEFLATED) as archive:
         archive.writestr("bundle.json",json.dumps({"formatVersion":2,"kind":"hardware","id":HID}))
         archive.writestr("hardware.json",json.dumps({k:v for k,v in hardware.items() if k!='kind'},ensure_ascii=False))
-        archive.write(images / "appearance.png","appearance.png")
-        for port,entry in zip(ports,detailed):
-            archive.write(images / f'{entry["ref"]}.png',port["imageAssetId"])
     # FireDAP's 5-pin order comes from its straight-through cable to board J1 and enclosure labels.
     fhid="LOCAL_MCP.FIREDAP_0"
     fports=[]
@@ -237,9 +213,7 @@ def build(docs: Path):
         fports.append({"portId":pid,"name":title,"pins":[{"pinId":f"{pid}.{i}","position":i,"label":s} for i,s in enumerate(signals.split(),1)]})
     pid=f"{fhid}.USB"
     fports.append({"portId":pid,"name":"USB Type-C 上行（整根 USB 数据线）","pins":[]})
-    dapdoc=pymupdf.open(dap)
-    dapdoc[0].get_pixmap(matrix=pymupdf.Matrix(2,2),clip=pymupdf.Rect(80,100,480,465)).save(images/'firedap-appearance.png')
-    firedap={"formatVersion":2,"hardwareId":fhid,"kind":"managed","serverId":"FIREDAP_MCP","computerId":"LOCAL_PC","appearanceAssetId":"appearance.png",
+    firedap={"formatVersion":2,"hardwareId":fhid,"kind":"managed","serverId":"FIREDAP_MCP","computerId":"LOCAL_PC",
              "label":"野火 FireDAP · STM32 烧录器（本机）","ports":fports}
     save(OUT / "firedap.hardware.json",firedap)
     save(OUT / "firedap.pinout.json",{"hardwareId":fhid,"manufacturer":"Embedfire","model":"fireDAP CMSIS-DAP",

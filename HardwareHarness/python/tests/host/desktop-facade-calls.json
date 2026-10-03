@@ -135,27 +135,6 @@
     ]
   },
   {
-    "path": "devices.importHardwareImage",
-    "method": "application.devices.setHardwareImageFromPath",
-    "args": [
-      "ID",
-      {
-        "__undefined__": true
-      },
-      "中文 image.png"
-    ]
-  },
-  {
-    "path": "devices.removeHardwareImage",
-    "method": "application.devices.removeHardwareImage",
-    "args": [
-      "ID",
-      {
-        "__undefined__": true
-      }
-    ]
-  },
-  {
     "path": "devices.exportBundle",
     "method": "application.devices.exportBundle",
     "args": [

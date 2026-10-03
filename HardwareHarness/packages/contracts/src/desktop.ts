@@ -1,5 +1,5 @@
 import type { AgentConfirmation, AgentConfirmationAnswer, AgentIntegrationPreview, AgentIntegrationStatus, AgentKind, AgentToolInfo, McpGatewayStatus, OpenCodeRuntimeStatus } from "./agents.js";
-import type { AdapterReleaseRecord, AdapterStatus, ComputerStatus, DeviceBundleApplyInput, DeviceBundleExport, DeviceBundleImport, DeviceBundleKind, DeviceBundlePreview, DeviceLeaseStatus, Hardware, HardwareAvailability, HardwareImageTarget, ManagedDeviceDefinition, ManagedHardware, McpServerConfig, RegisteredService, RemoteComputer, RemoteServiceLog, ServerStatus, ServiceImportResult, DiscoveredService, DeployableAdapter, DeployResult, DeployServiceSpec, UninstallResult, ToolCatalogItem } from "./devices.js";
+import type { AdapterReleaseRecord, AdapterStatus, ComputerStatus, DeviceBundleApplyInput, DeviceBundleExport, DeviceBundleImport, DeviceBundleKind, DeviceBundlePreview, DeviceLeaseStatus, Hardware, HardwareAvailability, ManagedDeviceDefinition, ManagedHardware, McpServerConfig, RegisteredService, RemoteComputer, RemoteServiceLog, ServerStatus, ServiceImportResult, DiscoveredService, DeployableAdapter, DeployResult, DeployServiceSpec, UninstallResult, ToolCatalogItem } from "./devices.js";
 import type { ExecutionActivity, ManualToolInvocationInput, ManualToolInvocationResult } from "./execution.js";
 
 import type { LlmSettings, LlmSettingsInput, ProjectView, ThemeChoice, WelcomeLayout } from "./storage.js";
@@ -63,9 +63,6 @@ export interface HardwareHarnessDevicesApi {
   setAdapterStatus(hardwareId: string, status: AdapterStatus): Promise<AdapterReleaseRecord>;
   saveHardware(hardware: Hardware): Promise<Hardware>;
   removeHardware(hardwareId: string): Promise<{ hardwareId: string }>;
-  importHardwareImage(input: HardwareImageTarget): Promise<Hardware | null>;
-  removeHardwareImage(input: HardwareImageTarget): Promise<Hardware>;
-  hardwareImageUrl(hardwareId: string, assetId: string): Promise<string>;
   exportBundle(kind: DeviceBundleKind, id: string): Promise<DeviceBundleExport | null>;
   importBundle(kind: DeviceBundleKind): Promise<DeviceBundleImport | null>;
   previewBundle(kind: DeviceBundleKind): Promise<DeviceBundlePreview | null>;

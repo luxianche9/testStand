@@ -1,25 +1,14 @@
-"""PCI-1762 CN1 (62-pin D-sub) reference: PCI-1762 User Manual Edition 1.
-
-``assets/ports/CN1.svg`` is rendered from this data by :func:`port_diagram` and
-``assets/appearance.svg`` by :func:`appearance_diagram` (the adapter tests keep
-the shipped files in sync).
-"""
+"""PCI-1762 CN1 (62-pin D-sub) reference: PCI-1762 User Manual Edition 1."""
 
 from __future__ import annotations
 
 from hardwareharness_device_sdk import (
     PinFunction,
     Pinout,
-    PortDiagram,
-    attach_port_image,
-    dsub,
     function,
-    render_board,
-    render_port,
     single_connector_pinout,
 )
 
-PORT_IMAGE = "ports/CN1.svg"
 
 SIGNALS = {
     62: "R11_OUT", 61: "R11_COM", 60: "R12_OUT", 59: "R12_COM", 58: "R13_OUT", 57: "R13_COM",
@@ -47,19 +36,5 @@ def pinout(hardware_id: str) -> Pinout:
         else:
             functions[position] = (function(signal, "passive", "isolated_input_common", channel_kind="ECOM",
                                             channel_index=int(signal[-1])),)
-    data = single_connector_pinout(hardware_id, "Advantech", "PCI-1762", 62, functions,
+    return single_connector_pinout(hardware_id, "Advantech", "PCI-1762", 62, functions,
                                    "PCI-1762 User Manual Edition 1")
-    return attach_port_image(data, "CN1", PORT_IMAGE, port_diagram(data))
-
-
-def port_diagram(data: Pinout) -> PortDiagram:
-    return render_port(data, "CN1", dsub(62, high_density=True), title="Advantech PCI-1762  CN1 (62-pin D-sub)")
-
-
-def appearance_diagram() -> str:
-    return render_board("Advantech PCI-1762  relay / isolated DI card", (
-        "16 x relay, dry contact (R0..R15)",
-        "16 x isolated DI (IDI0..IDI15)",
-        "4 isolated input commons (ECOM0..3)",
-        "relay state = coil command only",
-    ), ("CN1  62-pin D-sub",))

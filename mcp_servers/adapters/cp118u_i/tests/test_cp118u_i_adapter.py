@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import time
-from pathlib import Path
 
 import pytest
 
@@ -9,9 +8,8 @@ from hardwareharness_device_sdk.sim import SERIAL_LOOPBACK_ENV
 from hardwareharness_device_sdk.testing import check_device, dry_run_config, receive_until, serve
 from hh_adapter_cp118u_i import DEVICE, Cp118uI
 from hh_adapter_cp118u_i.adapter import configured_ports
-from hh_adapter_cp118u_i.pinout import appearance_diagram, pinout, port_diagram
+from hh_adapter_cp118u_i.pinout import pinout
 
-ASSETS = Path(__file__).resolve().parents[1] / "src" / "hh_adapter_cp118u_i" / "assets"
 
 PUBLIC_TOOLS = {
     "get_server_info", "list_hardware", "get_hardware_info",
@@ -194,15 +192,7 @@ def test_reader_idles_every_stream(hh):
 def test_device_declaration(hh):
     document = hh.get("/device").json()
     assert document["description"].startswith("Moxa CP-118U-I") and "DIP switch" in document["description"]
-    assert document["images"]["appearance"]["asset"] == "appearance.svg"
-    images = [connector["image"] for connector in document["pinout"]["connectors"]]
-    assert {image["asset"] for image in images} == {"ports/DB9.svg"}
-    assert [len(image["pinPositions"]) for image in images] == [9] * 8
-    assert images[1]["pinPositions"][0]["pinId"].endswith(".P2.1")
-    assert hh.get("/assets/ports/DB9.svg").headers["content-type"].startswith("image/svg+xml")
+    connectors = document["pinout"]["connectors"]
+    assert [len(connector["pinIds"]) for connector in connectors] == [9] * 8
+    assert connectors[1]["pinIds"][0].endswith(".P2.1")
 
-
-def test_shipped_assets_match_pinout():
-    data = pinout("X")
-    assert (ASSETS / "ports" / "DB9.svg").read_bytes().decode().replace("\r\n", "\n") == port_diagram(data).svg
-    assert (ASSETS / "appearance.svg").read_bytes().decode().replace("\r\n", "\n") == appearance_diagram()

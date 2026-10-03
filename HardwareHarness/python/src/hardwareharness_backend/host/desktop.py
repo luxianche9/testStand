@@ -15,7 +15,7 @@ from typing import Any, Protocol
 from hardwareharness_backend.application import AGENT_REQUEST_CONTEXT, Authorizer
 from hardwareharness_backend.contracts.errors import AppError, to_wire_error
 from hardwareharness_backend.contracts.operations import operation
-from hardwareharness_backend.devices import DeviceService, DeviceStore
+from hardwareharness_backend.devices import DeviceService
 from hardwareharness_backend.projects import ProjectService
 from hardwareharness_backend.storage import SecretStore, SettingsStore
 from hardwareharness_backend.util import UNDEFINED, Record, clone
@@ -38,7 +38,6 @@ class DesktopApplication:
         authorizer: Authorizer,
         settings: SettingsStore,
         secrets: SecretStore,
-        store: DeviceStore,
         devices: DeviceService,
         projects: ProjectService,
         application: Any,
@@ -47,7 +46,6 @@ class DesktopApplication:
         self.authorizer = authorizer
         self.settings = settings
         self.secrets = secrets
-        self.store = store
         self.devices = devices
         self.projects = projects
         self.application = application
@@ -127,11 +125,6 @@ class DesktopApplication:
     @operation("desktop.replaceGatewayToken", capability="agents.manage", risk="write")
     async def replace_gateway_token(self, context: Record, token: str) -> None:
         await self.gateway.replace_token(token)
-
-    @operation("desktop.resolveImagePath", capability="system.manage", risk="read")
-    def resolve_image_path(self, context: Record, hardware_id: str, asset_id: str) -> str:
-        """Local path of a hardware image, for the ``hardwareharness-asset:`` protocol."""
-        return str(self.store.image_path(hardware_id, asset_id))
 
     @operation("desktop.probeAvailability", capability="system.manage", risk="read")
     async def probe_availability(self, context: Record) -> Record:

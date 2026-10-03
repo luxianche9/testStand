@@ -124,9 +124,6 @@ async def test_device_application_crud_and_binary_boundaries() -> None:
     devices.list_tools.return_value = [{"externalName": "S__tool"}]
     devices.refresh_hardware.return_value = [{"result": "refresh_hardware"}]
     devices.store = Mock(
-        put_image_bytes=AsyncMock(return_value={"assetId": "bytes"}),
-        put_image=AsyncMock(return_value={"assetId": "path"}),
-        remove_image=AsyncMock(return_value={"removed": True}),
         export_bundle=AsyncMock(return_value=b"zip"),
         import_bundle=AsyncMock(return_value={"hardwareId": "H1"}),
         inspect_bundle=AsyncMock(return_value={"hardwareId": "H1"}),
@@ -164,14 +161,6 @@ async def test_device_application_crud_and_binary_boundaries() -> None:
     assert app.list_hardware(HUMAN) == [HARDWARE] and app.get_hardware(HUMAN, "HW1") == HARDWARE
     assert app.list_tools(AGENT) == [{"externalName": "S__tool"}]
     assert await app.remove_hardware(HUMAN, "H1") == {"hardwareId": "H1"}
-    assert await app.set_hardware_image_bytes(HUMAN, "H1", None, b"image", ".png") == {
-        "assetId": "bytes"
-    }
-    devices.store.put_image_bytes.assert_awaited_once_with("H1", None, b"image", ".png")
-    assert await app.set_hardware_image_from_path(HUMAN, "H1", "P1", "photo.png") == {
-        "assetId": "path"
-    }
-    assert await app.remove_hardware_image(HUMAN, "H1") == {"removed": True}
     assert await app.export_bundle(HUMAN, "H1") == b"zip"
     assert await app.import_bundle(HUMAN, b"zip") == {"hardwareId": "H1"}
     assert await app.inspect_bundle(HUMAN, b"zip") == {"hardwareId": "H1"}

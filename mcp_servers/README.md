@@ -11,8 +11,8 @@ directory; the remote directories are deployment artifacts, not source.
 ```
 sdk/                     hardwareharness_device_sdk: transport, auth, builtin tools, envelope,
                          lifecycle, safe_state, heartbeat leases, streams (ring buffer + SSE),
-                         /device manifest + assets, waveform player, schematic diagrams, compliance
-adapters/<adapter>/      hh_adapter_<adapter>: adapter.py, driver.py, sim.py, pinout.py, assets/, tests/
+                         /device manifest, waveform player, compliance
+adapters/<adapter>/      hh_adapter_<adapter>: adapter.py, driver.py, sim.py, pinout.py, tests/
 templates/*.ps1          install / uninstall / start / stop / status / runner, rendered per server
 test.ps1                 local tests: SDK, every adapter, dry-run compliance
 deploy.ps1               thin wrapper around the terminal's deploy pipeline (command line)
@@ -49,8 +49,7 @@ Simulation switches, all off by default so simulated inputs read idle values:
 |---|---|
 | `/mcp` | Streamable HTTP MCP, `Authorization: Bearer <token>` |
 | `/health` | Unauthenticated health: `{healthy, serverId, hardwareId, state, sdkVersion, manifestRevision}` |
-| `/device` | Device declaration (design 5.2), same token: `{manifestRevision, contractRevision, identity, description, images{appearance}, pinout, streams, capabilities, tools[{name, kind}]}` |
-| `/assets/{path}` | Static images from the adapter's `assets/` (PNG/JPEG/WebP/SVG, at most 2 MB, no `..`), same token |
+| `/device` | Device declaration (design 5.2), same token: `{manifestRevision, contractRevision, identity, description, pinout, streams, capabilities, tools[{name, kind}]}` |
 | `/admin/shutdown` | Authenticated safe shutdown (`safe_state`, then exit) |
 | `/streams/{streamId}?from=<seq or latest>&since=<t>` | Read-only SSE data channel (`Last-Event-ID` resumes), same token |
 | `/time` | `{serverTime}` for clock-offset estimation, same token |
@@ -81,12 +80,6 @@ Each stream declares its metadata in `/device.streams`: `unit`, `label`, `kind`
 streams, `writable` for byte streams. Byte and frame streams are idle-driven: the
 reader thread calls `idle()` after every read return, so the watermark trails the
 clock by at most one poll interval (`--check` verifies it).
-
-Images are schematic SVGs generated from the pinout data by the SDK's `diagram`
-module (`render_port`, `render_board`), shipped under `assets/` as package data
-and attached to the connectors with `attach_port_image` (with `pinPositions`);
-each adapter test keeps the shipped files equal to a fresh rendering. `--check`
-warns when the appearance image or a port image is missing.
 
 | Adapter | Streams |
 |---|---|

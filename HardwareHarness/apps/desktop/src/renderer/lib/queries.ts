@@ -1,5 +1,4 @@
-import { useMemo } from "react";
-import { useQueries, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import type { AgentKind } from "@hardwareharness/contracts/agents";
 import type { TestRunListInput } from "@hardwareharness/contracts/testing";
 import { queryKeys } from "./query-keys.js";
@@ -132,31 +131,6 @@ export function useDeviceLease(hardwareId: string, enabled: boolean) {
     enabled,
     refetchInterval: 5_000
   });
-}
-
-type ImageRef = { hardwareId: string; assetId?: string | undefined };
-const imageData = (results: Array<{ data?: string | undefined }>) => results.map((result) => result.data);
-
-/** Resolved `hardwareharness-asset:` URLs for stored photos, keyed `${hardwareId}:${assetId}`.
- *  assetIds are only unique per device, so the key carries the owner. Shares the cache with
- *  HardwareImage through `queryKeys.hardwareImage`. */
-export function useHardwareImageUrls(items: readonly ImageRef[]): Record<string, string> {
-  const refs = useMemo(
-    () => items.flatMap((item) => item.assetId ? [{ hardwareId: item.hardwareId, assetId: item.assetId }] : []),
-    [items]
-  );
-  const urls = useQueries({
-    queries: refs.map((ref) => ({
-      queryKey: queryKeys.hardwareImage(ref.hardwareId, ref.assetId),
-      queryFn: () => window.hardwareharness.devices.hardwareImageUrl(ref.hardwareId, ref.assetId),
-      staleTime: Infinity
-    })),
-    combine: imageData
-  });
-  return useMemo(() => Object.fromEntries(refs.flatMap((ref, index) => {
-    const url = urls[index];
-    return url ? [[`${ref.hardwareId}:${ref.assetId}`, url]] : [];
-  })), [refs, urls]);
 }
 
 /** Embedded OpenCode runtime. Pushed on the `opencode` channel; the poll covers dropped events. */

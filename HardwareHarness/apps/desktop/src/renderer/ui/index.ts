@@ -4,7 +4,6 @@ export * from "./cn";
 export * from "./dialog";
 export * from "./empty-state";
 export * from "./field";
-export * from "./image-viewer";
 export * from "./kbd";
 export * from "./menu";
 export * from "./panel";

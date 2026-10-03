@@ -9,7 +9,7 @@ import { z } from "zod";
 import { errorMessage } from "../../../../lib/errors.js";
 import { hardwareForServer } from "../../../../lib/hardware.js";
 import { Button, Dialog, DialogBody, DialogContent, DialogFooter, Input, Select, Textarea } from "../../../../ui";
-import { AppearanceImage, PortEditor } from "../../PortEditor.js";
+import { PortEditor } from "../../PortEditor.js";
 import { BundleActions } from "../BundleActions.js";
 import { EditorAlert, EditorField, EditorNote, EditorPanel, editorGrid } from "./EditorField.js";
 
@@ -106,7 +106,7 @@ export function ServerEditor({ open, server, computerId, computers, hardware, on
     setPorts(live ? structuredClone(live.ports) : []);
     setBundlePreview(undefined);
     setBundleKey((key) => key + 1);
-    // Image uploads refresh `live`; they must not discard ports the user is midway through typing.
+    // Catalog refetches refresh `live`; they must not discard ports the user is midway through typing.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, server?.serverId, computerId]);
 
@@ -162,7 +162,6 @@ export function ServerEditor({ open, server, computerId, computers, hardware, on
       if (bundlePreview) {
         await devices.applyBundle({ kind: "hardware", hardwareId: boundId, serverId, data: bundlePreview.data });
       }
-      const appearanceAssetId = bundlePreview?.hardware.appearanceAssetId ?? selectedHardware?.appearanceAssetId;
       await devices.saveHardware({
         formatVersion: 2,
         hardwareId: boundId,
@@ -170,15 +169,13 @@ export function ServerEditor({ open, server, computerId, computers, hardware, on
         kind: "managed",
         serverId,
         ...(input.computerId ? { computerId: input.computerId } : {}),
-        ports,
-        ...(appearanceAssetId ? { appearanceAssetId } : {})
+        ports
       });
       return saved;
     },
     onSuccess: async () => { await onChanged(); onClose(); }
   });
   const submit = handleSubmit(async (values) => { await save.mutateAsync(values); });
-  const syncPorts = (item: Hardware) => setPorts(structuredClone(item.ports));
   const bindable = hardware.filter((item) => item.kind === "passive" || item.serverId === server?.serverId);
   const commandClass = "min-h-[54px] font-mono text-xs";
 
@@ -242,19 +239,7 @@ export function ServerEditor({ open, server, computerId, computers, hardware, on
             )}
             {!managed && <EditorNote>未托管的服务只能使用，不能从这里启动、停止或读取日志。</EditorNote>}
             <EditorPanel>
-              <AppearanceImage
-                hardwareId={hardwareId}
-                assetId={selectedHardware?.appearanceAssetId}
-                saved={Boolean(selectedHardware)}
-                onChanged={syncPorts}
-              />
-              <PortEditor
-                hardwareId={hardwareId}
-                ports={ports}
-                saved={Boolean(selectedHardware)}
-                onChange={setPorts}
-                onImageChanged={syncPorts}
-              />
+              <PortEditor ports={ports} onChange={setPorts} />
             </EditorPanel>
             {save.isError && <EditorAlert message={errorMessage(save.error)} />}
           </form>

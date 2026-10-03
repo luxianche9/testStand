@@ -3,7 +3,6 @@ import { join } from "node:path";
 import { createDesktopComposition } from "./composition.js";
 import { DesktopDialogs } from "./dialogs.js";
 import { createMainHandlers, registerDesktopIpc } from "./ipc.js";
-import { registerAssetProtocol } from "./protocols.js";
 import { DesktopWindows } from "./windows.js";
 import { logger } from "./logger.js";
 
@@ -13,7 +12,6 @@ export async function startDesktop(): Promise<void> {
   const composition = await createDesktopComposition(windows);
   const dialogs = new DesktopDialogs(() => windows.current());
 
-  registerAssetProtocol(composition.resolveImagePath);
   registerDesktopIpc(createMainHandlers({
     endpoint: () => composition.endpoint,
     agents: composition.agents,

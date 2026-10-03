@@ -5,7 +5,7 @@ import { TriangleAlertIcon } from "lucide-react";
 import { onAppCommand } from "../../app/commands.js";
 import { errorMessage } from "../../lib/errors.js";
 import { invalidateWiringData } from "../../lib/mutations.js";
-import { useHardwareImageUrls, useWiringTasks } from "../../lib/queries.js";
+import { useWiringTasks } from "../../lib/queries.js";
 import { useResizableWidth } from "../../lib/resizable.js";
 import { ConfirmDialog, HeaderTabs, Spinner, Splitter } from "../../ui/index.js";
 import { EditPinsModal, ListCreateConnectionModal, ManualConnectionModal } from "./ConnectionEditor.js";
@@ -75,11 +75,6 @@ function WiringWorkbench() {
   const [nodes, setNodes, onNodesChange] = useNodesState<HardwareFlowNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<TopologyEdge>([]);
 
-  const imageRefs = useMemo(
-    () => hardware.map((item) => ({ hardwareId: item.hardwareId, assetId: item.appearanceAssetId })),
-    [hardware]
-  );
-  const imageUrls = useHardwareImageUrls(imageRefs);
   const connections = useMemo(() => wiring?.connections ?? [], [wiring?.connections]);
   const { movePort, resizeNode } = edits;
 
@@ -87,8 +82,8 @@ function WiringWorkbench() {
     node,
     hardware.find((entry) => entry.hardwareId === node.hardwareId),
     fallbackHardware(node.hardwareId),
-    { imageUrls, interactive: true, editingHardwareId: editingPortHardwareId, movePort, resizeNode }
-  )), [editingPortHardwareId, hardware, imageUrls, movePort, resizeNode, wiring?.nodes]);
+    { interactive: true, editingHardwareId: editingPortHardwareId, movePort, resizeNode }
+  )), [editingPortHardwareId, hardware, movePort, resizeNode, wiring?.nodes]);
   const flowEdges = useMemo(
     () => toFlowEdges(connections, hardware, true)
       .map((edge) => ({ ...edge, selected: edge.id === selectedConnectionId })),
@@ -123,7 +118,6 @@ function WiringWorkbench() {
 
   const selectedConnection = connections.find((item) => item.connectionId === selectedConnectionId);
   const editingConnection = connections.find((item) => item.connectionId === editingConnectionId);
-  const menuNode = nodeMenu && wiring.nodes.find((item) => item.hardwareId === nodeMenu.hardwareId);
   const pendingLabel = hardware.find((item) => item.hardwareId === pendingRemoveHardwareId)?.label
     ?? pendingRemoveHardwareId;
   const inspecting = view === "canvas" ? selectedConnection : undefined;
@@ -165,7 +159,6 @@ function WiringWorkbench() {
             role="tabpanel"
             header={sideTabs}
             hardware={hardware}
-            assetUrls={imageUrls}
             placed={new Set(wiring.nodes.map((node) => node.hardwareId))}
             onAdd={(hardwareId) => edits.addNode(hardwareId)}
             onRefresh={() => void invalidateWiringData(client)}
@@ -232,9 +225,7 @@ function WiringWorkbench() {
       {nodeMenu && (
         <NodeContextMenu
           menu={nodeMenu}
-          showingImage={menuNode?.showImage !== false}
           onEditPorts={() => { setEditingPortHardwareId(nodeMenu.hardwareId); setNodeMenu(undefined); }}
-          onToggleImage={() => { setNodeMenu(undefined); edits.toggleNodeImage(nodeMenu.hardwareId); }}
           onRemove={() => { setNodeMenu(undefined); requestRemoveNode(nodeMenu.hardwareId); }}
         />
       )}

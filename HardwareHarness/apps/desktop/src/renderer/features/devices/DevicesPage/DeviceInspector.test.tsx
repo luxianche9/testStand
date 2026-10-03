@@ -66,16 +66,14 @@ const catalog: Hardware[] = [
     kind: "managed",
     serverId: "E2E_MCP",
     computerId: "LOCAL_FIXTURE",
-    ports: [{ portId: "AO", name: "AO", pins: [{ pinId: "0", position: 1, label: "AO0" }] }],
-    appearanceAssetId: "appearance.png"
+    ports: [{ portId: "AO", name: "AO", pins: [{ pinId: "0", position: 1, label: "AO0" }] }]
   },
   {
     formatVersion: 2,
     hardwareId: "DUT_A",
     label: "DUT_A",
     kind: "passive",
-    ports: [],
-    appearanceAssetId: "appearance.png"
+    ports: []
   }
 ];
 
@@ -123,15 +121,11 @@ const definition: ManagedDeviceDefinition = {
       dryRun: true
     },
     description: "Multifunction DAQ card",
-    images: {
-      appearance: { asset: "appearance.png", assetId: "definition/assets/appearance.png", mediaType: "image/png" }
-    },
     pinout: {
       connectors: [{
         connectorId: "CN1",
         name: "CN1",
         connectorType: "SCSI-68",
-        image: { asset: "cn1.svg", assetId: "definition/assets/cn1.svg", mediaType: "image/svg+xml" },
         pinIds: ["CN1.1"]
       }],
       pins: [{
@@ -173,7 +167,6 @@ beforeEach(() => {
     value: {
       system: { dashboard: vi.fn(async () => snapshot) },
       devices: {
-        hardwareImageUrl: vi.fn(async () => "data:image/png;base64,aaaa"),
         getDefinition,
         ...adapterApi,
         removeComputer: vi.fn(),
@@ -327,8 +320,7 @@ describe("device inspector", () => {
     expect(screen.queryByRole("button", { name: "释放硬件" })).toBeNull();
     expect(screen.getByRole("button", { name: "启动 MCP 服务" })).toHaveProperty("disabled", true);
     expect(screen.getByRole("button", { name: "终止 MCP 服务" })).toHaveProperty("disabled", false);
-    expect(await screen.findByAltText("E2E fixture card 外观图")).toBeTruthy();
-    expect(screen.getByText("AO0")).toBeTruthy();
+    expect(await screen.findByText("AO0")).toBeTruthy();
     expect(screen.getByRole("heading", { name: "手动控制" })).toBeTruthy();
     const tool = screen.getByRole("button", { name: /write_voltage/ });
     expect(tool.getAttribute("aria-expanded")).toBe("false");
@@ -364,13 +356,11 @@ describe("device inspector", () => {
     expect(within(result).getByText("3.3")).toBeTruthy();
   });
 
-  it("shows a passive hardware photo inline without a preview button", async () => {
+  it("shows passive hardware as editable without manual control", () => {
     renderInspector("l:DUT_A");
 
     expect(screen.getByRole("heading", { name: "DUT_A" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "编辑" })).toBeTruthy();
-    expect(await screen.findByAltText("DUT_A 外观图")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "预览" })).toBeNull();
     expect(screen.queryByRole("heading", { name: "手动控制" })).toBeNull();
   });
 
@@ -393,13 +383,9 @@ describe("device inspector", () => {
     expect(screen.getByText("模拟运行")).toBeTruthy();
     expect(screen.getByText("Multifunction DAQ card")).toBeTruthy();
     expect(screen.getByText("0123456789ab")).toBeTruthy();
-    expect(await screen.findByAltText("PCI-1710L 外观图")).toBeTruthy();
     const port = screen.getByRole("article", { name: "端口 CN1" });
     expect(within(port).getByText("AI0")).toBeTruthy();
-    expect(await within(port).findByAltText("CN1 端口图")).toBeTruthy();
     expect(screen.queryByText("AO0")).toBeNull();
-    expect(window.hardwareharness.devices.hardwareImageUrl)
-      .toHaveBeenCalledWith("E2E_CARD", "definition/assets/appearance.png");
   });
 
   it("releases an adapter only after a human smoke record closes the last gate", async () => {

@@ -1,4 +1,4 @@
-import { open, readFile, rename, stat, writeFile } from "node:fs/promises";
+import { readFile, rename, writeFile } from "node:fs/promises";
 import { extname } from "node:path";
 import { dialog, type BrowserWindow } from "electron";
 import type { DeviceBundleExport, DeviceBundleKind } from "@hardwareharness/contracts/devices";
@@ -15,17 +15,6 @@ export class DesktopDialogs {
     if (selected.canceled || !selected.filePath) return null;
     await atomicWrite(selected.filePath, new TextEncoder().encode(content));
     return selected.filePath;
-  }
-
-  async chooseHardwareImage(): Promise<string | null> {
-    const selected = await dialog.showOpenDialog(this.requireParent(), {
-      properties: ["openFile"],
-      filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "webp"] }]
-    });
-    const path = selected.filePaths[0];
-    if (selected.canceled || !path) return null;
-    await assertImage(path);
-    return path;
   }
 
   async saveBundle(kind: DeviceBundleKind, id: string, data: Uint8Array): Promise<DeviceBundleExport | null> {
@@ -69,19 +58,4 @@ async function atomicWrite(path: string, data: Uint8Array): Promise<void> {
   const temporary = `${path}.${crypto.randomUUID()}.tmp`;
   await writeFile(temporary, data);
   await rename(temporary, path);
-}
-
-async function assertImage(source: string): Promise<void> {
-  const info = await stat(source);
-  if (!info.isFile() || info.size > 10 * 1024 * 1024) throw new Error("Image must be 10 MB or smaller");
-  const extension = extname(source).toLowerCase();
-  const mimeType = extension === ".png" ? "image/png" : extension === ".webp" ? "image/webp" : extension === ".jpg" || extension === ".jpeg" ? "image/jpeg" : undefined;
-  if (!mimeType) throw new Error("Only PNG, JPEG and WebP images are supported");
-  const handle = await open(source, "r");
-  const signature = Buffer.alloc(12);
-  try { await handle.read(signature, 0, signature.length, 0); } finally { await handle.close(); }
-  const detected = signature.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) ? "image/png"
-    : signature[0] === 0xff && signature[1] === 0xd8 && signature[2] === 0xff ? "image/jpeg"
-      : signature.subarray(0, 4).toString("ascii") === "RIFF" && signature.subarray(8, 12).toString("ascii") === "WEBP" ? "image/webp" : undefined;
-  if (detected !== mimeType) throw new Error("Image content does not match its extension");
 }

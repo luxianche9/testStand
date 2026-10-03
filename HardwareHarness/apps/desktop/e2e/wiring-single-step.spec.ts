@@ -1,4 +1,4 @@
-import { copyFile, mkdir, mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from "@playwright/test";
@@ -34,23 +34,19 @@ test.describe.serial("single-step wiring tasks", () => {
       for (const hardwareId of ["DUT_A", "DUT_B"]) {
         await window.hardwareharness.devices.saveHardware({
           formatVersion: 2, hardwareId, label: hardwareId, kind: "passive",
-          ports: [{ portId: "J1", name: "串口", imageAssetId: "port.png", pins: [
+          ports: [{ portId: "J1", name: "串口", pins: [
             { pinId: "1", position: 1, label: "TX" }, { pinId: "2", position: 2, label: "RX" },
             { pinId: "3", position: 3, label: "GND" }
           ] }]
         });
       }
       await window.hardwareharness.wiring.update({ nodes: [
-        { hardwareId: "DUT_A", x: 20, y: 20, width: 220, height: 140, showImage: false, portPositions: { J1: { side: "right", offset: 0.5 } } },
-        { hardwareId: "DUT_B", x: 380, y: 20, width: 220, height: 140, showImage: false, portPositions: { J1: { side: "left", offset: 0.5 } } }
+        { hardwareId: "DUT_A", x: 20, y: 20, width: 220, height: 140, portPositions: { J1: { side: "right", offset: 0.5 } } },
+        { hardwareId: "DUT_B", x: 380, y: 20, width: 220, height: 140, portPositions: { J1: { side: "left", offset: 0.5 } } }
       ], connections: [] });
       await window.hardwareharness.projects.save();
       await window.hardwareharness.projects.leave();
     }, projectRoot);
-    for (const id of ["DUT_A", "DUT_B"]) await copyFile(
-      resolve(desktopDir, "../../../mcp_servers/hardware-manuals/stm32-batianhu-v2/images/J1.png"),
-      join(userData, "devices/hardware", id, "port.png")
-    );
     await reloadAfterLeave(page);
     await page.getByText("wiring-fixture", { exact: true }).first().click();
     await expect(page.locator('.react-flow__node[data-id="DUT_A"]')).toBeVisible();
@@ -60,7 +56,7 @@ test.describe.serial("single-step wiring tasks", () => {
     if (userData && dirname(userData) === resolve(tmpdir())) await rm(userData, { recursive: true, force: true });
   });
 
-  test("keeps a request pending in the wiring log, previews photos, and keeps history", async () => {
+  test("keeps a request pending in the wiring log and keeps history", async () => {
     await page.getByRole("tab", { name: "设备管理", exact: true }).click();
     const id = await page.evaluate(async () => (await window.hardwareharness.wiring.requestTask({
       portA: "DUT_A.J1", portB: "DUT_B.J1", action: "connect",
@@ -76,14 +72,8 @@ test.describe.serial("single-step wiring tasks", () => {
     await expect(card.getByRole("button", { name: "完成", exact: true })).toBeEnabled();
     await expect(card.getByRole("button", { name: "未完成", exact: true })).toBeEnabled();
     await expect(card.getByRole("button", { name: "开始处理" })).toHaveCount(0);
-    await expect(card.locator("img").first()).toHaveJSProperty("complete", true);
     expect(await page.evaluate((taskId) => window.hardwareharness.wiring.getTask(taskId).then((task) => task.status), id)).toBe("pending");
     await page.screenshot({ animations: "disabled", path: join(artifacts, "pending-light.png") });
-    await card.getByRole("button", { name: "查看全图：DUT_A · 串口" }).click();
-    await expect(page.getByRole("dialog", { name: "DUT_A · 串口", exact: true })).toBeVisible();
-    await page.screenshot({ animations: "disabled", path: join(artifacts, "full-photo.png") });
-    await page.keyboard.press("Escape");
-    await expect(page.getByRole("dialog", { name: "DUT_A · 串口", exact: true })).toHaveCount(0);
     await card.getByRole("button", { name: "完成", exact: true }).click();
     await expect(open).toHaveCount(0);
     const history = log.getByRole("region", { name: "历史记录" });

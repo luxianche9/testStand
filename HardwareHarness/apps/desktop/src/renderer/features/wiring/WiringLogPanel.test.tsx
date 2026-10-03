@@ -13,12 +13,12 @@ import { extractTask } from "./wiring-model";
 
 const hardware: Hardware[] = ["A", "B"].map((hardwareId) => ({
   formatVersion: 2, hardwareId, label: hardwareId, kind: "passive",
-  ports: [{ portId: "J1", name: "J1", imageAssetId: "port.png", pins: [{ pinId: "1", position: 1, label: "PIN 1" }] }]
+  ports: [{ portId: "J1", name: "J1", pins: [{ pinId: "1", position: 1, label: "PIN 1" }] }]
 }));
 const baseTask: WiringTask = {
   wiringTaskId: "task-1", action: "connect", portA: "A.J1", portB: "B.J1",
   pins: [{ a: "1", b: "1" }], hardwareIds: ["A", "B"], status: "pending",
-  requestedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 60_000).toISOString(), warnings: []
+  requestedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 60_000).toISOString()
 };
 const history: WiringTask = {
   ...baseTask, wiringTaskId: "task-0", status: "confirmed",
@@ -34,9 +34,8 @@ function setup() {
   const completeTask = vi.fn(async () => ({ ...baseTask, status: "confirmed" as const }));
   const listTasks = vi.fn(async (): Promise<WiringTask[]> => [baseTask]);
   const listChanges = vi.fn(async (): Promise<WiringChange[]> => []);
-  const hardwareImageUrl = vi.fn(async (id: string) => `https://example.test/${id}.png`);
   Object.defineProperty(window, "hardwareharness", { configurable: true, value: {
-    wiring: { startTask, completeTask, listTasks, listChanges }, devices: { hardwareImageUrl }
+    wiring: { startTask, completeTask, listTasks, listChanges }
   } as unknown as HardwareHarnessApi });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   const onChanged = vi.fn(async () => undefined);
@@ -64,20 +63,6 @@ describe("WiringTaskCard", () => {
     render(card({ ...baseTask, status }));
     expect(screen.queryByRole("button", { name: "完成" })).toBeNull();
     expect(screen.queryByRole("button", { name: "未完成" })).toBeNull();
-  });
-  it("opens the full photo in a zoomable viewer and closes it with Escape", async () => {
-    const { card } = setup();
-    render(card());
-    await userEvent.click(await screen.findByRole("button", { name: "查看全图：A · J1" }));
-    const preview = screen.getByRole("dialog", { name: "A · J1" });
-    expect(within(preview).getByRole("img").getAttribute("src")).toBe("https://example.test/A.png");
-    await userEvent.click(within(preview).getByRole("button", { name: "放大" }));
-    expect(within(preview).getByText("125%")).toBeTruthy();
-    await userEvent.click(within(preview).getByRole("button", { name: "向右旋转" }));
-    expect(within(preview).getByRole("img").style.transform).toContain("rotate(90deg)");
-    await userEvent.keyboard("{Escape}");
-    expect(screen.queryByRole("dialog", { name: "A · J1" })).toBeNull();
-    expect(screen.getByRole("region", { name: "接线任务" })).toBeTruthy();
   });
   it("shows errors and leaves confirmation available for a retry", async () => {
     const { card, completeTask } = setup();

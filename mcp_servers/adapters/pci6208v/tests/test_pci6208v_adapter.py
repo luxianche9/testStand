@@ -2,16 +2,14 @@ from __future__ import annotations
 
 import math
 import time
-from pathlib import Path
 
 import pytest
 
 from hardwareharness_device_sdk.testing import check_device, dry_run_config, serve
 from hh_adapter_pci6208v import DEVICE, Pci6208v
 from hh_adapter_pci6208v.adapter import clamp_volts, configured_safe_volts
-from hh_adapter_pci6208v.pinout import appearance_diagram, pinout, port_diagram
+from hh_adapter_pci6208v.pinout import pinout
 
-ASSETS = Path(__file__).resolve().parents[1] / "src" / "hh_adapter_pci6208v" / "assets"
 
 PUBLIC_TOOLS = {
     "get_server_info", "list_hardware", "get_hardware_info",
@@ -87,22 +85,10 @@ def test_streams_are_ao_setpoints(hh):
         {"id": f"ao{n}", "type": "scalar", "unit": "V", "label": f"AO{n}", "kind": "setpoint"} for n in range(8)]
 
 
-def test_device_declaration_images(hh):
+def test_device_declaration(hh):
     document = hh.get("/device").json()
-    assert document["images"]["appearance"]["asset"] == "appearance.svg"
     assert "no output readback" in document["description"]
-    image = document["pinout"]["connectors"][0]["image"]
-    assert image["asset"] == "ports/CN1.svg" and image["mediaType"] == "image/svg+xml"
-    assert len(image["pinPositions"]) == 37
-    assert hh.get("/assets/ports/CN1.svg").status_code == 200
-
-
-def test_shipped_assets_match_pinout():
-    data = pinout("X")
-    assert (ASSETS / "ports" / "CN1.svg").read_bytes().decode().replace("\r\n", "\n") == port_diagram(data).svg
-    assert (ASSETS / "appearance.svg").read_bytes().decode().replace("\r\n", "\n") == appearance_diagram()
-    for pin in data.pins:
-        assert f">{pin.position}</text>" in port_diagram(data).svg
+    assert len(document["pinout"]["connectors"][0]["pinIds"]) == 37
 
 
 def wait_for(predicate, timeout: float = 2.0) -> None:

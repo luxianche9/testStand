@@ -96,8 +96,8 @@ test.describe.serial("HardwareHarness folder project desktop", () => {
         });
       }
       await window.hardwareharness.wiring.update({ nodes: [
-        { hardwareId: "DUT_A", x: 10, y: 10, showImage: true, portPositions: {} },
-        { hardwareId: "DUT_B", x: 200, y: 10, showImage: true, portPositions: {} }
+        { hardwareId: "DUT_A", x: 10, y: 10, portPositions: {} },
+        { hardwareId: "DUT_B", x: 200, y: 10, portPositions: {} }
       ], connections: [] });
       const pending = await window.hardwareharness.wiring.requestTask({ portA: "DUT_A.J1", portB: "DUT_B.J1", pins: [{ a: "1", b: "1" }, { a: "2", b: "2" }], action: "connect" });
       await window.hardwareharness.wiring.startTask(pending.wiringTaskId, "e2e");
@@ -268,7 +268,7 @@ test.describe.serial("HardwareHarness folder project desktop", () => {
     await page.evaluate(async () => {
       const current = await window.hardwareharness.projects.current();
       if (!current) throw new Error("project missing");
-      await window.hardwareharness.wiring.update({ ...current.file.wiring, nodes: [...current.file.wiring.nodes, { hardwareId: "EXTRA", x: 300, y: 20, showImage: true, portPositions: {} }] });
+      await window.hardwareharness.wiring.update({ ...current.file.wiring, nodes: [...current.file.wiring.nodes, { hardwareId: "EXTRA", x: 300, y: 20, portPositions: {} }] });
     });
     await requestLeaveProject(page);
     const dialog = page.getByRole("dialog", { name: "保存项目修改" });

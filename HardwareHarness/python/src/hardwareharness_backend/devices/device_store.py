@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import errno
 import io
 import os
 import shutil
@@ -38,7 +37,6 @@ Remove = Callable[[Path], Awaitable[None]]
 
 DEFINITION_DIR = "definition"
 DEFINITION_FILE = "device.json"
-DEFINITION_ASSETS = "assets"
 ADAPTER_FILE = "adapter.json"
 
 
@@ -55,13 +53,6 @@ async def _rename(source: Path, target: Path) -> None:
 
 async def _remove(path: Path) -> None:
     _delete(path)
-
-
-def _write_bytes(path: Path, data: bytes | bytearray) -> None:
-    if path.is_dir():
-        raise IsADirectoryError(errno.EISDIR, "Is a directory", str(path))
-    with path.open("wb") as stream:
-        stream.write(data)
 
 
 class DeviceStore:
@@ -196,30 +187,14 @@ class DeviceStore:
 
     async def save_hardware(self, value: Record) -> Record:
         parsed = parse_hardware(value)
-        existing = self.get_stored_hardware(parsed["hardwareId"])
         stored = parse_stored_hardware_definition(
             {
                 "formatVersion": 2,
                 "hardwareId": parsed["hardwareId"],
                 "label": parsed["label"],
                 "ports": parsed["ports"],
-                **(
-                    {"appearanceAssetId": parsed["appearanceAssetId"]}
-                    if parsed.get("appearanceAssetId")
-                    else {}
-                ),
             }
         )
-        self._hardware_path(stored["hardwareId"]).mkdir(parents=True, exist_ok=True)
-        keep = {port["imageAssetId"] for port in stored["ports"] if port.get("imageAssetId")}
-        if existing:
-            for port in existing["ports"]:
-                if port.get("imageAssetId") and port["imageAssetId"] not in keep:
-                    await self._delete_asset(stored["hardwareId"], port["imageAssetId"])
-            if existing.get("appearanceAssetId") and existing["appearanceAssetId"] != stored.get(
-                "appearanceAssetId"
-            ):
-                await self._delete_asset(stored["hardwareId"], existing["appearanceAssetId"])
         await self._save_stored_hardware(stored)
         return self._derive_hardware(stored)
 
@@ -234,62 +209,6 @@ class DeviceStore:
         await _remove(self._hardware_path(hardware_id))
         self._read_cache.clear()
 
-    async def put_image(self, hardware_id: str, port_id: str | None, source: str | Path) -> Record:
-        return await self.put_image_bytes(
-            hardware_id, port_id, Path(source).read_bytes(), image_extension(str(source))
-        )
-
-    async def put_image_bytes(
-        self,
-        hardware_id: str,
-        port_id: str | None,
-        data: bytes | bytearray,
-        extension_hint: str = "",
-    ) -> Record:
-        self._require_editable_images(hardware_id)
-        hardware = self.require_hardware(hardware_id)
-        if port_id is not None and not any(p["portId"] == port_id for p in hardware["ports"]):
-            raise RuntimeError(f"Unknown portId: {port_id}")
-        if not data or len(data) > 10 * 1024 * 1024:
-            raise RuntimeError("Image must be between 1 byte and 10 MB")
-        extension = resolve_image_extension(data, extension_hint)
-        asset_id = (
-            f"appearance{extension}"
-            if port_id is None
-            else f"ports/{safe_segment(port_id)}{extension}"
-        )
-        target = self.image_path(hardware_id, asset_id)
-        target.parent.mkdir(parents=True, exist_ok=True)
-        _write_bytes(target, data)
-        target_record = (
-            hardware
-            if port_id is None
-            else next(p for p in hardware["ports"] if p["portId"] == port_id)
-        )
-        field = "appearanceAssetId" if port_id is None else "imageAssetId"
-        previous = target_record.get(field)
-        if previous and previous != asset_id:
-            await self._delete_asset(hardware_id, previous)
-        target_record[field] = asset_id
-        return await self.save_hardware(hardware)
-
-    async def remove_image(self, hardware_id: str, port_id: str | None = None) -> Record:
-        self._require_editable_images(hardware_id)
-        hardware = self.require_hardware(hardware_id)
-        target = (
-            hardware
-            if port_id is None
-            else next((port for port in hardware["ports"] if port["portId"] == port_id), {})
-        )
-        field = "appearanceAssetId" if port_id is None else "imageAssetId"
-        previous = target.pop(field, None)
-        if previous:
-            await self._delete_asset(hardware_id, previous)
-        return await self.save_hardware(hardware)
-
-    def image_path(self, hardware_id: str, asset_id: str) -> Path:
-        return _resolve_inside(self._hardware_path(hardware_id), asset_id)
-
     # -- server-provided definitions (design doc §9.7) ---------------------------------------
 
     def get_definition(self, hardware_id: str) -> Record | None:
@@ -301,18 +220,12 @@ class DeviceStore:
                 return value
         return None
 
-    async def save_definition(
-        self, hardware_id: str, document: Record, assets: dict[str, bytes]
-    ) -> Record:
-        """Replace the cached declaration and its assets (staged, then swapped in)."""
+    async def save_definition(self, hardware_id: str, document: Record) -> Record:
+        """Replace the cached declaration (staged, then swapped in)."""
         directory = self._hardware_path(hardware_id)
         directory.mkdir(parents=True, exist_ok=True)
         staging = directory / f"{DEFINITION_DIR}.{new_uuid()}.tmp"
         try:
-            for path, content in assets.items():
-                target = _resolve_inside(staging / DEFINITION_ASSETS, path)
-                target.parent.mkdir(parents=True, exist_ok=True)
-                _write_bytes(target, content)
             value = {"document": document, "fetchedAt": utc_now_iso()}
             await atomic_json(staging / DEFINITION_FILE, value)
             await self._remove(directory / DEFINITION_DIR)
@@ -321,17 +234,6 @@ class DeviceStore:
             with contextlib.suppress(OSError):
                 _delete(staging)
         return value
-
-    def definition_asset_id(self, path: str) -> str:
-        """The ``hardwareharness-asset:`` asset id of a cached ``/assets`` file."""
-        return f"{DEFINITION_DIR}/{DEFINITION_ASSETS}/{path.lstrip('/')}"
-
-    def _require_editable_images(self, hardware_id: str) -> None:
-        if self.get_definition(hardware_id) is not None:
-            raise RuntimeError(
-                f"Hardware {hardware_id} takes its pictures and pinout from its MCP server; "
-                "they are read-only here"
-            )
 
     async def export_bundle(self, identifier: str) -> bytes:
         hardware = self.get_stored_hardware(identifier)
@@ -348,9 +250,6 @@ class DeviceStore:
                 }
             ),
         }
-        for asset_id in _asset_ids(hardware):
-            with contextlib.suppress(OSError):
-                entries[asset_id] = self.image_path(identifier, asset_id).read_bytes()
         output = io.BytesIO()
         with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
             for name, data in entries.items():
@@ -358,11 +257,11 @@ class DeviceStore:
         return output.getvalue()
 
     async def inspect_bundle(self, data: bytes) -> Record:
-        return (await asyncio.to_thread(_parse_bundle, data))[1]
+        return await asyncio.to_thread(_parse_bundle, data)
 
     async def import_bundle(self, data: bytes, options: Record | None = None) -> Record:
         options = options or {}
-        entries, stored, assets = await asyncio.to_thread(_parse_bundle, data)
+        stored = await asyncio.to_thread(_parse_bundle, data)
         expected = options.get("expectedHardwareId")
         if expected and expected != stored["hardwareId"]:
             raise RuntimeError(
@@ -382,10 +281,6 @@ class DeviceStore:
         existing_moved = staging_moved = False
         try:
             staging.mkdir(parents=True, exist_ok=True)
-            for asset_id in assets:
-                asset = _resolve_inside(staging, asset_id)
-                asset.parent.mkdir(parents=True, exist_ok=True)
-                _write_bytes(asset, entries[asset_id])
             await atomic_json(staging / "hardware.json", stored)
             if target.exists():
                 await self._rename(target, backup)
@@ -457,11 +352,6 @@ class DeviceStore:
     def _hardware_path(self, hardware_id: str) -> Path:
         return self._hardware_dir / safe_segment(hardware_id)
 
-    async def _delete_asset(self, hardware_id: str, asset_id: str) -> None:
-        target = self.image_path(hardware_id, asset_id)
-        with contextlib.suppress(OSError):
-            _delete(target)
-
     def _read_all(
         self, directory: Path, document_name: str, parse: Callable[[Any], Record]
     ) -> list[Record]:
@@ -513,62 +403,15 @@ def _parse_stored(value: Any) -> Record:
             "hardwareId": raw.get("hardwareId", UNDEFINED),
             "label": raw.get("label", UNDEFINED),
             "ports": raw.get("ports") if raw.get("ports") is not None else [],
-            **(
-                {"appearanceAssetId": raw["appearanceAssetId"]}
-                if isinstance(raw.get("appearanceAssetId"), str)
-                else {}
-            ),
         }
     )
-
-
-def _asset_ids(hardware: Record) -> list[str]:
-    return [
-        value
-        for value in [
-            hardware.get("appearanceAssetId"),
-            *[p.get("imageAssetId") for p in hardware["ports"]],
-        ]
-        if isinstance(value, str)
-    ]
 
 
 def _encode_json(value: Any) -> bytes:
     return (json_dumps(value, indent=2) + "\n").encode("utf-8")
 
 
-def image_extension(source: str) -> str:
-    extension = PureWindowsPath(source).suffix.lower()
-    if not extension:
-        extension = source.lower() if source.startswith(".") else "." + source.lower()
-    return ".jpg" if extension == ".jpeg" else extension
-
-
-def resolve_image_extension(data: bytes | bytearray, hint: str) -> str:
-    if data.startswith(b"\x89PNG\r\n\x1a\n"):
-        detected = ".png"
-    elif data.startswith(b"\xff\xd8\xff"):
-        detected = ".jpg"
-    elif len(data) >= 12 and data[:4] == b"RIFF" and data[8:12] == b"WEBP":
-        detected = ".webp"
-    else:
-        raise RuntimeError("Only PNG, JPEG and WebP images are supported")
-    extension = image_extension(hint) if hint.strip() else detected
-    if extension in {".png", ".jpg", ".webp"} and extension != detected:
-        raise RuntimeError("Image content does not match its extension")
-    return detected
-
-
-def _resolve_inside(root: Path, relative: str) -> Path:
-    if PureWindowsPath(relative).drive:
-        raise RuntimeError(f"Unsafe asset path {relative}")
-    target = (root / relative.replace("\\", "/")).resolve()
-    if target == root or not target.is_relative_to(root):
-        raise RuntimeError(f"Unsafe asset path {relative}")
-    return target
-
-
-def _parse_bundle(data: bytes) -> tuple[dict[str, bytes], Record, list[str]]:
+def _parse_bundle(data: bytes) -> Record:
     if len(data) > 64 * 1024 * 1024:
         raise RuntimeError("Bundle exceeds the 64 MB archive limit")
     entries: dict[str, bytes] = {}
@@ -660,13 +503,7 @@ def _parse_bundle(data: bytes) -> tuple[dict[str, bytes], Record, list[str]]:
     stored = _parse_stored(decode_document("hardware.json"))
     if manifest.get("id") != stored["hardwareId"]:
         raise RuntimeError("Bundle manifest id does not match hardware.json")
-    assets = _asset_ids(stored)
-    allowed = {"bundle.json", "hardware.json", *assets}
     for name in entries:
-        if name not in allowed:
+        if name not in {"bundle.json", "hardware.json"}:
             raise RuntimeError(f"Bundle contains unexpected entry {name}")
-    for asset_id in assets:
-        if asset_id not in entries:
-            raise RuntimeError(f"Bundle is missing image {asset_id}")
-        resolve_image_extension(entries[asset_id], asset_id)
-    return entries, stored, assets
+    return stored

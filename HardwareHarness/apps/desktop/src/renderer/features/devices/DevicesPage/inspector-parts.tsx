@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import type { Hardware } from "@hardwareharness/contracts/devices";
 import { CircleAlertIcon, SearchXIcon } from "lucide-react";
 import { Badge, EmptyState, PanelBody, PanelHeader, Section, type Tone } from "../../../ui";
-import { HardwareImage } from "../HardwareImage.js";
 
 /** Inspector frame: nameplate header (name, status, actions) above stacked sections. Ids live in 基本信息. */
 export function InspectorShell({ title, status, actions, notice, children }: {
@@ -51,23 +50,11 @@ export function ErrorStrip({ message }: { message: string }) {
   );
 }
 
-/** Appearance photo and the port/pin table of one hardware record. */
+/** The port/pin table of one hardware record. */
 export function HardwareSections({ hardware }: { hardware: Hardware }) {
   const pinCount = hardware.ports.reduce((total, port) => total + port.pins.length, 0);
   return (
     <>
-      {hardware.appearanceAssetId && (
-        <Section title="外观图">
-          <figure className="overflow-hidden rounded-md border border-line bg-surface-0">
-            <HardwareImage
-              hardwareId={hardware.hardwareId}
-              assetId={hardware.appearanceAssetId}
-              alt={`${hardware.label} 外观图`}
-              className="mx-auto max-h-[280px] w-full"
-            />
-          </figure>
-        </Section>
-      )}
       <Section
         title="端口"
         actions={<span className="tf-num text-2xs text-fg-3">{hardware.ports.length} 端口 · {pinCount} 针</span>}
@@ -80,14 +67,6 @@ export function HardwareSections({ hardware }: { hardware: Hardware }) {
               {!port.name.includes(port.portId) && <span className="tf-num text-2xs text-fg-3">{port.portId}</span>}
               <Badge className="ml-auto" mono>{port.pins.length ? `${port.pins.length} 针` : "无针脚"}</Badge>
             </header>
-            {port.imageAssetId && (
-              <HardwareImage
-                hardwareId={hardware.hardwareId}
-                assetId={port.imageAssetId}
-                alt={`${port.name} 端口图`}
-                className="mx-2 mt-2 max-h-[160px] rounded-sm"
-              />
-            )}
             {port.pins.length > 0 && (
               <ul className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-x-3 px-2 py-1.5 text-xs">
                 {port.pins.map((pin) => (

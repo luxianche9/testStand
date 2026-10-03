@@ -168,7 +168,7 @@ export function installTestingApi(plans: TestPlan[], items: TestItemStatus[]) {
         })),
         exportText: vi.fn()
       },
-      devices: { listHardware: vi.fn(async () => []), hardwareImageUrl: vi.fn(() => "") },
+      devices: { listHardware: vi.fn(async () => []) },
       testing,
       streams: {
         live: vi.fn(() => () => undefined),

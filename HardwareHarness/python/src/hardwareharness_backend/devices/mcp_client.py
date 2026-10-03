@@ -17,7 +17,7 @@ from hardwareharness_backend.contracts.devices import (
 from hardwareharness_backend.contracts.errors import app_error
 from hardwareharness_backend.util import clone, json_dumps
 
-from .device_manifest import declared_streams, fetch_asset, fetch_device
+from .device_manifest import declared_streams, fetch_device
 from .mcp_transport import compatible_http_client
 from .schema_validation import schema_error
 
@@ -497,11 +497,6 @@ class McpHttpTransport:
         await self._refresh_device(session)
         device = session.get("device")
         return clone(device) if isinstance(device, dict) else None
-
-    async def read_asset(self, server: Record, path: str) -> bytes:
-        """One ``/assets/<path>`` file referenced by the declaration."""
-        session = await self.ensure(server)
-        return await fetch_asset(session["http"], server["url"], path)
 
     async def _refresh_device(self, session: Record) -> None:
         """``/device`` is the stream list; services that predate it answer ``list_streams``."""

@@ -52,12 +52,10 @@
 - [ ] 字节流：读线程持 `io_lock` 调 `rx`；每次读返回调 `idle()`（未配置的端口也调），轮询间隔不超过 100 ms；发送只走 `stream.send`（写入器持 `io_lock`、检查配置门槛）；配置 / 清空 / 复位写 `mark`
 - [ ] 流记录里没有秘密
 
-## 引脚与图片
+## 引脚
 
 - [ ] `pinout()` 来自手册连接器表，否则保持 `not_supported`
 - [ ] 针脚名与手册一致；程序里不把针脚和工具、流关联
-- [ ] 每个连接器有端口图（`attach_port_image`，带 `pinPositions`），有外观图 `assets/appearance.*`；示意图注明不按比例、未核实的视图方向
-- [ ] 图片列入 `pyproject.toml` package-data；测试保证仓库里的 SVG 等于重新生成的结果
 
 ## 测试与组装
 
