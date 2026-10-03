@@ -55,6 +55,10 @@ describe("DesktopDialogs", () => {
     await expect(dialogs.saveBundle("hardware", "CARD", bytes)).resolves.toEqual({ path: destination, kind: "hardware", id: "CARD" });
     electron.showOpenDialog.mockResolvedValueOnce({ canceled: false, filePaths: [destination] });
     await expect(dialogs.openBundle("hardware")).resolves.toEqual(bytes);
+    electron.showOpenDialog.mockResolvedValueOnce({ canceled: false, filePaths: [destination] });
+    await expect(dialogs.openDevicePackage()).resolves.toEqual(bytes);
+    electron.showOpenDialog.mockResolvedValueOnce({ canceled: true, filePaths: [] });
+    await expect(dialogs.openDevicePackage()).resolves.toBeNull();
   });
 
   it("requires an active main window before opening a native dialog", async () => {

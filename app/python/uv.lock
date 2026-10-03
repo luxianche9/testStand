@@ -1051,10 +1051,6 @@ dependencies = [
     { name = "pydantic" },
     { name = "ruamel-yaml" },
     { name = "starlette" },
-    { name = "teststand-adapter-cp118u-i" },
-    { name = "teststand-adapter-pci1710l" },
-    { name = "teststand-adapter-pci1762" },
-    { name = "teststand-adapter-pci6208v" },
     { name = "teststand-device-sdk" },
     { name = "uvicorn" },
 ]
@@ -1068,6 +1064,10 @@ dev = [
     { name = "pytest-asyncio" },
     { name = "pytest-cov" },
     { name = "ruff" },
+    { name = "teststand-adapter-cp118u-i" },
+    { name = "teststand-adapter-pci1710l" },
+    { name = "teststand-adapter-pci1762" },
+    { name = "teststand-adapter-pci6208v" },
     { name = "types-jsonschema" },
 ]
 
@@ -1083,10 +1083,6 @@ requires-dist = [
     { name = "pydantic", specifier = "==2.13.5" },
     { name = "ruamel-yaml", specifier = "==0.18.15" },
     { name = "starlette", specifier = "==1.6.0" },
-    { name = "teststand-adapter-cp118u-i", editable = "../../devices/adapters/cp118u_i" },
-    { name = "teststand-adapter-pci1710l", editable = "../../devices/adapters/pci1710l" },
-    { name = "teststand-adapter-pci1762", editable = "../../devices/adapters/pci1762" },
-    { name = "teststand-adapter-pci6208v", editable = "../../devices/adapters/pci6208v" },
     { name = "teststand-device-sdk", editable = "../../devices/sdk" },
     { name = "uvicorn", specifier = "==0.52.4" },
 ]
@@ -1100,6 +1096,10 @@ dev = [
     { name = "pytest-asyncio" },
     { name = "pytest-cov" },
     { name = "ruff" },
+    { name = "teststand-adapter-cp118u-i", editable = "../../devices/adapters/cp118u_i" },
+    { name = "teststand-adapter-pci1710l", editable = "../../devices/adapters/pci1710l" },
+    { name = "teststand-adapter-pci1762", editable = "../../devices/adapters/pci1762" },
+    { name = "teststand-adapter-pci6208v", editable = "../../devices/adapters/pci6208v" },
     { name = "types-jsonschema" },
 ]
 

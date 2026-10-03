@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Hardware, DeviceInstance } from "@teststand/contracts/devices";
-import { CircleAlertIcon, RefreshCwIcon } from "lucide-react";
+import { BoxesIcon, CircleAlertIcon, RefreshCwIcon } from "lucide-react";
 import { errorMessage } from "../../../lib/errors.js";
 import { invalidateDeviceData } from "../../../lib/mutations.js";
 import { useDashboard, useDeviceCatalog } from "../../../lib/queries.js";
 import { useResizableWidth } from "../../../lib/resizable.js";
 import { Button, cn, EmptyState, Panel, PanelBody, PanelHeader, Spinner, Splitter } from "../../../ui";
 import { DeviceInspector } from "./DeviceInspector.js";
+import { DevicePackagesDialog } from "./DevicePackages.js";
 import { HardwareListTree } from "./HardwareListTree.js";
 import { HardwareEditor } from "./editors/HardwareEditor.js";
 import { DeviceEditor } from "./editors/DeviceEditor.js";
@@ -20,6 +21,7 @@ export function DevicesPage() {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [deviceEditor, setDeviceEditor] = useState<{ open: boolean; instance?: DeviceInstance }>({ open: false });
   const [hardwareEditor, setHardwareEditor] = useState<{ open: boolean; hardware?: Hardware }>({ open: false });
+  const [typesOpen, setTypesOpen] = useState(false);
   const sidebar = useResizableWidth({
     storageKey: "teststand.devices-sidebar-width",
     defaultWidth: 320,
@@ -80,15 +82,20 @@ export function DevicesPage() {
         <PanelHeader
           title="设备管理"
           actions={
-            <Button
-              size="xs"
-              variant="ghost"
-              title="检测所有设备的连接状态"
-              disabled={probeStatuses.isPending || !data}
-              onClick={() => probeStatuses.mutate()}
-            >
-              <RefreshCwIcon className={cn(probeStatuses.isPending && "animate-spin")} />状态检测
-            </Button>
+            <>
+              <Button size="xs" variant="ghost" title="已安装的设备类型与设备包" onClick={() => setTypesOpen(true)}>
+                <BoxesIcon />设备类型
+              </Button>
+              <Button
+                size="xs"
+                variant="ghost"
+                title="检测所有设备的连接状态"
+                disabled={probeStatuses.isPending || !data}
+                onClick={() => probeStatuses.mutate()}
+              >
+                <RefreshCwIcon className={cn(probeStatuses.isPending && "animate-spin")} />状态检测
+              </Button>
+            </>
           }
         />
         <PanelBody>
@@ -138,6 +145,7 @@ export function DevicesPage() {
         onClose={() => setDeviceEditor({ open: false })}
         onChanged={refreshAll}
       />
+      <DevicePackagesDialog open={typesOpen} onClose={() => setTypesOpen(false)} />
       <HardwareEditor
         open={hardwareEditor.open}
         hardware={hardwareEditor.hardware}

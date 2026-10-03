@@ -27,7 +27,7 @@ pci1234 = "teststand_adapter_pci1234:DEVICE"
 
 - 入口点名就是设备类型（实例记录里的 `type`），用适配器 id，小写、唯一。
 - `device_types()` 返回 `{类型: "module:attr"}`；`load_device(spec)` 先按入口点名查找，找不到再把 `spec` 当作模块（取 `DEVICE`）或 `module:ClassName`。所以 `--check` 既能写 `--adapter pci1234`，也能写 `--adapter teststand_adapter_pci1234`。
-- 入口点元数据在安装时生成：改了 `pyproject.toml` 的入口点要重新 `uv sync`（`devices/` 下）或 `pnpm python:setup`（`app/` 下）。
+- 入口点元数据在安装时生成：改了 `pyproject.toml` 的入口点要重新 `uv sync`（`devices/` 下）或 `pnpm python:setup`（`app/` 下，开发环境把四个现有适配器作为内置类型装在 dev 组里）。发布版不带任何适配器，设备类型都由 `.tsdev` 设备包安装。
 
 ## `Device`
 

@@ -5,15 +5,31 @@
 
 Each hardware device is the device plugin SDK plus one adapter, loaded by the
 testStand backend as a plugin. The four boards (PCI-1710L, PCI-1762,
-PCI-6208V, CP-118U-I) are built from this directory.
+PCI-6208V, CP-118U-I) are built from this directory. A release of testStand ships
+none of them: each adapter is delivered as a `.tsdev` device package and installed
+on the Devices page (设备类型 → 安装设备包…).
 
 ```
 sdk/                     teststand_device_sdk: DeviceHost, plugin loading (in process or child
                          process), builtin tools, envelope, lifecycle, safe_state, streams (ring
                          buffer), /device manifest, waveform player, compliance suite
 adapters/<adapter>/      teststand_adapter_<adapter>: adapter.py, driver.py, sim.py, pinout.py, tests/
+native/                  DAQNavi bridges (hwcli_*.cpp) and build.py, built into adapters/<card>/.../bin/
+pack.py                  builds dist/<type>-<version>.tsdev device packages
 test.ps1                 local tests: SDK, every adapter, dry-run compliance
 ```
+
+## Device packages
+
+```powershell
+python native/build.py      # DAQNavi bridges (MinGW-w64 g++), needed by pci1710l and pci1762
+python pack.py --all        # tests + --check, wheel, manifest -> dist/*.tsdev
+```
+
+A package is a ZIP of `package.json` (type, version, manufacturer, model, isolation,
+SDK range, vendor drivers, SHA-256 of every wheel) and `wheels/*.whl`. List the
+vendor drivers the bench needs and the files that must be in the wheel under
+`[tool.teststand.package]` in the adapter's `pyproject.toml`.
 
 ## Device plugins
 
@@ -28,7 +44,7 @@ pci1762 = "teststand_adapter_pci1762:DEVICE"
 The backend calls `open_device(type, config)`. `config` is a `DeviceConfig`, usually
 built with `DeviceConfig.from_mapping({deviceId, hardwareId, manufacturer, model,
 dryRun, settings})`; `settings` holds the adapter's nonsecret options. In the backend
-a device instance is the record `{transport: "plugin", deviceId, label, hardwareId,
+a device instance is the record `{deviceId, label, hardwareId,
 type, settings, mode: real|sim, enabled}`; `mode: sim` sets `dryRun`.
 `device_types()` lists the installed types, `load_device()` also accepts
 `module` or `module:ClassName`.

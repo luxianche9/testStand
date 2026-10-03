@@ -16,10 +16,6 @@ dependencies = [
   "keyring==25.7.0",
   "packaging==26.3",
   "teststand-device-sdk",
-  "teststand-adapter-pci1710l",
-  "teststand-adapter-pci1762",
-  "teststand-adapter-pci6208v",
-  "teststand-adapter-cp118u-i",
 ]
 
 [project.entry-points."teststand.test_steps"]
@@ -41,7 +37,14 @@ build-backend = "hatchling.build"
 packages = ["src/teststand_backend"]
 
 [dependency-groups]
+# The adapters are not part of testStand: a release ships none and installs them as .tsdev device
+# packages. In development they are editable here so the backend tests and the end-to-end tests
+# can run real adapters in simulator mode.
 dev = [
+  "teststand-adapter-pci1710l",
+  "teststand-adapter-pci1762",
+  "teststand-adapter-pci6208v",
+  "teststand-adapter-cp118u-i",
   "ruff",
   "mypy",
   "pytest",

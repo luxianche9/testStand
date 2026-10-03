@@ -18,6 +18,8 @@ export interface TestStandDialogsApi {
   exportText(defaultPath: string, content: string): Promise<string | null>;
   saveBundle(kind: DeviceBundleKind, id: string, data: Uint8Array): Promise<DeviceBundleExport | null>;
   openBundle(kind: DeviceBundleKind): Promise<Uint8Array | null>;
+  /** Pick a `.tsdev` device package; its bytes, or null when cancelled. */
+  openDevicePackage(): Promise<Uint8Array | null>;
   chooseProjectFolder(): Promise<string | null>;
 }
 
@@ -30,6 +32,8 @@ export interface TestStandWindowApi {
   applyTheme(theme: ThemeChoice): Promise<void>;
   /** Flash the taskbar entry, e.g. when the Agent asks for a wiring change. */
   flash(): Promise<void>;
+  /** Quit and start testStand again (device package upgrades and removals apply at start). */
+  relaunch(): Promise<void>;
 }
 
 export interface TestStandEventsApi {

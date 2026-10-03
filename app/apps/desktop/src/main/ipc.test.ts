@@ -34,11 +34,21 @@ describe("Desktop main calls", () => {
   });
 });
 
+describe("window calls", () => {
+  it("relaunches testStand on request", async () => {
+    const deps = dependencies();
+    await expect(dispatchMainCall(createMainHandlers(deps), "window.relaunch", [])).resolves.toEqual({ ok: true, value: undefined });
+    expect(deps.windows.relaunch).toHaveBeenCalledOnce();
+  });
+});
+
 function dependencies(overrides: Partial<DesktopIpcDependencies> = {}): DesktopIpcDependencies {
   return {
     endpoint: () => ({ url: "http://127.0.0.1:1", token: "t" }),
     dialogs: {} as never,
-    windows: { minimize: vi.fn(), toggleMaximize: vi.fn(), close: vi.fn(), applyTheme: vi.fn(), flashFrame: vi.fn() },
+    windows: {
+      minimize: vi.fn(), toggleMaximize: vi.fn(), close: vi.fn(), applyTheme: vi.fn(), flashFrame: vi.fn(), relaunch: vi.fn()
+    },
     ...overrides
   };
 }

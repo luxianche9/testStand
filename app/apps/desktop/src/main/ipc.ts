@@ -12,6 +12,7 @@ interface DesktopWindowPort {
   close(): void;
   applyTheme(theme: "system" | "light" | "dark"): void;
   flashFrame(flag: boolean): void;
+  relaunch(): void;
 }
 
 export interface DesktopIpcDependencies {
@@ -40,12 +41,14 @@ export function createMainHandlers(dependencies: DesktopIpcDependencies): Deskto
       (kind, id, data) => dialogs.saveBundle(kind, id, data)
     ),
     "dialogs.openBundle": handler(z.tuple([deviceBundleKindSchema]), (kind) => dialogs.openBundle(kind)),
+    "dialogs.openDevicePackage": handler(none, () => dialogs.openDevicePackage()),
     "dialogs.chooseProjectFolder": handler(none, () => dialogs.chooseProjectFolder()),
     "window.minimize": handler(none, () => windows.minimize()),
     "window.toggleMaximize": handler(none, () => windows.toggleMaximize()),
     "window.close": handler(none, () => windows.close()),
     "window.applyTheme": handler(z.tuple([themeChoiceSchema]), (theme) => windows.applyTheme(theme)),
-    "window.flash": handler(none, () => windows.flashFrame(true))
+    "window.flash": handler(none, () => windows.flashFrame(true)),
+    "window.relaunch": handler(none, () => windows.relaunch())
   };
 }
 

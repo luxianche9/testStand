@@ -20,8 +20,11 @@ export interface Invalidation {
 export const eventInvalidations: Record<TestStandEventName, readonly Invalidation[]> = {
   // The backend's periodic device check saw a device change state.
   availability: [{ key: queryKeys.dashboard }, { key: queryKeys.agentTools }],
-  // A catalog write: hardware, device instances, adapter records or a device's cached declaration.
+  // A catalog write: hardware, device instances, adapter records, a device's cached declaration,
+  // or an installed device package.
   devices: [
+    { key: queryKeys.deviceTypes },
+    { key: queryKeys.devicePackages },
     { key: queryKeys.deviceCatalog },
     { key: queryKeys.dashboard },
     { key: queryKeys.deviceDefinitionAll },

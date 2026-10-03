@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { BrowserWindow, nativeTheme, type WebContents, type WebFrameMain } from "electron";
+import { app, BrowserWindow, nativeTheme, type WebContents, type WebFrameMain } from "electron";
 import type { TestStandEventName } from "@teststand/contracts/desktop";
 import { DESKTOP_EVENT_CHANNEL, type DesktopEventMessage } from "../shared/desktop-ipc.js";
 import type { OpenCodeAuthorization } from "./opencode-auth.js";
@@ -91,6 +91,11 @@ export class DesktopWindows {
   }
 
   flashFrame(flag: boolean): void { this.mainWindow?.flashFrame(flag); }
+  /** Start again after the normal quit (which stops the backend and drives devices safe). */
+  relaunch(): void {
+    app.relaunch();
+    app.quit();
+  }
   saveState(): void { this.persistState?.(); }
   minimize(): void { this.mainWindow?.minimize(); }
   close(): void { this.mainWindow?.close(); }

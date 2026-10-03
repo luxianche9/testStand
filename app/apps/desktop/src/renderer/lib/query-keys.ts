@@ -2,6 +2,7 @@ export const queryKeys = {
   dashboard: ["dashboard"] as const,
   deviceCatalog: ["device-catalog"] as const,
   deviceTypes: ["device-types"] as const,
+  devicePackages: ["device-packages"] as const,
   projectDocument: ["project-document"] as const,
   recentProjects: ["recent-projects"] as const,
   wiringTasks: ["wiring-tasks"] as const,

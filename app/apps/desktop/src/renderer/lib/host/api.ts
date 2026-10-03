@@ -20,6 +20,7 @@ export function createTestStandApi(transport: DesktopTransport): TestStandApi {
       exportText: (defaultPath, content) => main("dialogs.exportText", defaultPath, content),
       saveBundle: (kind, id, data) => main("dialogs.saveBundle", kind, id, data),
       openBundle: (kind) => main("dialogs.openBundle", kind),
+      openDevicePackage: () => main("dialogs.openDevicePackage"),
       chooseProjectFolder: () => main("dialogs.chooseProjectFolder")
     },
     window: {
@@ -27,7 +28,8 @@ export function createTestStandApi(transport: DesktopTransport): TestStandApi {
       toggleMaximize: () => main("window.toggleMaximize"),
       close: () => main("window.close"),
       applyTheme: (theme) => main("window.applyTheme", theme),
-      flash: () => main("window.flash")
+      flash: () => main("window.flash"),
+      relaunch: () => main("window.relaunch")
     },
     events: { subscribe: (event, listener) => transport.subscribe(event, listener) }
   };

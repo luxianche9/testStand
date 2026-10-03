@@ -68,5 +68,6 @@
 - [ ] 测试覆盖（用 `serve()` 的进程内 harness）：公共工具集合（含内置流工具，不含 `get_pinout` / `list_streams`）、越界拒绝、未配置门槛、`safe_state` 幂等、`hh.device()` 的 `streams`（含元数据）和 `description`、写工具的 `meta.streamRefs` 与记录 `op`、采样流经 `hh.subscribe` 出值、字节流的 `idle()` 水位
 - [ ] README 写明：设备类型名、`isolation`、设备语义、流、`settings` 字段、构建原生程序的方法
 - [ ] 仓库中没有令牌、密码；`settings` 里只有非秘密配置
-- [ ] 接入后端（`app/python/pyproject.toml` 增加依赖与 editable 路径）已告知用户并由用户确认
+- [ ] `[tool.teststand.package]` 写明 `vendorDrivers`（台架需预装的厂商驱动）和 `requiredFiles`；`python devices/pack.py <adapter>` 能生成 `.tsdev`
+- [ ] 设备包由用户在 testStand 设备页安装（安装前会显示清单），不改 testStand 本身
 - [ ] 首次上架由人在设备页先以 `mode: sim`、再以 `mode: real` 空载验收，结束后 `safe_state`；结果记录在 README 或交付说明里

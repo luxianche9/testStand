@@ -25,4 +25,4 @@ cd devices
 .\test.ps1 -Target __ADAPTER__                 # pytest + 模拟器上的合规检查
 ```
 
-后端要加载它，需要把本包加进 `app/python/pyproject.toml`（依赖与 editable 路径，与其他适配器相同）并运行 `pnpm python:setup`；之后在设备页“添加测试资源”中选类型 `__ADAPTER__`，先用 `mode: sim` 验证，再改为 `mode: real` 做空载验收。
+交付给 testStand 用设备包：`python devices/pack.py __ADAPTER__` 生成 `devices/dist/__ADAPTER__-<版本>.tsdev`；在 testStand 设备管理页“设备类型 → 安装设备包…”安装，之后在“添加测试资源”中选类型 `__ADAPTER__`，先用 `mode: sim` 验证，再改为 `mode: real` 做空载验收。

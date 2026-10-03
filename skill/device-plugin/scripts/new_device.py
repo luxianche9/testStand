@@ -127,9 +127,10 @@ Next steps (see skill/device-plugin/SKILL.md):
   1. Replace every TODO(new_device) and the hypothetical digital I/O tools with the manual's operations;
      set Device.isolation = "subprocess" if the driver prints to stdout or may crash.
   2. Run skill/device-plugin/scripts/check_adapter.ps1 -Adapter {adapter}  (pytest + compliance + TODO scan).
-  3. To load it in testStand, add {dist} to app/python/pyproject.toml
-     (dependency + editable path, like the other adapters; ask the user first) and run `pnpm python:setup`.
-     Then add a device of type "{adapter}" on the Devices page: mode sim first, then mode real.""")
+  3. Build its device package: python devices/pack.py {adapter}  ->  devices/dist/{adapter}-<version>.tsdev
+     (list vendor drivers and required files under [tool.teststand.package] in its pyproject.toml).
+  4. In testStand: Devices page -> 设备类型 -> 安装设备包…, then add a device of type "{adapter}":
+     mode sim first, then mode real.""")
     return 0
 
 

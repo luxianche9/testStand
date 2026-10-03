@@ -35,7 +35,7 @@ description: Create, extend, review and troubleshoot testStand device plugins bu
    .\skill\device-plugin\scripts\check_adapter.ps1 -Adapter <adapter>
    ```
    依次运行适配器的 pytest、模拟器上的合规检查（`--check`），并扫描遗留的 `TODO(new_device)`。全部通过前不要交付。补充测试时对照 `references/checklist.md`。
-8. **接入后端**。后端只加载装进它自己 Python 环境的适配器：在 `app/python/pyproject.toml` 的 `dependencies` 和 `[tool.uv.sources]` 里加上新包（`{ path = "../../devices/adapters/<adapter>", editable = true }`，与现有四个适配器相同），再运行 `pnpm python:setup`。这一步改的是后端工程，先告诉用户，由用户确认后再做。装好后，设备页"添加测试资源"的类型列表里就有它（后端操作 `devices.listDeviceTypes` 读入口点），实例记录为 `{type, settings, mode: real|sim}`。
+8. **打成设备包**。在适配器 `pyproject.toml` 的 `[tool.teststand.package]` 写上 `vendorDrivers`（台架需预装的厂商驱动，安装时显示给用户）和 `requiredFiles`（必须进 wheel 的文件，如 `bin/*.exe`），再运行 `python devices/pack.py <adapter>`：它先跑测试和 `--check`，再构建 wheel（连同第三方依赖的 wheel）写出 `devices/dist/<类型>-<版本>.tsdev`。testStand 本身不改、不重新打包：用户在设备管理页“设备类型 → 安装设备包…”选这个文件，确认清单（型号、版本、文件、SHA-256、厂商驱动）后安装；新类型立即出现在“添加测试资源”里，升级或卸载在重启 testStand 后生效。实例记录为 `{type, settings, mode: real|sim}`。
 9. **首次上架验收交给人**。先用 `mode: sim` 添加实例，确认工具、流和声明正常；再改为 `mode: real`，空载（不接被测对象）逐个工具手动调用，对照万用表、回环线或继电器动作声确认，结束后执行 `safe_state`。适配器状态从“开发中”改为“可用”需要人工实物冒烟记录（执行人、时间、接线、观察结果），本技能不替人记录。
 
 ## 硬性规则

@@ -31,6 +31,7 @@
 | 2026-09-30 | 重写第 9 章终端软件架构：后端作为可独立运行的工作站服务；操作注册表同时生成 HTTP、MCP 与 TS 类型；运行日志作为唯一记录；前后端只保留 HTTP + SSE；密钥改用系统凭据库。新增 P9～P10、DEC-13～DEC-18、第 12.6 节 |
 | 2026-10-01 | 删除命令行 `hh` 和虚拟台架（原 T8、T9）：没有使用者，维护成本高于收益。DEC-18 改为不做虚拟台架；第 9.8 节只保留测试分层 |
 | 2026-10-03 | 单机插件化重构（任务书 `doc/plan/单机插件化重构.md`）：测试资源与测试终端在同一台电脑；每台设备从远程 MCP HTTP 服务改为后端进程内插件，必要时隔离到 stdio 子进程（第 2、4 章）；删除租约、测试资源图片、远程部署与服务管理、时钟同步、设备 SSE 数据通道。删除 DEC-01、DEC-02、DEC-03、DEC-05、DEC-07，新增 DEC-19～DEC-23；第 12 章按完成情况重写 |
+| 2026-10-03 | 设备包：发布版不再内置适配器，每种设备类型以 `.tsdev` 设备包安装（第 4.1、4.8 节）；新增 DEC-24 |
 
 ---
 
@@ -171,7 +172,8 @@ testStand 是一套通用的智能测试软件。目标是用**一套平台 + �
   ```
 
   entry point 名就是设备类型。`device_types()` 列出已安装的类型；`load_device(spec)` 先按类型名查找，找不到再把 `spec` 当作模块（取 `DEVICE`）或 `module:Class`。后端操作 `devices.listDeviceTypes` 返回 `[{type, manufacturer, model, isolation, description}]`，导入失败的类型带 `error`，设备页据此提示为什么不能添加。
-- 安装：后端以本地 editable 路径依赖 SDK 和各适配器（`app/python/pyproject.toml`）；冻结打包时收集适配器的 entry point 元数据。新增适配器必须同时加入后端依赖，否则后端看不到它。
+- 交付：发布版 testStand 只带 SDK，不带任何适配器。每种设备类型以**设备包**（`.tsdev`）交付，在设备管理页“设备类型”里安装（第 4.8 节）。开发环境把四个现有适配器以 editable 方式装在后端的 dev 依赖组里，作为内置类型供后端测试和端到端测试使用；同一类型既内置又装成设备包时，类型列表报“重复声明”，安装也会拒绝。
+- `devices.listDeviceTypes` 的每一项另带 `version` 与 `source`（`builtin` 内置 / `package` 设备包）。
 - 加载：后端对每个启用的插件实例调用 `open_device(type, config)`，得到一个句柄，再 `start()`（第 4.2 节）。
 - 合规检查：`python -m teststand_device_sdk --adapter <type|module> --check` 在模拟器上进程内运行合规套件，输出一行 JSON `{adapter, ok, failures, warnings}`，有失败时退出码为 1。它从不访问硬件。适配器状态从“开发中”到“可用”必须先通过它（第 8.4 节）。
 
@@ -380,6 +382,17 @@ AI 通过网关读取声明（第 8.3 节的 `get_hardware_definition`），而�
 - 后端按实例构造 SDK 的 `DeviceConfig`：`manufacturer`/`model` 取自设备类，`dryRun = (mode == "sim")`。
 - **禁止**把令牌、密码写进 `settings` 或提交到仓库。
 - 密钥由后端通过 Python `keyring` 访问系统凭据库（Windows 上是“凭据管理器”），服务名固定为 `testStand`。条目：`gateway`（Agent 网关令牌）、`opencode.llm.api-key`（LLM 密钥）。旧 `safeStorage` 条目不导入。
+
+### 4.8 设备包（.tsdev）
+
+- 格式：ZIP，内含 `package.json`（清单）与 `wheels/*.whl`（适配器 wheel，及其第三方依赖的 wheel）。清单字段：`formatVersion: 1`、`kind: "devicePlugin"`、`type`、`distribution`、`version`、`manufacturer`、`model`、`isolation`、`description`、`sdk`（要求的 SDK 版本范围）、`vendorDrivers`（台架需预装的厂商驱动）、`files`（wheel 名 → SHA-256）、`builtAt`。
+- 打包：`python devices/pack.py <adapter>|--all`。先跑适配器测试和 `--check`，确认 `[tool.teststand.package] requiredFiles`（如 DAQNavi 桥接程序 `bin/*.exe`）在 wheel 里，再构建 wheel、下载第三方依赖 wheel，写到 `devices/dist/<类型>-<版本>.tsdev`。
+- 安装前检查（`devices.inspectPackage`，不写任何东西）：大小、条目数、路径安全；每个 wheel 的 SHA-256；wheel 标签须为 CPython 3.11 / 64 位 Windows 或纯 Python；只有一个 wheel 声明 `teststand.devices`，且类型名、发行包名与清单一致；SDK 版本满足 `sdk` 与适配器的 `Requires-Dist`；其余依赖在包内或由 testStand 自带且版本满足（testStand 自带的依赖 wheel 安装时跳过）；类型不能是内置类型。有问题时列出原因，安装按钮不可用。
+- 信任：设备包里的代码在后端进程（或其隔离子进程）里运行，能调用驱动、读写文件。testStand 不做签名校验；安装前必须向用户显示清单（型号、厂商、版本、运行方式、厂商驱动、文件与 SHA-256），用户确认后才安装。安装、卸载只能由人操作（能力 `devices.manageDevices`），Agent 只能列出。
+- 存放：`<用户数据>/plugins/<类型>/<版本>-<SHA-256 前 12 位>/site/`，是解压后的 wheel（包目录 + `*.dist-info`），可直接放到 `sys.path` 上；`plugins/installed.json` 记录每个类型当前的目录、版本与清单信息。
+- 加载：后端启动时先处理上次留下的待生效变更，再把每个已装类型的 `site` 追加到 `sys.path`，并设置环境变量 `TESTSTAND_PLUGINS_DIR`；隔离子进程（第 4.5 节）启动时读同一个环境变量做同样的事，所以子进程里 `load_device` 能找到同一个类型。之后 entry point 发现与内置类型完全相同。
+- 生效时机：新类型安装后立即可用。已装类型的升级、重装和卸载只记为待生效（`pending`），在下次启动 testStand 时应用，因为已导入的模块不能安全替换；设备页显示“重启后生效”，并提供“重启 testStand”。卸载后，引用该类型的测试资源显示类型不可用。
+- 现有四块卡（PCI-1710L、PCI-1762、PCI-6208V、CP-118U-I）与新设备走同一条路：各出一个设备包，随发布版一起提供。
 
 ---
 
@@ -1092,6 +1105,7 @@ run.completed │ run.aborted │ run.error
 | DEC-21 | 接受后端崩溃时输出停在最后值；不做看门狗。只保证打开后 `safe_state`、正常退出 `safe_all`、测试中止 `safe_state` | 崩溃少见；看门狗进程或硬件看门狗的复杂度高于收益 | 心跳租约兜底（原 DEC-05）：为多终端设计，单机只剩崩溃这一种情况；外部看门狗进程：还要处理它自己的寿命 |
 | DEC-22 | 测试资源没有外观图和端口图；接线只用结构化引脚数据 | 图片链路（适配器资源、哈希、缓存、上传、协议）维护成本高，接线不依赖它 | 插件提供图片：链路长、无人使用。手动检查步骤的参考图和 Agent 附件保留，它们不是设备声明 |
 | DEC-23 | 不做租约；运行与手动控制的互斥由 `ExecutionCoordinator`，单设备串行由 `io_lock`/操作锁 | 单机只有一个后端，进程内互斥足够 | 租约（原 DEC-05）：防的是多终端争用，单机不存在 |
+| DEC-24 | 设备类型以 `.tsdev` 设备包交付：wheel 解压到用户数据目录并加到 `sys.path`；安装前显示清单由人确认，不做签名；升级与卸载在重启后生效 | 新增设备不应要求重新打包 testStand；wheel 是 Python 生态现成的分发格式，解压即可导入；台架单机使用，清单确认足够 | 每台设备一个独立进程或独立环境：成本高；签名：要管理密钥；运行中热替换：已导入模块无法安全卸载 |
 
 DEC-01（声明走 HTTP、动作走 MCP、数据走 SSE）、DEC-02（一台设备一个服务进程）、DEC-03（数据面用 SSE）由 DEC-19、DEC-20 取代；DEC-05（心跳租约）由 DEC-21、DEC-23 取代；DEC-07（终端统一部署管理）随远程机制一起删除（DEC-19）。这些编号不再复用。
 

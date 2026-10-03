@@ -38,6 +38,16 @@ export class DesktopDialogs {
     return selected.canceled || !path ? null : new Uint8Array(await readFile(path));
   }
 
+  async openDevicePackage(): Promise<Uint8Array | null> {
+    const selected = await dialog.showOpenDialog(this.requireParent(), {
+      title: "安装设备包",
+      properties: ["openFile"],
+      filters: [{ name: "testStand 设备包", extensions: ["tsdev"] }]
+    });
+    const path = selected.filePaths[0];
+    return selected.canceled || !path ? null : new Uint8Array(await readFile(path));
+  }
+
   async chooseProjectFolder(): Promise<string | null> {
     const selected = await dialog.showOpenDialog(this.requireParent(), {
       title: "选择项目文件夹",

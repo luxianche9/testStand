@@ -17,3 +17,9 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 __PACKAGE__ = ["py.typed"]
+
+# Read by devices/pack.py into the .tsdev manifest: vendor drivers the bench must have installed,
+# and package files that must be in the wheel (e.g. "bin/<bridge>.exe").
+[tool.teststand.package]
+vendorDrivers = []
+requiredFiles = []

@@ -173,6 +173,9 @@ export function DeviceEditor({ open, instance, hardware, onClose, onChanged }: {
               )}
             </EditorField>
             {selectedType?.description && <EditorNote>{selectedType.description}</EditorNote>}
+            {!instance && types.data?.length === 0 && (
+              <EditorNote>还没有安装任何设备类型：在设备管理页点“设备类型”，安装对应的 .tsdev 设备包。</EditorNote>
+            )}
             <EditorField label="Device ID" required error={errors.deviceId?.message}>
               <Input
                 className="font-mono"

@@ -9,18 +9,9 @@ for package in ("certifi", "jsonschema_specifications", "teststand_backend.mcp_g
     datas += collect_data_files(package)
 datas += [(str(root / "vendor/icu/LICENSE"), "licenses/icu")]
 datas += copy_metadata("ada-url")
-# Device plugins are found through their "teststand.devices" entry points (dist metadata).
-DEVICE_PACKAGES = {
-    "teststand-device-sdk": "teststand_device_sdk",
-    "teststand-adapter-pci1710l": "teststand_adapter_pci1710l",
-    "teststand-adapter-pci1762": "teststand_adapter_pci1762",
-    "teststand-adapter-pci6208v": "teststand_adapter_pci6208v",
-    "teststand-adapter-cp118u-i": "teststand_adapter_cp118u_i",
-}
-for distribution, package in DEVICE_PACKAGES.items():
-    datas += copy_metadata(distribution)
-    # Package data, including the DAQNavi bridges built into <adapter>/bin/ by devices/native/build.py.
-    datas += collect_data_files(package)
+# No adapter is bundled: device types are installed as .tsdev packages into the user data
+# directory. The SDK they import is bundled whole, with its metadata (packages check its version).
+datas += copy_metadata("teststand-device-sdk")
 binaries = [(str(path), "icu") for path in (root / "vendor/icu/bin64").glob("*.dll")]
 hiddenimports = [
     "anyio._backends._asyncio", "uvicorn.loops.asyncio", "uvicorn.protocols.http.h11_impl",
@@ -28,8 +19,12 @@ hiddenimports = [
     "ada_url._ada_wrapper", "_cffi_backend",
 ]
 hiddenimports += collect_submodules("teststand_backend")
-for package in DEVICE_PACKAGES.values():
-    hiddenimports += collect_submodules(package)
+hiddenimports += collect_submodules("teststand_device_sdk")
+# Adapters may use any standard-library module; PyInstaller only bundles the ones it sees imported.
+hiddenimports += [
+    "ctypes", "ctypes.wintypes", "winreg", "socket", "select", "struct", "queue", "statistics", "csv",
+    "zipfile", "tomllib", "xml.etree.ElementTree",
+]
 a = Analysis(
     [str(root / "scripts/frozen_entry.py")], pathex=[str(root / "src")], binaries=binaries,
     datas=datas, hiddenimports=hiddenimports, hookspath=[], runtime_hooks=[], excludes=[],
