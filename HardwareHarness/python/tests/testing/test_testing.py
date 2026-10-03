@@ -38,9 +38,9 @@ class Resolver:
     def resolve(self, hardware_id: str, tool_name: str) -> tuple[dict[str, Any], list[Any]]:
         input_schema = {"type": "object", "properties": {}, "additionalProperties": True}
         tool = {
-            "externalName": f"server__{tool_name}",
+            "externalName": f"device__{tool_name}",
             "remoteName": tool_name,
-            "serverId": hardware_id,
+            "deviceId": hardware_id,
             "inputSchema": input_schema,
             "upstreamOutputSchema": self.output_schema,
             "resultSchema": self.output_schema,
@@ -161,7 +161,7 @@ def test_device_tool_catalog_rejects_unmanaged_hardware() -> None:
             "kind": "passive",
         }
     )
-    devices = SimpleNamespace(list_servers=lambda: [], list_tools=lambda: [])
+    devices = SimpleNamespace(list_devices=lambda: [], list_tools=lambda: [])
     result = DeviceToolResolver(devices, catalog).list_device_tools("fixture")
     assert result["tools"] == []
     assert result["issues"][0]["code"] == "device.unmanaged"
@@ -329,7 +329,7 @@ async def test_parallel_serializes_same_hardware(tmp_path: Path) -> None:
         ),
     )
     assert completed["verdict"] == "Pass"
-    assert devices.max_active["server"] == 1
+    assert devices.max_active["device"] == 1
 
 
 async def test_execution_instances_capture_parallel_loop_and_evidence_context(
@@ -606,12 +606,12 @@ def test_resolver_exposes_unwrapped_business_result_contract() -> None:
         "required": ["ok", "data"],
     }
     devices = SimpleNamespace(
-        list_servers=lambda: [{"serverId": "server", "hardwareId": "dev"}],
+        list_devices=lambda: [{"deviceId": "device", "hardwareId": "dev"}],
         list_tools=lambda: [
             {
-                "serverId": "server",
+                "deviceId": "device",
                 "remoteName": "read_voltage",
-                "externalName": "server__read_voltage",
+                "externalName": "device__read_voltage",
                 "inputSchema": {"type": "object"},
                 "upstreamOutputSchema": envelope,
                 "annotations": {"readOnlyHint": True},
@@ -730,7 +730,7 @@ async def test_cleanup_is_top_down_and_system_safety_runs_afterward(tmp_path: Pa
     class SafetyResolver(Resolver):
         def resolve(self, hardware_id: str, tool_name: str) -> tuple[dict[str, Any], list[Any]]:
             tool, issues = super().resolve(hardware_id, tool_name)
-            tool["externalName"] = f"server__{tool_name}"
+            tool["externalName"] = f"device__{tool_name}"
             tool["operationSemantics"] = {
                 "kind": "safe" if tool_name == "safe" else "actuate",
                 "retry": "never_after_dispatch",
@@ -766,7 +766,7 @@ async def test_cleanup_is_top_down_and_system_safety_runs_afterward(tmp_path: Pa
         "first",
         "second",
     ]
-    assert devices.names == ["server__drive", "server__safe"]
+    assert devices.names == ["device__drive", "device__safe"]
     assert completed["cleanupStatus"] == "Succeeded"
 
 
@@ -776,7 +776,7 @@ async def test_cleanup_failure_recovered_by_system_safety_preserves_dut_verdict(
     class SafetyResolver(Resolver):
         def resolve(self, hardware_id: str, tool_name: str) -> tuple[dict[str, Any], list[Any]]:
             tool, issues = super().resolve(hardware_id, tool_name)
-            tool["externalName"] = f"server__{tool_name}"
+            tool["externalName"] = f"device__{tool_name}"
             tool["operationSemantics"] = {
                 "kind": "safe" if tool_name == "safe" else "actuate",
                 "retry": "never_after_dispatch",

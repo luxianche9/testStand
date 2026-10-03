@@ -9,7 +9,7 @@ from hh_adapter_pci1762.pinout import pinout
 
 
 PUBLIC_TOOLS = {
-    "get_server_info", "list_hardware", "get_hardware_info",
+    "get_device_info", "list_hardware", "get_hardware_info",
     "pci1762_set_relay", "pci1762_set_bank", "pci1762_read_bit", "pci1762_safe_state",
     "pci1762_stream_read",
 }

@@ -23,10 +23,10 @@ from hardwareharness_backend.streams.source import StreamSources
 pytestmark = pytest.mark.skipif(sys.platform != "win32", reason="the adapters target Windows")
 
 
-def plugin(server_id: str, device_type: str, hardware_id: str) -> dict[str, Any]:
+def plugin(device_id: str, device_type: str, hardware_id: str) -> dict[str, Any]:
     return {
-        "serverId": server_id,
-        "label": server_id,
+        "deviceId": device_id,
+        "label": device_id,
         "hardwareId": hardware_id,
         "type": device_type,
         "settings": {},
@@ -35,15 +35,15 @@ def plugin(server_id: str, device_type: str, hardware_id: str) -> dict[str, Any]
 
 
 async def devices(
-    tmp_path: Path, *servers: dict[str, Any]
+    tmp_path: Path, *devices: dict[str, Any]
 ) -> tuple[DeviceService, PluginTransport]:
     store = DeviceStore(tmp_path)
     await store.initialize()
     transport = PluginTransport()
     service = DeviceService(store, transport)
-    for server in servers:
-        await service.save_server(server)
-        await service.refresh_server(server["serverId"])
+    for instance in devices:
+        await service.save_device(instance)
+        await service.refresh_device(instance["deviceId"])
     return service, transport
 
 

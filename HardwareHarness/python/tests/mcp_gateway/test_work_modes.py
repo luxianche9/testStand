@@ -21,7 +21,7 @@ AGENT = {"actor": "agent", "source": "mcp"}
 REMOTE = {
     "externalName": "S1__pulse",
     "remoteName": "pulse",
-    "serverId": "S1",
+    "deviceId": "S1",
     "kind": "device",
     "inputSchema": {"type": "object"},
 }

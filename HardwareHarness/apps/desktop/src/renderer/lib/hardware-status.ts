@@ -1,12 +1,12 @@
-import type { HardwareAvailability, ServerStatus } from "@hardwareharness/contracts/devices";
+import type { HardwareAvailability, DeviceStatus } from "@hardwareharness/contracts/devices";
 
 /** Device pages and wiring must describe the same hardware, not just its MCP connection. */
-export function hardwareStatus(server?: ServerStatus, availability?: HardwareAvailability): {
+export function hardwareStatus(instance?: DeviceStatus, availability?: HardwareAvailability): {
   label: string;
   tone: "ok" | "warn" | "bad" | "muted";
   title?: string | undefined;
 } {
-  const transport = server?.transport;
+  const transport = instance?.transport;
   if (transport?.state === "offline" || transport?.state === "error") {
     return { label: "离线", tone: "bad", title: transport.message };
   }

@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { parseDeviceSelection } from "./selection.js";
 
 describe("parseDeviceSelection", () => {
-  it("maps server and passive hardware keys", () => {
-    expect(parseDeviceSelection("s:E2E_RELAY")).toEqual({ kind: "server", serverId: "E2E_RELAY" });
+  it("maps instance and passive hardware keys", () => {
+    expect(parseDeviceSelection("s:E2E_RELAY")).toEqual({ kind: "device", deviceId: "E2E_RELAY" });
     expect(parseDeviceSelection("l:DUT_A")).toEqual({ kind: "passive", hardwareId: "DUT_A" });
   });
 

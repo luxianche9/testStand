@@ -7,7 +7,7 @@ import { useAgentTools } from "../../lib/queries.js";
 import { Badge, Button, Spinner, cn, useToast } from "../../ui";
 import { Disclosure } from "./SettingsLayout.js";
 
-/** Every tool the gateway will let an agent call, builtin first then per-server, with a one-click
+/** Every tool the gateway will let an agent call, builtin first then per-device, with a one-click
  *  JSON export of the same catalog the MCP `tools/list` response is built from. */
 export function AgentToolsSection() {
   const toast = useToast();
@@ -74,7 +74,7 @@ function AgentToolRow({ tool }: { tool: AgentToolInfo }) {
           {tool.description && <span className="truncate text-xs text-fg-3">{tool.description}</span>}
         </span>
         <Badge tone={tool.kind === "builtin" ? "signal" : "neutral"} mono={tool.kind !== "builtin"}>
-          {tool.kind === "builtin" ? "内建" : tool.serverId}
+          {tool.kind === "builtin" ? "内建" : tool.deviceId}
         </Badge>
       </button>
       {open && (

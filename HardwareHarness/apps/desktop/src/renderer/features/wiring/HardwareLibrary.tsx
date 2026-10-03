@@ -37,8 +37,8 @@ export function HardwareLibrary({ hardware, placed, onAdd, onRefresh, header, ..
   // Passive parts have no probe; their group heading already says what they are.
   const statusOf = (item: Hardware): LibraryStatus | undefined => {
     if (item.kind !== "managed") return undefined;
-    const server = dashboard.data?.serverStatuses.find((entry) => entry.serverId === item.serverId);
-    const status = hardwareStatus(server, availability.get(item.hardwareId));
+    const instance = dashboard.data?.deviceStatuses.find((entry) => entry.deviceId === item.deviceId);
+    const status = hardwareStatus(instance, availability.get(item.hardwareId));
     return { label: status.label, tone: statusTone[status.tone], title: status.title, pulse: status.tone === "warn" };
   };
   const groups = [

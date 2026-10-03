@@ -221,7 +221,7 @@ def public_remote_tool(tool: Record) -> Record:
             "hardwareharness": {
                 **clone(tool.get("contractMetadata", {})),
                 "contractRevision": CONTRACT_REVISION,
-                "serverId": tool["serverId"],
+                "deviceId": tool["deviceId"],
                 "toolName": tool["externalName"],
                 "remoteToolName": tool["remoteName"],
                 "kind": tool.get("kind", "unknown"),

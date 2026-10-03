@@ -105,7 +105,7 @@ export function TestPlanPage() {
   );
   const insert = (step: TestStep, overId?: string) => editor.mutate((next) => insertStepAt(next, step, overId));
   const addCatalog = (item: TestStepCatalogItem) => insert(createStep(item));
-  const addServer = (hardware: Hardware) => insert(invokeStepFor(hardware));
+  const addDevice = (hardware: Hardware) => insert(invokeStepFor(hardware));
   const onDragStart = (event: DragStartEvent) => {
     const descriptor = event.active.data.current as DragDescriptor | undefined;
     setActiveDrag(descriptor?.kind ? descriptor : { kind: "step", stepId: String(event.active.id) });
@@ -116,7 +116,7 @@ export function TestPlanPage() {
     if (!editor.draft || !event.over) return;
     const overId = String(event.over.id);
     if (descriptor?.kind === "catalog") { insert(createStep(descriptor.item), overId); return; }
-    if (descriptor?.kind === "server") { insert(invokeStepFor(descriptor.hardware), overId); return; }
+    if (descriptor?.kind === "device") { insert(invokeStepFor(descriptor.hardware), overId); return; }
     if (event.active.id === event.over.id) return;
     editor.mutate((next) => moveStepTo(next, String(event.active.id), overId));
   };
@@ -182,7 +182,7 @@ export function TestPlanPage() {
               <ComponentLibrary
                 enabled={Boolean(editor.draft)}
                 onAdd={addCatalog}
-                onAddServer={addServer}
+                onAddDevice={addDevice}
               />
             </div>
           )}
@@ -252,6 +252,6 @@ function defaultName(): string {
 
 function dragLabel(drag: DragDescriptor, draft?: TestPlan): string {
   if (drag.kind === "catalog") return drag.item.label;
-  if (drag.kind === "server") return drag.hardware.label;
+  if (drag.kind === "device") return drag.hardware.label;
   return draft ? findStep(draft, drag.stepId)?.step.name ?? drag.stepId : drag.stepId;
 }

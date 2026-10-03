@@ -42,7 +42,7 @@ class Resolver:
         return {
             "externalName": f"{hardware_id}__{tool_name}",
             "remoteName": tool_name,
-            "serverId": hardware_id,
+            "deviceId": hardware_id,
             "inputSchema": {"type": "object"},
             "resultSchema": {},
             "annotations": {},

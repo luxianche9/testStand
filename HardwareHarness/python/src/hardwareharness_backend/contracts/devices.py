@@ -20,9 +20,9 @@ from hardwareharness_backend.util import Record
 connection_state_schema = enum("unknown", "checking", "online", "offline", "error")
 # A device plugin loaded into the backend: ``type`` names its ``hardwareharness.devices``
 # entry point, ``mode`` sim runs the adapter's simulator instead of the driver.
-plugin_server_schema = obj(
+device_instance_schema = obj(
     {
-        "serverId": string(1),
+        "deviceId": string(1),
         "label": string(1),
         "hardwareId": string(1),
         "type": string(1),
@@ -62,7 +62,7 @@ ADAPTER_GATES = ("check", "simulator", "smoke")
 hardware_state_schema = enum("initializing", "open", "unreachable", "faulted", "closing", "closed")
 _managed_fields = {
     "hardwareId": string(1),
-    "serverId": string(1),
+    "deviceId": string(1),
     "state": hardware_state_schema,
     "health": string(),
     "lastError": obj(
@@ -77,7 +77,7 @@ _managed_fields = {
 }
 managed_hardware_schema = obj(_managed_fields)
 reported_managed_hardware_schema = obj(
-    {key: schema for key, schema in _managed_fields.items() if key != "serverId"}
+    {key: schema for key, schema in _managed_fields.items() if key != "deviceId"}
 )
 hardware_pin_schema = obj(
     {"pinId": string(1), "position": number(1, integer=True), "label": string().default("")}
@@ -101,10 +101,10 @@ stored_hardware_definition_schema = obj(
 
 def _hardware_issues(value: Any) -> list[Record]:
     issues: list[Record] = []
-    if value["kind"] == "managed" and not value.get("serverId"):
-        issues.append(custom_issue("Managed hardware requires serverId"))
-    if value["kind"] == "passive" and value.get("serverId"):
-        issues.append(custom_issue("Passive hardware cannot reference a device server"))
+    if value["kind"] == "managed" and not value.get("deviceId"):
+        issues.append(custom_issue("Managed hardware requires deviceId"))
+    if value["kind"] == "passive" and value.get("deviceId"):
+        issues.append(custom_issue("Passive hardware cannot reference a device instance"))
     ports: set[str] = set()
     for port in value["ports"]:
         if port["portId"] in ports:
@@ -126,7 +126,7 @@ hardware_schema = obj(
         "hardwareId": string(1),
         "label": string(1),
         "kind": enum("managed", "passive"),
-        "serverId": string(1).optional(),
+        "deviceId": string(1).optional(),
         "ports": array(hardware_port_schema).default([]),
         # Managed hardware only, derived from the adapter record; ignored when saving.
         "adapterStatus": adapter_status_schema.optional(),
@@ -137,15 +137,15 @@ device_bundle_apply_input_schema = obj(
     {
         "kind": device_bundle_kind_schema,
         "hardwareId": string(1),
-        "serverId": string(1),
+        "deviceId": string(1),
         "data": Schema("bytes"),
     },
     strict=True,
 )
 
 
-def parse_mcp_server(value: Any) -> Record:
-    return parse_record(plugin_server_schema, value)
+def parse_device_instance(value: Any) -> Record:
+    return parse_record(device_instance_schema, value)
 
 
 def parse_hardware(value: Any) -> Record:
@@ -177,6 +177,6 @@ def parse_device_bundle_apply_input(value: Any) -> Record:
     return parse_record(device_bundle_apply_input_schema, value)
 
 
-parse_server_id_input = parse_id_input
+parse_device_id_input = parse_id_input
 parse_hardware_id_input = parse_id_input
 parse_device_bundle_id_input = parse_id_input

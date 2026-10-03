@@ -1,7 +1,7 @@
 """Tool catalog entries and tool results, shared by the device transports.
 
 A device describes its tools as MCP ``tools/list`` entries; :func:`catalog_entry` turns one
-into the backend's aggregated catalog item (``<serverId>__<tool>``) plus its validators.
+into the backend's aggregated catalog item (``<deviceId>__<tool>``) plus its validators.
 :func:`unwrap_result` turns the SDK envelope ``{ok, data|error, meta}`` into the tool's data
 (or ``{data, meta}``) and a failed envelope into an :class:`AppError` carrying its meta.
 """
@@ -32,7 +32,7 @@ CONTRACT_KEYS = frozenset(
 )
 
 
-def catalog_entry(server_id: str, raw: Record) -> tuple[Record, Record]:
+def catalog_entry(device_id: str, raw: Record) -> tuple[Record, Record]:
     """``(catalog item, validators)`` of one ``tools/list`` entry; schemas are checked."""
     schema = raw["inputSchema"]
     Draft7Validator.check_schema(schema)
@@ -51,9 +51,9 @@ def catalog_entry(server_id: str, raw: Record) -> tuple[Record, Record]:
     contract = raw.get("_meta", {}).get("hardwareharness", {})
     kind = contract.get("kind", "unknown")
     entry = {
-        "externalName": f"{server_id}__{raw['name']}",
+        "externalName": f"{device_id}__{raw['name']}",
         "remoteName": raw["name"],
-        "serverId": server_id,
+        "deviceId": device_id,
         **({"description": raw["description"]} if raw.get("description") else {}),
         "inputSchema": public_schema,
         "kind": kind if isinstance(kind, str) else "unknown",

@@ -24,7 +24,7 @@ from hardwareharness_device_sdk import (
     Device,
     DeviceError,
     Pinout,
-    ServerConfig,
+    DeviceConfig,
     model,
     param,
     tool,
@@ -60,7 +60,7 @@ class __CLASS__(Device):
     description = ("__MANUFACTURER__ __MODEL__. TODO(new_device): one paragraph for /device from the manual: bus, "
                    "channel counts and ranges, connectors, hardware switches software cannot see.")
 
-    def __init__(self, config: ServerConfig) -> None:
+    def __init__(self, config: DeviceConfig) -> None:
         super().__init__(config)
         # Nonsecret per-bench settings live in the device's "settings"; never put secrets there.
         self.card_index = int(config.settings.get("cardIndex", 0))

@@ -186,7 +186,7 @@ def test_compare_delay_phase_and_ratio_on_one_clock() -> None:
     assert verdict["evidenceType"] == "T1"
 
 
-def test_compare_across_servers_carries_clock_uncertainty() -> None:
+def test_compare_across_devices_carries_clock_uncertainty() -> None:
     # The signal's service clock runs 10 ms ahead of backend time, uncertain by 1 ms.
     clock = {"offsetMs": 10.0, "uncertaintyMs": 1.0}
     signal = data("scalar", sine(1.0, 2.0, shift=10.0), clock=clock)

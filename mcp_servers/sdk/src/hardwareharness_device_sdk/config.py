@@ -16,15 +16,15 @@ def env_flag(name: str, env: Mapping[str, str] | None = None) -> bool:
 
 
 @dataclass(frozen=True)
-class ServerConfig:
+class DeviceConfig:
     """Identity of one hosted device and its adapter settings.
 
     ``settings`` carries adapter-specific, nonsecret options; drivers may still
     read their historical environment variables. ``build`` (source revision,
-    SDK version) is reported by ``get_server_info`` when the host knows it.
+    SDK version) is reported by ``get_device_info`` when the host knows it.
     """
 
-    server_id: str
+    device_id: str
     hardware_id: str
     manufacturer: str
     model: str
@@ -40,12 +40,12 @@ class ServerConfig:
         *,
         env: Mapping[str, str] | None = None,
         build: Mapping[str, Any] | None = None,
-    ) -> ServerConfig:
-        missing = [key for key in ("serverId", "hardwareId", "manufacturer", "model") if not data.get(key)]
+    ) -> DeviceConfig:
+        missing = [key for key in ("deviceId", "hardwareId", "manufacturer", "model") if not data.get(key)]
         if missing:
-            raise ValueError(f"Server config is missing: {', '.join(missing)}")
+            raise ValueError(f"Device config is missing: {', '.join(missing)}")
         return cls(
-            server_id=str(data["serverId"]),
+            device_id=str(data["deviceId"]),
             hardware_id=str(data["hardwareId"]),
             manufacturer=str(data["manufacturer"]),
             model=str(data["model"]),

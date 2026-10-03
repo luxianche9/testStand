@@ -24,7 +24,7 @@ Json = dict[str, Any]
 AGENT_ALLOWED = {
     "system.read",
     "devices.read",
-    "devices.controlServers",
+    "devices.controlDevices",
     "hardware.read",
     "hardware.manage",
     "hardware.executeTools",
@@ -43,14 +43,14 @@ HARDWARE: Json = {
     "hardwareId": "HW1",
     "label": "Fixture card",
     "kind": "managed",
-    "serverId": "SERVER1",
+    "deviceId": "DEVICE1",
     "computerId": "PC1",
     "ports": [],
 }
 TOOL: Json = {
-    "externalName": "SERVER1__write_value",
+    "externalName": "DEVICE1__write_value",
     "remoteName": "write_value",
-    "serverId": "SERVER1",
+    "deviceId": "DEVICE1",
     "inputSchema": {
         "type": "object",
         "properties": {"hardwareId": {"type": "string"}, "value": {"type": "number"}},
@@ -63,15 +63,15 @@ TOOL: Json = {
 def make_app() -> tuple[HardwareHarnessApplication, Mock, Mock]:
     devices = Mock(
         save_computer=AsyncMock(),
-        remove_server=AsyncMock(),
+        remove_device=AsyncMock(),
         execute=AsyncMock(),
-        server_action=AsyncMock(),
+        device_action=AsyncMock(),
         call_aggregated_tool=AsyncMock(return_value="ok"),
     )
     devices.list_tools.return_value = [
-        {"externalName": "S1.measure", "serverId": "S1", "kind": "hardware"}
+        {"externalName": "S1.measure", "deviceId": "S1", "kind": "hardware"}
     ]
-    devices.list_servers.return_value = [{"serverId": "S1", "hardwareId": "H1", "enabled": True}]
+    devices.list_devices.return_value = [{"deviceId": "S1", "hardwareId": "H1", "enabled": True}]
     wiring = Mock(request_task=AsyncMock(), start_task=AsyncMock())
     app = HardwareHarnessApplication(
         {
@@ -112,20 +112,20 @@ async def test_agent_allowed() -> None:
 
 
 @pytest.mark.ts_case(
-    "packages/application/src/application.test.ts::denies Agent server management "
+    "packages/application/src/application.test.ts::denies Agent instance management "
     "and human confirmations"
 )
 async def test_agent_denied() -> None:
     app, devices, wiring = make_app()
     operations = [
-        app.devices.remove_server(AGENT, "S1"),
+        app.devices.remove_device(AGENT, "S1"),
         app.wiring.start_task(AGENT, "WT"),
     ]
     for operation in operations:
         with pytest.raises(Exception) as caught:
             await operation
         assert getattr(caught.value, "category", None) == "permission_denied"
-    devices.remove_server.assert_not_called()
+    devices.remove_device.assert_not_called()
     wiring.start_task.assert_not_called()
 
 
@@ -135,9 +135,9 @@ async def test_agent_denied() -> None:
 )
 async def test_human_allowed() -> None:
     app, devices, wiring = make_app()
-    await app.devices.remove_server(HUMAN, "S1")
+    await app.devices.remove_device(HUMAN, "S1")
     await app.wiring.start_task(HUMAN, "WT", "operator")
-    devices.remove_server.assert_awaited_once_with("S1")
+    devices.remove_device.assert_awaited_once_with("S1")
     wiring.start_task.assert_called_once_with("WT", "operator")
 
 
@@ -307,7 +307,7 @@ async def test_manual_metadata() -> None:
     ("overrides", "category"),
     [
         pytest.param(
-            {"hardware": {**HARDWARE, "kind": "passive", "serverId": None, "computerId": None}},
+            {"hardware": {**HARDWARE, "kind": "passive", "deviceId": None, "computerId": None}},
             "invalid_argument",
             marks=pytest.mark.ts_case(
                 "packages/application/src/execution-control.test.ts::rejects passive hardware"
@@ -321,11 +321,11 @@ async def test_manual_metadata() -> None:
             ),
         ),
         pytest.param(
-            {"tools": [{**TOOL, "serverId": "SERVER2"}]},
+            {"tools": [{**TOOL, "deviceId": "DEVICE2"}]},
             "invalid_argument",
             marks=pytest.mark.ts_case(
                 "packages/application/src/execution-control.test.ts::rejects tool from "
-                "another Server"
+                "another device"
             ),
         ),
         pytest.param(
@@ -367,7 +367,7 @@ async def test_manual_invalid(overrides: Json, category: str) -> None:
 async def test_management_tool_offline() -> None:
     tool = {
         **TOOL,
-        "externalName": "SERVER1__list_hardware",
+        "externalName": "DEVICE1__list_hardware",
         "remoteName": "list_hardware",
         "kind": "management",
     }

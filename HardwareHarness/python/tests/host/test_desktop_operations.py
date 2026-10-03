@@ -105,7 +105,7 @@ async def test_agents_operations_delegate_to_opencode_and_codex() -> None:
         {
             "externalName": "ext",
             "inputSchema": {},
-            "serverId": "S",
+            "deviceId": "S",
             "remoteName": "remote",
             "description": "d",
         }
@@ -123,7 +123,7 @@ async def test_agents_operations_delegate_to_opencode_and_codex() -> None:
             "name": "ext",
             "kind": "remote",
             "inputSchema": {},
-            "serverId": "S",
+            "deviceId": "S",
             "remoteName": "remote",
             "description": "d",
         },

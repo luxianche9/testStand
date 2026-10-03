@@ -186,11 +186,11 @@ class ToolRegistry:
         return read_tool_contract(self, context, value)
 
     def _hardware_of(self, context: Record) -> dict[str, str]:
-        """``{serverId: hardwareId}``; a server without one stands for itself."""
-        servers = self.application.devices.list_servers(context)
+        """``{deviceId: hardwareId}``; a instance without one stands for itself."""
+        instances = self.application.devices.list_devices(context)
         return {
-            str(item["serverId"]): str(item.get("hardwareId") or item["serverId"])
-            for item in servers
+            str(item["deviceId"]): str(item.get("hardwareId") or item["deviceId"])
+            for item in instances
         }
 
     def _device_tools(self, context: Record, hardware_id: str) -> list[Record]:
@@ -198,7 +198,7 @@ class ToolRegistry:
         return [
             tool
             for tool in self.application.devices.list_tools(context)
-            if hardware.get(tool["serverId"], tool["serverId"]) == hardware_id
+            if hardware.get(tool["deviceId"], tool["deviceId"]) == hardware_id
         ]
 
     async def _list_device_tools(self, context: Record, value: Record) -> Any:
@@ -228,7 +228,7 @@ class ToolRegistry:
                 f"Hardware {hardware_id} exposes no device tools",
                 {
                     "hardwareId": hardware_id,
-                    "recovery": "Check the hardware ID and that its MCP server is connected.",
+                    "recovery": "Check the hardware ID and that its device is connected.",
                 },
             )
         enabled = context.get(ENABLED_HARDWARE)
@@ -248,7 +248,7 @@ class ToolRegistry:
         if not enabled:
             return []
         hardware = self._hardware_of(context)
-        return [t for t in tools if hardware.get(t["serverId"], t["serverId"]) in enabled]
+        return [t for t in tools if hardware.get(t["deviceId"], t["deviceId"]) in enabled]
 
     @staticmethod
     def _in_mode(profiles: frozenset[str], context: Record) -> bool:

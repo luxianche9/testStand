@@ -15,7 +15,7 @@ HARDWARE = "PCI1710L_MCP.HARDWARE_0"
 def declaration(revision: str = "sha256:1") -> dict[str, Any]:
     return {
         "manifestRevision": revision,
-        "identity": {"serverId": "PCI1710L_MCP", "hardwareId": HARDWARE, "dryRun": False},
+        "identity": {"deviceId": "PCI1710L_MCP", "hardwareId": HARDWARE, "dryRun": False},
         "description": "Multifunction DAQ",
         "pinout": {
             "connectors": [
@@ -33,9 +33,9 @@ def declaration(revision: str = "sha256:1") -> dict[str, Any]:
     }
 
 
-def server() -> dict[str, Any]:
+def instance() -> dict[str, Any]:
     return {
-        "serverId": "PCI1710L_MCP",
+        "deviceId": "PCI1710L_MCP",
         "label": "PCI-1710L",
         "hardwareId": HARDWARE,
         "type": "pci1710l",
@@ -75,24 +75,24 @@ async def service_with(
         describe_device=AsyncMock(return_value=document),
     )
     service = DeviceService(store, transports)
-    await service.save_server(server())
+    await service.save_device(instance())
     return service, transports
 
 
 async def test_refresh_caches_the_declaration_once_per_revision(tmp_path: Path) -> None:
     service, transports = await service_with(tmp_path, declaration())
-    await service.refresh_server("PCI1710L_MCP")
+    await service.refresh_device("PCI1710L_MCP")
     definition = service.get_definition(HARDWARE)
     assert definition is not None and definition["offline"] is False
     assert definition["document"]["pinout"]["connectors"][0]["connectorId"] == "CN1"
     assert service.known_streams(HARDWARE) == [{"id": "ai0", "type": "scalar", "unit": "V"}]
 
-    await service.refresh_server("PCI1710L_MCP")
+    await service.refresh_device("PCI1710L_MCP")
     again = service.get_definition(HARDWARE)
     assert again is not None and again["fetchedAt"] == definition["fetchedAt"]
 
     transports.connect.side_effect = RuntimeError("offline")
-    await service.refresh_server("PCI1710L_MCP")
+    await service.refresh_device("PCI1710L_MCP")
     offline = service.get_definition(HARDWARE)
     assert offline is not None and offline["offline"] is True
     assert offline["manifestRevision"] == "sha256:1"
@@ -100,5 +100,5 @@ async def test_refresh_caches_the_declaration_once_per_revision(tmp_path: Path) 
 
 async def test_services_without_a_declaration_keep_no_definition(tmp_path: Path) -> None:
     service, _ = await service_with(tmp_path, None)
-    await service.refresh_server("PCI1710L_MCP")
+    await service.refresh_device("PCI1710L_MCP")
     assert service.get_definition(HARDWARE) is None

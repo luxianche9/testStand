@@ -4,22 +4,22 @@ import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
 import { agentKindInputSchema } from "./agents.js";
 import { appError, toWireError } from "./errors.js";
-import { deviceBundleIdInputSchema, hardwareIdInputSchema, hardwareSchema, managedHardwareSchema, mcpServerSchema, serverIdInputSchema } from "./devices.js";
+import { deviceBundleIdInputSchema, hardwareIdInputSchema, hardwareSchema, managedHardwareSchema, deviceInstanceSchema, deviceIdInputSchema } from "./devices.js";
 import { projectFileSchema, projectRootPathInputSchema } from "./projects.js";
 import { wiringTaskIdInputSchema } from "./wiring.js";
 
 describe("public contracts", () => {
   it("rejects passive hardware that references remote infrastructure", () => {
-    expect(() => hardwareSchema.parse({ formatVersion: 2, hardwareId: "DUT", label: "DUT", kind: "passive", serverId: "S1", ports: [] })).toThrow();
+    expect(() => hardwareSchema.parse({ formatVersion: 2, hardwareId: "DUT", label: "DUT", kind: "passive", deviceId: "S1", ports: [] })).toThrow();
   });
 
   it("applies stable defaults", () => {
-    expect(mcpServerSchema.parse({ serverId: "P1", label: "P", hardwareId: "H2", type: "pci1762" })).toMatchObject({ settings: {}, mode: "real", enabled: true });
-    expect(mcpServerSchema.safeParse({ serverId: "S3", computerId: "PC1", label: "S", hardwareId: "H3", type: "pci1762" }).success).toBe(false);
+    expect(deviceInstanceSchema.parse({ deviceId: "P1", label: "P", hardwareId: "H2", type: "pci1762" })).toMatchObject({ settings: {}, mode: "real", enabled: true });
+    expect(deviceInstanceSchema.safeParse({ deviceId: "S3", computerId: "PC1", label: "S", hardwareId: "H3", type: "pci1762" }).success).toBe(false);
   });
 
   it("validates managed hardware at the device trust boundary", () => {
-    expect(managedHardwareSchema.safeParse({ hardwareId: "H1", serverId: "S1", state: "vendor-ready", health: "ok" }).success).toBe(false);
+    expect(managedHardwareSchema.safeParse({ hardwareId: "H1", deviceId: "S1", state: "vendor-ready", health: "ok" }).success).toBe(false);
   });
 
   it("requires the current project format", () => {
@@ -35,7 +35,7 @@ describe("public contracts", () => {
   });
 
   it("uses strict named id inputs for IPC procedures", () => {
-    const schemas = [serverIdInputSchema, hardwareIdInputSchema, deviceBundleIdInputSchema, projectRootPathInputSchema, wiringTaskIdInputSchema];
+    const schemas = [deviceIdInputSchema, hardwareIdInputSchema, deviceBundleIdInputSchema, projectRootPathInputSchema, wiringTaskIdInputSchema];
     for (const schema of schemas) {
       expect(schema.parse({ id: "ID" })).toEqual({ id: "ID" });
       expect(schema.safeParse({ id: "ID", extra: true }).success).toBe(false);

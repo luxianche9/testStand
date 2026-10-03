@@ -117,7 +117,7 @@ describe("stream model", () => {
     expect(runRange(undefined)).toBeUndefined();
   });
 
-  it("names devices without their server prefix and card suffix", () => {
+  it("names devices without their host prefix and card suffix", () => {
     expect(deviceName("advantech.PCI1710L_CARD_1")).toBe("PCI1710L");
     expect(deviceName("CP118U_I")).toBe("CP118U_I");
     expect(shortLabel({ hardwareId: "srv.PCIE6208V_CARD", streamId: "ao0" })).toBe("PCIE6208V/ao0");

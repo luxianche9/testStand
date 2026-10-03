@@ -30,7 +30,7 @@ from contextlib import contextmanager
 from typing import Any
 
 from ..clock import now_ms
-from ..config import ServerConfig
+from ..config import DeviceConfig
 from ..device import Device
 from ..envelope import CONTRACT_REVISION
 from ..host import DeviceHost
@@ -56,12 +56,12 @@ IDLE_SLACK_MS = 150
 """Scheduling allowance on top of ``IDLE_INTERVAL_MS`` for idle-driven watermarks."""
 
 
-def dry_run_config(device_cls: type[Device], **overrides: Any) -> ServerConfig:
-    data: dict[str, Any] = {"serverId": f"{device_cls.model.upper().replace('-', '')}_MCP",
+def dry_run_config(device_cls: type[Device], **overrides: Any) -> DeviceConfig:
+    data: dict[str, Any] = {"deviceId": f"{device_cls.model.upper().replace('-', '')}_MCP",
                             "hardwareId": f"{device_cls.model.upper().replace('-', '')}_1",
                             "manufacturer": device_cls.manufacturer, "model": device_cls.model, "dryRun": True}
     data.update(overrides)
-    return ServerConfig.from_mapping(data, env={})
+    return DeviceConfig.from_mapping(data, env={})
 
 
 class Harness:
@@ -195,7 +195,7 @@ async def _cancel_pending() -> None:
 
 
 @contextmanager
-def serve(device_cls: type[Device], config: ServerConfig | None = None, **options: Any) -> Iterator[Harness]:
+def serve(device_cls: type[Device], config: DeviceConfig | None = None, **options: Any) -> Iterator[Harness]:
     """Start ``device_cls`` (dry-run by default) in a :class:`DeviceHost`; leaving the block stops it."""
     config = config or dry_run_config(device_cls)
     options.setdefault("retry_delays", (0.05,))
@@ -435,7 +435,7 @@ def _check_manifest(hh: Harness, failures: list[str], warnings: list[str]) -> No
         failures.append(f"/device contractRevision must be {CONTRACT_REVISION}")
     identity = document["identity"] if isinstance(document["identity"], dict) else {}
     device = hh.host.device
-    expected = {"serverId": hh.host.config.server_id, "hardwareId": device.hardware_id,
+    expected = {"deviceId": hh.host.config.device_id, "hardwareId": device.hardware_id,
                 "manufacturer": device.manufacturer, "model": device.model, "dryRun": True}
     wrong = {key: identity.get(key) for key, value in expected.items() if identity.get(key) != value}
     adapter = identity.get("adapter") or {}
@@ -498,7 +498,7 @@ def _check_ranges(hh: Harness, failures: list[str]) -> None:
                 failures.append(f"{name}.{key}={bound + 1}: out-of-range input must be rejected with an error")
 
 
-def check_device(device_cls: type[Device], config: ServerConfig | None = None, *,
+def check_device(device_cls: type[Device], config: DeviceConfig | None = None, *,
                  warnings: list[str] | None = None, **options: Any) -> list[str]:
     """Failures of the contract (empty: compliant); non-fatal findings are appended to ``warnings``."""
     failures: list[str] = []
@@ -527,7 +527,7 @@ def check_device(device_cls: type[Device], config: ServerConfig | None = None, *
                 failures.append(f"list_hardware must return exactly one hardware, got {listed}")
             elif data[0]["hardwareId"] != hh.hardware_id or data[0]["state"] != "open":
                 failures.append(f"list_hardware: expected open {hh.hardware_id}, got {data[0]}")
-        for name in ("get_server_info", "get_hardware_info"):
+        for name in ("get_device_info", "get_hardware_info"):
             result = call(name)
             if result is not None and not result.get("ok"):
                 failures.append(f"{name}: not ok: {result.get('error')}")

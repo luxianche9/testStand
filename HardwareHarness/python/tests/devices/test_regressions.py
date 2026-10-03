@@ -35,7 +35,7 @@ async def test_public_store_import_invalidates_catalog(tmp_path: Path) -> None:
     await store.initialize()
     catalog = DeviceCatalogService(store)
     app = DevicesApplication(
-        DefaultAuthorizer(), Mock(store=store, list_servers=Mock(return_value=[])), catalog
+        DefaultAuthorizer(), Mock(store=store, list_devices=Mock(return_value=[])), catalog
     )
     await app.save_hardware(HUMAN_REQUEST_CONTEXT, hardware())
     assert catalog.resolve_port("H.J1")["port"]["pins"][0]["pinId"] == "1"
@@ -63,7 +63,7 @@ async def test_public_store_import_invalidates_catalog(tmp_path: Path) -> None:
     with pytest.raises(RuntimeError, match="No hardware matches"):
         catalog.resolve_port("UNKNOWN.J1")
     assert catalog.find_hardware("H") is not None
-    assert catalog.hardware_for_server("MISSING") is None
+    assert catalog.hardware_for_device("MISSING") is None
     await catalog.remove_hardware("H")
     assert catalog.find_hardware("H") is None
 

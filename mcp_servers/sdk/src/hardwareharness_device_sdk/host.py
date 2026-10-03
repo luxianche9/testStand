@@ -22,7 +22,7 @@ from pydantic import BaseModel, ConfigDict, ValidationError, create_model
 
 from ._version import __version__
 from .clock import now_ms
-from .config import ServerConfig
+from .config import DeviceConfig
 from .device import Device
 from .envelope import CONTRACT_REVISION, TIMEOUT_RECOVERY, envelope, error, model, ok
 from .errors import INVALID_ARGUMENT, NOT_SUPPORTED, DeviceError
@@ -49,10 +49,10 @@ Hardware = model("HardwareInfo", hardwareId=(str, "Stable device identifier retu
                  capabilities=(list[str], "Declared device capabilities.", []),
                  capabilityDetails=(dict[str, Any], "Versioned limits, effective settings and evidence semantics.", {}),
                  lastError=(dict[str, Any] | None, "Last lifecycle/job error.", None))
-ServerInfo = model("ServerInfo", name=(str, "Service name."), version=(str, "Installed adapter package version."),
-                   serverId=(str, "Service identity."), computerId=(str, "Configured host identity."),
+DeviceInfo = model("DeviceInfo", name=(str, "Device instance name."), version=(str, "Installed adapter package version."),
+                   deviceId=(str, "Device instance identity."), computerId=(str, "Configured host identity."),
                    startupComplete=(bool, "Initialization complete; not a measurement."),
-                   draining=(bool, "Service is refusing new operations while stopping."),
+                   draining=(bool, "Plugin is refusing new operations while stopping."),
                    hardware=(list[Hardware], "Exactly one managed active hardware device."),
                    contractRevision=(str, "Public contract revision.", CONTRACT_REVISION),
                    capabilities=(dict[str, Any], "Nonsecret effective configuration and limits.", {}),
@@ -81,8 +81,8 @@ TransactResult = model("TransactResult", sent=(int, "Bytes accepted by the write
                        elapsedMs=(float, "Time from send to match or timeout."))
 StreamId = param(str, "Exact streamId from /device streams.", min_length=1, max_length=64)
 DESCRIPTIONS = {
-    "get_server_info": "Read service version, readiness and nonsecret effective capabilities without signal actuation. One service manages exactly one active device; ready does not prove the physical experiment or wiring.",
-    "list_hardware": "Discover the single device managed by this service. Use its hardwareId in subsequent calls; presence and service health do not verify every channel or external cable.",
+    "get_device_info": "Read plugin version, readiness and nonsecret effective capabilities without signal actuation. One plugin instance manages exactly one active device; ready does not prove the physical experiment or wiring.",
+    "list_hardware": "Discover the single device managed by this plugin instance. Use its hardwareId in subsequent calls; presence and plugin health do not verify every channel or external cable.",
     "get_hardware_info": "Read device identity, lifecycle health, capability limits and effective settings. Static declarations and software state are not physical measurements.",
     "stream_read": "Read buffered records from fromSeq (omit for the latest records) without consuming them. Records carry seq, t (Unix ms) and op when a tool call produced them; bytes records add decoded text. Sampled streams only produce records while watched: status.state idle means nobody watches; HardwareHarness recordings and live views start sampling.",
     "blob_read": "Read the content of one blob record (screenshot, capture file) by its ref as base64 with its media type. Blobs are kept in memory and old ones are evicted; the ref comes from stream_read or a tool result.",
@@ -161,7 +161,7 @@ class DeviceHost:
     def __init__(
         self,
         device_cls: type[Device],
-        config: ServerConfig,
+        config: DeviceConfig,
         *,
         retry_delays: tuple[float, ...] = (5, 10, 30),
         watchdog_interval: float = 1.0,
@@ -214,7 +214,7 @@ class DeviceHost:
 
     def _register_builtin_tools(self) -> None:
         hid = _parameter("hardwareId", HardwareId)
-        self._management("get_server_info", self._get_server_info, [], ServerInfo)
+        self._management("get_device_info", self._get_device_info, [], DeviceInfo)
         self._management("list_hardware", self._list_hardware, [], list[Hardware])
         self._management("get_hardware_info", self._get_hardware_info, [hid], Hardware)
         self._add_tool("hardwareharness_prepare_shutdown", self._prepare_shutdown_tool, [], dict[str, Any] | list[Any],
@@ -303,10 +303,10 @@ class DeviceHost:
         common.update(self.device.capability_details())
         return common
 
-    async def _get_server_info(self) -> dict[str, Any]:
+    async def _get_device_info(self) -> dict[str, Any]:
         hardware = self.manager.list_hardware()
-        return ok({"name": self.config.server_id, "version": self.device.version, "computerId": self.config.computer_id,
-                   "serverId": self.config.server_id, "startupComplete": self.manager.startup_complete,
+        return ok({"name": self.config.device_id, "version": self.device.version, "computerId": self.config.computer_id,
+                   "deviceId": self.config.device_id, "startupComplete": self.manager.startup_complete,
                    "draining": self.manager.draining,
                    "status": "degraded" if hardware[0]["state"] in {"unreachable", "faulted"} else "ready",
                    "hardware": hardware, "contractRevision": CONTRACT_REVISION,
@@ -317,7 +317,7 @@ class DeviceHost:
     async def _list_hardware(self) -> dict[str, Any]:
         data = self.manager.list_hardware()
         if len(data) != 1:
-            return error(DeviceError(f"Server invariant failed: expected one hardware, got {len(data)}",
+            return error(DeviceError(f"Device invariant failed: expected one hardware, got {len(data)}",
                                      category="invalid_response"))
         return ok(data)
 

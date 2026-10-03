@@ -27,7 +27,7 @@ from hardwareharness_device_sdk import (
     Device,
     DeviceError,
     Pinout,
-    ServerConfig,
+    DeviceConfig,
     model,
     param,
     tool,
@@ -150,7 +150,7 @@ class Cp118uI(Device):
                    "RS-485 by an on-board DIP switch that software cannot read or change; the pinout lists all three "
                    "and activeMode is unknown. Streams serial1..serial8 carry the TX, RX and configuration marks.")
 
-    def __init__(self, config: ServerConfig) -> None:
+    def __init__(self, config: DeviceConfig) -> None:
         super().__init__(config)
         settings = config.settings
         self.port_map = dict(enumerate(configured_ports(settings), start=1))

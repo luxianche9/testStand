@@ -19,7 +19,7 @@ from hardwareharness_device_sdk import (
     JsonLineBackend,
     Pinout,
     ScalarStream,
-    ServerConfig,
+    DeviceConfig,
     model,
     param,
     tool,
@@ -73,14 +73,14 @@ class Pci1710l(Device):
     prefix = "pci1710l"
     capabilities = ("analog_input", "digital_input", "digital_output")
     version = "0.2.0"
-    instructions = ("One MCP Server controls exactly one PCI-1710L. configure_ai before read_voltage; "
+    instructions = ("One plugin instance controls exactly one PCI-1710L. configure_ai before read_voltage; "
                     "set_level actuates DO; safe_state applies the configured safe DO mask.")
     description = ("Advantech PCI-1710L multifunction PCI card: 16 single-ended / 8 differential 12-bit analog "
                    "inputs, 16 digital inputs and 16 digital outputs on a 68-pin SCSI connector (CN1). The L model "
                    "has no analog output. AI readings are ADC samples; DO values are controller readback, not a "
                    "measurement at the load.")
 
-    def __init__(self, config: ServerConfig) -> None:
+    def __init__(self, config: DeviceConfig) -> None:
         super().__init__(config)
         settings = config.settings
         self.board_description = str(settings.get("description", os.environ.get("ADVANTECH_PCI1710L_DESC",

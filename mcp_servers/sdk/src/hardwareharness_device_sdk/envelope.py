@@ -1,4 +1,4 @@
-"""Versioned public result envelope shared by every tool of an SDK server."""
+"""Versioned public result envelope shared by every tool of an SDK device."""
 
 from __future__ import annotations
 
@@ -56,7 +56,7 @@ StreamRef = model("StreamRef", streamId=(str, "Stream the call appended to."),
 Timing = model("ToolTiming", start=(float, "Service clock (Unix ms) when driver work began."),
                end=(float, "Service clock (Unix ms) when driver work ended; the anchor of this call."))
 Meta = model("ToolMeta", timestamp=(str, "UTC response observation time in ISO 8601."),
-             operationId=(str, "Operation this call ran under (_meta.operationId or server-generated).", None),
+             operationId=(str, "Operation this call ran under (_meta.operationId or host-generated).", None),
              timing=(Timing, "Driver work interval on the service clock.", None),
              streamRefs=(list[StreamRef], "Stream records appended during the call, tagged with op.", None))
 

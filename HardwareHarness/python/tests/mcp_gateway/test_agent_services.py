@@ -48,25 +48,25 @@ async def test_context_without_project_and_document_reads_use_only_bundled_contr
     assert page["lines"]
 
 
-async def test_effective_availability_accounts_for_holders_and_disabled_server() -> None:
+async def test_effective_availability_accounts_for_holders_and_disabled_device() -> None:
     dashboard: dict[str, Any] = {
         "execution": {"state": "manual", "toolName": "write", "hardwareId": "H"},
         "availability": [{"hardwareId": "H", "state": "available", "checkedAt": "old"}],
-        "servers": [{"serverId": "S", "enabled": True}],
+        "devices": [{"deviceId": "S", "enabled": True}],
     }
     app = SimpleNamespace(
         system=SimpleNamespace(dashboard=lambda context: dashboard),
         devices=SimpleNamespace(
-            list_hardware=lambda context: [{"hardwareId": "H", "kind": "managed", "serverId": "S"}]
+            list_hardware=lambda context: [{"hardwareId": "H", "kind": "managed", "deviceId": "S"}]
         ),
     )
     output = await invoke(app, "get_execution_availability")
     assert output["hardware"][0]["available"] is False
     assert output["hardware"][0]["holders"][0]["toolName"] == "write"
     dashboard["execution"] = {"state": "idle"}
-    dashboard["servers"][0]["enabled"] = False
+    dashboard["devices"][0]["enabled"] = False
     output = await invoke(app, "get_execution_availability")
-    assert output["hardware"][0]["busyReason"] == "server_disabled_or_missing"
+    assert output["hardware"][0]["busyReason"] == "device_disabled_or_missing"
 
 
 async def test_wait_is_bounded_and_detects_existing_wiring_change() -> None:

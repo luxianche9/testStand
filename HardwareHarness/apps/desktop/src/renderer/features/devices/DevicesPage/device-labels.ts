@@ -1,4 +1,4 @@
-import type { HardwareAvailability, ServerStatus } from "@hardwareharness/contracts/devices";
+import type { HardwareAvailability, DeviceStatus } from "@hardwareharness/contracts/devices";
 import { hardwareStatus } from "../../../lib/hardware-status.js";
 import type { Tone } from "../../../ui";
 
@@ -12,8 +12,8 @@ const statusTones: Record<ReturnType<typeof hardwareStatus>["tone"], Tone> = {
 };
 
 /** Same wording as the wiring library: both read {@link hardwareStatus}. */
-export function hardwareRowStatus(serverStatus?: ServerStatus, availability?: HardwareAvailability): RowStatus {
-  const status = hardwareStatus(serverStatus, availability);
+export function hardwareRowStatus(deviceStatus?: DeviceStatus, availability?: HardwareAvailability): RowStatus {
+  const status = hardwareStatus(deviceStatus, availability);
   // "检测中" is the only warn state today; show it as a live probe rather than a warning.
   if (status.label === "检测中") return { tone: "run", pulse: true, label: status.label, title: status.title };
   return { tone: statusTones[status.tone], label: status.label, title: status.title };

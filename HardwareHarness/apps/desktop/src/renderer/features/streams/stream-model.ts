@@ -13,7 +13,7 @@ export function streamLabel(stream: Pick<StreamInfo, "hardwareId" | "streamId">)
   return `${stream.hardwareId}/${stream.streamId}`;
 }
 
-/** Short device name: the hardware id after its server prefix, without a `_CARD_n` suffix. */
+/** Short device name: the hardware id after its host prefix, without a `_CARD_n` suffix. */
 export function deviceName(hardwareId: string): string {
   return hardwareId.slice(hardwareId.lastIndexOf(".") + 1).replace(/_CARD(_\d+)?$/i, "");
 }

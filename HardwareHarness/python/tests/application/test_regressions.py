@@ -86,25 +86,25 @@ async def test_manual_hardware_abort_is_scoped() -> None:
 
 
 async def test_device_application_crud_and_binary_boundaries() -> None:
-    server: Json = {
-        "serverId": "S",
+    instance: Json = {
+        "deviceId": "S",
         "hardwareId": "H1",
         "label": "S",
         "enabled": True,
         "endpoint": {"url": "http://localhost:8001/mcp"},
         "process": {"kind": "external"},
     }
-    # Valid server details are parsed in contracts tests; these adapters must preserve call data.
+    # Valid instance details are parsed in contracts tests; these adapters must preserve call data.
     devices = Mock()
     for name in [
-        "remove_server",
-        "refresh_all_servers",
-        "save_server",
-        "refresh_server",
+        "remove_device",
+        "refresh_all_devices",
+        "save_device",
+        "refresh_device",
         "refresh_hardware",
     ]:
         setattr(devices, name, AsyncMock(return_value={"result": name}))
-    devices.list_servers.return_value = [server, {**server, "serverId": "OTHER"}]
+    devices.list_devices.return_value = [instance, {**instance, "deviceId": "OTHER"}]
     devices.list_tools.return_value = [{"externalName": "S__tool"}]
     devices.refresh_hardware.return_value = [{"result": "refresh_hardware"}]
     devices.store = Mock(
@@ -119,13 +119,13 @@ async def test_device_application_crud_and_binary_boundaries() -> None:
         remove_hardware=AsyncMock(),
     )
     app = DevicesApplication(DefaultAuthorizer(), devices, catalog)
-    assert len(app.list_servers(HUMAN)) == 2
-    assert (await app.list_servers_with_status(HUMAN))["statuses"] == {
-        "result": "refresh_all_servers"
+    assert len(app.list_devices(HUMAN)) == 2
+    assert (await app.list_devices_with_status(HUMAN))["statuses"] == {
+        "result": "refresh_all_devices"
     }
-    assert await app.remove_server(HUMAN, "S") == {"serverId": "S"}
-    await app.refresh_server(HUMAN, "S")
-    devices.refresh_server.assert_awaited_once_with("S")
+    assert await app.remove_device(HUMAN, "S") == {"deviceId": "S"}
+    await app.refresh_device(HUMAN, "S")
+    devices.refresh_device.assert_awaited_once_with("S")
     assert await app.list_managed_hardware(HUMAN) == [{"result": "refresh_hardware"}]
     assert app.list_hardware(HUMAN) == [HARDWARE] and app.get_hardware(HUMAN, "HW1") == HARDWARE
     assert app.list_tools(AGENT) == [{"externalName": "S__tool"}]
@@ -133,14 +133,14 @@ async def test_device_application_crud_and_binary_boundaries() -> None:
     assert await app.export_bundle(HUMAN, "H1") == b"zip"
     assert await app.import_bundle(HUMAN, b"zip") == {"hardwareId": "H1"}
     assert await app.inspect_bundle(HUMAN, b"zip") == {"hardwareId": "H1"}
-    assert await app.import_bundle_for_server(HUMAN, b"zip", "H1", "S") == {"hardwareId": "H1"}
+    assert await app.import_bundle_for_device(HUMAN, b"zip", "H1", "S") == {"hardwareId": "H1"}
     devices.store.import_bundle.assert_awaited_with(
-        b"zip", {"expectedHardwareId": "H1", "allowManagedServerId": "S"}
+        b"zip", {"expectedHardwareId": "H1", "allowManagedDeviceId": "S"}
     )
     with pytest.raises(ValueError, match="not found"):
-        await app.import_bundle_for_server(HUMAN, b"zip", "H1", "absent")
+        await app.import_bundle_for_device(HUMAN, b"zip", "H1", "absent")
     with pytest.raises(ValueError, match="not H2"):
-        await app.import_bundle_for_server(HUMAN, b"zip", "H2", "S")
+        await app.import_bundle_for_device(HUMAN, b"zip", "H2", "S")
     passive: Json = {
         "formatVersion": 2,
         "hardwareId": "P",
@@ -149,9 +149,9 @@ async def test_device_application_crud_and_binary_boundaries() -> None:
         "ports": [],
     }
     assert (await app.save_hardware(AGENT, passive))["hardwareId"] == "P"
-    with pytest.raises(Exception, match="register_mcp_server first"):
+    with pytest.raises(Exception, match="save_device first"):
         await app.save_hardware(HUMAN, HARDWARE)
-    with pytest.raises(Exception, match="unregister that server"):
+    with pytest.raises(Exception, match="unregister that instance"):
         await app.save_hardware(HUMAN, {**passive, "hardwareId": "H1"})
     assert (await app.save_hardware(HUMAN, {**HARDWARE, "hardwareId": "H1"}))["hardwareId"] == "H1"
 
@@ -255,21 +255,21 @@ async def test_wiring_orchestration_and_dashboard_facades() -> None:
     assert app.get_task(HUMAN, "W") == {"id": "W"} and app.list_tasks(HUMAN) == []
     devices = Mock()
     for name in [
-        "list_servers",
-        "list_server_statuses",
+        "list_devices",
+        "list_device_statuses",
         "list_hardware",
         "list_tools",
         "list_availability",
     ]:
         getattr(devices, name).return_value = [name]
-    servers = [{"serverId": "R"}, {"serverId": "P"}]
-    devices.list_servers.return_value = servers
+    instances = [{"deviceId": "R"}, {"deviceId": "P"}]
+    devices.list_devices.return_value = instances
     dashboard = SystemApplication(
         authorizer, devices, Mock(gateway_status=lambda: {"running": True}), ExecutionCoordinator()
     ).dashboard(HUMAN)
     assert dashboard == {
-        "servers": servers,
-        "serverStatuses": ["list_server_statuses"],
+        "devices": instances,
+        "deviceStatuses": ["list_device_statuses"],
         "hardware": ["list_hardware"],
         "tools": ["list_tools"],
         "availability": ["list_availability"],

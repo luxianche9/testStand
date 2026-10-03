@@ -12,14 +12,14 @@ type Dashboard = Awaited<ReturnType<typeof window.hardwareharness.system.dashboa
 export type DragDescriptor =
   | { kind: "step"; stepId: string }
   | { kind: "catalog"; item: TestStepCatalogItem }
-  | { kind: "server"; hardware: Hardware };
+  | { kind: "device"; hardware: Hardware };
 
 /** 组件库 tab: step catalog by category plus managed hardware; drag into a region or click to append. */
-export function ComponentLibrary({ enabled, onAdd, onAddServer }: {
+export function ComponentLibrary({ enabled, onAdd, onAddDevice }: {
   /** False when no 功能测试项 is open; rows are then inert. */
   enabled: boolean;
   onAdd: (item: TestStepCatalogItem) => void;
-  onAddServer: (hardware: Hardware) => void;
+  onAddDevice: (hardware: Hardware) => void;
 }) {
   const catalog = useTestStepCatalog();
   const devices = useDeviceCatalog();
@@ -37,12 +37,12 @@ export function ComponentLibrary({ enabled, onAdd, onAddServer }: {
                 <CatalogRow key={item.type} item={item} disabled={!enabled} onAdd={() => onAdd(item)} />
               ))
               : managed.map((item) => (
-                <ServerRow
+                <DeviceRow
                   key={item.hardwareId}
                   hardware={item}
                   dashboard={dashboard.data}
                   disabled={!enabled}
-                  onAdd={() => onAddServer(item)}
+                  onAdd={() => onAddDevice(item)}
                 />
               ))}
             {category === "硬件" && !managed.length && (
@@ -83,19 +83,19 @@ function CatalogRow({ item, disabled, onAdd }: { item: TestStepCatalogItem; disa
   );
 }
 
-function ServerRow({ hardware, dashboard, disabled, onAdd }: {
+function DeviceRow({ hardware, dashboard, disabled, onAdd }: {
   hardware: Hardware;
   dashboard: Dashboard | undefined;
   disabled: boolean;
   onAdd: () => void;
 }) {
   const drag = useDraggable({
-    id: `server:${hardware.hardwareId}`,
+    id: `instance:${hardware.hardwareId}`,
     disabled,
-    data: { kind: "server", hardware } satisfies DragDescriptor
+    data: { kind: "device", hardware } satisfies DragDescriptor
   });
-  const status = dashboard?.serverStatuses.find((item) => item.serverId === hardware.serverId);
-  const tools = dashboard?.tools.filter((item) => item.serverId === hardware.serverId).length ?? 0;
+  const status = dashboard?.deviceStatuses.find((item) => item.deviceId === hardware.deviceId);
+  const tools = dashboard?.tools.filter((item) => item.deviceId === hardware.deviceId).length ?? 0;
   const online = status?.transport.state === "online";
   return (
     <button
@@ -110,7 +110,7 @@ function ServerRow({ hardware, dashboard, disabled, onAdd }: {
       <GripVerticalIcon className="size-3.5 shrink-0 text-fg-3" />
       <span className="min-w-0 flex-1">
         <span className="block truncate font-medium text-fg">{hardware.label}</span>
-        <code className="block truncate font-mono text-2xs text-fg-3">{hardware.serverId}</code>
+        <code className="block truncate font-mono text-2xs text-fg-3">{hardware.deviceId}</code>
       </span>
       <span className="grid justify-items-end gap-0.5 text-2xs text-fg-3">
         <span className="flex items-center gap-1">

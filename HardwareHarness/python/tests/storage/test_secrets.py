@@ -103,15 +103,15 @@ async def test_long_values_are_chunked_and_shrinking_forgets_old_chunks(tmp_path
     store = SecretStore(tmp_path, backend)
     await store.initialize()
     long = "x" * (CHUNK * 3)
-    await store.set("mcp:server", {"key": long})
+    await store.set("llm:key", {"key": long})
     assert all(len(value) <= CHUNK + 64 for value in backend.values.values())
-    assert json.loads(backend.values[(SERVICE, "mcp:server")])["chunks"] == 4
+    assert json.loads(backend.values[(SERVICE, "llm:key")])["chunks"] == 4
     reopened = SecretStore(tmp_path, backend)
     await reopened.initialize()
-    assert reopened.get("mcp:server") == {"key": long}
-    await reopened.set("mcp:server", {"key": "short"})
-    assert set(backend.values) == {(SERVICE, "mcp:server")}
-    await reopened.remove("mcp:server")
+    assert reopened.get("llm:key") == {"key": long}
+    await reopened.set("llm:key", {"key": "short"})
+    assert set(backend.values) == {(SERVICE, "llm:key")}
+    await reopened.remove("llm:key")
     assert backend.values == {}
 
 

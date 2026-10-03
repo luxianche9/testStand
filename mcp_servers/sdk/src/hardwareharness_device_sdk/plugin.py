@@ -29,7 +29,7 @@ import sys
 from collections.abc import Sequence
 from typing import Any, Protocol
 
-from .config import ServerConfig
+from .config import DeviceConfig
 from .device_types import load_device
 from .errors import DEVICE_UNREACHABLE, DeviceError
 from .host import DeviceHost
@@ -106,7 +106,7 @@ class InprocDevice:
 class SubprocessDevice:
     isolation = "subprocess"
 
-    def __init__(self, device_type: str, config: ServerConfig, command: Sequence[str] | None = None) -> None:
+    def __init__(self, device_type: str, config: DeviceConfig, command: Sequence[str] | None = None) -> None:
         self.device_type, self.config = device_type, config
         self.command = list(command or (sys.executable, "-m", CHILD_MODULE))
         self.process: asyncio.subprocess.Process | None = None
@@ -210,7 +210,7 @@ class SubprocessDevice:
                     future.set_exception(failure)
 
 
-def open_device(device_type: str, config: ServerConfig, *, child_command: Sequence[str] | None = None,
+def open_device(device_type: str, config: DeviceConfig, *, child_command: Sequence[str] | None = None,
                 retry_delays: tuple[float, ...] = (5, 10, 30)) -> DeviceHandle:
     """A handle for ``device_type`` as its ``Device.isolation`` asks; call ``start()`` next."""
     device_cls = load_device(device_type)
@@ -219,8 +219,8 @@ def open_device(device_type: str, config: ServerConfig, *, child_command: Sequen
     return InprocDevice(DeviceHost(device_cls, config, retry_delays=retry_delays))
 
 
-def _config_mapping(config: ServerConfig) -> dict[str, Any]:
-    return {"serverId": config.server_id, "hardwareId": config.hardware_id, "manufacturer": config.manufacturer,
+def _config_mapping(config: DeviceConfig) -> dict[str, Any]:
+    return {"deviceId": config.device_id, "hardwareId": config.hardware_id, "manufacturer": config.manufacturer,
             "model": config.model, "computerId": config.computer_id, "dryRun": config.dry_run,
             "settings": dict(config.settings)}
 
@@ -287,7 +287,7 @@ class _Child:
 
     async def dispatch(self, method: str, params: dict[str, Any]) -> Any:
         if method == "start":
-            config = ServerConfig.from_mapping(params["config"], env={})
+            config = DeviceConfig.from_mapping(params["config"], env={})
             self.host = DeviceHost(load_device(params["type"]), config)
             await self.host.start()
             return None

@@ -4,7 +4,7 @@ import asyncio
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any, Literal, Protocol, TypeVar, cast
 
-from hardwareharness_backend.contracts.devices import parse_hardware, parse_mcp_server
+from hardwareharness_backend.contracts.devices import parse_device_instance, parse_hardware
 from hardwareharness_backend.contracts.errors import app_error
 from hardwareharness_backend.contracts.operations import operation
 from hardwareharness_backend.devices.plugin_transport import installed_device_types
@@ -40,56 +40,56 @@ class DevicesApplication:
         self._calls_closed = False
 
     @operation(
-        "devices.listServers",
+        "devices.listDevices",
         capability="devices.read",
         risk="read",
         profiles=("adapter",),
         idempotency="natural",
     )
-    def list_servers(self, context: Json) -> list[Json]:
-        return self.service.list_servers()
+    def list_devices(self, context: Json) -> list[Json]:
+        return self.service.list_devices()
 
     @operation(
-        "devices.listServersWithStatus",
+        "devices.listDevicesWithStatus",
         capability="devices.read",
         risk="read",
         profiles=("adapter",),
         idempotency="natural",
     )
-    async def list_servers_with_status(self, context: Json) -> Json:
-        servers = self.service.list_servers()
-        return {"servers": servers, "statuses": await self.service.refresh_all_servers()}
+    async def list_devices_with_status(self, context: Json) -> Json:
+        instances = self.service.list_devices()
+        return {"devices": instances, "statuses": await self.service.refresh_all_devices()}
 
     @operation(
-        "devices.saveServer",
-        capability="devices.manageServers",
+        "devices.saveDevice",
+        capability="devices.manageDevices",
         risk="write",
         profiles=("adapter",),
         idempotency="natural",
     )
-    async def save_server(self, context: Json, input: Json) -> Json:
-        return await self.service.save_server(parse_mcp_server(input))
+    async def save_device(self, context: Json, input: Json) -> Json:
+        return await self.service.save_device(parse_device_instance(input))
 
     @operation(
-        "devices.removeServer",
-        capability="devices.manageServers",
+        "devices.removeDevice",
+        capability="devices.manageDevices",
         risk="destructive",
         idempotency="natural",
         confirm=True,
     )
-    async def remove_server(self, context: Json, server_id: str) -> Json:
-        await self.service.remove_server(server_id)
-        return {"serverId": server_id}
+    async def remove_device(self, context: Json, device_id: str) -> Json:
+        await self.service.remove_device(device_id)
+        return {"deviceId": device_id}
 
     @operation(
-        "devices.refreshServer",
+        "devices.refreshDevice",
         capability="devices.read",
         risk="read",
         profiles=("adapter",),
         idempotency="natural",
     )
-    async def refresh_server(self, context: Json, server_id: str) -> Json:
-        return await self.service.refresh_server(server_id)
+    async def refresh_device(self, context: Json, device_id: str) -> Json:
+        return await self.service.refresh_device(device_id)
 
     @operation(
         "devices.listManagedHardware",
@@ -154,23 +154,23 @@ class DevicesApplication:
         hardware = parse_hardware(input)
         assigned = next(
             (
-                server
-                for server in self.service.list_servers()
-                if server["hardwareId"] == hardware["hardwareId"]
+                instance
+                for instance in self.service.list_devices()
+                if instance["hardwareId"] == hardware["hardwareId"]
             ),
             None,
         )
         if hardware["kind"] == "managed" and not assigned:
             raise app_error(
                 "invalid_argument",
-                f"Hardware {hardware['hardwareId']} is not assigned to an MCP server; "
-                "register_mcp_server first or save as kind passive",
+                f"Hardware {hardware['hardwareId']} is not assigned to a device; "
+                "save_device first or save as kind passive",
             )
         if hardware["kind"] == "passive" and assigned:
             raise app_error(
                 "invalid_argument",
-                f"Hardware {hardware['hardwareId']} is assigned to MCP server "
-                f"{assigned['serverId']}; unregister that server before treating it as passive",
+                f"Hardware {hardware['hardwareId']} is assigned to device "
+                f"{assigned['deviceId']}; unregister that instance before treating it as passive",
             )
         return await self.catalog.save_hardware(hardware)
 
@@ -267,25 +267,25 @@ class DevicesApplication:
     async def inspect_bundle(self, context: Json, data: bytes) -> Json:
         return cast(Json, await self.service.store.inspect_bundle(data))
 
-    @operation("devices.importBundleForServer", capability="hardware.manage", risk="write")
-    async def import_bundle_for_server(
-        self, context: Json, data: bytes, hardware_id: str, server_id: str
+    @operation("devices.importBundleForDevice", capability="hardware.manage", risk="write")
+    async def import_bundle_for_device(
+        self, context: Json, data: bytes, hardware_id: str, device_id: str
     ) -> Json:
-        server = next(
-            (server for server in self.service.list_servers() if server["serverId"] == server_id),
+        instance = next(
+            (item for item in self.service.list_devices() if item["deviceId"] == device_id),
             None,
         )
-        if server is None:
-            raise ValueError(f"MCP server not found: {server_id}")
-        if server["hardwareId"] != hardware_id:
+        if instance is None:
+            raise ValueError(f"Device not found: {device_id}")
+        if instance["hardwareId"] != hardware_id:
             raise ValueError(
-                f"MCP server {server_id} is assigned to hardware {server['hardwareId']}, "
+                f"Device {device_id} is assigned to hardware {instance['hardwareId']}, "
                 f"not {hardware_id}"
             )
         return cast(
             Json,
             await self.service.store.import_bundle(
-                data, {"expectedHardwareId": hardware_id, "allowManagedServerId": server_id}
+                data, {"expectedHardwareId": hardware_id, "allowManagedDeviceId": device_id}
             ),
         )
 
@@ -303,13 +303,13 @@ class DevicesApplication:
         )
         if tool is None or tool["kind"] == "internal":
             raise app_error("unavailable", f"Unknown public hardware tool: {name}")
-        server = next(
-            (item for item in self.service.list_servers() if item["serverId"] == tool["serverId"]),
+        instance = next(
+            (item for item in self.service.list_devices() if item["deviceId"] == tool["deviceId"]),
             None,
         )
-        if server is None:
-            raise app_error("unavailable", f"Unknown hardware server: {tool['serverId']}")
-        # The SDK's own management tools (server/hardware info) are platform-owned metadata
+        if instance is None:
+            raise app_error("unavailable", f"Unknown hardware instance: {tool['deviceId']}")
+        # The SDK's own management tools (device/hardware info) are platform-owned metadata
         # reads, independent of the adapter's annotations; only they bypass an active call.
         metadata_read = tool["kind"] == "management"
         handle = (
@@ -318,14 +318,14 @@ class DevicesApplication:
             else self.execution.acquire(
                 {
                     "state": "manual",
-                    "hardwareId": server["hardwareId"],
+                    "hardwareId": instance["hardwareId"],
                     "toolName": name,
                     "startedAt": utc_now_iso(),
                 }
             )
         )
         task = asyncio.create_task(self.service.call_aggregated_tool(name, args))
-        self.active[task] = server["hardwareId"]
+        self.active[task] = instance["hardwareId"]
         try:
             return await task
         except asyncio.CancelledError as error:
@@ -595,8 +595,8 @@ class SystemApplication:
     @operation("system.dashboard", capability="system.read", risk="read", idempotency="natural")
     def dashboard(self, context: Json) -> Json:
         return {
-            "servers": self.devices.list_servers(),
-            "serverStatuses": self.devices.list_server_statuses(),
+            "devices": self.devices.list_devices(),
+            "deviceStatuses": self.devices.list_device_statuses(),
             "hardware": self.devices.list_hardware(),
             "tools": self.devices.list_tools(),
             "gateway": self.system.gateway_status(),

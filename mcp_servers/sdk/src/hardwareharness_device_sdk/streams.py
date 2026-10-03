@@ -319,7 +319,7 @@ class BlockStream(Stream):
     """Hardware-timed sample blocks ``{t0, dt, samples[]}``.
 
     ``read_block`` returns ``(samples, dt_ms)`` or ``(samples, dt_ms, t0_ms)``
-    (server clock), or ``None`` when no block is ready; without ``t0`` the SDK
+    (host clock), or ``None`` when no block is ready; without ``t0`` the SDK
     assumes the block ended at the read.
     """
 

@@ -209,7 +209,7 @@ HardwareHarness 是一套通用的智能测试软件。目标是用**一套平�
   "manifestRevision": "sha256:9f2c…",        // 对下面全部内容求哈希，任何变化都会改变
   "contractRevision": "2026-10-01.1",
   "identity": {
-    "serverId": "PCI1710L_1",
+    "deviceId": "PCI1710L_1",
     "hardwareId": "PCI1710L_CARD_0",
     "manufacturer": "Advantech",
     "model": "PCI-1710L",
@@ -253,7 +253,7 @@ HardwareHarness 是一套通用的智能测试软件。目标是用**一套平�
 | 工具 | 处理 |
 |---|---|
 | `get_pinout` / `list_streams` | 已删除，内容在 `/device.pinout`、`/device.streams` |
-| `get_server_info` / `get_hardware_info` | 运行态查询：生命周期状态、最近错误、生效能力。静态声明以 `/device` 为准 |
+| `get_device_info` / `get_hardware_info` | 运行态查询：生命周期状态、最近错误、生效能力。静态声明以 `/device` 为准 |
 | `list_hardware` | 一个实例一个设备，只返回一项 |
 
 AI 通过网关读取声明（第 8.3 节的 `get_hardware_definition`），而不是直接调用插件。
@@ -263,7 +263,7 @@ AI 通过网关读取声明（第 8.3 节的 `get_hardware_definition`），而�
 #### 4.4.1 工具命名与参数
 
 - 设备工具命名为 `<prefix>_<name>`，例如 `pci6208v_set_voltage`。第一个参数是 `hardwareId`，由 SDK 自动加上。
-- 后端的工具目录和 Agent 网关对外的名称为 `<serverId>__<toolName>`，并从参数表中去掉 `hardwareId`，由后端注入。
+- 后端的工具目录和 Agent 网关对外的名称为 `<deviceId>__<toolName>`，并从参数表中去掉 `hardwareId`，由后端注入。
 - 每个工具的描述至少 80 字，必须说明：它证明什么、不证明什么、失败后怎么办。
 - 同一份 `@tool` 声明生成设备页手动调用的表单、Agent 工具和测试步骤目录中的工具，不另写第二份。
 
@@ -365,11 +365,11 @@ AI 通过网关读取声明（第 8.3 节的 `get_hardware_definition`），而�
 
 ### 4.7 实例配置与凭据
 
-- 后端硬件实例记录（`devices/device_store.py` 的 `servers` 目录）分两种：
+- 后端硬件实例记录（`devices/device_store.py` 的 `devices` 目录）分两种：
 
   ```jsonc
   // 设备插件
-  {"serverId": "PCI1762_1", "label": "PCI-1762", "hardwareId": "PCI1762_CARD_0",
+  {"deviceId": "PCI1762_1", "label": "PCI-1762", "hardwareId": "PCI1762_CARD_0",
    "type": "pci1762",                        // hardwareharness.devices 中的类型名
    "settings": {"cardIndex": 0, "hwcliPath": "…"},   // 适配器自定义、非秘密
    "mode": "real",                           // real | sim
@@ -377,7 +377,7 @@ AI 通过网关读取声明（第 8.3 节的 `get_hardware_definition`），而�
   ```
 
 - 设备页“添加测试资源”从已安装类型中选择 `type`，编辑 `settings` 与 `mode`。同型号多块卡就添加多个实例，用 `settings` 区分卡号。
-- 后端按实例构造 SDK 的 `ServerConfig`：`manufacturer`/`model` 取自设备类，`dryRun = (mode == "sim")`。
+- 后端按实例构造 SDK 的 `DeviceConfig`：`manufacturer`/`model` 取自设备类，`dryRun = (mode == "sim")`。
 - **禁止**把令牌、密码写进 `settings` 或提交到仓库。
 - 密钥由后端通过 Python `keyring` 访问系统凭据库（Windows 上是“凭据管理器”），服务名固定为 `HardwareHarness`。条目：`gateway`（Agent 网关令牌）、`opencode.llm.api-key`（LLM 密钥）。旧 `safeStorage` 条目不导入。
 
@@ -945,7 +945,7 @@ async def start_run(ctx: OpContext, req: StartRunRequest) -> RunRef: ...
   5. 执行；
   6. 写审计日志（`storage/audit_log.py`：调用方、操作、参数摘要、结果、耗时；JSONL，5 MB 轮转），敏感字段按模型上的标记脱敏；
   7. 对 `risk="actuate"` 的操作，如果结果未知（超时、子进程退出），返回 `unknown_outcome`，**任何入口都不自动重试**（第 7.8 节）。
-- 设备工具（`<serverId>__<tool>`）不在注册表中：它们来自已加载插件的工具描述，由网关按需展开（第 8.2 节），但调用时同样经过第 2、3、6、7 步。
+- 设备工具（`<deviceId>__<tool>`）不在注册表中：它们来自已加载插件的工具描述，由网关按需展开（第 8.2 节），但调用时同样经过第 2、3、6、7 步。
 
 ### 9.4 前后端通信
 
@@ -1039,7 +1039,7 @@ run.completed │ run.aborted │ run.error
 
 - 不做虚拟台架（DEC-18）。各适配器的模拟驱动（`select_driver(real, simulated)`）用于适配器单元测试、`--check`、`mode: sim` 实例和端到端测试；输入读空闲值，不在设备之间回送接线。
 - 适配器测试用 SDK 的进程内测试工具 `serve(Device)`：`hh.call` 返回信封、`hh.device()` 返回声明、`hh.subscribe()` 按 `hello`/`batch`/`gap`/`status` 事件读流。
-- 桌面应用的端到端测试（Playwright）使用真实 SDK 插件的模拟模式（`transport: plugin`、`mode: sim`），不用假 MCP 服务器。
+- 桌面应用的端到端测试（Playwright）使用真实 SDK 插件的模拟模式（`mode: sim`），不用假 MCP 服务器。
 - 实物台架用于冒烟测试和适配器放行（第 8.4 节“适配完成门槛”）。
 - 测试分层：
   - 领域层：纯单元测试，不需要硬件；

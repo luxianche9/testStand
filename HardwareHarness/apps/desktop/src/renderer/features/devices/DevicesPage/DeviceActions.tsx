@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import type { Hardware, McpServerConfig } from "@hardwareharness/contracts/devices";
+import type { Hardware, DeviceInstance } from "@hardwareharness/contracts/devices";
 import { PencilIcon, Trash2Icon } from "lucide-react";
 import { errorMessage } from "../../../lib/errors.js";
 import { Button, IconButton, useConfirm } from "../../../ui";
@@ -8,15 +8,15 @@ import { Button, IconButton, useConfirm } from "../../../ui";
 export type ReportError = (message: string | null) => void;
 
 /** Header actions of a managed device. */
-export function ServerActions({ server, onEdit, onChanged, onError }: {
-  server: McpServerConfig;
+export function DeviceActions({ instance, onEdit, onChanged, onError }: {
+  instance: DeviceInstance;
   onEdit: () => void;
   onChanged: () => Promise<void>;
   onError: ReportError;
 }) {
   const [confirm, confirmNode] = useConfirm();
   const remove = useMutation({
-    mutationFn: () => window.hardwareharness.devices.removeServer({ serverId: server.serverId }),
+    mutationFn: () => window.hardwareharness.devices.removeDevice({ deviceId: instance.deviceId }),
     onMutate: () => onError(null),
     onError: (error) => onError(errorMessage(error)),
     onSettled: () => void onChanged()
@@ -24,7 +24,7 @@ export function ServerActions({ server, onEdit, onChanged, onError }: {
   const requestRemove = async () => {
     const ok = await confirm({
       title: "删除设备",
-      message: `删除 ${server.label}（${server.serverId}）？端口和接线定义保留为被动硬件。`,
+      message: `删除 ${instance.label}（${instance.deviceId}）？端口和接线定义保留为被动硬件。`,
       confirmLabel: "删除",
       danger: true
     });

@@ -16,8 +16,8 @@ import { DeviceInspector } from "./DeviceInspector.js";
 import { HardwareListTree } from "./HardwareListTree.js";
 
 const snapshot: DashboardSnapshot = {
-  servers: [{
-    serverId: "E2E_MCP",
+  devices: [{
+    deviceId: "E2E_MCP",
     label: "E2E fixture MCP",
     hardwareId: "E2E_CARD",
     type: "pci6208v",
@@ -25,7 +25,7 @@ const snapshot: DashboardSnapshot = {
     mode: "sim",
     enabled: true
   }, {
-    serverId: "RELAY_MCP",
+    deviceId: "RELAY_MCP",
     label: "Relay card",
     hardwareId: "RELAY_0",
     type: "pci1762",
@@ -33,15 +33,15 @@ const snapshot: DashboardSnapshot = {
     mode: "real",
     enabled: true
   }],
-  serverStatuses: [
-    { serverId: "E2E_MCP", transport: { state: "online" } },
-    { serverId: "RELAY_MCP", transport: { state: "offline", message: "Connection refused" } }
+  deviceStatuses: [
+    { deviceId: "E2E_MCP", transport: { state: "online" } },
+    { deviceId: "RELAY_MCP", transport: { state: "offline", message: "Connection refused" } }
   ],
-  hardware: [{ hardwareId: "E2E_CARD", serverId: "E2E_MCP", state: "open", health: "ok" }],
+  hardware: [{ hardwareId: "E2E_CARD", deviceId: "E2E_MCP", state: "open", health: "ok" }],
   tools: [{
     externalName: "E2E_MCP__write_voltage",
     remoteName: "write_voltage",
-    serverId: "E2E_MCP",
+    deviceId: "E2E_MCP",
     description: "write",
     inputSchema: {
       type: "object",
@@ -61,7 +61,7 @@ const catalog: Hardware[] = [
     hardwareId: "E2E_CARD",
     label: "E2E fixture card",
     kind: "managed",
-    serverId: "E2E_MCP",
+    deviceId: "E2E_MCP",
     ports: [{ portId: "AO", name: "AO", pins: [{ pinId: "0", position: 1, label: "AO0" }] }]
   },
   {
@@ -107,7 +107,7 @@ const definition: ManagedDeviceDefinition = {
   document: {
     manifestRevision: "sha256:0123456789abcdef",
     identity: {
-      serverId: "E2E_MCP",
+      deviceId: "E2E_MCP",
       hardwareId: "E2E_CARD",
       manufacturer: "Advantech",
       model: "PCI-1710L",
@@ -143,7 +143,7 @@ function renderInspector(selected: string) {
       selected={selected}
       snapshot={snapshot}
       hardware={catalog}
-      onEditServer={vi.fn()}
+      onEditDevice={vi.fn()}
       onEditHardware={vi.fn()}
       onChanged={vi.fn(async () => undefined)}
     />,
@@ -159,7 +159,7 @@ beforeEach(() => {
       devices: {
         getDefinition,
         ...adapterApi,
-        removeServer: vi.fn(),
+        removeDevice: vi.fn(),
         removeHardware: vi.fn()
       },
       events: { subscribe: () => () => undefined },
@@ -191,9 +191,9 @@ describe("device trees", () => {
       checkedAt: "2026-09-15T00:00:00Z",
       ...(message ? { message } : {})
     };
-    const serverStatuses = [{ serverId: "E2E_MCP", transport: { state: transport, ...(message ? { message } : {}) } }];
-    const data: DashboardSnapshot = { ...snapshot, availability: [availability], serverStatuses };
-    expect(hardwareStatus(serverStatuses[0], availability).label).toBe(label);
+    const deviceStatuses = [{ deviceId: "E2E_MCP", transport: { state: transport, ...(message ? { message } : {}) } }];
+    const data: DashboardSnapshot = { ...snapshot, availability: [availability], deviceStatuses };
+    expect(hardwareStatus(deviceStatuses[0], availability).label).toBe(label);
 
     renderTree(data);
     const device = screen.getByRole("treeitem", { name: /E2E fixture card/ });

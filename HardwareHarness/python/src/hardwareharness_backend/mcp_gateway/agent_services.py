@@ -86,11 +86,11 @@ async def _wait(app: Any, context: Json, value: Json) -> Json:
         else:
             # Cached status is updated by the platform. Waiting never reconnects a device.
             dashboard = app.system.dashboard(context)
-            if not any(server["serverId"] == identifier for server in dashboard["servers"]):
-                raise app_error("not_found", f"Unknown MCP server: {identifier}")
+            if not any(instance["deviceId"] == identifier for instance in dashboard["devices"]):
+                raise app_error("not_found", f"Unknown device: {identifier}")
             status = next(
-                (item for item in dashboard["serverStatuses"] if item["serverId"] == identifier),
-                {"serverId": identifier},
+                (item for item in dashboard["deviceStatuses"] if item["deviceId"] == identifier),
+                {"deviceId": identifier},
             )
             terminal = status.get("transport", {}).get("state") in {"online", "offline", "error"}
         revision = _revision(status)
@@ -185,13 +185,13 @@ def _availability(app: Any, context: Json, value: Json) -> Json:
             for activity in activities
             if hardware_id in activity.get("hardwareIds", [activity.get("hardwareId")])
         ]
-        server_enabled = any(
-            server.get("enabled") and server["serverId"] == item.get("serverId")
-            for server in dashboard["servers"]
+        device_enabled = any(
+            instance.get("enabled") and instance["deviceId"] == item.get("deviceId")
+            for instance in dashboard["devices"]
         )
         available = (
             item["kind"] == "managed"
-            and server_enabled
+            and device_enabled
             and observed["state"] == "available"
             and not holders
         )
@@ -203,8 +203,8 @@ def _availability(app: Any, context: Json, value: Json) -> Json:
                 if holders
                 else "passive_hardware"
                 if item["kind"] == "passive"
-                else "server_disabled_or_missing"
-                if not server_enabled
+                else "device_disabled_or_missing"
+                if not device_enabled
                 else None
                 if available
                 else observed.get("message", observed["state"]),
@@ -385,7 +385,7 @@ AGENT_TOOLS = [
         obj(
             {
                 "kind": enum("wiring", "service").describe("Existing object type."),
-                "id": string(1).describe("wiringTaskId or serverId matching kind."),
+                "id": string(1).describe("wiringTaskId or deviceId matching kind."),
                 "revision": string()
                 .optional()
                 .describe("Opaque revision from the preceding wait; omit for first wait."),

@@ -84,12 +84,12 @@ class DeviceCatalogService:
         self._port_index_signature = ""
         return self.adapter_status(hardware_id)
 
-    def hardware_for_server(self, server_id: str) -> Record | None:
+    def hardware_for_device(self, device_id: str) -> Record | None:
         return next(
             (
                 item
                 for item in self.list_hardware()
-                if item["kind"] == "managed" and item.get("serverId") == server_id
+                if item["kind"] == "managed" and item.get("deviceId") == device_id
             ),
             None,
         )

@@ -4,11 +4,11 @@
     "body": {}
   },
   {
-    "operation": "devices.saveServer",
+    "operation": "devices.saveDevice",
     "body": {
       "input": {
         "transport": "plugin",
-        "serverId": "ID",
+        "deviceId": "ID",
         "hardwareId": "H",
         "label": "S",
         "type": "pci1762",
@@ -19,15 +19,15 @@
     }
   },
   {
-    "operation": "devices.removeServer",
+    "operation": "devices.removeDevice",
     "body": {
-      "serverId": "ID"
+      "deviceId": "ID"
     }
   },
   {
-    "operation": "devices.refreshServer",
+    "operation": "devices.refreshDevice",
     "body": {
-      "serverId": "ID"
+      "deviceId": "ID"
     }
   },
   {
@@ -91,7 +91,7 @@
     }
   },
   {
-    "operation": "devices.importBundleForServer",
+    "operation": "devices.importBundleForDevice",
     "body": {
       "data": {
         "__bytes__": [
@@ -101,7 +101,7 @@
         ]
       },
       "hardwareId": "ID",
-      "serverId": "S"
+      "deviceId": "S"
     }
   },
   {

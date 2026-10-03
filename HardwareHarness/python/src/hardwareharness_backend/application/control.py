@@ -46,7 +46,7 @@ class ManualControlApplication:
     async def invoke_tool(self, context: Json, raw: Json) -> Json:
         input = parse_manual_tool_invocation_input(raw)
         hardware = self.catalog.get_hardware(input["hardwareId"])
-        if hardware["kind"] != "managed" or not hardware.get("serverId"):
+        if hardware["kind"] != "managed" or not hardware.get("deviceId"):
             raise app_error(
                 "invalid_argument",
                 f"Hardware {input['hardwareId']} is passive and cannot execute MCP tools",
@@ -61,11 +61,11 @@ class ManualControlApplication:
         )
         if tool is None:
             raise app_error("unavailable", f"MCP tool is unavailable: {input['toolName']}")
-        if tool["serverId"] != hardware["serverId"]:
+        if tool["deviceId"] != hardware["deviceId"]:
             raise app_error(
                 "invalid_argument",
-                f"Tool {input['toolName']} belongs to {tool['serverId']}, "
-                f"not hardware server {hardware['serverId']}",
+                f"Tool {input['toolName']} belongs to {tool['deviceId']}, "
+                f"not hardware instance {hardware['deviceId']}",
             )
         if tool["kind"] == "hardware":
             availability = next(

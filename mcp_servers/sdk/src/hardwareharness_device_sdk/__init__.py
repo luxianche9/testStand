@@ -11,7 +11,7 @@ lifecycle, in the backend process or in an isolated child process.
 
 from ._version import __version__
 from .clock import now_ms
-from .config import ServerConfig, env_flag
+from .config import DeviceConfig, env_flag
 from .device import Device
 from .device_types import ENTRY_POINT_GROUP, device_types, load_device
 from .envelope import CONTRACT_REVISION, ContractModel, envelope, error, iso_now, model, ok
@@ -69,7 +69,7 @@ __all__ = [
     "HostTool", "InprocDevice", "SubprocessDevice", "FrameStream", "HardwareId",
     "JsonLineBackend", "JsonLineCli", "Manifest", "ModeDefinition", "Operation", "Pin", "PinFunction",
     "Pinout", "ReadResult", "RingBuffer", "Sampler", "ScalarStream",
-    "ServerConfig", "SoftwareWaveform", "Stream", "StreamRegistry", "ToolSpec", "WaveformParams", "__version__",
+    "DeviceConfig", "SoftwareWaveform", "Stream", "StreamRegistry", "ToolSpec", "WaveformParams", "__version__",
     "build_manifest", "device_types", "env_flag", "envelope", "error",
     "find_executable", "function", "iso_now", "load_device", "model", "nc", "now_ms", "ok", "open_device", "param",
     "sample_value", "single_connector_pinout", "tool", "unwrap", "waveform_capability",

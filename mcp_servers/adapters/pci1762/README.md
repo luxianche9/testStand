@@ -2,7 +2,7 @@
 
 包 `hh_adapter_pci1762`，设备类型 `pci1762`（入口点组 `hardwareharness.devices`），由 HardwareHarness 后端作为插件加载。
 
-一个插件实例只管理一个硬件。公共工具（`get_server_info`、`list_hardware`、`get_hardware_info`、`<prefix>_stream_read`）、信封格式、`/device` 声明（身份、说明、引脚、流、能力）和流读取由 SDK 提供，见 `mcp_servers/README.md`。超时或错误不表示物理动作没有发生：保留原错误，查询当前状态并取证后再决定下一步。
+一个插件实例只管理一个硬件。公共工具（`get_device_info`、`list_hardware`、`get_hardware_info`、`<prefix>_stream_read`）、信封格式、`/device` 声明（身份、说明、引脚、流、能力）和流读取由 SDK 提供，见 `mcp_servers/README.md`。超时或错误不表示物理动作没有发生：保留原错误，查询当前状态并取证后再决定下一步。
 
 ## 设备语义
 

@@ -61,7 +61,7 @@ def build_manifest(service: DeviceHost) -> Manifest:
     device_cls = type(device)
     manifest = Manifest(document={})
     identity: dict[str, Any] = {
-        "serverId": service.config.server_id, "hardwareId": device.hardware_id,
+        "deviceId": service.config.device_id, "hardwareId": device.hardware_id,
         "manufacturer": device_cls.manufacturer, "model": device_cls.model,
         "hardwareRevision": getattr(device_cls, "hardware_revision", None),
         "adapter": {"name": device_cls.__module__.split(".")[0], "version": device_cls.version},

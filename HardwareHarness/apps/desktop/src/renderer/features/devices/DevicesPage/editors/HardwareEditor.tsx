@@ -18,7 +18,7 @@ const hardwareEditorSchema = z.object({
 type HardwareEditorValues = z.infer<typeof hardwareEditorSchema>;
 const blankHardware: HardwareEditorValues = { hardwareId: "DUT_1", label: "被测对象" };
 
-/** DUTs, fixtures and breakout boards: no MCP Server, just ports. */
+/** DUTs, fixtures and breakout boards: no device plugin, just ports. */
 export function HardwareEditor({ open, hardware, onClose, onChanged }: {
   open: boolean;
   hardware?: Hardware | undefined;
@@ -76,7 +76,7 @@ export function HardwareEditor({ open, hardware, onClose, onChanged }: {
             <EditorField label="显示名称" required error={errors.label?.message}>
               <Input {...register("label")} />
             </EditorField>
-            <EditorNote>被动硬件不由 MCP Server 控制，仅用于接线建模。</EditorNote>
+            <EditorNote>被动硬件不由设备插件控制，仅用于接线建模。</EditorNote>
             <EditorPanel>
               <PortEditor ports={ports} onChange={setPorts} />
             </EditorPanel>

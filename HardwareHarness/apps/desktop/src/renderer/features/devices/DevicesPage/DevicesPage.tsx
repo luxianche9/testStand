@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Hardware, McpServerConfig } from "@hardwareharness/contracts/devices";
+import type { Hardware, DeviceInstance } from "@hardwareharness/contracts/devices";
 import { CircleAlertIcon, RefreshCwIcon } from "lucide-react";
 import { errorMessage } from "../../../lib/errors.js";
 import { invalidateDeviceData } from "../../../lib/mutations.js";
@@ -10,7 +10,7 @@ import { Button, cn, EmptyState, Panel, PanelBody, PanelHeader, Spinner, Splitte
 import { DeviceInspector } from "./DeviceInspector.js";
 import { HardwareListTree } from "./HardwareListTree.js";
 import { HardwareEditor } from "./editors/HardwareEditor.js";
-import { ServerEditor } from "./editors/ServerEditor.js";
+import { DeviceEditor } from "./editors/DeviceEditor.js";
 
 export function DevicesPage() {
   const query = useDashboard();
@@ -18,7 +18,7 @@ export function DevicesPage() {
   const client = useQueryClient();
   const [selected, setSelected] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [serverEditor, setServerEditor] = useState<{ open: boolean; server?: McpServerConfig }>({ open: false });
+  const [deviceEditor, setDeviceEditor] = useState<{ open: boolean; instance?: DeviceInstance }>({ open: false });
   const [hardwareEditor, setHardwareEditor] = useState<{ open: boolean; hardware?: Hardware }>({ open: false });
   const sidebar = useResizableWidth({
     storageKey: "hardwareharness.devices-sidebar-width",
@@ -38,25 +38,25 @@ export function DevicesPage() {
   // Re-read hardware descriptors whenever a device comes online (its list_hardware may have changed).
   const mcpOnlineRef = useRef<Set<string>>(new Set());
   useEffect(() => {
-    const statuses = query.data?.serverStatuses;
+    const statuses = query.data?.deviceStatuses;
     if (!statuses) return;
-    const online = statuses.filter((item) => item.transport.state === "online").map((item) => item.serverId);
+    const online = statuses.filter((item) => item.transport.state === "online").map((item) => item.deviceId);
     const becameOnline = online.filter((id) => !mcpOnlineRef.current.has(id));
     mcpOnlineRef.current = new Set(online);
     if (becameOnline.length > 0) refreshHardwareRef.current();
-  }, [query.data?.serverStatuses]);
+  }, [query.data?.deviceStatuses]);
 
   const probeStatuses = useMutation({
     mutationFn: async () => {
       const snapshot = query.data;
       if (!snapshot) return;
       await Promise.allSettled(
-        snapshot.servers.map((server) => window.hardwareharness.devices.refreshServer({ serverId: server.serverId }))
+        snapshot.devices.map(({ deviceId }) => window.hardwareharness.devices.refreshDevice({ deviceId }))
       );
       try {
         await window.hardwareharness.devices.listManagedHardware();
       } catch {
-        // Partial outages are reflected in the per-server statuses above.
+        // Partial outages are reflected in the per-device statuses above.
       }
     },
     onSettled: () => void refreshAll()
@@ -66,10 +66,10 @@ export function DevicesPage() {
   const toggle = (key: string) => setExpanded((current) => ({ ...current, [key]: !(current[key] ?? true) }));
   const data = query.data;
   const hardware = catalog.data?.hardware ?? [];
-  const firstServer = data?.servers[0];
+  const firstDevice = data?.devices[0];
   const firstPassive = hardware.find((item) => item.kind === "passive");
   const effectiveSelected = selected
-    ?? (firstServer ? `s:${firstServer.serverId}` : firstPassive ? `l:${firstPassive.hardwareId}` : null);
+    ?? (firstDevice ? `s:${firstDevice.deviceId}` : firstPassive ? `l:${firstPassive.hardwareId}` : null);
 
   return (
     <div
@@ -101,7 +101,7 @@ export function DevicesPage() {
                 isOpen={isOpen}
                 onSelect={setSelected}
                 onToggle={toggle}
-                onAddDevice={() => setServerEditor({ open: true })}
+                onAddDevice={() => setDeviceEditor({ open: true })}
                 onAddHardware={() => setHardwareEditor({ open: true })}
               />
             </div>
@@ -125,17 +125,17 @@ export function DevicesPage() {
             selected={effectiveSelected}
             snapshot={data}
             hardware={hardware}
-            onEditServer={(server) => setServerEditor({ open: true, server })}
+            onEditDevice={(instance) => setDeviceEditor({ open: true, instance })}
             onEditHardware={(item) => setHardwareEditor({ open: true, hardware: item })}
             onChanged={refreshAll}
           />
         )}
       </Panel>
-      <ServerEditor
-        open={serverEditor.open}
-        server={serverEditor.server}
+      <DeviceEditor
+        open={deviceEditor.open}
+        instance={deviceEditor.instance}
         hardware={hardware}
-        onClose={() => setServerEditor({ open: false })}
+        onClose={() => setDeviceEditor({ open: false })}
         onChanged={refreshAll}
       />
       <HardwareEditor

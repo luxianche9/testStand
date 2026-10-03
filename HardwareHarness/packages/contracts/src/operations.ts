@@ -1,5 +1,5 @@
 import type { AgentConfirmation, AgentConfirmationAnswer, AgentIntegrationPreview, AgentIntegrationStatus, AgentToolInfo, McpGatewayStatus, OpenCodeRuntimeStatus } from "./agents.js";
-import type { AdapterReleaseRecord, DeviceType, Hardware, HardwareAvailability, ManagedDeviceDefinition, ManagedHardware, McpServerConfig, ServerStatus, StoredHardwareDefinition, ToolCatalogItem } from "./devices.js";
+import type { AdapterReleaseRecord, DeviceType, Hardware, HardwareAvailability, ManagedDeviceDefinition, ManagedHardware, DeviceInstance, DeviceStatus, StoredHardwareDefinition, ToolCatalogItem } from "./devices.js";
 import type { ExecutionActivity, ManualToolInvocationResult } from "./execution.js";
 import type { DeviceStream, RunIo, RunMessages, RunRejudge, RunStreams, RunStreamWindow, RunTimeline, StreamProbe, StreamRead } from "./observability.js";
 import type { operations } from "./openapi.generated.js";
@@ -13,8 +13,8 @@ export { BYTES_RESULT_OPERATIONS, OPERATION_NAMES, type OperationName } from "./
 
 export interface DashboardSnapshot {
   /** Device instances: plugins loaded into the backend and local MCP services. */
-  servers: McpServerConfig[];
-  serverStatuses: ServerStatus[];
+  devices: DeviceInstance[];
+  deviceStatuses: DeviceStatus[];
   hardware: ManagedHardware[];
   tools: ToolCatalogItem[];
   gateway: McpGatewayStatus;
@@ -23,7 +23,7 @@ export interface DashboardSnapshot {
   availability?: HardwareAvailability[];
 }
 
-/** Where the main process reaches the running OpenCode server (`agents.openCodeConnection`). */
+/** Where the main process reaches the running OpenCode instance (`agents.openCodeConnection`). */
 export interface OpenCodeConnection {
   url: string;
   username: string;
@@ -44,11 +44,11 @@ export type OperationParams<N extends OperationName> = NonNullable<operations[N]
  * generated operation list.
  */
 export interface OperationResults {
-  "devices.listServers": McpServerConfig[];
-  "devices.listServersWithStatus": { servers: McpServerConfig[]; statuses: ServerStatus[] };
-  "devices.saveServer": McpServerConfig;
-  "devices.removeServer": { serverId: string };
-  "devices.refreshServer": ServerStatus;
+  "devices.listDevices": DeviceInstance[];
+  "devices.listDevicesWithStatus": { devices: DeviceInstance[]; statuses: DeviceStatus[] };
+  "devices.saveDevice": DeviceInstance;
+  "devices.removeDevice": { deviceId: string };
+  "devices.refreshDevice": DeviceStatus;
   "devices.listManagedHardware": ManagedHardware[];
   "devices.listDeviceTypes": DeviceType[];
   "devices.listHardware": Hardware[];
@@ -63,7 +63,7 @@ export interface OperationResults {
   "devices.exportBundle": Uint8Array;
   "devices.importBundle": BundleImport;
   "devices.inspectBundle": StoredHardwareDefinition;
-  "devices.importBundleForServer": BundleImport;
+  "devices.importBundleForDevice": BundleImport;
   "devices.callTool": unknown;
   "devices.listTools": ToolCatalogItem[];
   "streams.listStreams": DeviceStream[];

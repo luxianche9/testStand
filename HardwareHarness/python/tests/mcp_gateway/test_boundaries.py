@@ -43,8 +43,8 @@ _TASK = {
     "cleanup": [],
 }
 _CASES: list[tuple[str, dict[str, Any], str, str, list[Any]]] = [
-    ("list_mcp_servers", {}, "devices", "list_servers_with_status", []),
-    ("refresh_device_server", {"serverId": "S"}, "devices", "refresh_server", ["S"]),
+    ("list_devices", {}, "devices", "list_devices_with_status", []),
+    ("refresh_device", {"deviceId": "S"}, "devices", "refresh_device", ["S"]),
     ("list_managed_hardware", {}, "devices", "list_managed_hardware", []),
     ("list_hardware_catalog", {}, "devices", "list_hardware", []),
     ("get_hardware_definition", {"hardwareId": "H"}, "devices", "get_hardware", ["H"]),
@@ -266,7 +266,7 @@ async def test_http_routes_and_tool_errors() -> None:
                 "category": "not_found",
                 "message": "Unknown MCP tool: missing",
             }
-            app.devices.refresh_server.side_effect = AppError(
+            app.devices.refresh_device.side_effect = AppError(
                 "conflict",
                 "Active run",
                 {
@@ -281,7 +281,7 @@ async def test_http_routes_and_tool_errors() -> None:
                     "jsonrpc": "2.0",
                     "id": 5,
                     "method": "tools/call",
-                    "params": {"name": "refresh_device_server", "arguments": {"serverId": "S"}},
+                    "params": {"name": "refresh_device", "arguments": {"deviceId": "S"}},
                 },
             )
             recovery = result_body(response)["structuredContent"]["error"]["details"]

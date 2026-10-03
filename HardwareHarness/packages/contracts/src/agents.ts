@@ -37,7 +37,7 @@ export interface AgentToolInfo {
   kind: "builtin" | "remote";
   description?: string;
   inputSchema: Record<string, unknown>;
-  serverId?: string;
+  deviceId?: string;
   remoteName?: string;
 }
 
@@ -46,7 +46,7 @@ export const CAPABILITIES = [
   "system.manage",
   "agents.manage",
   "devices.read",
-  "devices.manageServers",
+  "devices.manageDevices",
   "hardware.read",
   "hardware.manage",
   "hardware.executeTools",

@@ -74,7 +74,7 @@ def test_gateway_and_sdk_shapes_keep_referenced_data_and_media_distinct() -> Non
         {
             "externalName": "S__read",
             "remoteName": "read",
-            "serverId": "S",
+            "deviceId": "S",
             "kind": "hardware",
             "inputSchema": {},
             "upstreamOutputSchema": upstream,
@@ -101,8 +101,8 @@ async def test_only_platform_metadata_reads_bypass_active_call(
     kind: str,
     allowed: bool,
 ) -> None:
-    server_id = "PCI6208V_MCP"
-    name = f"{server_id}__{tool_name}"
+    device_id = "PCI6208V_MCP"
+    name = f"{device_id}__{tool_name}"
     execution = ExecutionCoordinator()
     handle = execution.acquire(
         {
@@ -118,13 +118,13 @@ async def test_only_platform_metadata_reads_bypass_active_call(
                 {
                     "externalName": name,
                     "remoteName": tool_name,
-                    "serverId": server_id,
+                    "deviceId": device_id,
                     "kind": kind,
                     "annotations": {"readOnlyHint": True},
                 }
             ]
         ),
-        list_servers=Mock(return_value=[{"serverId": server_id, "hardwareId": "H"}]),
+        list_devices=Mock(return_value=[{"deviceId": device_id, "hardwareId": "H"}]),
         call_aggregated_tool=AsyncMock(return_value={"status": "running"}),
     )
     app = DevicesApplication(DefaultAuthorizer(), service, Mock(), execution)

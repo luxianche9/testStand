@@ -1,9 +1,9 @@
 import pytest
 
 from hardwareharness_backend.contracts.devices import (
+    parse_device_instance,
     parse_hardware,
     parse_managed_hardware,
-    parse_mcp_server,
 )
 from hardwareharness_backend.contracts.errors import app_error, to_wire_error
 from hardwareharness_backend.contracts.projects import parse_project_file
@@ -21,7 +21,7 @@ def test_passive_references() -> None:
                 "hardwareId": "DUT",
                 "label": "DUT",
                 "kind": "passive",
-                "serverId": "S1",
+                "deviceId": "S1",
                 "computerId": "PC1",
                 "ports": [],
             }
@@ -30,10 +30,10 @@ def test_passive_references() -> None:
 
 @pytest.mark.ts_case(PREFIX + "applies stable defaults")
 def test_defaults() -> None:
-    assert parse_mcp_server(
-        {"serverId": "P1", "label": "P", "hardwareId": "H2", "type": "pci1762"}
+    assert parse_device_instance(
+        {"deviceId": "P1", "label": "P", "hardwareId": "H2", "type": "pci1762"}
     ) == {
-        "serverId": "P1",
+        "deviceId": "P1",
         "label": "P",
         "hardwareId": "H2",
         "type": "pci1762",
@@ -49,7 +49,7 @@ def test_managed_state() -> None:
         parse_managed_hardware(
             {
                 "hardwareId": "H1",
-                "serverId": "S1",
+                "deviceId": "S1",
                 "state": "vendor-ready",
                 "health": "ok",
             }
@@ -65,8 +65,7 @@ def test_incomplete_project() -> None:
 @pytest.mark.ts_case(PREFIX + "uses strict named id inputs for IPC procedures")
 def test_named_ids() -> None:
     for name in (
-        "computer",
-        "server",
+        "device",
         "hardware",
         "asset",
         "deviceBundle",

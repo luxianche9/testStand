@@ -139,11 +139,11 @@ class HardwareManager:
 
     async def invoke(self, hardware_id: str, fn: Callable[..., Any], /, **kwargs: Any) -> Any:
         if self.draining:
-            raise DeviceError("Server is draining", category=SERVICE_UNAVAILABLE)
+            raise DeviceError("Device is draining", category=SERVICE_UNAVAILABLE)
         runtime = self._runtime(hardware_id)
         async with runtime.operation_lock:
             if self.draining:
-                raise DeviceError("Server is draining", category=SERVICE_UNAVAILABLE)
+                raise DeviceError("Device is draining", category=SERVICE_UNAVAILABLE)
             if runtime.state != "open":
                 raise DeviceError(f"Hardware is not available: {runtime.state}", category=DEVICE_UNREACHABLE,
                                   details=runtime.snapshot())

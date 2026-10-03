@@ -11,13 +11,13 @@ from .test_agent_services import invoke
 
 async def test_waiting_for_service_uses_cached_status_and_never_replays_lifecycle() -> None:
     app = Mock()
-    app.system.dashboard.return_value = {"servers": [{"serverId": "S"}], "serverStatuses": []}
+    app.system.dashboard.return_value = {"devices": [{"deviceId": "S"}], "deviceStatuses": []}
     waiting = await invoke(app, "wait_for_status", {"kind": "service", "id": "S", "timeoutMs": 0})
     assert waiting["timedOut"] and not waiting["terminal"]
     initial_revision = waiting["revision"]
-    app.system.dashboard.return_value["serverStatuses"] = [
+    app.system.dashboard.return_value["deviceStatuses"] = [
         {
-            "serverId": "S",
+            "deviceId": "S",
             "service": {"state": "online", "checkedAt": "first"},
             "transport": {"state": "offline", "checkedAt": "first"},
         }
@@ -33,7 +33,7 @@ async def test_waiting_for_service_uses_cached_status_and_never_replays_lifecycl
         },
     )
     assert changed["changed"] and changed["terminal"]
-    app.system.dashboard.return_value["serverStatuses"][0]["service"]["checkedAt"] = "later"
+    app.system.dashboard.return_value["deviceStatuses"][0]["service"]["checkedAt"] = "later"
     stable = await invoke(
         app,
         "wait_for_status",
@@ -46,7 +46,7 @@ async def test_waiting_for_service_uses_cached_status_and_never_replays_lifecycl
     )
     assert not stable["changed"]
     assert stable["status"]["transport"]["state"] == "offline"
-    app.devices.server_action.assert_not_called()
-    app.devices.refresh_server.assert_not_called()
-    with pytest.raises(AppError, match="Unknown MCP server"):
+    app.devices.device_action.assert_not_called()
+    app.devices.refresh_device.assert_not_called()
+    with pytest.raises(AppError, match="Unknown device"):
         await invoke(app, "wait_for_status", {"kind": "service", "id": "absent", "timeoutMs": 0})

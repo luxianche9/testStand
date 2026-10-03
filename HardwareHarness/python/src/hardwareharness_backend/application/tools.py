@@ -28,8 +28,7 @@ Record = dict[str, Any]
 GLOSSARY = {
     "rootPath": "Existing absolute directory on this HH host; this is the USER project, "
     "not the HH installation.",
-    "serverId": "Copy serverId from list_mcp_servers; one service binds one managed hardware "
-    "object.",
+    "deviceId": "Copy deviceId from list_devices; one service binds one managed hardware object.",
     "lines": "Most recent service log lines, default 200, range 1–2000.",
     "hardwareId": "Copy the exact hardwareId from the hardware catalog; do not infer it from "
     "a label.",
@@ -96,13 +95,13 @@ _STATE = _object(
     {"state": _STRING, "checkedAt": _STRING, "message": _STRING},
     ["state"],
 )
-_SERVICE = _object({"serverId": _STRING, "transport": _STATE}, ["serverId", "transport"])
+_SERVICE = _object({"deviceId": _STRING, "transport": _STATE}, ["deviceId", "transport"])
 _HARDWARE = _object(
     {
         "hardwareId": _STRING,
         "label": _STRING,
         "kind": {"enum": ["managed", "passive"]},
-        "serverId": _STRING,
+        "deviceId": _STRING,
         "ports": _array(
             _object(
                 {
@@ -153,7 +152,7 @@ _ROOT = obj(
     },
     strict=True,
 )
-_SERVER_ID = obj({"serverId": string(1)}, strict=True)
+_DEVICE_ID = obj({"deviceId": string(1)}, strict=True)
 _HARDWARE_ID = obj({"hardwareId": string(1)}, strict=True)
 _WIRING_TASK_ID = obj({"wiringTaskId": string(1)}, strict=True)
 _ENDPOINT = union(string(1), obj({"hardwareId": string(1), "portId": string(1)}, strict=True))
@@ -228,16 +227,16 @@ PLATFORM_TOOLS = [
         operation="projects.saveProject",
     ),
     _platform(
-        "list_mcp_servers",
-        "列出已登记设备（插件与本机 MCP 服务）、所绑定硬件及连接状态。用于选择 serverId 与识别"
+        "list_devices",
+        "列出已登记设备（插件实例）、所绑定硬件及连接状态。用于选择 deviceId 与识别"
         "公开工具来源；设备在线不代表目标电路通过测试。",
         _EMPTY,
         _object(
             {
-                "servers": _array(
+                "devices": _array(
                     _object(
                         {
-                            "serverId": _STRING,
+                            "deviceId": _STRING,
                             "hardwareId": _STRING,
                             "enabled": _BOOLEAN,
                             "transport": _STRING,
@@ -245,23 +244,23 @@ PLATFORM_TOOLS = [
                             "mode": _STRING,
                             "url": _STRING,
                         },
-                        ["serverId"],
+                        ["deviceId"],
                     )
                 ),
                 "statuses": _array(_SERVICE),
             },
-            ["servers", "statuses"],
+            ["devices", "statuses"],
         ),
-        operation="devices.listServersWithStatus",
+        operation="devices.listDevicesWithStatus",
     ),
     _platform(
-        "refresh_device_server",
+        "refresh_device",
         "重新连接一个已登记设备并刷新其状态与声明。offline 表示设备当前不可用（驱动、板卡或"
         "服务未就绪），不应解释为测试结果。",
-        _SERVER_ID,
+        _DEVICE_ID,
         _SERVICE,
-        operation="devices.refreshServer",
-        fields=("serverId",),
+        operation="devices.refreshDevice",
+        fields=("deviceId",),
         open_world=True,
     ),
     _platform(
@@ -273,12 +272,12 @@ PLATFORM_TOOLS = [
             _object(
                 {
                     "hardwareId": _STRING,
-                    "serverId": _STRING,
+                    "deviceId": _STRING,
                     "state": _STRING,
                     "health": _STRING,
                     "lastError": {"type": ["object", "null"]},
                 },
-                ["hardwareId", "serverId", "state", "health"],
+                ["hardwareId", "deviceId", "state", "health"],
             )
         ),
         operation="devices.listManagedHardware",

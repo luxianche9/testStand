@@ -2,7 +2,7 @@
 
 包 `__PACKAGE__`，设备类型 `__ADAPTER__`（入口点组 `hardwareharness.devices`），由 HardwareHarness 后端作为插件加载。`isolation`：`inproc`。TODO(new_device)：驱动加载时写 stdout、可能崩溃或要求独占进程时改为 `subprocess`，并在这里写明理由。
 
-一个插件实例只管理一个硬件。公共工具（`get_server_info`、`list_hardware`、`get_hardware_info`、`__PREFIX___stream_read`）、信封格式、`/device` 声明（身份、说明、引脚、流、能力）和流读取由 SDK 提供，见 `mcp_servers/README.md`。插件只报告测量值和状态，不判定通过 / 失败。超时或错误不表示物理动作没有发生：保留原错误，查询当前状态并取证后再决定下一步。
+一个插件实例只管理一个硬件。公共工具（`get_device_info`、`list_hardware`、`get_hardware_info`、`__PREFIX___stream_read`）、信封格式、`/device` 声明（身份、说明、引脚、流、能力）和流读取由 SDK 提供，见 `mcp_servers/README.md`。插件只报告测量值和状态，不判定通过 / 失败。超时或错误不表示物理动作没有发生：保留原错误，查询当前状态并取证后再决定下一步。
 
 ## 设备语义
 

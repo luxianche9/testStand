@@ -1,6 +1,6 @@
 """Call correlation: the operation a tool call runs under.
 
-The server puts one :class:`Operation` into a context variable per tool call.
+The host puts one :class:`Operation` into a context variable per tool call.
 ``asyncio.to_thread`` copies the context, so the adapter's worker thread sees
 the same object: every stream record appended during the call is tagged with
 ``op`` and its sequence range lands in ``stream_refs``. Records appended by

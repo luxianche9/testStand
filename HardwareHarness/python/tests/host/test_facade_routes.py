@@ -61,7 +61,7 @@ async def test_desktop_arguments_bind_to_python_controller(case: dict[str, Any])
     bound = signature.bind(*target.call_args.args, **target.call_args.kwargs)
     bound.apply_defaults()
     assert bound.arguments["context"] == RENDERER_CONTEXT
-    if definition.method == "import_bundle_for_server":
+    if definition.method == "import_bundle_for_device":
         assert bound.arguments["data"] == bytes([0, 255, 128])
 
 

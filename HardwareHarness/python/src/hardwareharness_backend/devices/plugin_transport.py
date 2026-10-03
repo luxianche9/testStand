@@ -1,6 +1,6 @@
 """Device plugins loaded into the backend process (design: single-machine plugin model).
 
-A ``plugin`` server record names a device type (its ``hardwareharness.devices`` entry point),
+A ``plugin`` instance record names a device type (its ``hardwareharness.devices`` entry point),
 its non-secret ``settings`` and ``mode`` (``sim`` runs the adapter's simulator). Connecting
 loads the device through :func:`hardwareharness_device_sdk.open_device`, in this process or in
 an isolated child process as the adapter's ``Device.isolation`` asks, and opens it (the SDK
@@ -15,8 +15,8 @@ from collections.abc import Callable
 from typing import Any
 
 from hardwareharness_device_sdk import (
+    DeviceConfig,
     DeviceHandle,
-    ServerConfig,
     device_types,
     load_device,
     open_device,
@@ -33,7 +33,7 @@ from .schema_validation import schema_error
 from .tool_catalog import catalog_entry, request_arguments, unwrap_result
 
 Record = dict[str, Any]
-Opener = Callable[[str, ServerConfig], DeviceHandle]
+Opener = Callable[[str, DeviceConfig], DeviceHandle]
 
 DEFAULT_TIMEOUT_MS = 60_000
 RECOVERY = (
@@ -61,17 +61,17 @@ def declared_streams(document: Record) -> list[Record]:
     ]
 
 
-def plugin_config(server: Record) -> ServerConfig:
-    device_cls = load_device(server["type"])
-    return ServerConfig.from_mapping(
+def plugin_config(instance: Record) -> DeviceConfig:
+    device_cls = load_device(instance["type"])
+    return DeviceConfig.from_mapping(
         {
-            "serverId": server["serverId"],
-            "hardwareId": server["hardwareId"],
+            "deviceId": instance["deviceId"],
+            "hardwareId": instance["hardwareId"],
             "manufacturer": device_cls.manufacturer,
             "model": device_cls.model,
             "computerId": "LOCAL",
-            "dryRun": server["mode"] == "sim",
-            "settings": server.get("settings") or {},
+            "dryRun": instance["mode"] == "sim",
+            "settings": instance.get("settings") or {},
         },
         env={},
     )
@@ -99,7 +99,7 @@ def installed_device_types() -> list[Record]:
     return output
 
 
-def _open(device_type: str, config: ServerConfig) -> DeviceHandle:
+def _open(device_type: str, config: DeviceConfig) -> DeviceHandle:
     return open_device(device_type, config, child_command=child_command())
 
 
@@ -111,18 +111,18 @@ class PluginTransport:
 
     # -- lifecycle -----------------------------------------------------------------------------
 
-    async def connect(self, server: Record) -> Record:
-        identifier = server["serverId"]
+    async def connect(self, instance: Record) -> Record:
+        identifier = instance["deviceId"]
         async with self._connecting.setdefault(identifier, asyncio.Lock()):
             existing = self.sessions.get(identifier)
-            if existing is not None and existing["server"] == server:
+            if existing is not None and existing["instance"] == instance:
                 return existing
             if existing is not None:
                 await self.disconnect(identifier)
-            device = self.opener(server["type"], plugin_config(server))
+            device = self.opener(instance["type"], plugin_config(instance))
             await device.start()
             try:
-                session: Record = {"server": clone(server), "device": device}
+                session: Record = {"instance": clone(instance), "device": device}
                 await self._describe(session)
             except BaseException:
                 await device.stop()
@@ -130,16 +130,16 @@ class PluginTransport:
             self.sessions[identifier] = session
             return session
 
-    async def disconnect(self, server_id: str) -> None:
-        session = self.sessions.pop(server_id, None)
+    async def disconnect(self, device_id: str) -> None:
+        session = self.sessions.pop(device_id, None)
         if session is not None:
             await session["device"].stop()
 
     async def close(self) -> None:
-        await asyncio.gather(*(self.disconnect(server_id) for server_id in list(self.sessions)))
+        await asyncio.gather(*(self.disconnect(device_id) for device_id in list(self.sessions)))
 
-    async def ensure(self, server: Record) -> Record:
-        return self.sessions.get(server["serverId"]) or await self.connect(server)
+    async def ensure(self, instance: Record) -> Record:
+        return self.sessions.get(instance["deviceId"]) or await self.connect(instance)
 
     def device_for(self, hardware_id: str) -> DeviceHandle | None:
         """The loaded device that owns ``hardware_id`` (``None``: not a connected plugin)."""
@@ -147,32 +147,32 @@ class PluginTransport:
             (
                 session["device"]
                 for session in self.sessions.values()
-                if session["server"]["hardwareId"] == hardware_id
+                if session["instance"]["hardwareId"] == hardware_id
             ),
             None,
         )
 
     async def _describe(self, session: Record) -> None:
-        server = session["server"]
+        instance = session["instance"]
         described = await session["device"].describe()
         tools: list[Record] = []
         validators: dict[str, Record] = {}
         for raw in described["tools"]:
-            entry, validators[raw["name"]] = catalog_entry(server["serverId"], raw)
+            entry, validators[raw["name"]] = catalog_entry(instance["deviceId"], raw)
             tools.append(entry)
         hardware = described["hardware"]
         if not isinstance(hardware, list) or len(hardware) != 1:
-            raise RuntimeError(f"Device {server['serverId']} must manage exactly one hardware")
+            raise RuntimeError(f"Device {instance['deviceId']} must manage exactly one hardware")
         item = parse_reported_managed_hardware(hardware[0])
-        if item["hardwareId"] != server["hardwareId"]:
+        if item["hardwareId"] != instance["hardwareId"]:
             raise RuntimeError(
-                f"Device {server['serverId']} reports hardwareId {item['hardwareId']}; "
-                f"expected {server['hardwareId']}"
+                f"Device {instance['deviceId']} reports hardwareId {item['hardwareId']}; "
+                f"expected {instance['hardwareId']}"
             )
         session.update(
             tools=tools,
             validators=validators,
-            hardware=parse_managed_hardware({**item, "serverId": server["serverId"]}),
+            hardware=parse_managed_hardware({**item, "deviceId": instance["deviceId"]}),
             device_document=described["device"],
             streams=declared_streams(described["device"]),
         )
@@ -201,7 +201,7 @@ class PluginTransport:
         return await self._call(session, tool["remoteName"], args, options or {})
 
     async def _call(self, session: Record, name: str, args: Record, options: Record) -> Any:
-        server_id = session["server"]["serverId"]
+        device_id = session["instance"]["deviceId"]
         validators = session["validators"].get(name)
         request_args = request_arguments(validators, args, options.get("metadata"))
         if validators:
@@ -209,7 +209,7 @@ class PluginTransport:
             if error:
                 raise app_error("invalid_argument", f"Invalid input for {name}: {error}")
         unknown = {
-            "serverId": server_id,
+            "deviceId": device_id,
             "toolName": name,
             "outcomeKnown": False,
             "automaticRetry": False,
@@ -249,29 +249,29 @@ class PluginTransport:
 
     # -- device ----------------------------------------------------------------------------------
 
-    async def describe_hardware(self, server: Record) -> Record:
-        session = await self.ensure(server)
+    async def describe_hardware(self, instance: Record) -> Record:
+        session = await self.ensure(instance)
         await self._describe(session)
         return dict(session["hardware"])
 
-    async def list_hardware(self, servers: list[Record]) -> list[Record]:
-        """The hardware of every enabled server that can be described now."""
+    async def list_hardware(self, instances: list[Record]) -> list[Record]:
+        """The hardware of every enabled instance that can be described now."""
         results = await asyncio.gather(
-            *(self.describe_hardware(server) for server in servers if server["enabled"]),
+            *(self.describe_hardware(instance) for instance in instances if instance["enabled"]),
             return_exceptions=True,
         )
         return [item for item in results if not isinstance(item, BaseException)]
 
-    async def describe_device(self, server: Record) -> Record | None:
-        session = await self.ensure(server)
+    async def describe_device(self, instance: Record) -> Record | None:
+        session = await self.ensure(instance)
         await self._describe(session)
         document: Record = clone(session["device_document"])
         return document
 
-    async def list_streams(self, server: Record) -> list[Record]:
-        session = await self.ensure(server)
+    async def list_streams(self, instance: Record) -> list[Record]:
+        session = await self.ensure(instance)
         return [dict(item) for item in session["streams"]]
 
-    async def read_blob(self, server: Record, stream_id: str, ref: str) -> Record:
-        session = await self.ensure(server)
+    async def read_blob(self, instance: Record, stream_id: str, ref: str) -> Record:
+        session = await self.ensure(instance)
         return dict(await session["device"].read_blob(stream_id, ref))

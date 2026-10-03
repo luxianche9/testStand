@@ -15,7 +15,7 @@ from hardwareharness_device_sdk import (
     DeviceError,
     JsonLineBackend,
     Pinout,
-    ServerConfig,
+    DeviceConfig,
     model,
     param,
     tool,
@@ -50,13 +50,13 @@ class Pci1762(Device):
     prefix = "pci1762"
     capabilities = ("relay_output", "digital_input")
     version = "0.2.0"
-    instructions = ("One MCP Server controls exactly one PCI-1762. set_relay/set_bank actuate relays; "
+    instructions = ("One plugin instance controls exactly one PCI-1762. set_relay/set_bank actuate relays; "
                     "safe_state releases all 16 coils.")
     description = ("Advantech PCI-1762 PCI card with 16 relay outputs (dry contacts R0..R15, OUT/COM pairs) and 16 "
                    "isolated digital inputs (IDI0..IDI15, four ECOM groups) on a 62-pin D-sub (CN1). The relay "
                    "stream is the commanded coil mask, not a contact measurement.")
 
-    def __init__(self, config: ServerConfig) -> None:
+    def __init__(self, config: DeviceConfig) -> None:
         super().__init__(config)
         settings = config.settings
         self.board_description = str(settings.get("description", os.environ.get("ADVANTECH_PCI1762_DESC",

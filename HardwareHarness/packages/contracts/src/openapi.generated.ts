@@ -43,7 +43,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** ``{url, username, password}`` of the running OpenCode server, or null. */
+        /** ``{url, username, password}`` of the running OpenCode instance, or null. */
         post: operations["agents.openCodeConnection"];
         delete?: never;
         options?: never;
@@ -306,7 +306,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/ops/devices.importBundleForServer": {
+    "/api/ops/devices.importBundleForDevice": {
         parameters: {
             query?: never;
             header?: never;
@@ -315,8 +315,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** devices.importBundleForServer */
-        post: operations["devices.importBundleForServer"];
+        /** devices.importBundleForDevice */
+        post: operations["devices.importBundleForDevice"];
         delete?: never;
         options?: never;
         head?: never;
@@ -334,6 +334,40 @@ export interface paths {
         put?: never;
         /** devices.inspectBundle */
         post: operations["devices.inspectBundle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ops/devices.listDevices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** devices.listDevices */
+        post: operations["devices.listDevices"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ops/devices.listDevicesWithStatus": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** devices.listDevicesWithStatus */
+        post: operations["devices.listDevicesWithStatus"];
         delete?: never;
         options?: never;
         head?: never;
@@ -385,40 +419,6 @@ export interface paths {
         put?: never;
         /** devices.listManagedHardware */
         post: operations["devices.listManagedHardware"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/ops/devices.listServers": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** devices.listServers */
-        post: operations["devices.listServers"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/ops/devices.listServersWithStatus": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** devices.listServersWithStatus */
-        post: operations["devices.listServersWithStatus"];
         delete?: never;
         options?: never;
         head?: never;
@@ -479,7 +479,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/ops/devices.refreshServer": {
+    "/api/ops/devices.refreshDevice": {
         parameters: {
             query?: never;
             header?: never;
@@ -488,8 +488,25 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** devices.refreshServer */
-        post: operations["devices.refreshServer"];
+        /** devices.refreshDevice */
+        post: operations["devices.refreshDevice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ops/devices.removeDevice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** devices.removeDevice */
+        post: operations["devices.removeDevice"];
         delete?: never;
         options?: never;
         head?: never;
@@ -513,7 +530,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/ops/devices.removeServer": {
+    "/api/ops/devices.saveDevice": {
         parameters: {
             query?: never;
             header?: never;
@@ -522,8 +539,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** devices.removeServer */
-        post: operations["devices.removeServer"];
+        /** devices.saveDevice */
+        post: operations["devices.saveDevice"];
         delete?: never;
         options?: never;
         head?: never;
@@ -541,23 +558,6 @@ export interface paths {
         put?: never;
         /** devices.saveHardware */
         post: operations["devices.saveHardware"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/ops/devices.saveServer": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** devices.saveServer */
-        post: operations["devices.saveServer"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1862,17 +1862,17 @@ export interface components {
             /** Hardwareid */
             hardwareId: string;
         };
-        /** DevicesImportBundleForServerRequest */
-        DevicesImportBundleForServerRequest: {
+        /** DevicesImportBundleForDeviceRequest */
+        DevicesImportBundleForDeviceRequest: {
             /**
              * Data
              * Format: base64url
              */
             data: Uint8Array;
+            /** Deviceid */
+            deviceId: string;
             /** Hardwareid */
             hardwareId: string;
-            /** Serverid */
-            serverId: string;
         };
         /** DevicesImportBundleRequest */
         DevicesImportBundleRequest: {
@@ -1890,16 +1890,16 @@ export interface components {
              */
             data: Uint8Array;
         };
+        /** DevicesListDevicesRequest */
+        DevicesListDevicesRequest: Record<string, never>;
+        /** DevicesListDevicesWithStatusRequest */
+        DevicesListDevicesWithStatusRequest: Record<string, never>;
         /** DevicesListDeviceTypesRequest */
         DevicesListDeviceTypesRequest: Record<string, never>;
         /** DevicesListHardwareRequest */
         DevicesListHardwareRequest: Record<string, never>;
         /** DevicesListManagedHardwareRequest */
         DevicesListManagedHardwareRequest: Record<string, never>;
-        /** DevicesListServersRequest */
-        DevicesListServersRequest: Record<string, never>;
-        /** DevicesListServersWithStatusRequest */
-        DevicesListServersWithStatusRequest: Record<string, never>;
         /** DevicesListToolsRequest */
         DevicesListToolsRequest: Record<string, never>;
         /** DevicesRecordAdapterCheckRequest */
@@ -1928,28 +1928,28 @@ export interface components {
             /** Wiring */
             wiring: string;
         };
-        /** DevicesRefreshServerRequest */
-        DevicesRefreshServerRequest: {
-            /** Serverid */
-            serverId: string;
+        /** DevicesRefreshDeviceRequest */
+        DevicesRefreshDeviceRequest: {
+            /** Deviceid */
+            deviceId: string;
+        };
+        /** DevicesRemoveDeviceRequest */
+        DevicesRemoveDeviceRequest: {
+            /** Deviceid */
+            deviceId: string;
         };
         /** DevicesRemoveHardwareRequest */
         DevicesRemoveHardwareRequest: {
             /** Hardwareid */
             hardwareId: string;
         };
-        /** DevicesRemoveServerRequest */
-        DevicesRemoveServerRequest: {
-            /** Serverid */
-            serverId: string;
-        };
-        /** DevicesSaveHardwareRequest */
-        DevicesSaveHardwareRequest: {
+        /** DevicesSaveDeviceRequest */
+        DevicesSaveDeviceRequest: {
             /** Input */
             input: object;
         };
-        /** DevicesSaveServerRequest */
-        DevicesSaveServerRequest: {
+        /** DevicesSaveHardwareRequest */
+        DevicesSaveHardwareRequest: {
             /** Input */
             input: object;
         };
@@ -3018,7 +3018,7 @@ export interface operations {
             };
         };
     };
-    "devices.importBundleForServer": {
+    "devices.importBundleForDevice": {
         parameters: {
             query?: never;
             header?: never;
@@ -3027,7 +3027,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["DevicesImportBundleForServerRequest"];
+                "application/json": components["schemas"]["DevicesImportBundleForDeviceRequest"];
             };
         };
         responses: {
@@ -3061,6 +3061,72 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["DevicesInspectBundleRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": object;
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: components["schemas"]["WireError"];
+                    };
+                };
+            };
+        };
+    };
+    "devices.listDevices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DevicesListDevicesRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": object[];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: components["schemas"]["WireError"];
+                    };
+                };
+            };
+        };
+    };
+    "devices.listDevicesWithStatus": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DevicesListDevicesWithStatusRequest"];
             };
         };
         responses: {
@@ -3183,72 +3249,6 @@ export interface operations {
             };
         };
     };
-    "devices.listServers": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["DevicesListServersRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": object[];
-                };
-            };
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        error: components["schemas"]["WireError"];
-                    };
-                };
-            };
-        };
-    };
-    "devices.listServersWithStatus": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["DevicesListServersWithStatusRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": object;
-                };
-            };
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        error: components["schemas"]["WireError"];
-                    };
-                };
-            };
-        };
-    };
     "devices.listTools": {
         parameters: {
             query?: never;
@@ -3348,7 +3348,7 @@ export interface operations {
             };
         };
     };
-    "devices.refreshServer": {
+    "devices.refreshDevice": {
         parameters: {
             query?: never;
             header?: never;
@@ -3357,7 +3357,40 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["DevicesRefreshServerRequest"];
+                "application/json": components["schemas"]["DevicesRefreshDeviceRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": object;
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: components["schemas"]["WireError"];
+                    };
+                };
+            };
+        };
+    };
+    "devices.removeDevice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DevicesRemoveDeviceRequest"];
             };
         };
         responses: {
@@ -3414,7 +3447,7 @@ export interface operations {
             };
         };
     };
-    "devices.removeServer": {
+    "devices.saveDevice": {
         parameters: {
             query?: never;
             header?: never;
@@ -3423,7 +3456,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["DevicesRemoveServerRequest"];
+                "application/json": components["schemas"]["DevicesSaveDeviceRequest"];
             };
         };
         responses: {
@@ -3457,39 +3490,6 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["DevicesSaveHardwareRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": object;
-                };
-            };
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        error: components["schemas"]["WireError"];
-                    };
-                };
-            };
-        };
-    };
-    "devices.saveServer": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["DevicesSaveServerRequest"];
             };
         };
         responses: {

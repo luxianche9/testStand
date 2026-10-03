@@ -1,18 +1,18 @@
 # 插件契约
 
-后端、测试引擎、AI 网关和桌面端都只依赖这份契约。SDK 已经实现了除设备工具以外的全部内容；适配器保证设备工具和设备声明真实。契约版本 `contractRevision` 为 `2026-10-01.1`，出现在 `get_server_info`、`capabilityDetails`、`/device` 和每个设备工具的 `_meta.hardwareharness` 里。
+后端、测试引擎、AI 网关和桌面端都只依赖这份契约。SDK 已经实现了除设备工具以外的全部内容；适配器保证设备工具和设备声明真实。契约版本 `contractRevision` 为 `2026-10-01.1`，出现在 `get_device_info`、`capabilityDetails`、`/device` 和每个设备工具的 `_meta.hardwareharness` 里。
 
 ## 加载与进程
 
 | 项 | 要求 |
 |---|---|
 | 类型发现 | 适配器包在 `pyproject.toml` 声明入口点 `[project.entry-points."hardwareharness.devices"] <type> = "hh_adapter_<adapter>:DEVICE"`。后端用 `device_types()`（`importlib.metadata.entry_points(group="hardwareharness.devices")`）列出可装的类型 |
-| 实例配置 | 后端的硬件实例记录 `{transport: "plugin", serverId, label, hardwareId, type, settings, mode: real\|sim, enabled}`。同型号多块卡 = 多个实例，`settings` 区分卡号 |
-| 加载 | 后端调用 `open_device(type, ServerConfig)`，再 `start()`：SDK 构造 `DeviceHost`，打开设备并立即 `safe_state` |
+| 实例配置 | 后端的硬件实例记录 `{transport: "plugin", deviceId, label, hardwareId, type, settings, mode: real\|sim, enabled}`。同型号多块卡 = 多个实例，`settings` 区分卡号 |
+| 加载 | 后端调用 `open_device(type, DeviceConfig)`，再 `start()`：SDK 构造 `DeviceHost`，打开设备并立即 `safe_state` |
 | 隔离 | `Device.isolation`：`inproc`（默认，`InprocDevice`，在后端进程内直接调用）或 `subprocess`（`SubprocessDevice`，在 `python -m hardwareharness_device_sdk.child` 子进程里运行，父子之间 stdio JSON 行）。两者对上层是同一个异步句柄，上层看不出区别 |
 | 子进程 | 子进程的原 stdout 只给协议用，文件描述符 1 在导入适配器前指向 stderr，驱动打印不会污染协议；stdin EOF（后端退出或关闭）时执行 `safe_state`、关闭设备并退出；Windows 上用 Job Object 保证子进程随后端退出。子进程退出时未完成的调用失败为 `device_unreachable`，`details.outcomeKnown: false` |
 | 一实例一硬件 | `list_hardware` 恰好一项，`hardwareId` 等于实例记录的登记值 |
-| 模拟 | 实例 `mode: sim`（`ServerConfig.dry_run`，或环境变量 `HARDWARE_DRY_RUN=1`）：`select_driver` 选模拟器，`/device.identity.dryRun` 为 `true`，`executionMode` 报告 `nonphysical_driver_override` |
+| 模拟 | 实例 `mode: sim`（`DeviceConfig.dry_run`，或环境变量 `HARDWARE_DRY_RUN=1`）：`select_driver` 选模拟器，`/device.identity.dryRun` 为 `true`，`executionMode` 报告 `nonphysical_driver_override` |
 | 合规检查 | `python -m hardwareharness_device_sdk --adapter <type 或模块> --check`：在模拟器上进程内运行合规套件，见 `sdk-api.md` |
 | 时钟 | SDK `now_ms()` 是记录 `t`、水位、`timing` 的唯一时钟，后端的时间也取自它；同一台电脑上不需要对时 |
 
@@ -26,7 +26,7 @@
 
 | 工具 | 类型 | 说明 |
 |---|---|---|
-| `get_server_info` | read | 版本、就绪状态、`capabilities`（含 `streamTransport`）、`sdkVersion`、`adapter`、`sourceRevision` |
+| `get_device_info` | read | 版本、就绪状态、`capabilities`（含 `streamTransport`）、`sdkVersion`、`adapter`、`sourceRevision` |
 | `list_hardware` | read | 唯一硬件及其生命周期状态 |
 | `get_hardware_info(hardwareId)` | read | 状态 + `capabilityDetails`（SDK 通用字段 + 适配器 `capability_details()`） |
 | `<prefix>_stream_read` | read | 见 `streams.md` |
@@ -36,7 +36,7 @@
 
 `get_pinout` 和 `list_streams` 已删除：引脚和流声明一次性从 `/device` 读取。表中的类型是 `/device.tools[].kind`。
 
-工具以 MCP `tools/list` 条目的形状描述（`name`、`description`、`inputSchema`、`outputSchema`、`annotations`、`_meta.hardwareharness`），所以后端可以把它们原样转给 Agent 网关，网关对外的名称是 `<serverId>__<tool>`，并从参数表中去掉 `hardwareId`、由网关注入。
+工具以 MCP `tools/list` 条目的形状描述（`name`、`description`、`inputSchema`、`outputSchema`、`annotations`、`_meta.hardwareharness`），所以后端可以把它们原样转给 Agent 网关，网关对外的名称是 `<deviceId>__<tool>`，并从参数表中去掉 `hardwareId`、由网关注入。
 
 ## 操作号 `operationId`
 
@@ -48,7 +48,7 @@
 
 ```json
 {"manifestRevision": "sha256:<hex>", "contractRevision": "2026-10-01.1",
- "identity": {"serverId": "...", "hardwareId": "...", "manufacturer": "ADLINK", "model": "PCI-6208V",
+ "identity": {"deviceId": "...", "hardwareId": "...", "manufacturer": "ADLINK", "model": "PCI-6208V",
               "hardwareRevision": "...", "adapter": {"name": "hh_adapter_pci6208v", "version": "0.2.0"},
               "sdkVersion": "0.2.0", "dryRun": false},
  "description": "Device.description 的一段文字",

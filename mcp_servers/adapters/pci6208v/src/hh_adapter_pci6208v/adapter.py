@@ -5,7 +5,7 @@ The board has no ADC on its outputs, so the ``ao{n}`` scalar streams
 writes (published on write), never a measured voltage.
 
 The card has no FIFO or hardware clock, so ``set_waveform`` runs the SDK
-software generator (DEC-06): a server thread writes at most
+software generator (DEC-06): a instance thread writes at most
 ``WAVEFORM_UPDATE_HZ`` values per second under ``io_lock``. Every written
 value is published to the channel's setpoint stream; judge the physical
 output with an independent measurement (e.g. a PCI-1710L AI channel).
@@ -24,7 +24,7 @@ from hardwareharness_device_sdk import (
     Device,
     DeviceError,
     Pinout,
-    ServerConfig,
+    DeviceConfig,
     ScalarStream,
     SoftwareWaveform,
     model,
@@ -125,7 +125,7 @@ class Pci6208v(Device):
                    "It has no output readback: the ao0..ao7 streams are setpoint shadows, never measurements. "
                    "Low-frequency waveforms are generated in software (at most 200 writes/s per card).")
 
-    def __init__(self, config: ServerConfig) -> None:
+    def __init__(self, config: DeviceConfig) -> None:
         super().__init__(config)
         self.card_index = configured_card_index(config.settings)
         self.startup_safe_volts = configured_safe_volts(config.settings)

@@ -265,7 +265,7 @@ class HostRuntime:
         last: object = None
         while True:
             await asyncio.gather(
-                *(devices.refresh_server(server["serverId"]) for server in devices.list_servers()),
+                *(devices.refresh_device(item["deviceId"]) for item in devices.list_devices()),
                 return_exceptions=True,
             )
             current = sorted(

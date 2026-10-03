@@ -28,7 +28,7 @@ def test_device_declaration_shape(hh):
     document = hh.device()
     assert list(document)[0] == "manifestRevision"
     assert document["contractRevision"] == CONTRACT_REVISION
-    assert document["identity"] == {"serverId": "DEMO1_MCP", "hardwareId": "DEMO1_1", "manufacturer": "Acme",
+    assert document["identity"] == {"deviceId": "DEMO1_MCP", "hardwareId": "DEMO1_1", "manufacturer": "Acme",
                                     "model": "DEMO-1", "adapter": {"name": "sdk_demo", "version": "1.2.3"},
                                     "sdkVersion": __version__, "dryRun": True}
     assert document["description"].startswith("Demo board")
@@ -44,7 +44,7 @@ def test_device_declaration_shape(hh):
     assert set(tools) == set(hh.tools)
     assert tools["demo_set_level"] == "actuate" and tools["demo_safe_state"] == "safe"
     assert tools["demo_configure"] == "configure" and tools["demo_read_level"] == "read"
-    assert tools["hardwareharness_prepare_shutdown"] == "internal" and tools["get_server_info"] == "read"
+    assert tools["hardwareharness_prepare_shutdown"] == "internal" and tools["get_device_info"] == "read"
     assert document["capabilities"]["declarationPath"] == "/device"
 
 

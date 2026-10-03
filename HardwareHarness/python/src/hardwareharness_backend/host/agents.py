@@ -69,7 +69,7 @@ class AgentsApplication:
                 "name": tool["externalName"],
                 "kind": "remote",
                 "inputSchema": tool["inputSchema"],
-                "serverId": tool["serverId"],
+                "deviceId": tool["deviceId"],
                 "remoteName": tool["remoteName"],
                 **({"description": tool["description"]} if tool.get("description") else {}),
             }
@@ -83,7 +83,7 @@ class AgentsApplication:
 
     @operation("agents.openCodeConnection", capability="agents.manage", risk="read")
     def open_code_connection(self, context: Record) -> Record | None:
-        """``{url, username, password}`` of the running OpenCode server, or null."""
+        """``{url, username, password}`` of the running OpenCode instance, or null."""
         return self.opencode.connection()
 
     @operation("agents.startOpenCode", capability="agents.manage", risk="write")

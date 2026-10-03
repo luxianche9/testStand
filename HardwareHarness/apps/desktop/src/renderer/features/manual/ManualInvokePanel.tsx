@@ -13,15 +13,15 @@ const AVAILABILITY_NOTICE: Record<Exclude<HardwareAvailability["state"], "availa
 };
 
 /**
- * Manual control section of a managed device: every MCP tool of its server, each invokable once.
+ * Manual control section of a managed device: every MCP tool of its instance, each invokable once.
  * Availability/execution events are refreshed app-wide by `useHardwareHarnessEvents`.
  */
 export function ManualInvokePanel({ hardwareId }: { hardwareId: string }) {
   const dashboard = useDashboard();
   const tools = useMemo(() => {
-    const serverId = dashboard.data?.servers.find((item) => item.hardwareId === hardwareId)?.serverId
-      ?? dashboard.data?.hardware.find((item) => item.hardwareId === hardwareId)?.serverId;
-    return (dashboard.data?.tools ?? []).filter((item) => item.serverId === serverId);
+    const deviceId = dashboard.data?.devices.find((item) => item.hardwareId === hardwareId)?.deviceId
+      ?? dashboard.data?.hardware.find((item) => item.hardwareId === hardwareId)?.deviceId;
+    return (dashboard.data?.tools ?? []).filter((item) => item.deviceId === deviceId);
   }, [dashboard.data, hardwareId]);
   const availability = dashboard.data?.availability?.find((item) => item.hardwareId === hardwareId)?.state
     ?? "checking";
@@ -36,7 +36,7 @@ export function ManualInvokePanel({ hardwareId }: { hardwareId: string }) {
           </p>
         )}
         {availability === "available" && !tools.length && (
-          <p className="text-xs text-fg-3">该 Server 没有暴露 MCP 工具。</p>
+          <p className="text-xs text-fg-3">该设备没有暴露工具。</p>
         )}
         {tools.map((tool) => (
           <ToolOperation key={tool.externalName} tool={tool} hardwareId={hardwareId} availability={availability} />

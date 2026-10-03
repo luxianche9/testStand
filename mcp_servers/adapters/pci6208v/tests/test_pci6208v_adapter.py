@@ -12,7 +12,7 @@ from hh_adapter_pci6208v.pinout import pinout
 
 
 PUBLIC_TOOLS = {
-    "get_server_info", "list_hardware", "get_hardware_info",
+    "get_device_info", "list_hardware", "get_hardware_info",
     "pci6208v_set_voltage", "pci6208v_set_waveform", "pci6208v_stop_waveform", "pci6208v_read_last",
     "pci6208v_safe_state", "pci6208v_stream_read",
 }

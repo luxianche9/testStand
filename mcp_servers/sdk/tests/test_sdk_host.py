@@ -11,7 +11,7 @@ from sdk_demo import PNG, DemoDevice
 
 DEVICE_TOOLS = {"demo_set_level", "demo_read_level", "demo_configure", "demo_write_text", "demo_capture",
                 "demo_explode", "demo_safe_state"}
-BUILTINS = {"get_server_info", "list_hardware", "get_hardware_info", "hardwareharness_prepare_shutdown",
+BUILTINS = {"get_device_info", "list_hardware", "get_hardware_info", "hardwareharness_prepare_shutdown",
             "demo_stream_read", "demo_blob_read", "demo_transact"}
 
 
@@ -47,7 +47,7 @@ def test_device_tool_schema_and_semantics(hh):
     assert meta(hh.tools["demo_read_level"])["operationSemantics"]["retry"] == "safe"
     assert hh.tools["demo_configure"]["inputSchema"]["properties"]["mode"]["enum"] == ["fast", "slow"]
     assert meta(hh.tools["hardwareharness_prepare_shutdown"]) == {"kind": "internal"}
-    assert meta(hh.tools["get_server_info"])["kind"] == "management"
+    assert meta(hh.tools["get_device_info"])["kind"] == "management"
     assert meta(hh.tools["demo_transact"])["operationSemantics"]["kind"] == "actuate"
     assert meta(hh.tools["demo_stream_read"])["operationSemantics"]["kind"] == "read"
 
@@ -74,8 +74,8 @@ def test_unknown_hardware_id(hh):
     assert result["ok"] is False and result["error"]["category"] == "invalid_argument"
 
 
-def test_server_info_and_capabilities(hh):
-    data = hh.call("get_server_info")["data"]
+def test_device_info_and_capabilities(hh):
+    data = hh.call("get_device_info")["data"]
     assert data["sdkVersion"] == __version__ and data["version"] == "1.2.3" and data["adapter"] == "DEMO-1"
     assert data["startupComplete"] is True and data["hardware"][0]["state"] == "open"
     caps = data["capabilities"]

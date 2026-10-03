@@ -25,14 +25,14 @@ def application(overrides: dict[str, Any] | None = None) -> tuple[Any, Any, Any]
         ),
         list_computers=Mock(return_value=[]),
         list_statuses=Mock(return_value=[]),
-        list_servers=Mock(return_value=[{"serverId": "S1", "hardwareId": "HW1", "enabled": True}]),
-        list_server_statuses=Mock(return_value=[]),
+        list_devices=Mock(return_value=[{"deviceId": "S1", "hardwareId": "HW1", "enabled": True}]),
+        list_device_statuses=Mock(return_value=[]),
         list_hardware=Mock(return_value=[]),
         list_availability=Mock(return_value=[]),
         list_tools=Mock(return_value=[]),
         refresh_computer=AsyncMock(return_value={}),
-        refresh_server=AsyncMock(return_value={}),
-        refresh_all_servers=AsyncMock(return_value=[]),
+        refresh_device=AsyncMock(return_value={}),
+        refresh_all_devices=AsyncMock(return_value=[]),
         read_server_logs=AsyncMock(return_value={"lines": [], "truncated": False}),
         refresh_hardware=AsyncMock(return_value=[]),
         call_aggregated_tool=AsyncMock(return_value="ok"),
@@ -187,7 +187,7 @@ async def test_stateful_session() -> None:
             assert name in tools.text
         for name in [
             "save_remote_computer",
-            "register_mcp_server",
+            "save_device",
             "ssh_execute",
             "force_stop_remote_mcp_service",
         ]:
@@ -229,7 +229,7 @@ async def test_unsupported_tools() -> None:
     names = [tool["name"] for tool in gateway.list_builtin_tools()]
     for name in [
         "save_remote_computer",
-        "register_mcp_server",
+        "save_device",
         "ssh_execute",
         "force_stop_remote_mcp_service",
     ]:
@@ -245,7 +245,7 @@ async def test_tool_routes() -> None:
     remote = {
         "externalName": "S1.measure",
         "remoteName": "measure",
-        "serverId": "S1",
+        "deviceId": "S1",
         "inputSchema": {"type": "object"},
         "kind": "hardware",
     }
@@ -266,7 +266,7 @@ def test_tool_schemas() -> None:
     remote = {
         "externalName": "S1.measure",
         "remoteName": "measure",
-        "serverId": "S1",
+        "deviceId": "S1",
         "inputSchema": {"type": "object", "properties": {}},
         "kind": "hardware",
     }
@@ -283,7 +283,7 @@ def test_duplicate_tool() -> None:
     remote = {
         "externalName": "read_reference",
         "remoteName": "duplicate",
-        "serverId": "S1",
+        "deviceId": "S1",
         "inputSchema": {"type": "object"},
         "kind": "hardware",
     }
@@ -384,7 +384,7 @@ async def test_device_tools_expand_per_session_and_never_in_run_mode() -> None:
     remote = {
         "externalName": "S1.measure",
         "remoteName": "measure",
-        "serverId": "S1",
+        "deviceId": "S1",
         "inputSchema": {"type": "object"},
         "kind": "hardware",
     }

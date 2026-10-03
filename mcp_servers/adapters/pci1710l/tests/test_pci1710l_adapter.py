@@ -10,7 +10,7 @@ from hh_adapter_pci1710l.pinout import pinout
 
 
 PUBLIC_TOOLS = {
-    "get_server_info", "list_hardware", "get_hardware_info",
+    "get_device_info", "list_hardware", "get_hardware_info",
     "pci1710l_configure_ai", "pci1710l_read_voltage", "pci1710l_read_bit", "pci1710l_set_level",
     "pci1710l_safe_state", "pci1710l_stream_read",
 }

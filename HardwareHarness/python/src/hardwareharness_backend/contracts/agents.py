@@ -10,7 +10,7 @@ CAPABILITIES = (
     "system.manage",
     "agents.manage",
     "devices.read",
-    "devices.manageServers",
+    "devices.manageDevices",
     "hardware.read",
     "hardware.manage",
     "hardware.executeTools",

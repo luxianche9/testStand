@@ -41,16 +41,16 @@ class DeviceToolResolver:
                     "/hardwareId",
                 )
             ]
-        server = next(
-            (item for item in self.devices.list_servers() if item.get("hardwareId") == hardware_id),
+        instance = next(
+            (item for item in self.devices.list_devices() if item.get("hardwareId") == hardware_id),
             None,
         )
-        if server is None:
+        if instance is None:
             return None, [
                 issue(
                     "error",
-                    "device.server_missing",
-                    f"Hardware {hardware_id} has no MCP server",
+                    "device.device_missing",
+                    f"Hardware {hardware_id} has no device plugin",
                     "/hardwareId",
                 )
             ]
@@ -58,7 +58,7 @@ class DeviceToolResolver:
             (
                 item
                 for item in self.devices.list_tools()
-                if item.get("serverId") == server.get("serverId")
+                if item.get("deviceId") == instance.get("deviceId")
                 and item.get("remoteName") == tool_name
             ),
             None,
@@ -124,25 +124,25 @@ class DeviceToolResolver:
                     )
                 ],
             }
-        server = next(
-            (item for item in self.devices.list_servers() if item.get("hardwareId") == hardware_id),
+        instance = next(
+            (item for item in self.devices.list_devices() if item.get("hardwareId") == hardware_id),
             None,
         )
-        if server is None:
+        if instance is None:
             return {
                 "hardwareId": hardware_id,
                 "tools": [],
                 "issues": [
                     issue(
                         "error",
-                        "device.server_missing",
-                        f"Hardware {hardware_id} has no MCP server",
+                        "device.device_missing",
+                        f"Hardware {hardware_id} has no device plugin",
                     )
                 ],
             }
         tools = []
         for item in self.devices.list_tools():
-            if item.get("serverId") != server.get("serverId"):
+            if item.get("deviceId") != instance.get("deviceId"):
                 continue
             result_schema = business_result_schema(item.get("upstreamOutputSchema"))
             semantics = _operation_semantics(item)

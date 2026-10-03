@@ -6,7 +6,7 @@ import threading
 from collections.abc import Callable
 from typing import Any, ClassVar, Literal, TypeVar
 
-from .config import ServerConfig
+from .config import DeviceConfig
 from .errors import NOT_SUPPORTED, DeviceError
 from .pinout import Pinout
 from .streams import StreamRegistry
@@ -37,7 +37,7 @@ class Device:
     prefix: ClassVar[str] = ""
     capabilities: ClassVar[tuple[str, ...]] = ()
     version: ClassVar[str] = "0.0.0"
-    instructions: ClassVar[str] = "One MCP Server controls exactly one hardware device."
+    instructions: ClassVar[str] = "One plugin instance controls exactly one hardware device."
     description: ClassVar[str] = ""
     """One-paragraph human description for ``/device.description``."""
     hardware_revision: ClassVar[str | None] = None
@@ -45,7 +45,7 @@ class Device:
     """``subprocess`` runs the device in a child process (a driver that writes to stdout, crashes
     or must not share the host's process); ``inproc`` runs it in the host process."""
 
-    def __init__(self, config: ServerConfig) -> None:
+    def __init__(self, config: DeviceConfig) -> None:
         self.config = config
         self.streams = StreamRegistry()
         self.io_lock = threading.RLock()

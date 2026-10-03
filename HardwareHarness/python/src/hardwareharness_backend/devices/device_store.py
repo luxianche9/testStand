@@ -16,8 +16,8 @@ from urllib.parse import quote
 
 from hardwareharness_backend.contracts.devices import (
     parse_adapter_record,
+    parse_device_instance,
     parse_hardware,
-    parse_mcp_server,
     parse_stored_hardware_definition,
 )
 from hardwareharness_backend.storage import atomic_json
@@ -59,7 +59,7 @@ class DeviceStore:
         self, root: str | Path, *, rename: Rename = _rename, remove: Remove = _remove
     ) -> None:
         self.root = Path(root).resolve()
-        self._server_dir = self.root / "servers"
+        self._device_dir = self.root / "devices"
         self._hardware_dir = self.root / "hardware"
         self._rename = rename
         self._remove = remove
@@ -71,46 +71,46 @@ class DeviceStore:
         self._notifier = notifier
 
     async def initialize(self) -> None:
-        for path in [self._server_dir, self._hardware_dir]:
+        for path in [self._device_dir, self._hardware_dir]:
             path.mkdir(parents=True, exist_ok=True)
 
-    def list_servers(self) -> list[Record]:
+    def list_devices(self) -> list[Record]:
         return sorted(
-            self._read_all(self._server_dir, "", parse_mcp_server),
-            key=lambda item: item["serverId"],
+            self._read_all(self._device_dir, "", parse_device_instance),
+            key=lambda item: item["deviceId"],
         )
 
-    def get_server(self, server_id: str) -> Record | None:
-        return next((item for item in self.list_servers() if item["serverId"] == server_id), None)
+    def get_device(self, device_id: str) -> Record | None:
+        return next((item for item in self.list_devices() if item["deviceId"] == device_id), None)
 
-    async def save_server(self, value: Record) -> Record:
-        server = parse_mcp_server(value)
-        for item in self.list_servers():
+    async def save_device(self, value: Record) -> Record:
+        instance = parse_device_instance(value)
+        for item in self.list_devices():
             if (
-                item["hardwareId"] == server["hardwareId"]
-                and item["serverId"] != server["serverId"]
+                item["hardwareId"] == instance["hardwareId"]
+                and item["deviceId"] != instance["deviceId"]
             ):
                 raise RuntimeError(
-                    f"Hardware {server['hardwareId']} is already assigned to MCP "
-                    f"server {item['serverId']}"
+                    f"Hardware {instance['hardwareId']} is already assigned to MCP "
+                    f"device {item['deviceId']}"
                 )
-        segment = safe_segment(server["serverId"])
-        await atomic_json(self._server_dir / (segment + ".json"), server)
+        segment = safe_segment(instance["deviceId"])
+        await atomic_json(self._device_dir / (segment + ".json"), instance)
         self._changed()
-        if self.get_stored_hardware(server["hardwareId"]) is None:
+        if self.get_stored_hardware(instance["hardwareId"]) is None:
             await self._save_stored_hardware(
                 {
                     "formatVersion": 2,
-                    "hardwareId": server["hardwareId"],
-                    "label": server["hardwareId"],
+                    "hardwareId": instance["hardwareId"],
+                    "label": instance["hardwareId"],
                     "ports": [],
                 }
             )
-        return server
+        return instance
 
-    async def remove_server(self, server_id: str) -> None:
-        segment = safe_segment(server_id)
-        await _remove(self._server_dir / (segment + ".json"))
+    async def remove_device(self, device_id: str) -> None:
+        segment = safe_segment(device_id)
+        await _remove(self._device_dir / (segment + ".json"))
         self._changed()
 
     def list_stored_hardware(self) -> list[Record]:
@@ -126,10 +126,10 @@ class DeviceStore:
         )
 
     def list_hardware(self) -> list[Record]:
-        servers = {item["hardwareId"]: item for item in self.list_servers()}
+        instances = {item["hardwareId"]: item for item in self.list_devices()}
         adapters = self.list_adapters()
         return [
-            self._derive_hardware(item, servers, adapters) for item in self.list_stored_hardware()
+            self._derive_hardware(item, instances, adapters) for item in self.list_stored_hardware()
         ]
 
     def list_adapters(self) -> dict[str, Record]:
@@ -175,17 +175,17 @@ class DeviceStore:
         return self._derive_hardware(stored)
 
     async def remove_hardware(self, hardware_id: str) -> None:
-        server = next(
-            (item for item in self.list_servers() if item["hardwareId"] == hardware_id), None
+        instance = next(
+            (item for item in self.list_devices() if item["hardwareId"] == hardware_id), None
         )
-        if server:
+        if instance:
             raise RuntimeError(
-                f"Hardware {hardware_id} is assigned to MCP server {server['serverId']}"
+                f"Hardware {hardware_id} is assigned to device {instance['deviceId']}"
             )
         await _remove(self._hardware_path(hardware_id))
         self._changed()
 
-    # -- server-provided definitions (design doc §9.7) ---------------------------------------
+    # -- plugin-provided definitions (design doc §9.7) ---------------------------------------
 
     def get_definition(self, hardware_id: str) -> Record | None:
         """``{document, fetchedAt}``: the last ``/device`` seen for a managed device."""
@@ -247,9 +247,9 @@ class DeviceStore:
             )
         replaced = self.get_stored_hardware(stored["hardwareId"]) is not None
         assigned = next(
-            (s for s in self.list_servers() if s["hardwareId"] == stored["hardwareId"]), None
+            (s for s in self.list_devices() if s["hardwareId"] == stored["hardwareId"]), None
         )
-        if replaced and assigned and assigned["serverId"] != options.get("allowManagedServerId"):
+        if replaced and assigned and assigned["deviceId"] != options.get("allowManagedDeviceId"):
             raise RuntimeError(f"Cannot replace managed hardware {stored['hardwareId']}")
         staging_root = Path(tempfile.mkdtemp(prefix=".import-", dir=self._hardware_dir))
         staging = staging_root / "hardware"
@@ -290,14 +290,14 @@ class DeviceStore:
     def _derive_hardware(
         self,
         stored: Record,
-        servers: dict[str, Record] | None = None,
+        instances: dict[str, Record] | None = None,
         adapters: dict[str, Record] | None = None,
     ) -> Record:
-        server = (
-            servers.get(stored["hardwareId"])
-            if servers is not None
+        instance = (
+            instances.get(stored["hardwareId"])
+            if instances is not None
             else next(
-                (s for s in self.list_servers() if s["hardwareId"] == stored["hardwareId"]), None
+                (s for s in self.list_devices() if s["hardwareId"] == stored["hardwareId"]), None
             )
         )
         adapter = (adapters if adapters is not None else self.list_adapters()).get(
@@ -306,13 +306,13 @@ class DeviceStore:
         return parse_hardware(
             {
                 **stored,
-                "kind": "managed" if server else "passive",
+                "kind": "managed" if instance else "passive",
                 **(
                     {
-                        "serverId": server["serverId"],
+                        "deviceId": instance["deviceId"],
                         "adapterStatus": adapter["status"] if adapter else "developing",
                     }
-                    if server
+                    if instance
                     else {}
                 ),
             }

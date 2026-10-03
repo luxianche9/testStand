@@ -43,14 +43,14 @@ class Pci1234(Device):
     hardware_revision = None       # 已知的硬件版本；None 时 /device 省略
     isolation = "inproc"           # 或 "subprocess"：驱动写 stdout、可能崩溃、必须独占进程时
 
-    def __init__(self, config: ServerConfig) -> None:
+    def __init__(self, config: DeviceConfig) -> None:
         super().__init__(config)                 # 必须先调用：建立 self.streams 和 self.io_lock
         self.driver = self.select_driver(lambda: VendorDriver(config.settings.get("dllPath")), SimulatedDriver)
 ```
 
 | 成员 | 说明 |
 |---|---|
-| `config: ServerConfig` | 见下文 |
+| `config: DeviceConfig` | 见下文 |
 | `hardware_id`、`dry_run` | 来自配置；`dry_run` 即实例的 `mode: sim` |
 | `streams: StreamRegistry` | `self.streams.add(stream)` 返回该流，重复 id 报错；`self.streams.scan(streams, fn, rate_hz=)` 建扫描组。见 `streams.md` |
 | `io_lock: threading.RLock` | SDK 采样线程持有它调用 `sample()`；适配器自己的后台线程（串口读线程）和字节流写入器访问驱动时也必须持有。工具调用之间已由 SDK 的操作锁串行 |
@@ -130,17 +130,17 @@ raise DeviceError(f"AO_VWriteChannel failed rc={rc}", category=DEVICE_ERROR,
 
 类别常量见 `contract.md`。越界检查在调用驱动之前做（schema 已经拒绝，但直接调用方法的代码路径也要挡住）。
 
-## `ServerConfig`
+## `DeviceConfig`
 
-后端按实例记录构造（`ServerConfig.from_mapping({serverId, hardwareId, manufacturer, model, dryRun, settings})`），测试里用 `dry_run_config(cls, **overrides)`：
+后端按实例记录构造（`DeviceConfig.from_mapping({deviceId, hardwareId, manufacturer, model, dryRun, settings})`），测试里用 `dry_run_config(cls, **overrides)`：
 
 | 字段 | 说明 |
 |---|---|
-| `server_id`、`hardware_id` | 实例身份，来自实例记录 |
+| `device_id`、`hardware_id` | 实例身份，来自实例记录 |
 | `manufacturer`、`model` | 必须与设备类的类属性一致，否则 `DeviceHost` 拒绝启动；后端从设备类取 |
 | `dry_run` | 实例 `mode: sim`，或环境变量 `HARDWARE_DRY_RUN` |
 | `settings` | 适配器专用、非秘密：`cardIndex`、`dllPath`、`hwcliPath`、`safeVolts`、采样率等 |
-| `build` | 可选的构建信息（源码版本），由 `get_server_info` 报告 |
+| `build` | 可选的构建信息（源码版本），由 `get_device_info` 报告 |
 
 读 `settings` 时给出默认值，并在 `capability_details()` 里报告生效值。可以兼容历史环境变量（如 `ADLINK_SAFE_VOLTS`），但新设置优先放 `settings`。设备页编辑实例时直接编辑 `settings`，所以键名要在 README 里写清。
 
@@ -184,7 +184,7 @@ self.waveform = SoftwareWaveform(self._waveform_write, lock=self.io_lock,
 | `hh.host`、`hh.host.device` | `DeviceHost` 与设备实例（可以直接改模拟器状态）；`hh.hardware_id` |
 | `hh.subscribe(stream_id, cursor=None, since=None, epoch=None)` | 上下文管理器：观看一条流并按事件读取；`cursor` 省略为只要新记录，负数为最后若干条；`events.receive()` 返回 `{"type": 事件名, **data}`（`hello` / `batch` / `gap` / `status`）；`events.epoch`、`events.next` 用于续读 |
 | `receive_until(events, predicate)` | 读事件直到谓词成立 |
-| `dry_run_config(cls, **overrides)` | 构造模拟模式的 `ServerConfig`，可直接构造设备做单元测试 |
+| `dry_run_config(cls, **overrides)` | 构造模拟模式的 `DeviceConfig`，可直接构造设备做单元测试 |
 
 命令行等价物：`uv run python -m hardwareharness_device_sdk --adapter <adapter> --check`，输出一行 JSON `{adapter, ok, failures, warnings}`；有失败时退出码 1，警告不影响退出码。它只用模拟器，从不访问硬件。
 

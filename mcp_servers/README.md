@@ -25,10 +25,10 @@ An adapter package registers its `Device` subclass under the entry point group
 pci1762 = "hh_adapter_pci1762:DEVICE"
 ```
 
-The backend calls `open_device(type, config)`. `config` is a `ServerConfig`, usually
-built with `ServerConfig.from_mapping({serverId, hardwareId, manufacturer, model,
+The backend calls `open_device(type, config)`. `config` is a `DeviceConfig`, usually
+built with `DeviceConfig.from_mapping({deviceId, hardwareId, manufacturer, model,
 dryRun, settings})`; `settings` holds the adapter's nonsecret options. In the backend
-a device instance is the record `{transport: "plugin", serverId, label, hardwareId,
+a device instance is the record `{transport: "plugin", deviceId, label, hardwareId,
 type, settings, mode: real|sim, enabled}`; `mode: sim` sets `dryRun`.
 `device_types()` lists the installed types, `load_device()` also accepts
 `module` or `module:ClassName`.
@@ -81,7 +81,7 @@ the declaration and `hh.subscribe(streamId)` reads a stream as `hello`, `batch`,
 
 ## Device contract
 
-Contract revision `2026-10-01.1`. Builtin tools: `get_server_info`, `list_hardware`,
+Contract revision `2026-10-01.1`. Builtin tools: `get_device_info`, `list_hardware`,
 `get_hardware_info`, `<prefix>_stream_read`, plus `<prefix>_transact` when a byte
 stream has a writer and `<prefix>_blob_read` when a blob stream exists, and
 `hardwareharness_prepare_shutdown`. The declaration `{manifestRevision,

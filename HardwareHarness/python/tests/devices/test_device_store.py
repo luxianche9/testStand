@@ -26,9 +26,9 @@ def hardware(identifier: str) -> dict[str, Any]:
     }
 
 
-def server(identifier: str, hardware_id: str) -> dict[str, Any]:
+def instance(identifier: str, hardware_id: str) -> dict[str, Any]:
     return {
-        "serverId": identifier,
+        "deviceId": identifier,
         "label": identifier,
         "hardwareId": hardware_id,
         "type": "pci1710l",
@@ -72,9 +72,9 @@ async def fixture(tmp_path: Path) -> DeviceStore:
 async def test_canonical(tmp_path: Path) -> None:
     store = await fixture(tmp_path)
     await store.save_hardware(hardware("CARD"))
-    await store.save_server(server("S1", "CARD"))
+    await store.save_device(instance("S1", "CARD"))
     saved = store.require_hardware("CARD")
-    assert (saved["kind"], saved["serverId"]) == ("managed", "S1")
+    assert (saved["kind"], saved["deviceId"]) == ("managed", "S1")
     raw = json.loads((store.root / "hardware/CARD/hardware.json").read_text())
     assert raw == {
         "formatVersion": 2,
@@ -82,31 +82,31 @@ async def test_canonical(tmp_path: Path) -> None:
         "label": "CARD",
         "ports": hardware("CARD")["ports"],
     }
-    assert "credential" not in (store.root / "servers/S1.json").read_text()
+    assert "credential" not in (store.root / "devices/S1.json").read_text()
 
 
 @pytest.mark.ts_case(
-    PREFIX + "derives a hardware list with one server index instead of an N+1 directory scan"
+    PREFIX + "derives a hardware list with one instance index instead of an N+1 directory scan"
 )
-async def test_one_server_index(tmp_path: Path) -> None:
+async def test_one_device_index(tmp_path: Path) -> None:
     store = await fixture(tmp_path)
     for identifier in ["A", "B", "C"]:
         await store.save_hardware(hardware(identifier))
     with patch.object(store, "_read_all", wraps=store._read_all) as read_all:
         assert len(store.list_hardware()) == 3
-        # One scan per record kind: hardware, servers, adapter releases.
+        # One scan per record kind: hardware, devices, adapter releases.
         assert read_all.call_count == 3
 
 
-@pytest.mark.ts_case(PREFIX + "enforces one server per hardware and deletion rules")
+@pytest.mark.ts_case(PREFIX + "enforces one instance per hardware and deletion rules")
 async def test_assignment(tmp_path: Path) -> None:
     store = await fixture(tmp_path)
-    await store.save_server(server("S1", "CARD"))
+    await store.save_device(instance("S1", "CARD"))
     with pytest.raises(Exception, match="already assigned"):
-        await store.save_server(server("S2", "CARD"))
+        await store.save_device(instance("S2", "CARD"))
     with pytest.raises(Exception, match="assigned"):
         await store.remove_hardware("CARD")
-    await store.remove_server("S1")
+    await store.remove_device("S1")
     assert store.require_hardware("CARD")["kind"] == "passive"
 
 
@@ -131,25 +131,25 @@ async def test_preview(tmp_path: Path) -> None:
 
 
 @pytest.mark.ts_case(
-    PREFIX + "only applies a bundle to the managed hardware owned by the named server"
+    PREFIX + "only applies a bundle to the managed hardware owned by the named device"
 )
 async def test_managed_import(tmp_path: Path) -> None:
     store = await fixture(tmp_path)
-    await store.save_server(server("S1", "CARD"))
+    await store.save_device(instance("S1", "CARD"))
     data = bundle("CARD", "Updated card")
     with pytest.raises(Exception, match="Cannot replace managed hardware"):
         await store.import_bundle(data)
     with pytest.raises(Exception, match="does not match expected"):
         await store.import_bundle(
-            data, {"expectedHardwareId": "OTHER", "allowManagedServerId": "S1"}
+            data, {"expectedHardwareId": "OTHER", "allowManagedDeviceId": "S1"}
         )
     assert store.require_hardware("CARD")["label"] == "CARD"
     result = await store.import_bundle(
-        data, {"expectedHardwareId": "CARD", "allowManagedServerId": "S1"}
+        data, {"expectedHardwareId": "CARD", "allowManagedDeviceId": "S1"}
     )
     assert result["id"] == "CARD" and result["replaced"] is True
     saved = store.require_hardware("CARD")
-    assert (saved["label"], saved["kind"], saved["serverId"]) == ("Updated card", "managed", "S1")
+    assert (saved["label"], saved["kind"], saved["deviceId"]) == ("Updated card", "managed", "S1")
 
 
 @pytest.mark.ts_case(PREFIX + "drops unknown legacy fields during bundle export")
@@ -237,9 +237,9 @@ async def test_every_write_notifies(tmp_path: Path) -> None:
     writes: list[None] = []
     store.set_notifier(lambda: writes.append(None))
     await store.save_hardware(hardware("CARD"))
-    await store.save_server(server("S1", "CARD"))
+    await store.save_device(instance("S1", "CARD"))
     await store.save_definition("CARD", {"manifestRevision": "1"})
-    await store.remove_server("S1")
+    await store.remove_device("S1")
     data = await store.export_bundle("CARD")
     await store.remove_hardware("CARD")
     await store.import_bundle(data)

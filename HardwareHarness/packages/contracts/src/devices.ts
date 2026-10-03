@@ -4,8 +4,8 @@ export const connectionStateSchema = z.enum(["unknown", "checking", "online", "o
 export type ConnectionState = z.infer<typeof connectionStateSchema>;
 
 /** A device plugin loaded into the backend: `type` names its `hardwareharness.devices` entry point. */
-export const mcpServerSchema = z.object({
-  serverId: z.string().min(1),
+export const deviceInstanceSchema = z.object({
+  deviceId: z.string().min(1),
   label: z.string().min(1),
   hardwareId: z.string().min(1),
   type: z.string().min(1),
@@ -13,7 +13,7 @@ export const mcpServerSchema = z.object({
   mode: z.enum(["real", "sim"]).default("real"),
   enabled: z.boolean().default(true)
 }).strict();
-export type McpServerConfig = z.infer<typeof mcpServerSchema>;
+export type DeviceInstance = z.infer<typeof deviceInstanceSchema>;
 /** An installed device plugin type (`devices.listDeviceTypes`); `error` when it cannot be loaded. */
 export interface DeviceType {
   type: string;
@@ -23,27 +23,27 @@ export interface DeviceType {
   description?: string;
   error?: string;
 }
-export type StoredMcpServer = McpServerConfig;
-export const serverIdInputSchema = z.object({ id: z.string().min(1) }).strict();
+export type StoredDevice = DeviceInstance;
+export const deviceIdInputSchema = z.object({ id: z.string().min(1) }).strict();
 
 export interface ConnectionStatus { state: ConnectionState; checkedAt?: string; message?: string }
-export interface ServerStatus { serverId: string; transport: ConnectionStatus }
+export interface DeviceStatus { deviceId: string; transport: ConnectionStatus }
 
 export type HardwareState = "initializing" | "open" | "unreachable" | "faulted" | "closing" | "closed";
 export const managedHardwareSchema = z.object({
   hardwareId: z.string().min(1),
-  serverId: z.string().min(1),
+  deviceId: z.string().min(1),
   state: z.enum(["initializing", "open", "unreachable", "faulted", "closing", "closed"]),
   health: z.string(),
   // Python datetime.isoformat() reports UTC as +00:00 and may include microseconds.
   lastError: z.object({ category: z.string().min(1), message: z.string(), at: z.string().datetime({ offset: true }).optional() }).nullable().optional()
 });
 export type ManagedHardware = z.infer<typeof managedHardwareSchema>;
-export const reportedManagedHardwareSchema = managedHardwareSchema.omit({ serverId: true });
+export const reportedManagedHardwareSchema = managedHardwareSchema.omit({ deviceId: true });
 export interface ToolCatalogItem {
   externalName: string;
   remoteName: string;
-  serverId: string;
+  deviceId: string;
   description?: string;
   inputSchema: Record<string, unknown>;
   kind: string;
@@ -93,13 +93,13 @@ export const hardwareSchema = z.object({
   hardwareId: z.string().min(1),
   label: z.string().min(1),
   kind: z.enum(["managed", "passive"]),
-  serverId: z.string().min(1).optional(),
+  deviceId: z.string().min(1).optional(),
   ports: z.array(hardwarePortSchema).default([]),
   /** Managed hardware only, derived by the backend from the adapter record. */
   adapterStatus: adapterStatusSchema.optional()
 }).superRefine((value, context) => {
-  if (value.kind === "managed" && !value.serverId) context.addIssue({ code: z.ZodIssueCode.custom, message: "Managed hardware requires serverId" });
-  if (value.kind === "passive" && value.serverId) context.addIssue({ code: z.ZodIssueCode.custom, message: "Passive hardware cannot reference a device server" });
+  if (value.kind === "managed" && !value.deviceId) context.addIssue({ code: z.ZodIssueCode.custom, message: "Managed hardware requires deviceId" });
+  if (value.kind === "passive" && value.deviceId) context.addIssue({ code: z.ZodIssueCode.custom, message: "Passive hardware cannot reference a device instance" });
   const portIds = new Set<string>();
   for (const port of value.ports) {
     if (portIds.has(port.portId)) context.addIssue({ code: z.ZodIssueCode.custom, message: `Duplicate portId: ${port.portId}` });
@@ -130,7 +130,7 @@ export interface DeviceBundlePreview { kind: "hardware"; hardware: StoredHardwar
 export const deviceBundleApplyInputSchema = z.object({
   kind: deviceBundleKindSchema,
   hardwareId: z.string().min(1),
-  serverId: z.string().min(1),
+  deviceId: z.string().min(1),
   data: z.custom<Uint8Array<ArrayBufferLike>>((value) => value instanceof Uint8Array, "Expected Uint8Array")
 }).strict();
 export type DeviceBundleApplyInput = z.infer<typeof deviceBundleApplyInputSchema>;
@@ -150,7 +150,7 @@ export interface DeviceDeclaration {
   manifestRevision: string;
   contractRevision?: string;
   identity: {
-    serverId: string;
+    deviceId: string;
     hardwareId: string;
     manufacturer?: string;
     model?: string;

@@ -62,8 +62,8 @@ def test_compile_resolves_the_station_hardware_and_keeps_one_execution_revision(
     first = compile_plan(plan, Resolver(), values={"station": 1})
     second = compile_plan(plan, Resolver(), values={"station": 2})
     assert first["valid"] and second["valid"]
-    assert first["compiledPlan"]["resolvedBindings"]["read"]["serverId"] == "PC1.PSU_1"
-    assert second["compiledPlan"]["resolvedBindings"]["read"]["serverId"] == "PC1.PSU_2"
+    assert first["compiledPlan"]["resolvedBindings"]["read"]["deviceId"] == "PC1.PSU_1"
+    assert second["compiledPlan"]["resolvedBindings"]["read"]["deviceId"] == "PC1.PSU_2"
     assert first["executionRevision"] == second["executionRevision"]
 
 

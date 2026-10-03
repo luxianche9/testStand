@@ -124,7 +124,7 @@ async def test_unresolvable_hardware_is_unavailable(tmp_path: Path) -> None:
     async with FakeStreamService({"v": "scalar"}) as service:
 
         def resolve(hardware_id: str) -> Any:
-            raise LookupError(f"no server for {hardware_id}")
+            raise LookupError(f"no device for {hardware_id}")
 
         sources = service.sources()
         sources.devices = resolve
@@ -137,7 +137,7 @@ async def test_unresolvable_hardware_is_unavailable(tmp_path: Path) -> None:
         {
             "tb": store.states("ghost__v")[0]["tb"],
             "state": "unavailable",
-            "message": "no server for ghost",
+            "message": "no device for ghost",
         }
     ]
     store.close()

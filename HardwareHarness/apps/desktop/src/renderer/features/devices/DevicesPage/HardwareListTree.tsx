@@ -1,7 +1,7 @@
 import type { DashboardSnapshot } from "@hardwareharness/contracts/operations";
-import type { Hardware, McpServerConfig } from "@hardwareharness/contracts/devices";
+import type { Hardware, DeviceInstance } from "@hardwareharness/contracts/devices";
 import { PlusIcon } from "lucide-react";
-import { hardwareForServer } from "../../../lib/hardware.js";
+import { hardwareForDevice } from "../../../lib/hardware.js";
 import { IconButton } from "../../../ui";
 import { hardwareRowStatus } from "./device-labels.js";
 import { onTreeKeyDown, TreeNote, TreeRow } from "./TreeRow.js";
@@ -26,23 +26,23 @@ export function HardwareListTree({
   const devicesOpen = isOpen("devices");
   const hardwareOpen = isOpen("hardware");
   const keys = [
-    ...data.servers.map((item) => `s:${item.serverId}`),
+    ...data.devices.map((item) => `s:${item.deviceId}`),
     ...passive.map((item) => `l:${item.hardwareId}`)
   ];
   const tabStop = selected && keys.includes(selected) ? selected : "devices";
-  const serverRow = (server: McpServerConfig) => {
-    const key = `s:${server.serverId}`;
-    const device = hardwareForServer(server, hardware);
+  const deviceRow = (instance: DeviceInstance) => {
+    const key = `s:${instance.deviceId}`;
+    const device = hardwareForDevice(instance, hardware);
     const status = hardwareRowStatus(
-      data.serverStatuses.find((item) => item.serverId === server.serverId),
-      data.availability?.find((item) => item.hardwareId === server.hardwareId)
+      data.deviceStatuses.find((item) => item.deviceId === instance.deviceId),
+      data.availability?.find((item) => item.hardwareId === instance.hardwareId)
     );
     return (
       <TreeRow
         key={key}
         depth={1}
-        label={device?.label ?? server.label}
-        title={`${server.hardwareId} · ${server.serverId}`}
+        label={device?.label ?? instance.label}
+        title={`${instance.hardwareId} · ${instance.deviceId}`}
         status={status}
         selected={selected === key}
         tabbable={tabStop === key}
@@ -55,9 +55,9 @@ export function HardwareListTree({
       <TreeRow
         depth={0}
         label="设备"
-        title="加载到本机后端的设备插件与本机 MCP 服务"
+        title="加载到本机后端的设备插件"
         className="tf-label text-fg-3"
-        meta={data.servers.length}
+        meta={data.devices.length}
         hasChildren
         open={devicesOpen}
         selected={false}
@@ -67,8 +67,8 @@ export function HardwareListTree({
           <IconButton label="添加测试资源" size="icon-xs" onClick={onAddDevice}><PlusIcon /></IconButton>
         }
       />
-      {devicesOpen && data.servers.map(serverRow)}
-      {devicesOpen && data.servers.length === 0 && (
+      {devicesOpen && data.devices.map(deviceRow)}
+      {devicesOpen && data.devices.length === 0 && (
         <TreeNote depth={1}>还没有设备。点「+」从已安装的设备类型添加测试资源。</TreeNote>
       )}
       <TreeRow

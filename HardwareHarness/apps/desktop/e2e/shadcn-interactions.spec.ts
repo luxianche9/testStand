@@ -220,16 +220,16 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
     await mode.focus();
     await mode.press("End");
     await expect(mode).toHaveValue("sim");
-    await dialog.getByLabel("Server ID").fill("KEYBOARD_DEV");
+    await dialog.getByLabel("Device ID").fill("KEYBOARD_DEV");
     await dialog.getByLabel("唯一 Hardware ID").fill("KEYBOARD_CARD");
     await dialog.getByLabel("显示名称").fill("Keyboard device");
     await expect(dialog.getByRole("button", { name: "保存", exact: true })).toBeEnabled();
     await dialog.getByLabel("显示名称").press("Enter");
     await expect(dialog).toBeHidden();
-    const saved = await page.evaluate(async () => (await window.hardwareharness.system.dashboard()).servers
-      .find((server) => server.serverId === "KEYBOARD_DEV"));
+    const saved = await page.evaluate(async () => (await window.hardwareharness.system.dashboard()).devices
+      .find((instance) => instance.deviceId === "KEYBOARD_DEV"));
     expect(saved).toMatchObject({
-      serverId: "KEYBOARD_DEV", hardwareId: "KEYBOARD_CARD", label: "Keyboard device", mode: "sim"
+      deviceId: "KEYBOARD_DEV", hardwareId: "KEYBOARD_CARD", label: "Keyboard device", mode: "sim"
     });
     await expect(page.getByRole("tree", { name: "硬件列表" }).getByRole("treeitem", { name: /Keyboard device/ }))
       .toContainText("在线");

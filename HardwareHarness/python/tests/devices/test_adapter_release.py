@@ -9,7 +9,7 @@ from hardwareharness_backend.application.authorization import DefaultAuthorizer
 from hardwareharness_backend.contracts.errors import AppError
 from hardwareharness_backend.devices import DeviceCatalogService, DeviceStore
 
-from .test_device_store import hardware, server
+from .test_device_store import hardware, instance
 
 AGENT = {"actor": "agent", "source": "mcp"}
 HUMAN = {"actor": "human", "source": "desktop"}
@@ -19,7 +19,7 @@ async def catalog(tmp_path: Path) -> DeviceCatalogService:
     store = DeviceStore(tmp_path / "devices")
     await store.save_hardware(hardware("CARD"))
     await store.save_hardware(hardware("BOX"))
-    await store.save_server(server("S1", "CARD"))
+    await store.save_device(instance("S1", "CARD"))
     return DeviceCatalogService(store)
 
 
