@@ -34,6 +34,7 @@ const serverLifecycleSchema = z.object({
 }).strict();
 export type ServerLifecycle = z.infer<typeof serverLifecycleSchema>;
 
+export type McpHttpServerConfig = z.infer<typeof mcpHttpServerSchema>;
 export const mcpHttpServerSchema = z.object({
   transport: z.literal("mcp-http"),
   serverId: z.string().min(1),
@@ -47,7 +48,28 @@ export const mcpHttpServerSchema = z.object({
   root: z.string().min(1).optional(),
   lifecycle: serverLifecycleSchema.optional()
 }).strict();
-const deviceServerSchema = z.discriminatedUnion("transport", [mcpHttpServerSchema]);
+/** A device plugin loaded into the backend: `type` names its `hardwareharness.devices` entry point. */
+export const pluginServerSchema = z.object({
+  transport: z.literal("plugin"),
+  serverId: z.string().min(1),
+  label: z.string().min(1),
+  hardwareId: z.string().min(1),
+  type: z.string().min(1),
+  settings: z.record(z.unknown()).default({}),
+  mode: z.enum(["real", "sim"]).default("real"),
+  enabled: z.boolean().default(true)
+}).strict();
+export type PluginServerConfig = z.infer<typeof pluginServerSchema>;
+/** An installed device plugin type (`devices.listDeviceTypes`); `error` when it cannot be loaded. */
+export interface DeviceType {
+  type: string;
+  manufacturer?: string;
+  model?: string;
+  isolation?: "inproc" | "subprocess";
+  description?: string;
+  error?: string;
+}
+const deviceServerSchema = z.discriminatedUnion("transport", [mcpHttpServerSchema, pluginServerSchema]);
 export const mcpServerSchema = z.preprocess((value) => {
   if (!value || typeof value !== "object" || Array.isArray(value) || "transport" in value) return value;
   return { ...value, transport: "mcp-http" };

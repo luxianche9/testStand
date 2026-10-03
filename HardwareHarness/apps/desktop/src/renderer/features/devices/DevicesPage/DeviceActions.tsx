@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import type { Hardware, McpServerConfig, RemoteComputer, ServerStatus } from "@hardwareharness/contracts/devices";
+import type { Hardware, McpHttpServerConfig, RemoteComputer, ServerStatus } from "@hardwareharness/contracts/devices";
 import {
   ArrowUpCircleIcon, CircleAlertIcon, DownloadIcon, OctagonXIcon, PackageMinusIcon, PackagePlusIcon, PencilIcon,
   PlayIcon, PlusIcon, RefreshCwIcon, ScrollTextIcon, SquareIcon, Trash2Icon
@@ -74,7 +74,7 @@ export function ComputerActions({ computer, onEdit, onAddServer, onChanged, onEr
  * root on a PowerShell computer can also be upgraded or uninstalled (§4.8.3).
  */
 export function ServerActions({ server, computer, onEdit, onChanged, onError }: {
-  server: McpServerConfig;
+  server: McpHttpServerConfig;
   computer?: RemoteComputer | undefined;
   onEdit: () => void;
   onChanged: () => Promise<void>;
@@ -145,7 +145,7 @@ export function ServerActions({ server, computer, onEdit, onChanged, onError }: 
 
 /** 服务 section body: process state lamp plus start / stop / force-stop / logs. */
 export function ServiceControls({ server, status, sshOnline, onChanged, onError }: {
-  server: McpServerConfig;
+  server: McpHttpServerConfig;
   status?: ServerStatus | undefined;
   sshOnline: boolean;
   onChanged: () => Promise<void>;
@@ -220,7 +220,7 @@ export function ServiceControls({ server, status, sshOnline, onChanged, onError 
 }
 
 /** Logs live in a portal dialog so the inspector's sections keep a single `<pre>` (the tool result). */
-function ServiceLogDialog({ server, onClose }: { server: McpServerConfig; onClose: () => void }) {
+function ServiceLogDialog({ server, onClose }: { server: McpHttpServerConfig; onClose: () => void }) {
   const logs = useQuery({
     queryKey: ["devices", "server-logs", server.serverId],
     queryFn: () => window.hardwareharness.devices.readServerLogs(server.serverId, 200),

@@ -34,6 +34,7 @@ const snapshot: DashboardSnapshot = {
     enabled: true,
     lifecycle: { statusCommand: "s", startCommand: "a", stopCommand: "x", logPath: "l" }
   }],
+  plugins: [],
   serverStatuses: [{
     serverId: "E2E_MCP",
     computerId: "LOCAL_FIXTURE",

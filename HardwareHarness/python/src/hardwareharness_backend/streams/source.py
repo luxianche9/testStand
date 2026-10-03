@@ -16,6 +16,10 @@ Events yielded by :meth:`StreamSource.events`:
 * ``status`` — service status ``{state, sampling, errors, lastError?, watermark}``
 * ``state``  — connection state ``{state: disconnected | unknown_stream, message}``;
   ``unknown_stream`` ends the iteration
+
+A device loaded as a plugin of this process (:class:`PluginStreamSource`) yields the same
+events by reading the device's ring buffer directly; it shares this process's clock, so its
+offset and uncertainty are zero and nothing is sampled.
 """
 
 from __future__ import annotations
@@ -53,6 +57,36 @@ class Endpoint:
 
 
 EndpointResolver = Callable[[str], Endpoint]
+PluginResolver = Callable[[str], Any]
+"""``hardwareId`` -> the loaded plugin device (``DeviceHandle``), ``None`` when not a plugin."""
+BATCH_INTERVAL = 0.05
+STATUS_INTERVAL = 0.2
+MAX_BATCH_RECORDS = 500
+
+
+class LocalClock(ClockEstimator):
+    """The clock of a device in this process (or a child sharing the system clock)."""
+
+    def add(self, send_ms: float, server_ms: float, recv_ms: float) -> None:
+        return None
+
+    @property
+    def known(self) -> bool:
+        return True
+
+    @property
+    def offset_ms(self) -> float:
+        return 0.0
+
+    @property
+    def uncertainty_ms(self) -> float:
+        return 0.0
+
+    def snapshot(self) -> dict[str, float | None]:
+        return {"offsetMs": 0.0, "uncertaintyMs": 0.0}
+
+
+LOCAL_CLOCK = LocalClock()
 
 
 def service_base(mcp_url: str) -> str:
@@ -101,10 +135,12 @@ class StreamSources:
         self,
         resolver: EndpointResolver,
         *,
+        plugins: PluginResolver | None = None,
         client: httpx.AsyncClient | None = None,
         clock_interval: float = CLOCK_INTERVAL,
     ) -> None:
         self.resolver = resolver
+        self.plugins = plugins or (lambda _hardware_id: None)
         self.client = client or httpx.AsyncClient(
             timeout=httpx.Timeout(READ_TIMEOUT, read=None), trust_env=False
         )
@@ -115,10 +151,15 @@ class StreamSources:
         self, hardware_id: str, stream_id: str, *, since: float | None = None
     ) -> StreamSource:
         """``since``: backend time of the first wanted record (pre-roll); ``None`` = new only."""
+        device = self.plugins(hardware_id)
+        if device is not None:
+            return PluginStreamSource(device, stream_id, since=since)
         endpoint = self.resolver(hardware_id)
         return StreamSource(self, endpoint, stream_id, since=since)
 
     def clock(self, hardware_id: str) -> ClockEstimator | None:
+        if self.plugins(hardware_id) is not None:
+            return LOCAL_CLOCK
         try:
             key = self.resolver(hardware_id).service_key
         except Exception:
@@ -135,6 +176,8 @@ class StreamSources:
         ``burst`` takes that many back to back regardless: before streams open the
         round trip is at its quietest, and the estimator keeps the best sample.
         """
+        if self.plugins(hardware_id) is not None:
+            return LOCAL_CLOCK
         endpoint = self.resolver(hardware_id)
         estimator = self.estimator(endpoint)
         for _ in range(burst or (0 if estimator.known else 1)):
@@ -152,6 +195,8 @@ class StreamSources:
 
     def hold_clock(self, hardware_id: str) -> Callable[[], None]:
         """Keep sampling the service's clock until the returned release is called."""
+        if self.plugins(hardware_id) is not None:
+            return lambda: None
         endpoint = self.resolver(hardware_id)
         self._acquire_clock(endpoint)
         return lambda: self._release_clock(endpoint)
@@ -318,6 +363,89 @@ class StreamSource:
         self._pending_gap = None
         gap["t1"] = round(max(float(t1), gap["t0"]), 3)
         return [gap]
+
+
+class PluginStreamSource(StreamSource):
+    """One stream of a plugin device, read from its ring buffer while this source is followed."""
+
+    def __init__(self, device: Any, stream_id: str, *, since: float | None) -> None:
+        self.device = device
+        self.stream_id = stream_id
+        self.since = since
+        self.clock = LOCAL_CLOCK
+        self.stream_type = None
+        self.last_event_id = None
+        self.watermark = None
+        self._pending_gap = None
+        self._epoch: str | None = None
+        self._cursor: int | None = None
+
+    async def events(self) -> AsyncIterator[Record]:
+        backoff = BACKOFF_MIN
+        disconnected = False
+        while True:
+            try:
+                await self.device.watch(self.stream_id)
+            except Exception as exc:
+                yield {"type": "state", "state": "unknown_stream", "message": str(exc)}
+                return
+            try:
+                async for event in self._session():
+                    if event["type"] == "hello":
+                        backoff, disconnected = BACKOFF_MIN, False
+                    yield event
+                message = "device stream closed"
+            except Exception as exc:
+                message = str(exc) or type(exc).__name__
+            finally:
+                with contextlib.suppress(Exception):
+                    await self.device.unwatch(self.stream_id)
+            if not disconnected:
+                disconnected = True
+                yield {"type": "state", "state": "disconnected", "message": message}
+            await asyncio.sleep(backoff)
+            backoff = min(backoff * 2, BACKOFF_MAX)
+
+    async def _session(self) -> AsyncIterator[Record]:
+        cursor = self._cursor
+        if cursor is None and self.since is not None:
+            cursor = await self.device.seek(self.stream_id, self.since)
+        first = await self.device.read_stream(self.stream_id, cursor, 0, self._epoch)
+        self._epoch, position = first["epoch"], first["next"]
+        hello = {"streamType": first["streamType"], "epoch": first["epoch"], "serverTime": 0.0}
+        for event in self._on_event("hello", hello, 0.0):
+            yield event
+        if "gap" in first:
+            self._open_gap(first["gap"])
+        last_status: Record | None = None
+        last_sent = 0.0
+        loop = asyncio.get_running_loop()
+        while True:
+            result = await self.device.read_stream(
+                self.stream_id, position, MAX_BATCH_RECORDS, self._epoch
+            )
+            if "gap" in result:
+                self._open_gap(result["gap"])
+            position = self._cursor = result["next"]
+            if result["records"]:
+                batch = {"records": result["records"], "watermark": result["watermark"]}
+                for event in self._on_event("batch", batch, 0.0):
+                    yield event
+                last_sent = loop.time()
+            status = result["status"]
+            changed = last_status is None or _without_watermark(status) != _without_watermark(
+                last_status
+            )
+            if changed or loop.time() - last_sent >= STATUS_INTERVAL:
+                for event in self._on_event("status", status, 0.0):
+                    yield event
+                last_status, last_sent = status, loop.time()
+            full = len(result["records"]) == MAX_BATCH_RECORDS
+            await asyncio.sleep(0 if full else BATCH_INTERVAL)
+
+
+def _without_watermark(status: Record) -> Record:
+    return {key: value for key, value in status.items() if key != "watermark"}
 
 
 class _UnknownStream(Exception):

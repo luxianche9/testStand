@@ -119,6 +119,7 @@ class Pci6208v(Device):
     model = "PCI-6208V"
     prefix = "pci6208v"
     capabilities = ("analog_output",)
+    isolation = "subprocess"  # PCIS-DASK writes to stdout when the DLL loads
     version = "0.2.0"
     description = ("ADLINK PCI-6208V PCI card with eight ±10 V static analog outputs on a 37-pin D-sub (CN1). "
                    "It has no output readback: the ao0..ao7 streams are setpoint shadows, never measurements. "

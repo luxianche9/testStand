@@ -9,6 +9,9 @@ description = "HardwareHarness MCP adapter for the Moxa CP-118U-I 8-port serial 
 requires-python = ">=3.11"
 dependencies = ["hardwareharness-device-sdk>=0.2,<0.3"]
 
+[project.entry-points."hardwareharness.devices"]
+cp118u_i = "hh_adapter_cp118u_i:DEVICE"
+
 [tool.setuptools.packages.find]
 where = ["src"]
 

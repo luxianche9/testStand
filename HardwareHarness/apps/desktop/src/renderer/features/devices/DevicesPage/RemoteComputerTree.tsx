@@ -1,5 +1,5 @@
 import type { DashboardSnapshot } from "@hardwareharness/contracts/desktop";
-import type { Hardware, McpServerConfig } from "@hardwareharness/contracts/devices";
+import type { Hardware, McpHttpServerConfig } from "@hardwareharness/contracts/devices";
 import { LinkIcon, PlusIcon } from "lucide-react";
 import { hardwareForServer } from "../../../lib/hardware.js";
 import { IconButton } from "../../../ui";
@@ -33,7 +33,7 @@ export function RemoteComputerTree({
     "unmanaged",
     ...unmanaged.map((item) => `s:${item.serverId}`)
   ];
-  const serverRow = (server: McpServerConfig) => {
+  const serverRow = (server: McpHttpServerConfig) => {
     const serverKey = `s:${server.serverId}`;
     const device = hardwareForServer(server, hardware);
     const serverStatus = data.serverStatuses.find((item) => item.serverId === server.serverId);

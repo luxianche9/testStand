@@ -12,6 +12,7 @@ from hardwareharness_backend.contracts.devices import (
 from hardwareharness_backend.contracts.errors import app_error
 from hardwareharness_backend.contracts.operations import operation
 from hardwareharness_backend.devices.deploy import DeployService
+from hardwareharness_backend.devices.plugin_transport import installed_device_types
 from hardwareharness_backend.devices.service_registry import (
     mcp_url,
     probe_service,
@@ -323,6 +324,17 @@ class DevicesApplication:
     )
     async def list_managed_hardware(self, context: Json) -> list[Json]:
         return await self.service.refresh_hardware()
+
+    @operation(
+        "devices.listDeviceTypes",
+        capability="hardware.read",
+        risk="read",
+        profiles=("adapter", "plan", "explore"),
+        idempotency="natural",
+    )
+    def list_device_types(self, context: Json) -> list[Json]:
+        """Device plugins installed with the backend (``hardwareharness.devices`` entry points)."""
+        return installed_device_types()
 
     @operation(
         "devices.listHardware",
@@ -809,7 +821,12 @@ class SystemApplication:
         return {
             "computers": self.devices.list_computers(),
             "statuses": self.devices.list_statuses(),
-            "servers": self.devices.list_servers(),
+            "servers": [
+                item for item in self.devices.list_servers() if item["transport"] == "mcp-http"
+            ],
+            "plugins": [
+                item for item in self.devices.list_servers() if item["transport"] == "plugin"
+            ],
             "serverStatuses": self.devices.list_server_statuses(),
             "hardware": self.devices.list_hardware(),
             "tools": self.devices.list_tools(),

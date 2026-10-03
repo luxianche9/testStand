@@ -8,16 +8,17 @@ server stamped it somewhere inside ``[send, recv]``, so the offset is
 
 from __future__ import annotations
 
-import time
 from collections import deque
 from dataclasses import dataclass
+
+from hardwareharness_device_sdk.clock import now_ms
 
 WINDOW = 16
 
 
 def backend_ms() -> float:
-    """Backend wall clock in fractional milliseconds (same epoch as the SDK ``t``)."""
-    return time.time_ns() / 1_000_000
+    """Backend clock in Unix milliseconds: the SDK clock that stamps every record ``t``."""
+    return now_ms()
 
 
 @dataclass(frozen=True)

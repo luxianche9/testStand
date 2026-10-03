@@ -1,5 +1,5 @@
 import type { AgentConfirmation, AgentConfirmationAnswer, AgentIntegrationPreview, AgentIntegrationStatus, AgentKind, AgentToolInfo, McpGatewayStatus, OpenCodeRuntimeStatus } from "./agents.js";
-import type { AdapterReleaseRecord, AdapterStatus, ComputerStatus, DeviceBundleApplyInput, DeviceBundleExport, DeviceBundleImport, DeviceBundleKind, DeviceBundlePreview, Hardware, HardwareAvailability, ManagedDeviceDefinition, ManagedHardware, McpServerConfig, RegisteredService, RemoteComputer, RemoteServiceLog, ServerStatus, ServiceImportResult, DiscoveredService, DeployableAdapter, DeployResult, DeployServiceSpec, UninstallResult, ToolCatalogItem } from "./devices.js";
+import type { AdapterReleaseRecord, AdapterStatus, ComputerStatus, DeviceBundleApplyInput, DeviceBundleExport, DeviceBundleImport, DeviceBundleKind, DeviceBundlePreview, DeviceType, Hardware, HardwareAvailability, ManagedDeviceDefinition, ManagedHardware, McpHttpServerConfig, McpServerConfig, PluginServerConfig, RegisteredService, RemoteComputer, RemoteServiceLog, ServerStatus, ServiceImportResult, DiscoveredService, DeployableAdapter, DeployResult, DeployServiceSpec, UninstallResult, ToolCatalogItem } from "./devices.js";
 import type { ExecutionActivity, ManualToolInvocationInput, ManualToolInvocationResult } from "./execution.js";
 
 import type { LlmSettings, LlmSettingsInput, ProjectView, ThemeChoice, WelcomeLayout } from "./storage.js";
@@ -11,7 +11,10 @@ import type { TestDeviceTools, TestPlan, TestPlanDraftAnalysis, TestPlanMutation
 export interface DashboardSnapshot {
   computers: RemoteComputer[];
   statuses: ComputerStatus[];
-  servers: McpServerConfig[];
+  /** Device services reached over MCP HTTP. */
+  servers: McpHttpServerConfig[];
+  /** Device plugins loaded into the backend. */
+  plugins: PluginServerConfig[];
   serverStatuses: ServerStatus[];
   hardware: ManagedHardware[];
   tools: ToolCatalogItem[];
@@ -55,6 +58,7 @@ export interface HardwareHarnessDevicesApi {
   uninstallService(serverId: string): Promise<UninstallResult>;
   executeSsh(computerId: string, command: string, timeoutMs?: number): Promise<unknown>;
   refreshManagedHardware(): Promise<ManagedHardware[]>;
+  listDeviceTypes(): Promise<DeviceType[]>;
   listHardware(): Promise<Hardware[]>;
   getDefinition(hardwareId: string): Promise<ManagedDeviceDefinition | null>;
   getAdapterStatus(hardwareId: string): Promise<AdapterReleaseRecord>;

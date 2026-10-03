@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
-  DeployResult, DeployServiceSpec, DeployStep, McpServerConfig, RemoteComputer
+  DeployResult, DeployServiceSpec, DeployStep, McpHttpServerConfig, RemoteComputer
 } from "@hardwareharness/contracts/devices";
 import { CheckIcon, MinusIcon, XIcon } from "lucide-react";
 import { errorMessage } from "../../../../lib/errors.js";
@@ -30,7 +30,7 @@ function guessAdapter(serverId: string, adapters: string[]): string {
  */
 export function DeployServiceDialog({ computer, server, onClose, onChanged }: {
   computer: RemoteComputer;
-  server?: McpServerConfig;
+  server?: McpHttpServerConfig;
   onClose: () => void;
   onChanged: () => Promise<void>;
 }) {

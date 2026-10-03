@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import threading
 from collections.abc import Callable
-from typing import Any, ClassVar, TypeVar
+from typing import Any, ClassVar, Literal, TypeVar
 
 from .config import ServerConfig
 from .errors import NOT_SUPPORTED, DeviceError
@@ -41,6 +41,9 @@ class Device:
     description: ClassVar[str] = ""
     """One-paragraph human description for ``/device.description``."""
     hardware_revision: ClassVar[str | None] = None
+    isolation: ClassVar[Literal["inproc", "subprocess"]] = "inproc"
+    """``subprocess`` runs the device in a child process (a driver that writes to stdout, crashes
+    or must not share the host's process); ``inproc`` runs it in the host process."""
 
     def __init__(self, config: ServerConfig) -> None:
         self.config = config

@@ -31,6 +31,7 @@ from hardwareharness_backend.devices import (
     DeviceStore,
     DeviceTransportRegistry,
     McpHttpTransport,
+    PluginTransport,
 )
 from hardwareharness_backend.host.change_events import change_summary
 from hardwareharness_backend.host.desktop import DesktopApplication
@@ -109,7 +110,8 @@ class HostRuntime:
             backend = FileSecretBackend(root / TEST_SECRETS_FILE)
         secrets = SecretStore(root, backend)
         await secrets.initialize()
-        transports = DeviceTransportRegistry([McpHttpTransport(secrets)])
+        plugins = PluginTransport()
+        transports = DeviceTransportRegistry([McpHttpTransport(secrets), plugins])
         store = DeviceStore(root / "devices")
         await store.initialize()
         devices = DeviceService(store, secrets, transports)
@@ -123,7 +125,9 @@ class HostRuntime:
         result_listeners = load_plugins("hardwareharness.result_listeners")
         test_resolver = DeviceToolResolver(devices, catalog, IcdLibrary(projects))
         test_plan_store = TestPlanStore(projects, test_resolver, test_step_plugins, wiring)
-        stream_sources = StreamSources(server_endpoints(devices, secrets))
+        stream_sources = StreamSources(
+            server_endpoints(devices, secrets), plugins=plugins.device_for
+        )
         live_root = root / "live-streams"
         live_root.mkdir(exist_ok=True)
         for stale in live_root.glob("*.sqlite*"):

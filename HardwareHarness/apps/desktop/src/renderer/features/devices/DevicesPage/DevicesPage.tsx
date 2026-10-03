@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Hardware, McpServerConfig, RemoteComputer } from "@hardwareharness/contracts/devices";
+import type { Hardware, McpHttpServerConfig, RemoteComputer } from "@hardwareharness/contracts/devices";
 import { CircleAlertIcon, RefreshCwIcon } from "lucide-react";
 import { errorMessage } from "../../../lib/errors.js";
 import { invalidateDeviceData } from "../../../lib/mutations.js";
@@ -15,7 +15,7 @@ import { HardwareEditor } from "./editors/HardwareEditor.js";
 import { ServerEditor } from "./editors/ServerEditor.js";
 import { AddServerByUrlDialog } from "./editors/ServiceDialogs.js";
 
-type ServerEditorState = { open: boolean; server?: McpServerConfig; computerId?: string };
+type ServerEditorState = { open: boolean; server?: McpHttpServerConfig; computerId?: string };
 
 export function DevicesPage() {
   const query = useDashboard();

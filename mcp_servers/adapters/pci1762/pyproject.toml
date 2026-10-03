@@ -9,6 +9,9 @@ description = "HardwareHarness MCP adapter for the Advantech PCI-1762 relay card
 requires-python = ">=3.11"
 dependencies = ["hardwareharness-device-sdk>=0.2,<0.3"]
 
+[project.entry-points."hardwareharness.devices"]
+pci1762 = "hh_adapter_pci1762:DEVICE"
+
 [tool.setuptools.packages.find]
 where = ["src"]
 

@@ -15,11 +15,23 @@ dependencies = [
   "ada-url==1.15.3",
   "ruamel.yaml==0.18.15",
   "keyring==25.7.0",
+  "hardwareharness-device-sdk",
+  "hh-adapter-pci1710l",
+  "hh-adapter-pci1762",
+  "hh-adapter-pci6208v",
+  "hh-adapter-cp118u-i",
 ]
 
 [project.entry-points."hardwareharness.test_steps"]
 
 [project.entry-points."hardwareharness.result_listeners"]
+
+[tool.uv.sources]
+hardwareharness-device-sdk = { path = "../../mcp_servers/sdk", editable = true }
+hh-adapter-pci1710l = { path = "../../mcp_servers/adapters/pci1710l", editable = true }
+hh-adapter-pci1762 = { path = "../../mcp_servers/adapters/pci1762", editable = true }
+hh-adapter-pci6208v = { path = "../../mcp_servers/adapters/pci6208v", editable = true }
+hh-adapter-cp118u-i = { path = "../../mcp_servers/adapters/cp118u_i", editable = true }
 
 [build-system]
 requires = ["hatchling"]

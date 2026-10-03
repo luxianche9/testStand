@@ -1,24 +1,15 @@
-"""``python -m hardwareharness_device_sdk --adapter <module[:attr]> [--config server.json] [--check]``."""
+"""``python -m hardwareharness_device_sdk --adapter <type|module[:attr]> [--config server.json] [--check]``."""
 
 from __future__ import annotations
 
 import argparse
-import importlib
 import json
 import logging
 import sys
 
 from .config import CONFIG_ENV, ServerConfig
 from .device import Device
-
-
-def load_device(spec: str) -> type[Device]:
-    """``module`` exposes ``DEVICE``; ``module:Name`` selects another attribute."""
-    module_name, _, attr = spec.partition(":")
-    target = getattr(importlib.import_module(module_name), attr or "DEVICE")
-    if not (isinstance(target, type) and issubclass(target, Device)):
-        raise TypeError(f"{spec} is not a Device subclass")
-    return target
+from .device_types import load_device
 
 
 def check(device_cls: type[Device]) -> int:
@@ -37,7 +28,7 @@ def check(device_cls: type[Device]) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="hardwareharness_device_sdk", description=__doc__)
-    parser.add_argument("--adapter", required=True, help="Adapter module exposing DEVICE, or module:ClassName.")
+    parser.add_argument("--adapter", required=True, help="Device type, adapter module exposing DEVICE, or module:ClassName.")
     parser.add_argument("--config", help=f"server.json path; defaults to ${CONFIG_ENV}.")
     parser.add_argument("--check", action="store_true", help="Run the dry-run compliance suite and exit.")
     parser.add_argument("--log-level", default="info")

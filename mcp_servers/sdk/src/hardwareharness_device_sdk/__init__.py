@@ -12,6 +12,7 @@ from .app import BearerAuth, DeviceService, create_app
 from .clock import now_ms
 from .config import ServerConfig, env_flag
 from .device import Device
+from .device_types import ENTRY_POINT_GROUP, device_types, load_device
 from .envelope import CONTRACT_REVISION, ContractModel, envelope, error, iso_now, model, ok
 from .errors import (
     DEVICE_ERROR,
@@ -28,6 +29,8 @@ from .errors import (
 from .jsonline import JsonLineBackend, JsonLineCli, find_executable, unwrap
 from .manifest import Manifest, build_manifest
 from .operation import Operation
+from .host import DeviceHost, HostTool
+from .plugin import DeviceHandle, InprocDevice, SubprocessDevice, open_device
 from .pinout import (
     Connector,
     ModeDefinition,
@@ -61,11 +64,12 @@ __all__ = [
     "INTERNAL", "INVALID_ARGUMENT", "INVALID_RESPONSE",
     "NOT_CONFIGURED", "NOT_SUPPORTED", "SERVICE_UNAVAILABLE", "SHAPES", "STREAM_KINDS", "STREAM_TYPES",
     "AdapterError", "BearerAuth", "BitsStream", "BlobStream", "BlockStream", "ByteStream", "Connector",
-    "ContractModel", "Device", "DeviceError", "DeviceService", "FrameStream", "HardwareId",
+    "ContractModel", "Device", "DeviceError", "DeviceHandle", "DeviceHost", "DeviceService", "ENTRY_POINT_GROUP",
+    "HostTool", "InprocDevice", "SubprocessDevice", "FrameStream", "HardwareId",
     "JsonLineBackend", "JsonLineCli", "Manifest", "ModeDefinition", "Operation", "Pin", "PinFunction",
     "Pinout", "ReadResult", "RingBuffer", "Sampler", "ScalarStream",
     "ServerConfig", "SoftwareWaveform", "Stream", "StreamRegistry", "ToolSpec", "WaveformParams", "__version__",
-    "build_manifest", "create_app", "env_flag", "envelope", "error",
-    "find_executable", "function", "iso_now", "model", "nc", "now_ms", "ok", "param",
+    "build_manifest", "create_app", "device_types", "env_flag", "envelope", "error",
+    "find_executable", "function", "iso_now", "load_device", "model", "nc", "now_ms", "ok", "open_device", "param",
     "sample_value", "single_connector_pinout", "tool", "unwrap", "waveform_capability",
 ]

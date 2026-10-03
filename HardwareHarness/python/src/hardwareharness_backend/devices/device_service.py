@@ -470,7 +470,11 @@ class DeviceService:
 
         Normal exit runs this so no output is left energized (a crash cannot, by design).
         """
-        tools = [tool for tool in self.list_tools() if tool.get("kind") == "safe"]
+        tools = [
+            tool
+            for tool in self.list_tools()
+            if tool.get("contractMetadata", {}).get("operationSemantics", {}).get("kind") == "safe"
+        ]
 
         async def safe(tool: Record) -> None:
             try:

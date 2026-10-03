@@ -9,6 +9,9 @@ description = "HardwareHarness MCP adapter for the ADLINK PCI-6208V 8-channel an
 requires-python = ">=3.11"
 dependencies = ["hardwareharness-device-sdk>=0.2,<0.3"]
 
+[project.entry-points."hardwareharness.devices"]
+pci6208v = "hh_adapter_pci6208v:DEVICE"
+
 [tool.setuptools.packages.find]
 where = ["src"]
 

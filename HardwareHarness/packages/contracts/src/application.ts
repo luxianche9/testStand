@@ -1,6 +1,6 @@
 import type { AgentConfirmation, AgentConfirmationAnswer, RequestContext } from "./agents.js";
 import type { DashboardSnapshot } from "./desktop.js";
-import type { AdapterReleaseRecord, AdapterStatus, ConnectionStatus, Hardware, ManagedDeviceDefinition, ManagedHardware, McpServerConfig, RegisteredService, RemoteComputer, RemoteServiceLog, ServerStatus, ServiceImportResult, DiscoveredService, DeployableAdapter, DeployResult, DeployServiceSpec, UninstallResult, StoredHardwareDefinition, ToolCatalogItem } from "./devices.js";
+import type { AdapterReleaseRecord, AdapterStatus, ConnectionStatus, DeviceType, Hardware, ManagedDeviceDefinition, ManagedHardware, McpServerConfig, RegisteredService, RemoteComputer, RemoteServiceLog, ServerStatus, ServiceImportResult, DiscoveredService, DeployableAdapter, DeployResult, DeployServiceSpec, UninstallResult, StoredHardwareDefinition, ToolCatalogItem } from "./devices.js";
 import type { ManualToolInvocationInput, ManualToolInvocationResult } from "./execution.js";
 
 import type { ProjectDocument, ProjectFolderSelection, RecentProjectSummary } from "./projects.js";
@@ -48,6 +48,7 @@ export interface BackendApplication {
     deployService(context: RequestContext, computerId: string, spec: DeployServiceSpec): Promise<DeployResult>;
     uninstallService(context: RequestContext, serverId: string): Promise<UninstallResult>;
     listManagedHardware(context: RequestContext): Promise<ManagedHardware[]>;
+    listDeviceTypes(context: RequestContext): DeviceType[];
     listHardware(context: RequestContext): Hardware[];
     getHardware(context: RequestContext, hardwareId: string): Hardware;
     getDefinition(context: RequestContext, hardwareId: string): ManagedDeviceDefinition | null;

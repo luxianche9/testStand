@@ -14,6 +14,7 @@ from .device_transport import (
     DeviceTransportRegistry as DeviceTransportRegistry,
 )
 from .mcp_client import McpHttpTransport as McpHttpTransport
+from .plugin_transport import PluginTransport as PluginTransport
 from .remote_shell import (
     PosixRemoteShell as PosixRemoteShell,
 )

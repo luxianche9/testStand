@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { DashboardSnapshot } from "@hardwareharness/contracts/desktop";
-import type { Hardware, McpServerConfig, RemoteComputer } from "@hardwareharness/contracts/devices";
+import type { Hardware, McpHttpServerConfig, RemoteComputer } from "@hardwareharness/contracts/devices";
 import { MousePointerClickIcon } from "lucide-react";
 import { hardwareForServer } from "../../../lib/hardware.js";
 import { useDeviceDefinition } from "../../../lib/queries.js";
@@ -18,7 +18,7 @@ type Callbacks = {
   onSelect: (key: string) => void;
   onEditComputer: (computer: RemoteComputer) => void;
   onAddServer: (computerId: string) => void;
-  onEditServer: (server: McpServerConfig) => void;
+  onEditServer: (server: McpHttpServerConfig) => void;
   onEditHardware: (hardware: Hardware) => void;
   onChanged: () => Promise<void>;
 };
@@ -136,7 +136,7 @@ function ComputerInspector({ computer, snapshot, hardware, onSelect, onEditCompu
 }
 
 function ManagedInspector({ server, snapshot, hardware, onEditServer, onChanged }:
-  Callbacks & { server: McpServerConfig; snapshot: DashboardSnapshot; hardware: Hardware[] }) {
+  Callbacks & { server: McpHttpServerConfig; snapshot: DashboardSnapshot; hardware: Hardware[] }) {
   const [error, setError] = useState<string | null>(null);
   const device = hardwareForServer(server, hardware);
   const computer = snapshot.computers.find((item) => item.id === server.computerId);

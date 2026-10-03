@@ -373,6 +373,12 @@
         "title": "DevicesListComputersRequest",
         "type": "object"
       },
+      "DevicesListDeviceTypesRequest": {
+        "additionalProperties": false,
+        "properties": {},
+        "title": "DevicesListDeviceTypesRequest",
+        "type": "object"
+      },
       "DevicesListHardwareRequest": {
         "additionalProperties": false,
         "properties": {},
@@ -3009,6 +3015,66 @@
         "x-capability": "devices.read",
         "x-profiles": [
           "adapter"
+        ],
+        "x-idempotency": "natural",
+        "x-confirm": false
+      }
+    },
+    "/api/ops/devices.listDeviceTypes": {
+      "post": {
+        "operationId": "devices.listDeviceTypes",
+        "summary": "Device plugins installed with the backend (``hardwareharness.devices`` entry points).",
+        "tags": [
+          "devices"
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DevicesListDeviceTypesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/WireError"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-risk": "read",
+        "x-capability": "hardware.read",
+        "x-profiles": [
+          "adapter",
+          "explore",
+          "plan"
         ],
         "x-idempotency": "natural",
         "x-confirm": false

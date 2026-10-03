@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import type {
-  DeviceBundlePreview, Hardware, HardwarePort, McpServerConfig, RemoteComputer, ServerLifecycle
+  DeviceBundlePreview, Hardware, HardwarePort, McpHttpServerConfig, RemoteComputer, ServerLifecycle
 } from "@hardwareharness/contracts/devices";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -47,7 +47,7 @@ function defaultRoot(serverId: string): string {
   return `E:\\${serverId.replace(/_MCP$/, "").toLowerCase()}_mcp_server`;
 }
 
-function initialValues(server: McpServerConfig | undefined, computerId: string): ServerEditorValues {
+function initialValues(server: McpHttpServerConfig | undefined, computerId: string): ServerEditorValues {
   const overrides: Record<LifecycleKey, string> = {
     statusCommand: server?.lifecycle?.statusCommand ?? "",
     startCommand: server?.lifecycle?.startCommand ?? "",
@@ -75,7 +75,7 @@ function initialValues(server: McpServerConfig | undefined, computerId: string):
 /** A server and the single managed hardware device it drives are edited together. */
 export function ServerEditor({ open, server, computerId, computers, hardware, onClose, onChanged }: {
   open: boolean;
-  server?: McpServerConfig | undefined;
+  server?: McpHttpServerConfig | undefined;
   computerId?: string | undefined;
   computers: RemoteComputer[];
   hardware: Hardware[];
@@ -147,7 +147,7 @@ export function ServerEditor({ open, server, computerId, computers, hardware, on
       const lifecycle: ServerLifecycle = Object.fromEntries(
         lifecycleFields.flatMap(({ key }) => (values[key].trim() ? [[key, values[key].trim()]] : []))
       );
-      const input: McpServerConfig = {
+      const input: McpHttpServerConfig = {
         transport: "mcp-http",
         serverId,
         ...(values.computerId ? { computerId: values.computerId } : {}),

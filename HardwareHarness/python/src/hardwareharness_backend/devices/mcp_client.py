@@ -7,7 +7,6 @@ from datetime import timedelta
 from typing import Any
 
 import httpx
-from jsonschema import Draft7Validator
 from mcp import ClientSession, types
 
 from hardwareharness_backend.contracts.devices import (
@@ -20,6 +19,7 @@ from hardwareharness_backend.util import clone, json_dumps
 from .device_manifest import declared_streams, fetch_device
 from .mcp_transport import compatible_http_client
 from .schema_validation import schema_error
+from .tool_catalog import catalog_entry, request_arguments, unwrap_result
 
 Record = dict[str, Any]
 
@@ -206,64 +206,12 @@ class McpHttpTransport:
                     required_tasks = set()
                     for tool in listed.tools:
                         raw = tool.model_dump(by_alias=True, exclude_none=True)
-                        schema = raw["inputSchema"]
-                        Draft7Validator.check_schema(schema)
-                        inject = isinstance(schema.get("properties"), dict) and (
-                            "hardwareId" in schema["properties"]
-                        )
-                        validators[tool.name] = {"input": schema, "injectHardwareId": inject}
+                        entry, validators[tool.name] = catalog_entry(identifier, raw)
                         if raw.get("outputSchema"):
-                            Draft7Validator.check_schema(raw["outputSchema"])
-                            validators[tool.name]["output"] = raw["outputSchema"]
                             output_schemas[tool.name] = raw["outputSchema"]
                         if raw.get("execution", {}).get("taskSupport") == "required":
                             required_tasks.add(tool.name)
-                        public_schema = clone(schema)
-                        if inject:
-                            public_schema["properties"].pop("hardwareId", None)
-                            if isinstance(public_schema.get("required"), list):
-                                public_schema["required"] = [
-                                    key for key in public_schema["required"] if key != "hardwareId"
-                                ]
-                        kind = (
-                            raw.get("_meta", {}).get("hardwareharness", {}).get("kind", "unknown")
-                        )
-                        tools.append(
-                            {
-                                "externalName": f"{identifier}__{tool.name}",
-                                "remoteName": tool.name,
-                                "serverId": identifier,
-                                **({"description": tool.description} if tool.description else {}),
-                                "inputSchema": public_schema,
-                                "kind": kind if isinstance(kind, str) else "unknown",
-                                **(
-                                    {"upstreamOutputSchema": clone(raw["outputSchema"])}
-                                    if raw.get("outputSchema")
-                                    else {}
-                                ),
-                                **(
-                                    {"annotations": clone(raw["annotations"])}
-                                    if raw.get("annotations")
-                                    else {}
-                                ),
-                                "contractMetadata": {
-                                    key: clone(value)
-                                    for key, value in raw.get("_meta", {})
-                                    .get("hardwareharness", {})
-                                    .items()
-                                    if key
-                                    in {
-                                        "kind",
-                                        "contractRevision",
-                                        "resultSemantics",
-                                        "timeoutRecovery",
-                                        "referenceIds",
-                                        "evidence",
-                                        "operationSemantics",
-                                    }
-                                },
-                            }
-                        )
+                        tools.append(entry)
                     if not any(tool.name == "list_hardware" for tool in listed.tools):
                         raise RuntimeError(f"MCP server {identifier} must expose list_hardware")
                     record = {
@@ -351,16 +299,7 @@ class McpHttpTransport:
             raise RuntimeError(f"MCP server is not connected: {server_id}")
         validators = session["validators"].get(name)
         metadata = options.get("metadata")
-        request_args = (
-            {**args, "hardwareId": metadata["hardwareId"]}
-            if (
-                validators
-                and validators["injectHardwareId"]
-                and metadata
-                and metadata.get("hardwareId")
-            )
-            else args
-        )
+        request_args = request_arguments(validators, args, metadata)
         if validators:
             error = schema_error(validators["input"], request_args)
             if error:
@@ -406,28 +345,8 @@ class McpHttpTransport:
                 },
             ) from failure
         structured = result.get("structuredContent")
-        if (
-            validators
-            and validators.get("output")
-            and "structuredContent" in result
-            and not result.get("isError")
-        ):
-            error = schema_error(validators["output"], structured)
-            if error:
-                raise app_error(
-                    "invalid_response", f"Invalid structuredContent from {name}: {error}"
-                )
-        if isinstance(structured, dict) and structured.get("ok") is False:
-            remote_error = structured.get("error") or {}
-            remote_failure = app_error(
-                remote_error.get("category", "error"),
-                remote_error.get("message", "Remote MCP tool failed"),
-                remote_error.get("details"),
-            )
-            if isinstance(structured.get("meta"), dict):
-                remote_failure.meta = structured["meta"]
-            raise remote_failure
-        if result.get("isError"):
+        failed = isinstance(structured, dict) and structured.get("ok") is False
+        if result.get("isError") and not failed:
             messages = [
                 block["text"]
                 for block in result.get("content", [])
@@ -438,15 +357,12 @@ class McpHttpTransport:
                 "\n".join(messages) or "Remote MCP tool failed",
                 {"serverId": server_id, "toolName": name, "automaticRetry": False},
             )
-        if isinstance(structured, dict) and "data" in structured:
-            data = structured["data"]
-            meta = structured.get("meta")
-        else:
-            data = result.get("structuredContent", result.get("content"))
-            meta = None
-        if options.get("envelope"):
-            return {"data": data, "meta": meta if isinstance(meta, dict) else {}}
-        return data
+        return unwrap_result(
+            name,
+            structured if "structuredContent" in result else result.get("content"),
+            validators if "structuredContent" in result and not result.get("isError") else None,
+            options,
+        )
 
     async def list_hardware(self, servers: list[Record]) -> list[Record]:
         output = []

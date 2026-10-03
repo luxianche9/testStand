@@ -183,15 +183,19 @@ async def test_direct_tool_metadata_and_faulted_hardware_refresh() -> None:
         await service.refresh_computer("missing")
 
 
+SAFE = {"kind": "hardware", "operationSemantics": {"kind": "safe"}}
+ACTUATE = {"kind": "hardware", "operationSemantics": {"kind": "actuate"}}
+
+
 async def test_safe_all_calls_every_safe_tool_and_tolerates_failures() -> None:
     servers = [
         {"serverId": "A", "hardwareId": "HA", "enabled": True},
         {"serverId": "B", "hardwareId": "HB", "enabled": True},
     ]
     tools = [
-        {"externalName": "A__a_safe_state", "serverId": "A", "kind": "safe"},
-        {"externalName": "A__a_set", "serverId": "A", "kind": "actuate"},
-        {"externalName": "B__b_safe_state", "serverId": "B", "kind": "safe"},
+        {"externalName": "A__a_safe_state", "serverId": "A", "contractMetadata": SAFE},
+        {"externalName": "A__a_set", "serverId": "A", "contractMetadata": ACTUATE},
+        {"externalName": "B__b_safe_state", "serverId": "B", "contractMetadata": SAFE},
     ]
     calls: list[str] = []
 

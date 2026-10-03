@@ -11,7 +11,9 @@ from hardwareharness_backend.contracts.validation import (
     obj,
     parse_id_input,
     parse_record,
+    record,
     string,
+    unknown,
 )
 from hardwareharness_backend.util import Record
 
@@ -64,6 +66,21 @@ mcp_http_server_schema = obj(
         # Install directory on the computer (``services.json`` ``root``); lifecycle derives from it.
         "root": string(1).optional(),
         "lifecycle": server_lifecycle_schema.optional(),
+    },
+    strict=True,
+)
+# A device plugin loaded into the backend: ``type`` names its ``hardwareharness.devices``
+# entry point, ``mode`` sim runs the adapter's simulator instead of the driver.
+plugin_server_schema = obj(
+    {
+        "transport": literal("plugin"),
+        "serverId": string(1),
+        "label": string(1),
+        "hardwareId": string(1),
+        "type": string(1),
+        "settings": record(unknown()).default({}),
+        "mode": enum("real", "sim").default("real"),
+        "enabled": boolean().default(True),
     },
     strict=True,
 )
@@ -194,7 +211,12 @@ def parse_mcp_server(value: Any) -> Record:
         value = {**value, "transport": "mcp-http"}
     from hardwareharness_backend.contracts.validation import discriminated
 
-    return parse_record(discriminated("transport", {"mcp-http": mcp_http_server_schema}), value)
+    return parse_record(
+        discriminated(
+            "transport", {"mcp-http": mcp_http_server_schema, "plugin": plugin_server_schema}
+        ),
+        value,
+    )
 
 
 def parse_hardware(value: Any) -> Record:
