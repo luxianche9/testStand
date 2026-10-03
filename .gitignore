@@ -32,3 +32,6 @@ build/
 
 # DAQNavi bridges built by devices/native/build.py
 devices/adapters/*/src/*/bin/
+
+# Release output of app/scripts/release.mjs
+/release/

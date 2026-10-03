@@ -7,12 +7,12 @@ root = Path(SPECPATH)
 datas = []
 for package in ("certifi", "jsonschema_specifications", "teststand_backend.mcp_gateway", "teststand_backend.workspace"):
     datas += collect_data_files(package)
-datas += [(str(root / "vendor/icu/LICENSE"), "licenses/icu")]
 datas += copy_metadata("ada-url")
 # No adapter is bundled: device types are installed as .tsdev packages into the user data
 # directory. The SDK they import is bundled whole, with its metadata (packages check its version).
 datas += copy_metadata("teststand-device-sdk")
-binaries = [(str(path), "icu") for path in (root / "vendor/icu/bin64").glob("*.dll")]
+datas += copy_metadata("teststand-backend")  # __version__ reads it
+binaries = []
 hiddenimports = [
     "anyio._backends._asyncio", "uvicorn.loops.asyncio", "uvicorn.protocols.http.h11_impl",
     "uvicorn.lifespan.on", "sqlite3", "cryptography", "pydantic_core",

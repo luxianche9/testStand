@@ -66,6 +66,11 @@ def declared_streams(document: Record) -> list[Record]:
 
 
 def plugin_config(instance: Record) -> DeviceConfig:
+    if instance["type"] not in {item.name for item in entry_points(group=ENTRY_POINT_GROUP)}:
+        raise app_error(
+            "unavailable",
+            f"Device type {instance['type']} is not installed; install its .tsdev device package",
+        )
     device_cls = load_device(instance["type"])
     return DeviceConfig.from_mapping(
         {

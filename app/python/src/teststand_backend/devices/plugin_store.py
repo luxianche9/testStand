@@ -57,8 +57,8 @@ Record = dict[str, Any]
 
 PACKAGE_EXTENSION = ".tsdev"
 MANIFEST = "package.json"
-MAX_ARCHIVE = 256 * 1024 * 1024
-MAX_EXPANDED = 512 * 1024 * 1024
+MAX_ARCHIVE = 48 * 1024 * 1024  # sent base64 in a JSON body of at most 64 MB
+MAX_EXPANDED = 256 * 1024 * 1024
 MAX_ENTRIES = 64
 MAX_MANIFEST = 256 * 1024
 SDK_DISTRIBUTION = "teststand-device-sdk"
@@ -124,7 +124,7 @@ def _compatible(name: str) -> bool:
 def _read_archive(data: bytes) -> tuple[Record, dict[str, bytes]]:
     """The validated manifest and the wheels (file name -> bytes) of a ``.tsdev`` archive."""
     if len(data) > MAX_ARCHIVE:
-        raise app_error("invalid_argument", "Device package exceeds the 256 MB limit")
+        raise app_error("invalid_argument", "Device package exceeds the 48 MB limit")
     try:
         archive = zipfile.ZipFile(io.BytesIO(data))
     except zipfile.BadZipFile as error:
@@ -138,7 +138,7 @@ def _read_archive(data: bytes) -> tuple[Record, dict[str, bytes]]:
                 "invalid_argument", f"Device package has more than {MAX_ENTRIES} entries"
             )
         if sum(item.file_size for item in items) > MAX_EXPANDED:
-            raise app_error("invalid_argument", "Device package expands beyond 512 MB")
+            raise app_error("invalid_argument", "Device package expands beyond 256 MB")
         manifest: Any = None
         wheels: dict[str, bytes] = {}
         for item in items:

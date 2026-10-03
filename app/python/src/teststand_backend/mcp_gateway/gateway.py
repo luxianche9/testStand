@@ -17,6 +17,7 @@ from mcp.shared.version import SUPPORTED_PROTOCOL_VERSIONS as SDK_PROTOCOL_VERSI
 from pydantic import ValidationError
 from starlette.types import Receive, Scope, Send
 
+from teststand_backend import __version__
 from teststand_backend.application.registry import OperationRegistry
 from teststand_backend.contracts.operations import MODES
 from teststand_backend.contracts.validation import (
@@ -426,7 +427,7 @@ class LocalMcpGateway:
         if mode:
             # The work mode (design doc 8.2) is fixed when the session starts.
             context["mode"] = mode
-        protocol: Any = Server("teststand", version="0.1.0", instructions=AGENT_INSTRUCTIONS)
+        protocol: Any = Server("teststand", version=__version__, instructions=AGENT_INSTRUCTIONS)
 
         async def list_tools(_request: Any) -> Any:
             return types.ServerResult(

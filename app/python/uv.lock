@@ -1038,7 +1038,7 @@ requires-dist = [{ name = "teststand-device-sdk", editable = "../../devices/sdk"
 
 [[package]]
 name = "teststand-backend"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "ada-url" },

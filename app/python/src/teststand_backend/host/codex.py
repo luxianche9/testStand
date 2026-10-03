@@ -23,6 +23,7 @@ from typing import Any, Protocol
 
 import httpx
 
+from teststand_backend import __version__
 from teststand_backend.util import Record
 
 CODEX_TOKEN_ENV = "TESTSTAND_MCP_TOKEN"
@@ -192,7 +193,7 @@ async def probe_gateway(endpoint: str, token: str) -> None:
                 "params": {
                     "protocolVersion": "2025-03-26",
                     "capabilities": {},
-                    "clientInfo": {"name": "teststand-integration-check", "version": "0.1.0"},
+                    "clientInfo": {"name": "teststand-integration-check", "version": __version__},
                 },
             },
         )

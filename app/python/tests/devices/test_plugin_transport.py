@@ -132,3 +132,10 @@ async def test_device_types_operation_lists_the_installed_plugins() -> None:
     app = DevicesApplication(DefaultAuthorizer(), Mock(), Mock())
     types = {item["type"] for item in app.list_device_types(HUMAN)}
     assert {"pci1710l", "pci1762", "pci6208v", "cp118u_i"} <= types
+
+
+async def test_an_instance_of_an_uninstalled_type_says_so(tmp_path: Path) -> None:
+    service, transport = await devices(tmp_path, plugin("GONE", "removed_card", "GONE_CARD"))
+    [status] = service.list_device_statuses()
+    assert status["transport"]["state"] != "online"
+    assert "removed_card is not installed" in status["transport"]["message"]

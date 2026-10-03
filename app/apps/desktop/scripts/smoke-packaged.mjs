@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFile, spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -17,6 +17,8 @@ const executablePath = resolve(process.env.TESTSTAND_SMOKE_EXECUTABLE ?? resolve
 const resourcesRoot = resolve(dirname(executablePath), "resources");
 const bundledOpenCode = resolve(resourcesRoot, "opencode/opencode.exe");
 const packagedResources = resolve(resourcesRoot, "third-party");
+// The .tsdev device packages released with this build (devices/pack.py --all).
+const devicePackagesDir = resolve(process.env.TESTSTAND_SMOKE_DEVICE_PACKAGES ?? resolve(workspaceDir, "../devices/dist"));
 
 const userDataDir = await mkdtemp(join(tmpdir(), "teststand-packaged-smoke-"));
 const projectName = "packaged-smoke 中文 项目";
@@ -55,7 +57,7 @@ try {
   let rendererErrors = collectRendererErrors(page);
   await page.getByRole("heading", { name: "最近项目" }).waitFor();
   await mkdir(projectRoot);
-  await page.evaluate((rootPath) => window.teststand.projects.initializeFolder(rootPath), projectRoot);
+  await page.evaluate((rootPath) => window.teststand.projects.initializeFolder({ rootPath }), projectRoot);
   await page.evaluate(() => window.teststand.settings.saveLlm({
     baseUrl: "https://api.openai.com/v1",
     model: "gpt-4.1",
@@ -70,6 +72,7 @@ try {
   await mkdir(dirname(agentReportPath), { recursive: true });
   await writeFile(agentReportPath, JSON.stringify(agentReport, null, 2) + "\n");
   await verifyAgentUi(page);
+  await verifyDevicePackages(application, page);
   assert.deepEqual(rendererErrors, [], `Renderer errors during first launch:\n${rendererErrors.join("\n")}`);
   const firstSidecarPid = await waitForSidecar(baselinePids);
   launchedSidecarPids.add(firstSidecarPid);
@@ -87,6 +90,7 @@ try {
   await page.getByText(projectName, { exact: true }).first().click();
   await poll(async () => (await page.evaluate(() => window.teststand.agents.openCodeStatus())).state === "running", 30_000);
   await verifyAgentUi(page);
+  await verifyPendingRemovalApplied(page);
   assert.deepEqual(rendererErrors, [], `Renderer errors during automatic restart launch:\n${rendererErrors.join("\n")}`);
   const secondSidecarPid = await waitForSidecar(new Set([...baselinePids, firstSidecarPid]));
   launchedSidecarPids.add(secondSidecarPid);
@@ -130,13 +134,22 @@ function collectRendererErrors(page) {
 }
 
 async function verifyAgentUi(page) {
+  // Opening a project restarts OpenCode in its folder; wait for the restarted server.
+  await poll(async () => {
+    const status = await page.evaluate(() => window.teststand.agents.openCodeStatus());
+    return status.state === "running" && Boolean(status.apiUrl) && status.workspaceState === "ready";
+  }, 60_000);
   const agentConfiguration = await page.evaluate(async () => {
     const status = await window.teststand.agents.openCodeStatus();
     const query = `?directory=${encodeURIComponent(status.workspace)}`;
-    const [configuration, agents] = await Promise.all([
-      fetch(`${status.apiUrl}/config${query}`).then((response) => response.json()),
-      fetch(`${status.apiUrl}/agent${query}`).then((response) => response.json())
-    ]);
+    const read = async (path) => {
+      try {
+        return await fetch(`${status.apiUrl}${path}${query}`).then((response) => response.json());
+      } catch (error) {
+        throw new Error(`${status.apiUrl}${path}: ${error.message} (page origin ${location.origin})`);
+      }
+    };
+    const [configuration, agents] = await Promise.all([read("/config"), read("/agent")]);
     return { configuration, agents };
   });
   assert.equal(agentConfiguration.configuration.default_agent, "build");
@@ -159,6 +172,78 @@ async function verifyAgentUi(page) {
   await page.getByRole("dialog", { name: "会话历史" }).waitFor({ state: "hidden" });
 }
 
+/**
+ * The release has no device types of its own: install pci1762 through the Devices page (the user's
+ * path, with the native file dialog answered), the other packages through the API, then open sim
+ * instances, including pci6208v, which runs in the frozen backend's isolated child process.
+ */
+async function verifyDevicePackages(application, page) {
+  const files = (await readdir(devicePackagesDir)).filter((name) => name.endsWith(".tsdev")).sort();
+  for (const type of ["pci1710l", "pci1762", "pci6208v", "cp118u_i"]) {
+    assert.ok(files.some((name) => name.startsWith(`${type}-`)), `Missing device package for ${type} in ${devicePackagesDir}`);
+  }
+  assert.deepEqual(await page.evaluate(() => window.teststand.devices.listDeviceTypes()), [],
+    "A release must not ship built-in device types");
+
+  const relay = resolve(devicePackagesDir, files.find((name) => name.startsWith("pci1762-")));
+  await application.evaluate(({ dialog }, path) => {
+    dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [path] });
+  }, relay);
+  const click = (locator) => locator.evaluate((element) => element.click());
+  await click(page.getByRole("tab", { name: "设备管理", exact: true }));
+  await click(page.getByRole("button", { name: "设备类型" }));
+  await click(page.getByRole("button", { name: /安装设备包/ }));
+  const confirm = page.getByRole("dialog", { name: "安装设备包" });
+  await confirm.getByText("Advantech PCI-1762", { exact: true }).waitFor();
+  await confirm.getByText("Advantech DAQNavi", { exact: true }).waitFor();
+  await click(confirm.getByRole("button", { name: "安装", exact: true }));
+  await page.getByRole("status").filter({ hasText: "pci1762 0.2.0 已安装" }).waitFor();
+  await click(page.getByRole("dialog", { name: "设备类型" }).getByText("关闭", { exact: true }));
+
+  for (const name of files.filter((item) => !item.startsWith("pci1762-"))) {
+    const bytes = [...await readFile(resolve(devicePackagesDir, name))];
+    const result = await page.evaluate(async (data) => {
+      const bytes = new Uint8Array(data);
+      const report = await window.teststand.devices.inspectPackage({ data: bytes });
+      if (report.problems.length) throw new Error(report.problems.join("; "));
+      return window.teststand.devices.installPackage({ data: bytes });
+    }, bytes);
+    assert.equal(result.restartRequired, false, `${name} should be usable at once`);
+  }
+  const types = await page.evaluate(() => window.teststand.devices.listDeviceTypes());
+  assert.deepEqual(types.map((item) => [item.type, item.source, item.error ?? null]).sort(), [
+    ["cp118u_i", "package", null], ["pci1710l", "package", null], ["pci1762", "package", null], ["pci6208v", "package", null]
+  ]);
+
+  const calls = {
+    pci1762: ["pci1762_set_relay", { channel: 0, closed: true }],
+    pci6208v: ["pci6208v_set_voltage", { channel: 0, volts: 1.25 }]
+  };
+  for (const [type, [tool, args]] of Object.entries(calls)) {
+    const result = await page.evaluate(async ({ type, tool, args }) => {
+      const deviceId = `SMOKE_${type.toUpperCase()}`;
+      const hardwareId = `${deviceId}_CARD`;
+      await window.teststand.devices.saveDevice({ input: {
+        deviceId, label: type, hardwareId, type, settings: {}, mode: "sim", enabled: true
+      } });
+      const status = await window.teststand.devices.refreshDevice({ deviceId });
+      const call = await window.teststand.devices.callTool({ name: `${deviceId}__${tool}`, args: { hardwareId, ...args } });
+      return { status, call };
+    }, { type, tool, args });
+    assert.equal(result.status.transport.state, "online", `${type}: ${JSON.stringify(result.status.transport)}`);
+    assert.ok(JSON.stringify(result.call).includes(String(Object.values(args).at(-1))), `${type}: ${JSON.stringify(result.call)}`);
+  }
+  const removal = await page.evaluate(() => window.teststand.devices.uninstallPackage({ deviceType: "pci1762" }));
+  assert.equal(removal.restartRequired, true);
+}
+
+async function verifyPendingRemovalApplied(page) {
+  const packages = await page.evaluate(() => window.teststand.devices.listPackages());
+  assert.deepEqual(packages.map((item) => item.type).sort(), ["cp118u_i", "pci1710l", "pci6208v"]);
+  const status = await page.evaluate(() => window.teststand.devices.refreshDevice({ deviceId: "SMOKE_PCI1762" }));
+  assert.match(JSON.stringify(status), /pci1762 is not installed/);
+}
+
 function startProcessAudit() {
   const roots = new Set();
   const tracked = new Map();
@@ -178,8 +263,6 @@ while ($true) {
     if ($_.Name -eq 'testStand.exe') { $role = 'electron' }
     elseif ($_.Name -eq 'teststand-backend.exe') { $role = 'backend' }
     elseif ($_.Name -eq 'opencode.exe') { $role = 'opencode' }
-    elseif ($_.Name -eq 'uv.exe') { $role = 'uv' }
-    elseif ($_.CommandLine -like '*teststand._worker*') { $role = 'worker' }
     elseif ($_.Name -eq 'python.exe') { $role = 'python' }
     [pscustomobject]@{ pid = $_.ProcessId; parent = $_.ParentProcessId; name = $_.Name;
       executable = $_.ExecutablePath; started = $_.CreationDate.ToUniversalTime().ToString('o'); role = $role }
@@ -228,7 +311,7 @@ while ($true) {
         live.pid === item.pid && live.started === item.started)), 20_000);
     },
     async writeReport() {
-      for (const role of ["electron", "backend", "uv", "worker", "opencode"]) {
+      for (const role of ["electron", "backend", "opencode"]) {
         assert.ok([...tracked.values()].some((item) => item.role === role), `Missing process audit role: ${role}`);
       }
       const report = resolve(workspaceDir, "output/packaging/process-cleanup.json");

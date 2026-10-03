@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import httpx
 import pytest
 
+from teststand_backend import __version__
 from teststand_backend.application import OPERATIONS
 from teststand_backend.application.registry import OperationRegistry
 from teststand_backend.contracts.errors import AppError
@@ -214,7 +215,7 @@ async def test_http_routes_and_tool_errors() -> None:
             assert initialization == {
                 "protocolVersion": "2025-03-26",
                 "capabilities": {"tools": {"listChanged": True}},
-                "serverInfo": {"name": "teststand", "version": "0.1.0"},
+                "serverInfo": {"name": "teststand", "version": __version__},
             }
             client.headers["mcp-session-id"] = initialized.headers["mcp-session-id"]
             await client.post(url, json={"jsonrpc": "2.0", "method": "notifications/initialized"})

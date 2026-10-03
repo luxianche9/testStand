@@ -1,6 +1,6 @@
 {
   "name": "teststand",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "private": true,
   "packageManager": "pnpm@10.15.0",
@@ -16,13 +16,15 @@
     "test:e2e": "pnpm --filter @teststand/desktop test:e2e",
     "check:imports": "node scripts/check-import-boundaries.mjs",
     "check:dependencies": "depcruise --config .dependency-cruiser.cjs packages apps/desktop/src --output-type err && knip --config knip.json --include \"dependencies,unlisted,exports,types,cycles\"",
-    "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm check:imports && pnpm check:branding && pnpm check:dependencies && pnpm build",
+    "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm check:imports && pnpm check:branding && pnpm check:version && pnpm check:dependencies && pnpm build",
     "verify:full": "pnpm verify && pnpm verify:python && pnpm test:e2e",
     "python:setup": "uv sync --project python --frozen",
     "verify:python": "uv run --project python python python/scripts/verify.py",
     "build:python": "pnpm python:setup && uv run --project python python python/scripts/build.py",
     "package:win": "pnpm build:python && pnpm build && pnpm --filter @teststand/desktop package:win",
-    "check:branding": "node scripts/check-branding.mjs"
+    "release": "node scripts/release.mjs",
+    "check:branding": "node scripts/check-branding.mjs",
+    "check:version": "node scripts/check-version.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
