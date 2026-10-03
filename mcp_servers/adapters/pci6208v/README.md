@@ -1,6 +1,6 @@
 # PCI-6208V 设备插件
 
-包 `hh_adapter_pci6208v`，设备类型 `pci6208v`（入口点组 `hardwareharness.devices`），由 HardwareHarness 后端作为插件加载。
+包 `hh_adapter_pci6208v`，设备类型 `pci6208v`（入口点组 `hardwareharness.devices`），由 HardwareHarness 后端作为插件加载。`isolation = "subprocess"`：PCIS-DASK（`PCI-Dask64.dll`）加载时会写 stdout，所以设备在独立的子进程中运行，驱动输出进 stderr 日志，不会污染后端的启动握手；后端退出时子进程先 `safe_state` 再退出。
 
 一个插件实例只管理一个硬件。公共工具（`get_server_info`、`list_hardware`、`get_hardware_info`、`<prefix>_stream_read`）、信封格式、`/device` 声明（身份、说明、引脚、流、能力）和流读取由 SDK 提供，见 `mcp_servers/README.md`。超时或错误不表示物理动作没有发生：保留原错误，查询当前状态并取证后再决定下一步。
 

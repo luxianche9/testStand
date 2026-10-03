@@ -5,6 +5,8 @@
 ## 资料与身份
 
 - [ ] `manufacturer`、`model` 与手册原文一致；`prefix` 小写、唯一，不和现有适配器冲突
+- [ ] `pyproject.toml` 声明了入口点 `[project.entry-points."hardwareharness.devices"] <adapter> = "hh_adapter_<adapter>:DEVICE"`，类型名与适配器目录一致；`uv run python -m hardwareharness_device_sdk --adapter <adapter> --check` 能按类型名找到它
+- [ ] `isolation` 有依据：驱动写 stdout、可能崩溃或要求独占进程时为 `subprocess`，否则 `inproc`；README 写明理由
 - [ ] 通道数、编号起点（0 或 1）、量程、单位都来自手册，出处写在 README
 - [ ] 手册缺失的事实写成 `TODO` 并向用户提出，没有猜测值
 - [ ] `instructions` 两三句：设备做什么、先调哪个工具、输出的物理效果
@@ -13,11 +15,12 @@
 ## 驱动与模拟器
 
 - [ ] 每个 ctypes 函数都声明了 `argtypes`/`restype`；`WinDLL`/`CDLL` 按头文件选择
-- [ ] DLL/exe 懒加载；找不到时为 `DEVICE_UNREACHABLE`，服务仍能启动
+- [ ] DLL/exe 懒加载；找不到时为 `DEVICE_UNREACHABLE`，插件仍能加载（状态 `unreachable`，SDK 退避重开）
 - [ ] 驱动只返回原始 rc 和数据，没有业务判断、没有重试
 - [ ] 驱动和模拟器实现同一个 Protocol；模拟器的配置门槛和返回码与真实驱动一致
 - [ ] 模拟器输入默认读空闲值；演示效果只能由 `HARDWARE_DRY_RUN_*` 环境变量开启
 - [ ] 后台线程访问驱动时持有 `io_lock`
+- [ ] 适配器和 `inproc` 驱动不往 stdout 打印（后端 stdout 是启动握手）；日志用 `logging`
 
 ## 工具
 
@@ -37,6 +40,7 @@
 - [ ] 至少一个 `kind="safe"` 工具（通常只有 `safe_state`），幂等，覆盖所有输出
 - [ ] 安全值来自手册或 `settings`（并在 `capability_details()` 报告）
 - [ ] 部分通道失败时继续处理其余通道，`details` 列出未到位的通道
+- [ ] `open()` 之后的 `safe_state` 能把上一次进程遗留的任何输出拉回安全值（后端崩溃不会执行安全收尾）
 - [ ] 测试：连续调用两次结果相同；模拟器中所有输出回到安全值
 
 ## 流
@@ -57,12 +61,12 @@
 - [ ] `pinout()` 来自手册连接器表，否则保持 `not_supported`
 - [ ] 针脚名与手册一致；程序里不把针脚和工具、流关联
 
-## 测试与组装
+## 测试与接入
 
 - [ ] `check_adapter.ps1 -Adapter <adapter>` 通过（pytest、`--check` 合规、无 `TODO(new_device)`）
 - [ ] `check_device(cls, warnings=warnings)` 无失败且 `warnings == []`
-- [ ] 测试覆盖：公共工具集合（含内置流工具，不含 `get_pinout` / `list_streams`）、越界拒绝、未配置门槛、`safe_state` 幂等、`/device` 的 `streams`（含元数据）、`description`、图片与 `/assets`、写工具的 `meta.streamRefs` 与记录 `op`、采样流经 SSE 通道出值、字节流的 `idle()` 水位
-- [ ] README 写明：设备语义、流、`settings` 字段、构建原生程序的方法、部署注意事项
-- [ ] 仓库中没有 `server.json`、令牌、密码（远端 `server.json` 由终端生成）
-- [ ] 部署到真实台架由人在终端设备页（“部署服务”）或 `deploy.ps1` 发起，本技能不部署
-- [ ] 首次上架按草稿服务空载验收，结果记录在 README 或交付说明里
+- [ ] 测试覆盖（用 `serve()` 的进程内 harness）：公共工具集合（含内置流工具，不含 `get_pinout` / `list_streams`）、越界拒绝、未配置门槛、`safe_state` 幂等、`hh.device()` 的 `streams`（含元数据）和 `description`、写工具的 `meta.streamRefs` 与记录 `op`、采样流经 `hh.subscribe` 出值、字节流的 `idle()` 水位
+- [ ] README 写明：设备类型名、`isolation`、设备语义、流、`settings` 字段、构建原生程序的方法
+- [ ] 仓库中没有令牌、密码；`settings` 里只有非秘密配置
+- [ ] 接入后端（`HardwareHarness/python/pyproject.toml` 增加依赖与 editable 路径）已告知用户并由用户确认
+- [ ] 首次上架由人在设备页先以 `mode: sim`、再以 `mode: real` 空载验收，结束后 `safe_state`；结果记录在 README 或交付说明里

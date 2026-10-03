@@ -28,7 +28,9 @@ pci1762 = "hh_adapter_pci1762:DEVICE"
 
 The backend calls `open_device(type, config)`. `config` is a `ServerConfig`, usually
 built with `ServerConfig.from_mapping({serverId, hardwareId, manufacturer, model,
-computerId, dryRun, settings})`; `settings` holds the adapter's nonsecret options.
+dryRun, settings})`; `settings` holds the adapter's nonsecret options. In the backend
+a device instance is the record `{transport: "plugin", serverId, label, hardwareId,
+type, settings, mode: real|sim, enabled}`; `mode: sim` sets `dryRun`.
 `device_types()` lists the installed types, `load_device()` also accepts
 `module` or `module:ClassName`.
 
@@ -112,7 +114,7 @@ clock by at most one poll interval (`--check` verifies it).
 |---|---|
 | `pci1710l` | `ai0..15` scalar scan group in V, `measured` (one scan, shared `t`; need `configure_ai`), `di` 16-bit `measured` published on change, `do` 16-bit read back after every write |
 | `pci1762` | `di` 16-bit (`IDI0..15`) `measured` published on change, `relay` 16-bit (`R0..15`) coil command read back after every write |
-| `pci6208v` | `ao0..7` scalar in V, `setpoint`: the accepted value published on write and every point of a software waveform (`set_waveform`/`stop_waveform`, at most 200 updates/s; `safe_state` stops it) |
+| `pci6208v` (`isolation = "subprocess"`: PCIS-DASK writes to stdout when it loads) | `ao0..7` scalar in V, `setpoint`: the accepted value published on write and every point of a software waveform (`set_waveform`/`stop_waveform`, at most 200 updates/s; `safe_state` stops it) |
 | `cp118u_i` | `serial1..8` bytes: RX from a 10 ms reader thread that calls `idle()` after every read, TX via the stream writer, `mark` on configure/clear/flush |
 
 The native vendor CLIs of `pci1710l` and `pci1762` are found through

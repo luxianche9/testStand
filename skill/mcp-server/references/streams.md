@@ -1,6 +1,6 @@
 # 流
 
-流是设备发布的只读数据：采集读数、输入位图、输出回读、串口收发。HardwareHarness 录制它们，测试步骤按设备时间戳在录制数据上判定，运行监控页把它画成示波器和终端，AI 用内置工具读它。服务本身只发布数据，不判定。控制永远走 MCP 工具；流和采样函数绝不驱动输出。
+流是设备发布的只读数据：采集读数、输入位图、输出回读、串口收发。HardwareHarness 后端直接读插件的环形缓冲（隔离插件经子进程的 stdio），录制它们，测试步骤按记录时间戳在录制数据上判定，运行监控页把它画成示波器和终端，AI 用内置工具读它。插件本身只发布数据，不判定。控制永远走工具；流和采样函数绝不驱动输出。
 
 ## 流声明（`/device.streams`）
 
@@ -35,7 +35,7 @@ self.streams.add(BitsStream("di", sample=self._read_di, publish_on_change=True, 
 | `BlockStream` | `block` | `{t0, dt, samples[]}`，第 i 个样本时刻 `t0 + i*dt` | 示波器波形、硬件定时采集 |
 | `BlobStream` | `blob` | `{ref}`，内容用 `<prefix>_blob_read` 取 | 截图、照片、日志文件 |
 
-SDK 给每条记录加 `seq`（缓冲序号，从 0 递增）、`t`（服务端时钟，Unix 毫秒，单调锚定，同一流内严格递增）和 `op`（产生它的工具调用的操作号，没有则省略）。适配器从不自己写时间戳和操作号。
+SDK 给每条记录加 `seq`（缓冲序号，从 0 递增）、`t`（SDK 时钟 `now_ms()`，Unix 毫秒，单调锚定，同一流内严格递增；与后端是同一个时钟）和 `op`（产生它的工具调用的操作号，没有则省略）。适配器从不自己写时间戳和操作号。
 
 多通道同步扫描不是新类型：一次扫描发布到多个 `scalar` 流，共享同一个 `t`（见下文 `scan`）。
 
@@ -48,7 +48,7 @@ self.di = self.streams.add(BitsStream("di", sample=lambda: self._read_mask("DI")
                                       rate_hz=float(settings.get("bitRateHz", 20))))
 ```
 
-- 只在有人看时采样：SSE 订阅者（HardwareHarness 的录制或设备页实时会话）。没人看就不访问硬件。
+- 只在有人看时采样：后端 `watch` 这条流（测试运行的录制、运行台或设备页的实时显示）。没人看就不访问硬件。
 - 每次采样持有 `self.io_lock`，但不经过工具调用的操作锁：采样和工具调用交错，不会同时访问驱动。
 - `sample()` 返回 `None` 表示这次没有值（状态 `not_configured`）；抛 `DeviceError(category=NOT_CONFIGURED)` 同样是 `not_configured`，不计错误；其他异常计入 `errors`，状态 `error`，流不中断。
 - 每次尝试（包括失败）都推进水位，判定器据此知道"这段时间确实没有数据"。
@@ -67,7 +67,7 @@ def _scan_ai(self) -> list[float | None]:
     ...
 ```
 
-**事件型**：没有 `sample`，由适配器在读写路径上发布：`ScalarStream.publish(v)`、`BitsStream.publish(mask)`、`ByteStream.rx/tx/mark`、`FrameStream.rx/tx/mark`、`BlockStream.publish(samples, dt, t0=)`、`BlobStream.publish(data, mime)`。只在工具调用里同步发布的事件型流（写即发布的回读、设定值），水位随时钟推进；有后台读线程的 `bytes` / `frames` 流由读线程调 `idle()` 推进水位（见下文字节流）。没有新数据时 SSE 每 200 ms 发一次 `status` 事件带水位。
+**事件型**：没有 `sample`，由适配器在读写路径上发布：`ScalarStream.publish(v)`、`BitsStream.publish(mask)`、`ByteStream.rx/tx/mark`、`FrameStream.rx/tx/mark`、`BlockStream.publish(samples, dt, t0=)`、`BlobStream.publish(data, mime)`。只在工具调用里同步发布的事件型流（写即发布的回读、设定值），水位随时钟推进；有后台读线程的 `bytes` / `frames` 流由读线程调 `idle()` 推进水位（见下文字节流）。没有新数据时，读取方至少每 200 ms 收到一次带水位的 `status` 事件。
 
 ## 采样多少、怎么读
 
@@ -123,7 +123,7 @@ def _drain(self, channel):          # 调用方持 io_lock
 - **写入器** `writer(data) -> int | None`：返回驱动接受的字节数（`None` 表示全部）。写入器自己持 `io_lock` 并检查配置门槛（未配置抛 `NOT_CONFIGURED`），因为内置 `transact` 只经过操作锁就调用它。
 - **发送**一律走 `stream.send(data)`：它调用写入器，并把实际接受的字节记为 `tx`。不要在写工具里另外调 `stream.tx`。
 - **标记** `stream.mark(note)`：配置、清空、复位等事件写一条 `dir="mark"` 记录，返回含 `seq` 的记录。`read_rx` 类工具用 `mark(...)["seq"] + 1` 作为清空后的读游标，不必丢弃缓冲。
-- `max_bytes` 限制缓冲总字节，超出时丢弃最老记录并在 SSE 上产生 `gap`。
+- `max_bytes` 限制缓冲总字节，超出时丢弃最老记录，读取方因此收到 `gap`。
 - 端口未配置时把流状态设成 `not_configured`（`stream.set_state("not_configured")`），配置后设 `live`；读线程出错设 `error` 并带 `{category, message}`；`close()` 时设 `closed`。
 - 有写入器的字节流自动获得 `<prefix>_transact`（发送并在期限内等匹配的应答）。
 
@@ -141,24 +141,30 @@ def _drain(self, channel):          # 调用方持 io_lock
 | `not_configured` | SDK / 适配器 | 前置配置缺失 |
 | `error` | SDK / 适配器 | 最近一次采样或读线程出错 |
 | `unavailable` | SDK | 设备未打开 |
-| `closed` | 适配器 / SDK | 服务停止 |
+| `closed` | 适配器 / SDK | 设备已停止 |
 
 适配器可以用 `stream.set_state(state, error=None)` 设任意小写状态名，但优先用上表。
 
-## SSE 通道
+## 读取与水位
 
-`GET /streams/{streamId}?from=<seq|latest>&since=<t>`，`Accept: text/event-stream`，与 MCP 相同的 Bearer 令牌；未知流返回 404 JSON。只读。起点优先级：`Last-Event-ID: <epoch>:<seq>` > `since`（第一条 `t ≥ since` 的记录）> `from`。`GET /time` 返回 `{serverTime}`，用于估计时钟偏移。
+流不经网络。后端和测试工具都通过 `DeviceHost` 读同一个环形缓冲：
 
-| 事件 | `id` | 字段 |
-|---|---|---|
-| `hello` | `epoch:fromSeq` | `streamId, streamType, epoch, fromSeq, serverTime` |
-| `batch` | `epoch:next` | `records[]`（带 `seq`、`t`、`op?`），`watermark` |
-| `gap` | — | `fromSeq, toSeq, reason`（`overflow` 缓冲溢出 / `reset` `Last-Event-ID` 来自其他 epoch，从最旧记录重来） |
-| `status` | — | `state, sampling, errors, lastError?, watermark`；变化时或每 200 ms 一次；服务关闭时最后发 `state: closed` |
+| 方法 | 说明 |
+|---|---|
+| `watch(streamId)` / `unwatch(streamId)` | 观看计数；采样型流只在计数大于 0 时采样 |
+| `read_stream(streamId, cursor, limit, epoch=None)` | 从 `cursor` 读（`None` 只要新记录，负数为最后若干条），返回 `{streamType, epoch, records, next, watermark, gap?, status}` |
+| `seek(streamId, since)` | 第一条 `t ≥ since` 的记录的游标；电平型流（`scalar`、`bits`）返回该时刻仍然有效的那一条，所以窗口起点的值总是已知 |
 
-断线后带上最后收到的 `id` 作为 `Last-Event-ID` 重连，从下一条记录续传，不重不漏（缓冲已丢弃的部分以 `gap` 报告）。
+`epoch` 与游标不一致（设备重开、缓冲重建）时，从最旧记录重来并报 `gap{reason: reset}`；要读的记录已被覆盖时报 `gap{reason: overflow}`。后端（以及测试里的 `hh.subscribe`）把读取结果整理成事件：
 
-**水位** `watermark`：服务端保证该流 `t ≤ watermark` 的记录都已发出。录制方和测试步骤用它区分"没有发生"和"还没到"。采样型流每次尝试推进水位；带读线程的事件型流由 `idle()` 推进；只在工具调用里同步发布的流随时钟推进。每次服务启动缓冲有新的 `epoch`，游标只在同一 `epoch` 内有效。
+| 事件 | 字段 |
+|---|---|
+| `hello` | `streamId, streamType, epoch, fromSeq` |
+| `batch` | `records[]`（带 `seq`、`t`、`op?`），`watermark` |
+| `gap` | `fromSeq, toSeq, reason`（`overflow` 缓冲溢出 / `reset` 换了 epoch，从最旧记录重来） |
+| `status` | `state, sampling, errors, lastError?, watermark`；变化时或每 200 ms 一次；设备关闭时最后为 `state: closed` |
+
+**水位** `watermark`：SDK 保证该流 `t ≤ watermark` 的记录都已在缓冲里（或已以 `gap` 报告）。录制方和测试步骤用它区分"没有发生"和"还没到"。采样型流每次尝试推进水位；带读线程的事件型流由 `idle()` 推进；只在工具调用里同步发布的流随时钟推进。每次设备启动缓冲有新的 `epoch`，游标只在同一 `epoch` 内有效。
 
 ## 内置工具
 
@@ -173,13 +179,13 @@ def _drain(self, channel):          # 调用方持 io_lock
 ## 测试写法
 
 ```python
-with hh.sse("serial1", cursor=0) as events:
+with hh.subscribe("serial1", cursor=0) as events:
     assert receive_until(events, lambda e: e["type"] == "hello")["streamType"] == "bytes"
-    hh.call("write_text", {"operationId": "op-w"}, channel=1, text="hi")      # 第二个位置参数是 _meta
+    hh.call("write_text", operation_id="op-w", channel=1, text="hi")
     batch = receive_until(events, lambda e: e["type"] == "batch" and e["records"])
 ```
 
 - 写工具：断言 `result["meta"]["streamRefs"]` 指向的记录内容和 `op`。
-- 采样流：改模拟器状态后用 `hh.sse` 或 `stream_read` 读出新值。
+- 采样流：改模拟器状态后用 `hh.subscribe` 或 `stream_read` 读出新值。
 - 字节流：回环模式下断言 `tx` / `rx` / `mark` 顺序，`transact` 在未配置时报 `not_configured`；断言 `stream.idle_driven` 且水位落后时钟不超过 200 ms。
-- 流声明：断言 `hh.get("/device").json()["streams"]` 等于期望的 `describe()` 列表（含元数据）。
+- 流声明：断言 `hh.device()["streams"]` 等于期望的 `describe()` 列表（含元数据）。

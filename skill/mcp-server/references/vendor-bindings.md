@@ -53,7 +53,7 @@ class Vendor:
         raise DeviceError("VENDOR.DLL not found; set settings.dllPath", category=DEVICE_UNREACHABLE)
 ```
 
-- 找不到 DLL、加载失败都是 `DEVICE_UNREACHABLE`：SDK 的看门狗会按 5/10/30 s 重试，服务照样起来，`/health` 报告 `unreachable`。
+- 找不到 DLL、加载失败都是 `DEVICE_UNREACHABLE`：SDK 会按 5/10/30 s 重开，插件照样加载，`list_hardware` 和设备页报告 `unreachable`。
 - 路径来源只有三处：`settings.dllPath`、一个厂商相关的环境变量、手册写明的安装位置。不要扫描磁盘。
 
 ### 声明签名
@@ -122,20 +122,26 @@ EXECUTABLE = "hwcli_pci1710l.exe"
 def hwcli(settings: Mapping[str, Any]) -> JsonLineCli:
     path = find_executable(EXECUTABLE, explicit=settings.get("hwcliPath"),
                            env_names=("PCI1710L_HWCLI_PATH", "HWCLI_PATH"))
-    return JsonLineCli(path, name=EXECUTABLE, missing_hint="Build native/ and deploy the exe next to app/.")
+    return JsonLineCli(path, name=EXECUTABLE, missing_hint="Build native/ or set settings.hwcliPath.")
 
 # adapter.py
 self.cli: JsonLineBackend = self.select_driver(lambda: hwcli(settings), SimulatedHwcli)
 data = unwrap(self.cli.call({"cmd": "read_voltage", "channel": channel}))
 ```
 
-`find_executable` 依次查找 `settings.hwcliPath`、环境变量、`<root>/native/build/{Release,Debug,.}`、配置目录和 `app/`。找不到时抛 `DEVICE_UNREACHABLE`，附带 `missing_hint`。响应不是合法 JSON 或进程退出，分别得到 `INVALID_RESPONSE` 和 `DEVICE_UNREACHABLE`。
+`find_executable` 依次查找 `settings.hwcliPath`、环境变量、`<root>/native/build/{Release,Debug,.}`（`roots=` 给出的目录），找不到返回 `None`；`JsonLineCli` 在第一次调用时对 `None` 抛 `DEVICE_UNREACHABLE`，附带 `missing_hint`，所以插件照样能加载。响应不是合法 JSON 或进程退出，分别得到 `INVALID_RESPONSE` 和 `DEVICE_UNREACHABLE`。
 
-模拟器 `SimulatedHwcli` 实现同一个 `JsonLineBackend` 协议（`call()`、`stop()`），返回与原生程序字段完全一致的负载（`sim.py` 顶部注明"与 native/hwcli_<model>.cpp 逐字段一致"）。原生源码放在适配器的 `native/` 下；远端部署不上传 `native/`，只上传编译好的 exe。
+模拟器 `SimulatedHwcli` 实现同一个 `JsonLineBackend` 协议（`call()`、`stop()`），返回与原生程序字段完全一致的负载（`sim.py` 顶部注明"与 native/hwcli_<model>.cpp 逐字段一致"）。原生源码放在适配器的 `native/` 下并提交到仓库；编译好的 exe 不进仓库，台架电脑上用 `settings.hwcliPath` 指向它。
 
-## 厂商 stdout
+## 厂商 stdout 与隔离
 
-一些厂商 DLL 会直接往 stdout 打印。旧的 stdio MCP 传输下这会破坏协议，所以曾经有 `silence_vendor_stdout`。SDK 只用 Streamable HTTP，stdout 只是日志，**不需要屏蔽**，也不要重定向文件描述符 1（会吞掉 uvicorn 日志）。hwcli 模式例外：hwcli 自己的 stdout 就是协议通道，原生程序里要把厂商输出关掉或改到 stderr。
+插件默认在后端进程里运行，后端 stdout 的第一行是给桌面应用的启动握手，之后也只作日志。一些厂商 DLL 加载或调用时会直接往 stdout 打印（例：ADLINK PCIS-DASK），会破坏握手，而且 ctypes 下没有可靠的办法只屏蔽 DLL 的输出。这种驱动：
+
+- 在设备类上设 `isolation = "subprocess"`。SDK 在子进程里运行设备，导入适配器之前把文件描述符 1 指向 stderr，原 stdout 只留给父子之间的 JSON 行协议；驱动打印的内容进 stderr 日志。
+- 不要在适配器里自己重定向文件描述符 1、替换 `sys.stdout` 或用 `contextlib.redirect_stdout` 包驱动调用：这在 `inproc` 下会影响整个后端，在 `subprocess` 下 SDK 已经处理。
+- 可能崩溃（访问违例）或泄漏句柄的驱动同样选 `subprocess`：子进程崩溃时调用失败为 `device_unreachable`（结果未知），后端不受影响。
+
+hwcli 模式的 exe 本身就是独立进程，适配器保持 `inproc`；但 hwcli 自己的 stdout 就是协议通道，原生程序里要把厂商输出关掉或改到 stderr。
 
 ## 常见错误
 

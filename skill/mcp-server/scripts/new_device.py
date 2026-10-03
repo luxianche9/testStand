@@ -1,12 +1,13 @@
-"""Scaffold a HardwareHarness MCP adapter from ``assets/adapter-template``.
+"""Scaffold a HardwareHarness device plugin adapter from ``assets/adapter-template``.
 
     python skill/mcp-server/scripts/new_device.py pci1234 --prefix pci1234 --model PCI-1234 --manufacturer Acme
 
-Creates ``mcp_servers/adapters/<adapter>/`` and registers the package in the
-``mcp_servers`` uv workspace (``pyproject.toml``). The generated adapter is a
-digital I/O skeleton that already passes the dry-run compliance suite; every
-``TODO(new_device)`` marker must be resolved from the manual before review.
-It never touches the terminal registry, never creates ``server.json`` and never deploys.
+Creates ``mcp_servers/adapters/<adapter>/`` (its ``pyproject.toml`` declares the
+``hardwareharness.devices`` entry point ``<adapter>``, the device type) and registers
+the package in the ``mcp_servers`` uv workspace (``pyproject.toml``). The generated
+adapter is a digital I/O skeleton that already passes the compliance suite on its
+simulator; every ``TODO(new_device)`` marker must be resolved from the manual before
+review. It never edits the HardwareHarness backend project and never touches hardware.
 """
 
 from __future__ import annotations
@@ -26,7 +27,6 @@ SUFFIX = ".tmpl"
 ADAPTER_ID = re.compile(r"^[a-z][a-z0-9]*(_[a-z0-9]+)*$")
 PREFIX = re.compile(r"^[a-z][a-z0-9]*(_[a-z0-9]+)*$")
 CLASS_NAME = re.compile(r"^[A-Z][A-Za-z0-9]*$")
-SERVER_ID = re.compile(r"^[A-Z][A-Z0-9_]*$")
 
 
 def class_name(adapter: str) -> str:
@@ -91,7 +91,6 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--model", required=True, help="Model exactly as printed by the manufacturer, e.g. PCI-1234.")
     parser.add_argument("--manufacturer", required=True, help="Manufacturer, e.g. Advantech.")
     parser.add_argument("--class-name", help="Device class name; default derived from the adapter id.")
-    parser.add_argument("--server-id", help="serverId; default <ADAPTER>_MCP.")
     parser.add_argument("--root", type=Path, default=DEFAULT_ROOT, help="mcp_servers directory.")
     parser.add_argument("--dest", type=Path, help="Write the adapter here instead of <root>/adapters/<adapter>.")
     parser.add_argument("--no-register", action="store_true", help="Do not edit <root>/pyproject.toml.")
@@ -99,9 +98,7 @@ def main(argv: list[str] | None = None) -> int:
 
     adapter, prefix = args.adapter, args.prefix
     cls = args.class_name or class_name(adapter)
-    server_id = args.server_id or f"{adapter.upper()}_MCP"
-    checks = (("adapter id", adapter, ADAPTER_ID), ("prefix", prefix, PREFIX), ("class name", cls, CLASS_NAME),
-              ("server id", server_id, SERVER_ID))
+    checks = (("adapter id", adapter, ADAPTER_ID), ("prefix", prefix, PREFIX), ("class name", cls, CLASS_NAME))
     problems = [f"{label} {value!r} must match {pattern.pattern}" for label, value, pattern in checks
                 if not pattern.match(value)]
     if '"' in args.model + args.manufacturer or "\\" in args.model + args.manufacturer:
@@ -117,7 +114,7 @@ def main(argv: list[str] | None = None) -> int:
     values = {
         "__ADAPTER__": adapter, "__PACKAGE__": package, "__DIST__": dist, "__PREFIX__": prefix,
         "__PREFIX_UPPER__": prefix.upper(), "__CLASS__": cls, "__MODEL__": args.model,
-        "__MANUFACTURER__": args.manufacturer, "__SERVER_ID__": server_id, "__SDK_RANGE__": sdk_range(root),
+        "__MANUFACTURER__": args.manufacturer, "__SDK_RANGE__": sdk_range(root),
     }
     written = render(dest, values)
     registered = False if args.no_register else register(root / "pyproject.toml", dist)
@@ -127,11 +124,12 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Registered {dist} in {root / 'pyproject.toml'}; run `uv sync` in {root}.")
     print(f"""
 Next steps (see skill/mcp-server/SKILL.md):
-  1. Replace every TODO(new_device) and the hypothetical digital I/O tools with the manual's operations.
+  1. Replace every TODO(new_device) and the hypothetical digital I/O tools with the manual's operations;
+     set Device.isolation = "subprocess" if the driver prints to stdout or may crash.
   2. Run skill/mcp-server/scripts/check_adapter.ps1 -Adapter {adapter}  (pytest + compliance + TODO scan).
-  3. Deployment to the bench is done by a human with the deploy button on the HardwareHarness
-     Devices page (adapter "{adapter}", serverId "{server_id}", hardwareId, port) or with mcp_servers\\deploy.ps1.
-     The terminal generates the remote server.json and token on first install; never write them here.""")
+  3. To load it in HardwareHarness, add {dist} to HardwareHarness/python/pyproject.toml
+     (dependency + editable path, like the other adapters; ask the user first) and run `pnpm python:setup`.
+     Then add a device of type "{adapter}" on the Devices page: mode sim first, then mode real.""")
     return 0
 
 

@@ -28,7 +28,7 @@ from hardwareharness_backend.contracts.errors import app_error
 from hardwareharness_backend.util import Record
 
 from . import judge
-from .clock import backend_ms
+from .clock import SHARED_CLOCK, backend_ms
 from .data import stream_key
 from .recorder import BlobFetcher, StreamRecorder
 from .source import StreamSources
@@ -226,15 +226,12 @@ class LiveStreams:
         window_ms = _probe_length(window_ms, "windowMs")
         async with self._probe(hardware_id, stream_id) as (store, recorder):
             key = stream_key(hardware_id, stream_id)
-            clock = self.sources.clock(hardware_id)
-            if clock is None or not clock.known:
-                return _no_clock(hardware_id, stream_id, store, key)
-            t0 = clock.to_server(backend_ms())
-            window = judge.Window(t0, t0 + window_ms, float(clock.uncertainty_ms))
+            t0 = backend_ms()
+            window = judge.Window(t0, t0 + window_ms)
             await recorder.wait_watermark(
                 hardware_id, stream_id, window.t1, window_ms / 1000 + WATERMARK_GRACE_S
             )
-            snapshot = dict(clock.snapshot())
+            snapshot = dict(SHARED_CLOCK.snapshot())
             verdict = (
                 judge.observe(
                     store.stream_data(key, window.t0, window.t1),
@@ -258,11 +255,8 @@ class LiveStreams:
         within_ms = _probe_length(within_ms, "withinMs")
         async with self._probe(hardware_id, stream_id) as (store, recorder):
             key = stream_key(hardware_id, stream_id)
-            clock = self.sources.clock(hardware_id)
-            if clock is None or not clock.known:
-                return _no_clock(hardware_id, stream_id, store, key)
-            t0 = clock.to_server(backend_ms())
-            window = judge.Window(t0, t0 + within_ms, float(clock.uncertainty_ms))
+            t0 = backend_ms()
+            window = judge.Window(t0, t0 + within_ms)
             deadline = backend_ms() + within_ms + WATERMARK_GRACE_S * 1000
             while True:
                 verdict = judge.expect(store.stream_data(key, window.t0, window.t1), window, match)
@@ -275,7 +269,7 @@ class LiveStreams:
                     break
                 await store.wait_change(min(remaining, EXPECT_POLL_S))
             return _probe_result(
-                hardware_id, stream_id, store, key, window, dict(clock.snapshot()), verdict
+                hardware_id, stream_id, store, key, window, dict(SHARED_CLOCK.snapshot()), verdict
             )
 
     async def _stream_type(self, hardware_id: str, stream_id: str) -> str:
@@ -418,19 +412,4 @@ def _probe_result(
         "clock": clock,
         "verdict": verdict,
         "data": _seen(store, key, span.get("tb0"), span.get("tb1")),
-    }
-
-
-def _no_clock(hardware_id: str, stream_id: str, store: StreamStore, key: str) -> Record:
-    verdict = judge._verdict(
-        judge.INCONCLUSIVE, {}, "clock_uncertainty", "the stream's clock offset is unknown"
-    )
-    return {
-        "hardwareId": hardware_id,
-        "streamId": stream_id,
-        "key": key,
-        "window": None,
-        "clock": {},
-        "verdict": verdict,
-        "data": _seen(store, key, None, None),
     }

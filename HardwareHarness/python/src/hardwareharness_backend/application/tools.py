@@ -314,8 +314,7 @@ PLATFORM_TOOLS = [
     ),
     _platform(
         "remove_hardware_definition",
-        "删除指定硬件的本地定义及关联图片。不会卸载驱动或移除实物；删除前核对工程引用，检查"
-        "返回结果。",
+        "删除指定硬件的本地定义。不会卸载驱动或移除实物；删除前核对工程引用，检查返回结果。",
         _HARDWARE_ID,
         _object({"hardwareId": _STRING}, ["hardwareId"]),
         operation="devices.removeHardware",

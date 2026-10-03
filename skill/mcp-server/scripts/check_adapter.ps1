@@ -9,7 +9,7 @@ param(
 
 # Local review gate for a new or changed adapter: pytest + dry-run compliance
 # (via mcp_servers\test.ps1), then a scan for unresolved TODO(new_device)
-# markers. Never talks to real hardware and never deploys.
+# markers. Never talks to real hardware.
 $ErrorActionPreference = "Stop"
 if (-not $Root) {
     $Root = Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) "..\..\..\mcp_servers"

@@ -8,7 +8,7 @@ Verdicts are ``pass`` / ``fail`` / ``inconclusive``; an inconclusive verdict
 carries ``reason``: ``watermark_timeout`` (data never covered the window),
 ``gap`` (the window intersects missing data), ``insufficient_evidence`` (too
 few samples, window shorter than twice the inferred resolution, unknown held
-state) or ``clock_uncertainty`` (a cross-service window shrank to nothing).
+state) or ``clock_uncertainty`` (an anchored window shrank to nothing).
 """
 
 from __future__ import annotations
