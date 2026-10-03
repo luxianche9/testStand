@@ -4,16 +4,11 @@ import asyncio
 import logging
 from typing import Any
 
-from hardwareharness_backend.contracts.devices import parse_mcp_server, parse_remote_computer
+from hardwareharness_backend.contracts.devices import parse_mcp_server
 from hardwareharness_backend.contracts.errors import app_error
-from hardwareharness_backend.util import json_loads, now_ms, utc_now_iso
+from hardwareharness_backend.util import utc_now_iso
 
 from .device_manifest import declared_streams
-from .lifecycle import is_managed, lifecycle_command
-from .local_shell import execute_local_shell
-from .remote_shell import remote_shell_for
-from .service_registry import parse_registry, read_registry_script, read_token_script
-from .ssh import SshManager
 
 Record = dict[str, Any]
 
@@ -24,20 +19,11 @@ SAFE_ALL_TIMEOUT_S = 5.0
 class DeviceService:
     def __init__(self, store: Any, secrets: Any, transports: Any) -> None:
         self.store, self.secrets, self.transports = store, secrets, transports
-        self.ssh: Any = SshManager(secrets)
-        self._computer_refreshes: dict[str, asyncio.Task[Record]] = {}
         self._server_refreshes: dict[str, asyncio.Task[Record]] = {}
-        self._statuses: dict[str, Record] = {}
         self._server_statuses: dict[str, Record] = {}
         self._hardware: list[Record] = []
         self._availability: dict[str, Record] = {}
         self._streams: dict[str, list[Record]] = {}
-
-    def list_computers(self) -> list[Record]:
-        return list(self.store.list_computers())
-
-    def list_statuses(self) -> list[Record]:
-        return list(self._statuses.values())
 
     def list_servers(self) -> list[Record]:
         return list(self.store.list_servers())
@@ -57,38 +43,8 @@ class DeviceService:
     async def call_tool(self, name: str, args: Record, options: Record | None = None) -> Any:
         return await self.call_aggregated_tool(name, args, options)
 
-    async def save_computer(self, value: Record, credentials: Record | None = None) -> Record:
-        computer = parse_remote_computer(value)
-        if credentials and "ssh" in credentials:
-            credential = credentials["ssh"]
-            await self.secrets.set(
-                f"ssh:{computer['id']}",
-                {"kind": "password", "password": credential}
-                if isinstance(credential, str)
-                else credential,
-            )
-        await self.ssh.disconnect(computer["id"])
-        return dict(await self.store.save_computer(computer))
-
-    async def remove_computer(self, computer_id: str) -> None:
-        for server in self.store.list_servers():
-            if server.get("computerId") != computer_id:
-                continue
-            await self.transports.disconnect(server["serverId"])
-            await self.secrets.remove(f"mcp:{server['serverId']}")
-            self._server_statuses.pop(server["serverId"], None)
-            self._hardware = [
-                item for item in self._hardware if item["serverId"] != server["serverId"]
-            ]
-        await self.ssh.disconnect(computer_id)
-        await self.store.remove_computer(computer_id)
-        await self.secrets.remove(f"ssh:{computer_id}")
-        self._statuses.pop(computer_id, None)
-
     async def save_server(self, value: Record, credentials: Record | None = None) -> Record:
         server = parse_mcp_server(value)
-        if "computerId" in server:
-            self._require_computer(server["computerId"])
         if credentials and "mcpToken" in credentials:
             await self.secrets.set(f"mcp:{server['serverId']}", {"token": credentials["mcpToken"]})
         saved = await self.store.save_server(server)
@@ -103,63 +59,11 @@ class DeviceService:
         self._server_statuses.pop(server_id, None)
         self._hardware = [item for item in self._hardware if item["serverId"] != server_id]
 
-    def _require_computer(self, computer_id: str) -> Record:
-        computer = self.store.get_computer(computer_id)
-        if not computer:
-            raise RuntimeError(f"Remote computer not found: {computer_id}")
-        return dict(computer)
-
     def _require_server(self, server_id: str) -> Record:
         server = self.store.get_server(server_id)
         if not server:
             raise RuntimeError(f"MCP server not found: {server_id}")
         return dict(server)
-
-    async def execute(self, computer_id: str, command: str, timeout_ms: int = 60000) -> Record:
-        computer = self._require_computer(computer_id)
-        if computer.get("execution") == "local":
-            return await execute_local_shell(
-                computer["ssh"]["shell"], command, min(max(timeout_ms, 1000), 300000)
-            )
-        return dict(
-            await self.ssh.execute(
-                computer,
-                remote_shell_for(computer).command(command),
-                min(max(timeout_ms, 1000), 300000),
-            )
-        )
-
-    async def refresh_computer(self, computer_id: str) -> Record:
-        pending = self._computer_refreshes.get(computer_id)
-        if pending is None:
-            pending = asyncio.create_task(self._refresh_computer(computer_id))
-            self._computer_refreshes[computer_id] = pending
-            pending.add_done_callback(lambda _: self._computer_refreshes.pop(computer_id, None))
-        return await asyncio.shield(pending)
-
-    async def _refresh_computer(self, computer_id: str) -> Record:
-        computer = self._require_computer(computer_id)
-        started = now_ms()
-        status: Record = {"computerId": computer_id, "ssh": {"state": "checking"}}
-        self._statuses.setdefault(computer_id, dict(status))
-        try:
-            shell = remote_shell_for(computer)
-            result = await self.execute(computer_id, shell.probe_command(), 15000)
-            if result["exitCode"] != 0:
-                raise RuntimeError(result["stderr"] or "Computer shell probe failed")
-            status["ssh"] = {
-                "state": "online",
-                "checkedAt": utc_now_iso(),
-                "latencyMs": now_ms() - started,
-            }
-        except Exception as error:
-            status["ssh"] = {
-                "state": "offline",
-                "checkedAt": utc_now_iso(),
-                "message": str(error),
-            }
-        self._statuses[computer_id] = status
-        return status
 
     async def refresh_server(self, server_id: str) -> Record:
         pending = self._server_refreshes.get(server_id)
@@ -170,25 +74,11 @@ class DeviceService:
         return await asyncio.shield(pending)
 
     async def _refresh_server(self, server_id: str) -> Record:
-        stored = self.store.get_server(server_id)
-        status: Record = {
-            "serverId": server_id,
-            "computerId": (stored or {}).get("computerId", ""),
-            "service": {"state": "checking", "serviceState": "unknown"},
-            "transport": {"state": "checking"},
-        }
+        status: Record = {"serverId": server_id, "transport": {"state": "checking"}}
         self._server_statuses.setdefault(server_id, dict(status))
         try:
             server = self._require_server(server_id)
-            if "computerId" in server:
-                self._require_computer(server["computerId"])
         except Exception as error:
-            status["service"] = {
-                "state": "error",
-                "checkedAt": utc_now_iso(),
-                "serviceState": "unknown",
-                "message": str(error),
-            }
             status["transport"] = {
                 "state": "error",
                 "checkedAt": utc_now_iso(),
@@ -203,12 +93,6 @@ class DeviceService:
                 self._hardware = [item for item in self._hardware if item["serverId"] != server_id]
                 self._hardware.append(hardware)
             status["transport"] = {"state": "online", "checkedAt": utc_now_iso()}
-            status["service"] = {
-                "state": "unknown",
-                "checkedAt": utc_now_iso(),
-                "serviceState": "unknown",
-                "message": "Not queried: device transport is available",
-            }
             hardware_id = hardware["hardwareId"] if hardware else server["hardwareId"]
             await self._sync_definition(server, hardware_id)
             last_error = (hardware or {}).get("lastError") or {}
@@ -226,49 +110,12 @@ class DeviceService:
                 "checkedAt": utc_now_iso(),
                 "message": str(error),
             }
-            try:
-                if not is_managed(server):
-                    raise RuntimeError("Unmanaged service: no computer to query the process on")
-                service = await self.execute(
-                    server["computerId"], lifecycle_command(server, "statusCommand"), 15000
-                )
-                parsed = json_loads(service["stdout"].strip() or "{}")
-                state = _normalize_service_state(parsed.get("state"))
-                message = parsed.get("message", parsed.get("state", "Unknown"))
-                status["service"] = {
-                    "state": "online" if state == "running" else "offline",
-                    "checkedAt": utc_now_iso(),
-                    "serviceState": state,
-                    "message": message,
-                }
-                process_message = parsed.get("message", parsed.get("state"))
-                self._availability[server["hardwareId"]] = {
-                    "hardwareId": server["hardwareId"],
-                    "state": "faulted" if state == "running" else "unavailable",
-                    "checkedAt": utc_now_iso(),
-                    "message": str(error),
-                    "diagnostics": {
-                        "transport": str(error),
-                        **({"process": process_message} if process_message else {}),
-                    },
-                }
-            except Exception as diagnostic_error:
-                status["service"] = {
-                    "state": "unknown",
-                    "checkedAt": utc_now_iso(),
-                    "serviceState": "unknown",
-                    "message": str(diagnostic_error),
-                }
-                self._availability[server["hardwareId"]] = {
-                    "hardwareId": server["hardwareId"],
-                    "state": "unavailable",
-                    "checkedAt": utc_now_iso(),
-                    "message": str(error),
-                    "diagnostics": {
-                        "transport": str(error),
-                        "ssh": str(diagnostic_error),
-                    },
-                }
+            self._availability[server["hardwareId"]] = {
+                "hardwareId": server["hardwareId"],
+                "state": "unavailable",
+                "checkedAt": utc_now_iso(),
+                "message": str(error),
+            }
         self._server_statuses[server_id] = status
         return status
 
@@ -316,99 +163,6 @@ class DeviceService:
             return_exceptions=True,
         )
         return [result for result in results if not isinstance(result, BaseException)]
-
-    async def server_action(self, server_id: str, action: str) -> Record:
-        server = self._require_server(server_id)
-        command = lifecycle_command(
-            server,
-            {"stop": "stopCommand", "force-stop": "forceStopCommand"}.get(action, "startCommand"),
-        )
-        if action not in {"start", "force-stop"}:
-            try:
-                await self.transports.connect(server)
-                await self.transports.prepare_shutdown(server)
-            except Exception as error:
-                raise app_error(
-                    "safe_stop_failed",
-                    f"Safe-stop failed; {server_id} was left running. "
-                    "Use force-stop only after assessing the physical risk.",
-                    {"cause": error},
-                ) from error
-        if action == "restart":
-            stopped = await self.execute(
-                server["computerId"], lifecycle_command(server, "stopCommand"), 90000
-            )
-            if stopped["exitCode"] != 0:
-                raise RuntimeError(stopped["stderr"] or "Remote MCP stop command failed")
-            await self.transports.disconnect(server_id)
-        result = await self.execute(server["computerId"], command, 90000)
-        if result["exitCode"] != 0:
-            raise RuntimeError(result["stderr"] or f"Remote MCP {action} command failed")
-        if action in {"stop", "force-stop"}:
-            await self.transports.disconnect(server_id)
-        else:
-            last_error: Exception | None = None
-            for _ in range(20):
-                try:
-                    await self.transports.connect(server)
-                    last_error = None
-                    break
-                except Exception as error:
-                    last_error = error
-                    await asyncio.sleep(1)
-            if last_error:
-                raise last_error
-        return await self.refresh_server(server_id)
-
-    async def read_server_logs(self, server_id: str, lines: int = 200) -> Record:
-        server = self._require_server(server_id)
-        log_path = lifecycle_command(server, "logPath")
-        computer = self._require_computer(server["computerId"])
-        command = remote_shell_for(computer).read_logs_command(log_path, min(max(lines, 1), 2000))
-        result = await self.execute(server["computerId"], command, 15000)
-        return {
-            "lines": [
-                line.removesuffix("\r")
-                for line in result["stdout"].split("\n")
-                if line.removesuffix("\r")
-            ],
-            "truncated": result["truncated"],
-            "path": log_path,
-        }
-
-    def require_powershell(self, computer_id: str) -> Record:
-        computer = self._require_computer(computer_id)
-        if computer["ssh"]["shell"] != "powershell":
-            raise app_error(
-                "invalid_argument",
-                f"{computer_id}: services are only installed on Windows (PowerShell) computers",
-            )
-        return computer
-
-    async def discover_services(self, computer_id: str) -> list[Record]:
-        """Installed services from the computer's ``services.json``, marked if already added."""
-        computer = self.require_powershell(computer_id)
-        result = await self.execute(computer_id, read_registry_script(), 15000)
-        if result["exitCode"] != 0:
-            raise RuntimeError(result["stderr"] or "Reading services.json failed")
-        known = {server["serverId"]: server for server in self.list_servers()}
-        return [
-            {
-                **entry,
-                "url": f"http://{computer['address']}:{entry['port']}/mcp",
-                "added": entry["serverId"] in known,
-            }
-            for entry in parse_registry(result["stdout"])
-        ]
-
-    async def read_service_token(self, computer_id: str, root: str) -> str:
-        """The token in ``<root>\\server.json``; returned to the caller, never logged."""
-        self.require_powershell(computer_id)
-        result = await self.execute(computer_id, read_token_script(root), 15000)
-        token = result["stdout"].strip()
-        if result["exitCode"] != 0 or not token:
-            raise app_error("not_found", f"No token in {root}\\server.json")
-        return str(token)
 
     async def refresh_hardware(self) -> list[Record]:
         self._hardware = await self.transports.list_hardware(self.store.list_servers())
@@ -488,18 +242,3 @@ class DeviceService:
 
     async def read_blob(self, hardware_id: str, stream_id: str, ref: str) -> Record:
         return dict(await self.transports.read_blob(self.server_for(hardware_id), stream_id, ref))
-
-    async def close(self) -> None:
-        await self.ssh.close()
-
-
-def _normalize_service_state(value: str | None) -> str:
-    lowered = (value or "").strip().lower()
-    if lowered in {"running", "stopped"}:
-        return lowered
-    return {
-        "startpending": "starting",
-        "starting": "starting",
-        "stoppending": "stopping",
-        "stopping": "stopping",
-    }.get(lowered, "unknown")

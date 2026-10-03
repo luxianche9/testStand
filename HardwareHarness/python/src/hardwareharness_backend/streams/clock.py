@@ -1,19 +1,13 @@
-"""Per-service clock offset estimate (NTP style, minimum round trip over a sliding window).
+"""The one clock of the backend and its device plugins.
 
-``offset = serverTime - backendTime``. A sample is taken from a request sent at
-backend time ``send`` and answered at ``recv`` carrying ``serverTime``; the
-server stamped it somewhere inside ``[send, recv]``, so the offset is
-``serverTime - (send + recv) / 2`` with uncertainty ``(recv - send) / 2``.
+Every device runs in this process or in a child process on the same machine, and every record
+``t``, watermark and backend time is the SDK's :func:`now_ms` (Unix milliseconds anchored to a
+monotonic clock), so a device's time is the backend's time: offset and uncertainty are zero.
 """
 
 from __future__ import annotations
 
-from collections import deque
-from dataclasses import dataclass
-
 from hardwareharness_device_sdk.clock import now_ms
-
-WINDOW = 16
 
 
 def backend_ms() -> float:
@@ -21,51 +15,21 @@ def backend_ms() -> float:
     return now_ms()
 
 
-@dataclass(frozen=True)
-class ClockSample:
-    offset_ms: float
-    uncertainty_ms: float
-    at_ms: float
+class SharedClock:
+    """A device clock as seen from the backend: the same clock."""
 
+    known = True
+    offset_ms = 0.0
+    uncertainty_ms = 0.0
 
-class ClockEstimator:
-    def __init__(self, window: int = WINDOW) -> None:
-        self._samples: deque[ClockSample] = deque(maxlen=window)
-        self._best: ClockSample | None = None
-
-    def add(self, send_ms: float, server_ms: float, recv_ms: float) -> None:
-        if recv_ms < send_ms:
-            return
-        sample = ClockSample(
-            offset_ms=server_ms - (send_ms + recv_ms) / 2,
-            uncertainty_ms=(recv_ms - send_ms) / 2,
-            at_ms=recv_ms,
-        )
-        self._samples.append(sample)
-        self._best = min(self._samples, key=lambda item: item.uncertainty_ms)
-
-    @property
-    def known(self) -> bool:
-        return self._best is not None
-
-    @property
-    def offset_ms(self) -> float:
-        return self._best.offset_ms if self._best else 0.0
-
-    @property
-    def uncertainty_ms(self) -> float:
-        return self._best.uncertainty_ms if self._best else float("inf")
-
-    def to_backend(self, server_ms: float) -> float:
-        return server_ms - self.offset_ms
+    def to_backend(self, device_ms: float) -> float:
+        return device_ms
 
     def to_server(self, backend: float) -> float:
-        return backend + self.offset_ms
+        return backend
 
     def snapshot(self) -> dict[str, float | None]:
-        if self._best is None:
-            return {"offsetMs": None, "uncertaintyMs": None}
-        return {
-            "offsetMs": round(self._best.offset_ms, 3),
-            "uncertaintyMs": round(self._best.uncertainty_ms, 3),
-        }
+        return {"offsetMs": 0.0, "uncertaintyMs": 0.0}
+
+
+SHARED_CLOCK = SharedClock()

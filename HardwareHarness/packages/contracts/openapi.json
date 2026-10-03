@@ -97,38 +97,6 @@
         "title": "DesktopUpdateSettingsRequest",
         "type": "object"
       },
-      "DevicesAddServerByUrlRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "url": {
-            "title": "Url",
-            "type": "string"
-          },
-          "token": {
-            "title": "Token",
-            "type": "string",
-            "x-sensitive": true
-          },
-          "label": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Label"
-          }
-        },
-        "required": [
-          "url",
-          "token"
-        ],
-        "title": "DevicesAddServerByUrlRequest",
-        "type": "object"
-      },
       "DevicesCallToolRequest": {
         "additionalProperties": false,
         "properties": {
@@ -147,71 +115,6 @@
           "args"
         ],
         "title": "DevicesCallToolRequest",
-        "type": "object"
-      },
-      "DevicesDeployServiceRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "computerId": {
-            "title": "Computerid",
-            "type": "string"
-          },
-          "spec": {
-            "additionalProperties": true,
-            "title": "Spec",
-            "type": "object"
-          }
-        },
-        "required": [
-          "computerId",
-          "spec"
-        ],
-        "title": "DevicesDeployServiceRequest",
-        "type": "object"
-      },
-      "DevicesDiscoverServicesRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "computerId": {
-            "title": "Computerid",
-            "type": "string"
-          }
-        },
-        "required": [
-          "computerId"
-        ],
-        "title": "DevicesDiscoverServicesRequest",
-        "type": "object"
-      },
-      "DevicesExecuteSshRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "computerId": {
-            "title": "Computerid",
-            "type": "string"
-          },
-          "command": {
-            "title": "Command",
-            "type": "string"
-          },
-          "timeoutMs": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Timeoutms"
-          }
-        },
-        "required": [
-          "computerId",
-          "command"
-        ],
-        "title": "DevicesExecuteSshRequest",
         "type": "object"
       },
       "DevicesExportBundleRequest": {
@@ -240,20 +143,6 @@
           "hardwareId"
         ],
         "title": "DevicesGetAdapterStatusRequest",
-        "type": "object"
-      },
-      "DevicesGetComputerStatusRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "computerId": {
-            "title": "Computerid",
-            "type": "string"
-          }
-        },
-        "required": [
-          "computerId"
-        ],
-        "title": "DevicesGetComputerStatusRequest",
         "type": "object"
       },
       "DevicesGetDefinitionRequest": {
@@ -324,28 +213,6 @@
         "title": "DevicesImportBundleRequest",
         "type": "object"
       },
-      "DevicesImportServicesRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "computerId": {
-            "title": "Computerid",
-            "type": "string"
-          },
-          "serverIds": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Serverids",
-            "type": "array"
-          }
-        },
-        "required": [
-          "computerId",
-          "serverIds"
-        ],
-        "title": "DevicesImportServicesRequest",
-        "type": "object"
-      },
       "DevicesInspectBundleRequest": {
         "additionalProperties": false,
         "properties": {
@@ -359,18 +226,6 @@
           "data"
         ],
         "title": "DevicesInspectBundleRequest",
-        "type": "object"
-      },
-      "DevicesListAdaptersRequest": {
-        "additionalProperties": false,
-        "properties": {},
-        "title": "DevicesListAdaptersRequest",
-        "type": "object"
-      },
-      "DevicesListComputersRequest": {
-        "additionalProperties": false,
-        "properties": {},
-        "title": "DevicesListComputersRequest",
         "type": "object"
       },
       "DevicesListDeviceTypesRequest": {
@@ -407,32 +262,6 @@
         "additionalProperties": false,
         "properties": {},
         "title": "DevicesListToolsRequest",
-        "type": "object"
-      },
-      "DevicesReadServerLogsRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "serverId": {
-            "title": "Serverid",
-            "type": "string"
-          },
-          "lines": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Lines"
-          }
-        },
-        "required": [
-          "serverId"
-        ],
-        "title": "DevicesReadServerLogsRequest",
         "type": "object"
       },
       "DevicesRecordAdapterCheckRequest": {
@@ -506,20 +335,6 @@
         "title": "DevicesRefreshServerRequest",
         "type": "object"
       },
-      "DevicesRemoveComputerRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "computerId": {
-            "title": "Computerid",
-            "type": "string"
-          }
-        },
-        "required": [
-          "computerId"
-        ],
-        "title": "DevicesRemoveComputerRequest",
-        "type": "object"
-      },
       "DevicesRemoveHardwareRequest": {
         "additionalProperties": false,
         "properties": {
@@ -546,35 +361,6 @@
           "serverId"
         ],
         "title": "DevicesRemoveServerRequest",
-        "type": "object"
-      },
-      "DevicesSaveComputerRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "input": {
-            "additionalProperties": true,
-            "title": "Input",
-            "type": "object"
-          },
-          "credentials": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Credentials",
-            "x-sensitive": true
-          }
-        },
-        "required": [
-          "input"
-        ],
-        "title": "DevicesSaveComputerRequest",
         "type": "object"
       },
       "DevicesSaveHardwareRequest": {
@@ -621,25 +407,6 @@
         "title": "DevicesSaveServerRequest",
         "type": "object"
       },
-      "DevicesServerActionRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "serverId": {
-            "title": "Serverid",
-            "type": "string"
-          },
-          "action": {
-            "title": "Action",
-            "type": "string"
-          }
-        },
-        "required": [
-          "serverId",
-          "action"
-        ],
-        "title": "DevicesServerActionRequest",
-        "type": "object"
-      },
       "DevicesSetAdapterStatusRequest": {
         "additionalProperties": false,
         "properties": {
@@ -661,20 +428,6 @@
           "status"
         ],
         "title": "DevicesSetAdapterStatusRequest",
-        "type": "object"
-      },
-      "DevicesUninstallServiceRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "serverId": {
-            "title": "Serverid",
-            "type": "string"
-          }
-        },
-        "required": [
-          "serverId"
-        ],
-        "title": "DevicesUninstallServiceRequest",
         "type": "object"
       },
       "ManualInvokeToolRequest": {
@@ -2132,61 +1885,6 @@
         "x-confirm": false
       }
     },
-    "/api/ops/devices.addServerByUrl": {
-      "post": {
-        "operationId": "devices.addServerByUrl",
-        "summary": "An unmanaged service: usable through its URL, not started or stopped from here.",
-        "tags": [
-          "devices"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DevicesAddServerByUrlRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "write",
-        "x-capability": "devices.manageServers",
-        "x-profiles": [
-          "adapter"
-        ],
-        "x-idempotency": "natural",
-        "x-confirm": false
-      }
-    },
     "/api/ops/devices.callTool": {
       "post": {
         "operationId": "devices.callTool",
@@ -2236,172 +1934,6 @@
           "adapter",
           "explore"
         ],
-        "x-idempotency": "none",
-        "x-confirm": false
-      }
-    },
-    "/api/ops/devices.deployService": {
-      "post": {
-        "operationId": "devices.deployService",
-        "summary": "Pack, upload, install and start one service; an existing one is upgraded in place\nand keeps its ``server.json`` and token (design doc 4.8.3).",
-        "tags": [
-          "devices"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DevicesDeployServiceRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "destructive",
-        "x-capability": "devices.deploy",
-        "x-profiles": [
-          "adapter"
-        ],
-        "x-idempotency": "none",
-        "x-confirm": true
-      }
-    },
-    "/api/ops/devices.discoverServices": {
-      "post": {
-        "operationId": "devices.discoverServices",
-        "summary": "devices.discoverServices",
-        "tags": [
-          "devices"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DevicesDiscoverServicesRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "additionalProperties": true,
-                    "type": "object"
-                  },
-                  "type": "array"
-                }
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "read",
-        "x-capability": "devices.read",
-        "x-profiles": [
-          "adapter"
-        ],
-        "x-idempotency": "natural",
-        "x-confirm": false
-      }
-    },
-    "/api/ops/devices.executeSsh": {
-      "post": {
-        "operationId": "devices.executeSsh",
-        "summary": "devices.executeSsh",
-        "tags": [
-          "devices"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DevicesExecuteSshRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "actuate",
-        "x-capability": "devices.ssh",
-        "x-profiles": [],
         "x-idempotency": "none",
         "x-confirm": false
       }
@@ -2507,61 +2039,6 @@
         },
         "x-risk": "read",
         "x-capability": "hardware.read",
-        "x-profiles": [
-          "adapter"
-        ],
-        "x-idempotency": "natural",
-        "x-confirm": false
-      }
-    },
-    "/api/ops/devices.getComputerStatus": {
-      "post": {
-        "operationId": "devices.getComputerStatus",
-        "summary": "devices.getComputerStatus",
-        "tags": [
-          "devices"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DevicesGetComputerStatusRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "read",
-        "x-capability": "devices.read",
         "x-profiles": [
           "adapter"
         ],
@@ -2796,61 +2273,6 @@
         "x-confirm": false
       }
     },
-    "/api/ops/devices.importServices": {
-      "post": {
-        "operationId": "devices.importServices",
-        "summary": "Add services listed in the computer's ``services.json``; tokens come from the\nservice's own ``server.json`` straight into the keyring (design doc 4.8.3).",
-        "tags": [
-          "devices"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DevicesImportServicesRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "write",
-        "x-capability": "devices.manageServers",
-        "x-profiles": [
-          "adapter"
-        ],
-        "x-idempotency": "natural",
-        "x-confirm": false
-      }
-    },
     "/api/ops/devices.inspectBundle": {
       "post": {
         "operationId": "devices.inspectBundle",
@@ -2900,122 +2322,6 @@
         "x-risk": "read",
         "x-capability": "hardware.manage",
         "x-profiles": [],
-        "x-idempotency": "natural",
-        "x-confirm": false
-      }
-    },
-    "/api/ops/devices.listAdapters": {
-      "post": {
-        "operationId": "devices.listAdapters",
-        "summary": "Adapters in the ``mcp_servers`` workspace that can be packed and deployed.",
-        "tags": [
-          "devices"
-        ],
-        "requestBody": {
-          "required": false,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DevicesListAdaptersRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "additionalProperties": true,
-                    "type": "object"
-                  },
-                  "type": "array"
-                }
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "read",
-        "x-capability": "devices.read",
-        "x-profiles": [
-          "adapter"
-        ],
-        "x-idempotency": "natural",
-        "x-confirm": false
-      }
-    },
-    "/api/ops/devices.listComputers": {
-      "post": {
-        "operationId": "devices.listComputers",
-        "summary": "devices.listComputers",
-        "tags": [
-          "devices"
-        ],
-        "requestBody": {
-          "required": false,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DevicesListComputersRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "additionalProperties": true,
-                    "type": "object"
-                  },
-                  "type": "array"
-                }
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "read",
-        "x-capability": "devices.read",
-        "x-profiles": [
-          "adapter"
-        ],
         "x-idempotency": "natural",
         "x-confirm": false
       }
@@ -3372,61 +2678,6 @@
         "x-confirm": false
       }
     },
-    "/api/ops/devices.readServerLogs": {
-      "post": {
-        "operationId": "devices.readServerLogs",
-        "summary": "devices.readServerLogs",
-        "tags": [
-          "devices"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DevicesReadServerLogsRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "read",
-        "x-capability": "devices.read",
-        "x-profiles": [
-          "adapter"
-        ],
-        "x-idempotency": "natural",
-        "x-confirm": false
-      }
-    },
     "/api/ops/devices.recordAdapterCheck": {
       "post": {
         "operationId": "devices.recordAdapterCheck",
@@ -3590,59 +2841,6 @@
         "x-confirm": false
       }
     },
-    "/api/ops/devices.removeComputer": {
-      "post": {
-        "operationId": "devices.removeComputer",
-        "summary": "devices.removeComputer",
-        "tags": [
-          "devices"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DevicesRemoveComputerRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "destructive",
-        "x-capability": "devices.manageComputers",
-        "x-profiles": [],
-        "x-idempotency": "natural",
-        "x-confirm": true
-      }
-    },
     "/api/ops/devices.removeHardware": {
       "post": {
         "operationId": "devices.removeHardware",
@@ -3750,59 +2948,6 @@
         "x-profiles": [],
         "x-idempotency": "natural",
         "x-confirm": true
-      }
-    },
-    "/api/ops/devices.saveComputer": {
-      "post": {
-        "operationId": "devices.saveComputer",
-        "summary": "devices.saveComputer",
-        "tags": [
-          "devices"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DevicesSaveComputerRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "write",
-        "x-capability": "devices.manageComputers",
-        "x-profiles": [],
-        "x-idempotency": "natural",
-        "x-confirm": false
       }
     },
     "/api/ops/devices.saveHardware": {
@@ -3916,61 +3061,6 @@
         "x-confirm": false
       }
     },
-    "/api/ops/devices.serverAction": {
-      "post": {
-        "operationId": "devices.serverAction",
-        "summary": "devices.serverAction",
-        "tags": [
-          "devices"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DevicesServerActionRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "actuate",
-        "x-capability": "devices.controlServers",
-        "x-profiles": [
-          "adapter"
-        ],
-        "x-idempotency": "none",
-        "x-confirm": false
-      }
-    },
     "/api/ops/devices.setAdapterStatus": {
       "post": {
         "operationId": "devices.setAdapterStatus",
@@ -4022,61 +3112,6 @@
         "x-profiles": [],
         "x-idempotency": "natural",
         "x-confirm": false
-      }
-    },
-    "/api/ops/devices.uninstallService": {
-      "post": {
-        "operationId": "devices.uninstallService",
-        "summary": "Safe stop, ``uninstall.ps1``, archive and delete the directory, then forget it.",
-        "tags": [
-          "devices"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DevicesUninstallServiceRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "destructive",
-        "x-capability": "devices.deploy",
-        "x-profiles": [
-          "adapter"
-        ],
-        "x-idempotency": "none",
-        "x-confirm": true
       }
     },
     "/api/ops/manual.invokeTool": {

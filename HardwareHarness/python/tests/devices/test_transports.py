@@ -5,7 +5,7 @@ import json
 import socket
 from collections.abc import AsyncIterator
 from typing import Any
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 import uvicorn
@@ -13,10 +13,9 @@ from starlette.types import Receive, Scope, Send
 
 from hardwareharness_backend.application.cancellation import AbortController
 from hardwareharness_backend.contracts.errors import AppError
-from hardwareharness_backend.devices import DeviceTransportRegistry, McpHttpTransport, SshManager
+from hardwareharness_backend.devices import DeviceTransportRegistry, McpHttpTransport
 from hardwareharness_backend.devices.mcp_client import McpCompatibilityError
 from hardwareharness_backend.devices.mcp_transport import CompatibleHttpTransport
-from hardwareharness_backend.devices.ssh import _execute, _HostKeyPolicy, fingerprint
 
 
 class Remote:
@@ -351,61 +350,6 @@ async def test_registry_routes_isolates_and_closes() -> None:
         await registry.connect({"transport": "unknown"})
     await registry.close()
     transport.close.assert_awaited_once()
-
-
-async def test_ssh_cache_credentials_generation_timeout_and_close() -> None:
-    credential = {"kind": "password", "password": "one"}
-    secrets = Mock(get=Mock(side_effect=lambda _: credential.copy()))
-    manager = SshManager(secrets)
-    computer = {"id": "C", "address": "localhost", "ssh": {"port": 22, "username": "user"}}
-    clients = [Mock() for _ in range(3)]
-    with patch.object(manager, "_open", side_effect=clients):
-        first, same = await asyncio.gather(manager._connect(computer), manager._connect(computer))
-        assert first is same
-        assert await manager._connect(computer) is first
-        credential["password"] = "two"
-        assert await manager._connect(computer) is clients[1]
-        clients[0].close.assert_called_once()
-        with patch("hardwareharness_backend.devices.ssh._execute", return_value={"stdout": "ok"}):
-            assert await manager.execute(computer, "cmd") == {"stdout": "ok"}
-        with (
-            patch("hardwareharness_backend.devices.ssh._execute", side_effect=TimeoutError()),
-            pytest.raises(RuntimeError, match="timed out after 5 ms"),
-        ):
-            await manager.execute(computer, "cmd", 5)
-        assert not manager.clients
-        await manager.close()
-        await manager.close()
-        with pytest.raises(RuntimeError, match="closed"):
-            await manager._connect(computer)
-
-
-def test_ssh_drain_fingerprint_and_connection_config() -> None:
-    channel = Mock(
-        recv_ready=Mock(side_effect=[True, False]),
-        recv_stderr_ready=Mock(side_effect=[True, False]),
-        recv=Mock(return_value=b"output"),
-        recv_stderr=Mock(return_value=b"error"),
-        exit_status_ready=Mock(return_value=True),
-        recv_exit_status=Mock(return_value=7),
-    )
-    stdin = Mock()
-    client = Mock(exec_command=Mock(return_value=(stdin, Mock(channel=channel), Mock())))
-    result = _execute(client, "cmd", 1000, 4)
-    assert result["stdout"] == "outp" and result["stderr"] == "erro"
-    assert result["exitCode"] == 7 and result["truncated"]
-    stdin.close.assert_called_once()
-    key = Mock(asbytes=Mock(return_value=b"key"))
-    _HostKeyPolicy(fingerprint(b"key")).missing_host_key(Mock(), "host", key)
-    with pytest.raises(Exception, match="verification failed"):
-        _HostKeyPolicy("wrong").missing_host_key(Mock(), "host", key)
-    manager = SshManager(Mock(get=Mock(return_value={"kind": "password", "password": "secret"})))
-    with patch("paramiko.SSHClient") as factory:
-        mocked_client: Any = factory.return_value
-        opened = manager._open({"id": "C", "address": "host", "ssh": {"port": 22, "username": "u"}})
-        assert opened is factory.return_value
-        assert mocked_client.connect.call_args.kwargs["password"] == "secret"
-        mocked_client.get_transport.return_value.set_keepalive.assert_called_once_with(5)
 
 
 def test_backoff_matches_ts_options() -> None:

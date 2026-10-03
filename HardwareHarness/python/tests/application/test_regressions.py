@@ -86,15 +86,8 @@ async def test_manual_hardware_abort_is_scoped() -> None:
 
 
 async def test_device_application_crud_and_binary_boundaries() -> None:
-    computer: Json = {
-        "id": "PC1",
-        "label": "Lab",
-        "address": "10.0.0.2",
-        "ssh": {"port": 22, "username": "u", "shell": "powershell"},
-    }
     server: Json = {
         "serverId": "S",
-        "computerId": "PC1",
         "hardwareId": "H1",
         "label": "S",
         "enabled": True,
@@ -104,23 +97,14 @@ async def test_device_application_crud_and_binary_boundaries() -> None:
     # Valid server details are parsed in contracts tests; these adapters must preserve call data.
     devices = Mock()
     for name in [
-        "remove_computer",
         "remove_server",
-        "refresh_computer",
-        "execute",
         "refresh_all_servers",
         "save_server",
         "refresh_server",
-        "server_action",
-        "read_server_logs",
         "refresh_hardware",
     ]:
         setattr(devices, name, AsyncMock(return_value={"result": name}))
-    devices.list_computers.return_value = [computer]
-    devices.list_servers.return_value = [
-        server,
-        {**server, "serverId": "OTHER", "computerId": "PC2"},
-    ]
+    devices.list_servers.return_value = [server, {**server, "serverId": "OTHER"}]
     devices.list_tools.return_value = [{"externalName": "S__tool"}]
     devices.refresh_hardware.return_value = [{"result": "refresh_hardware"}]
     devices.store = Mock(
@@ -135,28 +119,13 @@ async def test_device_application_crud_and_binary_boundaries() -> None:
         remove_hardware=AsyncMock(),
     )
     app = DevicesApplication(DefaultAuthorizer(), devices, catalog)
-    assert app.list_computers(HUMAN) == [computer]
-    assert await app.remove_computer(HUMAN, "PC1") == {"computerId": "PC1"}
-    status = await app.get_computer_status(HUMAN, "PC1")
-    assert status["result"] == "refresh_computer" and status["servers"] == [
-        {"result": "refresh_server"}
-    ]
-    devices.refresh_server.assert_awaited_once_with("S")
-    await app.execute_ssh(HUMAN, "PC1", "whoami")
-    devices.execute.assert_awaited_with("PC1", "whoami")
-    await app.execute_ssh(HUMAN, "PC1", "whoami", 100)
-    devices.execute.assert_awaited_with("PC1", "whoami", 100)
     assert len(app.list_servers(HUMAN)) == 2
     assert (await app.list_servers_with_status(HUMAN))["statuses"] == {
         "result": "refresh_all_servers"
     }
     assert await app.remove_server(HUMAN, "S") == {"serverId": "S"}
     await app.refresh_server(HUMAN, "S")
-    await app.server_action(AGENT, "S", "start")
-    await app.read_server_logs(HUMAN, "S")
-    devices.read_server_logs.assert_awaited_with("S")
-    await app.read_server_logs(HUMAN, "S", 5)
-    devices.read_server_logs.assert_awaited_with("S", 5)
+    devices.refresh_server.assert_awaited_once_with("S")
     assert await app.list_managed_hardware(HUMAN) == [{"result": "refresh_hardware"}]
     assert app.list_hardware(HUMAN) == [HARDWARE] and app.get_hardware(HUMAN, "HW1") == HARDWARE
     assert app.list_tools(AGENT) == [{"externalName": "S__tool"}]
@@ -286,8 +255,6 @@ async def test_wiring_orchestration_and_dashboard_facades() -> None:
     assert app.get_task(HUMAN, "W") == {"id": "W"} and app.list_tasks(HUMAN) == []
     devices = Mock()
     for name in [
-        "list_computers",
-        "list_statuses",
         "list_servers",
         "list_server_statuses",
         "list_hardware",
@@ -302,10 +269,7 @@ async def test_wiring_orchestration_and_dashboard_facades() -> None:
         authorizer, devices, Mock(gateway_status=lambda: {"running": True}), ExecutionCoordinator()
     ).dashboard(HUMAN)
     assert dashboard == {
-        "computers": ["list_computers"],
-        "statuses": ["list_statuses"],
-        "servers": [remote],
-        "plugins": [local],
+        "servers": [remote, local],
         "serverStatuses": ["list_server_statuses"],
         "hardware": ["list_hardware"],
         "tools": ["list_tools"],

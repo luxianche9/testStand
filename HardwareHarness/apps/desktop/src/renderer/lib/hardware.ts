@@ -1,4 +1,4 @@
-import type { Hardware, HardwarePin, HardwarePort, McpHttpServerConfig } from "@hardwareharness/contracts/devices";
+import type { Hardware, HardwarePin, HardwarePort, McpServerConfig } from "@hardwareharness/contracts/devices";
 
 /**
  * Wiring references a port as `<hardwareId>.<portId>` and a pin by its port-local id. Profile and
@@ -14,7 +14,7 @@ export function resolvePortRef(ref: string, hardware: Hardware[]): { hardware?: 
   return port ? { hardware: owner, port } : { hardware: owner };
 }
 
-export function hardwareForServer(server: McpHttpServerConfig, hardware: Hardware[]): Hardware | undefined {
+export function hardwareForServer(server: McpServerConfig, hardware: Hardware[]): Hardware | undefined {
   return hardware.find((item) => item.hardwareId === server.hardwareId);
 }
 

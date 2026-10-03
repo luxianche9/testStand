@@ -12,7 +12,6 @@ SYSTEM_REQUEST_CONTEXT: Json = {"actor": "system", "source": "internal"}
 _AGENT_CAPABILITIES = {
     "system.read",
     "devices.read",
-    "devices.controlServers",
     "hardware.read",
     "hardware.manage",
     "hardware.executeTools",

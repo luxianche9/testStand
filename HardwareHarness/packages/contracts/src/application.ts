@@ -1,6 +1,6 @@
 import type { AgentConfirmation, AgentConfirmationAnswer, RequestContext } from "./agents.js";
 import type { DashboardSnapshot } from "./desktop.js";
-import type { AdapterReleaseRecord, AdapterStatus, ConnectionStatus, DeviceType, Hardware, ManagedDeviceDefinition, ManagedHardware, McpServerConfig, RegisteredService, RemoteComputer, RemoteServiceLog, ServerStatus, ServiceImportResult, DiscoveredService, DeployableAdapter, DeployResult, DeployServiceSpec, UninstallResult, StoredHardwareDefinition, ToolCatalogItem } from "./devices.js";
+import type { AdapterReleaseRecord, AdapterStatus, DeviceType, Hardware, ManagedDeviceDefinition, ManagedHardware, McpServerConfig, ServerStatus, StoredHardwareDefinition, ToolCatalogItem } from "./devices.js";
 import type { ManualToolInvocationInput, ManualToolInvocationResult } from "./execution.js";
 
 import type { ProjectDocument, ProjectFolderSelection, RecentProjectSummary } from "./projects.js";
@@ -9,44 +9,16 @@ import type { DesktopOperation } from "./operations.generated.js";
 import type { DeviceStream, RunIo, RunRejudge, RunStreams, RunStreamWindow, RunTimeline, StreamProbe, StreamRead, StreamReadQuery } from "./observability.js";
 import type { TestDeviceTools, TestPlan, TestPlanMutationResult, TestPlanOperation, TestPlanSummary, TestPlanValidation, TestRunSnapshot, TestStepCatalogItem } from "./testing.js";
 
-interface SshCredential {
-  kind: "password" | "privateKey";
-  password?: string;
-  privateKey?: string;
-  passphrase?: string;
-}
-
-interface SshResult {
-  exitCode: number | null;
-  stdout: string;
-  stderr: string;
-  truncated: boolean;
-  durationMs: number;
-}
-
 type BundleImport = { id: string; label: string; replaced: boolean };
 
 /** The existing application method contract, independent of a runtime implementation. */
 export interface BackendApplication {
   readonly devices: {
-    listComputers(context: RequestContext): RemoteComputer[];
-    saveComputer(context: RequestContext, input: RemoteComputer, credentials?: { ssh?: SshCredential | string }): Promise<RemoteComputer>;
-    removeComputer(context: RequestContext, computerId: string): Promise<{ computerId: string }>;
-    getComputerStatus(context: RequestContext, computerId: string): Promise<{ computerId: string; ssh: ConnectionStatus; servers: ServerStatus[] }>;
-    executeSsh(context: RequestContext, computerId: string, command: string, timeoutMs?: number): Promise<SshResult>;
     listServers(context: RequestContext): McpServerConfig[];
     listServersWithStatus(context: RequestContext): Promise<{ servers: McpServerConfig[]; statuses: ServerStatus[] }>;
     saveServer(context: RequestContext, input: McpServerConfig, credentials?: { mcpToken?: string }): Promise<McpServerConfig>;
     removeServer(context: RequestContext, serverId: string): Promise<{ serverId: string }>;
     refreshServer(context: RequestContext, serverId: string): Promise<ServerStatus>;
-    serverAction(context: RequestContext, serverId: string, action: "start" | "stop" | "restart" | "force-stop"): Promise<ServerStatus>;
-    readServerLogs(context: RequestContext, serverId: string, lines?: number): Promise<RemoteServiceLog>;
-    discoverServices(context: RequestContext, computerId: string): Promise<DiscoveredService[]>;
-    importServices(context: RequestContext, computerId: string, serverIds: string[]): Promise<ServiceImportResult>;
-    addServerByUrl(context: RequestContext, url: string, token: string, label?: string): Promise<RegisteredService>;
-    listAdapters(context: RequestContext): Promise<DeployableAdapter[]>;
-    deployService(context: RequestContext, computerId: string, spec: DeployServiceSpec): Promise<DeployResult>;
-    uninstallService(context: RequestContext, serverId: string): Promise<UninstallResult>;
     listManagedHardware(context: RequestContext): Promise<ManagedHardware[]>;
     listDeviceTypes(context: RequestContext): DeviceType[];
     listHardware(context: RequestContext): Hardware[];

@@ -84,7 +84,7 @@ async def _wait(app: Any, context: Json, value: Json) -> Json:
             status = app.wiring.get_task(context, identifier)
             terminal = status["status"] not in {"pending", "in_progress"}
         else:
-            # Cached status is updated by the platform. Waiting never starts/restarts a service.
+            # Cached status is updated by the platform. Waiting never reconnects a device.
             dashboard = app.system.dashboard(context)
             if not any(server["serverId"] == identifier for server in dashboard["servers"]):
                 raise app_error("not_found", f"Unknown MCP server: {identifier}")
@@ -92,13 +92,7 @@ async def _wait(app: Any, context: Json, value: Json) -> Json:
                 (item for item in dashboard["serverStatuses"] if item["serverId"] == identifier),
                 {"serverId": identifier},
             )
-            states = [
-                item.get("state")
-                for item in (status.get("service", {}), status.get("transport", {}))
-            ]
-            terminal = bool(states) and all(
-                state in {"online", "offline", "error"} for state in states
-            )
+            terminal = status.get("transport", {}).get("state") in {"online", "offline", "error"}
         revision = _revision(status)
         if baseline is None:
             baseline = revision

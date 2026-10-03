@@ -25,11 +25,6 @@ async def register(
     preview = await store.inspect_bundle(bundle)
     if preview["hardwareId"] != "DUT_1" or len(preview["ports"]) != 14:
         raise RuntimeError("Unexpected board model scope")
-    computer = store.get_computer("LOCAL_PC")
-    if computer and computer.get("execution") != "local":
-        raise RuntimeError(
-            "LOCAL_PC is already a different computer; resolve the identity before registration"
-        )
     existing = store.get_server(config["serverId"])
     if existing and existing["hardwareId"] != config["hardwareId"]:
         raise RuntimeError("Server ID already controls another hardware")
@@ -40,7 +35,6 @@ async def register(
     backup.mkdir(parents=True)
     for relative in (
         "secret-keys.json",
-        "devices/computers/LOCAL_PC.json",
         "devices/servers/FIREDAP_MCP.json",
         "devices/hardware/DUT_1",
         "devices/hardware/LOCAL_MCP.FIREDAP_0",
@@ -54,33 +48,13 @@ async def register(
                 shutil.copy2(source, destination)
     secrets = SecretStore(user_data, backend)
     await secrets.initialize()
-    await store.save_computer(
-        {
-            "id": "LOCAL_PC",
-            "label": "本机",
-            "address": "127.0.0.1",
-            "execution": "local",
-            "ssh": {"port": 22, "username": "local", "shell": "powershell"},
-        }
-    )
-
-    def command(name: str) -> str:
-        return "& '" + str(server_root / name).replace("'", "''") + "'"
-
     server = {
         "transport": "mcp-http",
         "serverId": config["serverId"],
-        "computerId": "LOCAL_PC",
         "label": "FireDAP STM32 烧录服务（本机）",
         "hardwareId": config["hardwareId"],
         "url": f"http://127.0.0.1:{config['port']}/mcp",
         "enabled": True,
-        "lifecycle": {
-            "statusCommand": command("status.ps1"),
-            "startCommand": command("start.ps1"),
-            "stopCommand": command("stop.ps1"),
-            "logPath": str(server_root / "logs"),
-        },
     }
     await secrets.set(f"mcp:{config['serverId']}", {"token": config["token"]})
     await store.save_server(server)

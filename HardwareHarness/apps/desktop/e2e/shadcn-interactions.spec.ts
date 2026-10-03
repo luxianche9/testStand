@@ -205,28 +205,34 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
     expect(await page.evaluate(async () => (await window.hardwareharness.projects.current())?.file.wiring.connections)).toEqual([]);
   });
 
-  test("submits the computer editor with Enter and the keyboard-selected native shell", async () => {
+  test("submits the device editor with Enter and the keyboard-selected native type and mode", async () => {
     await page.getByRole("tab", { name: "设备管理", exact: true }).click();
-    await page.getByRole("button", { name: "添加电脑", exact: true }).click();
-    const dialog = page.getByRole("dialog", { name: "添加电脑", exact: true });
+    await page.getByRole("button", { name: "添加测试资源", exact: true }).click();
+    const dialog = page.getByRole("dialog", { name: "添加测试资源", exact: true });
     await expect(dialog.getByRole("button", { name: "保存", exact: true })).toBeDisabled();
-    await dialog.getByLabel("电脑 ID").fill("KEYBOARD_PC");
-    await dialog.getByLabel("显示名称").fill("Keyboard computer");
-    await dialog.getByLabel("IP 地址 / 主机名").fill("127.0.0.1");
-    await dialog.getByLabel("SSH 用户名").fill("keyboard");
-    const shell = dialog.getByLabel("Shell");
-    await expect(shell).toHaveValue("powershell");
-    await shell.focus();
-    await shell.press("End");
-    await expect(shell).toHaveValue("posix");
+    const type = dialog.getByLabel("设备类型");
+    await expect(type.locator("option:not([value=''])").first()).toBeAttached();
+    await type.focus();
+    await type.press("ArrowDown");
+    await expect(type).not.toHaveValue("");
+    const mode = dialog.getByLabel("运行模式");
+    await expect(mode).toHaveValue("real");
+    await mode.focus();
+    await mode.press("End");
+    await expect(mode).toHaveValue("sim");
+    await dialog.getByLabel("Server ID").fill("KEYBOARD_DEV");
+    await dialog.getByLabel("唯一 Hardware ID").fill("KEYBOARD_CARD");
+    await dialog.getByLabel("显示名称").fill("Keyboard device");
     await expect(dialog.getByRole("button", { name: "保存", exact: true })).toBeEnabled();
-    await dialog.getByLabel("SSH 用户名").press("Enter");
+    await dialog.getByLabel("显示名称").press("Enter");
     await expect(dialog).toBeHidden();
-    const saved = await page.evaluate(async () => (await window.hardwareharness.system.dashboard()).computers.find((computer) => computer.id === "KEYBOARD_PC"));
+    const saved = await page.evaluate(async () => (await window.hardwareharness.system.dashboard()).servers
+      .find((server) => server.serverId === "KEYBOARD_DEV"));
     expect(saved).toMatchObject({
-      id: "KEYBOARD_PC", label: "Keyboard computer", address: "127.0.0.1",
-      ssh: { port: 22, username: "keyboard", shell: "posix" }
+      transport: "plugin", serverId: "KEYBOARD_DEV", hardwareId: "KEYBOARD_CARD", label: "Keyboard device", mode: "sim"
     });
+    await expect(page.getByRole("tree", { name: "硬件列表" }).getByRole("treeitem", { name: /Keyboard device/ }))
+      .toContainText("在线");
   });
 
   test("discards unsaved hardware editor changes on Escape", async () => {

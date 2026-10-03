@@ -19,7 +19,7 @@ export function useDeviceCatalog() {
   });
 }
 
-/** Remote availability is pushed on the `availability` channel; this poll is the dropped-event
+/** Availability is pushed on the `availability` channel; this poll is the dropped-event
  *  fallback. */
 export function useDashboard() {
   return useQuery({

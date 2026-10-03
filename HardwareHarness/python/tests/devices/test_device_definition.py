@@ -44,17 +44,10 @@ def server() -> dict[str, Any]:
     return {
         "transport": "mcp-http",
         "serverId": "PCI1710L_MCP",
-        "computerId": "PC1",
         "label": "PCI-1710L",
         "hardwareId": HARDWARE,
         "url": "http://127.0.0.1:8011/mcp",
         "enabled": True,
-        "lifecycle": {
-            "statusCommand": "s",
-            "startCommand": "s",
-            "stopCommand": "s",
-            "logPath": "logs",
-        },
     }
 
 
@@ -109,10 +102,6 @@ async def service_with(
         describe_device=AsyncMock(return_value=document),
     )
     service = DeviceService(store, Mock(set=AsyncMock(), remove=AsyncMock()), transports)
-    await service.save_computer(
-        {"id": "PC1", "label": "PC1", "address": "127.0.0.1", "ssh": {"port": 22, "username": "u"}},
-        {"ssh": "secret"},
-    )
     await service.save_server(server(), {"mcpToken": "token"})
     return service, transports
 

@@ -304,17 +304,12 @@ class LiveStreams:
             tail_ms=0,
             fetch_blob=self.fetch_blob,
         )
-        release: Callable[[], None] | None = None
         try:
-            with contextlib.suppress(Exception):
-                release = self.sources.hold_clock(hardware_id)
             await recorder.start()
             yield store, recorder
         finally:
             with contextlib.suppress(Exception):
                 await recorder.stop(tail=False)
-            if release is not None:
-                release()
             store.close()
             _unlink(path)
 

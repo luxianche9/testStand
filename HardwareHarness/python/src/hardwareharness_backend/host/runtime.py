@@ -42,7 +42,7 @@ from hardwareharness_backend.projects.icd_library import IcdLibrary
 from hardwareharness_backend.storage import AuditLog, SecretBackend, SecretStore, SettingsStore
 from hardwareharness_backend.storage.secrets import FileSecretBackend
 from hardwareharness_backend.streams.live import LiveStreams
-from hardwareharness_backend.streams.source import StreamSources, server_endpoints
+from hardwareharness_backend.streams.source import StreamSources
 from hardwareharness_backend.testing import TestEngine, TestPlanStore
 from hardwareharness_backend.testing.plugins import load_plugins
 from hardwareharness_backend.testing.resolver import DeviceToolResolver
@@ -125,9 +125,7 @@ class HostRuntime:
         result_listeners = load_plugins("hardwareharness.result_listeners")
         test_resolver = DeviceToolResolver(devices, catalog, IcdLibrary(projects))
         test_plan_store = TestPlanStore(projects, test_resolver, test_step_plugins, wiring)
-        stream_sources = StreamSources(
-            server_endpoints(devices, secrets), plugins=plugins.device_for
-        )
+        stream_sources = StreamSources(plugins.device_for)
         live_root = root / "live-streams"
         live_root.mkdir(exist_ok=True)
         for stale in live_root.glob("*.sqlite*"):
@@ -266,9 +264,7 @@ class HostRuntime:
         await services.application.testing.close()
         await services.devices.safe_all()
         await services.live_streams.close()
-        await services.stream_sources.close()
         await services.application.projects.close()
-        await services.devices.close()
         await services.transports.close()
         await services.secrets.flush()
 

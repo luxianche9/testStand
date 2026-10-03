@@ -1,14 +1,14 @@
 {
-  "application": { "lines": [817, 848], "branches": [152, 172] },
-  "contracts": { "lines": [769, 844], "branches": [257, 312] },
-  "devices": { "lines": [1981, 2209], "branches": [426, 564] },
-  "host": { "lines": [388, 619], "branches": [71, 124] },
-  "mcp_gateway": { "lines": [646, 679], "branches": [169, 198] },
+  "application": { "lines": [742, 767], "branches": [138, 158] },
+  "contracts": { "lines": [758, 839], "branches": [253, 312] },
+  "devices": { "lines": [1072, 1184], "branches": [247, 322] },
+  "host": { "lines": [383, 611], "branches": [70, 122] },
+  "mcp_gateway": { "lines": [645, 678], "branches": [169, 198] },
   "projects": { "lines": [235, 260], "branches": [36, 50] },
   "protocol": { "lines": [1271, 1287], "branches": [466, 480] },
   "storage": { "lines": [275, 308], "branches": [33, 48] },
-  "streams": { "lines": [1873, 2031], "branches": [610, 752] },
-  "testing": { "lines": [3407, 4254], "branches": [1031, 1592] },
+  "streams": { "lines": [1643, 1782], "branches": [552, 680] },
+  "testing": { "lines": [3396, 4240], "branches": [1026, 1586] },
   "wiring": { "lines": [238, 269], "branches": [71, 100] },
   "workspace": { "lines": [156, 156], "branches": [50, 50] }
 }

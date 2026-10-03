@@ -112,24 +112,20 @@ async def test_agent_allowed() -> None:
 
 
 @pytest.mark.ts_case(
-    "packages/application/src/application.test.ts::denies Agent computer/server "
-    "management, arbitrary SSH, force-stop and human confirmations"
+    "packages/application/src/application.test.ts::denies Agent server management "
+    "and human confirmations"
 )
 async def test_agent_denied() -> None:
     app, devices, wiring = make_app()
     operations = [
-        app.devices.save_computer(AGENT, {"id": "PC1"}),
         app.devices.remove_server(AGENT, "S1"),
-        app.devices.execute_ssh(AGENT, "PC1", "whoami"),
-        app.devices.server_action(AGENT, "S1", "force-stop"),
         app.wiring.start_task(AGENT, "WT"),
     ]
     for operation in operations:
         with pytest.raises(Exception) as caught:
             await operation
         assert getattr(caught.value, "category", None) == "permission_denied"
-    devices.save_computer.assert_not_called()
-    devices.execute.assert_not_called()
+    devices.remove_server.assert_not_called()
     wiring.start_task.assert_not_called()
 
 
@@ -139,18 +135,9 @@ async def test_agent_denied() -> None:
 )
 async def test_human_allowed() -> None:
     app, devices, wiring = make_app()
-    await app.devices.save_computer(
-        HUMAN,
-        {
-            "id": "PC1",
-            "label": "Lab",
-            "address": "10.0.0.2",
-            "ssh": {"port": 22, "username": "u", "shell": "powershell"},
-        },
-    )
-    await app.devices.server_action(HUMAN, "S1", "force-stop")
+    await app.devices.remove_server(HUMAN, "S1")
     await app.wiring.start_task(HUMAN, "WT", "operator")
-    devices.save_computer.assert_called_once()
+    devices.remove_server.assert_awaited_once_with("S1")
     wiring.start_task.assert_called_once_with("WT", "operator")
 
 

@@ -16,7 +16,7 @@ def values(store: StreamStore, key: str, field: str = "v") -> list[Any]:
 
 
 async def test_records_preroll_live_and_tail(tmp_path: Path) -> None:
-    async with FakeStreamService({"v": "scalar", "rx": "bytes"}, clock_skew_ms=250) as service:
+    async with FakeStreamService({"v": "scalar", "rx": "bytes"}) as service:
         sources = service.sources()
         store = StreamStore(tmp_path / "streams.sqlite")
         service.publish("v", v=0.5)  # inside the pre-roll
@@ -32,17 +32,16 @@ async def test_records_preroll_live_and_tail(tmp_path: Path) -> None:
         assert await recorder.wait_watermark("daq", "v", stored["t"], 2.0)
         assert store.stream("daq__v")["count"] == 5
         await recorder.stop()
-        await sources.close()
 
     meta = store.meta()
     assert meta["recording"] is False and meta["stoppedTb"] >= meta["startedTb"]
     assert meta["preRollMs"] == 1000 and meta["tailMs"] == 100
     info = store.stream("daq__v")
     assert info["type"] == "scalar" and info["watermarkTb"] >= meta["stoppedTb"] - 300
-    assert abs(info["clock"]["offsetMs"] - 250) < 50
+    assert info["clock"] == {"offsetMs": 0.0, "uncertaintyMs": 0.0}
     assert values(store, "daq__v") == [0.5, 1.0, 2.0, 3.0, 4.0]
     record = store.read("daq__v")["records"][0]
-    assert abs(record["t"] - record["tb"] - 250) < 50
+    assert record["t"] == record["tb"]
     assert values(store, "dut__rx", "data") == [b"hello".hex()]
     assert store.states("dut__rx")[0]["state"] == "connected"
     store.close()
@@ -62,7 +61,6 @@ async def test_old_history_is_outside_preroll_but_the_level_in_force_is_kept(
         stored = service.publish("v", v=1.0)
         assert await recorder.wait_watermark("daq", "v", stored["t"], 2.0)
         await recorder.stop()
-        await sources.close()
     assert values(store, "daq__v") == [-1.0, 1.0]
     store.close()
 
@@ -82,7 +80,6 @@ async def test_gaps_and_disconnects_are_stored(tmp_path: Path) -> None:
         last = service.publish("v", v=4)
         assert await recorder.wait_watermark("daq", "v", last["t"], 3.0)
         await recorder.stop()
-        await sources.close()
     [gap] = store.gaps("daq__v")
     assert (gap["reason"], gap["fromSeq"], gap["toSeq"]) == ("overflow", 1, 2)
     assert gap["tb"] is not None and gap["tb1"] >= gap["tb"]
@@ -116,7 +113,6 @@ async def test_unavailable_stream_and_blob_fetch(tmp_path: Path) -> None:
         missing = recorder.track("cam", "missing")
         assert missing is not None and await missing.wait_until(lambda: missing.ended, 2.0)
         await recorder.stop()
-        await sources.close()
     assert fetched == [("cam", "shots", "r1")]
     assert store.blob("cam__shots", "r1")["content"] == b"PNG!"
     assert store.read("cam__shots")["blobs"]["r1"]["size"] == 4
@@ -131,13 +127,12 @@ async def test_unresolvable_hardware_is_unavailable(tmp_path: Path) -> None:
             raise LookupError(f"no server for {hardware_id}")
 
         sources = service.sources()
-        sources.resolver = resolve
+        sources.devices = resolve
         store = StreamStore(tmp_path / "streams.sqlite")
         recorder = StreamRecorder(sources, store, [("ghost", "v")], tail_ms=0)
         await recorder.start()
         assert not await recorder.wait_watermark("ghost", "v", 0, 0.1)
         await recorder.stop()
-        await sources.close()
     assert store.states("ghost__v") == [
         {
             "tb": store.states("ghost__v")[0]["tb"],
@@ -166,5 +161,4 @@ async def test_listeners_receive_batches_and_end(tmp_path: Path) -> None:
         await recorder.stop()
         while frame["type"] != "end":
             frame = await asyncio.wait_for(queue.get(), 2.0)
-        await sources.close()
     store.close()

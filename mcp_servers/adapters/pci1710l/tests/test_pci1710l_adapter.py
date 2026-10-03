@@ -44,8 +44,8 @@ def test_public_contract(hh):
 
 
 def test_channel_out_of_range_rejected(hh):
-    result = hh.mcp.call_raw("pci1710l_read_bit", {"hardwareId": hh.hardware_id, "channel": 99})
-    assert result.get("isError") or not result["structuredContent"]["ok"]
+    result = hh.call_raw("pci1710l_read_bit", {"hardwareId": hh.hardware_id, "channel": 99})
+    assert result["ok"] is False
 
 
 def test_read_voltage_requires_configure(hh):
@@ -59,18 +59,18 @@ def test_read_voltage_requires_configure(hh):
 
 
 def test_streams(hh):
-    streams = hh.get("/device").json()["streams"]
+    streams = hh.device()["streams"]
     assert streams[:16] == [{"id": f"ai{n}", "type": "scalar", "unit": "V", "rateHz": 20.0, "label": f"AI{n}",
                              "kind": "measured"} for n in range(16)]
     assert streams[16] == {"id": "di", "type": "bits", "width": 16, "bitLabels": [f"DI{n}" for n in range(16)],
                            "rateHz": 20.0, "kind": "measured"}
     assert streams[17] == {"id": "do", "type": "bits", "width": 16, "bitLabels": [f"DO{n}" for n in range(16)],
                            "label": "DO controller readback"}
-    assert hh.service.device.mask_command is True
+    assert hh.host.device.mask_command is True
 
 
 def test_do_write_publishes_readback(hh):
-    result = hh.call("set_level", {"operationId": "op-do"}, channel=5, level=True)
+    result = hh.call("set_level", operation_id="op-do", channel=5, level=True)
     assert result["data"] == {"channel": 5, "level": True}
     assert [ref["streamId"] for ref in result["meta"]["streamRefs"]] == ["do"]
     assert hh.call("read_bit", channel=5, kind="do")["data"]["value"] is True
@@ -82,7 +82,7 @@ def test_do_write_publishes_readback(hh):
 
 
 def test_ai_scan_group_not_configured_then_values(hh):
-    with hh.sse("ai3") as events, hh.sse("ai4") as other:
+    with hh.subscribe("ai3") as events, hh.subscribe("ai4") as other:
         events.receive()
         other.receive()
         receive_until(events, lambda frame: frame["type"] == "status" and frame["state"] == "not_configured")
@@ -91,13 +91,13 @@ def test_ai_scan_group_not_configured_then_values(hh):
         assert batch["records"][0]["v"] == 0.0
         status = receive_until(other, lambda frame: frame["type"] == "status")
         assert status["state"] == "not_configured"
-    reads = [command for command in hh.service.device.cli.commands if command["cmd"] == "read_voltage"]
+    reads = [command for command in hh.host.device.cli.commands if command["cmd"] == "read_voltage"]
     assert {command["channel"] for command in reads} == {3}
 
 
 def test_read_voltage_is_published_with_op(hh):
     hh.call("configure_ai", channel=1)
-    result = hh.call("read_voltage", {"operationId": "op-ai"}, channel=1)
+    result = hh.call("read_voltage", operation_id="op-ai", channel=1)
     assert result["meta"]["streamRefs"][0]["streamId"] == "ai1"
     assert hh.call("stream_read", streamId="ai1", limit=1)["data"]["records"][-1]["op"] == "op-ai"
 
@@ -131,7 +131,7 @@ def test_pinout():
 
 
 def test_device_declaration(hh):
-    document = hh.get("/device").json()
+    document = hh.device()
     assert document["description"].startswith("Advantech PCI-1710L") and "no analog output" in document["description"]
     assert len(document["pinout"]["connectors"][0]["pinIds"]) == 68
-    assert hh.service.device.board_description == "PCI-1710L,BID#15"
+    assert hh.host.device.board_description == "PCI-1710L,BID#15"

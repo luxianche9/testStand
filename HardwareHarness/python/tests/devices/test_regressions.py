@@ -19,7 +19,6 @@ from hardwareharness_backend.devices import (
     DeviceStore,
 )
 from hardwareharness_backend.devices.device_store import safe_segment
-from hardwareharness_backend.devices.ssh import _append_output
 
 
 def hardware(identifier: str = "H") -> dict[str, Any]:
@@ -67,15 +66,6 @@ async def test_public_store_import_invalidates_catalog(tmp_path: Path) -> None:
     assert catalog.hardware_for_server("MISSING") is None
     await catalog.remove_hardware("H")
     assert catalog.find_hardware("H") is None
-
-
-def test_ssh_output_cap_is_utf8_bytes() -> None:
-    maximum = 64 * 1024
-    output, truncated = _append_output("", ("测试" * maximum).encode(), maximum)
-    assert truncated and len(output.encode()) <= maximum
-    assert "\ufffd" not in output
-    output, truncated = _append_output("ok", b"!", maximum)
-    assert output == "ok!" and not truncated
 
 
 async def test_store_cache_corruption_and_identifier_boundaries(tmp_path: Path) -> None:

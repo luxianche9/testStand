@@ -18,7 +18,6 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-from mcp.types import ToolAnnotations
 from pydantic import BaseModel, ConfigDict, ValidationError, create_model
 
 from ._version import __version__
@@ -37,6 +36,7 @@ from .tool import (
     OPERATE,
     READ_ONLY,
     HardwareId,
+    ToolAnnotations,
     ToolSpec,
     collect_tools,
     method_parameters,
@@ -146,7 +146,7 @@ class HostTool:
             "name": self.name,
             "description": self.description,
             "inputSchema": self.arguments.model_json_schema(by_alias=True),
-            "outputSchema": self.result.model_json_schema(mode="serialization"),
+            "outputSchema": self.result.model_json_schema(),
             "annotations": self.annotations.model_dump(exclude_none=True),
             "_meta": {"hardwareharness": self.meta},
         }
@@ -276,12 +276,9 @@ class DeviceHost:
             REQUEST.reset(token)
         return tool.structured(result)
 
-    def _request_meta(self) -> dict[str, Any]:
-        return REQUEST.get()
-
     async def _operate(self, run: Callable[[], Awaitable[Any]]) -> dict[str, Any]:
         """Run one tool call under its operation and envelope the result with op meta."""
-        operation_id = self._request_meta().get("operationId")
+        operation_id = REQUEST.get().get("operationId")
         op = Operation(operation_id if isinstance(operation_id, str) and operation_id else None)
         token = CURRENT.set(op)
         try:

@@ -70,9 +70,9 @@ def test_configure_and_line_status(hh):
 def test_invalid_arguments_rejected(hh):
     hh.call("configure_port", channel=1)
     assert hh.call("write_hex", channel=1, hex_data="0g")["error"]["category"] == "invalid_argument"
-    result = hh.mcp.call_raw("cp118u_write_text", {"hardwareId": hh.hardware_id, "channel": 9, "text": "x"})
-    assert result.get("isError") or not result["structuredContent"]["ok"]
-    assert hh.service.device.pcomm.writes == []
+    result = hh.call_raw("cp118u_write_text", {"hardwareId": hh.hardware_id, "channel": 9, "text": "x"})
+    assert result["ok"] is False
+    assert hh.host.device.pcomm.writes == []
 
 
 def test_no_invented_rx_without_loopback(hh):
@@ -101,16 +101,16 @@ def test_loopback_read_rx_is_nonconsuming_and_clearable(loopback):
 
 
 def test_streams_are_bytes(hh):
-    assert hh.get("/device").json()["streams"] == [{"id": f"serial{channel}", "type": "bytes", "writable": True}
+    assert hh.device()["streams"] == [{"id": f"serial{channel}", "type": "bytes", "writable": True}
                                                    for channel in range(1, 9)]
     assert hh.call("stream_read", streamId="serial1")["data"]["status"]["state"] == "not_configured"
 
 
 def test_stream_carries_marks_tx_and_rx(loopback):
     loopback.call("configure_port", channel=1, baud=115200)
-    with loopback.sse("serial1", cursor=0) as events:
+    with loopback.subscribe("serial1", cursor=0) as events:
         assert receive_until(events, lambda frame: frame["type"] == "hello")["streamType"] == "bytes"
-        loopback.call("write_text", {"operationId": "op-w"}, channel=1, text="hi")
+        loopback.call("write_text", operation_id="op-w", channel=1, text="hi")
         seen: list[dict] = []
 
         def both(frame):
@@ -125,7 +125,7 @@ def test_stream_carries_marks_tx_and_rx(loopback):
 
 def test_write_returns_stream_refs(hh):
     hh.call("configure_port", channel=2)
-    result = hh.call("write_hex", {"operationId": "op-x"}, channel=2, hex_data="01 02", clear_rx=True)
+    result = hh.call("write_hex", operation_id="op-x", channel=2, hex_data="01 02", clear_rx=True)
     refs = result["meta"]["streamRefs"]
     assert [ref["streamId"] for ref in refs] == ["serial2"]
     records = hh.call("stream_read", streamId="serial2", fromSeq=refs[0]["fromSeq"])["data"]["records"]
@@ -138,12 +138,12 @@ def test_transact_round_trip_on_loopback(loopback):
     loopback.call("configure_port", channel=4)
     result = loopback.call("transact", streamId="serial4", data="AT;", expect="AT", timeoutMs=2000)
     assert result["ok"] and result["data"]["matched"] is True and result["data"]["sent"] == 3
-    assert loopback.service.device.pcomm.writes[-1] == (6, b"AT;")
+    assert loopback.host.device.pcomm.writes[-1] == (6, b"AT;")
 
 
 def test_injected_peer_bytes_reach_read_rx(hh):
     hh.call("configure_port", channel=5)
-    hh.service.device.pcomm.inject(7, b"\xff\x00peer")
+    hh.host.device.pcomm.inject(7, b"\xff\x00peer")
     data = rx_text(hh, 5)["data"]
     assert data["hex"].startswith("ff 00") and data["text"].endswith("peer")
 
@@ -170,7 +170,7 @@ def test_port_map_configuration():
         details = harness.call("get_hardware_info")["data"]["capabilityDetails"]
         assert details["portMap"] == {"1": 20, "2": 21}
         assert harness.call("configure_port", channel=3)["error"]["category"] == "invalid_argument"
-        assert [stream["id"] for stream in harness.get("/device").json()["streams"]] == ["serial1", "serial2"]
+        assert [stream["id"] for stream in harness.device()["streams"]] == ["serial1", "serial2"]
 
 
 def test_pinout():
@@ -184,12 +184,12 @@ def test_reader_idles_every_stream(hh):
     hh.call("configure_port", channel=1)
     time.sleep(0.1)
     for channel in (1, 2):
-        stream = hh.service.device.streams[f"serial{channel}"]
+        stream = hh.host.device.streams[f"serial{channel}"]
         assert stream.idle_driven and stream.buffer.watermark() > time.time() * 1000 - 200
 
 
 def test_device_declaration(hh):
-    document = hh.get("/device").json()
+    document = hh.device()
     assert document["description"].startswith("Moxa CP-118U-I") and "DIP switch" in document["description"]
     connectors = document["pinout"]["connectors"]
     assert [len(connector["pinIds"]) for connector in connectors] == [9] * 8

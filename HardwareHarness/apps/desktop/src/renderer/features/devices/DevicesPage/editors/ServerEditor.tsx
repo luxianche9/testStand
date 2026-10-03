@@ -1,122 +1,106 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
-  DeviceBundlePreview, Hardware, HardwarePort, McpHttpServerConfig, RemoteComputer, ServerLifecycle
+  DeviceBundlePreview, DeviceType, Hardware, HardwarePort, PluginServerConfig
 } from "@hardwareharness/contracts/devices";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { errorMessage } from "../../../../lib/errors.js";
 import { hardwareForServer } from "../../../../lib/hardware.js";
+import { queryKeys } from "../../../../lib/query-keys.js";
 import { Button, Dialog, DialogBody, DialogContent, DialogFooter, Input, Select, Textarea } from "../../../../ui";
 import { PortEditor } from "../../PortEditor.js";
 import { BundleActions } from "../BundleActions.js";
 import { EditorAlert, EditorField, EditorNote, EditorPanel, editorGrid } from "./EditorField.js";
 
+/** `settings` is edited as JSON text; only a JSON object is accepted. */
+function parseSettings(text: string): Record<string, unknown> | undefined {
+  try {
+    const value: unknown = JSON.parse(text.trim() || "{}");
+    return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 const required = (message: string) => z.string().trim().min(1, message);
 const serverEditorSchema = z.object({
+  type: required("请选择设备类型"),
   serverId: required("请输入 Server ID"),
-  // Empty: an unmanaged service that is only used over its URL (design doc §4.8.3).
-  computerId: z.string(),
   label: z.string(),
   hardwareId: required("请输入 Hardware ID"),
-  url: z.string(),
-  mcpToken: z.string(),
-  root: z.string(),
-  statusCommand: z.string(),
-  startCommand: z.string(),
-  stopCommand: z.string(),
-  forceStopCommand: z.string(),
-  logPath: z.string()
-}).refine((value) => !value.computerId || value.root.trim() || value.statusCommand.trim(), {
-  path: ["root"],
-  message: "托管的服务需要安装目录（或在高级选项里填写状态查询命令）"
+  mode: z.enum(["real", "sim"]),
+  settings: z.string().refine((value) => parseSettings(value) !== undefined, "settings 必须是 JSON 对象")
 });
 type ServerEditorValues = z.infer<typeof serverEditorSchema>;
-type LifecycleKey = keyof ServerLifecycle;
-const lifecycleFields: { key: LifecycleKey; label: string }[] = [
-  { key: "statusCommand", label: "状态查询命令" },
-  { key: "startCommand", label: "启动命令" },
-  { key: "stopCommand", label: "停止命令" },
-  { key: "forceStopCommand", label: "强制停止命令" },
-  { key: "logPath", label: "日志目录" }
-];
 
-/** Bundles install to `E:\<name>_mcp_server`; start/stop/status/logs derive from it (§4.8.2). */
-function defaultRoot(serverId: string): string {
-  return `E:\\${serverId.replace(/_MCP$/, "").toLowerCase()}_mcp_server`;
-}
-
-function initialValues(server: McpHttpServerConfig | undefined, computerId: string): ServerEditorValues {
-  const overrides: Record<LifecycleKey, string> = {
-    statusCommand: server?.lifecycle?.statusCommand ?? "",
-    startCommand: server?.lifecycle?.startCommand ?? "",
-    stopCommand: server?.lifecycle?.stopCommand ?? "",
-    forceStopCommand: server?.lifecycle?.forceStopCommand ?? "",
-    logPath: server?.lifecycle?.logPath ?? ""
-  };
-  if (server) {
-    return {
-      serverId: server.serverId,
-      computerId: server.computerId ?? "",
-      label: server.label,
-      hardwareId: server.hardwareId,
-      url: server.url,
-      mcpToken: "",
-      root: server.root ?? "",
-      ...overrides
-    };
-  }
+function initialValues(server: PluginServerConfig | undefined): ServerEditorValues {
+  if (!server) return { type: "", serverId: "", label: "", hardwareId: "", mode: "real", settings: "{}" };
   return {
-    serverId: "", computerId, label: "", hardwareId: "", url: "", mcpToken: "", root: defaultRoot(""), ...overrides
+    type: server.type,
+    serverId: server.serverId,
+    label: server.label,
+    hardwareId: server.hardwareId,
+    mode: server.mode,
+    settings: JSON.stringify(server.settings, null, 2)
   };
 }
 
-/** A server and the single managed hardware device it drives are edited together. */
-export function ServerEditor({ open, server, computerId, computers, hardware, onClose, onChanged }: {
+function typeLabel(item: DeviceType): string {
+  const name = [item.manufacturer, item.model].filter(Boolean).join(" ") || item.type;
+  return item.error ? `${name}（${item.type}，不可用：${item.error}）` : `${name}（${item.type}）`;
+}
+
+/** A device plugin instance and the managed hardware it drives are edited together. */
+export function ServerEditor({ open, server, hardware, onClose, onChanged }: {
   open: boolean;
-  server?: McpHttpServerConfig | undefined;
-  computerId?: string | undefined;
-  computers: RemoteComputer[];
+  server?: PluginServerConfig | undefined;
   hardware: Hardware[];
   onClose: () => void;
   onChanged: () => Promise<void>;
 }) {
-  const defaultComputer = computerId ?? computers[0]?.id ?? "";
-  const { register, reset, watch, setValue, handleSubmit, formState } = useForm<ServerEditorValues>({
+  const types = useQuery({
+    queryKey: queryKeys.deviceTypes,
+    queryFn: () => window.hardwareharness.devices.listDeviceTypes(),
+    enabled: open
+  });
+  const { register, reset, watch, getValues, setValue, handleSubmit, formState } = useForm<ServerEditorValues>({
     resolver: zodResolver(serverEditorSchema),
     mode: "onChange",
-    defaultValues: initialValues(undefined, defaultComputer)
+    defaultValues: initialValues(undefined)
   });
   const { errors, isValid } = formState;
   const [ports, setPorts] = useState<HardwarePort[]>([]);
   const [bundlePreview, setBundlePreview] = useState<DeviceBundlePreview>();
   // Bumped to clear the bundle notice when the hardware binding changes by hand.
   const [bundleKey, setBundleKey] = useState(0);
-  // Typing a Server ID autofills the install root until the user edits it.
-  const rootTouched = useRef(false);
   const hardwareId = watch("hardwareId");
+  const selectedType = types.data?.find((item) => item.type === watch("type"));
   const live = server ? hardwareForServer(server, hardware) : undefined;
   const selectedHardware = live ?? hardware.find((item) => item.hardwareId === hardwareId);
 
   useEffect(() => {
     if (!open) return;
-    reset(initialValues(server, defaultComputer));
-    rootTouched.current = Boolean(server);
+    reset(initialValues(server));
     setPorts(live ? structuredClone(live.ports) : []);
     setBundlePreview(undefined);
     setBundleKey((key) => key + 1);
     // Catalog refetches refresh `live`; they must not discard ports the user is midway through typing.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, server?.serverId, computerId]);
+  }, [open, server?.serverId]);
 
-  const rootField = register("root", { onChange: () => { rootTouched.current = true; } });
-  const serverIdField = register("serverId", {
+  // Picking a type fills the ids and name the user has not typed yet.
+  const typeField = register("type", {
     onChange: (event: { target: { value: string } }) => {
-      if (!rootTouched.current) setValue("root", defaultRoot(event.target.value), { shouldValidate: true });
+      const picked = types.data?.find((item) => item.type === event.target.value);
+      if (!picked) return;
+      const id = picked.type.toUpperCase();
+      if (!getValues("serverId")) setValue("serverId", id, { shouldValidate: true });
+      if (!getValues("hardwareId")) setValue("hardwareId", `${id}_CARD_0`, { shouldValidate: true });
+      if (!getValues("label") && picked.model) setValue("label", picked.model);
     }
   });
-  const managed = Boolean(watch("computerId"));
   const hardwareIdField = register("hardwareId", {
     onChange: (event: { target: { value: string } }) => {
       const known = hardware.find((item) => item.hardwareId === event.target.value);
@@ -128,73 +112,78 @@ export function ServerEditor({ open, server, computerId, computers, hardware, on
 
   const stagePreview = (preview: DeviceBundlePreview) => {
     if (server && preview.hardware.hardwareId !== server.hardwareId) {
-      throw new Error(`当前 Server 绑定的是 ${server.hardwareId}，不能导入 ${preview.hardware.hardwareId}`);
+      throw new Error(`当前设备绑定的是 ${server.hardwareId}，不能导入 ${preview.hardware.hardwareId}`);
     }
     setBundlePreview(preview);
     setValue("hardwareId", preview.hardware.hardwareId, { shouldValidate: true });
     setValue("label", preview.hardware.label, { shouldValidate: true });
     setPorts(structuredClone(preview.hardware.ports));
-    return `已载入 ${preview.hardware.label}；保存 Server 后才会写入并绑定`;
+    return `已载入 ${preview.hardware.label}；保存设备后才会写入并绑定`;
   };
 
   const save = useMutation({
     mutationFn: async (values: ServerEditorValues) => {
       const devices = window.hardwareharness.devices;
-      const host = computers.find((item) => item.id === values.computerId)?.address ?? "";
       const serverId = values.serverId.trim();
       const boundId = values.hardwareId.trim();
-      const root = values.root.trim();
-      const lifecycle: ServerLifecycle = Object.fromEntries(
-        lifecycleFields.flatMap(({ key }) => (values[key].trim() ? [[key, values[key].trim()]] : []))
-      );
-      const input: McpHttpServerConfig = {
-        transport: "mcp-http",
+      const input: PluginServerConfig = {
+        transport: "plugin",
         serverId,
-        ...(values.computerId ? { computerId: values.computerId } : {}),
         label: values.label.trim() || serverId,
         hardwareId: boundId,
-        url: values.url.trim() || `http://${host}:8011/mcp`,
-        enabled: true,
-        ...(values.computerId && root ? { root } : {}),
-        ...(values.computerId && Object.keys(lifecycle).length ? { lifecycle } : {})
+        type: values.type,
+        settings: parseSettings(values.settings) ?? {},
+        mode: values.mode,
+        enabled: server?.enabled ?? true
       };
-      const saved = await devices.saveServer(input, values.mcpToken ? { mcpToken: values.mcpToken } : undefined);
+      const saved = await devices.saveServer(input);
       if (bundlePreview) {
         await devices.applyBundle({ kind: "hardware", hardwareId: boundId, serverId, data: bundlePreview.data });
       }
       await devices.saveHardware({
-        formatVersion: 2,
-        hardwareId: boundId,
-        label: input.label,
-        kind: "managed",
-        serverId,
-        ...(input.computerId ? { computerId: input.computerId } : {}),
-        ports
+        formatVersion: 2, hardwareId: boundId, label: input.label, kind: "managed", serverId, ports
       });
+      await devices.refreshServer(serverId);
       return saved;
     },
     onSuccess: async () => { await onChanged(); onClose(); }
   });
   const submit = handleSubmit(async (values) => { await save.mutateAsync(values); });
   const bindable = hardware.filter((item) => item.kind === "passive" || item.serverId === server?.serverId);
-  const commandClass = "min-h-[54px] font-mono text-xs";
 
   return (
     <Dialog open={open} onOpenChange={(value) => { if (!value) onClose(); }}>
-      <DialogContent title={server ? "编辑 MCP Server" : "添加 MCP Server"} size="lg" className="w-[760px]">
+      <DialogContent title={server ? "编辑测试资源" : "添加测试资源"} size="lg" className="w-[760px]">
         <DialogBody>
           <form id="server-editor-form" className={editorGrid} onSubmit={(event) => { void submit(event); }}>
-            <EditorField label="Server ID" required error={errors.serverId?.message}>
-              <Input className="font-mono" {...serverIdField} disabled={Boolean(server)} placeholder="PCI1710L_MCP" />
+            <EditorField
+              label="设备类型"
+              required
+              span
+              error={errors.type?.message ?? (types.isError ? errorMessage(types.error) : undefined)}
+            >
+              {server ? (
+                <Input className="font-mono" value={selectedType ? typeLabel(selectedType) : server.type} disabled />
+              ) : (
+                <Select {...typeField}>
+                  <option value="">{types.isPending ? "正在读取已安装的设备类型…" : "选择设备类型"}</option>
+                  {types.data?.map((item) => (
+                    <option key={item.type} value={item.type} disabled={Boolean(item.error)}>{typeLabel(item)}</option>
+                  ))}
+                </Select>
+              )}
             </EditorField>
-            <EditorField label="所属电脑" error={errors.computerId?.message}>
-              <Select {...register("computerId")} disabled={Boolean(server)}>
-                <option value="">无（未托管，只通过 URL 使用）</option>
-                {computers.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
-              </Select>
+            {selectedType?.description && <EditorNote>{selectedType.description}</EditorNote>}
+            <EditorField label="Server ID" required error={errors.serverId?.message}>
+              <Input
+                className="font-mono"
+                {...register("serverId")}
+                disabled={Boolean(server)}
+                placeholder="PCI1762"
+              />
             </EditorField>
             <EditorField label="显示名称">
-              <Input {...register("label")} placeholder="PCI-1710L 多功能采集卡" />
+              <Input {...register("label")} placeholder="PCI-1762 继电器卡" />
             </EditorField>
             <EditorField label="唯一 Hardware ID" required error={errors.hardwareId?.message}>
               <Input
@@ -202,42 +191,24 @@ export function ServerEditor({ open, server, computerId, computers, hardware, on
                 list="hardwareharness-hardware-ids"
                 {...hardwareIdField}
                 disabled={Boolean(server)}
-                placeholder="PC1_MCP.PCI1710L_CARD_0"
+                placeholder="PCI1762_CARD_0"
               />
             </EditorField>
             <datalist id="hardwareharness-hardware-ids">
               {bindable.map((item) => <option key={item.hardwareId} value={item.hardwareId}>{item.label}</option>)}
             </datalist>
-            <EditorField label="MCP 地址">
-              <Input className="font-mono" {...register("url")} placeholder="http://192.168.3.51:8011/mcp" />
+            <EditorField label="运行模式">
+              <Select {...register("mode")}>
+                <option value="real">实物（驱动真实板卡）</option>
+                <option value="sim">模拟（使用插件自带的模拟器）</option>
+              </Select>
             </EditorField>
-            <EditorField label={server ? "MCP Token（留空保持不变）" : "MCP Token"}>
-              <Input type="password" {...register("mcpToken")} />
+            <EditorField label="settings（JSON）" span error={errors.settings?.message}>
+              <Textarea className="min-h-[72px] font-mono text-xs" spellCheck={false} {...register("settings")} />
             </EditorField>
             <EditorNote>
-              可直接在这里导入 `.hhhw`；HardwareHarness 会在保存 Server 时绑定硬件，并验证 list_hardware
-              恰好返回这一块硬件。端口和针脚不再向远端索取。
+              可直接在这里导入 `.hhhw`；HardwareHarness 会在保存设备时绑定硬件。端口和针脚用于接线画布。
             </EditorNote>
-            {managed && (
-              <>
-                <EditorField label="安装目录" span error={errors.root?.message}>
-                  <Input className="font-mono text-xs" {...rootField} placeholder="E:\pci1710l_mcp_server" />
-                </EditorField>
-                <details className="col-span-full text-xs">
-                  <summary className="cursor-pointer text-fg-2">
-                    高级：覆盖生命周期命令（只在非标准安装时填写，留空则由安装目录推导）
-                  </summary>
-                  <div className={`${editorGrid} mt-2`}>
-                    {lifecycleFields.map(({ key, label }) => (
-                      <EditorField key={key} label={label} span>
-                        <Textarea className={commandClass} {...register(key)} />
-                      </EditorField>
-                    ))}
-                  </div>
-                </details>
-              </>
-            )}
-            {!managed && <EditorNote>未托管的服务只能使用，不能从这里启动、停止或读取日志。</EditorNote>}
             <EditorPanel>
               <PortEditor ports={ports} onChange={setPorts} />
             </EditorPanel>
@@ -251,7 +222,7 @@ export function ServerEditor({ open, server, computerId, computers, hardware, on
             id={hardwareId}
             saved={Boolean(selectedHardware)}
             disabled={save.isPending}
-            exportTitle="导出这台 MCP Server 的硬件定义"
+            exportTitle="导出这台设备的硬件定义"
             onPreview={stagePreview}
           />
           <Button variant="ghost" onClick={onClose}>取消</Button>

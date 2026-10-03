@@ -5,12 +5,12 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "hardwareharness-device-sdk"
 version = "0.2.0"
-description = "SDK for HardwareHarness single-device MCP servers: tools, streams and lifecycle."
+description = "SDK for HardwareHarness device plugins: tools, streams, lifecycle and the compliance suite."
 requires-python = ">=3.11"
-dependencies = ["mcp>=1.26,<2", "uvicorn>=0.30,<1"]
+dependencies = ["pydantic>=2.11,<3"]
 
 [project.optional-dependencies]
-test = ["pytest>=8", "pytest-asyncio>=0.23", "jsonschema>=4", "httpx>=0.27"]
+test = ["pytest>=8", "pytest-asyncio>=0.23", "jsonschema>=4"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

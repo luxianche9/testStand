@@ -5,56 +5,18 @@
     "args": []
   },
   {
-    "path": "devices.saveComputer",
-    "method": "application.devices.saveComputer",
-    "args": [
-      {
-        "id": "ID",
-        "label": "PC",
-        "address": "127.0.0.1",
-        "ssh": {
-          "username": "u",
-          "port": 22,
-          "shell": "powershell"
-        }
-      },
-      {
-        "ssh": "test-password"
-      }
-    ]
-  },
-  {
-    "path": "devices.removeComputer",
-    "method": "application.devices.removeComputer",
-    "args": [
-      "ID"
-    ]
-  },
-  {
-    "path": "devices.refreshComputer",
-    "method": "application.devices.getComputerStatus",
-    "args": [
-      "ID"
-    ]
-  },
-  {
     "path": "devices.saveServer",
     "method": "application.devices.saveServer",
     "args": [
       {
-        "transport": "mcp-http",
+        "transport": "plugin",
         "serverId": "ID",
-        "computerId": "PC",
         "hardwareId": "H",
         "label": "S",
-        "url": "http://127.0.0.1/mcp",
-        "enabled": true,
-        "lifecycle": {
-          "statusCommand": "s",
-          "startCommand": "a",
-          "stopCommand": "b",
-          "logPath": "log"
-        }
+        "type": "pci1762",
+        "settings": {},
+        "mode": "sim",
+        "enabled": true
       },
       {
         "__undefined__": true
@@ -76,37 +38,13 @@
     ]
   },
   {
-    "path": "devices.serverAction",
-    "method": "application.devices.serverAction",
-    "args": [
-      "ID",
-      "restart"
-    ]
-  },
-  {
-    "path": "devices.readServerLogs",
-    "method": "application.devices.readServerLogs",
-    "args": [
-      "ID",
-      {
-        "__undefined__": true
-      }
-    ]
-  },
-  {
-    "path": "devices.executeSsh",
-    "method": "application.devices.executeSsh",
-    "args": [
-      "ID",
-      "echo ok",
-      {
-        "__undefined__": true
-      }
-    ]
-  },
-  {
     "path": "devices.refreshManagedHardware",
     "method": "application.devices.listManagedHardware",
+    "args": []
+  },
+  {
+    "path": "devices.listDeviceTypes",
+    "method": "application.devices.listDeviceTypes",
     "args": []
   },
   {

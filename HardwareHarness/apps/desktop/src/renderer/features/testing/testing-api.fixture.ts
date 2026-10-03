@@ -163,7 +163,7 @@ export function installTestingApi(plans: TestPlan[], items: TestItemStatus[]) {
     value: {
       system: {
         dashboard: vi.fn(async () => ({
-          computers: [], statuses: [], servers: [], plugins: [], serverStatuses: [], hardware: [], tools: [],
+          servers: [], serverStatuses: [], hardware: [], tools: [],
           gateway: {}, execution: {}
         })),
         exportText: vi.fn()

@@ -191,7 +191,7 @@ async def test_derived_streams_are_judged_as_protocol_evidence_and_rejudged(
             ],
         },
     )
-    async with FakeStreamService(STREAMS, clock_skew_ms=150, sampled=frozenset({"ai0"})) as service:
+    async with FakeStreamService(STREAMS, sampled=frozenset({"ai0"})) as service:
         sources = service.sources()
         devices = DutDevices(service)
         async with devices:
@@ -204,7 +204,6 @@ async def test_derived_streams_are_judged_as_protocol_evidence_and_rejudged(
             )
             compiled = compile_plan(plan, IcdResolver())["compiledPlan"]
             completed = await finish(engine, await engine.start(compiled, {}))
-        await sources.close()
 
     run = engine.runs[completed["runId"]]
     outcome = [(item["name"], item.get("verdict"), item.get("evidence")) for item in run.results]
@@ -266,7 +265,7 @@ async def test_guard_on_a_derived_stream_fails_on_the_forbidden_message(tmp_path
             "children": [write_step(), {"id": "hold", "type": "Delay", "durationMs": 500}],
         },
     )
-    async with FakeStreamService(STREAMS, clock_skew_ms=150, sampled=frozenset({"ai0"})) as service:
+    async with FakeStreamService(STREAMS, sampled=frozenset({"ai0"})) as service:
         sources = service.sources()
         async with AckingDevices(service) as devices:
             engine = TestEngine(
@@ -278,6 +277,5 @@ async def test_guard_on_a_derived_stream_fails_on_the_forbidden_message(tmp_path
             )
             compiled = compile_plan(plan, IcdResolver())["compiledPlan"]
             completed = await finish(engine, await engine.start(compiled, {}))
-        await sources.close()
     assert completed["verdict"] == "Fail", engine.runs[completed["runId"]].results
     assert engine.rejudge_run(completed["runId"])["consistent"] is True

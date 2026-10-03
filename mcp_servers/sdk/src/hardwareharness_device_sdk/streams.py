@@ -6,7 +6,7 @@ A stream is declared in ``/device.streams`` by :meth:`Stream.describe`:
 writer), ``idScheme``, ``label`` and ``kind`` (``measured`` or ``setpoint``;
 a setpoint stream is the software shadow of a commanded value, never evidence
 of the physical output). Records share one :class:`RingBuffer` between the
-``/streams/{streamId}`` SSE channel and the MCP stream tools, so viewers,
+host's stream reads (:meth:`~.host.DeviceHost.read_stream`) and the stream tools, so viewers,
 recorders and AI tools see the same sequence numbers. Record payloads per type (``seq``, ``t`` and optional ``op`` are
 added by the SDK):
 

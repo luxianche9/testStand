@@ -30,17 +30,10 @@ def server(identifier: str, hardware_id: str) -> dict[str, Any]:
     return {
         "transport": "mcp-http",
         "serverId": identifier,
-        "computerId": "PC1",
         "label": identifier,
         "hardwareId": hardware_id,
-        "url": "http://10.0.0.2:8011/mcp",
+        "url": "http://127.0.0.1:8011/mcp",
         "enabled": True,
-        "lifecycle": {
-            "statusCommand": "s",
-            "startCommand": "b",
-            "stopCommand": "t",
-            "logPath": "l",
-        },
     }
 
 
@@ -76,25 +69,13 @@ async def fixture(tmp_path: Path) -> DeviceStore:
     return store
 
 
-async def computer(store: DeviceStore) -> None:
-    await store.save_computer(
-        {
-            "id": "PC1",
-            "label": "PC",
-            "address": "10.0.0.2",
-            "ssh": {"port": 22, "username": "u", "shell": "powershell"},
-        }
-    )
-
-
 @pytest.mark.ts_case(PREFIX + "persists canonical files and derives managed hardware")
 async def test_canonical(tmp_path: Path) -> None:
     store = await fixture(tmp_path)
-    await computer(store)
     await store.save_hardware(hardware("CARD"))
     await store.save_server(server("S1", "CARD"))
     saved = store.require_hardware("CARD")
-    assert (saved["kind"], saved["serverId"], saved["computerId"]) == ("managed", "S1", "PC1")
+    assert (saved["kind"], saved["serverId"]) == ("managed", "S1")
     raw = json.loads((store.root / "hardware/CARD/hardware.json").read_text())
     assert raw == {
         "formatVersion": 2,
@@ -121,23 +102,12 @@ async def test_one_server_index(tmp_path: Path) -> None:
 @pytest.mark.ts_case(PREFIX + "enforces one server per hardware and deletion rules")
 async def test_assignment(tmp_path: Path) -> None:
     store = await fixture(tmp_path)
-    await computer(store)
     await store.save_server(server("S1", "CARD"))
     with pytest.raises(Exception, match="already assigned"):
         await store.save_server(server("S2", "CARD"))
     with pytest.raises(Exception, match="assigned"):
         await store.remove_hardware("CARD")
     await store.remove_server("S1")
-    assert store.require_hardware("CARD")["kind"] == "passive"
-
-
-@pytest.mark.ts_case(PREFIX + "cascades computer servers but retains their hardware")
-async def test_cascade(tmp_path: Path) -> None:
-    store = await fixture(tmp_path)
-    await computer(store)
-    await store.save_server(server("S1", "CARD"))
-    await store.remove_computer("PC1")
-    assert store.list_servers() == []
     assert store.require_hardware("CARD")["kind"] == "passive"
 
 
@@ -166,7 +136,6 @@ async def test_preview(tmp_path: Path) -> None:
 )
 async def test_managed_import(tmp_path: Path) -> None:
     store = await fixture(tmp_path)
-    await computer(store)
     await store.save_server(server("S1", "CARD"))
     data = bundle("CARD", "Updated card")
     with pytest.raises(Exception, match="Cannot replace managed hardware"):

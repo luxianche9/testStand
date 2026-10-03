@@ -8,7 +8,6 @@ that recording only, so ``rejudge`` over the same file reproduces each verdict.
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import logging
 import math
 from collections.abc import Callable
@@ -34,7 +33,6 @@ Emit = Callable[[str, Record], None]
 log = logging.getLogger(__name__)
 
 WATERMARK_GRACE_S = 2.0
-CLOCK_PRIME_S = 2.0
 EXPECT_POLL_S = 0.2
 BACKEND = "__backend__"
 
@@ -57,7 +55,6 @@ class RunIO:
         self.protocols = PlanProtocols({}, [])
         self.store: StreamStore | None = None
         self.recorder: StreamRecorder | None = None
-        self._holds: list[Callable[[], None]] = []
 
     # -- lifecycle -----------------------------------------------------------------------------
 
@@ -78,9 +75,6 @@ class RunIO:
                 await self.recorder.stop()
             except Exception:
                 log.exception("Stopping the stream recording failed")
-        for release in self._holds:
-            release()
-        self._holds.clear()
         if self.store is not None:
             self.store.close()
 
@@ -109,14 +103,6 @@ class RunIO:
         fetch_blob = getattr(self.devices, "read_blob", None)
         self.recorder = StreamRecorder(self.sources, self.store, streams, fetch_blob=fetch_blob)
         await self.recorder.start()
-        for hardware_id in hardware_ids:
-            with contextlib.suppress(Exception):
-                self._holds.append(self.sources.hold_clock(hardware_id))
-        for hardware_id in sorted({hardware_id for hardware_id, _ in streams}):
-            try:
-                await asyncio.wait_for(self.sources.prime(hardware_id), CLOCK_PRIME_S)
-            except Exception as error:
-                self.emit("clock.unavailable", {"hardwareId": hardware_id, "message": str(error)})
         self.emit(
             "recording.started",
             {

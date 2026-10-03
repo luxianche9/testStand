@@ -1,8 +1,8 @@
-# CP-118U-I MCP 适配器
+# CP-118U-I 设备插件
 
-服务标识：`CP118U_I_MCP`。包 `hh_adapter_cp118u_i`，入口 `python -m hardwareharness_device_sdk --adapter hh_adapter_cp118u_i`。
+包 `hh_adapter_cp118u_i`，设备类型 `cp118u_i`（入口点组 `hardwareharness.devices`），由 HardwareHarness 后端作为插件加载。
 
-一个服务进程只管理一个硬件。公共工具（`get_server_info`、`list_hardware`、`get_hardware_info`、`<prefix>_stream_read/transact`）、信封格式、`/device` 声明（身份、说明、引脚、流、能力）和 `/streams/{id}` 数据通道由 SDK 提供，见 `mcp_servers/README.md`。超时或错误不表示物理动作没有发生：保留原错误，查询当前状态并取证后再决定下一步。
+一个插件实例只管理一个硬件。公共工具（`get_server_info`、`list_hardware`、`get_hardware_info`、`<prefix>_stream_read/transact`）、信封格式、`/device` 声明（身份、说明、引脚、流、能力）和流读取由 SDK 提供，见 `mcp_servers/README.md`。超时或错误不表示物理动作没有发生：保留原错误，查询当前状态并取证后再决定下一步。
 
 ## 设备语义
 
@@ -22,7 +22,7 @@
 - dry-run 默认不产生 RX；设置 `HARDWARE_DRY_RUN_SERIAL_LOOPBACK=1` 让 TX 回环到 RX，便于无回环插头演示。
 
 
-## 构建、测试与部署
+## 构建与测试
 
 适配器基于 `hardwareharness-device-sdk`（`mcp_servers/sdk`）。本地测试不访问硬件：
 
@@ -30,5 +30,3 @@
 cd mcp_servers
 .\test.ps1 -Target cp118u_i                 # pytest + dry-run 合规检查
 ```
-
-部署到台架由人在 HardwareHarness 终端的设备页发起（电脑上的“部署服务”，已部署服务的“升级 / 卸载”），维护者也可用 `.\deploy.ps1`（参数见 `mcp_servers/README.md`）；终端先打包再部署，失败自动回滚。远端 `server.json`（身份、端口、token、`settings`）和 `native\build\`（旧安装为 `app\native\build\`）下已编译的厂商 CLI 不会被部署覆盖。

@@ -21,7 +21,6 @@ _MARKS = {
     "run.resumed",
     "recording.started",
     "streams.unavailable",
-    "clock.unavailable",
     "region.started",
     "region.completed",
     "safety.started",

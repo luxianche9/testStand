@@ -14,34 +14,32 @@ import { hardwareStatus } from "../../../lib/hardware-status.js";
 import { queryKeys } from "../../../lib/query-keys.js";
 import { DeviceInspector } from "./DeviceInspector.js";
 import { HardwareListTree } from "./HardwareListTree.js";
-import { RemoteComputerTree } from "./RemoteComputerTree.js";
+
+const fireDap = {
+  transport: "mcp-http" as const,
+  serverId: "FIREDAP_MCP",
+  label: "FireDAP",
+  hardwareId: "FIREDAP_0",
+  url: "http://127.0.0.1:8031/mcp",
+  enabled: true
+};
 
 const snapshot: DashboardSnapshot = {
-  computers: [{
-    id: "LOCAL_FIXTURE",
-    label: "Local fixture",
-    address: "127.0.0.1",
-    ssh: { port: 22, username: "fixture", shell: "powershell" }
-  }],
-  statuses: [{ computerId: "LOCAL_FIXTURE", ssh: { state: "online" } }],
   servers: [{
-    transport: "mcp-http",
+    transport: "plugin",
     serverId: "E2E_MCP",
-    computerId: "LOCAL_FIXTURE",
     label: "E2E fixture MCP",
     hardwareId: "E2E_CARD",
-    url: "http://127.0.0.1:1/mcp",
-    enabled: true,
-    lifecycle: { statusCommand: "s", startCommand: "a", stopCommand: "x", logPath: "l" }
-  }],
-  plugins: [],
-  serverStatuses: [{
-    serverId: "E2E_MCP",
-    computerId: "LOCAL_FIXTURE",
-    service: { state: "online", serviceState: "running" },
-    transport: { state: "online" }
-  }],
-  hardware: [{ hardwareId: "E2E_CARD", serverId: "E2E_MCP", computerId: "LOCAL_FIXTURE", state: "open", health: "ok" }],
+    type: "pci6208v",
+    settings: {},
+    mode: "sim",
+    enabled: true
+  }, fireDap],
+  serverStatuses: [
+    { serverId: "E2E_MCP", transport: { state: "online" } },
+    { serverId: "FIREDAP_MCP", transport: { state: "offline", message: "Connection refused" } }
+  ],
+  hardware: [{ hardwareId: "E2E_CARD", serverId: "E2E_MCP", state: "open", health: "ok" }],
   tools: [{
     externalName: "E2E_MCP__write_voltage",
     remoteName: "write_voltage",
@@ -66,7 +64,6 @@ const catalog: Hardware[] = [
     label: "E2E fixture card",
     kind: "managed",
     serverId: "E2E_MCP",
-    computerId: "LOCAL_FIXTURE",
     ports: [{ portId: "AO", name: "AO", pins: [{ pinId: "0", position: 1, label: "AO0" }] }]
   },
   {
@@ -148,9 +145,6 @@ function renderInspector(selected: string) {
       selected={selected}
       snapshot={snapshot}
       hardware={catalog}
-      onSelect={vi.fn()}
-      onEditComputer={vi.fn()}
-      onAddServer={vi.fn()}
       onEditServer={vi.fn()}
       onEditHardware={vi.fn()}
       onChanged={vi.fn(async () => undefined)}
@@ -167,11 +161,8 @@ beforeEach(() => {
       devices: {
         getDefinition,
         ...adapterApi,
-        removeComputer: vi.fn(),
         removeServer: vi.fn(),
-        serverAction: vi.fn(),
-        removeHardware: vi.fn(),
-        readServerLogs: vi.fn(async () => ({ lines: [], truncated: false }))
+        removeHardware: vi.fn()
       },
       events: { subscribe: () => () => undefined },
       manual: { invokeTool },
@@ -202,122 +193,74 @@ describe("device trees", () => {
       checkedAt: "2026-09-15T00:00:00Z",
       ...(message ? { message } : {})
     };
-    const serverStatuses = snapshot.serverStatuses.map((status) => ({
-      ...status,
-      transport: { state: transport, ...(message ? { message } : {}) }
-    }));
+    const serverStatuses = [{ serverId: "E2E_MCP", transport: { state: transport, ...(message ? { message } : {}) } }];
     const data: DashboardSnapshot = { ...snapshot, availability: [availability], serverStatuses };
     expect(hardwareStatus(serverStatuses[0], availability).label).toBe(label);
 
-    render(
-      <RemoteComputerTree
-        data={data}
-        hardware={catalog}
-        selected={null}
-        isOpen={() => true}
-        onSelect={vi.fn()}
-        onToggle={vi.fn()}
-        onAddComputer={vi.fn()}
-        onAddByUrl={vi.fn()}
-      />
-    );
+    renderTree(data);
     const device = screen.getByRole("treeitem", { name: /E2E fixture card/ });
     expect(within(device).getByText(label)).toBeTruthy();
     if (message) expect(within(device).getByTitle(message)).toBeTruthy();
     if (state === "faulted") expect(within(device).queryByText("在线")).toBeNull();
   });
 
-  it("shows a computer → device tree with status only, no actions or MCP tools", async () => {
+  it("lists devices and passive hardware flat, with status only and no actions or MCP tools", async () => {
     const onSelect = vi.fn();
-    const onToggle = vi.fn();
-    render(
-      <RemoteComputerTree
-        data={snapshot}
-        hardware={catalog}
-        selected={null}
-        isOpen={() => true}
-        onSelect={onSelect}
-        onToggle={onToggle}
-        onAddComputer={vi.fn()}
-        onAddByUrl={vi.fn()}
-      />
-    );
-    expect(screen.getByRole("tree", { name: "电脑列表" })).toBeTruthy();
-    const computer = screen.getByRole("treeitem", { name: /Local fixture/ });
+    const onAddDevice = vi.fn();
+    renderTree(snapshot, { onSelect, onAddDevice });
+    expect(screen.getByRole("tree", { name: "硬件列表" })).toBeTruthy();
     const device = screen.getByRole("treeitem", { name: /E2E fixture card/ });
+    const local = screen.getByRole("treeitem", { name: /FireDAP/ });
+    const passive = screen.getByRole("treeitem", { name: /DUT_A/ });
+    expect(within(local).getByText("离线")).toBeTruthy();
     expect(screen.queryByText("write_voltage")).toBeNull();
-    expect(screen.queryByRole("button", { name: "占用硬件" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "启动 MCP 服务" })).toBeNull();
     expect(screen.queryByRole("button", { name: "编辑信息" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "移除硬件" })).toBeNull();
 
     device.focus();
     await userEvent.keyboard("{Enter}");
     expect(onSelect).toHaveBeenLastCalledWith("s:E2E_MCP");
-    computer.focus();
+    passive.focus();
     await userEvent.keyboard(" ");
-    expect(onSelect).toHaveBeenLastCalledWith("c:LOCAL_FIXTURE");
-  });
-
-  it("groups services added by URL under 未托管服务 with an add-by-URL action", async () => {
-    const onAddByUrl = vi.fn();
-    const unmanaged = {
-      transport: "mcp-http" as const,
-      serverId: "SCOPE_MCP",
-      label: "Rigol DS1104",
-      hardwareId: "SCOPE_0",
-      url: "http://10.0.0.9:8020/mcp",
-      enabled: true
-    };
-    render(
-      <RemoteComputerTree
-        data={{ ...snapshot, servers: [...snapshot.servers, unmanaged] }}
-        hardware={catalog}
-        selected={null}
-        isOpen={() => true}
-        onSelect={vi.fn()}
-        onToggle={vi.fn()}
-        onAddComputer={vi.fn()}
-        onAddByUrl={onAddByUrl}
-      />
-    );
-    expect(screen.getByRole("treeitem", { name: /未托管服务/ })).toBeTruthy();
-    expect(screen.getByRole("treeitem", { name: /Rigol DS1104/ })).toBeTruthy();
-    await userEvent.click(screen.getByRole("button", { name: "按 URL 添加服务" }));
-    expect(onAddByUrl).toHaveBeenCalledOnce();
-  });
-
-  it("lists passive hardware without row actions", () => {
-    render(
-      <HardwareListTree
-        hardware={catalog}
-        selected={null}
-        isOpen={() => true}
-        onSelect={vi.fn()}
-        onToggle={vi.fn()}
-        onAddHardware={vi.fn()}
-      />
-    );
-    expect(screen.getByRole("tree", { name: "硬件列表" })).toBeTruthy();
-    expect(screen.getByRole("treeitem", { name: /DUT_A/ })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "编辑" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "移除硬件" })).toBeNull();
+    expect(onSelect).toHaveBeenLastCalledWith("l:DUT_A");
+    await userEvent.click(screen.getByRole("button", { name: "添加测试资源" }));
+    expect(onAddDevice).toHaveBeenCalledOnce();
   });
 });
+
+function renderTree(
+  data: DashboardSnapshot,
+  handlers: { onSelect?: (key: string) => void; onAddDevice?: () => void } = {}
+) {
+  return render(
+    <HardwareListTree
+      data={data}
+      hardware={catalog}
+      selected={null}
+      isOpen={() => true}
+      onSelect={handlers.onSelect ?? vi.fn()}
+      onToggle={vi.fn()}
+      onAddDevice={handlers.onAddDevice ?? vi.fn()}
+      onAddHardware={vi.fn()}
+    />
+  );
+}
 
 describe("device inspector", () => {
   it("shows an empty state until something is selected", () => {
     renderInspector("");
-    expect(screen.getByText("选择一台电脑或设备")).toBeTruthy();
+    expect(screen.getByText("选择一个设备或硬件")).toBeTruthy();
   });
 
-  it("shows managed hardware details, service and manual control after selecting a device", async () => {
+  it("shows plugin device details and manual control after selecting a device", async () => {
     renderInspector("s:E2E_MCP");
 
     expect(screen.getByRole("heading", { name: "E2E fixture card" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "占用硬件" })).toBeNull();
     expect(screen.queryByRole("button", { name: "释放硬件" })).toBeNull();
-    expect(screen.getByRole("button", { name: "启动 MCP 服务" })).toHaveProperty("disabled", true);
-    expect(screen.getByRole("button", { name: "终止 MCP 服务" })).toHaveProperty("disabled", false);
+    expect(screen.getByText("pci6208v")).toBeTruthy();
+    expect(screen.getByText("模拟")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "编辑信息" })).toBeTruthy();
     expect(await screen.findByText("AO0")).toBeTruthy();
     expect(screen.getByRole("heading", { name: "手动控制" })).toBeTruthy();
     const tool = screen.getByRole("button", { name: /write_voltage/ });
@@ -352,6 +295,15 @@ describe("device inspector", () => {
     }));
     expect(result.querySelector("pre")?.textContent).toContain("\"voltage\": 3.3");
     expect(within(result).getByText("3.3")).toBeTruthy();
+  });
+
+  it("shows a local MCP service read-only: its address and remove, no edit", () => {
+    renderInspector("s:FIREDAP_MCP");
+
+    expect(screen.getByRole("heading", { name: "FireDAP" })).toBeTruthy();
+    expect(screen.getByText("http://127.0.0.1:8031/mcp")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "编辑信息" })).toBeNull();
+    expect(screen.getByRole("button", { name: "删除设备" })).toBeTruthy();
   });
 
   it("shows passive hardware as editable without manual control", () => {

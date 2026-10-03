@@ -146,7 +146,7 @@ def guard(step_id: str, on_violation: str, *children: dict[str, Any]) -> dict[st
 
 
 async def run(tmp_path: Path, plan: dict[str, Any]) -> tuple[TestEngine, dict[str, Any]]:
-    async with FakeStreamService(STREAMS, clock_skew_ms=150, sampled=frozenset({"ai0"})) as service:
+    async with FakeStreamService(STREAMS, sampled=frozenset({"ai0"})) as service:
         sources = service.sources()
         async with StreamDevices(service) as devices:
             engine = TestEngine(
@@ -157,7 +157,6 @@ async def run(tmp_path: Path, plan: dict[str, Any]) -> tuple[TestEngine, dict[st
                 stream_sources=sources,
             )
             completed = await finish(engine, await engine.start(plan, {}))
-        await sources.close()
     return engine, completed
 
 

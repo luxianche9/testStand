@@ -43,14 +43,8 @@ _TASK = {
     "cleanup": [],
 }
 _CASES: list[tuple[str, dict[str, Any], str, str, list[Any]]] = [
-    ("list_remote_computers", {}, "devices", "list_computers", []),
-    ("get_remote_computer_status", {"computerId": "C"}, "devices", "get_computer_status", ["C"]),
     ("list_mcp_servers", {}, "devices", "list_servers_with_status", []),
-    ("get_remote_mcp_service", {"serverId": "S"}, "devices", "refresh_server", ["S"]),
-    ("start_remote_mcp_service", {"serverId": "S"}, "devices", "server_action", ["S", "start"]),
-    ("stop_remote_mcp_service", {"serverId": "S"}, "devices", "server_action", ["S", "stop"]),
-    ("restart_remote_mcp_service", {"serverId": "S"}, "devices", "server_action", ["S", "restart"]),
-    ("read_remote_mcp_logs", {"serverId": "S"}, "devices", "read_server_logs", ["S", 200]),
+    ("refresh_device_server", {"serverId": "S"}, "devices", "refresh_server", ["S"]),
     ("list_managed_hardware", {}, "devices", "list_managed_hardware", []),
     ("list_hardware_catalog", {}, "devices", "list_hardware", []),
     ("get_hardware_definition", {"hardwareId": "H"}, "devices", "get_hardware", ["H"]),
@@ -126,10 +120,9 @@ async def test_zod_argument_errors_and_nested_stripping() -> None:
     )
     assert app.wiring.request_task.call_args.kwargs["input"]["pins"] == [{"a": "1", "b": "2"}]
     with pytest.raises(ValidationError) as caught:
-        await gateway.invoke_tool("read_remote_mcp_logs", {"lines": 1.5, "extra": True})
+        await gateway.invoke_tool("get_hardware_definition", {"hardwareId": 5, "extra": True})
     assert [(issue["code"], issue["path"]) for issue in caught.value.issues] == [
-        ("invalid_type", ["serverId"]),
-        ("invalid_type", ["lines"]),
+        ("invalid_type", ["hardwareId"]),
         ("unrecognized_keys", []),
     ]
 
@@ -273,7 +266,7 @@ async def test_http_routes_and_tool_errors() -> None:
                 "category": "not_found",
                 "message": "Unknown MCP tool: missing",
             }
-            app.devices.read_server_logs.side_effect = AppError(
+            app.devices.refresh_server.side_effect = AppError(
                 "conflict",
                 "Active run",
                 {
@@ -288,7 +281,7 @@ async def test_http_routes_and_tool_errors() -> None:
                     "jsonrpc": "2.0",
                     "id": 5,
                     "method": "tools/call",
-                    "params": {"name": "read_remote_mcp_logs", "arguments": {"serverId": "S"}},
+                    "params": {"name": "refresh_device_server", "arguments": {"serverId": "S"}},
                 },
             )
             recovery = result_body(response)["structuredContent"]["error"]["details"]

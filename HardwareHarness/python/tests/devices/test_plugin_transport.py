@@ -18,7 +18,8 @@ from hardwareharness_backend.devices import (
     PluginTransport,
 )
 from hardwareharness_backend.devices.plugin_transport import installed_device_types
-from hardwareharness_backend.streams.source import LOCAL_CLOCK, StreamSources
+from hardwareharness_backend.streams.clock import SHARED_CLOCK
+from hardwareharness_backend.streams.source import StreamSources
 
 pytestmark = pytest.mark.skipif(sys.platform != "win32", reason="the adapters target Windows")
 
@@ -63,8 +64,8 @@ async def test_an_inproc_plugin_serves_tools_declaration_and_streams(tmp_path: P
         assert service.get_definition("RELAY_CARD")["offline"] is False  # type: ignore[index]
         assert {item["id"] for item in await service.list_streams("RELAY_CARD")} >= {"relay", "di"}
 
-        sources = StreamSources(lambda _: pytest.fail("no endpoint"), plugins=transport.device_for)
-        assert sources.clock("RELAY_CARD") is LOCAL_CLOCK
+        sources = StreamSources(transport.device_for)
+        assert sources.clock("RELAY_CARD") is SHARED_CLOCK
         source = sources.source("RELAY_CARD", "relay", since=0.0)
         events = source.events()
         assert (await anext(events))["type"] == "hello"

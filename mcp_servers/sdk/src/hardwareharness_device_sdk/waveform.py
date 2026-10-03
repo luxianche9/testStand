@@ -156,7 +156,7 @@ class SoftwareWaveform:
         now = now_ms()
         start = now if start_at is None else float(start_at)
         if not math.isfinite(start) or start > now + MAX_START_DELAY_MS:
-            raise DeviceError(f"startAt must be service time (Unix ms, see /time) at most {MAX_START_DELAY_MS:g} ms "
+            raise DeviceError(f"startAt must be service time (Unix ms, the clock of stream record t) at most {MAX_START_DELAY_MS:g} ms "
                               "ahead", category=INVALID_ARGUMENT)
         params = WaveformParams(channel=channel, shape=shape, frequencyHz=float(frequency_hz),
                                 amplitude=float(amplitude), offset=float(offset), dutyCycle=float(duty),

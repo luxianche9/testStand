@@ -19,40 +19,8 @@ export function hardwareRowStatus(serverStatus?: ServerStatus, availability?: Ha
   return { tone: statusTones[status.tone], label: status.label, title: status.title };
 }
 
-export function connectionTone(state: string): Tone {
-  if (state === "online") return "pass";
-  if (state === "offline" || state === "error") return "fail";
-  if (state === "checking") return "run";
-  return "neutral";
-}
+const modeLabels: Record<"real" | "sim", string> = { real: "实物", sim: "模拟" };
 
-const stateLabels: Record<string, string> = {
-  online: "在线",
-  offline: "离线",
-  checking: "检测中",
-  error: "错误",
-  unknown: "未知"
-};
-
-export function stateLabel(state: string): string {
-  return stateLabels[state] ?? state;
-}
-
-const serviceLabels: Record<string, string> = {
-  running: "运行中",
-  stopped: "已停止",
-  starting: "启动中",
-  stopping: "停止中",
-  unknown: "未知"
-};
-
-export function serviceStateLabel(state: string | undefined): string {
-  return serviceLabels[state ?? "unknown"] ?? state ?? "未知";
-}
-
-export function serviceStateTone(state: string | undefined): Tone {
-  if (state === "running") return "pass";
-  if (state === "stopped") return "neutral";
-  if (state === "starting" || state === "stopping") return "run";
-  return "neutral";
+export function modeLabel(mode: "real" | "sim"): string {
+  return modeLabels[mode];
 }

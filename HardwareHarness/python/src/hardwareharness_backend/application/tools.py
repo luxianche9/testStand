@@ -10,14 +10,11 @@ from hardwareharness_backend.contracts.errors import app_error
 from hardwareharness_backend.contracts.operations import PLATFORM_META, WHOLE, Tool
 from hardwareharness_backend.contracts.validation import (
     array,
-    boolean,
     custom_issue,
     number,
     obj,
-    record,
     string,
     union,
-    unknown,
 )
 from hardwareharness_backend.contracts.wiring import (
     pin_pair_schema,
@@ -31,7 +28,6 @@ Record = dict[str, Any]
 GLOSSARY = {
     "rootPath": "Existing absolute directory on this HH host; this is the USER project, "
     "not the HH installation.",
-    "computerId": "Copy computerId from list_remote_computers; not a hostname or SSH command.",
     "serverId": "Copy serverId from list_mcp_servers; one service binds one managed hardware "
     "object.",
     "lines": "Most recent service log lines, default 200, range 1–2000.",
@@ -67,13 +63,6 @@ GLOSSARY = {
     "status": "Filter by the exact lifecycle status; a successful program exit is not a test "
     "verdict.",
     "limit": "Maximum records in this response; use pagination or a narrower filter for more.",
-    "adapter": "Adapter directory name copied from list_deployable_adapters, e.g. cp118u_i.",
-    "port": "TCP port the service listens on; an upgrade keeps the port in the remote server.json.",
-    "root": "Windows install directory such as E:\\cp118u_server; omit to keep the registered "
-    "one or use the default.",
-    "settings": "Adapter settings written once into the new server.json; ignored on upgrade.",
-    "dryRun": "Start the service without touching hardware (adapter dry-run mode).",
-    "autostart": "Register the service to start with Windows; default true.",
 }
 
 
@@ -104,19 +93,10 @@ _PROJECT = _object(
     ["rootPath", "path", "dirty", "file"],
 )
 _STATE = _object(
-    {
-        "state": _STRING,
-        "checkedAt": _STRING,
-        "latencyMs": _INTEGER,
-        "message": _STRING,
-        "serviceState": _STRING,
-    },
+    {"state": _STRING, "checkedAt": _STRING, "message": _STRING},
     ["state"],
 )
-_SERVICE = _object(
-    {"serverId": _STRING, "computerId": _STRING, "service": _STATE, "transport": _STATE},
-    ["serverId", "service", "transport"],
-)
+_SERVICE = _object({"serverId": _STRING, "transport": _STATE}, ["serverId", "transport"])
 _HARDWARE = _object(
     {
         "hardwareId": _STRING,
@@ -173,7 +153,6 @@ _ROOT = obj(
     },
     strict=True,
 )
-_COMPUTER_ID = obj({"computerId": string(1)}, strict=True)
 _SERVER_ID = obj({"serverId": string(1)}, strict=True)
 _HARDWARE_ID = obj({"hardwareId": string(1)}, strict=True)
 _WIRING_TASK_ID = obj({"wiringTaskId": string(1)}, strict=True)
@@ -195,17 +174,8 @@ def _no_project_switch(app: Any, context: Record) -> None:
         raise app_error("conflict", "Save the current project before switching projects")
 
 
-def _server_action(action: str) -> Any:
-    return lambda value: {"serverId": value["serverId"], "action": action}
-
-
 def _hardware_list(items: list[Record]) -> list[Record]:
     return [_with_endpoints(item) for item in items]
-
-
-def _deploy(value: Record) -> Record:
-    spec = {key: item for key, item in value.items() if key != "computerId"}
-    return {"computerId": value["computerId"], "spec": spec}
 
 
 def _wiring_request(value: Record) -> Record:
@@ -258,42 +228,9 @@ PLATFORM_TOOLS = [
         operation="projects.saveProject",
     ),
     _platform(
-        "list_remote_computers",
-        "列出已登记计算机与非敏感连接标识。把返回的 id 原样用于 computerId 参数查询状态；"
-        "配置存在不保证主机在线。",
-        _EMPTY,
-        _array(
-            _object(
-                {
-                    "id": _STRING,
-                    "label": _STRING,
-                    "address": _STRING,
-                    "execution": _STRING,
-                    "ssh": _object({"port": _INTEGER, "username": _STRING, "shell": _STRING}),
-                },
-                ["id", "label", "address", "ssh"],
-            )
-        ),
-        operation="devices.listComputers",
-        open_world=True,
-    ),
-    _platform(
-        "get_remote_computer_status",
-        "查询一个已登记计算机的 SSH 可达性及托管 MCP 服务状态。computerId 从计算机列表复制；"
-        "SSH 在线不等于硬件可操作。",
-        _COMPUTER_ID,
-        _object(
-            {"computerId": _STRING, "ssh": _STATE, "servers": _array(_SERVICE)},
-            ["computerId", "ssh", "servers"],
-        ),
-        operation="devices.getComputerStatus",
-        fields=("computerId",),
-        open_world=True,
-    ),
-    _platform(
         "list_mcp_servers",
-        "列出已登记 MCP 服务、所绑定硬件及连接状态。用于选择 serverId 与识别公开工具来源；"
-        "服务登记或连接成功不代表目标电路通过测试。",
+        "列出已登记设备（插件与本机 MCP 服务）、所绑定硬件及连接状态。用于选择 serverId 与识别"
+        "公开工具来源；设备在线不代表目标电路通过测试。",
         _EMPTY,
         _object(
             {
@@ -302,10 +239,11 @@ PLATFORM_TOOLS = [
                         {
                             "serverId": _STRING,
                             "hardwareId": _STRING,
-                            "computerId": _STRING,
                             "enabled": _BOOLEAN,
-                            "url": _STRING,
                             "transport": _STRING,
+                            "type": _STRING,
+                            "mode": _STRING,
+                            "url": _STRING,
                         },
                         ["serverId"],
                     )
@@ -317,118 +255,12 @@ PLATFORM_TOOLS = [
         operation="devices.listServersWithStatus",
     ),
     _platform(
-        "get_remote_mcp_service",
-        "刷新一个已登记 MCP 服务的进程和连接状态。用于核对启动、停止或重启结果；unknown "
-        "表示尚无法确认，不应解释为停止或成功。",
+        "refresh_device_server",
+        "重新连接一个已登记设备并刷新其状态与声明。offline 表示设备当前不可用（驱动、板卡或"
+        "服务未就绪），不应解释为测试结果。",
         _SERVER_ID,
         _SERVICE,
         operation="devices.refreshServer",
-        fields=("serverId",),
-        open_world=True,
-    ),
-    _platform(
-        "start_remote_mcp_service",
-        "按已配置生命周期启动服务，可能初始化设备和驱动。serverId 从服务列表复制。超时不代表"
-        "未启动；先查询状态再决定下一步。",
-        _SERVER_ID,
-        _SERVICE,
-        operation="devices.serverAction",
-        arguments=_server_action("start"),
-        open_world=True,
-    ),
-    _platform(
-        "stop_remote_mcp_service",
-        "按服务的正常关闭流程停止 MCP 服务，可能应用设备安全状态并断开硬件。操作前核对活跃"
-        "运行；成功与安全收尾结果分别检查。",
-        _SERVER_ID,
-        _SERVICE,
-        operation="devices.serverAction",
-        arguments=_server_action("stop"),
-        open_world=True,
-    ),
-    _platform(
-        "restart_remote_mcp_service",
-        "按已配置的正常关闭与启动流程重启 MCP 服务。可能改变设备会话和输出配置；超时后先查询"
-        "状态，避免重复重启。",
-        _SERVER_ID,
-        _SERVICE,
-        operation="devices.serverAction",
-        arguments=_server_action("restart"),
-        open_world=True,
-    ),
-    _platform(
-        "read_remote_mcp_logs",
-        "读取指定 MCP 服务最近的日志，lines 默认200、范围1–2000，用于服务故障诊断。",
-        obj(
-            {"serverId": string(1), "lines": number(1, 2000, integer=True).default(200)},
-            strict=True,
-        ),
-        _object({"lines": _array(_STRING), "truncated": _BOOLEAN}, ["lines", "truncated"]),
-        operation="devices.readServerLogs",
-        fields=("serverId", "lines"),
-        open_world=True,
-    ),
-    _platform(
-        "list_deployable_adapters",
-        "列出终端 mcp_servers 源码中可以打包部署的适配器。adapter 字段用于 "
-        "deploy_remote_mcp_service；只读，不连接任何电脑。",
-        _EMPTY,
-        _array(
-            _object(
-                {"adapter": _STRING, "package": _STRING, "version": _STRING},
-                ["adapter", "package", "version"],
-            )
-        ),
-        operation="devices.listAdapters",
-    ),
-    _platform(
-        "deploy_remote_mcp_service",
-        "在一台 Windows 电脑上部署或升级一个 MCP 服务：本地打包、上传校验、备份、安全停止旧"
-        "服务、替换、安装、合规检查、启动并核对 /health 与 /device；任一步失败恢复旧版本。"
-        "首次部署生成令牌写入远端 server.json 和凭据库；升级沿用远端配置。耗时数分钟，超时后"
-        "先查询服务状态，不要重复部署。",
-        obj(
-            {
-                "computerId": string(1),
-                "serverId": string(1),
-                "hardwareId": string(1),
-                "adapter": string(1),
-                "port": number(1, 65535, integer=True),
-                "root": string(1).optional(),
-                "label": string(1).optional(),
-                "settings": record(unknown()).optional(),
-                "dryRun": boolean().optional(),
-                "autostart": boolean().optional(),
-            },
-            strict=True,
-        ),
-        _object(
-            {
-                "root": _STRING,
-                "port": _INTEGER,
-                "createdConfig": _BOOLEAN,
-                "upgraded": _BOOLEAN,
-                "steps": _array(_object({"step": _STRING, "ok": _BOOLEAN}, ["step", "ok"])),
-                "server": _object({}),
-                "status": _object({}),
-            },
-            ["root", "port", "steps", "server"],
-        ),
-        operation="devices.deployService",
-        arguments=_deploy,
-        open_world=True,
-    ),
-    _platform(
-        "uninstall_remote_mcp_service",
-        "卸载一个由终端部署的服务：安全停止、运行 uninstall.ps1、把目录打包备份到 "
-        "C:\\ProgramData\\HardwareHarness\\backup 后删除，再移除服务记录和对应的受管硬件。"
-        "卸载前核对没有活跃运行。",
-        _SERVER_ID,
-        _object(
-            {"serverId": _STRING, "root": _STRING, "archive": _STRING},
-            ["serverId", "root", "archive"],
-        ),
-        operation="devices.uninstallService",
         fields=("serverId",),
         open_world=True,
     ),
@@ -441,13 +273,12 @@ PLATFORM_TOOLS = [
             _object(
                 {
                     "hardwareId": _STRING,
-                    "computerId": _STRING,
                     "serverId": _STRING,
                     "state": _STRING,
                     "health": _STRING,
                     "lastError": {"type": ["object", "null"]},
                 },
-                ["hardwareId", "serverId", "computerId", "state", "health"],
+                ["hardwareId", "serverId", "state", "health"],
             )
         ),
         operation="devices.listManagedHardware",

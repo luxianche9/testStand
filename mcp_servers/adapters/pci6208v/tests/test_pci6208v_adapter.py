@@ -45,10 +45,10 @@ def test_public_contract(hh):
 
 @pytest.mark.parametrize("volts", [float("nan"), float("inf"), float("-inf"), -10.01, 10.01])
 def test_invalid_voltage_never_reaches_driver(hh, volts):
-    driver = hh.service.device.driver
+    driver = hh.host.device.driver
     before = list(driver.writes)
-    result = hh.mcp.call_raw("pci6208v_set_voltage", {"hardwareId": hh.hardware_id, "channel": 0, "volts": volts})
-    assert result.get("isError") or not result["structuredContent"]["ok"]
+    result = hh.call_raw("pci6208v_set_voltage", {"hardwareId": hh.hardware_id, "channel": 0, "volts": volts})
+    assert result["ok"] is False
     assert driver.writes == before
 
 
@@ -62,30 +62,30 @@ def test_direct_call_rejects_invalid_voltage(volts):
 
 
 def test_invalid_channel_rejected(hh):
-    result = hh.mcp.call_raw("pci6208v_set_voltage", {"hardwareId": hh.hardware_id, "channel": 8, "volts": 1.0})
-    assert result.get("isError") or not result["structuredContent"]["ok"]
+    result = hh.call_raw("pci6208v_set_voltage", {"hardwareId": hh.hardware_id, "channel": 8, "volts": 1.0})
+    assert result["ok"] is False
 
 
 def test_write_publishes_to_stream_and_read_last(hh):
-    ok = hh.call("set_voltage", {"operationId": "op-ao"}, channel=3, volts=2.5)
+    ok = hh.call("set_voltage", operation_id="op-ao", channel=3, volts=2.5)
     assert ok["ok"] and "error" not in ok
     assert ok["data"]["channel"] == 3 and ok["data"]["volts"] == 2.5
     assert [ref["streamId"] for ref in ok["meta"]["streamRefs"]] == ["ao3"]
     assert hh.call("read_last", channel=3)["data"]["volts"] == 2.5
     last = hh.call("stream_read", streamId="ao3", limit=1)["data"]["records"][-1]
     assert last["v"] == 2.5 and last["op"] == "op-ao"
-    with hh.sse("ao3", cursor=0) as events:
+    with hh.subscribe("ao3", cursor=0) as events:
         hello = events.receive()
         assert hello["type"] == "hello" and hello["streamType"] == "scalar"
 
 
 def test_streams_are_ao_setpoints(hh):
-    assert hh.get("/device").json()["streams"] == [
+    assert hh.device()["streams"] == [
         {"id": f"ao{n}", "type": "scalar", "unit": "V", "label": f"AO{n}", "kind": "setpoint"} for n in range(8)]
 
 
 def test_device_declaration(hh):
-    document = hh.get("/device").json()
+    document = hh.device()
     assert "no output readback" in document["description"]
     assert len(document["pinout"]["connectors"][0]["pinIds"]) == 37
 
@@ -98,7 +98,7 @@ def wait_for(predicate, timeout: float = 2.0) -> None:
 
 
 def test_waveform_writes_and_publishes_setpoints(hh):
-    driver = hh.service.device.driver
+    driver = hh.host.device.driver
     started = hh.call("set_waveform", channel=2, shape="square", frequencyHz=10.0, amplitude=2.0, offset=1.0)
     assert started["ok"], started
     assert started["data"]["mode"] == "software" and started["data"]["updateHz"] == 200.0
@@ -118,15 +118,15 @@ def test_waveform_writes_and_publishes_setpoints(hh):
 def test_waveform_limits(hh):
     for arguments in ({"frequencyHz": 25.0}, {"offset": 9.0, "amplitude": 2.0}, {"channel": 8}):
         call = {"channel": 0, "shape": "sine", "frequencyHz": 1.0, "amplitude": 1.0, "offset": 0.0} | arguments
-        result = hh.mcp.call_raw("pci6208v_set_waveform", {"hardwareId": hh.hardware_id, **call})
-        assert result.get("isError") or not result["structuredContent"]["ok"], arguments
+        result = hh.call_raw("pci6208v_set_waveform", {"hardwareId": hh.hardware_id, **call})
+        assert result["ok"] is False, arguments
     details = hh.call("get_hardware_info")["data"]["capabilityDetails"]["waveform"]
     assert details["mode"] == "software" and details["maxUpdateHz"] == 200.0 and details["maxFrequencyHz"] == 20.0
     assert details["channels"] == list(range(8))
 
 
 def test_safe_state_and_static_write_stop_waveforms(hh):
-    device = hh.service.device
+    device = hh.host.device
     hh.call("set_waveform", channel=0, shape="sine", frequencyHz=5.0, amplitude=1.0, offset=0.0)
     hh.call("set_waveform", channel=1, shape="triangle", frequencyHz=5.0, amplitude=1.0, offset=0.0)
     assert hh.call("set_voltage", channel=1, volts=2.0)["ok"]

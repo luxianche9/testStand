@@ -1,7 +1,7 @@
-"""Device declaration ``GET /device``.
+"""Device declaration (``/device``).
 
 The declaration is generated, never hand-written: identity from the class
-attributes and ``server.json``, ``pinout()``, ``capability_details()``, the
+attributes and the host config, ``pinout()``, ``capability_details()``, the
 stream registry and the registered tools.
 
 ``manifestRevision`` is ``sha256:`` over the canonical JSON of the rest of the
@@ -21,7 +21,7 @@ from .envelope import CONTRACT_REVISION
 from .errors import NOT_SUPPORTED, DeviceError
 
 if TYPE_CHECKING:
-    from .app import DeviceService
+    from .host import DeviceHost
 
 
 def canonical_json(value: Any) -> bytes:
@@ -42,7 +42,7 @@ class Manifest:
         return str(self.document["manifestRevision"])
 
 
-def _pinout(service: DeviceService, manifest: Manifest) -> dict[str, Any] | None:
+def _pinout(service: DeviceHost, manifest: Manifest) -> dict[str, Any] | None:
     try:
         pinout = service.manager.get_pinout(service.device.hardware_id)
     except DeviceError as exc:
@@ -55,7 +55,7 @@ def _pinout(service: DeviceService, manifest: Manifest) -> dict[str, Any] | None
     return pinout.model_dump(mode="json", exclude_none=True)
 
 
-def build_manifest(service: DeviceService) -> Manifest:
+def build_manifest(service: DeviceHost) -> Manifest:
     """Generate the ``/device`` document for ``service`` (reads software state only, never the driver)."""
     device = service.device
     device_cls = type(device)

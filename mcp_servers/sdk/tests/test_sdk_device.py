@@ -25,8 +25,7 @@ class Pinned(DemoDevice):
 
 
 def test_device_declaration_shape(hh):
-    assert hh.get("/device", token="").status_code == 401
-    document = hh.get("/device").json()
+    document = hh.device()
     assert list(document)[0] == "manifestRevision"
     assert document["contractRevision"] == CONTRACT_REVISION
     assert document["identity"] == {"serverId": "DEMO1_MCP", "hardwareId": "DEMO1_1", "manufacturer": "Acme",
@@ -50,16 +49,15 @@ def test_device_declaration_shape(hh):
 
 
 def test_manifest_revision_is_sha256_of_canonical_body(hh):
-    document = hh.get("/device").json()
+    document = hh.device()
     revision = document.pop("manifestRevision")
     assert revision == "sha256:" + hashlib.sha256(canonical_json(document)).hexdigest()
-    assert hh.get("/device").json()["manifestRevision"] == revision
-    assert hh.client.get("/health").json()["manifestRevision"] == revision
+    assert hh.device()["manifestRevision"] == revision
 
 
 def test_device_declaration_with_pinout():
     with serve(Pinned) as hh:
-        document = hh.get("/device").json()
+        document = hh.device()
         assert document["identity"]["hardwareRevision"] == "B1"
         assert document["pinout"]["connectors"][0]["pinIds"][0] == "DEMO1_1.CN1.1"
     assert check_device(Pinned) == []

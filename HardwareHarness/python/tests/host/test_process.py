@@ -155,7 +155,7 @@ async def running_client(profile: Path) -> AsyncIterator[Client]:
 async def test_real_child_settings_project_and_credentials(client: Client, tmp_path: Path) -> None:
     assert (await client.state())["gateway"]["running"]
     dashboard = await client.invoke("system.dashboard")
-    assert dashboard["computers"] == []
+    assert dashboard["servers"] == []
     assert dashboard["hardware"] == []
     await client.host("desktop.updateSettings", {"patch": {"theme": "dark"}})
     assert (await client.state())["settings"]["theme"] == "dark"

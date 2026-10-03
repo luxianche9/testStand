@@ -1,24 +1,23 @@
 import { describe, expect, it } from "vitest";
 import { agentKindInputSchema } from "./agents.js";
 import { appError, toWireError } from "./errors.js";
-import { computerIdInputSchema, deviceBundleIdInputSchema, hardwareIdInputSchema, hardwareSchema, managedHardwareSchema, mcpServerSchema, remoteComputerSchema, serverIdInputSchema } from "./devices.js";
+import { deviceBundleIdInputSchema, hardwareIdInputSchema, hardwareSchema, managedHardwareSchema, mcpServerSchema, serverIdInputSchema } from "./devices.js";
 import { projectFileSchema, projectRootPathInputSchema } from "./projects.js";
 import { wiringTaskIdInputSchema } from "./wiring.js";
 
 describe("public contracts", () => {
   it("rejects passive hardware that references remote infrastructure", () => {
-    expect(() => hardwareSchema.parse({ formatVersion: 2, hardwareId: "DUT", label: "DUT", kind: "passive", serverId: "S1", computerId: "PC1", ports: [] })).toThrow();
+    expect(() => hardwareSchema.parse({ formatVersion: 2, hardwareId: "DUT", label: "DUT", kind: "passive", serverId: "S1", ports: [] })).toThrow();
   });
 
   it("applies stable defaults", () => {
-    expect(remoteComputerSchema.parse({ id: "PC1", label: "PC", address: "127.0.0.1", ssh: { username: "user" } }).ssh).toMatchObject({ port: 22, shell: "powershell" });
-    expect(mcpServerSchema.parse({ serverId: "S1", computerId: "PC1", label: "S", hardwareId: "H1", url: "http://127.0.0.1/mcp", lifecycle: { statusCommand: "s", startCommand: "a", stopCommand: "x", logPath: "l" } })).toMatchObject({ transport: "mcp-http" });
-    expect(mcpServerSchema.parse({ serverId: "S2", label: "S", hardwareId: "H2", url: "http://127.0.0.1/mcp" })).not.toHaveProperty("computerId");
-    expect(mcpServerSchema.safeParse({ serverId: "S3", computerId: "PC1", label: "S", hardwareId: "H3", url: "http://127.0.0.1/mcp", root: "E:\S3", lifecycle: { forceStopCommand: "k" } }).success).toBe(true);
+    expect(mcpServerSchema.parse({ serverId: "S1", label: "S", hardwareId: "H1", url: "http://127.0.0.1/mcp" })).toMatchObject({ transport: "mcp-http", enabled: true });
+    expect(mcpServerSchema.parse({ transport: "plugin", serverId: "P1", label: "P", hardwareId: "H2", type: "pci1762" })).toMatchObject({ settings: {}, mode: "real", enabled: true });
+    expect(mcpServerSchema.safeParse({ serverId: "S3", computerId: "PC1", label: "S", hardwareId: "H3", url: "http://127.0.0.1/mcp" }).success).toBe(false);
   });
 
-  it("validates managed hardware at the remote trust boundary", () => {
-    expect(managedHardwareSchema.safeParse({ hardwareId: "H1", computerId: "PC1", serverId: "S1", state: "vendor-ready", health: "ok" }).success).toBe(false);
+  it("validates managed hardware at the device trust boundary", () => {
+    expect(managedHardwareSchema.safeParse({ hardwareId: "H1", serverId: "S1", state: "vendor-ready", health: "ok" }).success).toBe(false);
   });
 
   it("requires the current project format", () => {
@@ -34,7 +33,7 @@ describe("public contracts", () => {
   });
 
   it("uses strict named id inputs for IPC procedures", () => {
-    const schemas = [computerIdInputSchema, serverIdInputSchema, hardwareIdInputSchema, deviceBundleIdInputSchema, projectRootPathInputSchema, wiringTaskIdInputSchema];
+    const schemas = [serverIdInputSchema, hardwareIdInputSchema, deviceBundleIdInputSchema, projectRootPathInputSchema, wiringTaskIdInputSchema];
     for (const schema of schemas) {
       expect(schema.parse({ id: "ID" })).toEqual({ id: "ID" });
       expect(schema.safeParse({ id: "ID", extra: true }).success).toBe(false);

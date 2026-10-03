@@ -4,7 +4,6 @@ from hardwareharness_backend.contracts.devices import (
     parse_hardware,
     parse_managed_hardware,
     parse_mcp_server,
-    parse_remote_computer,
 )
 from hardwareharness_backend.contracts.errors import app_error, to_wire_error
 from hardwareharness_backend.contracts.projects import parse_project_file
@@ -31,37 +30,25 @@ def test_passive_references() -> None:
 
 @pytest.mark.ts_case(PREFIX + "applies stable defaults")
 def test_defaults() -> None:
-    computer = parse_remote_computer(
-        {"id": "PC1", "label": "PC", "address": "127.0.0.1", "ssh": {"username": "user"}}
-    )
-    assert computer["ssh"] == {"port": 22, "username": "user", "shell": "powershell"}
     assert (
         parse_mcp_server(
             {
                 "serverId": "S1",
-                "computerId": "PC1",
                 "label": "S",
                 "hardwareId": "H1",
                 "url": "http://127.0.0.1/mcp",
-                "lifecycle": {
-                    "statusCommand": "s",
-                    "startCommand": "a",
-                    "stopCommand": "x",
-                    "logPath": "l",
-                },
             }
         )["transport"]
         == "mcp-http"
     )
 
 
-@pytest.mark.ts_case(PREFIX + "validates managed hardware at the remote trust boundary")
+@pytest.mark.ts_case(PREFIX + "validates managed hardware at the device trust boundary")
 def test_managed_state() -> None:
     with pytest.raises(ValidationError):
         parse_managed_hardware(
             {
                 "hardwareId": "H1",
-                "computerId": "PC1",
                 "serverId": "S1",
                 "state": "vendor-ready",
                 "health": "ok",

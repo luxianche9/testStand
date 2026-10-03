@@ -18,54 +18,14 @@ from hardwareharness_backend.contracts.validation import (
 from hardwareharness_backend.util import Record
 
 connection_state_schema = enum("unknown", "checking", "online", "offline", "error")
-remote_computer_schema = obj(
-    {
-        "id": string(1),
-        "label": string(1),
-        "address": string(1),
-        "execution": enum("ssh", "local").optional(),
-        "ssh": obj(
-            {
-                "port": number(1, 65535, integer=True).default(22),
-                "username": string(1),
-                "hostKeyFingerprint": string().optional(),
-                "shell": enum("powershell", "posix").default("powershell"),
-            }
-        ),
-    }
-).refine(
-    lambda value: (
-        [custom_issue("Local computers require a loopback address", ["address"])]
-        if value.get("execution") == "local"
-        and value["address"] not in {"127.0.0.1", "localhost", "::1"}
-        else []
-    )
-)
-# Overrides only (design doc 4.8.2): a service installed from a bundle derives every command from
-# its ``root``; non-standard installs (FireDAP, a local process) name theirs here.
-server_lifecycle_schema = obj(
-    {
-        "statusCommand": string(1).optional(),
-        "startCommand": string(1).optional(),
-        "stopCommand": string(1).optional(),
-        "forceStopCommand": string(1).optional(),
-        "logPath": string(1).optional(),
-    },
-    strict=True,
-)
 mcp_http_server_schema = obj(
     {
         "transport": literal("mcp-http"),
         "serverId": string(1),
-        # Absent: an unmanaged service added by URL + token; usable, but not started or stopped.
-        "computerId": string(1).optional(),
         "label": string(1),
         "hardwareId": string(1),
         "url": string(url=True),
         "enabled": boolean().default(True),
-        # Install directory on the computer (``services.json`` ``root``); lifecycle derives from it.
-        "root": string(1).optional(),
-        "lifecycle": server_lifecycle_schema.optional(),
     },
     strict=True,
 )
@@ -114,7 +74,6 @@ ADAPTER_GATES = ("check", "simulator", "smoke")
 hardware_state_schema = enum("initializing", "open", "unreachable", "faulted", "closing", "closed")
 _managed_fields = {
     "hardwareId": string(1),
-    "computerId": string(1).optional(),
     "serverId": string(1),
     "state": hardware_state_schema,
     "health": string(),
@@ -130,11 +89,7 @@ _managed_fields = {
 }
 managed_hardware_schema = obj(_managed_fields)
 reported_managed_hardware_schema = obj(
-    {
-        key: schema
-        for key, schema in _managed_fields.items()
-        if key not in ("computerId", "serverId")
-    }
+    {key: schema for key, schema in _managed_fields.items() if key != "serverId"}
 )
 hardware_pin_schema = obj(
     {"pinId": string(1), "position": number(1, integer=True), "label": string().default("")}
@@ -160,8 +115,8 @@ def _hardware_issues(value: Any) -> list[Record]:
     issues: list[Record] = []
     if value["kind"] == "managed" and not value.get("serverId"):
         issues.append(custom_issue("Managed hardware requires serverId"))
-    if value["kind"] == "passive" and (value.get("serverId") or value.get("computerId")):
-        issues.append(custom_issue("Passive hardware cannot reference remote infrastructure"))
+    if value["kind"] == "passive" and value.get("serverId"):
+        issues.append(custom_issue("Passive hardware cannot reference a device server"))
     ports: set[str] = set()
     for port in value["ports"]:
         if port["portId"] in ports:
@@ -184,7 +139,6 @@ hardware_schema = obj(
         "label": string(1),
         "kind": enum("managed", "passive"),
         "serverId": string(1).optional(),
-        "computerId": string(1).optional(),
         "ports": array(hardware_port_schema).default([]),
         # Managed hardware only, derived from the adapter record; ignored when saving.
         "adapterStatus": adapter_status_schema.optional(),
@@ -200,10 +154,6 @@ device_bundle_apply_input_schema = obj(
     },
     strict=True,
 )
-
-
-def parse_remote_computer(value: Any) -> Record:
-    return parse_record(remote_computer_schema, value)
 
 
 def parse_mcp_server(value: Any) -> Record:
@@ -248,7 +198,6 @@ def parse_device_bundle_apply_input(value: Any) -> Record:
     return parse_record(device_bundle_apply_input_schema, value)
 
 
-parse_computer_id_input = parse_id_input
 parse_server_id_input = parse_id_input
 parse_hardware_id_input = parse_id_input
 parse_device_bundle_id_input = parse_id_input

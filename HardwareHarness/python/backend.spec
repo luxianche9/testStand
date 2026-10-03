@@ -22,7 +22,7 @@ for distribution in DEVICE_PACKAGES:
 binaries = [(str(path), "icu") for path in (root / "vendor/icu/bin64").glob("*.dll")]
 hiddenimports = [
     "anyio._backends._asyncio", "uvicorn.loops.asyncio", "uvicorn.protocols.http.h11_impl",
-    "uvicorn.lifespan.on", "sqlite3", "cryptography", "nacl", "pydantic_core",
+    "uvicorn.lifespan.on", "sqlite3", "cryptography", "pydantic_core",
     "ada_url._ada_wrapper", "_cffi_backend",
 ]
 hiddenimports += collect_submodules("hardwareharness_backend")

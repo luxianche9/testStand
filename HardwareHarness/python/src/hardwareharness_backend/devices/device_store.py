@@ -18,7 +18,6 @@ from hardwareharness_backend.contracts.devices import (
     parse_adapter_record,
     parse_hardware,
     parse_mcp_server,
-    parse_remote_computer,
     parse_stored_hardware_definition,
 )
 from hardwareharness_backend.storage import atomic_json
@@ -60,7 +59,6 @@ class DeviceStore:
         self, root: str | Path, *, rename: Rename = _rename, remove: Remove = _remove
     ) -> None:
         self.root = Path(root).resolve()
-        self._computer_dir = self.root / "computers"
         self._server_dir = self.root / "servers"
         self._hardware_dir = self.root / "hardware"
         self._rename = rename
@@ -68,33 +66,8 @@ class DeviceStore:
         self._read_cache: dict[str, tuple[str, list[Record]]] = {}
 
     async def initialize(self) -> None:
-        for path in [self._computer_dir, self._server_dir, self._hardware_dir]:
+        for path in [self._server_dir, self._hardware_dir]:
             path.mkdir(parents=True, exist_ok=True)
-
-    def list_computers(self) -> list[Record]:
-        return sorted(
-            self._read_all(self._computer_dir, "", parse_remote_computer),
-            key=lambda item: item["id"],
-        )
-
-    def get_computer(self, identifier: str) -> Record | None:
-        return next((item for item in self.list_computers() if item["id"] == identifier), None)
-
-    async def save_computer(self, value: Record) -> Record:
-        computer = parse_remote_computer(value)
-        await atomic_json(self._computer_dir / (safe_segment(computer["id"]) + ".json"), computer)
-        self._read_cache.clear()
-        return computer
-
-    async def remove_computer(self, identifier: str) -> list[str]:
-        removed = []
-        for server in self.list_servers():
-            if server.get("computerId") == identifier:
-                removed.append(str(server["serverId"]))
-                await self.remove_server(server["serverId"])
-        _delete(self._computer_dir / (safe_segment(identifier) + ".json"))
-        self._read_cache.clear()
-        return removed
 
     def list_servers(self) -> list[Record]:
         return sorted(
@@ -107,8 +80,6 @@ class DeviceStore:
 
     async def save_server(self, value: Record) -> Record:
         server = parse_mcp_server(value)
-        if "computerId" in server and not self.get_computer(server["computerId"]):
-            raise RuntimeError(f"Remote computer not found: {server['computerId']}")
         for item in self.list_servers():
             if (
                 item["hardwareId"] == server["hardwareId"]
@@ -333,7 +304,6 @@ class DeviceStore:
                 **(
                     {
                         "serverId": server["serverId"],
-                        **({"computerId": server["computerId"]} if "computerId" in server else {}),
                         "adapterStatus": adapter["status"] if adapter else "developing",
                     }
                     if server

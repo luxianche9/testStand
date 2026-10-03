@@ -13,8 +13,7 @@ const LIVE_SOURCE: StreamSource = { live: (...args) => window.hardwareharness.st
 /**
  * 实时数据: subscribes to the device's streams (read-only, `GET /api/live`) and shows them as scope
  * traces and a TX/RX terminal. The subscription ends when stopped, when the device changes and when
- * the inspector closes. `running` means the MCP endpoint answers; the service state may be unknown
- * without SSH control.
+ * the inspector closes. `running` means the device is connected.
  */
 export function LiveStreams({ hardwareId, running }: { hardwareId: string; running: boolean }) {
   const streams = useQuery({

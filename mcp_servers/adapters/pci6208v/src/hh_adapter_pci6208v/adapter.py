@@ -62,7 +62,7 @@ Waveform = model(
     offset=(float, "Center value in V."),
     dutyCycle=(float, "Square-wave high fraction."),
     phaseDeg=(float, "Start phase in degrees."),
-    startAt=(float, "Service time (Unix ms, see /time) of phase 0."),
+    startAt=(float, "Service time (Unix ms, the clock of stream record t) of phase 0."),
     updateHz=(float, "Software write rate actually used."),
     mode=(str, "Always software on this card."),
 )
@@ -86,7 +86,7 @@ Amplitude = param(float, "Peak deviation from offset in V; offset ± amplitude m
 Offset = param(float, "Center value in V within [-10,10].", ge=VOLT_MIN, le=VOLT_MAX, allow_inf_nan=False)
 DutyCycle = param(float | None, "Square-wave high fraction in (0,1); default 0.5.", gt=0, lt=1)
 PhaseDeg = param(float | None, "Start phase in degrees; default 0.", ge=-360, le=360)
-StartAt = param(float | None, "Service time (Unix ms, see /time) of phase 0 for synchronized starts; at most "
+StartAt = param(float | None, "Service time (Unix ms, the clock of stream record t) of phase 0 for synchronized starts; at most "
                 "60 s ahead; default now.")
 HoldValue = param(float | None, "Static voltage to hold after stopping; default the waveform offset (0 V when "
                   "none ran).", ge=VOLT_MIN, le=VOLT_MAX, allow_inf_nan=False)

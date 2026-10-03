@@ -5,7 +5,6 @@ description = "Python backend for the HardwareHarness desktop"
 requires-python = ">=3.11,<3.12"
 dependencies = [
   "mcp==1.29.1",
-  "paramiko==5.0.0",
   "pydantic==2.13.5",
   "jsonschema==4.26.0",
   "httpx==0.28.1",
@@ -47,7 +46,6 @@ dev = [
   "pytest",
   "pytest-asyncio",
   "pytest-cov",
-  "types-paramiko",
   "types-jsonschema",
   "pyinstaller==6.22.2",
   "import-linter==2.15",
@@ -143,7 +141,7 @@ name = "Resource layer has no business dependencies"
 type = "forbidden"
 source_modules = [
   "hardwareharness_backend.devices.mcp_client",
-  "hardwareharness_backend.devices.ssh",
+  "hardwareharness_backend.devices.plugin_transport",
   "hardwareharness_backend.streams.source",
   "hardwareharness_backend.streams.clock",
   "hardwareharness_backend.streams.recorder",

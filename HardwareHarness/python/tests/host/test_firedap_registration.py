@@ -28,10 +28,8 @@ async def test_registration_uses_python_catalog_keyring_and_backup(tmp_path: Pat
     assert result["ok"] and result["boardPorts"] == 14
     store = DeviceStore(profile / "devices")
     await store.initialize()
-    computer = store.get_computer("LOCAL_PC")
-    assert computer and computer["execution"] == "local"
     configured = store.get_server("FIREDAP_MCP")
-    assert configured and "服务''s" in configured["lifecycle"]["startCommand"]
+    assert configured and configured["url"] == "http://127.0.0.1:8800/mcp"
     hardware = store.get_hardware("DUT_1")
     assert hardware and hardware["kind"] == "passive" and len(hardware["ports"]) == 14
     assert (profile / "devices/hardware/DUT_1/model.json").read_bytes() == (
@@ -46,7 +44,7 @@ async def test_registration_uses_python_catalog_keyring_and_backup(tmp_path: Pat
     second = await register(profile, server, model, backend)
     assert (Path(second["backup"]) / "secret-keys.json").read_bytes() == original
     assert (Path(second["backup"]) / "devices/hardware/DUT_1/model.json").is_file()
-    await store.save_computer({**computer, "execution": "ssh"})
-    with pytest.raises(RuntimeError, match="different computer"):
+    await store.save_server({**configured, "hardwareId": "OTHER"})
+    with pytest.raises(RuntimeError, match="already controls another hardware"):
         await register(profile, server, model, backend)
     assert secret_path.read_bytes() == original

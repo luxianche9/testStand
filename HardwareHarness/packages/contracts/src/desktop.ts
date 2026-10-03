@@ -1,5 +1,5 @@
 import type { AgentConfirmation, AgentConfirmationAnswer, AgentIntegrationPreview, AgentIntegrationStatus, AgentKind, AgentToolInfo, McpGatewayStatus, OpenCodeRuntimeStatus } from "./agents.js";
-import type { AdapterReleaseRecord, AdapterStatus, ComputerStatus, DeviceBundleApplyInput, DeviceBundleExport, DeviceBundleImport, DeviceBundleKind, DeviceBundlePreview, DeviceType, Hardware, HardwareAvailability, ManagedDeviceDefinition, ManagedHardware, McpHttpServerConfig, McpServerConfig, PluginServerConfig, RegisteredService, RemoteComputer, RemoteServiceLog, ServerStatus, ServiceImportResult, DiscoveredService, DeployableAdapter, DeployResult, DeployServiceSpec, UninstallResult, ToolCatalogItem } from "./devices.js";
+import type { AdapterReleaseRecord, AdapterStatus, DeviceBundleApplyInput, DeviceBundleExport, DeviceBundleImport, DeviceBundleKind, DeviceBundlePreview, DeviceType, Hardware, HardwareAvailability, ManagedDeviceDefinition, ManagedHardware, McpServerConfig, ServerStatus, ToolCatalogItem } from "./devices.js";
 import type { ExecutionActivity, ManualToolInvocationInput, ManualToolInvocationResult } from "./execution.js";
 
 import type { LlmSettings, LlmSettingsInput, ProjectView, ThemeChoice, WelcomeLayout } from "./storage.js";
@@ -9,12 +9,8 @@ import type { DeviceStream, LiveFrame, LiveQuery, RunIo, RunRejudge, RunStreams,
 import type { TestDeviceTools, TestPlan, TestPlanDraftAnalysis, TestPlanMutationResult, TestPlanOperation, TestPlanSummary, TestPlanValidation, TestRunListInput, TestRunLog, TestRunPage, TestRunSnapshot, TestStepCatalogItem } from "./testing.js";
 
 export interface DashboardSnapshot {
-  computers: RemoteComputer[];
-  statuses: ComputerStatus[];
-  /** Device services reached over MCP HTTP. */
-  servers: McpHttpServerConfig[];
-  /** Device plugins loaded into the backend. */
-  plugins: PluginServerConfig[];
+  /** Device instances: plugins loaded into the backend and local MCP services. */
+  servers: McpServerConfig[];
   serverStatuses: ServerStatus[];
   hardware: ManagedHardware[];
   tools: ToolCatalogItem[];
@@ -42,21 +38,9 @@ export interface HardwareHarnessSystemApi {
 }
 
 export interface HardwareHarnessDevicesApi {
-  saveComputer(input: RemoteComputer, secrets?: { ssh?: string }): Promise<RemoteComputer>;
-  removeComputer(computerId: string): Promise<{ computerId: string }>;
-  refreshComputer(computerId: string): Promise<ComputerStatus>;
   saveServer(input: McpServerConfig, secrets?: { mcpToken?: string }): Promise<McpServerConfig>;
   removeServer(serverId: string): Promise<{ serverId: string }>;
   refreshServer(serverId: string): Promise<ServerStatus>;
-  serverAction(serverId: string, action: "start" | "stop" | "restart" | "force-stop"): Promise<ServerStatus>;
-  readServerLogs(serverId: string, lines?: number): Promise<RemoteServiceLog>;
-  discoverServices(computerId: string): Promise<DiscoveredService[]>;
-  importServices(computerId: string, serverIds: string[]): Promise<ServiceImportResult>;
-  addServerByUrl(url: string, token: string, label?: string): Promise<RegisteredService>;
-  listAdapters(): Promise<DeployableAdapter[]>;
-  deployService(computerId: string, spec: DeployServiceSpec): Promise<DeployResult>;
-  uninstallService(serverId: string): Promise<UninstallResult>;
-  executeSsh(computerId: string, command: string, timeoutMs?: number): Promise<unknown>;
   refreshManagedHardware(): Promise<ManagedHardware[]>;
   listDeviceTypes(): Promise<DeviceType[]>;
   listHardware(): Promise<Hardware[]>;

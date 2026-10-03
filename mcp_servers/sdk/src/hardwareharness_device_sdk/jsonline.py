@@ -17,7 +17,6 @@ from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Any, Protocol
 
-from .config import CONFIG_ENV
 from .errors import DEVICE_ERROR, DEVICE_UNREACHABLE, INVALID_RESPONSE, DeviceError
 
 log = logging.getLogger(__name__)
@@ -42,20 +41,11 @@ def unwrap(response: Mapping[str, Any]) -> Any:
 
 def find_executable(name: str, *, explicit: str | None = None, env_names: Iterable[str] = (),
                     roots: Iterable[Path] = ()) -> Path | None:
-    """Locate ``name`` from an explicit path, environment variables, then ``<root>/native/build/{Release,Debug,.}``.
-
-    Default roots are the server config directory and its ``app`` subdirectory,
-    where historical deployments keep their compiled native CLI.
-    """
+    """Locate ``name`` from an explicit path, environment variables, then ``<root>/native/build/{Release,Debug,.}``."""
     for candidate in (explicit, *(os.environ.get(env) for env in env_names)):
         if candidate and Path(candidate).is_file():
             return Path(candidate)
-    search = list(roots)
-    config = os.environ.get(CONFIG_ENV)
-    if config:
-        base = Path(config).resolve().parent
-        search += [base, base / "app"]
-    for root in search:
+    for root in roots:
         for folder in ("Release", "Debug", "."):
             for filename in (f"{name}.exe", name):
                 path = root / "native" / "build" / folder / filename

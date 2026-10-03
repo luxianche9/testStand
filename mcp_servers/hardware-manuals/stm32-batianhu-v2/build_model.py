@@ -213,7 +213,7 @@ def build(docs: Path):
         fports.append({"portId":pid,"name":title,"pins":[{"pinId":f"{pid}.{i}","position":i,"label":s} for i,s in enumerate(signals.split(),1)]})
     pid=f"{fhid}.USB"
     fports.append({"portId":pid,"name":"USB Type-C 上行（整根 USB 数据线）","pins":[]})
-    firedap={"formatVersion":2,"hardwareId":fhid,"kind":"managed","serverId":"FIREDAP_MCP","computerId":"LOCAL_PC",
+    firedap={"formatVersion":2,"hardwareId":fhid,"kind":"managed","serverId":"FIREDAP_MCP",
              "label":"野火 FireDAP · STM32 烧录器（本机）","ports":fports}
     save(OUT / "firedap.hardware.json",firedap)
     save(OUT / "firedap.pinout.json",{"hardwareId":fhid,"manufacturer":"Embedfire","model":"fireDAP CMSIS-DAP",

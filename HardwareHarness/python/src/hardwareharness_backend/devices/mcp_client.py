@@ -397,7 +397,6 @@ class McpHttpTransport:
             {
                 **item,
                 "serverId": server["serverId"],
-                **({"computerId": server["computerId"]} if "computerId" in server else {}),
             }
         )
 

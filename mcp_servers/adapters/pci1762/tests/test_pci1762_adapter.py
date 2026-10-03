@@ -44,14 +44,14 @@ def test_public_contract(hh):
 
 @pytest.mark.parametrize("arguments", [{"channel": 16, "closed": True}, {"channel": -1, "closed": False}])
 def test_invalid_relay_rejected(hh, arguments):
-    before = len(hh.service.device.cli.commands)
-    result = hh.mcp.call_raw("pci1762_set_relay", {"hardwareId": hh.hardware_id, **arguments})
-    assert result.get("isError") or not result["structuredContent"]["ok"]
-    assert len(hh.service.device.cli.commands) == before
+    before = len(hh.host.device.cli.commands)
+    result = hh.call_raw("pci1762_set_relay", {"hardwareId": hh.hardware_id, **arguments})
+    assert result["ok"] is False
+    assert len(hh.host.device.cli.commands) == before
 
 
 def test_relay_writes_publish_readback(hh):
-    result = hh.call("set_relay", {"operationId": "op-r"}, channel=9, closed=True)
+    result = hh.call("set_relay", operation_id="op-r", channel=9, closed=True)
     assert result["data"] == {"channel": 9, "closed": True, "port": 1, "bit": 1}
     assert [ref["streamId"] for ref in result["meta"]["streamRefs"]] == ["relay"]
     assert hh.call("read_bit", channel=9, kind="relay")["data"]["value"] is True
@@ -60,7 +60,7 @@ def test_relay_writes_publish_readback(hh):
     last = hh.call("stream_read", streamId="relay", limit=1)["data"]["records"][-1]
     assert last["mask"] == 1 << 9 and last["op"] == "op-r"
     assert hh.call("set_bank", mask=0x8001)["data"] == {"mask": 0x8001}
-    with hh.sse("relay", cursor=-1) as events:
+    with hh.subscribe("relay", cursor=-1) as events:
         batch = receive_until(events, lambda frame: frame["type"] == "batch" and frame["records"])
         assert batch["records"][-1]["mask"] == 0x8001
     assert hh.call("safe_state")["data"] == {"relays": "all_open"}
@@ -69,14 +69,14 @@ def test_relay_writes_publish_readback(hh):
 
 
 def test_di_is_sampled_in_one_round_trip_and_only_on_change(hh):
-    device = hh.service.device
-    assert hh.get("/device").json()["streams"] == [
+    device = hh.host.device
+    assert hh.device()["streams"] == [
         {"id": "di", "type": "bits", "width": 16, "bitLabels": [f"IDI{n}" for n in range(16)], "rateHz": 20.0,
          "kind": "measured"},
         {"id": "relay", "type": "bits", "width": 16, "bitLabels": [f"R{n}" for n in range(16)],
          "label": "Relay coil control"}]
     assert device.mask_command is True
-    with hh.sse("di") as events:
+    with hh.subscribe("di") as events:
         events.receive()
         device.cli.di = 0b101
         receive_until(events, lambda frame: frame["type"] == "batch"
@@ -102,7 +102,7 @@ def test_falls_back_to_bit_reads_without_read_mask():
             self.cli = OldCli()
 
     with serve(OldPci1762) as harness:
-        device = harness.service.device
+        device = harness.host.device
         assert device.mask_command is False
         harness.call("set_relay", channel=2, closed=True)
         assert harness.call("stream_read", streamId="relay", limit=1)["data"]["records"][-1]["mask"] == 4
@@ -121,8 +121,8 @@ def test_pinout():
 
 
 def test_device_declaration(hh):
-    document = hh.get("/device").json()
+    document = hh.device()
     assert document["description"].startswith("Advantech PCI-1762")
     assert len(document["pinout"]["connectors"][0]["pinIds"]) == 62
-    assert hh.service.device.board_description == "PCI-1762,BID#0"
+    assert hh.host.device.board_description == "PCI-1762,BID#0"
 

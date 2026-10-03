@@ -25,7 +25,6 @@ export function createHardwareHarnessApi(transport: DesktopTransport): HardwareH
     system: { ...system, exportText: (defaultPath, content) => main("dialogs.exportText", defaultPath, content) },
     devices: {
       ...devices,
-      refreshComputer: devices.getComputerStatus,
       refreshManagedHardware: devices.listManagedHardware,
       exportBundle: async (kind, id) => main("dialogs.saveBundle", kind, id, await devices.exportBundle(id)),
       importBundle: async (kind) => {

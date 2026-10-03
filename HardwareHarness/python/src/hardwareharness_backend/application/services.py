@@ -4,20 +4,10 @@ import asyncio
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any, Literal, Protocol, TypeVar, cast
 
-from hardwareharness_backend.contracts.devices import (
-    parse_hardware,
-    parse_mcp_server,
-    parse_remote_computer,
-)
+from hardwareharness_backend.contracts.devices import parse_hardware, parse_mcp_server
 from hardwareharness_backend.contracts.errors import app_error
 from hardwareharness_backend.contracts.operations import operation
-from hardwareharness_backend.devices.deploy import DeployService
 from hardwareharness_backend.devices.plugin_transport import installed_device_types
-from hardwareharness_backend.devices.service_registry import (
-    mcp_url,
-    probe_service,
-    register_service,
-)
 from hardwareharness_backend.util import utc_now_iso
 
 from .authorization import Authorizer, Json
@@ -58,71 +48,11 @@ class DevicesApplication:
         service: DeviceService,
         catalog: DeviceCatalogService,
         execution: ExecutionCoordinator | None = None,
-        deploy: DeployService | None = None,
     ) -> None:
         self.authorizer, self.service, self.catalog = authorizer, service, catalog
-        self.deploy = deploy or DeployService(service, catalog)
         self.execution = execution or ExecutionCoordinator()
         self.active: dict[asyncio.Task[Any], str] = {}
         self._calls_closed = False
-
-    @operation(
-        "devices.listComputers",
-        capability="devices.read",
-        risk="read",
-        profiles=("adapter",),
-        idempotency="natural",
-    )
-    def list_computers(self, context: Json) -> list[Json]:
-        return self.service.list_computers()
-
-    @operation(
-        "devices.saveComputer",
-        capability="devices.manageComputers",
-        risk="write",
-        idempotency="natural",
-    )
-    async def save_computer(
-        self, context: Json, input: Json, credentials: Json | None = None
-    ) -> Json:
-        return await self.service.save_computer(parse_remote_computer(input), credentials)
-
-    @operation(
-        "devices.removeComputer",
-        capability="devices.manageComputers",
-        risk="destructive",
-        idempotency="natural",
-        confirm=True,
-    )
-    async def remove_computer(self, context: Json, computer_id: str) -> Json:
-        await self.service.remove_computer(computer_id)
-        return {"computerId": computer_id}
-
-    @operation(
-        "devices.getComputerStatus",
-        capability="devices.read",
-        risk="read",
-        profiles=("adapter",),
-        idempotency="natural",
-    )
-    async def get_computer_status(self, context: Json, computer_id: str) -> Json:
-        computer = await self.service.refresh_computer(computer_id)
-        servers = await asyncio.gather(
-            *(
-                self.service.refresh_server(server["serverId"])
-                for server in self.service.list_servers()
-                if server.get("computerId") == computer_id
-            )
-        )
-        return {**computer, "servers": servers}
-
-    @operation("devices.executeSsh", capability="devices.ssh", risk="actuate")
-    async def execute_ssh(
-        self, context: Json, computer_id: str, command: str, timeout_ms: int | None = None
-    ) -> Json:
-        if timeout_ms is None:
-            return await self.service.execute(computer_id, command)
-        return await self.service.execute(computer_id, command, timeout_ms)
 
     @operation(
         "devices.listServers",
@@ -177,143 +107,6 @@ class DevicesApplication:
     )
     async def refresh_server(self, context: Json, server_id: str) -> Json:
         return await self.service.refresh_server(server_id)
-
-    @operation(
-        "devices.serverAction",
-        capability="devices.controlServers",
-        risk="actuate",
-        profiles=("adapter",),
-    )
-    async def server_action(self, context: Json, server_id: str, action: str) -> Json:
-        if action == "force-stop":
-            self.authorizer.authorize(context, "devices.forceStopServers")
-        return await self.service.server_action(server_id, action)
-
-    @operation(
-        "devices.readServerLogs",
-        capability="devices.read",
-        risk="read",
-        profiles=("adapter",),
-        idempotency="natural",
-    )
-    async def read_server_logs(
-        self, context: Json, server_id: str, lines: int | None = None
-    ) -> Json:
-        if lines is None:
-            return await self.service.read_server_logs(server_id)
-        return await self.service.read_server_logs(server_id, lines)
-
-    @operation(
-        "devices.discoverServices",
-        capability="devices.read",
-        risk="read",
-        profiles=("adapter",),
-        idempotency="natural",
-    )
-    async def discover_services(self, context: Json, computer_id: str) -> list[Json]:
-        return await self.service.discover_services(computer_id)
-
-    @operation(
-        "devices.importServices",
-        capability="devices.manageServers",
-        risk="write",
-        profiles=("adapter",),
-        idempotency="natural",
-    )
-    async def import_services(self, context: Json, computer_id: str, server_ids: list[str]) -> Json:
-        """Add services listed in the computer's ``services.json``; tokens come from the
-        service's own ``server.json`` straight into the keyring (design doc 4.8.3)."""
-        entries = {
-            item["serverId"]: item for item in await self.service.discover_services(computer_id)
-        }
-        imported: list[Json] = []
-        skipped: list[Json] = []
-        for server_id in dict.fromkeys(server_ids):
-            entry = entries.get(server_id)
-            if entry is None:
-                skipped.append({"serverId": server_id, "reason": "not in services.json"})
-                continue
-            if entry["added"]:
-                skipped.append({"serverId": server_id, "reason": "already added"})
-                continue
-            try:
-                token = await self.service.read_service_token(computer_id, entry["root"])
-                server = {
-                    "transport": "mcp-http",
-                    "serverId": server_id,
-                    "computerId": computer_id,
-                    "label": server_id,
-                    "hardwareId": entry["hardwareId"],
-                    "url": entry["url"],
-                    "enabled": True,
-                    "root": entry["root"],
-                }
-                imported.append(await self._register_service(server, token))
-            except Exception as error:
-                skipped.append({"serverId": server_id, "reason": str(error)})
-        return {"imported": imported, "skipped": skipped}
-
-    @operation(
-        "devices.addServerByUrl",
-        capability="devices.manageServers",
-        risk="write",
-        profiles=("adapter",),
-        idempotency="natural",
-    )
-    async def add_server_by_url(
-        self, context: Json, url: str, token: str, label: str | None = None
-    ) -> Json:
-        """An unmanaged service: usable through its URL, not started or stopped from here."""
-        endpoint = mcp_url(url)
-        identity = await probe_service(endpoint, token)
-        if any(item["serverId"] == identity["serverId"] for item in self.service.list_servers()):
-            raise app_error("conflict", f"{identity['serverId']} is already added")
-        server = {
-            "transport": "mcp-http",
-            "serverId": identity["serverId"],
-            "label": (label or "").strip() or identity["label"],
-            "hardwareId": identity["hardwareId"],
-            "url": endpoint,
-            "enabled": True,
-        }
-        return await self._register_service(server, token)
-
-    @operation(
-        "devices.listAdapters",
-        capability="devices.read",
-        risk="read",
-        profiles=("adapter",),
-        idempotency="natural",
-    )
-    async def list_adapters(self, context: Json) -> list[Json]:
-        """Adapters in the ``mcp_servers`` workspace that can be packed and deployed."""
-        return await asyncio.to_thread(self.deploy.list_adapters)
-
-    @operation(
-        "devices.deployService",
-        capability="devices.deploy",
-        risk="destructive",
-        profiles=("adapter",),
-        confirm=True,
-    )
-    async def deploy_service(self, context: Json, computer_id: str, spec: Json) -> Json:
-        """Pack, upload, install and start one service; an existing one is upgraded in place
-        and keeps its ``server.json`` and token (design doc 4.8.3)."""
-        return await self.deploy.deploy(computer_id, spec)
-
-    @operation(
-        "devices.uninstallService",
-        capability="devices.deploy",
-        risk="destructive",
-        profiles=("adapter",),
-        confirm=True,
-    )
-    async def uninstall_service(self, context: Json, server_id: str) -> Json:
-        """Safe stop, ``uninstall.ps1``, archive and delete the directory, then forget it."""
-        return await self.deploy.uninstall(server_id)
-
-    async def _register_service(self, server: Json, token: str) -> Json:
-        return await register_service(self.service, self.catalog, server, token)
 
     @operation(
         "devices.listManagedHardware",
@@ -819,14 +612,7 @@ class SystemApplication:
     @operation("system.dashboard", capability="system.read", risk="read", idempotency="natural")
     def dashboard(self, context: Json) -> Json:
         return {
-            "computers": self.devices.list_computers(),
-            "statuses": self.devices.list_statuses(),
-            "servers": [
-                item for item in self.devices.list_servers() if item["transport"] == "mcp-http"
-            ],
-            "plugins": [
-                item for item in self.devices.list_servers() if item["transport"] == "plugin"
-            ],
+            "servers": self.devices.list_servers(),
             "serverStatuses": self.devices.list_server_statuses(),
             "hardware": self.devices.list_hardware(),
             "tools": self.devices.list_tools(),

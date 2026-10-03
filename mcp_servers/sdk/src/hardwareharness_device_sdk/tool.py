@@ -7,11 +7,22 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Annotated, Any, Literal, TypeVar, get_type_hints
 
-from mcp.types import ToolAnnotations
-from pydantic import Field
+from pydantic import BaseModel, ConfigDict, Field
 
 ToolKind = Literal["read", "configure", "actuate", "safe"]
 TOOL_KINDS: tuple[str, ...] = ("read", "configure", "actuate", "safe")
+
+
+class ToolAnnotations(BaseModel):
+    """Behavior hints of a tool, published as its ``annotations`` (MCP tool annotation keys)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    readOnlyHint: bool  # noqa: N815
+    destructiveHint: bool  # noqa: N815
+    idempotentHint: bool  # noqa: N815
+    openWorldHint: bool  # noqa: N815
+
 
 READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 OPERATE = ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False)

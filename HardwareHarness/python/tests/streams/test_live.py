@@ -80,7 +80,6 @@ async def test_frames_carry_downsampled_changes_and_feeds_are_shared(tmp_path: P
         await asyncio.sleep(0.4)
         assert live.feeds == {} and not any(path.exists() for path in paths)
         await live.close()
-        await sources.close()
 
 
 async def test_resubscribing_within_the_linger_keeps_the_feed(tmp_path: Path) -> None:
@@ -100,7 +99,6 @@ async def test_resubscribing_within_the_linger_keeps_the_feed(tmp_path: Path) ->
         await live.close()
         assert live.feeds == {} and not list(tmp_path.glob("*.sqlite"))
         await resumed.aclose()
-        await sources.close()
 
 
 def test_subscriptions_are_validated_before_they_start(tmp_path: Path) -> None:
@@ -165,4 +163,3 @@ async def test_ad_hoc_observe_and_expect(tmp_path: Path) -> None:
             await live.observe("daq", "ai0", window_ms=0)
         assert not list(tmp_path.glob("probe-*"))
         await live.close()
-        await sources.close()

@@ -62,7 +62,7 @@ class __CLASS__(Device):
 
     def __init__(self, config: ServerConfig) -> None:
         super().__init__(config)
-        # Nonsecret per-bench settings live in server.json "settings"; never put tokens there.
+        # Nonsecret per-bench settings live in the device's "settings"; never put secrets there.
         self.card_index = int(config.settings.get("cardIndex", 0))
         self.driver = self.select_driver(lambda: VendorDriver(config.settings.get("dllPath")), SimulatedDriver)
         self.handle: int | None = None

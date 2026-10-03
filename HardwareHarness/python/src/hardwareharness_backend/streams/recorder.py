@@ -17,7 +17,7 @@ from collections.abc import Awaitable, Callable
 
 from hardwareharness_backend.util import Record
 
-from .clock import ClockEstimator, backend_ms
+from .clock import SHARED_CLOCK, SharedClock, backend_ms
 from .data import stream_key
 from .source import StreamSource, StreamSources
 from .store import StreamStore
@@ -27,8 +27,6 @@ log = logging.getLogger("hardwareharness_backend.streams.recorder")
 PREROLL_MS = 1000.0
 TAIL_MS = 500.0
 STOP_TIMEOUT = 2.0
-CLOCK_PRIME_TIMEOUT = 1.0
-CLOCK_PRIME_BURST = 4
 
 BlobFetcher = Callable[[str, str, str], Awaitable[Record]]
 """``(hardwareId, streamId, ref) -> {mime, base64}`` (the service's ``blob_read`` tool)."""
@@ -56,10 +54,6 @@ class _Track:
     @property
     def store(self) -> StreamStore:
         return self.recorder.store
-
-    @property
-    def clock(self) -> ClockEstimator | None:
-        return self.source.clock if self.source is not None else None
 
     async def run(self, source: StreamSource) -> None:
         self.source = source
@@ -118,14 +112,12 @@ class _Track:
         self._emit({"type": "state", "state": state, "message": message})
 
     def _to_backend(self, t: object) -> float | None:
-        if not isinstance(t, (int, float)) or self.clock is None:
+        if not isinstance(t, (int, float)):
             return None
-        return round(self.clock.to_backend(float(t)), 3)
+        return round(SHARED_CLOCK.to_backend(float(t)), 3)
 
     def _sync_clock(self) -> None:
-        if self.clock is None or not self.clock.known:
-            return
-        snapshot: Record = dict(self.clock.snapshot())
+        snapshot: Record = dict(SHARED_CLOCK.snapshot())
         if snapshot != self._clock:
             self._clock = snapshot
             self.store.update_stream(self.key, clock=snapshot)
@@ -193,19 +185,9 @@ class StreamRecorder:
             recording=True,
         )
         self.active = True
-        hardware = dict.fromkeys(hardware_id for hardware_id, _ in self._pending)
-        await asyncio.gather(*(self._prime(hardware_id) for hardware_id in hardware))
         pending, self._pending = self._pending, []
         for hardware_id, stream_id in pending:
             self.add(hardware_id, stream_id, since=self.started_tb - self.preroll_ms)
-
-    async def _prime(self, hardware_id: str) -> None:
-        """Clock samples first, so the pre-roll ``since`` lands in the service's clock and the
-        offset is tight before a burst of stream connections loads the service."""
-        with contextlib.suppress(Exception):
-            await asyncio.wait_for(
-                self.sources.prime(hardware_id, burst=CLOCK_PRIME_BURST), CLOCK_PRIME_TIMEOUT
-            )
 
     def add(self, hardware_id: str, stream_id: str, *, since: float | None = None) -> _Track:
         """Start recording one more stream (``since``: backend time, default = from now)."""
@@ -229,9 +211,9 @@ class StreamRecorder:
     def track(self, hardware_id: str, stream_id: str) -> _Track | None:
         return self.tracks.get(stream_key(hardware_id, stream_id))
 
-    def clock(self, hardware_id: str, stream_id: str) -> ClockEstimator | None:
-        track = self.track(hardware_id, stream_id)
-        return track.clock if track is not None else None
+    def clock(self, hardware_id: str, stream_id: str) -> SharedClock:
+        """Every device shares the backend clock."""
+        return SHARED_CLOCK
 
     async def wait_watermark(
         self, hardware_id: str, stream_id: str, t: float, timeout: float

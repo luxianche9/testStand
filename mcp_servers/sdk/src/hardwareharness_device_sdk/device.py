@@ -15,12 +15,12 @@ T = TypeVar("T")
 
 
 class Device:
-    """One physical device behind one MCP server.
+    """One physical device, hosted by one :class:`~.host.DeviceHost`.
 
     Subclasses set the class attributes, implement the blocking lifecycle
     methods and mark public operations with :func:`hardwareharness_device_sdk.tool`.
     Lifecycle methods and tools run in worker threads under ``self.io_lock``,
-    serialized by the server's operation lock. Stream samplers take
+    serialized by the host's operation lock. Stream samplers take
     ``io_lock`` between calls; background threads (serial readers) that touch
     the driver must take it as well. Register read-only data streams in
     ``self.streams`` (see :mod:`hardwareharness_device_sdk.streams`).

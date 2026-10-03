@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import base64
 from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, Mock
@@ -12,44 +11,24 @@ from hardwareharness_backend.devices import (
     DeviceService,
     DeviceStore,
     McpHttpTransport,
-    PosixRemoteShell,
-    PowerShellRemoteShell,
 )
 
 SERVICE = "packages/devices/src/device-service.test.ts::"
 MCP = "packages/devices/src/mcp-client.test.ts::"
-SHELL = "packages/devices/src/remote-shell.test.ts::"
 
 
-def server(identifier: str = "PCI1710L_MCP", shell: str = "powershell") -> dict[str, Any]:
-    root = (
-        rf"E:\hardwareharness-mcp\servers\{identifier}"
-        if shell == "powershell"
-        else f"/opt/hardwareharness-mcp/servers/{identifier}"
-    )
+def server(identifier: str = "PCI1710L_MCP") -> dict[str, Any]:
     return {
         "transport": "mcp-http",
         "serverId": identifier,
-        "computerId": "PC1",
         "label": identifier,
         "hardwareId": identifier + ".HARDWARE_0",
         "url": "http://127.0.0.1:8011/mcp",
         "enabled": True,
-        "lifecycle": {
-            **{
-                action + "Command": (
-                    f"& '{root}\\{action}.ps1'" if shell == "powershell" else f"{root}/{action}.sh"
-                )
-                for action in ["status", "start", "stop"]
-            },
-            "logPath": root + ("\\logs" if shell == "powershell" else "/logs"),
-        },
     }
 
 
-async def fixture(
-    tmp_path: Path, broken: str, shell: str = "powershell", result: dict[str, Any] | None = None
-) -> DeviceService:
+async def fixture(tmp_path: Path, broken: str) -> DeviceService:
     store = DeviceStore(tmp_path)
     await store.initialize()
 
@@ -66,24 +45,8 @@ async def fixture(
     )
     secrets = Mock(set=AsyncMock(), remove=AsyncMock())
     service = DeviceService(store, secrets, pool)
-    service.ssh = Mock(
-        execute=AsyncMock(
-            return_value=result, side_effect=None if result else RuntimeError("ssh unavailable")
-        ),
-        disconnect=AsyncMock(),
-        close=AsyncMock(),
-    )
-    await service.save_computer(
-        {
-            "id": "PC1",
-            "label": "仪器控制电脑",
-            "address": "127.0.0.1",
-            "ssh": {"port": 22, "username": "tester", "shell": shell},
-        },
-        {"ssh": "secret"},
-    )
     for identifier in ["PCI1710L_MCP", "PCI1762_MCP", "PCI6208V_MCP"]:
-        await service.save_server(server(identifier, shell), {"mcpToken": "token"})
+        await service.save_server(server(identifier), {"mcpToken": "token"})
     return service
 
 
@@ -109,7 +72,6 @@ async def test_error_status(tmp_path: Path) -> None:
     status = await (await fixture(tmp_path, "PCI1762_MCP")).refresh_server("PCI1762_MCP")
     assert status["transport"]["state"] == "offline"
     assert "vendor SDK hung" in status["transport"]["message"]
-    assert status["service"]["serviceState"] == "unknown"
 
 
 @pytest.mark.ts_case(
@@ -117,58 +79,7 @@ async def test_error_status(tmp_path: Path) -> None:
 )
 async def test_unknown_server(tmp_path: Path) -> None:
     status = await (await fixture(tmp_path, "none")).refresh_server("NOT_REGISTERED")
-    assert status["service"]["state"] == "error"
     assert status["transport"]["state"] == "error"
-
-
-@pytest.mark.parametrize(
-    "shell",
-    [
-        pytest.param(
-            "powershell",
-            marks=pytest.mark.ts_case(
-                SERVICE + "wraps powershell lifecycle status commands through RemoteShell"
-            ),
-        ),
-        pytest.param(
-            "posix",
-            marks=pytest.mark.ts_case(
-                SERVICE + "wraps posix lifecycle status commands through RemoteShell"
-            ),
-        ),
-    ],
-)
-async def test_lifecycle_shell(tmp_path: Path, shell: str) -> None:
-    service = await fixture(
-        tmp_path,
-        "PCI1762_MCP",
-        shell,
-        {"stdout": '{"state":"stopped"}', "stderr": "", "exitCode": 0, "truncated": False},
-    )
-    await service.refresh_server("PCI1762_MCP")
-    service.ssh.execute.assert_awaited_once()
-    command = service.ssh.execute.call_args.args[1]
-    if shell == "powershell":
-        assert command.startswith("powershell -NoProfile -NonInteractive -EncodedCommand ")
-        assert "status.ps1" in base64.b64decode(command.split()[-1]).decode("utf-16le")
-    else:
-        assert command.startswith("sh -lc ") and "/status.sh" in command
-
-
-@pytest.mark.ts_case(SHELL + "encodes PowerShell scripts without teaching SSH about Windows")
-def test_powershell() -> None:
-    command = PowerShellRemoteShell().command("Write-Output '测试'")
-    assert base64.b64decode(command.split()[-1]).decode("utf-16le") == "Write-Output '测试'"
-
-
-@pytest.mark.ts_case(SHELL + "builds POSIX probe and log commands without PowerShell syntax")
-def test_posix() -> None:
-    shell = PosixRemoteShell()
-    assert shell.command(shell.probe_command()).startswith("sh -lc ")
-    assert "'/var/log/hardware harness'/*.log" in shell.read_logs_command(
-        "/var/log/hardware harness", 25
-    )
-    assert "Get-ChildItem" not in shell.read_logs_command("/var/log/hardware harness", 25)
 
 
 def hardware() -> dict[str, Any]:
@@ -220,11 +131,10 @@ async def test_ignored_identity() -> None:
     assert result["hardwareId"] == server()["hardwareId"]
 
 
-@pytest.mark.ts_case(MCP + "injects the owning computer and Server into a valid hardware record")
+@pytest.mark.ts_case(MCP + "injects the owning Server into a valid hardware record")
 async def test_owning_computer() -> None:
     result = await transport([hardware()])._refresh_single_hardware({"server": server()})
     assert result["hardwareId"] == server()["hardwareId"]
-    assert result["computerId"] == server()["computerId"]
     assert result["serverId"] == server()["serverId"]
 
 

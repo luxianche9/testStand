@@ -1,12 +1,10 @@
 from __future__ import annotations
 
 import base64
-import time
 
 import pytest
 
-from hardwareharness_device_sdk import CONTRACT_REVISION, __version__
-from hardwareharness_device_sdk.app import DeviceService
+from hardwareharness_device_sdk import CONTRACT_REVISION, DeviceHost, __version__
 from hardwareharness_device_sdk.testing import check_device, dry_run_config, serve
 
 from sdk_demo import PNG, DemoDevice
@@ -66,13 +64,13 @@ def test_calls_return_envelopes(hh):
 
 
 def test_argument_validation_is_rejected_before_the_device(hh):
-    result = hh.mcp.call_raw("demo_set_level", {"hardwareId": hh.hardware_id, "channel": 9, "level": True})
-    assert result["isError"] is True
-    assert hh.service.device.levels == [False] * 4
+    result = hh.call_raw("demo_set_level", {"hardwareId": hh.hardware_id, "channel": 9, "level": True})
+    assert result["ok"] is False and result["error"]["category"] == "invalid_argument"
+    assert hh.host.device.levels == [False] * 4
 
 
 def test_unknown_hardware_id(hh):
-    result = hh.mcp.call("demo_read_level", {"hardwareId": "nope", "channel": 0})
+    result = hh.call_raw("demo_read_level", {"hardwareId": "nope", "channel": 0})
     assert result["ok"] is False and result["error"]["category"] == "invalid_argument"
 
 
@@ -82,9 +80,7 @@ def test_server_info_and_capabilities(hh):
     assert data["startupComplete"] is True and data["hardware"][0]["state"] == "open"
     caps = data["capabilities"]
     assert caps["executionMode"] == "nonphysical_driver_override" and caps["hardwareCount"] == 1
-    assert caps["streamTransport"] == {"protocol": "sse", "path": "/streams/{streamId}", "timePath": "/time",
-                                       "auth": "bearer", "declaration": "/device streams",
-                                       "readTool": "demo_stream_read"}
+    assert caps["streamTransport"] == {"declaration": "/device streams", "readTool": "demo_stream_read"}
     assert caps["declarationPath"] == "/device"
     info = hh.call("get_hardware_info")["data"]
     assert info["capabilities"] == ["DO", "DI", "AI", "SERIAL"]
@@ -96,8 +92,8 @@ def test_declaration_tools_are_gone(hh):
 
 
 def test_stream_read_and_operation_refs(hh):
-    head = hh.service.device.out.buffer.head
-    first = hh.call("set_level", {"operationId": "op-a"}, channel=0, level=True)
+    head = hh.host.device.out.buffer.head
+    first = hh.call("set_level", operation_id="op-a", channel=0, level=True)
     hh.call("set_level", channel=1, level=True)
     assert first["meta"]["operationId"] == "op-a"
     assert first["meta"]["streamRefs"] == [{"streamId": "do", "fromSeq": head, "toSeq": head}]
@@ -106,19 +102,19 @@ def test_stream_read_and_operation_refs(hh):
     data = hh.call("stream_read", streamId="do", fromSeq=head)["data"]
     assert [record["mask"] for record in data["records"]] == [1, 3]
     assert data["records"][0]["op"] == "op-a" and data["records"][1]["op"].startswith("srv-")
-    assert data["next"] == head + 2 and data["epoch"] == hh.service.device.out.buffer.epoch
+    assert data["next"] == head + 2 and data["epoch"] == hh.host.device.out.buffer.epoch
     assert data["type"] == "bits" and data["status"]["state"] == "live"
     assert hh.call("stream_read", streamId="do", fromSeq=data["next"])["data"]["records"] == []
     latest = hh.call("stream_read", streamId="do", limit=1)["data"]["records"]
     assert [record["mask"] for record in latest] == [3]
     unknown = hh.call("stream_read", streamId="missing")
-    assert unknown["ok"] is False and unknown["error"]["details"]["known"] == sorted(hh.service.device.streams)
+    assert unknown["ok"] is False and unknown["error"]["details"]["known"] == sorted(hh.host.device.streams)
 
 
 def test_transact_sends_and_waits_for_reply(hh):
-    result = hh.call("transact", {"operationId": "op-t"}, streamId="serial1", data="AT\r\n", expect="OK")
+    result = hh.call("transact", operation_id="op-t", streamId="serial1", data="AT\r\n", expect="OK")
     assert result["ok"] and result["data"]["matched"] is True and "OK" in result["data"]["text"]
-    assert result["data"]["sent"] == 4 and hh.service.device.sent == [b"AT\r\n"]
+    assert result["data"]["sent"] == 4 and hh.host.device.sent == [b"AT\r\n"]
     refs = result["meta"]["streamRefs"]
     assert refs[0]["streamId"] == "serial1" and refs[0]["toSeq"] > refs[0]["fromSeq"]
     records = hh.call("stream_read", streamId="serial1", fromSeq=refs[0]["fromSeq"])["data"]["records"]
@@ -139,45 +135,28 @@ def test_blob_capture_and_read(hh):
     assert wrong["ok"] is False and wrong["error"]["category"] == "invalid_argument"
 
 
-def test_auth_and_health(hh):
-    health = hh.client.get("/health").json()
-    assert health == {"healthy": True, "serverId": "DEMO1_MCP", "hardwareId": "DEMO1_1", "state": "open",
-                      "sdkVersion": __version__, "manifestRevision": health["manifestRevision"]}
-    assert health["manifestRevision"] == hh.service.manifest().revision
-    response = hh.client.post("/mcp", headers={"Authorization": "Bearer wrong"}, json={})
-    assert response.status_code == 401
-    assert hh.client.post("/admin/shutdown").status_code == 401
-
-
-def test_prepare_shutdown_safes_and_drains(config):
-    exits: list[int] = []
-    with serve(DemoDevice, config, request_exit=lambda: exits.append(1), exit_delay=0) as hh:
-        hh.call("set_level", channel=1, level=True)
-        before = hh.service.device.safe_calls
-        response = hh.client.post("/admin/shutdown", headers={"Authorization": f"Bearer {hh.token}"})
-        body = response.json()
-        assert body["ok"] and body["data"] == [{"hardwareId": "DEMO1_1", "safeResult": {"safe": True}}]
-        assert hh.service.device.safe_calls == before + 1
-        drained = hh.call("read_level", channel=0)
-        assert drained["ok"] is False and drained["error"]["category"] == "service_unavailable"
-        deadline = time.monotonic() + 2
-        while not exits and time.monotonic() < deadline:
-            time.sleep(0.01)
-        assert exits == [1]
+def test_prepare_shutdown_safes_and_drains(hh):
+    hh.call("set_level", channel=1, level=True)
+    before = hh.host.device.safe_calls
+    body = hh.call("hardwareharness_prepare_shutdown")
+    assert body["ok"] and body["data"] == [{"hardwareId": "DEMO1_1", "safeResult": {"safe": True}}]
+    assert hh.host.device.safe_calls == before + 1
+    drained = hh.call("read_level", channel=0)
+    assert drained["ok"] is False and drained["error"]["category"] == "service_unavailable"
 
 
 def test_lifecycle_open_safe_close(config):
     with serve(DemoDevice, config) as hh:
-        device = hh.service.device
+        device = hh.host.device
         assert device.safe_calls == 1
     assert device.safe_calls == 2
-    assert hh.service.manager.runtime.state == "closed"
+    assert hh.host.manager.runtime.state == "closed"
     assert device.di.status()["state"] == "closed"
 
 
 def test_model_mismatch_is_rejected():
     with pytest.raises(RuntimeError, match="does not match"):
-        DeviceService(DemoDevice, dry_run_config(DemoDevice, model="OTHER"))
+        DeviceHost(DemoDevice, dry_run_config(DemoDevice, model="OTHER"))
 
 
 def test_unknown_safety_action_is_rejected(config):
@@ -189,7 +168,7 @@ def test_unknown_safety_action_is_rejected(config):
             return {}
 
     with pytest.raises(RuntimeError, match="unknown safety_action"):
-        DeviceService(Broken, config)
+        DeviceHost(Broken, config)
 
 
 def test_compliance_flags_unvalidated_ranges_and_streams(config):

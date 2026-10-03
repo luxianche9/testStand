@@ -21,50 +21,49 @@ def batch(events, limit: int = 200) -> dict:
     return receive_until(events, lambda frame: frame["type"] == "batch" and frame["records"], limit)
 
 
-# --- SSE channel -------------------------------------------------------------
+# --- host stream reads ---------------------------------------------------------
 def test_hello_then_live_batch(hh):
-    stream = hh.service.device.out
-    with hh.sse("do") as events:
+    stream = hh.host.device.out
+    with hh.subscribe("do") as events:
         hello = events.receive()
-        assert hello | {"serverTime": 0} == {"type": "hello", "streamId": "do", "streamType": "bits",
-                                             "epoch": stream.buffer.epoch, "fromSeq": stream.buffer.head,
-                                             "serverTime": 0}
-        assert events.last_id == f"{stream.buffer.epoch}:{stream.buffer.head}"
-        hh.call("set_level", {"operationId": "op-ws"}, channel=3, level=True)
+        assert hello == {"type": "hello", "streamId": "do", "streamType": "bits", "epoch": stream.buffer.epoch,
+                         "fromSeq": stream.buffer.head}
+        assert (events.epoch, events.next) == (stream.buffer.epoch, stream.buffer.head)
+        hh.call("set_level", operation_id="op-ws", channel=3, level=True)
         frame = batch(events)
         record = frame["records"][0]
         assert record["mask"] == 8 and record["op"] == "op-ws" and frame["watermark"] >= record["t"]
-        assert events.last_id == f"{stream.buffer.epoch}:{record['seq'] + 1}"
+        assert events.next == record["seq"] + 1
 
 
 def test_history_from_seq(hh):
-    head = hh.service.device.out.buffer.head
+    head = hh.host.device.out.buffer.head
     for channel in range(3):
         hh.call("set_level", channel=channel, level=True)
-    with hh.sse("do", cursor=head + 1) as events:
+    with hh.subscribe("do", cursor=head + 1) as events:
         assert events.receive()["fromSeq"] == head + 1
         assert [record["mask"] for record in batch(events)["records"]] == [3, 7]
 
 
 def test_gap_when_resuming_evicted_cursor(hh):
-    stream = hh.service.device.out
+    stream = hh.host.device.out
     for value in range(stream.buffer.capacity + 5):
         stream.publish(value)
-    with hh.sse("do", cursor=0) as events:
+    with hh.subscribe("do", cursor=0) as events:
         events.receive()
         assert events.receive() == {"type": "gap", "fromSeq": 0, "toSeq": stream.buffer.tail - 1,
-                                         "reason": "overflow"}
+                                    "reason": "overflow"}
 
 
 def test_cursor_from_another_epoch_restarts_with_reset_gap(hh):
-    with hh.sse("do", last_event_id="stale:0") as events:
+    with hh.subscribe("do", cursor=0, epoch="stale") as events:
         hello = events.receive()
-        assert hello["fromSeq"] == hh.service.device.out.buffer.tail
+        assert hello["fromSeq"] == hh.host.device.out.buffer.tail
         assert events.receive()["reason"] == "reset"
 
 
 def test_byte_stream_carries_tx(hh):
-    with hh.sse("serial1") as events:
+    with hh.subscribe("serial1") as events:
         assert events.receive()["streamType"] == "bytes"
         hh.call("write_text", text="hi\n")
         record = batch(events)["records"][0]
@@ -72,7 +71,7 @@ def test_byte_stream_carries_tx(hh):
 
 
 def test_status_events_advance_watermark_on_idle_clocked_stream(hh):
-    with hh.sse("serial1") as events:
+    with hh.subscribe("serial1") as events:
         events.receive()
         first = receive_until(events, lambda frame: frame["type"] == "status")
         second = receive_until(events, lambda frame: frame["type"] == "status")
@@ -80,10 +79,10 @@ def test_status_events_advance_watermark_on_idle_clocked_stream(hh):
 
 
 def test_sampled_stream_runs_only_while_watched(hh):
-    device = hh.service.device
+    device = hh.host.device
     device.inputs = 0b101
     assert device.di.status()["state"] == "idle"
-    with hh.sse("di") as events:
+    with hh.subscribe("di") as events:
         events.receive()
         assert batch(events)["records"][0]["mask"] == 5
         assert device.di.status()["state"] == "sampling"
@@ -97,7 +96,7 @@ def test_sampled_stream_runs_only_while_watched(hh):
 
 
 def test_not_configured_status_then_values(hh):
-    with hh.sse("ai0") as events:
+    with hh.subscribe("ai0") as events:
         events.receive()
         status = receive_until(events, lambda frame: frame["type"] == "status" and frame["state"] == "not_configured")
         assert status["errors"] == 0
@@ -108,7 +107,7 @@ def test_not_configured_status_then_values(hh):
 
 
 def test_sampling_interleaves_with_tool_calls(hh):
-    device = hh.service.device
+    device = hh.host.device
     active = 0
     overlap = False
 
@@ -122,7 +121,7 @@ def test_sampling_interleaves_with_tool_calls(hh):
     # Two samplers on their own threads plus tool calls: io_lock must serialize all device access.
     device.read_inputs = lambda: guarded(0)
     device.read_ai = lambda: guarded(0.5)
-    with hh.sse("di") as events, hh.sse("ai0") as other:
+    with hh.subscribe("di") as events, hh.subscribe("ai0") as other:
         events.receive()
         other.receive()
         for _ in range(10):
@@ -131,60 +130,48 @@ def test_sampling_interleaves_with_tool_calls(hh):
     assert not overlap
 
 
-def test_resume_with_last_event_id(hh):
-    stream = hh.service.device.out
+def test_resume_with_cursor_and_epoch(hh):
+    stream = hh.host.device.out
     hh.call("set_level", channel=0, level=True)
-    with hh.sse("do", cursor=0) as events:
+    with hh.subscribe("do", cursor=0) as events:
         events.receive()
         batch(events)
-        resume = events.last_id
+        epoch, resume = events.epoch, events.next
     hh.call("set_level", channel=1, level=True)
-    # Last-Event-ID wins over from/since and continues exactly after the last delivered batch.
-    with hh.sse("do", cursor="latest", last_event_id=resume) as events:
-        assert events.receive()["fromSeq"] == int(resume.rpartition(":")[2])
+    # A cursor of the same epoch continues exactly after the last delivered batch.
+    with hh.subscribe("do", cursor=resume, epoch=epoch) as events:
+        assert events.receive()["fromSeq"] == resume
         assert [record["mask"] for record in batch(events)["records"]] == [3]
-    assert stream.buffer.head == int(resume.rpartition(":")[2]) + 1
+    assert stream.buffer.head == resume + 1
 
 
 def test_since_starts_at_first_record_at_or_after_t(hh):
     for channel in range(3):
         hh.call("set_level", channel=channel, level=True)
-    records = hh.service.device.out.buffer.read(-2).records
-    with hh.sse("do", since=records[0]["t"]) as events:
+    records = hh.host.device.out.buffer.read(-2).records
+    with hh.subscribe("do", since=records[0]["t"]) as events:
         assert events.receive()["fromSeq"] == records[0]["seq"]
         assert [record["mask"] for record in batch(events)["records"]] == [3, 7]
 
 
 def test_since_on_level_stream_starts_at_the_record_in_force(hh):
     hh.call("set_level", channel=2, level=True)
-    held = hh.service.device.out.buffer.read(-1).records[-1]
-    with hh.sse("do", since=held["t"] + 60_000) as events:
+    held = hh.host.device.out.buffer.read(-1).records[-1]
+    with hh.subscribe("do", since=held["t"] + 60_000) as events:
         assert events.receive()["fromSeq"] == held["seq"]
         assert batch(events)["records"][0]["mask"] == held["mask"]
 
 
 def test_since_on_byte_stream_has_no_held_record(hh):
     hh.call("write_text", text="old\n")
-    buffer = hh.service.device.serial.buffer
-    with hh.sse("serial1", since=buffer.read(-1).records[-1]["t"] + 60_000) as events:
+    buffer = hh.host.device.serial.buffer
+    with hh.subscribe("serial1", since=buffer.read(-1).records[-1]["t"] + 60_000) as events:
         assert events.receive()["fromSeq"] == buffer.head
 
 
-def test_time_endpoint(hh):
-    before = time.time() * 1000
-    body = hh.client.get("/time", headers={"Authorization": f"Bearer {hh.token}"}).json()
-    assert before - 1 <= body["serverTime"] <= time.time() * 1000 + 1
-    assert hh.client.get("/time").status_code == 401
-
-
-def test_unknown_stream_is_404(hh):
-    with hh.sse("nope") as events:
-        assert events.status_code == 404
-
-
-def test_wrong_token_is_denied(hh):
-    with hh.sse("do", token="wrong") as events:
-        assert events.status_code == 401
+def test_unknown_stream_is_rejected(hh):
+    with pytest.raises(DeviceError, match="Unknown streamId"), hh.subscribe("nope"):
+        pass
 
 
 # --- stream classes ------------------------------------------------------------

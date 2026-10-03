@@ -1,12 +1,16 @@
-"""Plugin stream sources: the ring buffer of a device in this process, same events as SSE."""
+"""Stream sources: the ring buffer of a loaded device, with gaps, status and reconnects."""
 
 from __future__ import annotations
 
 import asyncio
 from typing import Any
 
+import pytest
+
+from hardwareharness_backend.contracts.errors import AppError
 from hardwareharness_backend.streams import source as source_module
-from hardwareharness_backend.streams.source import LOCAL_CLOCK, PluginStreamSource, StreamSources
+from hardwareharness_backend.streams.clock import SHARED_CLOCK
+from hardwareharness_backend.streams.source import StreamSource, StreamSources
 
 Record = dict[str, Any]
 
@@ -74,7 +78,7 @@ async def test_records_gaps_and_status_flow_like_the_sse_channel(monkeypatch: An
             {"next": 6, "watermark": 16.0},
         ]
     )
-    source = PluginStreamSource(device, "ai0", since=5.0)
+    source = StreamSource(device, "ai0", since=5.0)
     events = source.events()
     hello, batch, status = await take(events, 3)
     assert hello == {"type": "hello", "streamType": "scalar", "epoch": "E"}
@@ -100,7 +104,7 @@ async def test_a_failing_device_reports_disconnected_and_resumes(monkeypatch: An
     monkeypatch.setattr(source_module, "BACKOFF_MIN", 0.001)
     device = FakeDevice([{"next": 0}])
     device.fail = RuntimeError("device process exited")
-    events = PluginStreamSource(device, "ai0", since=None).events()
+    events = StreamSource(device, "ai0", since=None).events()
     state, hello = await take(events, 2)
     assert state == {"type": "state", "state": "disconnected", "message": "device process exited"}
     assert hello["type"] == "hello"
@@ -110,22 +114,17 @@ async def test_a_failing_device_reports_disconnected_and_resumes(monkeypatch: An
 async def test_an_unknown_stream_ends_the_source() -> None:
     device = FakeDevice([{"next": 0}])
     device.missing = True
-    events = PluginStreamSource(device, "nope", since=None).events()
+    events = StreamSource(device, "nope", since=None).events()
     assert (await take(events, 1))[0]["state"] == "unknown_stream"
 
 
-async def test_plugin_hardware_shares_the_local_clock() -> None:
+async def test_sources_resolve_loaded_devices_and_share_the_clock() -> None:
     device = FakeDevice([{"next": 0}])
-    sources = StreamSources(
-        lambda _: (_ for _ in ()).throw(AssertionError("no endpoint")),
-        plugins=lambda hardware_id: device if hardware_id == "H" else None,
-    )
-    assert await sources.prime("H") is LOCAL_CLOCK
-    assert sources.clock("H") is LOCAL_CLOCK
-    sources.hold_clock("H")()
-    assert isinstance(sources.source("H", "ai0"), PluginStreamSource)
-    assert LOCAL_CLOCK.snapshot() == {"offsetMs": 0.0, "uncertaintyMs": 0.0}
-    assert LOCAL_CLOCK.to_backend(12.5) == 12.5
-    LOCAL_CLOCK.add(0.0, 99.0, 1.0)
-    assert LOCAL_CLOCK.offset_ms == 0.0
-    await sources.close()
+    sources = StreamSources(lambda hardware_id: device if hardware_id == "H" else None)
+    assert isinstance(sources.source("H", "ai0"), StreamSource)
+    with pytest.raises(AppError) as missing:
+        sources.source("OTHER", "ai0")
+    assert missing.value.category == "not_found"
+    assert sources.clock("H") is SHARED_CLOCK
+    assert SHARED_CLOCK.snapshot() == {"offsetMs": 0.0, "uncertaintyMs": 0.0}
+    assert SHARED_CLOCK.to_backend(12.5) == 12.5 == SHARED_CLOCK.to_server(12.5)
