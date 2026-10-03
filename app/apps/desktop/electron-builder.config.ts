@@ -9,6 +9,9 @@ const require = createRequire(import.meta.url);
 const config: Configuration = {
   appId: "com.teststand.desktop",
   productName: "testStand",
+  // The per-user install directory (%LOCALAPPDATA%\Programs\<name>) comes from the package name;
+  // "@teststand/desktop" would become "@teststanddesktop".
+  extraMetadata: { name: "teststand" },
   artifactName: "testStand-${version}-windows-${arch}.${ext}",
   directories: {
     output: resolve(desktopDir, "../../dist"),
