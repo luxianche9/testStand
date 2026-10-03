@@ -37,8 +37,8 @@ try {
   console.log("Frozen smoke: backend listening; opening isolated project");
   await host.invoke("projects.initializeFolder", { rootPath: project });
   console.log("Frozen smoke: project ready; checking public MCP interface");
-  const state = await host.host("desktop.state");
-  report = await verifyAgentInterface(state.gateway.endpoint, token);
+  const dashboard = await host.invoke("system.dashboard");
+  report = await verifyAgentInterface(dashboard.gateway.endpoint, token);
   // Closing stdin is the shutdown signal.
   child.stdin.end();
   const code = await host.exited;
@@ -66,7 +66,7 @@ try {
   await rm(root, { recursive: true, force: true });
 }
 
-/** Plays Electron main: reads the one-line handshake, then speaks the local HTTP API. */
+/** Plays Electron main and the renderer: reads the one-line handshake, then speaks the local HTTP API. */
 async function connectDesktopHost(process) {
   let stderr = "";
   process.stderr.on("data", (chunk) => { stderr = (stderr + chunk).slice(-16000); });
@@ -78,10 +78,10 @@ async function connectDesktopHost(process) {
     exited.then((code) => reject(new Error(`Backend exited ${code}: ${stderr}`)));
   });
   const url = `http://127.0.0.1:${handshake.port}`;
-  const post = async (token, operation, body) => {
+  const post = async (operation, body) => {
     const response = await fetch(`${url}/api/ops/${operation}`, {
       method: "POST", signal: AbortSignal.timeout(60000),
-      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+      headers: { authorization: `Bearer ${handshake.token}`, "content-type": "application/json" },
       body: JSON.stringify(body)
     });
     const result = await response.json();
@@ -90,7 +90,6 @@ async function connectDesktopHost(process) {
   };
   return {
     exited,
-    invoke: (operation, body = {}) => post(handshake.token, operation, body),
-    host: (operation, body = {}) => post(handshake.hostToken, operation, body)
+    invoke: (operation, body = {}) => post(operation, body)
   };
 }

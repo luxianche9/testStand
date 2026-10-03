@@ -230,3 +230,18 @@ async def test_unsafe_bundle(tmp_path: Path) -> None:
         await store.import_bundle(archive({**entries, "../outside.txt": b"1"}))
     with pytest.raises(Exception, match="32 MB limit"):
         await store.import_bundle(archive({**entries, "unused.bin": bytes(32 * 1024 * 1024 + 1)}))
+
+
+async def test_every_write_notifies(tmp_path: Path) -> None:
+    store = await fixture(tmp_path)
+    await store.save_hardware(hardware("SILENT"))
+    writes: list[None] = []
+    store.set_notifier(lambda: writes.append(None))
+    await store.save_hardware(hardware("CARD"))
+    await store.save_server(server("S1", "CARD"))
+    await store.save_definition("CARD", {"manifestRevision": "1"})
+    await store.remove_server("S1")
+    data = await store.export_bundle("CARD")
+    await store.remove_hardware("CARD")
+    await store.import_bundle(data)
+    assert len(writes) == 6

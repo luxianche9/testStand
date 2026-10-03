@@ -5,7 +5,7 @@ export function useTheme() {
   const [choice, setChoice] = useState<ThemeChoice>("system");
   const [systemDark, setSystemDark] = useState(() => matchMedia("(prefers-color-scheme: dark)").matches);
 
-  useEffect(() => { void window.hardwareharness.settings.getTheme().then(setChoice); }, []);
+  useEffect(() => { void window.hardwareharness.settings.get().then((settings) => setChoice(settings.theme)); }, []);
   useEffect(() => {
     const media = matchMedia("(prefers-color-scheme: dark)");
     const listener = () => setSystemDark(media.matches);
@@ -18,7 +18,8 @@ export function useTheme() {
 
   const select = async (next: ThemeChoice) => {
     setChoice(next);
-    await window.hardwareharness.settings.setTheme(next);
+    await window.hardwareharness.settings.update({ theme: next });
+    await window.hardwareharness.window.applyTheme(next);
   };
   return { choice, select };
 }

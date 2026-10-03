@@ -1,9 +1,10 @@
 """Service process entry point (design doc §9.4).
 
-The main process starts the service with the profile directory and reads exactly one
-stdout line, ``{"port", "token", "hostToken", "version"}``; everything after that is HTTP
-and SSE. Logs go to stderr. When stdin closes (the main process quit or crashed) the
-service releases every device to its safe state and exits.
+The main process starts the service with the profile directory, the bundled OpenCode
+executable and the renderer's origins, and reads exactly one stdout line,
+``{"port", "token", "version"}``; everything after that is HTTP and SSE. Logs go to stderr.
+When stdin closes (the main process quit or crashed) the service releases every device to its
+safe state and exits.
 """
 
 from __future__ import annotations
@@ -33,6 +34,8 @@ def parse_options(argv: list[str] | None = None) -> ServiceOptions:
         action="store_true",
         default=os.environ.get("HARDWAREHARNESS_AGENT_INTEGRATION_TEST_MODE") == "1",
     )
+    parser.add_argument("--opencode", type=Path, default=None)
+    parser.add_argument("--renderer-origin", action="append", default=[])
     arguments = parser.parse_args(argv)
     if not arguments.user_data:
         parser.error("--user-data is required")
@@ -42,6 +45,8 @@ def parse_options(argv: list[str] | None = None) -> ServiceOptions:
         integration_test_mode=arguments.integration_test_mode,
         # An environment variable, not an argument: command lines are visible to every user.
         gateway_test_token=os.environ.get("HARDWAREHARNESS_GATEWAY_TEST_TOKEN"),
+        opencode=arguments.opencode,
+        renderer_origins=tuple(arguments.renderer_origin),
     )
 
 

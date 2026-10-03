@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./application": {
-      "hardwareharness-source": "./src/application.ts",
-      "types": "./dist/application.d.ts",
-      "default": "./dist/application.js"
+    "./operations": {
+      "hardwareharness-source": "./src/operations.ts",
+      "types": "./dist/operations.d.ts",
+      "default": "./dist/operations.js"
     },
     "./devices": {
       "hardwareharness-source": "./src/devices.ts",
@@ -62,8 +62,8 @@
   },
   "typesVersions": {
     "*": {
-      "application": [
-        "./dist/application.d.ts"
+      "operations": [
+        "./dist/operations.d.ts"
       ],
       "devices": [
         "./dist/devices.d.ts"
@@ -99,12 +99,14 @@
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "generate:types": "node scripts/generate-openapi-types.mjs"
   },
   "dependencies": {
     "zod": "^3.24.4"
   },
   "devDependencies": {
+    "openapi-typescript": "^7.13.0",
     "typescript": "^5.8.3",
     "vitest": "^3.1.3"
   }

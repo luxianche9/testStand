@@ -1,14 +1,12 @@
 [
   {
-    "path": "system.dashboard",
-    "method": "application.system.dashboard",
-    "args": []
+    "operation": "system.dashboard",
+    "body": {}
   },
   {
-    "path": "devices.saveServer",
-    "method": "application.devices.saveServer",
-    "args": [
-      {
+    "operation": "devices.saveServer",
+    "body": {
+      "input": {
         "transport": "plugin",
         "serverId": "ID",
         "hardwareId": "H",
@@ -17,235 +15,196 @@
         "settings": {},
         "mode": "sim",
         "enabled": true
-      },
-      {
-        "__undefined__": true
       }
-    ]
+    }
   },
   {
-    "path": "devices.removeServer",
-    "method": "application.devices.removeServer",
-    "args": [
-      "ID"
-    ]
+    "operation": "devices.removeServer",
+    "body": {
+      "serverId": "ID"
+    }
   },
   {
-    "path": "devices.refreshServer",
-    "method": "application.devices.refreshServer",
-    "args": [
-      "ID"
-    ]
+    "operation": "devices.refreshServer",
+    "body": {
+      "serverId": "ID"
+    }
   },
   {
-    "path": "devices.refreshManagedHardware",
-    "method": "application.devices.listManagedHardware",
-    "args": []
+    "operation": "devices.listManagedHardware",
+    "body": {}
   },
   {
-    "path": "devices.listDeviceTypes",
-    "method": "application.devices.listDeviceTypes",
-    "args": []
+    "operation": "devices.listDeviceTypes",
+    "body": {}
   },
   {
-    "path": "devices.listHardware",
-    "method": "application.devices.listHardware",
-    "args": []
+    "operation": "devices.listHardware",
+    "body": {}
   },
   {
-    "path": "devices.saveHardware",
-    "method": "application.devices.saveHardware",
-    "args": [
-      {
+    "operation": "devices.saveHardware",
+    "body": {
+      "input": {
         "formatVersion": 2,
         "hardwareId": "ID",
         "label": "卡",
         "kind": "passive",
         "ports": []
       }
-    ]
+    }
   },
   {
-    "path": "devices.removeHardware",
-    "method": "application.devices.removeHardware",
-    "args": [
-      "ID"
-    ]
+    "operation": "devices.removeHardware",
+    "body": {
+      "hardwareId": "ID"
+    }
   },
   {
-    "path": "devices.exportBundle",
-    "method": "application.devices.exportBundle",
-    "args": [
-      "ID"
-    ]
+    "operation": "devices.exportBundle",
+    "body": {
+      "hardwareId": "ID"
+    }
   },
   {
-    "path": "devices.importBundle",
-    "method": "application.devices.importBundle",
-    "args": [
-      {
+    "operation": "devices.importBundle",
+    "body": {
+      "data": {
         "__bytes__": [
           0,
           255,
           128
         ]
       }
-    ]
+    }
   },
   {
-    "path": "devices.previewBundle",
-    "method": "application.devices.inspectBundle",
-    "args": [
-      {
+    "operation": "devices.inspectBundle",
+    "body": {
+      "data": {
         "__bytes__": [
           0,
           255,
           128
         ]
       }
-    ]
+    }
   },
   {
-    "path": "devices.applyBundle",
-    "method": "application.devices.importBundleForServer",
-    "args": [
-      {
+    "operation": "devices.importBundleForServer",
+    "body": {
+      "data": {
         "__bytes__": [
           0,
           255,
           128
         ]
       },
-      "ID",
-      "S"
-    ]
+      "hardwareId": "ID",
+      "serverId": "S"
+    }
   },
   {
-    "path": "projects.current",
-    "method": "application.projects.document",
-    "args": []
+    "operation": "projects.document",
+    "body": {}
   },
   {
-    "path": "projects.chooseFolder",
-    "method": "application.projects.inspectFolder",
-    "args": [
-      "中文 project"
-    ]
+    "operation": "projects.inspectFolder",
+    "body": {
+      "rootPath": "中文 project"
+    }
   },
   {
-    "path": "projects.openFolder",
-    "method": "application.projects.openFolder",
-    "args": [
-      "ID"
-    ]
+    "operation": "projects.openFolder",
+    "body": {
+      "rootPath": "ID"
+    }
   },
   {
-    "path": "projects.initializeFolder",
-    "method": "application.projects.initializeFolder",
-    "args": [
-      "ID"
-    ]
+    "operation": "projects.initializeFolder",
+    "body": {
+      "rootPath": "ID"
+    }
   },
   {
-    "path": "projects.save",
-    "method": "application.projects.saveProject",
-    "args": []
+    "operation": "projects.saveProject",
+    "body": {}
   },
   {
-    "path": "projects.leave",
-    "method": "application.projects.leaveProject",
-    "args": []
+    "operation": "projects.leaveProject",
+    "body": {}
   },
   {
-    "path": "projects.listRecent",
-    "method": "application.projects.listRecent",
-    "args": []
+    "operation": "projects.listRecent",
+    "body": {}
   },
   {
-    "path": "projects.forgetRecent",
-    "method": "application.projects.forgetRecent",
-    "args": [
-      "ID"
-    ]
+    "operation": "projects.forgetRecent",
+    "body": {
+      "rootPath": "ID"
+    }
   },
   {
-    "path": "wiring.update",
-    "method": "application.wiring.updateDocument",
-    "args": [
-      {
+    "operation": "wiring.updateDocument",
+    "body": {
+      "wiring": {
         "nodes": [],
         "connections": []
       }
-    ]
+    }
   },
   {
-    "path": "wiring.requestTask",
-    "method": "application.wiring.requestTask",
-    "args": [
-      {
+    "operation": "wiring.requestTask",
+    "body": {
+      "input": {
         "portA": "A.J1",
         "portB": "B.J1",
         "action": "connect"
       }
-    ]
+    }
   },
   {
-    "path": "wiring.startTask",
-    "method": "application.wiring.startTask",
-    "args": [
-      "ID",
-      {
-        "__undefined__": true
-      }
-    ]
+    "operation": "wiring.startTask",
+    "body": {
+      "taskId": "ID"
+    }
   },
   {
-    "path": "wiring.completeTask",
-    "method": "application.wiring.completeTask",
-    "args": [
-      "ID",
-      "confirmed",
-      {
-        "__undefined__": true
-      }
-    ]
+    "operation": "wiring.completeTask",
+    "body": {
+      "taskId": "ID",
+      "outcome": "confirmed"
+    }
   },
   {
-    "path": "wiring.cancelTask",
-    "method": "application.wiring.cancelTask",
-    "args": [
-      "ID",
-      {
-        "__undefined__": true
-      }
-    ]
+    "operation": "wiring.cancelTask",
+    "body": {
+      "taskId": "ID"
+    }
   },
   {
-    "path": "wiring.getTask",
-    "method": "application.wiring.getTask",
-    "args": [
-      "ID"
-    ]
+    "operation": "wiring.getTask",
+    "body": {
+      "taskId": "ID"
+    }
   },
   {
-    "path": "wiring.listTasks",
-    "method": "application.wiring.listTasks",
-    "args": [
-      {
+    "operation": "wiring.listTasks",
+    "body": {
+      "input": {
         "status": "pending"
       }
-    ]
+    }
   },
   {
-    "path": "manual.invokeTool",
-    "method": "application.manual.invokeTool",
-    "args": [
-      {
+    "operation": "manual.invokeTool",
+    "body": {
+      "raw": {
         "hardwareId": "ID",
         "toolName": "S__read",
         "arguments": {},
         "timeoutMs": 30000
       }
-    ]
+    }
   }
 ]

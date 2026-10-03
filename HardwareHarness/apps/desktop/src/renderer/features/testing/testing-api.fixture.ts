@@ -94,14 +94,14 @@ export function installTestingApi(plans: TestPlan[], items: TestItemStatus[]) {
     listPlans: vi.fn(async () => plans.map((plan) => ({
       id: plan.id, name: plan.name, revision: plan.revision, stepCount: 0
     }))),
-    loadPlan: vi.fn(async (planId: string) => structuredClone(byId.get(planId) ?? first)),
-    savePlan: vi.fn(async (value: TestPlan) => ({
-      plan: { ...structuredClone(value), revision: value.revision + 1 }, issues: []
+    loadPlan: vi.fn(async ({ planId }: { planId: string }) => structuredClone(byId.get(planId) ?? first)),
+    savePlan: vi.fn(async ({ plan }: { plan: TestPlan; baseRevision?: number }) => ({
+      plan: { ...structuredClone(plan), revision: plan.revision + 1 }, issues: []
     })),
     createPlan: vi.fn(),
     deletePlan: vi.fn(),
     applyPlanOperations: vi.fn(),
-    validatePlan: vi.fn(async (planId: string) => ({
+    validatePlan: vi.fn(async ({ planId }: { planId: string }) => ({
       planId, revision: 1, valid: true, issues: [], executionRevision: "exec", wiringRevision: "wiring",
       coverage: { requirements: [], total: 0 }
     })),
@@ -129,7 +129,7 @@ export function installTestingApi(plans: TestPlan[], items: TestItemStatus[]) {
     })),
     currentUnit: vi.fn(),
     reorderItems: vi.fn(),
-    startBatch: vi.fn(async (input: { planIds: string[]; stopOnFail: boolean }) => {
+    startBatch: vi.fn(async ({ input }: { input: { planIds: string[]; stopOnFail: boolean } }) => {
       batch = makeBatch(input.planIds, input.stopOnFail);
       return batch;
     }),
@@ -138,25 +138,25 @@ export function installTestingApi(plans: TestPlan[], items: TestItemStatus[]) {
     getBatch: vi.fn(),
     listRecoveryItems: vi.fn(async () => []),
     reconcileOperation: vi.fn(),
-    listRunStreams: vi.fn(async (runId: string) => ({ runId, recording: false, streams: [] })),
+    listRunStreams: vi.fn(async ({ runId }: { runId: string }) => ({ runId, recording: false, streams: [] })),
     readRunStream: vi.fn(async () => ({ mode: "records", records: [], next: null, recording: false })),
-    getRunTimeline: vi.fn(async (runId: string) => ({
+    getRunTimeline: vi.fn(async ({ runId }: { runId: string }) => ({
       runId, tb0: null, tb1: null, steps: [], calls: [], anchors: [], windows: [], violations: [], marks: [],
       streams: [], gaps: []
     })),
     readRunIo: vi.fn(),
-    readRunMessages: vi.fn(async (runId: string): Promise<RunMessages> => ({
+    readRunMessages: vi.fn(async ({ runId }: { runId: string }): Promise<RunMessages> => ({
       runId, bindings: [], messages: [], total: 0, truncated: false
     })),
     listIcds: vi.fn(async (): Promise<IcdSummary[]> => []),
-    readIcd: vi.fn(async (name: string): Promise<IcdDocument> => ({ name, text: "", valid: false })),
+    readIcd: vi.fn(async ({ name }: { name: string }): Promise<IcdDocument> => ({ name, text: "", valid: false })),
     checkIcd: vi.fn(async (): Promise<IcdCheck> => ({ valid: false })),
-    saveIcd: vi.fn(async (input: { name: string; text: string }) => ({
+    saveIcd: vi.fn(async ({ input }: { input: { name: string; text: string } }) => ({
       name: input.name,
       icd: { name: input.name, icdHash: "h", transport: "bytes" as const, messages: [], encoders: [], streams: [] }
     })),
-    rejudgeRun: vi.fn(async (runId: string) => ({ runId, results: [], consistent: true })),
-    answerManualCheck: vi.fn(async (input: { runId: string }) => makeRun(first, { runId: input.runId }))
+    rejudgeRun: vi.fn(async ({ runId }: { runId: string }) => ({ runId, results: [], consistent: true })),
+    answerManualCheck: vi.fn(async ({ input }: { input: { runId: string } }) => makeRun(first, { runId: input.runId }))
   };
   Object.defineProperty(window, "hardwareharness", {
     configurable: true,
@@ -165,14 +165,14 @@ export function installTestingApi(plans: TestPlan[], items: TestItemStatus[]) {
         dashboard: vi.fn(async () => ({
           servers: [], serverStatuses: [], hardware: [], tools: [],
           gateway: {}, execution: {}
-        })),
-        exportText: vi.fn()
+        }))
       },
+      dialogs: { exportText: vi.fn() },
       devices: { listHardware: vi.fn(async () => []) },
       testing,
       streams: {
         live: vi.fn(() => () => undefined),
-        window: vi.fn(async (runId: string, _keys: string[], t0: number, t1: number) => ({
+        window: vi.fn(async ({ runId, t0, t1 }: { runId: string; t0: number; t1: number }) => ({
           runId, t0, t1, colMs: 1, recording: false, streams: {}
         }))
       },

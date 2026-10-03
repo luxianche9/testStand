@@ -9,7 +9,8 @@ describe("local transport", () => {
     const request = vi.fn(async () => json("AQI="));
     const transport = createLocalTransport(fakeIpc().ipc, request as never);
 
-    await expect(transport.invoke("devices.exportBundle", ["H"])).resolves.toEqual(new Uint8Array([1, 2]));
+    await expect(transport.invoke("devices.exportBundle", { hardwareId: "H" }))
+      .resolves.toEqual(new Uint8Array([1, 2]));
     const [url, init] = request.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe("http://127.0.0.1:5000/api/ops/devices.exportBundle");
     expect(init.headers).toMatchObject({ authorization: "Bearer secret" });
@@ -19,7 +20,7 @@ describe("local transport", () => {
   it("maps backend and main error envelopes to an AppError with the category", async () => {
     const error = { category: "requires_project", message: "Project required" };
     const transport = createLocalTransport(fakeIpc().ipc, vi.fn(async () => json({ error }, 409)) as never);
-    await expect(transport.invoke("system.dashboard", [])).rejects.toMatchObject(
+    await expect(transport.invoke("system.dashboard")).rejects.toMatchObject(
       { name: "AppError", category: "requires_project", message: "Project required" }
     );
 
@@ -36,8 +37,8 @@ describe("local transport", () => {
       .mockResolvedValueOnce(json(1));
     const transport = createLocalTransport(ipc, request as never);
 
-    await expect(transport.invoke("system.dashboard", [])).rejects.toMatchObject({ category: "invalid_response" });
-    await expect(transport.invoke("system.dashboard", [])).resolves.toBe(1);
+    await expect(transport.invoke("system.dashboard")).rejects.toMatchObject({ category: "invalid_response" });
+    await expect(transport.invoke("system.dashboard")).resolves.toBe(1);
     expect(invoke).toHaveBeenCalledTimes(2);
   });
 

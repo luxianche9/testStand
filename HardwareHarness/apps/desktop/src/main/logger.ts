@@ -23,7 +23,7 @@ export function registerLogSecrets(provider: SecretProvider): () => void {
   return () => secretProviders.delete(provider);
 }
 
-export function redactSecrets(value: string, secrets: readonly (string | undefined)[] = currentSecrets()): string {
+function redactSecrets(value: string, secrets: readonly (string | undefined)[] = currentSecrets()): string {
   return secrets
     .filter((secret): secret is string => Boolean(secret))
     .reduce((message, secret) => message.replaceAll(secret, "<redacted>"), value)

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import type { AgentIntegrationPreview, AgentIntegrationStatus } from "@hardwareharness/contracts/agents";
-import type { DashboardSnapshot } from "@hardwareharness/contracts/desktop";
+import type { DashboardSnapshot } from "@hardwareharness/contracts/operations";
 import { PlugZapIcon, RefreshCwIcon, Trash2Icon } from "lucide-react";
 import { errorMessage } from "../../lib/errors.js";
 import { useAgentIntegration } from "../../lib/queries.js";
@@ -29,17 +29,17 @@ export function AgentIntegrationPage({ gateway }: { gateway: Gateway }) {
   };
   const fail = (reason: unknown) => setActionError(errorMessage(reason));
   const install = useMutation({
-    mutationFn: () => window.hardwareharness.agents.install("codex"),
+    mutationFn: () => window.hardwareharness.agents.install({ agent: "codex" }),
     onSuccess: async (result) => { setPreview(undefined); await finish(result); },
     onError: fail
   });
   const remove = useMutation({
-    mutationFn: () => window.hardwareharness.agents.remove("codex"),
+    mutationFn: () => window.hardwareharness.agents.remove({ agent: "codex" }),
     onSuccess: async (result) => { setDialog(undefined); await finish(result); },
     onError: fail
   });
   const test = useMutation({
-    mutationFn: () => window.hardwareharness.agents.test("codex"),
+    mutationFn: () => window.hardwareharness.agents.test({ agent: "codex" }),
     onSuccess: finish,
     onError: fail
   });
@@ -51,7 +51,7 @@ export function AgentIntegrationPage({ gateway }: { gateway: Gateway }) {
   const openPreview = async () => {
     setActionError(undefined);
     try {
-      setPreview(await window.hardwareharness.agents.preview("codex"));
+      setPreview(await window.hardwareharness.agents.preview({ agent: "codex" }));
     } catch (reason) {
       fail(reason);
     }

@@ -26,15 +26,16 @@ function setup({ recent = [project("project-a"), project("project-b", "missing")
   chosen?: ProjectFolderSelection | null;
 } = {}) {
   const api = {
+    dialogs: { chooseProjectFolder: vi.fn(async () => chosen?.rootPath ?? null) },
     projects: {
       listRecent: vi.fn(async () => recent),
-      chooseFolder: vi.fn(async () => chosen ?? null),
-      openFolder: vi.fn(async (rootPath: string) => ({ rootPath })),
-      initializeFolder: vi.fn(async (rootPath: string) => ({ rootPath })),
+      inspectFolder: vi.fn(async () => chosen ?? null),
+      openFolder: vi.fn(async ({ rootPath }: { rootPath: string }) => ({ rootPath })),
+      initializeFolder: vi.fn(async ({ rootPath }: { rootPath: string }) => ({ rootPath })),
       forgetRecent: vi.fn(async () => undefined)
     },
     devices: { listHardware: vi.fn(async () => []) },
-    settings: { getWelcomeLayout: vi.fn(async () => "grid"), setWelcomeLayout: vi.fn(async () => undefined) }
+    settings: { get: vi.fn(async () => ({ welcomeLayout: "grid" })), update: vi.fn(async () => undefined) }
   };
   Object.defineProperty(window, "hardwareharness", {
     configurable: true,
@@ -54,7 +55,7 @@ describe("WelcomePage", () => {
     expect(screen.getByRole("heading", { name: "最近项目" })).toBeTruthy();
     expect(screen.getAllByRole("button", { name: /打开项目文件夹/ })).toHaveLength(1);
     await userEvent.click(await screen.findByText("project-a", { exact: true }));
-    await waitFor(() => expect(api.projects.openFolder).toHaveBeenCalledWith("C:\\work\\project-a"));
+    await waitFor(() => expect(api.projects.openFolder).toHaveBeenCalledWith({ rootPath: "C:\\work\\project-a" }));
     await waitFor(() => expect(onOpened).toHaveBeenCalledWith("C:\\work\\project-a"));
     expect(screen.getByRole("img", { name: "project-a 工位接线缩略图" })).toBeTruthy();
     expect(screen.getByText("项目文件夹不存在")).toBeTruthy();
@@ -65,12 +66,12 @@ describe("WelcomePage", () => {
     await screen.findByText("project-a", { exact: true });
     const layout = screen.getByRole("group", { name: "最近项目布局" });
     await userEvent.click(within(layout).getByRole("button", { name: "列表布局" }));
-    expect(api.settings.setWelcomeLayout).toHaveBeenCalledWith("list");
+    expect(api.settings.update).toHaveBeenCalledWith({ welcomeLayout: "list" });
     expect(within(layout).getByRole("button", { name: "列表布局" }).getAttribute("aria-pressed")).toBe("true");
 
     await userEvent.click(screen.getByRole("button", { name: "更多操作：project-a" }));
     await userEvent.click(await screen.findByRole("menuitem", { name: "从最近项目移除" }));
-    await waitFor(() => expect(api.projects.forgetRecent).toHaveBeenCalledWith("C:\\work\\project-a"));
+    await waitFor(() => expect(api.projects.forgetRecent).toHaveBeenCalledWith({ rootPath: "C:\\work\\project-a" }));
   });
 
   it("initializes an uninitialized folder through the shared dialog", async () => {
@@ -80,7 +81,7 @@ describe("WelcomePage", () => {
     await userEvent.click(screen.getByRole("button", { name: "打开项目文件夹" }));
     const dialog = await screen.findByRole("dialog", { name: "初始化 HardwareHarness 项目" });
     await userEvent.click(within(dialog).getByRole("button", { name: "创建并打开" }));
-    await waitFor(() => expect(api.projects.initializeFolder).toHaveBeenCalledWith("C:\\new"));
+    await waitFor(() => expect(api.projects.initializeFolder).toHaveBeenCalledWith({ rootPath: "C:\\new" }));
     await waitFor(() => expect(onOpened).toHaveBeenCalledWith("C:\\new"));
     expect(api.projects.openFolder).not.toHaveBeenCalled();
   });

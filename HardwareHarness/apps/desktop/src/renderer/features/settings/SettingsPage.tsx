@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import type { UseQueryResult } from "@tanstack/react-query";
-import type { DashboardSnapshot } from "@hardwareharness/contracts/desktop";
+import type { DashboardSnapshot } from "@hardwareharness/contracts/operations";
 import type { ThemeChoice } from "@hardwareharness/contracts/storage";
 import { ArrowLeftIcon, BotIcon, PaletteIcon, PlugZapIcon } from "lucide-react";
 import { errorMessage } from "../../lib/errors.js";

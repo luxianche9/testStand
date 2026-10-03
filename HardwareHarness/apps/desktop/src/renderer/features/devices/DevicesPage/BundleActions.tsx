@@ -23,17 +23,16 @@ export function BundleActions({ kind, id, saved, disabled, exportTitle, onImport
   const [notice, setNotice] = useState<string>();
   const act = useMutation({
     mutationFn: async (action: "export" | "import"): Promise<string | undefined> => {
-      const devices = window.hardwareharness.devices;
+      const { devices, dialogs } = window.hardwareharness;
       if (action === "export") {
-        const result = await devices.exportBundle(kind, id.trim());
+        const hardwareId = id.trim();
+        const result = await dialogs.saveBundle(kind, hardwareId, await devices.exportBundle({ hardwareId }));
         return result ? `已导出到 ${result.path}` : undefined;
       }
-      if (onPreview) {
-        const preview = await devices.previewBundle(kind);
-        return preview ? onPreview(preview) : undefined;
-      }
-      const result = await devices.importBundle(kind);
-      if (!result) return undefined;
+      const data = await dialogs.openBundle(kind);
+      if (!data) return undefined;
+      if (onPreview) return onPreview({ kind, hardware: await devices.inspectBundle({ data }), data });
+      const result = await devices.importBundle({ data });
       await onImported?.(result.id);
       return `已${result.replaced ? "覆盖" : "导入"} ${result.label}`;
     },

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { HardwareHarnessStreamsApi } from "@hardwareharness/contracts/desktop";
+import type { HardwareHarnessLiveApi } from "@hardwareharness/contracts/desktop";
 import type {
   LiveFrame, RunStreamWindow, StreamPoint, StreamRead, StreamReadQuery, StreamRecord, StreamWindow
 } from "@hardwareharness/contracts/observability";
@@ -13,7 +13,7 @@ import type { TimeRange } from "./stream-model.js";
 export interface StreamSource {
   window?: (keys: string[], t0: number, t1: number, width: number) => Promise<RunStreamWindow>;
   records?: (key: string, query: StreamReadQuery) => Promise<StreamRead>;
-  live?: HardwareHarnessStreamsApi["live"];
+  live?: HardwareHarnessLiveApi["live"];
 }
 
 /** Pixel columns the points are decimated for: min and max of each, so at most twice as many points. */

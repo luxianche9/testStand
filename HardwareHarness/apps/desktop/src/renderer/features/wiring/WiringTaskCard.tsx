@@ -18,7 +18,7 @@ export function WiringTaskCard({ task, hardware, onChanged, className }: {
 }) {
   const complete = useMutation({
     mutationFn: (outcome: "confirmed" | "rejected") =>
-      window.hardwareharness.wiring.completeTask(task.wiringTaskId, outcome),
+      window.hardwareharness.wiring.completeTask({ taskId: task.wiringTaskId, outcome }),
     onSettled: async () => { await onChanged?.(); }
   });
   const a = resolvePortRef(task.portA, hardware);

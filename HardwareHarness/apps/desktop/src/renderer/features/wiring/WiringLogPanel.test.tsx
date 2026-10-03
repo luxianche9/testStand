@@ -54,7 +54,7 @@ describe("WiringTaskCard", () => {
     const { card, startTask, completeTask, onChanged } = setup();
     render(card());
     await userEvent.click(screen.getByRole("button", { name: label }));
-    await waitFor(() => expect(completeTask).toHaveBeenCalledWith("task-1", outcome));
+    await waitFor(() => expect(completeTask).toHaveBeenCalledWith({ taskId: "task-1", outcome }));
     expect(startTask).not.toHaveBeenCalled();
     await waitFor(() => expect(onChanged).toHaveBeenCalledOnce());
   });
@@ -82,7 +82,7 @@ describe("WiringLogPanel", () => {
     render(panel());
     const open = within(await screen.findByRole("region", { name: "待处理" }));
     await userEvent.click(open.getByRole("button", { name: "完成" }));
-    await waitFor(() => expect(completeTask).toHaveBeenCalledWith("task-1", "confirmed"));
+    await waitFor(() => expect(completeTask).toHaveBeenCalledWith({ taskId: "task-1", outcome: "confirmed" }));
     const past = within(screen.getByRole("region", { name: "历史记录" }));
     expect(await past.findByText(/删除接线 A J1 ↔ B J1/)).toBeTruthy();
     const ai = past.getByRole("button", { name: /连接 A J1 → B J1/ });

@@ -15,7 +15,7 @@ export function AgentToolsSection() {
   const [exportedPath, setExportedPath] = useState<string>();
   const items = tools.data ?? [];
   const exportTools = useMutation({
-    mutationFn: () => window.hardwareharness.system.exportText(
+    mutationFn: () => window.hardwareharness.dialogs.exportText(
       "hardwareharness-tools.json",
       JSON.stringify(items, null, 2)
     ),

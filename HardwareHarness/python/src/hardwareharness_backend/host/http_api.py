@@ -1,14 +1,16 @@
 """The service's local HTTP API (design doc §9.4).
 
 ``POST /api/ops/{name}`` runs one ``@operation`` with its arguments as a named JSON body,
-``GET /api/events`` streams events (SSE, resumable with ``Last-Event-ID``),
+``GET /api/events`` streams events (SSE, resumable with ``Last-Event-ID``) and
 ``GET /api/live?keys=&width=&window=`` streams live stream frames (design doc 5.9.3; the
-frame time is the event id, ``Last-Event-ID`` resumes after it) and ``GET /api/openapi.json``
-describes every operation. Bound to 127.0.0.1 on a random port.
+frame time is the event id, ``Last-Event-ID`` resumes after it). Bound to 127.0.0.1 on a
+random port. ``openapi.json`` is generated at build time (python/scripts/generate_operations.py),
+not served.
 
-Two bearer tokens: the renderer's, and the host token only the main process holds.
-Operations in the host namespaces (``desktop.*``: settings, gateway token, LLM key) need
-the host token.
+One bearer token, always in the ``Authorization`` header (the renderer reads SSE with
+``fetch``, so it never needs a query-string token). Browsers may only call from the
+renderer's origins; requests without an ``Origin`` (the main process, tests) are not browser
+requests.
 """
 
 from __future__ import annotations
@@ -42,7 +44,6 @@ MAX_BODY = 64 * 1024 * 1024
 KEEPALIVE_S = 15.0
 OPS_PREFIX = "/api/ops/"
 RENDERER_CONTEXT = {"actor": "human", "source": "desktop"}
-HOST_CONTEXT = {"actor": "human", "source": "host"}
 STATUS = {
     "invalid_argument": 400,
     "invalid_project_folder": 400,
@@ -62,8 +63,8 @@ STATUS = {
     "unavailable": 503,
 }
 """HTTP status of each error category; anything else is 500."""
-_CORS = [
-    (b"access-control-allow-origin", b"*"),
+Headers = list[tuple[bytes, bytes]]
+_PREFLIGHT: Headers = [
     (b"access-control-allow-headers", b"authorization, content-type, last-event-id"),
     (b"access-control-allow-methods", b"GET, POST, OPTIONS"),
     (b"access-control-max-age", b"600"),
@@ -126,16 +127,14 @@ class LocalApi:
         invoke: Invoke,
         bus: EventBus,
         *,
-        openapi: Callable[[], dict[str, Any]] = dict,
         token: str | None = None,
-        host_token: str | None = None,
-        host_namespaces: Collection[str] = ("desktop",),
+        origins: Collection[str] = (),
         live: Live | None = None,
     ) -> None:
-        self.invoke, self.bus, self.openapi, self.live = invoke, bus, openapi, live
+        """``origins`` are the renderer's (``null`` for a page loaded from ``file://``)."""
+        self.invoke, self.bus, self.live = invoke, bus, live
         self.token = token or secrets.token_urlsafe(32)
-        self.host_token = host_token or secrets.token_urlsafe(32)
-        self.host_namespaces = frozenset(host_namespaces)
+        self.origins = frozenset(origins)
         self.port = 0
         self._server: uvicorn.Server | None = None
         self._task: asyncio.Task[None] | None = None
@@ -198,44 +197,45 @@ class LocalApi:
             for key, value in scope.get("headers", [])
         }
         method, path = scope["method"], scope["path"]
+        origin = headers.get("origin")
+        cors: Headers = []
+        if origin is not None:
+            if origin not in self.origins:
+                await _respond_error(send, AppError("permission_denied", "Bad origin"), 403)
+                return
+            cors = [(b"access-control-allow-origin", origin.encode("latin1")), (b"vary", b"origin")]
         if method == "OPTIONS":
-            await _respond(send, 204, b"")
+            await _respond(send, 204, b"", headers=[*cors, *_PREFLIGHT])
             return
         if headers.get("host") != f"127.0.0.1:{self.port}":
-            await _respond_error(send, AppError("permission_denied", "Bad host"), 421)
+            await _respond_error(send, AppError("permission_denied", "Bad host"), 421, cors)
             return
-        query = parse_qs(scope.get("query_string", b"").decode("latin1"))
         supplied = headers.get("authorization", "")
-        if supplied.startswith("Bearer "):
-            supplied = supplied[7:]
-        elif method == "GET" and "token" in query:
-            supplied = query["token"][0]
-        host = secrets.compare_digest(supplied.encode(), self.host_token.encode())
-        if not host and not secrets.compare_digest(supplied.encode(), self.token.encode()):
-            await _respond_error(send, AppError("permission_denied", "Bad token"), 401)
+        supplied = supplied[7:] if supplied.startswith("Bearer ") else ""
+        if not secrets.compare_digest(supplied.encode(), self.token.encode()):
+            await _respond_error(send, AppError("permission_denied", "Bad token"), 401, cors)
             return
         if method == "POST" and path.startswith(OPS_PREFIX):
-            await self._operation(unquote(path[len(OPS_PREFIX) :]), host, receive, send)
-        elif method == "GET" and path == "/api/openapi.json":
-            await _respond_json(send, 200, self.openapi())
+            await self._operation(unquote(path[len(OPS_PREFIX) :]), receive, send, cors)
         elif method == "GET" and path == "/api/events":
-            raw = headers.get("last-event-id") or (query.get("after") or [None])[0]
+            raw = headers.get("last-event-id")
             try:
-                after = int(raw) if raw not in (None, "") else None
+                after = int(raw) if raw else None
             except ValueError:
                 after = None
-            await self._sse(self.bus.subscribe(after), receive, send)
+            await self._sse(self.bus.subscribe(after), receive, send, cors)
         elif method == "GET" and path == "/api/live":
+            query = parse_qs(scope.get("query_string", b"").decode("latin1"))
             try:
                 frames = self._live(query, headers.get("last-event-id"))
             except Exception as error:
-                await _respond_error(send, error)
+                await _respond_error(send, error, None, cors)
                 return
-            await self._sse(_frames(frames), receive, send)
+            await self._sse(_frames(frames), receive, send, cors)
         else:
-            await _respond_error(send, AppError("not_found", "No such endpoint"))
+            await _respond_error(send, AppError("not_found", "No such endpoint"), None, cors)
 
-    async def _operation(self, name: str, host: bool, receive: Receive, send: Send) -> None:
+    async def _operation(self, name: str, receive: Receive, send: Send, cors: Headers) -> None:
         body = bytearray()
         while True:
             message = await receive()
@@ -243,21 +243,17 @@ class LocalApi:
                 return
             body.extend(message.get("body", b""))
             if len(body) > MAX_BODY:
-                await _respond_error(send, AppError("invalid_argument", "Request too large"), 413)
+                too_large = AppError("invalid_argument", "Request too large")
+                await _respond_error(send, too_large, 413, cors)
                 return
             if not message.get("more_body"):
                 break
-        if name.split(".")[0] in self.host_namespaces and not host:
-            reserved = AppError("permission_denied", f"{name} is reserved for the main process")
-            await _respond_error(send, reserved)
-            return
-        context = dict(HOST_CONTEXT if host else RENDERER_CONTEXT)
         try:
-            result = to_json(await self.invoke(context, name, bytes(body) or None))
+            result = to_json(await self.invoke(dict(RENDERER_CONTEXT), name, bytes(body) or None))
         except Exception as error:
-            await _respond_error(send, error)
+            await _respond_error(send, error, None, cors)
             return
-        await _respond_json(send, 200, result)
+        await _respond_json(send, 200, result, cors)
 
     def _live(
         self, query: dict[str, list[str]], last_event_id: str | None
@@ -276,7 +272,7 @@ class LocalApi:
         return self.live(keys, width=width, window_ms=window_ms, resume_tb=resume_tb)
 
     async def _sse(
-        self, items: AsyncGenerator[SseItem, None], receive: Receive, send: Send
+        self, items: AsyncGenerator[SseItem, None], receive: Receive, send: Send, cors: Headers
     ) -> None:
         stop = asyncio.Event()
         self._streams.add(stop)
@@ -295,7 +291,7 @@ class LocalApi:
                     (b"content-type", b"text/event-stream; charset=utf-8"),
                     (b"cache-control", b"no-cache"),
                     (b"x-accel-buffering", b"no"),
-                    *_CORS,
+                    *cors,
                 ],
             }
         )
@@ -346,24 +342,32 @@ async def _frames(
 
 
 async def _respond(
-    send: Send, status: int, body: bytes, content_type: bytes = b"text/plain"
+    send: Send,
+    status: int,
+    body: bytes,
+    content_type: bytes = b"text/plain",
+    headers: Headers | None = None,
 ) -> None:
     await send(
         {
             "type": "http.response.start",
             "status": status,
-            "headers": [(b"content-type", content_type), *_CORS],
+            "headers": [(b"content-type", content_type), *(headers or [])],
         }
     )
     await send({"type": "http.response.body", "body": body})
 
 
-async def _respond_error(send: Send, error: BaseException, status: int | None = None) -> None:
+async def _respond_error(
+    send: Send, error: BaseException, status: int | None = None, headers: Headers | None = None
+) -> None:
     wire = to_wire_error(error)
     code = status or STATUS.get(wire["category"], 500)
-    await _respond_json(send, code, {"error": to_json(wire)})
+    await _respond_json(send, code, {"error": to_json(wire)}, headers)
 
 
-async def _respond_json(send: Send, status: int, payload: Any) -> None:
+async def _respond_json(
+    send: Send, status: int, payload: Any, headers: Headers | None = None
+) -> None:
     body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False, allow_nan=False)
-    await _respond(send, status, body.encode(), b"application/json; charset=utf-8")
+    await _respond(send, status, body.encode(), b"application/json; charset=utf-8", headers)

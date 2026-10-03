@@ -1,3 +1,6 @@
+import { execFile } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
 import { agentKindInputSchema } from "./agents.js";
 import { appError, toWireError } from "./errors.js";
@@ -45,4 +48,9 @@ describe("public contracts", () => {
     expect(toWireError(appError("conflict", "busy", { holder: "run" }))).toEqual({ category: "conflict", message: "busy", details: { holder: "run" } });
     expect(toWireError(new Error("boom"))).toEqual({ category: "error", message: "boom" });
   });
+
+  it("keeps the request types in step with openapi.json", async () => {
+    const script = fileURLToPath(new URL("../scripts/generate-openapi-types.mjs", import.meta.url));
+    await expect(promisify(execFile)(process.execPath, [script, "--check"])).resolves.toBeDefined();
+  }, 30_000);
 });

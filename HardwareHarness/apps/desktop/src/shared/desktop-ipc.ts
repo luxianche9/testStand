@@ -1,5 +1,4 @@
-import type { HardwareHarnessAgentsApi, HardwareHarnessEventName, HardwareHarnessSettingsApi, HardwareHarnessWindowApi } from "@hardwareharness/contracts/desktop";
-import type { DeviceBundleExport, DeviceBundleKind } from "@hardwareharness/contracts/devices";
+import type { HardwareHarnessDialogsApi, HardwareHarnessEventName, HardwareHarnessWindowApi } from "@hardwareharness/contracts/desktop";
 import type { WireError } from "@hardwareharness/contracts/errors";
 
 /** Renderer → main: `ipcRenderer.invoke(DESKTOP_CALL_CHANNEL, channel, args)`. */
@@ -13,21 +12,12 @@ export interface LocalApiEndpoint {
   token: string;
 }
 
-export interface DesktopDialogsPort {
-  exportText(defaultPath: string, content: string): Promise<string | null>;
-  saveBundle(kind: DeviceBundleKind, id: string, data: Uint8Array): Promise<DeviceBundleExport | null>;
-  openBundle(kind: DeviceBundleKind): Promise<Uint8Array | null>;
-  chooseProjectFolder(): Promise<string | null>;
-}
-
 type Prefixed<P extends string, T> = { [K in keyof T & string as `${P}.${K}`]: T[K] };
 
-/** Everything the renderer still needs from main: native dialogs, agents, settings, the window. */
+/** Everything the renderer needs from main: the backend endpoint, native dialogs and the window. */
 export type DesktopMainCalls =
   & { "desktop.endpoint"(): Promise<LocalApiEndpoint> }
-  & Prefixed<"dialogs", DesktopDialogsPort>
-  & Prefixed<"agents", HardwareHarnessAgentsApi>
-  & Prefixed<"settings", HardwareHarnessSettingsApi>
+  & Prefixed<"dialogs", HardwareHarnessDialogsApi>
   & Prefixed<"window", HardwareHarnessWindowApi>;
 
 export type DesktopMainChannel = keyof DesktopMainCalls & string;

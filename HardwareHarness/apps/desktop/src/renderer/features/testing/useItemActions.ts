@@ -31,7 +31,7 @@ export function useItemActions({ editor, items, confirm }: {
     client.setQueryData<TestItemStatusList>(queryKeys.testItemStatus, (current) => current && update(current));
 
   const create = async (name: string) => {
-    const result = await window.hardwareharness.testing.createPlan({ requestId: crypto.randomUUID(), name });
+    const result = await window.hardwareharness.testing.createPlan({ input: { requestId: crypto.randomUUID(), name } });
     setPrompt(undefined);
     await invalidateTestingData(client);
     await editor.selectPlan(result.plan.id);
@@ -43,8 +43,11 @@ export function useItemActions({ editor, items, confirm }: {
       editor.mutate((next) => { next.name = name; });
       editor.setMessage("名称已修改，保存后生效");
     } else {
-      const plan = await window.hardwareharness.testing.loadPlan(planId);
-      const saved = await window.hardwareharness.testing.savePlan({ ...plan, name }, plan.revision);
+      const plan = await window.hardwareharness.testing.loadPlan({ planId });
+      const saved = await window.hardwareharness.testing.savePlan({
+        plan: { ...plan, name },
+        baseRevision: plan.revision
+      });
       if (open) editor.adopt(saved.plan);
       await invalidateTestingData(client);
     }
@@ -60,7 +63,7 @@ export function useItemActions({ editor, items, confirm }: {
     });
     if (!ok) return;
     try {
-      await window.hardwareharness.testing.deletePlan(item.planId);
+      await window.hardwareharness.testing.deletePlan({ planId: item.planId });
       setChecked((current) => { const next = new Set(current); next.delete(item.planId); return next; });
       await invalidateTestingData(client);
       if (editor.selectedPlanId === item.planId) editor.closePlan();
@@ -76,7 +79,7 @@ export function useItemActions({ editor, items, confirm }: {
       items: [...current.items].sort((a, b) => (order.get(a.planId) ?? 0) - (order.get(b.planId) ?? 0))
     }));
     try {
-      const result = await window.hardwareharness.testing.reorderItems({ planIds });
+      const result = await window.hardwareharness.testing.reorderItems({ input: { planIds } });
       client.setQueryData(queryKeys.testItemStatus, result);
     } catch (error) {
       toast.error(errorText(error));
@@ -91,9 +94,7 @@ export function useItemActions({ editor, items, confirm }: {
     if (editor.dirty && editor.draft && planIds.includes(editor.draft.id) && !await editor.save()) return;
     try {
       const batch = await window.hardwareharness.testing.startBatch({
-        requestId: crypto.randomUUID(),
-        planIds,
-        stopOnFail
+        input: { requestId: crypto.randomUUID(), planIds, stopOnFail }
       });
       setStatus((current) => ({ ...current, batch }));
       await invalidateTestingData(client);
@@ -114,7 +115,7 @@ export function useItemActions({ editor, items, confirm }: {
     });
     if (!ok) return;
     try {
-      const next = await window.hardwareharness.testing.abortBatch(batch.batchId);
+      const next = await window.hardwareharness.testing.abortBatch({ batchId: batch.batchId });
       setStatus((current) => ({ ...current, batch: next }));
       await invalidateTestingData(client);
     } catch (error) {

@@ -41,9 +41,7 @@ export function RecoveryDialog({ open, onClose }: { open: boolean; onClose: () =
     setError(undefined);
     try {
       await window.hardwareharness.testing.reconcileOperation({
-        operationId: operation.operationId,
-        resolution,
-        ...(note.trim() ? { note: note.trim() } : {})
+        input: { operationId: operation.operationId, resolution, ...(note.trim() ? { note: note.trim() } : {}) }
       });
       await invalidateTestingData(client);
       await items.refetch();

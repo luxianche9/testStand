@@ -70,9 +70,9 @@ test.describe.serial("HardwareHarness folder project desktop", () => {
   });
 
   test("initializes a folder project and exposes the full top navigation", async () => {
-    const document = await page.evaluate((rootPath) => window.hardwareharness.projects.initializeFolder(rootPath), projectRoot);
+    const document = await page.evaluate((rootPath) => window.hardwareharness.projects.initializeFolder({ rootPath }), projectRoot);
     expect(document.path.replaceAll("\\", "/")).toMatch(/\/\.hardwareharness\/project\.json$/);
-    await page.evaluate(() => window.hardwareharness.projects.leave());
+    await page.evaluate(() => window.hardwareharness.projects.leaveProject());
     await reloadAfterLeave(page);
     // Every launch still returns to the welcome page even when recent projects exist.
     await expect(page.getByRole("heading", { name: "最近项目" })).toBeVisible();
@@ -87,23 +87,23 @@ test.describe.serial("HardwareHarness folder project desktop", () => {
   test("registers hardware and keeps wiring intact", async () => {
     const result = await page.evaluate(async () => {
       for (const hardwareId of ["DUT_A", "DUT_B"]) {
-        await window.hardwareharness.devices.saveHardware({
+        await window.hardwareharness.devices.saveHardware({ input: {
           formatVersion: 2, hardwareId, label: hardwareId, kind: "passive",
           ports: [
             { portId: "J1", name: "J1", pins: [{ pinId: "1", position: 1, label: "A" }, { pinId: "2", position: 2, label: "B" }] },
             { portId: "FIBER", name: "光纤口", pins: [] }
           ]
-        });
+        } });
       }
-      await window.hardwareharness.wiring.update({ nodes: [
+      await window.hardwareharness.wiring.updateDocument({ wiring: { nodes: [
         { hardwareId: "DUT_A", x: 10, y: 10, portPositions: {} },
         { hardwareId: "DUT_B", x: 200, y: 10, portPositions: {} }
-      ], connections: [] });
-      const pending = await window.hardwareharness.wiring.requestTask({ portA: "DUT_A.J1", portB: "DUT_B.J1", pins: [{ a: "1", b: "1" }, { a: "2", b: "2" }], action: "connect" });
-      await window.hardwareharness.wiring.startTask(pending.wiringTaskId, "e2e");
-      await window.hardwareharness.wiring.completeTask(pending.wiringTaskId, "confirmed");
-      const beforeSave = await window.hardwareharness.projects.current();
-      const afterSave = await window.hardwareharness.projects.save();
+      ], connections: [] } });
+      const pending = await window.hardwareharness.wiring.requestTask({ input: { portA: "DUT_A.J1", portB: "DUT_B.J1", pins: [{ a: "1", b: "1" }, { a: "2", b: "2" }], action: "connect" } });
+      await window.hardwareharness.wiring.startTask({ taskId: pending.wiringTaskId, operatorName: "e2e" });
+      await window.hardwareharness.wiring.completeTask({ taskId: pending.wiringTaskId, outcome: "confirmed" });
+      const beforeSave = await window.hardwareharness.projects.document();
+      const afterSave = await window.hardwareharness.projects.saveProject();
       return { beforeSave, afterSave };
     });
     expect(result.beforeSave?.dirty).toBe(true);
@@ -127,17 +127,17 @@ test.describe.serial("HardwareHarness folder project desktop", () => {
 
   test("processes consecutive Agent wiring requests through clickable confirmations", async () => {
     const taskIds = await page.evaluate(async () => {
-      const connect = await window.hardwareharness.wiring.requestTask({
+      const connect = await window.hardwareharness.wiring.requestTask({ input: {
         portA: "DUT_A.FIBER",
         portB: "DUT_B.FIBER",
         action: "connect"
-      });
-      const disconnect = await window.hardwareharness.wiring.requestTask({
+      } });
+      const disconnect = await window.hardwareharness.wiring.requestTask({ input: {
         portA: "DUT_A.J1",
         portB: "DUT_B.J1",
         pins: [{ a: "1", b: "1" }, { a: "2", b: "2" }],
         action: "disconnect"
-      });
+      } });
       return [connect.wiringTaskId, disconnect.wiringTaskId];
     });
 
@@ -154,7 +154,7 @@ test.describe.serial("HardwareHarness folder project desktop", () => {
     }
 
     await expect(pending).toHaveCount(0);
-    const completed = await page.evaluate(async (ids) => Promise.all(ids.map((id) => window.hardwareharness.wiring.getTask(id))), taskIds);
+    const completed = await page.evaluate(async (ids) => Promise.all(ids.map((id) => window.hardwareharness.wiring.getTask({ taskId: id }))), taskIds);
     expect(completed.map((task) => task.status)).toEqual(["confirmed", "confirmed"]);
   });
 
@@ -266,9 +266,9 @@ test.describe.serial("HardwareHarness folder project desktop", () => {
 
   test("protects dirty project transitions with save, discard, and cancel", async () => {
     await page.evaluate(async () => {
-      const current = await window.hardwareharness.projects.current();
+      const current = await window.hardwareharness.projects.document();
       if (!current) throw new Error("project missing");
-      await window.hardwareharness.wiring.update({ ...current.file.wiring, nodes: [...current.file.wiring.nodes, { hardwareId: "EXTRA", x: 300, y: 20, portPositions: {} }] });
+      await window.hardwareharness.wiring.updateDocument({ wiring: { ...current.file.wiring, nodes: [...current.file.wiring.nodes, { hardwareId: "EXTRA", x: 300, y: 20, portPositions: {} }] } });
     });
     await requestLeaveProject(page);
     const dialog = page.getByRole("dialog", { name: "保存项目修改" });

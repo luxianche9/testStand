@@ -60,9 +60,11 @@ function ManualCheckForm({ runId, request, waiting }: {
       const name = operator.trim();
       if (name) localStorage.setItem(OPERATOR_KEY, name);
       return window.hardwareharness.testing.answerManualCheck({
-        runId, executionId: request.executionId, option,
-        ...(note.trim() ? { note: note.trim() } : {}),
-        ...(name ? { operator: name } : {})
+        input: {
+          runId, executionId: request.executionId, option,
+          ...(note.trim() ? { note: note.trim() } : {}),
+          ...(name ? { operator: name } : {})
+        }
       });
     },
     onError: (reason) => toast.error(errorMessage(reason)),

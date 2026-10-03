@@ -27,9 +27,11 @@ class OperationFailed(RuntimeError):
         self.error = error
 
 
+GATEWAY_TOKEN = "process-test-gateway-token"
+
+
 class Client:
-    """Plays the main process (host token) and the renderer (renderer token) over HTTP, and
-    follows the SSE stream from the first event."""
+    """Plays the renderer over HTTP and follows the SSE stream from the first event."""
 
     def __init__(self, process: asyncio.subprocess.Process, handshake: dict[str, Any]) -> None:
         self.process = process
@@ -40,16 +42,16 @@ class Client:
         self._reader = asyncio.create_task(self._follow())
 
     async def invoke(self, operation: str, body: dict[str, Any] | None = None) -> Any:
-        """One renderer operation, as the preload sends it."""
-        return await self._post(self.handshake["token"], operation, body)
-
-    async def host(self, operation: str, body: dict[str, Any] | None = None) -> Any:
-        """One main-process operation."""
-        return await self._post(self.handshake["hostToken"], operation, body)
-
-    async def state(self) -> dict[str, Any]:
-        result: dict[str, Any] = await self.host("desktop.state")
-        return result
+        """One operation, as the renderer sends it."""
+        async with httpx.AsyncClient(timeout=30) as http:
+            response = await http.post(
+                f"{self.url}/api/ops/{operation}",
+                headers={"Authorization": "Bearer " + self.handshake["token"]},
+                json=body or {},
+            )
+        if response.status_code != 200:
+            raise OperationFailed(response.status_code, response.json()["error"])
+        return response.json()
 
     async def wait_for(
         self, predicate: Callable[[tuple[int, str, Any]], bool], count: int = 1
@@ -69,22 +71,11 @@ class Client:
         with contextlib.suppress(asyncio.CancelledError):
             await self._reader
 
-    async def _post(self, token: str, operation: str, body: dict[str, Any] | None) -> Any:
-        async with httpx.AsyncClient(timeout=30) as http:
-            response = await http.post(
-                f"{self.url}/api/ops/{operation}",
-                headers={"Authorization": "Bearer " + token},
-                json=body or {},
-            )
-        if response.status_code != 200:
-            raise OperationFailed(response.status_code, response.json()["error"])
-        return response.json()
-
     async def _follow(self) -> None:
-        params = {"token": self.handshake["token"], "after": "0"}
+        headers = {"Authorization": "Bearer " + self.handshake["token"], "Last-Event-ID": "0"}
         async with (
             httpx.AsyncClient(timeout=None) as http,
-            http.stream("GET", self.url + "/api/events", params=params) as response,
+            http.stream("GET", self.url + "/api/events", headers=headers) as response,
         ):
             fields: dict[str, str] = {}
             async for line in response.aiter_lines():
@@ -118,6 +109,7 @@ async def running_client(profile: Path) -> AsyncIterator[Client]:
                 del environment[key]
         environment["PATH"] = str(Path(os.environ["SYSTEMROOT"]) / "System32")
     environment["HARDWAREHARNESS_AGENT_INTEGRATION_TEST_MODE"] = "1"
+    environment["HARDWAREHARNESS_GATEWAY_TEST_TOKEN"] = GATEWAY_TOKEN
     process = await asyncio.create_subprocess_exec(
         *command,
         "--user-data",
@@ -137,7 +129,7 @@ async def running_client(profile: Path) -> AsyncIterator[Client]:
             assert process.stderr
             raise AssertionError((await process.stderr.read()).decode())
         handshake = json.loads(line)
-        assert set(handshake) == {"port", "token", "hostToken", "version"}
+        assert set(handshake) == {"port", "token", "version"}
         client = Client(process, handshake)
         yield client
         # Closing stdin is the shutdown signal: devices go to their safe state, then exit.
@@ -153,47 +145,68 @@ async def running_client(profile: Path) -> AsyncIterator[Client]:
 
 
 async def test_real_child_settings_project_and_credentials(client: Client, tmp_path: Path) -> None:
-    assert (await client.state())["gateway"]["running"]
     dashboard = await client.invoke("system.dashboard")
+    assert dashboard["gateway"]["running"]
     assert dashboard["servers"] == []
     assert dashboard["hardware"] == []
-    await client.host("desktop.updateSettings", {"patch": {"theme": "dark"}})
-    assert (await client.state())["settings"]["theme"] == "dark"
-    await client.wait_for(lambda item: item[1] == "state" and item[2]["reason"] == "settings")
+    await client.invoke("settings.update", {"theme": "dark"})
+    assert (await client.invoke("settings.get"))["theme"] == "dark"
+    with pytest.raises(OperationFailed) as invalid:
+        await client.invoke("settings.update", {"theme": "purple"})
+    assert invalid.value.status == 400
     project = tmp_path / "中文 project"
     project.mkdir()
     result = await client.invoke("projects.initializeFolder", {"rootPath": str(project)})
     assert result["file"]["formatVersion"] == 4
-    assert (await client.state())["project"]["file"]["projectId"] == result["file"]["projectId"]
-    saved = await client.host(
-        "desktop.saveLlm",
+    opencode = await client.invoke("agents.openCodeStatus")
+    assert opencode["workspace"] == str(project) and opencode["state"] == "stopped"
+    saved = await client.invoke(
+        "settings.saveLlm",
         {"baseUrl": "https://example.com/v1", "model": "m", "apiKey": "key-value"},
     )
-    assert saved["apiKeyConfigured"] is True
-    assert (await client.state())["llmApiKey"] == "key-value"
+    assert saved == {"baseUrl": "https://example.com/v1", "model": "m", "apiKeyConfigured": True}
+    # A key and a project: the service tries to start OpenCode, which this test run lacks.
+    [failed] = await client.wait_for(
+        lambda item: item[1] == "opencode" and item[2]["state"] == "error"
+    )
+    assert "OpenCode" in failed[2]["message"] and "key-value" not in json.dumps(failed[2])
+    assert await client.invoke("agents.openCodeConnection") is None
     profile = tmp_path / "profile"
     assert not (profile / "secrets.json").exists()
     assert "key-value" not in (profile / "secret-keys.json").read_text("utf-8")
-    token = await client.host("desktop.rotateGatewayToken")
-    assert token == (await client.state())["gatewayToken"]
+    rotated = await client.invoke("agents.rotateGatewayToken")
+    assert rotated["state"] == "not_installed"
+    await client.wait_for(lambda item: item[1] == "gateway")
     await client.invoke("projects.leaveProject")
-    assert "project" not in await client.state()
+    assert "workspace" not in await client.invoke("agents.openCodeStatus")
     audit = [json.loads(line) for line in (profile / "audit.jsonl").read_text("utf-8").splitlines()]
-    llm = next(record for record in audit if record["operation"] == "desktop.saveLlm")
+    llm = next(record for record in audit if record["operation"] == "settings.saveLlm")
     assert llm["arguments"]["api_key"] == "[REDACTED]"
-    assert all(record["operation"] != "desktop.state" for record in audit)
+    assert all(record["operation"] != "settings.get" for record in audit)
 
 
-async def test_local_api_is_an_allowlist_behind_two_tokens(client: Client) -> None:
+async def test_codex_integration_in_integration_test_mode(client: Client) -> None:
+    assert (await client.invoke("agents.status", {"agent": "codex"}))["state"] == "not_installed"
+    preview = await client.invoke("agents.preview", {"agent": "codex"})
+    assert preview["environmentVariable"] == "HARDWAREHARNESS_MCP_TOKEN"
+    installed = await client.invoke("agents.install", {"agent": "codex"})
+    assert installed["state"] == "configured"
+    assert (await client.invoke("agents.test", {"agent": "codex"}))["state"] == "configured"
+    rotated = await client.invoke("agents.rotateGatewayToken")
+    assert rotated["state"] == "configured"
+    removed = await client.invoke("agents.remove", {"agent": "codex"})
+    assert removed["state"] == "not_installed"
+    tools = await client.invoke("agents.listTools")
+    assert any(tool["kind"] == "builtin" for tool in tools)
+
+
+async def test_local_api_is_an_allowlist_behind_one_token(client: Client) -> None:
     with pytest.raises(OperationFailed, match="Unknown operation") as unknown:
         await client.invoke("devices.__dict__")
     assert unknown.value.status == 404
     with pytest.raises(OperationFailed, match="Invalid request") as invalid:
         await client.invoke("system.dashboard", {"actor": "system"})
     assert invalid.value.status == 400
-    with pytest.raises(OperationFailed, match="reserved for the main process") as reserved:
-        await client.invoke("desktop.state")
-    assert reserved.value.status == 403
     url = client.url + "/api/ops/system.dashboard"
     async with httpx.AsyncClient(timeout=10) as http:
         assert (await http.post(url, json={})).status_code == 401
@@ -202,12 +215,12 @@ async def test_local_api_is_an_allowlist_behind_two_tokens(client: Client) -> No
         token = client.handshake["token"]
         rebound = {"Authorization": "Bearer " + token, "Host": "evil.test"}
         assert (await http.post(url, json={}, headers=rebound)).status_code == 421
+        foreign = {"Authorization": "Bearer " + token, "Origin": "https://evil.test"}
+        assert (await http.post(url, json={}, headers=foreign)).status_code == 403
         document = await http.get(
             client.url + "/api/openapi.json", headers={"Authorization": "Bearer " + token}
         )
-    paths = document.json()["paths"]
-    assert paths["/api/ops/manual.invokeTool"]["post"]["x-risk"] == "actuate"
-    assert "/api/ops/desktop.state" in paths
+    assert document.status_code == 404
 
 
 async def test_events_stream_over_sse_and_resume_after_the_last_id(
@@ -228,8 +241,10 @@ async def test_events_stream_over_sse_and_resume_after_the_last_id(
         http.stream(
             "GET",
             client.url + "/api/events",
-            headers={"Authorization": "Bearer " + client.handshake["token"]},
-            params={"after": str(first[0])},
+            headers={
+                "Authorization": "Bearer " + client.handshake["token"],
+                "Last-Event-ID": str(first[0]),
+            },
         ) as response,
     ):
         assert response.headers["content-type"].startswith("text/event-stream")
@@ -275,37 +290,31 @@ async def test_partial_settings_commit_is_visible_after_a_failed_save(
     secrets.unlink()
     secrets.mkdir()  # The next credential write fails.
     with pytest.raises(OperationFailed):
-        await client.host(
-            "desktop.saveLlm",
+        await client.invoke(
+            "settings.saveLlm",
             {"baseUrl": "https://example.com/changed", "model": "new-model", "apiKey": "secret"},
         )
-    state = await client.state()
-    assert state["settings"]["llm"] == {
+    assert await client.invoke("settings.getLlm") == {
         "baseUrl": "https://example.com/changed",
         "model": "new-model",
+        "apiKeyConfigured": False,
     }
-    assert not state["llmApiKeyConfigured"]
 
 
-async def test_mcp_project_changes_notify_once_with_workspace_flag(
-    client: Client, tmp_path: Path
-) -> None:
+async def test_mcp_project_changes_notify_once(client: Client, tmp_path: Path) -> None:
     root = tmp_path / "agent project"
     root.mkdir()
-    state = await client.state()
+    endpoint = (await client.invoke("system.dashboard"))["gateway"]["endpoint"]
 
-    def project_states() -> list[tuple[int, str, Any]]:
-        return [
-            item for item in client.events if item[1] == "state" and item[2]["reason"] == "project"
-        ]
+    def project_events() -> list[tuple[int, str, Any]]:
+        return [item for item in client.events if item[1] == "project"]
 
     async with httpx.AsyncClient(
         headers={
-            "Authorization": "Bearer " + state["gatewayToken"],
+            "Authorization": "Bearer " + GATEWAY_TOKEN,
             "Accept": "application/json, text/event-stream",
         }
     ) as http:
-        endpoint = state["gateway"]["endpoint"]
         initialized = await http.post(
             endpoint,
             json={
@@ -321,12 +330,12 @@ async def test_mcp_project_changes_notify_once_with_workspace_flag(
         )
         assert initialized.status_code == 200
         http.headers["mcp-session-id"] = initialized.headers["mcp-session-id"]
-        for name, args, changed in [
-            ("initialize_project", {"rootPath": str(root)}, True),
-            ("save_project", {}, False),
-            ("open_project", {"rootPath": str(root)}, True),
+        for name, args in [
+            ("initialize_project", {"rootPath": str(root)}),
+            ("save_project", {}),
+            ("open_project", {"rootPath": str(root)}),
         ]:
-            before = len(project_states())
+            before = len(project_events())
             response = await http.post(
                 endpoint,
                 json={
@@ -337,18 +346,12 @@ async def test_mcp_project_changes_notify_once_with_workspace_flag(
                 },
             )
             assert response.status_code == 200 and '"isError":true' not in response.text
-            await client.wait_for(
-                lambda item: item[1] == "state" and item[2]["reason"] == "project", before + 1
-            )
+            await client.wait_for(lambda item: item[1] == "project", before + 1)
             await asyncio.sleep(0.2)
-            fresh = project_states()[before:]
-            assert len(fresh) == 1
-            assert fresh[0][2]["workspaceChanged"] is changed
-            assert (await client.state())["project"]["rootPath"] == str(root)
-    before = len(project_states())
+            assert len(project_events()[before:]) == 1
+            assert (await client.invoke("projects.document"))["rootPath"] == str(root)
+    before = len(project_events())
     await client.invoke("projects.leaveProject")
-    await client.wait_for(
-        lambda item: item[1] == "state" and item[2]["reason"] == "project", before + 1
-    )
-    assert project_states()[before][2]["workspaceChanged"] is True
-    assert "project" not in await client.state()
+    await client.wait_for(lambda item: item[1] == "project", before + 1)
+    assert project_events()[before][2] == {"projectId": None}
+    assert await client.invoke("projects.document") is None

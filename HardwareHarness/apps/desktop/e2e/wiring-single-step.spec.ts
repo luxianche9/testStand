@@ -30,22 +30,22 @@ test.describe.serial("single-step wiring tasks", () => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await expect(page.getByRole("heading", { name: "最近项目" })).toBeVisible();
     await page.evaluate(async (root) => {
-      await window.hardwareharness.projects.initializeFolder(root);
+      await window.hardwareharness.projects.initializeFolder({ rootPath: root });
       for (const hardwareId of ["DUT_A", "DUT_B"]) {
-        await window.hardwareharness.devices.saveHardware({
+        await window.hardwareharness.devices.saveHardware({ input: {
           formatVersion: 2, hardwareId, label: hardwareId, kind: "passive",
           ports: [{ portId: "J1", name: "串口", pins: [
             { pinId: "1", position: 1, label: "TX" }, { pinId: "2", position: 2, label: "RX" },
             { pinId: "3", position: 3, label: "GND" }
           ] }]
-        });
+        } });
       }
-      await window.hardwareharness.wiring.update({ nodes: [
+      await window.hardwareharness.wiring.updateDocument({ wiring: { nodes: [
         { hardwareId: "DUT_A", x: 20, y: 20, width: 220, height: 140, portPositions: { J1: { side: "right", offset: 0.5 } } },
         { hardwareId: "DUT_B", x: 380, y: 20, width: 220, height: 140, portPositions: { J1: { side: "left", offset: 0.5 } } }
-      ], connections: [] });
-      await window.hardwareharness.projects.save();
-      await window.hardwareharness.projects.leave();
+      ], connections: [] } });
+      await window.hardwareharness.projects.saveProject();
+      await window.hardwareharness.projects.leaveProject();
     }, projectRoot);
     await reloadAfterLeave(page);
     await page.getByText("wiring-fixture", { exact: true }).first().click();
@@ -58,10 +58,10 @@ test.describe.serial("single-step wiring tasks", () => {
 
   test("keeps a request pending in the wiring log and keeps history", async () => {
     await page.getByRole("tab", { name: "设备管理", exact: true }).click();
-    const id = await page.evaluate(async () => (await window.hardwareharness.wiring.requestTask({
+    const id = await page.evaluate(async () => (await window.hardwareharness.wiring.requestTask({ input: {
       portA: "DUT_A.J1", portB: "DUT_B.J1", action: "connect",
       pins: [{ a: "1", b: "2" }, { a: "3", b: "3" }]
-    })).wiringTaskId);
+    } })).wiringTaskId);
     await expect(page.getByLabel("1 条待处理接线任务")).toBeVisible();
     await page.getByRole("tab", { name: "工位接线", exact: true }).click();
     await page.getByRole("tab", { name: /^接线日志/ }).click();
@@ -72,7 +72,7 @@ test.describe.serial("single-step wiring tasks", () => {
     await expect(card.getByRole("button", { name: "完成", exact: true })).toBeEnabled();
     await expect(card.getByRole("button", { name: "未完成", exact: true })).toBeEnabled();
     await expect(card.getByRole("button", { name: "开始处理" })).toHaveCount(0);
-    expect(await page.evaluate((taskId) => window.hardwareharness.wiring.getTask(taskId).then((task) => task.status), id)).toBe("pending");
+    expect(await page.evaluate((taskId) => window.hardwareharness.wiring.getTask({ taskId }).then((task) => task.status), id)).toBe("pending");
     await page.screenshot({ animations: "disabled", path: join(artifacts, "pending-light.png") });
     await card.getByRole("button", { name: "完成", exact: true }).click();
     await expect(open).toHaveCount(0);
@@ -85,13 +85,13 @@ test.describe.serial("single-step wiring tasks", () => {
     await entry.click();
     await expect(page.locator(".react-flow__edge")).toHaveCount(1);
 
-    const rejectedId = await page.evaluate(async () => (await window.hardwareharness.wiring.requestTask({
+    const rejectedId = await page.evaluate(async () => (await window.hardwareharness.wiring.requestTask({ input: {
       portA: "DUT_A.J1", portB: "DUT_B.J1", action: "disconnect", pins: [{ a: "1", b: "2" }]
-    })).wiringTaskId);
+    } })).wiringTaskId);
     await open.getByRole("region", { name: "断线任务", exact: true }).getByRole("button", { name: "未完成", exact: true }).click();
     await expect(open).toHaveCount(0);
     await expect(history.getByRole("listitem")).toHaveCount(2);
-    expect(await page.evaluate((taskId) => window.hardwareharness.wiring.getTask(taskId).then((task) => task.status), rejectedId)).toBe("rejected");
+    expect(await page.evaluate((taskId) => window.hardwareharness.wiring.getTask({ taskId }).then((task) => task.status), rejectedId)).toBe("rejected");
     await expect(page.locator(".react-flow__edge")).toHaveCount(1);
   });
 
@@ -111,10 +111,10 @@ test.describe.serial("single-step wiring tasks", () => {
     await page.screenshot({ animations: "disabled", path: join(artifacts, "same-port-list.png") });
     await page.getByRole("button", { name: "画布", exact: true }).click();
     await expect(page.locator(".react-flow__edge")).toHaveCount(1);
-    expect(await page.evaluate(async () => (await window.hardwareharness.projects.current())?.file.wiring.connections.length)).toBe(2);
-    const taskId = await page.evaluate(async () => (await window.hardwareharness.wiring.requestTask({
+    expect(await page.evaluate(async () => (await window.hardwareharness.projects.document())?.file.wiring.connections.length)).toBe(2);
+    const taskId = await page.evaluate(async () => (await window.hardwareharness.wiring.requestTask({ input: {
       portA: "DUT_A.J1", portB: "DUT_A.J1", pins: [{ a: "1", b: "2" }], action: "disconnect"
-    })).wiringTaskId);
+    } })).wiringTaskId);
     await page.getByRole("tab", { name: /^接线日志/ }).click();
     const card = page.getByRole("tabpanel", { name: "接线日志" }).getByRole("region", { name: "待处理" })
       .getByRole("region", { name: "断线任务", exact: true });
@@ -124,8 +124,8 @@ test.describe.serial("single-step wiring tasks", () => {
     await page.screenshot({ animations: "disabled", path: join(artifacts, "same-port-dark-960.png") });
     await card.getByRole("button", { name: "完成", exact: true }).click();
     await expect(card).toHaveCount(0);
-    expect(await page.evaluate((id) => window.hardwareharness.wiring.getTask(id).then((task) => task.status), taskId)).toBe("confirmed");
-    expect(await page.evaluate(async () => (await window.hardwareharness.projects.current())?.file.wiring.connections.length)).toBe(1);
+    expect(await page.evaluate((id) => window.hardwareharness.wiring.getTask({ taskId: id }).then((task) => task.status), taskId)).toBe("confirmed");
+    expect(await page.evaluate(async () => (await window.hardwareharness.projects.document())?.file.wiring.connections.length)).toBe(1);
     expect(errors).toEqual([]);
   });
 });

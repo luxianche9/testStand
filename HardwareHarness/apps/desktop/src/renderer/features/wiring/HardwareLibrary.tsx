@@ -49,7 +49,7 @@ export function HardwareLibrary({ hardware, placed, onAdd, onRefresh, header, ..
   const check = async () => {
     setChecking(true);
     try {
-      await window.hardwareharness.devices.refreshManagedHardware();
+      await window.hardwareharness.devices.listManagedHardware();
     } catch { /* a half-down MCP still reports per-hardware state below */ }
     await dashboard.refetch();
     onRefresh();

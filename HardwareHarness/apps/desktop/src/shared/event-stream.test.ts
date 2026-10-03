@@ -36,14 +36,15 @@ describe("event stream", () => {
     stopAgain();
   });
 
-  it("starts from the given id so a late subscriber replays what it missed", async () => {
+  it("authenticates with the header, never the query string", async () => {
     const request = vi.fn(() => new Promise<Response>(() => undefined));
-    const stop = startEventStream({ endpoint: async () => endpoint, forgetEndpoint: () => undefined, dispatch: vi.fn(), fetch: request as never, after: "0" });
+    const stop = startEventStream({ endpoint: async () => endpoint, forgetEndpoint: () => undefined, dispatch: vi.fn(), fetch: request as never });
     await vi.waitFor(() => expect(request).toHaveBeenCalledOnce());
     stop();
     const [url, init] = request.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe("http://127.0.0.1:5000/api/events");
-    expect(init.headers).toMatchObject({ authorization: "Bearer secret", "last-event-id": "0" });
+    expect(init.headers).toMatchObject({ authorization: "Bearer secret" });
+    expect(init.headers).not.toHaveProperty("last-event-id");
   });
 
   it("opens the given path instead of the event bus", async () => {

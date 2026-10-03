@@ -1,4 +1,4 @@
-import type { DashboardSnapshot } from "@hardwareharness/contracts/desktop";
+import type { DashboardSnapshot } from "@hardwareharness/contracts/operations";
 import type { Hardware, McpServerConfig } from "@hardwareharness/contracts/devices";
 import { PlusIcon } from "lucide-react";
 import { hardwareForServer } from "../../../lib/hardware.js";

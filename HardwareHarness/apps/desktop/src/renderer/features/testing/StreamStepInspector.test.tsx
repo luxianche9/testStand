@@ -46,7 +46,7 @@ describe("stream step inspector", () => {
     const step: TestStep = { id: "observe", type: "Observe", hardwareId: "scope", window: { anchor: "", endMs: 50 } };
     const { update, listStreams } = renderInspector(step);
     await waitFor(() => expect(screen.getByRole("option", { name: "ch1 · f32" })).toBeTruthy());
-    expect(listStreams).toHaveBeenCalledWith("scope");
+    expect(listStreams).toHaveBeenCalledWith({ hardwareId: "scope" });
 
     fireEvent.change(screen.getByRole("combobox", { name: /^数据流/ }), { target: { value: "ch1" } });
     expect(update).toHaveBeenLastCalledWith({ streamId: "ch1" });

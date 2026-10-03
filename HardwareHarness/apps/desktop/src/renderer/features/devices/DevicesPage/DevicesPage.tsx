@@ -30,7 +30,7 @@ export function DevicesPage() {
 
   const refreshAll = async () => invalidateDeviceData(client);
   const refreshHardware = useMutation({
-    mutationFn: () => window.hardwareharness.devices.refreshManagedHardware(),
+    mutationFn: () => window.hardwareharness.devices.listManagedHardware(),
     onSettled: () => void refreshAll()
   });
   const refreshHardwareRef = useRef(refreshHardware.mutate);
@@ -51,10 +51,10 @@ export function DevicesPage() {
       const snapshot = query.data;
       if (!snapshot) return;
       await Promise.allSettled(
-        snapshot.servers.map((server) => window.hardwareharness.devices.refreshServer(server.serverId))
+        snapshot.servers.map((server) => window.hardwareharness.devices.refreshServer({ serverId: server.serverId }))
       );
       try {
-        await window.hardwareharness.devices.refreshManagedHardware();
+        await window.hardwareharness.devices.listManagedHardware();
       } catch {
         // Partial outages are reflected in the per-server statuses above.
       }

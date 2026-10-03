@@ -3,7 +3,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { BrowserWindow, nativeTheme, type WebContents, type WebFrameMain } from "electron";
 import type { HardwareHarnessEventName } from "@hardwareharness/contracts/desktop";
 import { DESKTOP_EVENT_CHANNEL, type DesktopEventMessage } from "../shared/desktop-ipc.js";
-import { injectOpenCodeAuthorization } from "./opencode-auth.js";
+import type { OpenCodeAuthorization } from "./opencode-auth.js";
 import { readWindowState, writeWindowState } from "./window-state.js";
 
 const mainDirectory = fileURLToPath(new URL(".", import.meta.url));
@@ -13,7 +13,8 @@ interface WindowOptions {
   preloadPath?: string;
   rendererUrl?: string;
   theme: "system" | "light" | "dark";
-  connectionInfo(): { url: string; password: string } | undefined;
+  /** Adds OpenCode's credentials to the renderer's requests to the OpenCode server. */
+  authorizeOpenCode: OpenCodeAuthorization;
 }
 
 export class DesktopWindows {
@@ -43,7 +44,7 @@ export class DesktopWindows {
     this.mainWindow = window;
     const rendererTarget = options.rendererUrl ?? pathToFileURL(join(mainDirectory, "../renderer/index.html")).toString();
     installNavigationGuards(window, rendererTarget);
-    installOpenCodeAuthorization(window, options.connectionInfo);
+    installOpenCodeAuthorization(window, options.authorizeOpenCode);
     let resizeTimer: ReturnType<typeof setTimeout> | undefined;
     const saveState = () => {
       clearTimeout(resizeTimer);
@@ -76,8 +77,8 @@ export class DesktopWindows {
     return window;
   }
 
-  /** Events that originate in main (availability, OpenCode, window state); Python's go over SSE. */
-  publish(event: HardwareHarnessEventName, payload: unknown): void {
+  /** Events that originate in main (the window state); Python's go over SSE. */
+  private publish(event: HardwareHarnessEventName, payload: unknown): void {
     const contents = this.mainWindow?.webContents;
     if (!contents || contents.isDestroyed()) return;
     contents.send(DESKTOP_EVENT_CHANNEL, { event, payload } satisfies DesktopEventMessage);
@@ -130,9 +131,11 @@ function backgroundColor(theme: "system" | "light" | "dark"): string {
   return theme === "dark" || (theme === "system" && nativeTheme.shouldUseDarkColors) ? "#0d1117" : "#ffffff";
 }
 
-function installOpenCodeAuthorization(target: BrowserWindow, connectionInfo: WindowOptions["connectionInfo"]): void {
+function installOpenCodeAuthorization(target: BrowserWindow, authorize: OpenCodeAuthorization): void {
   target.webContents.session.webRequest.onBeforeSendHeaders(
     { urls: ["http://127.0.0.1:*/*"] },
-    (details, callback) => callback({ requestHeaders: injectOpenCodeAuthorization(details.url, details.requestHeaders, connectionInfo()) })
+    (details, callback) => {
+      void authorize(details.url, details.requestHeaders).then((requestHeaders) => callback({ requestHeaders }));
+    }
   );
 }

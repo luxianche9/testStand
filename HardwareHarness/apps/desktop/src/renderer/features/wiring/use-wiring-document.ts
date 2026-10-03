@@ -24,7 +24,7 @@ export function useWiringDocument() {
   const catalog = useDeviceCatalog();
   const save = useMutation({
     scope: { id: "wiring-document" },
-    mutationFn: (next: ProjectWiring) => window.hardwareharness.wiring.update(next),
+    mutationFn: (next: ProjectWiring) => window.hardwareharness.wiring.updateDocument({ wiring: next }),
     onSuccess: (doc) => { client.setQueryData(queryKeys.projectDocument, doc); }
   });
 

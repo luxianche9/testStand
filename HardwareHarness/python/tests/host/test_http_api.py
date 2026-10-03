@@ -1,4 +1,4 @@
-"""The local HTTP API: tokens, error statuses, event replay and the live stream frames."""
+"""The local HTTP API: the token, origins, error statuses, event replay and live frames."""
 
 from __future__ import annotations
 
@@ -12,7 +12,6 @@ import pytest_asyncio
 
 from hardwareharness_backend.contracts.errors import AppError
 from hardwareharness_backend.host.http_api import (
-    HOST_CONTEXT,
     MAX_BODY,
     RENDERER_CONTEXT,
     EventBus,
@@ -87,7 +86,7 @@ class Recorder:
 @pytest_asyncio.fixture
 async def api() -> AsyncIterator[tuple[LocalApi, Recorder]]:
     recorder = Recorder()
-    server = LocalApi(recorder, EventBus(), openapi=lambda: {"openapi": "3.1.0"})
+    server = LocalApi(recorder, EventBus(), origins=[RENDERER_ORIGIN, "null"])
     await server.start()
     try:
         yield server, recorder
@@ -95,19 +94,57 @@ async def api() -> AsyncIterator[tuple[LocalApi, Recorder]]:
         await server.stop()
 
 
+RENDERER_ORIGIN = "http://localhost:5173"
+
+
 def bearer(token: str) -> dict[str, str]:
     return {"Authorization": "Bearer " + token}
 
 
-async def test_each_token_maps_to_its_context(api: tuple[LocalApi, Recorder]) -> None:
+async def test_one_token_and_the_human_context(api: tuple[LocalApi, Recorder]) -> None:
     server, recorder = api
     async with httpx.AsyncClient(base_url=server.url) as http:
-        renderer = await http.post("/api/ops/a.b", headers=bearer(server.token), content=b"{}")
-        host = await http.post("/api/ops/desktop.state", headers=bearer(server.host_token))
-    assert renderer.status_code == host.status_code == 200
-    assert renderer.json() == {"data": "AP8=", "text": "中文"}  # bytes as base64
-    assert [call[0] for call in recorder.calls] == [RENDERER_CONTEXT, HOST_CONTEXT]
+        first = await http.post("/api/ops/a.b", headers=bearer(server.token), content=b"{}")
+        second = await http.post("/api/ops/settings.get", headers=bearer(server.token))
+    assert first.status_code == second.status_code == 200
+    assert first.json() == {"data": "AP8=", "text": "中文"}  # bytes as base64
+    assert [call[0] for call in recorder.calls] == [RENDERER_CONTEXT, RENDERER_CONTEXT]
     assert recorder.calls[0][2] == b"{}" and recorder.calls[1][2] is None
+
+
+async def test_browsers_may_call_only_from_the_renderer_origins(
+    api: tuple[LocalApi, Recorder],
+) -> None:
+    server, recorder = api
+    async with httpx.AsyncClient(base_url=server.url) as http:
+        preflight = await http.options(
+            "/api/ops/a.b",
+            headers={"Origin": RENDERER_ORIGIN, "Access-Control-Request-Method": "POST"},
+        )
+        allowed = await http.post(
+            "/api/ops/a.b", headers={**bearer(server.token), "Origin": RENDERER_ORIGIN}
+        )
+        packaged = await http.post(
+            "/api/ops/a.b", headers={**bearer(server.token), "Origin": "null"}
+        )
+        foreign = await http.post(
+            "/api/ops/a.b", headers={**bearer(server.token), "Origin": "https://evil.test"}
+        )
+        foreign_preflight = await http.options(
+            "/api/ops/a.b", headers={"Origin": "https://evil.test"}
+        )
+        without_origin = await http.post("/api/ops/a.b", headers=bearer(server.token))
+    assert preflight.status_code == 204
+    assert preflight.headers["access-control-allow-origin"] == RENDERER_ORIGIN
+    assert "authorization" in preflight.headers["access-control-allow-headers"]
+    assert allowed.status_code == 200
+    assert allowed.headers["access-control-allow-origin"] == RENDERER_ORIGIN
+    assert packaged.headers["access-control-allow-origin"] == "null"
+    assert foreign.status_code == foreign_preflight.status_code == 403
+    assert "access-control-allow-origin" not in foreign.headers
+    assert without_origin.status_code == 200
+    assert "access-control-allow-origin" not in without_origin.headers
+    assert len(recorder.calls) == 3
 
 
 @pytest.mark.parametrize(
@@ -136,7 +173,7 @@ async def test_error_categories_map_to_status(
     assert error["category"] == category and error["message"] == "failed"
 
 
-async def test_requests_are_bounded_and_query_tokens_are_only_for_events(
+async def test_requests_are_bounded_and_tokens_only_count_in_the_header(
     api: tuple[LocalApi, Recorder],
 ) -> None:
     server, recorder = api
@@ -145,12 +182,16 @@ async def test_requests_are_bounded_and_query_tokens_are_only_for_events(
             "/api/ops/a.b", headers=bearer(server.token), content=b"x" * (MAX_BODY + 1)
         )
         query = await http.post("/api/ops/a.b", params={"token": server.token})
+        events = await http.get("/api/events", params={"token": server.token})
         missing = await http.get("/api/nothing", headers=bearer(server.token))
-        document = await http.get("/api/openapi.json", params={"token": server.token})
+        document = await http.get("/api/openapi.json", headers=bearer(server.token))
+        rebound = await http.post(
+            "/api/ops/a.b", headers={**bearer(server.token), "Host": "evil.test"}
+        )
     assert large.status_code == 413
-    assert query.status_code == 401
-    assert missing.status_code == 404
-    assert document.json() == {"openapi": "3.1.0"}
+    assert query.status_code == events.status_code == 401
+    assert missing.status_code == document.status_code == 404
+    assert rebound.status_code == 421
     assert recorder.calls == []
 
 

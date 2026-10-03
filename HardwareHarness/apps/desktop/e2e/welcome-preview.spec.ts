@@ -18,24 +18,24 @@ test("renders the saved wiring canvas as a recent-project React Flow preview", a
   try {
     const page = await rendererReady(await application.firstWindow({ timeout: 90_000 }));
     await page.evaluate(async () => {
-      await window.hardwareharness.devices.saveHardware({
+      await window.hardwareharness.devices.saveHardware({ input: {
         formatVersion: 2,
         hardwareId: "DUT_A",
         label: "主控工位",
         kind: "passive",
         ports: [{ portId: "J1", name: "控制口", pins: [] }]
-      });
-      await window.hardwareharness.devices.saveHardware({
+      } });
+      await window.hardwareharness.devices.saveHardware({ input: {
         formatVersion: 2,
         hardwareId: "DUT_B",
         label: "负载工位",
         kind: "passive",
         ports: [{ portId: "J1", name: "输入口", pins: [] }]
-      });
+      } });
     });
     const file = await page.evaluate(async (rootPath) => {
-      await window.hardwareharness.projects.initializeFolder(rootPath);
-      const document = await window.hardwareharness.wiring.update({
+      await window.hardwareharness.projects.initializeFolder({ rootPath });
+      const document = await window.hardwareharness.wiring.updateDocument({ wiring: {
         nodes: [
           { hardwareId: "DUT_A", x: 10, y: 10, width: 260, height: 190, portPositions: { J1: { side: "right", offset: 0.35 } } },
           { hardwareId: "DUT_B", x: 360, y: 90, width: 170, height: 40, portPositions: { J1: { side: "left", offset: 0.65 } } }
@@ -48,8 +48,8 @@ test("renders the saved wiring canvas as a recent-project React Flow preview", a
           confirmedAt: new Date().toISOString(),
           confirmedBy: "e2e"
         }]
-      });
-      await window.hardwareharness.projects.leave();
+      } });
+      await window.hardwareharness.projects.leaveProject();
       return document.file;
     }, projectRoot);
     await writeFile(join(projectRoot, ".hardwareharness", "project.json"), `${JSON.stringify(file, null, 2)}\n`, "utf8");

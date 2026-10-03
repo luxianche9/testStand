@@ -45,10 +45,7 @@ export function ToolOperation({ tool, hardwareId, availability }: {
       startedRef.current = performance.now();
       setOutcome(undefined);
       return window.hardwareharness.manual.invokeTool({
-        hardwareId,
-        toolName: tool.externalName,
-        arguments: argumentsValue,
-        timeoutMs: TIMEOUT_MS
+        raw: { hardwareId, toolName: tool.externalName, arguments: argumentsValue, timeoutMs: TIMEOUT_MS }
       });
     },
     onSuccess: (result) => setOutcome({ kind: "success", result }),

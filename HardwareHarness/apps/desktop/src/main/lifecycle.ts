@@ -1,35 +1,38 @@
 import { app, Menu } from "electron";
 import { join } from "node:path";
-import { createDesktopComposition } from "./composition.js";
+import type { OpenCodeConnection } from "@hardwareharness/contracts/operations";
+import type { UserSettings } from "@hardwareharness/contracts/storage";
+import { createOperationClient } from "../shared/operation-client.js";
 import { DesktopDialogs } from "./dialogs.js";
 import { createMainHandlers, registerDesktopIpc } from "./ipc.js";
+import { logger, registerLogSecrets } from "./logger.js";
+import { createOpenCodeAuthorization } from "./opencode-auth.js";
+import { startPythonBackend } from "./python-runtime.js";
 import { DesktopWindows } from "./windows.js";
-import { logger } from "./logger.js";
 
+/** Main starts the Python service and shows its window; the renderer talks to the service directly. */
 export async function startDesktop(): Promise<void> {
   Menu.setApplicationMenu(null);
+  const backend = await startPythonBackend();
+  registerLogSecrets(() => [backend.endpoint.token]);
+  const call = createOperationClient({ endpoint: async () => backend.endpoint });
   const windows = new DesktopWindows();
-  const composition = await createDesktopComposition(windows);
   const dialogs = new DesktopDialogs(() => windows.current());
 
-  registerDesktopIpc(createMainHandlers({
-    endpoint: () => composition.endpoint,
-    agents: composition.agents,
-    settings: composition.settings,
-    dialogs,
-    windows
-  }), (event) => windows.isTrustedSender(event.sender, event.senderFrame));
+  registerDesktopIpc(
+    createMainHandlers({ endpoint: () => backend.endpoint, dialogs, windows }),
+    (event) => windows.isTrustedSender(event.sender, event.senderFrame)
+  );
+  const settings = await call("settings.get") as UserSettings;
   windows.create({
     statePath: join(app.getPath("userData"), "window-state.json"),
-    theme: composition.theme(),
+    theme: settings.theme,
     ...(process.env.ELECTRON_RENDERER_URL ? { rendererUrl: process.env.ELECTRON_RENDERER_URL } : {}),
-    connectionInfo: composition.connectionInfo
+    authorizeOpenCode: createOpenCodeAuthorization(
+      backend.endpoint.url,
+      async () => await call("agents.openCodeConnection") as OpenCodeConnection | null
+    )
   });
-
-  const probe = async () => windows.publish("availability", await composition.probeAvailability());
-  void probe();
-  const availabilityTimer = setInterval(() => { void probe(); }, 10_000);
-  void composition.autoStartAgentRuntime().catch((error) => logger.error("OpenCode automatic startup failed", error));
 
   let exiting = false;
   app.on("window-all-closed", () => app.quit());
@@ -38,8 +41,7 @@ export async function startDesktop(): Promise<void> {
     event.preventDefault();
     exiting = true;
     windows.saveState();
-    clearInterval(availabilityTimer);
-    void composition.shutdown()
+    void backend.shutdown()
       .catch((error) => logger.error("Desktop shutdown failed", error))
       .finally(() => app.exit(0));
   });

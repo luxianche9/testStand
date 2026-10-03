@@ -16,7 +16,7 @@ export function ServerActions({ server, onEdit, onChanged, onError }: {
 }) {
   const [confirm, confirmNode] = useConfirm();
   const remove = useMutation({
-    mutationFn: () => window.hardwareharness.devices.removeServer(server.serverId),
+    mutationFn: () => window.hardwareharness.devices.removeServer({ serverId: server.serverId }),
     onMutate: () => onError(null),
     onError: (error) => onError(errorMessage(error)),
     onSettled: () => void onChanged()
@@ -49,7 +49,7 @@ export function HardwareActions({ hardware, onEdit, onChanged, onError }: {
 }) {
   const [confirm, confirmNode] = useConfirm();
   const remove = useMutation({
-    mutationFn: () => window.hardwareharness.devices.removeHardware(hardware.hardwareId),
+    mutationFn: () => window.hardwareharness.devices.removeHardware({ hardwareId: hardware.hardwareId }),
     onMutate: () => onError(null),
     onError: (error) => onError(errorMessage(error)),
     onSettled: () => void onChanged()

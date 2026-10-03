@@ -104,14 +104,12 @@ function RunLogView({ log, live, syncLabel, integrityWarning, actions }: {
   );
 }
 
-/** Saves the event log / results through the native save dialog when the shell provides it. */
+/** Saves the event log / results through the native save dialog. */
 function ExportButtons({ log }: { log: TestRunLog }) {
   const [status, setStatus] = useState<string>();
-  const exportText = window.hardwareharness.system?.exportText;
-  if (!exportText) return null;
   const save = async (name: string, content: string) => {
     try {
-      const path = await exportText(name, content);
+      const path = await window.hardwareharness.dialogs.exportText(name, content);
       setStatus(path ? `已导出到 ${path}` : undefined);
     } catch (cause) {
       setStatus(`导出失败：${cause instanceof Error ? cause.message : String(cause)}`);

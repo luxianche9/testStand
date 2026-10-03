@@ -78,7 +78,7 @@ describe("DesktopWindows security", () => {
 
   it("keeps renderer isolation enabled and denies new windows, external navigation, and permissions", () => {
     const windows = new DesktopWindows();
-    windows.create({ theme: "light", rendererUrl: "http://127.0.0.1:5173/", connectionInfo: () => undefined });
+    windows.create({ theme: "light", rendererUrl: "http://127.0.0.1:5173/", authorizeOpenCode: async (_url: string, headers: Record<string, string | string[]>) => headers });
     const window = electron.created[0] as MockWindow;
 
     expect(window.options.webPreferences).toMatchObject({
@@ -103,9 +103,24 @@ describe("DesktopWindows security", () => {
     expect(permissionResult).toHaveBeenCalledWith(false);
   });
 
+  it("lets the backend's OpenCode credentials authorize loopback requests", async () => {
+    const authorizeOpenCode = vi.fn(async (_url: string, headers: Record<string, string | string[]>) => ({ ...headers, Authorization: "Basic x" }));
+    new DesktopWindows().create({ theme: "light", authorizeOpenCode });
+    const window = electron.created[0] as MockWindow;
+    const [filter, listener] = window.webContents.session.webRequest.onBeforeSendHeaders.mock.calls[0] as [
+      { urls: string[] },
+      (details: { url: string; requestHeaders: Record<string, string> }, callback: (response: unknown) => void) => void
+    ];
+    expect(filter.urls).toEqual(["http://127.0.0.1:*/*"]);
+    const callback = vi.fn();
+    listener({ url: "http://127.0.0.1:4096/session", requestHeaders: { Accept: "text/event-stream" } }, callback);
+    await vi.waitFor(() => expect(callback).toHaveBeenCalledWith({ requestHeaders: { Accept: "text/event-stream", Authorization: "Basic x" } }));
+    expect(authorizeOpenCode).toHaveBeenCalledWith("http://127.0.0.1:4096/session", { Accept: "text/event-stream" });
+  });
+
   it("loads only the configured renderer target", () => {
     const windows = new DesktopWindows();
-    windows.create({ theme: "dark", rendererUrl: "http://127.0.0.1:4173/", connectionInfo: () => undefined });
+    windows.create({ theme: "dark", rendererUrl: "http://127.0.0.1:4173/", authorizeOpenCode: async (_url: string, headers: Record<string, string | string[]>) => headers });
     const window = electron.created[0] as MockWindow;
 
     expect(electron.nativeTheme.themeSource).toBe("dark");
@@ -114,7 +129,7 @@ describe("DesktopWindows security", () => {
 
   it("sends main-process events to the window and trusts only its top frame", () => {
     const windows = new DesktopWindows();
-    windows.create({ theme: "light", connectionInfo: () => undefined });
+    windows.create({ theme: "light", authorizeOpenCode: async (_url: string, headers: Record<string, string | string[]>) => headers });
     const window = electron.created[0] as MockWindow;
 
     window.isMaximized.mockReturnValue(true);
@@ -130,7 +145,7 @@ describe("DesktopWindows security", () => {
   it("restores normal window dimensions and maximization across instances", () => {
     const root = mkdtempSync(join(tmpdir(), "hardwareharness-window-state-"));
     try {
-      const options = { statePath: join(root, "window.json"), theme: "light" as const, connectionInfo: () => undefined };
+      const options = { statePath: join(root, "window.json"), theme: "light" as const, authorizeOpenCode: async (_url: string, headers: Record<string, string | string[]>) => headers };
       const windows = new DesktopWindows();
       windows.create(options);
       const first = electron.created[0] as MockWindow;

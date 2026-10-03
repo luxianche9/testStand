@@ -59,7 +59,7 @@ describe("ManualCheckDialog", () => {
     await userEvent.type(screen.getByRole("textbox", { name: "判定人" }), "张工");
     await userEvent.click(fail);
     await waitFor(() => expect(api.testing.answerManualCheck).toHaveBeenCalledWith({
-      runId: "run-1", executionId: "exec-1", option: "不通过", note: "没有彩条", operator: "张工"
+      input: { runId: "run-1", executionId: "exec-1", option: "不通过", note: "没有彩条", operator: "张工" }
     }));
     expect(localStorage.getItem("hardwareharness.manualCheck.operator")).toBe("张工");
   });

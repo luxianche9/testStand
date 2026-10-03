@@ -10,6 +10,7 @@ import { queryKeys } from "../lib/query-keys.js";
 import { useHardwareHarnessEvents } from "../lib/hooks/useHardwareHarnessEvents.js";
 import { useKeyboardShortcut } from "../lib/hooks/useKeyboardShortcut.js";
 import { useDirtyGuard } from "../lib/hooks/useDirtyGuard.js";
+import { chooseProjectFolder } from "../lib/projects.js";
 import { onRunRequested } from "../lib/run-focus.js";
 import { isTaskActionable } from "../features/wiring/wiring-model.js";
 import { ManualCheckDialog } from "../features/testing/ManualCheckDialog.js";
@@ -77,14 +78,14 @@ function Shell() {
   }, [client]);
 
   const save = useMutation({
-    mutationFn: () => window.hardwareharness.projects.save(),
+    mutationFn: () => window.hardwareharness.projects.saveProject(),
     onSuccess: (document) => void syncProject(document),
     onError: (reason) => setError(errorMessage(reason))
   });
 
   const dirtyGuard = useDirtyGuard(
     Boolean(project.data?.dirty),
-    () => window.hardwareharness.projects.save(),
+    () => window.hardwareharness.projects.saveProject(),
     syncProject,
     (message) => setError(message)
   );
@@ -97,7 +98,7 @@ function Shell() {
     const openPlans = () => {
       if (!project.data) return;
       navigate({ type: "show-content", page: "plans" });
-      void window.hardwareharness.settings.setProjectView("plans");
+      void window.hardwareharness.settings.update({ projectView: "plans" });
     };
     window.addEventListener("hardwareharness:navigate-plans", openPlans);
     // A run started (here or by an agent): watch it on 运行监控.
@@ -112,24 +113,24 @@ function Shell() {
 
   const enterProject = useCallback(async () => {
     await syncProject();
-    const savedView = await window.hardwareharness.settings.getProjectView();
+    const savedView = (await window.hardwareharness.settings.get()).projectView;
     navigate({ type: "enter-project", view: savedView });
     setAssistantOpen(readAssistantOpen());
   }, [syncProject]);
 
   const goWelcome = useCallback(async () => {
-    await window.hardwareharness.projects.leave();
+    await window.hardwareharness.projects.leaveProject();
     await syncProject(null);
     setAssistantOpen(false);
     navigate({ type: "show-content", page: "welcome" });
   }, [syncProject]);
 
   const chooseAndOpen = useCallback(async () => {
-    const selection = await window.hardwareharness.projects.chooseFolder();
+    const selection = await chooseProjectFolder();
     if (!selection) return;
     if (selection.state === "invalid") throw new Error(selection.message ?? "项目清单无法读取。");
     if (selection.state === "uninitialized") { setPendingSelection(selection); return; }
-    await window.hardwareharness.projects.openFolder(selection.rootPath);
+    await window.hardwareharness.projects.openFolder({ rootPath: selection.rootPath });
     await enterProject();
   }, [enterProject]);
 
@@ -139,7 +140,7 @@ function Shell() {
     if (next === "welcome" && project.data) { dirtyGuard.guard("返回欢迎页", goWelcome); return; }
     if (isProjectView(next) && !project.data) return;
     navigate({ type: "show-content", page: next });
-    if (isProjectView(next)) void window.hardwareharness.settings.setProjectView(next);
+    if (isProjectView(next)) void window.hardwareharness.settings.update({ projectView: next });
   };
 
   const openSettings = () => navigate({ type: "open-settings" });
@@ -157,7 +158,7 @@ function Shell() {
   const initializeSelected = async () => {
     if (!pendingSelection) return;
     try {
-      await window.hardwareharness.projects.initializeFolder(pendingSelection.rootPath);
+      await window.hardwareharness.projects.initializeFolder({ rootPath: pendingSelection.rootPath });
       setPendingSelection(undefined);
       await enterProject();
     } catch (reason) { setError(errorMessage(reason)); }

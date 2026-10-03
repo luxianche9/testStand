@@ -78,7 +78,7 @@ function BindingRow({ binding, hardware, icds, issue, onChange, onRemove, onEdit
   const { hardwareId, streamId } = binding.source;
   const streams = useQuery({
     queryKey: queryKeys.deviceStreams(hardwareId),
-    queryFn: () => window.hardwareharness.streams.listStreams(hardwareId),
+    queryFn: () => window.hardwareharness.streams.listStreams({ hardwareId }),
     enabled: Boolean(hardwareId)
   });
   const choices = (streams.data ?? []).filter((stream) => rawTypes.has(String(stream.type)) || stream.id === streamId);
@@ -153,7 +153,7 @@ export function IcdEditorDialog({ name, alias, onClose }: Editing & { onClose: (
   const creating = !name;
   const document = useQuery({
     queryKey: queryKeys.icd(name ?? ""),
-    queryFn: () => window.hardwareharness.testing.readIcd(name ?? ""),
+    queryFn: () => window.hardwareharness.testing.readIcd({ name: name ?? "" }),
     enabled: !creating
   });
   const [fileName, setFileName] = useState(name ?? "");
@@ -166,13 +166,13 @@ export function IcdEditorDialog({ name, alias, onClose }: Editing & { onClose: (
   const badSample = sampleIssue(samples);
   const run = useMutation({
     mutationFn: () => window.hardwareharness.testing.checkIcd({
-      text, ...(alias ? { alias } : {}), ...(samples.length ? { samples } : {})
+      input: { text, ...(alias ? { alias } : {}), ...(samples.length ? { samples } : {}) }
     }),
     onSuccess: setCheck,
     onError: (error) => toast.error(errorMessage(error))
   });
   const save = useMutation({
-    mutationFn: () => window.hardwareharness.testing.saveIcd({ name: fileName.trim(), text }),
+    mutationFn: () => window.hardwareharness.testing.saveIcd({ input: { name: fileName.trim(), text } }),
     onSuccess: async (result) => {
       toast.success(`已保存 ICD ${result.name}`);
       await client.invalidateQueries({ queryKey: queryKeys.icds });

@@ -25,7 +25,7 @@ export function StreamStepInspector({ plan, step, hardware, catalogItem, referen
   const streamId = stringOf(step.streamId);
   const streams = useQuery({
     queryKey: queryKeys.deviceStreams(hardwareId),
-    queryFn: () => window.hardwareharness.streams.listStreams(hardwareId),
+    queryFn: () => window.hardwareharness.streams.listStreams({ hardwareId }),
     enabled: Boolean(hardwareId)
   });
   const streamIds = withCurrent((streams.data ?? []).map((stream) => stream.id), streamId);

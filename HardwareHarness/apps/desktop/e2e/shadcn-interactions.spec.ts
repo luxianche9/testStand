@@ -40,19 +40,19 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
     await page.setViewportSize({ width: 1280, height: 800 });
     await expect(page.getByRole("heading", { name: "最近项目" })).toBeVisible();
     await page.evaluate(async (root) => {
-      await window.hardwareharness.projects.initializeFolder(root);
+      await window.hardwareharness.projects.initializeFolder({ rootPath: root });
       for (const hardwareId of ["DUT_A", "DUT_B"]) {
-        await window.hardwareharness.devices.saveHardware({
+        await window.hardwareharness.devices.saveHardware({ input: {
           formatVersion: 2, hardwareId, label: hardwareId, kind: "passive",
           ports: [{ portId: "J1", name: "信号接口", pins: [{ pinId: "1", position: 1, label: "信号" }] }]
-        });
+        } });
       }
-      await window.hardwareharness.wiring.update({ nodes: [
+      await window.hardwareharness.wiring.updateDocument({ wiring: { nodes: [
         { hardwareId: "DUT_A", x: 20, y: 20, width: 220, height: 140, portPositions: { J1: { side: "right", offset: 0.5 } } },
         { hardwareId: "DUT_B", x: 360, y: 60, width: 160, height: 48, portPositions: { J1: { side: "left", offset: 0.5 } } }
-      ], connections: [] });
-      await window.hardwareharness.projects.save();
-      await window.hardwareharness.projects.leave();
+      ], connections: [] } });
+      await window.hardwareharness.projects.saveProject();
+      await window.hardwareharness.projects.leaveProject();
     }, projectRoot);
     await reloadAfterLeave(page);
     await page.getByText("interaction-fixture", { exact: true }).first().click();
@@ -104,12 +104,12 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
     await expect(wrapper).toHaveCSS("width", "220px");
     await expect(wrapper).toHaveCSS("height", "140px");
     const rootPath = await page.evaluate(async () => {
-      const current = (await window.hardwareharness.projects.current())!;
-      await window.hardwareharness.projects.leave();
+      const current = (await window.hardwareharness.projects.document())!;
+      await window.hardwareharness.projects.leaveProject();
       return current.rootPath;
     });
     await expect(page.getByRole("heading", { name: "最近项目" })).toBeVisible();
-    await page.evaluate((root) => window.hardwareharness.projects.openFolder(root), rootPath);
+    await page.evaluate((root) => window.hardwareharness.projects.openFolder({ rootPath: root }), rootPath);
     await page.reload();
     await page.getByText("interaction-fixture", { exact: true }).first().click();
     await expect(page.getByRole("tab", { name: "工位接线", exact: true })).toBeVisible();
@@ -202,7 +202,7 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
     await expect(target.locator('option[value="DUT_A.J1"]')).toHaveJSProperty("disabled", false);
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
-    expect(await page.evaluate(async () => (await window.hardwareharness.projects.current())?.file.wiring.connections)).toEqual([]);
+    expect(await page.evaluate(async () => (await window.hardwareharness.projects.document())?.file.wiring.connections)).toEqual([]);
   });
 
   test("submits the device editor with Enter and the keyboard-selected native type and mode", async () => {
@@ -293,7 +293,7 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
 
 async function readNode(page: Page, hardwareId: string) {
   return await page.evaluate(async (id) => {
-    const node = (await window.hardwareharness.projects.current())?.file.wiring.nodes.find((item) => item.hardwareId === id);
+    const node = (await window.hardwareharness.projects.document())?.file.wiring.nodes.find((item) => item.hardwareId === id);
     if (!node) throw new Error(`Missing canvas node: ${id}`);
     return node;
   }, hardwareId);

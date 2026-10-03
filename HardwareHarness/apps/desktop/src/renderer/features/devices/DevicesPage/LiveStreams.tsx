@@ -8,7 +8,9 @@ import { Button, Section } from "../../../ui";
 import { StreamBoard, type StreamSource } from "../../streams/index.js";
 
 /** Live frames only: a device watch has no recording to read ranges from. */
-const LIVE_SOURCE: StreamSource = { live: (...args) => window.hardwareharness.streams.live(...args) };
+const LIVE_SOURCE: StreamSource = {
+  live: (query, onFrame, onGap) => window.hardwareharness.streams.live(query, onFrame, onGap)
+};
 
 /**
  * 实时数据: subscribes to the device's streams (read-only, `GET /api/live`) and shows them as scope
@@ -18,7 +20,7 @@ const LIVE_SOURCE: StreamSource = { live: (...args) => window.hardwareharness.st
 export function LiveStreams({ hardwareId, running }: { hardwareId: string; running: boolean }) {
   const streams = useQuery({
     queryKey: queryKeys.deviceStreams(hardwareId),
-    queryFn: () => window.hardwareharness.streams.listStreams(hardwareId),
+    queryFn: () => window.hardwareharness.streams.listStreams({ hardwareId }),
     enabled: running
   });
   const [watching, setWatching] = useState(false);

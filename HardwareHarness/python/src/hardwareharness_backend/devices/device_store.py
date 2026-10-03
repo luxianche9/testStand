@@ -64,6 +64,11 @@ class DeviceStore:
         self._rename = rename
         self._remove = remove
         self._read_cache: dict[str, tuple[str, list[Record]]] = {}
+        self._notifier: Callable[[], None] | None = None
+
+    def set_notifier(self, notifier: Callable[[], None]) -> None:
+        """Called after every write, so views of the catalog can refetch."""
+        self._notifier = notifier
 
     async def initialize(self) -> None:
         for path in [self._server_dir, self._hardware_dir]:
@@ -91,7 +96,7 @@ class DeviceStore:
                 )
         segment = safe_segment(server["serverId"])
         await atomic_json(self._server_dir / (segment + ".json"), server)
-        self._read_cache.clear()
+        self._changed()
         if self.get_stored_hardware(server["hardwareId"]) is None:
             await self._save_stored_hardware(
                 {
@@ -106,7 +111,7 @@ class DeviceStore:
     async def remove_server(self, server_id: str) -> None:
         segment = safe_segment(server_id)
         await _remove(self._server_dir / (segment + ".json"))
-        self._read_cache.clear()
+        self._changed()
 
     def list_stored_hardware(self) -> list[Record]:
         return sorted(
@@ -142,7 +147,7 @@ class DeviceStore:
         if self.get_stored_hardware(parsed["hardwareId"]) is None:
             raise RuntimeError(f"Unknown hardwareId: {parsed['hardwareId']}")
         await atomic_json(self._hardware_path(parsed["hardwareId"]) / ADAPTER_FILE, parsed)
-        self._read_cache.clear()
+        self._changed()
         return parsed
 
     def get_hardware(self, hardware_id: str) -> Record | None:
@@ -178,7 +183,7 @@ class DeviceStore:
                 f"Hardware {hardware_id} is assigned to MCP server {server['serverId']}"
             )
         await _remove(self._hardware_path(hardware_id))
-        self._read_cache.clear()
+        self._changed()
 
     # -- server-provided definitions (design doc §9.7) ---------------------------------------
 
@@ -204,6 +209,7 @@ class DeviceStore:
         finally:
             with contextlib.suppress(OSError):
                 _delete(staging)
+        self._changed()
         return value
 
     async def export_bundle(self, identifier: str) -> bytes:
@@ -278,7 +284,7 @@ class DeviceStore:
         finally:
             with contextlib.suppress(OSError):
                 _delete(staging_root)
-        self._read_cache.clear()
+        self._changed()
         return {"id": stored["hardwareId"], "label": stored["label"], "replaced": replaced}
 
     def _derive_hardware(
@@ -317,7 +323,12 @@ class DeviceStore:
         directory = self._hardware_path(parsed["hardwareId"])
         directory.mkdir(parents=True, exist_ok=True)
         await atomic_json(directory / "hardware.json", parsed)
+        self._changed()
+
+    def _changed(self) -> None:
         self._read_cache.clear()
+        if self._notifier is not None:
+            self._notifier()
 
     def _hardware_path(self, hardware_id: str) -> Path:
         return self._hardware_dir / safe_segment(hardware_id)

@@ -1,5 +1,5 @@
-import type { DesktopOperation } from "@hardwareharness/contracts/application";
 import type { HardwareHarnessEventName } from "@hardwareharness/contracts/desktop";
+import type { OperationName } from "@hardwareharness/contracts/operations";
 import type {
   DesktopMainCalls, DesktopMainChannel, HardwareHarnessHost, LocalApiEndpoint
 } from "../../../shared/desktop-ipc.js";
@@ -10,7 +10,7 @@ type Listener = (payload: unknown) => void;
 
 /** How the renderer's API reaches the Python backend (HTTP) and main (the preload's host bridge). */
 export interface DesktopTransport {
-  invoke(operation: DesktopOperation, args: unknown[]): Promise<unknown>;
+  invoke(operation: OperationName, params?: object): Promise<unknown>;
   main<C extends DesktopMainChannel>(
     channel: C, ...args: Parameters<DesktopMainCalls[C]>
   ): ReturnType<DesktopMainCalls[C]>;
@@ -49,7 +49,7 @@ export function createLocalTransport(host: HardwareHarnessHost, request: typeof 
   let stopStream: (() => void) | undefined;
 
   return {
-    invoke: (operation, args) => call(operation, args),
+    invoke: (operation, params) => call(operation, params),
     main: main as DesktopTransport["main"],
     subscribe(event, listener) {
       let set = listeners.get(event);

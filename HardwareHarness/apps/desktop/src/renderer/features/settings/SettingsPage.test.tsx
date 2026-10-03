@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider, type UseQueryResult } from "@tanstack/react-query";
 import type { AgentIntegrationStatus } from "@hardwareharness/contracts/agents";
-import type { DashboardSnapshot, HardwareHarnessApi } from "@hardwareharness/contracts/desktop";
+import type { HardwareHarnessApi } from "@hardwareharness/contracts/desktop";
+import type { DashboardSnapshot } from "@hardwareharness/contracts/operations";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -34,7 +35,7 @@ function setup() {
       test: vi.fn(async () => ({ ...codex, message: "连接正常" })),
       rotateGatewayToken: vi.fn()
     },
-    system: { exportText: vi.fn() }
+    dialogs: { exportText: vi.fn() }
   };
   Object.defineProperty(window, "hardwareharness", {
     configurable: true,
@@ -95,7 +96,7 @@ describe("SettingsPage", () => {
     expect(screen.getAllByText("MCP Gateway").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Codex", { exact: true }).length).toBeGreaterThan(0);
     await userEvent.click(screen.getByRole("button", { name: "检测连接" }));
-    await waitFor(() => expect(api.agents.test).toHaveBeenCalledWith("codex"));
+    await waitFor(() => expect(api.agents.test).toHaveBeenCalledWith({ agent: "codex" }));
     expect(await screen.findByText("连接正常")).toBeTruthy();
   });
 });

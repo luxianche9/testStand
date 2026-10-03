@@ -37,13 +37,13 @@ export function AdapterRelease({ hardwareId, onError }: { hardwareId: string; on
     }
   });
   const addSmoke = useMutation(mutation(
-    () => window.hardwareharness.devices.recordAdapterSmoke(
-      hardwareId, smoke.operator.trim(), smoke.wiring.trim(), smoke.observation.trim()
-    ),
+    () => window.hardwareharness.devices.recordAdapterSmoke({
+      hardwareId, operator: smoke.operator.trim(), wiring: smoke.wiring.trim(), observation: smoke.observation.trim()
+    }),
     () => setSmoke({ operator: "", wiring: "", observation: "" })
   ));
   const setStatus = useMutation(mutation(
-    (status: AdapterStatus) => window.hardwareharness.devices.setAdapterStatus(hardwareId, status)
+    (status: AdapterStatus) => window.hardwareharness.devices.setAdapterStatus({ hardwareId, status })
   ));
 
   const record = query.data;

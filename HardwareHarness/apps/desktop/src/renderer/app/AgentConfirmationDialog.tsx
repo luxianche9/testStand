@@ -25,7 +25,7 @@ export function AgentConfirmationDialog() {
   });
   const answer = useMutation({
     mutationFn: ({ id, approve }: { id: string; approve: boolean }) =>
-      window.hardwareharness.system.answerConfirmation(id, approve),
+      window.hardwareharness.system.answerConfirmation({ confirmationId: id, approve }),
     onError: (reason) => toast.error(errorMessage(reason)),
     onSettled: () => void client.invalidateQueries({ queryKey: queryKeys.agentConfirmations })
   });

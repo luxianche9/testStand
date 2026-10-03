@@ -53,11 +53,13 @@ describe("device editors", () => {
     await userEvent.click(screen.getByRole("button", { name: "保存" }));
 
     await waitFor(() => expect(saveHardware).toHaveBeenCalledWith({
-      formatVersion: 2,
-      hardwareId: "DUT_MAIN",
-      label: "主被测对象",
-      kind: "passive",
-      ports: []
+      input: {
+        formatVersion: 2,
+        hardwareId: "DUT_MAIN",
+        label: "主被测对象",
+        kind: "passive",
+        ports: []
+      }
     }));
     expect(onChanged).toHaveBeenCalledOnce();
     expect(onClose).toHaveBeenCalledOnce();
@@ -85,21 +87,25 @@ describe("device editors", () => {
     await userEvent.click(save);
 
     await waitFor(() => expect(saveServer).toHaveBeenCalledWith({
-      transport: "plugin",
-      serverId: "PCI1762",
-      label: "PCI-1762",
-      hardwareId: "PCI1762_CARD_0",
-      type: "pci1762",
-      settings: { bitRateHz: 5 },
-      mode: "sim",
-      enabled: true
+      input: {
+        transport: "plugin",
+        serverId: "PCI1762",
+        label: "PCI-1762",
+        hardwareId: "PCI1762_CARD_0",
+        type: "pci1762",
+        settings: { bitRateHz: 5 },
+        mode: "sim",
+        enabled: true
+      }
     }));
-    expect(saveHardware).toHaveBeenCalledWith(expect.objectContaining({
-      hardwareId: "PCI1762_CARD_0",
-      kind: "managed",
-      serverId: "PCI1762"
-    }));
-    expect(refreshServer).toHaveBeenCalledWith("PCI1762");
+    expect(saveHardware).toHaveBeenCalledWith({
+      input: expect.objectContaining({
+        hardwareId: "PCI1762_CARD_0",
+        kind: "managed",
+        serverId: "PCI1762"
+      })
+    });
+    expect(refreshServer).toHaveBeenCalledWith({ serverId: "PCI1762" });
     expect(onClose).toHaveBeenCalledOnce();
   });
 
@@ -130,6 +136,6 @@ describe("device editors", () => {
     expect(screen.getByLabelText(/设备类型/)).toHaveProperty("disabled", true);
     await userEvent.selectOptions(screen.getByLabelText(/运行模式/), "sim");
     await userEvent.click(screen.getByRole("button", { name: "保存" }));
-    await waitFor(() => expect(saveServer).toHaveBeenCalledWith({ ...server, mode: "sim" }));
+    await waitFor(() => expect(saveServer).toHaveBeenCalledWith({ input: { ...server, mode: "sim" } }));
   });
 });

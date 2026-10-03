@@ -44,8 +44,6 @@ export interface EventStreamOptions {
   fetch?: typeof fetch;
   /** Path and query of the stream; `/api/events` by default. */
   path?: string;
-  /** Resume point of the first connection; main passes `"0"` to replay what it missed at startup. */
-  after?: string;
   minDelayMs?: number;
   maxDelayMs?: number;
 }
@@ -61,7 +59,7 @@ export function startEventStream(options: EventStreamOptions): () => void {
   const maxDelay = options.maxDelayMs ?? 5_000;
   const path = options.path ?? "/api/events";
   const controller = new AbortController();
-  let lastId = options.after;
+  let lastId: string | undefined;
   let origin: string | undefined;
   let connected = false;
 

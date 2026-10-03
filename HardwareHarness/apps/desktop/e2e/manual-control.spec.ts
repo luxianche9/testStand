@@ -31,15 +31,15 @@ test.describe.serial("manual control and Agent hardware calls", () => {
 
   test("invokes a simulated plugin device tool from a generated form", async () => {
     const status = await page.evaluate(async ({ projectRoot, hardwareId }) => {
-      await window.hardwareharness.projects.initializeFolder(projectRoot);
-      await window.hardwareharness.devices.saveServer({
+      await window.hardwareharness.projects.initializeFolder({ rootPath: projectRoot });
+      await window.hardwareharness.devices.saveServer({ input: {
         transport: "plugin", serverId: "E2E_RELAY", label: "PCI-1762 sim", hardwareId, type: "pci1762",
         settings: {}, mode: "sim", enabled: true
-      });
-      const status = await window.hardwareharness.devices.refreshServer("E2E_RELAY");
-      await window.hardwareharness.wiring.update({ nodes: [{ hardwareId, x: 20, y: 20, portPositions: {} }], connections: [] });
-      await window.hardwareharness.projects.save();
-      await window.hardwareharness.projects.leave();
+      } });
+      const status = await window.hardwareharness.devices.refreshServer({ serverId: "E2E_RELAY" });
+      await window.hardwareharness.wiring.updateDocument({ wiring: { nodes: [{ hardwareId, x: 20, y: 20, portPositions: {} }], connections: [] } });
+      await window.hardwareharness.projects.saveProject();
+      await window.hardwareharness.projects.leaveProject();
       return status;
     }, { projectRoot, hardwareId });
     expect(status.transport.state, status.transport.message).toBe("online");
@@ -59,9 +59,9 @@ test.describe.serial("manual control and Agent hardware calls", () => {
     const resultPre = page.getByText("调用成功", { exact: true }).locator("xpath=ancestor::section//pre");
     await expect(resultPre).toContainText('"closed": true');
 
-    const readback = await page.evaluate(async (hardwareId) => (await window.hardwareharness.manual.invokeTool({
+    const readback = await page.evaluate(async (hardwareId) => (await window.hardwareharness.manual.invokeTool({ raw: {
       hardwareId, toolName: "E2E_RELAY__pci1762_read_bit", arguments: { channel: 2, kind: "RELAY" }
-    })).output, hardwareId);
+    } })).output, hardwareId);
     expect(JSON.stringify(readback)).toContain('"value":true');
   });
 

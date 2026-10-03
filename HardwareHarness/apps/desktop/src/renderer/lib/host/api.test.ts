@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { DESKTOP_OPERATIONS } from "@hardwareharness/contracts/application";
+import { OPERATION_NAMES } from "@hardwareharness/contracts/operations";
 import { createMainHandlers, type DesktopIpcDependencies } from "../../../main/ipc.js";
 import { createHardwareHarnessApi } from "./api.js";
 import type { DesktopTransport } from "./transport.js";
@@ -14,33 +14,26 @@ describe("renderer API", () => {
       else if (path === "streams.live") {
         (fn({ keys: ["H__ai0"], width: 10, windowMs: 1000 }, () => undefined) as () => void)();
       }
-      else await fn({ hardwareId: "H", kind: "hardware", data: new Uint8Array(), runId: "R" }, "x");
+      else await fn({ hardwareId: "H" }, "x");
     }
 
     const mainChannels = Object.keys(createMainHandlers({} as DesktopIpcDependencies))
       .filter((channel) => channel !== "desktop.endpoint");
     expect(channels).toEqual(new Set(mainChannels));
-    expect(operations).toEqual(new Set(DESKTOP_OPERATIONS));
+    expect(operations).toEqual(new Set(OPERATION_NAMES));
     expect(unsubscribe).toHaveBeenCalledTimes(2);
-    expect(Object.keys(api)).toEqual([
-      "system", "devices", "streams", "projects", "wiring", "manual", "testing",
-      "agents", "settings", "window", "events"
-    ]);
   });
 
-  it("combines a dialog with the backend operation it feeds", async () => {
+  it("passes named parameters through unchanged", async () => {
     const { transport } = recordingTransport();
-    const bytes = new Uint8Array([1, 2]);
-    transport.main.mockImplementation(async (channel: string) => channel === "dialogs.openBundle" ? bytes : "saved");
-    const imported = { id: "H", label: "L", replaced: false };
-    transport.invoke.mockImplementation(async (operation: string) =>
-      operation === "devices.importBundle" ? imported : new Uint8Array([9]));
     const api = createHardwareHarnessApi(transport);
-
-    await expect(api.devices.importBundle("hardware")).resolves.toEqual({ kind: "hardware", ...imported });
-    expect(transport.invoke).toHaveBeenCalledWith("devices.importBundle", [bytes]);
-    await api.devices.exportBundle("hardware", "H");
-    expect(transport.main).toHaveBeenCalledWith("dialogs.saveBundle", "hardware", "H", new Uint8Array([9]));
+    await api.testing.readRunLog({ runId: "R", afterEventSequence: 3, resultLimit: 10 });
+    expect(transport.invoke).toHaveBeenCalledWith(
+      "testing.readRunLog",
+      { runId: "R", afterEventSequence: 3, resultLimit: 10 }
+    );
+    await api.system.dashboard();
+    expect(transport.invoke).toHaveBeenLastCalledWith("system.dashboard", undefined);
   });
 
   it("opens live frames as their own SSE stream and routes frames and gaps", () => {
@@ -59,20 +52,13 @@ describe("renderer API", () => {
     expect(onFrame).toHaveBeenCalledWith({ t: 1, colMs: 10, streams: {} });
     expect(onGap).toHaveBeenCalledOnce();
   });
-
-  it("spreads the run log query into positional operation arguments", async () => {
-    const { transport } = recordingTransport();
-    const api = createHardwareHarnessApi(transport);
-    await api.testing.readRunLog({ runId: "R", afterEventSequence: 3, resultLimit: 10 });
-    expect(transport.invoke).toHaveBeenCalledWith("testing.readRunLog", ["R", 3, undefined, undefined, 10]);
-  });
 });
 
 function recordingTransport() {
   const operations = new Set<string>();
   const channels = new Set<string>();
   const unsubscribe = vi.fn();
-  const invoke = vi.fn(async (operation: string): Promise<unknown> => {
+  const invoke = vi.fn(async (operation: string, _params?: object): Promise<unknown> => {
     operations.add(operation);
     return {};
   });

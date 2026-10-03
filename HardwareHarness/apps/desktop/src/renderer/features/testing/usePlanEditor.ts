@@ -54,7 +54,7 @@ export function usePlanEditor({ confirm, onRunStarted }: {
     const token = ++loadToken.current;
     setSelectedPlanId(id);
     try {
-      const plan = await window.hardwareharness.testing.loadPlan(id);
+      const plan = await window.hardwareharness.testing.loadPlan({ planId: id });
       if (token === loadToken.current) { adopt(plan); setMessage(undefined); }
     } catch (error) {
       if (token === loadToken.current) setMessage(errorText(error));
@@ -101,7 +101,7 @@ export function usePlanEditor({ confirm, onRunStarted }: {
     if (!draft) { setDraftAnalysis(undefined); return; }
     let stopped = false;
     const timer = window.setTimeout(() => {
-      void window.hardwareharness.testing.analyzePlanDraft({ plan: draft, baseRevision: draft.revision })
+      void window.hardwareharness.testing.analyzePlanDraft({ input: { plan: draft, baseRevision: draft.revision } })
         .then((analysis) => { if (!stopped) setDraftAnalysis(analysis); })
         .catch(() => { if (!stopped) setDraftAnalysis(undefined); });
     }, 320);
@@ -138,7 +138,7 @@ export function usePlanEditor({ confirm, onRunStarted }: {
   const save = async (): Promise<boolean> => {
     if (!draft || conflict) return false;
     try {
-      const result = await window.hardwareharness.testing.savePlan(draft, draft.revision);
+      const result = await window.hardwareharness.testing.savePlan({ plan: draft, baseRevision: draft.revision });
       setDraft(result.plan);
       setIssues(result.issues);
       setDirty(false);
@@ -159,7 +159,7 @@ export function usePlanEditor({ confirm, onRunStarted }: {
   const validate = async () => {
     if (!draft || dirty) { setMessage("请先保存当前草稿再校验。"); return; }
     try {
-      const result = await window.hardwareharness.testing.validatePlan(draft.id);
+      const result = await window.hardwareharness.testing.validatePlan({ planId: draft.id });
       setIssues(result.issues);
       setMessage(result.valid ? "校验通过" : "计划存在阻止运行的问题");
     } catch (error) {
@@ -171,16 +171,18 @@ export function usePlanEditor({ confirm, onRunStarted }: {
     if (!draft || conflict) { setMessage("请先解决计划冲突再启动运行。"); return; }
     try {
       if (dirty && !await save()) return;
-      const latest = dirty ? await window.hardwareharness.testing.loadPlan(draft.id) : draft;
-      const validation = await window.hardwareharness.testing.validatePlan(latest.id);
+      const latest = dirty ? await window.hardwareharness.testing.loadPlan({ planId: draft.id }) : draft;
+      const validation = await window.hardwareharness.testing.validatePlan({ planId: latest.id });
       setIssues(validation.issues);
       if (!validation.valid) { setMessage("校验未通过，未启动运行。"); return; }
       const run = await window.hardwareharness.testing.startRun({
-        planId: latest.id,
-        revision: validation.revision,
-        executionRevision: validation.executionRevision,
-        requestId: crypto.randomUUID(),
-        parameters: runParameters
+        input: {
+          planId: latest.id,
+          revision: validation.revision,
+          executionRevision: validation.executionRevision,
+          requestId: crypto.randomUUID(),
+          parameters: runParameters
+        }
       });
       onRunStarted(run.runId);
       await invalidateTestingData(client);
@@ -195,10 +197,12 @@ export function usePlanEditor({ confirm, onRunStarted }: {
     if (!draft) return;
     try {
       const created = await window.hardwareharness.testing.createPlan({
-        requestId: crypto.randomUUID(),
-        name: `${draft.name} - 本地副本`,
-        description: draft.description,
-        parameters: draft.parameters
+        input: {
+          requestId: crypto.randomUUID(),
+          name: `${draft.name} - 本地副本`,
+          description: draft.description,
+          parameters: draft.parameters
+        }
       });
       const copy: TestPlan = {
         ...clonePlan(draft),
@@ -208,7 +212,7 @@ export function usePlanEditor({ confirm, onRunStarted }: {
         createdAt: created.plan.createdAt,
         updatedAt: created.plan.updatedAt
       };
-      const saved = await window.hardwareharness.testing.savePlan(copy, copy.revision);
+      const saved = await window.hardwareharness.testing.savePlan({ plan: copy, baseRevision: copy.revision });
       await invalidateTestingData(client);
       adopt(saved.plan);
     } catch (error) {
@@ -220,14 +224,16 @@ export function usePlanEditor({ confirm, onRunStarted }: {
     if (!draft || conflict) return;
     try {
       if (dirty && !await save()) return;
-      const latest = await window.hardwareharness.testing.loadPlan(draft.id);
+      const latest = await window.hardwareharness.testing.loadPlan({ planId: draft.id });
       const result = await window.hardwareharness.testing.applyPlanOperations({
-        planId: latest.id,
-        baseRevision: latest.revision,
-        requestId: crypto.randomUUID(),
-        operations: [refresh
-          ? { type: "refresh_invoke_binding", stepId }
-          : { type: "bind_invoke_tool", stepId, hardwareId, toolName }]
+        input: {
+          planId: latest.id,
+          baseRevision: latest.revision,
+          requestId: crypto.randomUUID(),
+          operations: [refresh
+            ? { type: "refresh_invoke_binding", stepId }
+            : { type: "bind_invoke_tool", stepId, hardwareId, toolName }]
+        }
       });
       setDraft(result.plan);
       setIssues(result.issues);

@@ -104,14 +104,16 @@ function RunMonitor({ runId, run, live }: { runId: string; run: TestRunSnapshot 
     max: () => Math.max(360, window.innerWidth - 760),
     direction: "left"
   });
+  // Polled while the run is live: the recording grows with every sample the devices deliver (stream
+  // extents, decoded messages), and those samples are not events; `testRun` events only mark steps.
   const timeline = useQuery({
     queryKey: queryKeys.testRunTimeline(runId),
-    queryFn: () => window.hardwareharness.testing.getRunTimeline(runId),
+    queryFn: () => window.hardwareharness.testing.getRunTimeline({ runId }),
     refetchInterval: live ? 1_000 : false
   });
   const messages = useQuery({
     queryKey: queryKeys.testRunMessages(runId),
-    queryFn: () => window.hardwareharness.testing.readRunMessages(runId),
+    queryFn: () => window.hardwareharness.testing.readRunMessages({ runId }),
     refetchInterval: live ? 2_000 : false
   });
   // One last read once the run ends, so the final windows, stream extents and decoded fields show.
@@ -125,8 +127,8 @@ function RunMonitor({ runId, run, live }: { runId: string; run: TestRunSnapshot 
   const data = timeline.data;
   // The recording for ranges and records; live frames while the run follows its newest data.
   const source = useMemo<StreamSource>(() => ({
-    window: (keys, t0, t1, width) => window.hardwareharness.streams.window(runId, keys, t0, t1, width),
-    records: (key, query) => window.hardwareharness.testing.readRunStream(runId, key, query),
+    window: (keys, t0, t1, width) => window.hardwareharness.streams.window({ runId, keys, t0, t1, width }),
+    records: (key, query) => window.hardwareharness.testing.readRunStream({ runId, key, ...(query ? { query } : {}) }),
     ...(live ? { live: window.hardwareharness.streams.live } : {})
   }), [runId, live]);
   const range = useMemo(() => runRange(data), [data]);
@@ -188,7 +190,7 @@ function RunMonitor({ runId, run, live }: { runId: string; run: TestRunSnapshot 
   const rejudge = async () => {
     setRejudging(true);
     try {
-      const result = await window.hardwareharness.testing.rejudgeRun(runId);
+      const result = await window.hardwareharness.testing.rejudgeRun({ runId });
       const changed = result.results.filter((item) => !item.same).length;
       if (result.consistent) toast.success(`复核一致：${result.results.length} 项判定与原结果相同`);
       else toast.error(`复核发现 ${changed} 项判定与原结果不同`);

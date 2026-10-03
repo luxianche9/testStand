@@ -6,95 +6,121 @@
   },
   "components": {
     "schemas": {
-      "DesktopListAgentToolsRequest": {
-        "additionalProperties": false,
-        "properties": {},
-        "title": "DesktopListAgentToolsRequest",
-        "type": "object"
-      },
-      "DesktopProbeAvailabilityRequest": {
-        "additionalProperties": false,
-        "properties": {},
-        "title": "DesktopProbeAvailabilityRequest",
-        "type": "object"
-      },
-      "DesktopReplaceGatewayTokenRequest": {
+      "AgentsInstallRequest": {
         "additionalProperties": false,
         "properties": {
-          "token": {
-            "title": "Token",
-            "type": "string",
-            "x-sensitive": true
-          }
-        },
-        "required": [
-          "token"
-        ],
-        "title": "DesktopReplaceGatewayTokenRequest",
-        "type": "object"
-      },
-      "DesktopRotateGatewayTokenRequest": {
-        "additionalProperties": false,
-        "properties": {},
-        "title": "DesktopRotateGatewayTokenRequest",
-        "type": "object"
-      },
-      "DesktopSaveLlmRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "baseUrl": {
-            "title": "Baseurl",
+          "agent": {
+            "const": "codex",
+            "title": "Agent",
             "type": "string"
-          },
-          "model": {
-            "title": "Model",
-            "type": "string"
-          },
-          "apiKey": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Apikey",
-            "x-sensitive": true
-          },
-          "clearApiKey": {
-            "default": false,
-            "title": "Clearapikey",
-            "type": "boolean"
           }
         },
         "required": [
-          "baseUrl",
-          "model"
+          "agent"
         ],
-        "title": "DesktopSaveLlmRequest",
+        "title": "AgentsInstallRequest",
         "type": "object"
       },
-      "DesktopStateRequest": {
+      "AgentsListToolsRequest": {
         "additionalProperties": false,
         "properties": {},
-        "title": "DesktopStateRequest",
+        "title": "AgentsListToolsRequest",
         "type": "object"
       },
-      "DesktopUpdateSettingsRequest": {
+      "AgentsOpenCodeConnectionRequest": {
+        "additionalProperties": false,
+        "properties": {},
+        "title": "AgentsOpenCodeConnectionRequest",
+        "type": "object"
+      },
+      "AgentsOpenCodeStatusRequest": {
+        "additionalProperties": false,
+        "properties": {},
+        "title": "AgentsOpenCodeStatusRequest",
+        "type": "object"
+      },
+      "AgentsPreviewRequest": {
         "additionalProperties": false,
         "properties": {
-          "patch": {
-            "additionalProperties": true,
-            "title": "Patch",
-            "type": "object"
+          "agent": {
+            "const": "codex",
+            "title": "Agent",
+            "type": "string"
           }
         },
         "required": [
-          "patch"
+          "agent"
         ],
-        "title": "DesktopUpdateSettingsRequest",
+        "title": "AgentsPreviewRequest",
+        "type": "object"
+      },
+      "AgentsRemoveRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "agent": {
+            "const": "codex",
+            "title": "Agent",
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent"
+        ],
+        "title": "AgentsRemoveRequest",
+        "type": "object"
+      },
+      "AgentsRestartOpenCodeRequest": {
+        "additionalProperties": false,
+        "properties": {},
+        "title": "AgentsRestartOpenCodeRequest",
+        "type": "object"
+      },
+      "AgentsRotateGatewayTokenRequest": {
+        "additionalProperties": false,
+        "properties": {},
+        "title": "AgentsRotateGatewayTokenRequest",
+        "type": "object"
+      },
+      "AgentsStartOpenCodeRequest": {
+        "additionalProperties": false,
+        "properties": {},
+        "title": "AgentsStartOpenCodeRequest",
+        "type": "object"
+      },
+      "AgentsStatusRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "agent": {
+            "const": "codex",
+            "title": "Agent",
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent"
+        ],
+        "title": "AgentsStatusRequest",
+        "type": "object"
+      },
+      "AgentsStopOpenCodeRequest": {
+        "additionalProperties": false,
+        "properties": {},
+        "title": "AgentsStopOpenCodeRequest",
+        "type": "object"
+      },
+      "AgentsTestRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "agent": {
+            "const": "codex",
+            "title": "Agent",
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent"
+        ],
+        "title": "AgentsTestRequest",
         "type": "object"
       },
       "DevicesCallToolRequest": {
@@ -523,6 +549,113 @@
         "additionalProperties": false,
         "properties": {},
         "title": "ProjectsSaveProjectRequest",
+        "type": "object"
+      },
+      "SettingsGetLlmRequest": {
+        "additionalProperties": false,
+        "properties": {},
+        "title": "SettingsGetLlmRequest",
+        "type": "object"
+      },
+      "SettingsGetRequest": {
+        "additionalProperties": false,
+        "properties": {},
+        "title": "SettingsGetRequest",
+        "type": "object"
+      },
+      "SettingsSaveLlmRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "baseUrl": {
+            "title": "Baseurl",
+            "type": "string"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "apiKey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Apikey",
+            "x-sensitive": true
+          },
+          "clearApiKey": {
+            "default": false,
+            "title": "Clearapikey",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "baseUrl",
+          "model"
+        ],
+        "title": "SettingsSaveLlmRequest",
+        "type": "object"
+      },
+      "SettingsUpdateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "theme": {
+            "anyOf": [
+              {
+                "enum": [
+                  "system",
+                  "light",
+                  "dark"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Theme"
+          },
+          "projectView": {
+            "anyOf": [
+              {
+                "enum": [
+                  "wiring",
+                  "plans",
+                  "runs",
+                  "manual"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Projectview"
+          },
+          "welcomeLayout": {
+            "anyOf": [
+              {
+                "enum": [
+                  "grid",
+                  "list"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Welcomelayout"
+          }
+        },
+        "title": "SettingsUpdateRequest",
         "type": "object"
       },
       "StreamsExpectRequest": {
@@ -1513,19 +1646,72 @@
     }
   ],
   "paths": {
-    "/api/ops/desktop.listAgentTools": {
+    "/api/ops/agents.install": {
       "post": {
-        "operationId": "desktop.listAgentTools",
-        "summary": "Built-in gateway tools plus the remote tools the Agent may call.",
+        "operationId": "agents.install",
+        "summary": "agents.install",
         "tags": [
-          "desktop"
+          "agents"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentsInstallRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/WireError"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-risk": "write",
+        "x-capability": "agents.manage",
+        "x-profiles": [],
+        "x-idempotency": "none",
+        "x-confirm": false
+      }
+    },
+    "/api/ops/agents.listTools": {
+      "post": {
+        "operationId": "agents.listTools",
+        "summary": "Built-in gateway tools plus the device tools the Agent may call.",
+        "tags": [
+          "agents"
         ],
         "requestBody": {
           "required": false,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/DesktopListAgentToolsRequest"
+                "$ref": "#/components/schemas/AgentsListToolsRequest"
               }
             }
           }
@@ -1569,19 +1755,79 @@
         "x-confirm": false
       }
     },
-    "/api/ops/desktop.probeAvailability": {
+    "/api/ops/agents.openCodeConnection": {
       "post": {
-        "operationId": "desktop.probeAvailability",
-        "summary": "Refresh every MCP server once, as the Agent sees them, after startup.",
+        "operationId": "agents.openCodeConnection",
+        "summary": "``{url, username, password}`` of the running OpenCode server, or null.",
         "tags": [
-          "desktop"
+          "agents"
         ],
         "requestBody": {
           "required": false,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/DesktopProbeAvailabilityRequest"
+                "$ref": "#/components/schemas/AgentsOpenCodeConnectionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "additionalProperties": true,
+                      "type": "object"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/WireError"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-risk": "read",
+        "x-capability": "agents.manage",
+        "x-profiles": [],
+        "x-idempotency": "none",
+        "x-confirm": false
+      }
+    },
+    "/api/ops/agents.openCodeStatus": {
+      "post": {
+        "operationId": "agents.openCodeStatus",
+        "summary": "agents.openCodeStatus",
+        "tags": [
+          "agents"
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentsOpenCodeStatusRequest"
               }
             }
           }
@@ -1616,182 +1862,25 @@
           }
         },
         "x-risk": "read",
-        "x-capability": "system.manage",
-        "x-profiles": [],
-        "x-idempotency": "none",
-        "x-confirm": false
-      }
-    },
-    "/api/ops/desktop.replaceGatewayToken": {
-      "post": {
-        "operationId": "desktop.replaceGatewayToken",
-        "summary": "desktop.replaceGatewayToken",
-        "tags": [
-          "desktop"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DesktopReplaceGatewayTokenRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "null"
-                }
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "write",
         "x-capability": "agents.manage",
         "x-profiles": [],
         "x-idempotency": "none",
         "x-confirm": false
       }
     },
-    "/api/ops/desktop.rotateGatewayToken": {
+    "/api/ops/agents.preview": {
       "post": {
-        "operationId": "desktop.rotateGatewayToken",
-        "summary": "desktop.rotateGatewayToken",
+        "operationId": "agents.preview",
+        "summary": "agents.preview",
         "tags": [
-          "desktop"
-        ],
-        "requestBody": {
-          "required": false,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DesktopRotateGatewayTokenRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "write",
-        "x-capability": "agents.manage",
-        "x-profiles": [],
-        "x-idempotency": "none",
-        "x-confirm": false
-      }
-    },
-    "/api/ops/desktop.saveLlm": {
-      "post": {
-        "operationId": "desktop.saveLlm",
-        "summary": "Save the OpenCode model settings; the key goes to the credential store.",
-        "tags": [
-          "desktop"
+          "agents"
         ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/DesktopSaveLlmRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "write",
-        "x-capability": "system.manage",
-        "x-profiles": [],
-        "x-idempotency": "none",
-        "x-confirm": false
-      }
-    },
-    "/api/ops/desktop.state": {
-      "post": {
-        "operationId": "desktop.state",
-        "summary": "Settings, gateway, open project and the LLM key, for the main process.",
-        "tags": [
-          "desktop"
-        ],
-        "requestBody": {
-          "required": false,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DesktopStateRequest"
+                "$ref": "#/components/schemas/AgentsPreviewRequest"
               }
             }
           }
@@ -1826,25 +1915,78 @@
           }
         },
         "x-risk": "read",
-        "x-capability": "system.manage",
+        "x-capability": "agents.manage",
         "x-profiles": [],
         "x-idempotency": "none",
         "x-confirm": false
       }
     },
-    "/api/ops/desktop.updateSettings": {
+    "/api/ops/agents.remove": {
       "post": {
-        "operationId": "desktop.updateSettings",
-        "summary": "desktop.updateSettings",
+        "operationId": "agents.remove",
+        "summary": "agents.remove",
         "tags": [
-          "desktop"
+          "agents"
         ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/DesktopUpdateSettingsRequest"
+                "$ref": "#/components/schemas/AgentsRemoveRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/WireError"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-risk": "destructive",
+        "x-capability": "agents.manage",
+        "x-profiles": [],
+        "x-idempotency": "none",
+        "x-confirm": false
+      }
+    },
+    "/api/ops/agents.restartOpenCode": {
+      "post": {
+        "operationId": "agents.restartOpenCode",
+        "summary": "agents.restartOpenCode",
+        "tags": [
+          "agents"
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentsRestartOpenCodeRequest"
               }
             }
           }
@@ -1879,7 +2021,272 @@
           }
         },
         "x-risk": "write",
-        "x-capability": "system.manage",
+        "x-capability": "agents.manage",
+        "x-profiles": [],
+        "x-idempotency": "none",
+        "x-confirm": false
+      }
+    },
+    "/api/ops/agents.rotateGatewayToken": {
+      "post": {
+        "operationId": "agents.rotateGatewayToken",
+        "summary": "A new gateway token for Codex and OpenCode (which restarts to pick it up).",
+        "tags": [
+          "agents"
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentsRotateGatewayTokenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/WireError"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-risk": "write",
+        "x-capability": "agents.manage",
+        "x-profiles": [],
+        "x-idempotency": "none",
+        "x-confirm": false
+      }
+    },
+    "/api/ops/agents.startOpenCode": {
+      "post": {
+        "operationId": "agents.startOpenCode",
+        "summary": "agents.startOpenCode",
+        "tags": [
+          "agents"
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentsStartOpenCodeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/WireError"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-risk": "write",
+        "x-capability": "agents.manage",
+        "x-profiles": [],
+        "x-idempotency": "none",
+        "x-confirm": false
+      }
+    },
+    "/api/ops/agents.status": {
+      "post": {
+        "operationId": "agents.status",
+        "summary": "Whether Codex is connected to this gateway, and what is missing.",
+        "tags": [
+          "agents"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentsStatusRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/WireError"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-risk": "read",
+        "x-capability": "agents.manage",
+        "x-profiles": [],
+        "x-idempotency": "none",
+        "x-confirm": false
+      }
+    },
+    "/api/ops/agents.stopOpenCode": {
+      "post": {
+        "operationId": "agents.stopOpenCode",
+        "summary": "agents.stopOpenCode",
+        "tags": [
+          "agents"
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentsStopOpenCodeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/WireError"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-risk": "write",
+        "x-capability": "agents.manage",
+        "x-profiles": [],
+        "x-idempotency": "none",
+        "x-confirm": false
+      }
+    },
+    "/api/ops/agents.test": {
+      "post": {
+        "operationId": "agents.test",
+        "summary": "agents.test",
+        "tags": [
+          "agents"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentsTestRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/WireError"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-risk": "read",
+        "x-capability": "agents.manage",
         "x-profiles": [],
         "x-idempotency": "none",
         "x-confirm": false
@@ -3603,6 +4010,218 @@
         "x-profiles": [
           "plan"
         ],
+        "x-idempotency": "none",
+        "x-confirm": false
+      }
+    },
+    "/api/ops/settings.get": {
+      "post": {
+        "operationId": "settings.get",
+        "summary": "Theme, layouts, recent projects and the model settings (never the key).",
+        "tags": [
+          "settings"
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsGetRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/WireError"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-risk": "read",
+        "x-capability": "system.manage",
+        "x-profiles": [],
+        "x-idempotency": "none",
+        "x-confirm": false
+      }
+    },
+    "/api/ops/settings.getLlm": {
+      "post": {
+        "operationId": "settings.getLlm",
+        "summary": "settings.getLlm",
+        "tags": [
+          "settings"
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsGetLlmRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/WireError"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-risk": "read",
+        "x-capability": "system.manage",
+        "x-profiles": [],
+        "x-idempotency": "none",
+        "x-confirm": false
+      }
+    },
+    "/api/ops/settings.saveLlm": {
+      "post": {
+        "operationId": "settings.saveLlm",
+        "summary": "Save the OpenCode model settings; the key goes to the credential store. OpenCode\nrestarts, starts or stops to match, after this returns.",
+        "tags": [
+          "settings"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsSaveLlmRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/WireError"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-risk": "write",
+        "x-capability": "system.manage",
+        "x-profiles": [],
+        "x-idempotency": "none",
+        "x-confirm": false
+      }
+    },
+    "/api/ops/settings.update": {
+      "post": {
+        "operationId": "settings.update",
+        "summary": "settings.update",
+        "tags": [
+          "settings"
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/WireError"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-risk": "write",
+        "x-capability": "system.manage",
+        "x-profiles": [],
         "x-idempotency": "none",
         "x-confirm": false
       }

@@ -78,8 +78,8 @@ export function RunControls({ run, disabled, confirm, onStart, onChanged }: {
     try { await action(); onChanged(); } finally { setBusy(false); }
   };
   const togglePause = () => act(() => paused
-    ? window.hardwareharness.testing.resumeRun(run.runId)
-    : window.hardwareharness.testing.pauseRun(run.runId));
+    ? window.hardwareharness.testing.resumeRun({ runId: run.runId })
+    : window.hardwareharness.testing.pauseRun({ runId: run.runId }));
   const abort = async () => {
     const ok = await confirm({
       title: "终止运行？",
@@ -87,7 +87,7 @@ export function RunControls({ run, disabled, confirm, onStart, onChanged }: {
       confirmLabel: "终止",
       danger: true
     });
-    if (ok) await act(() => window.hardwareharness.testing.abortRun(run.runId));
+    if (ok) await act(() => window.hardwareharness.testing.abortRun({ runId: run.runId }));
   };
   return (
     <div className="flex items-center gap-1">

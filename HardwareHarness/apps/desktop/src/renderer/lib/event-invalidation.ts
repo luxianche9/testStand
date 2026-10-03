@@ -18,7 +18,20 @@ export interface Invalidation {
  * the version in the event with what they hold.
  */
 export const eventInvalidations: Record<HardwareHarnessEventName, readonly Invalidation[]> = {
-  availability: [{ key: queryKeys.dashboard }],
+  // The backend's periodic device check saw a device change state.
+  availability: [{ key: queryKeys.dashboard }, { key: queryKeys.agentTools }],
+  // A catalog write: hardware, device instances, adapter records or a device's cached declaration.
+  devices: [
+    { key: queryKeys.deviceCatalog },
+    { key: queryKeys.dashboard },
+    { key: queryKeys.deviceDefinitionAll },
+    { key: queryKeys.adapterStatusAll },
+    { key: queryKeys.deviceStreamsAll },
+    { key: queryKeys.testDeviceToolsAll },
+    { key: queryKeys.agentTools }
+  ],
+  // The MCP gateway's token, client or tools changed.
+  gateway: [{ key: queryKeys.dashboard }, { key: queryKeys.agentTools }, { key: queryKeys.agentIntegrationAll }],
   execution: [{ key: queryKeys.dashboard }],
   project: [
     { key: queryKeys.projectDocument },
@@ -36,7 +49,6 @@ export const eventInvalidations: Record<HardwareHarnessEventName, readonly Inval
     { key: queryKeys.testRecovery, delayMs: 500 }
   ],
   testBatch: [{ key: queryKeys.testBatch }, { key: queryKeys.testItemStatus }],
-  // A lease was acquired, released or lost (possibly taken by another terminal).
   // An Agent's high-risk operation started or stopped waiting for the operator.
   confirmation: [{ key: queryKeys.agentConfirmations }],
   opencode: [{ key: queryKeys.openCodeStatus }],

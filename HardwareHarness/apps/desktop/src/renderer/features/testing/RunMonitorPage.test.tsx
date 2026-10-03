@@ -32,12 +32,14 @@ describe("RunMonitorPage", () => {
   it("lists every run, appends and deduplicates history pages", async () => {
     const first = makeSummary("run-1", `${plan.name} run-1`, "2026-09-18T00:00:00Z");
     const second = makeSummary("run-2", `${plan.name} run-2`, "2026-09-17T00:00:00Z");
-    api.testing.listRuns.mockImplementation(async (input?: { cursor?: string }) => input?.cursor
+    api.testing.listRuns.mockImplementation(async (request?: { input?: { cursor?: string } }) => request?.input?.cursor
       ? { items: [first, second] }
       : { items: [first], nextCursor: "page-2" });
     render(<RunMonitorPage />, { wrapper: Wrapper });
     expect(await screen.findByText(`${plan.name} run-1`)).toBeTruthy();
-    expect(api.testing.listRuns).toHaveBeenCalledWith(expect.not.objectContaining({ planId: expect.anything() }));
+    expect(api.testing.listRuns).toHaveBeenCalledWith({
+      input: expect.not.objectContaining({ planId: expect.anything() })
+    });
     await userEvent.click(screen.getByRole("button", { name: "加载更多" }));
     expect(await screen.findByText(`${plan.name} run-2`)).toBeTruthy();
     expect(screen.getAllByText(`${plan.name} run-1`)).toHaveLength(1);
@@ -47,7 +49,7 @@ describe("RunMonitorPage", () => {
     api.testing.currentRun.mockResolvedValue(makeRun(plan, { runId: "run-live" }));
     openRunMonitor("run-live");
     render(<RunMonitorPage />, { wrapper: Wrapper });
-    await waitFor(() => expect(api.testing.getRunTimeline).toHaveBeenCalledWith("run-live"));
+    await waitFor(() => expect(api.testing.getRunTimeline).toHaveBeenCalledWith({ runId: "run-live" }));
     await waitFor(() => expect(api.testing.readRunLog).toHaveBeenCalledWith(
       expect.objectContaining({ runId: "run-live" })
     ));
@@ -57,7 +59,7 @@ describe("RunMonitorPage", () => {
 
   it("switches the lower pane to the decoded message table of a protocol-bound run", async () => {
     api.testing.currentRun.mockResolvedValue(makeRun(plan, { runId: "run-bus" }));
-    api.testing.readRunMessages.mockImplementation(async (runId: string) => ({
+    api.testing.readRunMessages.mockImplementation(async ({ runId }: { runId: string }) => ({
       runId,
       bindings: [{
         alias: "dut", icd: "dut-v1", icdHash: "h", hardwareId: "dev", streamId: "uart", source: "dev__uart",
@@ -81,7 +83,7 @@ describe("RunMonitorPage", () => {
   it("hides the signal area and re-judging for a finished run without streams", async () => {
     render(<RunMonitorPage />, { wrapper: Wrapper });
     act(() => openRunMonitor("run-old"));
-    await waitFor(() => expect(api.testing.getRunTimeline).toHaveBeenCalledWith("run-old"));
+    await waitFor(() => expect(api.testing.getRunTimeline).toHaveBeenCalledWith({ runId: "run-old" }));
     await waitFor(() => expect(api.testing.readRunLog).toHaveBeenCalledWith(
       expect.objectContaining({ runId: "run-old" })
     ));

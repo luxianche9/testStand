@@ -68,13 +68,15 @@ describe("IcdEditorDialog", () => {
     fireEvent.change(screen.getByRole("textbox", { name: "试解码样本" }), { target: { value: "AA 55\n01 07" } });
     await userEvent.click(screen.getByRole("button", { name: "检查并试解码" }));
     expect(api.testing.checkIcd).toHaveBeenCalledWith({
-      text: "name: dut_ack\n", alias: "dut", samples: ["AA55", "0107"]
+      input: { text: "name: dut_ack\n", alias: "dut", samples: ["AA55", "0107"] }
     });
     const result = await screen.findByRole("list", { name: "试解码结果" });
     expect(result.textContent).toContain("code=7");
     expect(result.textContent).toContain("checksum");
     await userEvent.click(screen.getByRole("button", { name: "保存" }));
-    await waitFor(() => expect(api.testing.saveIcd).toHaveBeenCalledWith({ name: "dut_ack", text: "name: dut_ack\n" }));
+    await waitFor(() => expect(api.testing.saveIcd).toHaveBeenCalledWith({
+      input: { name: "dut_ack", text: "name: dut_ack\n" }
+    }));
     await waitFor(() => expect(onClose).toHaveBeenCalled());
   });
 

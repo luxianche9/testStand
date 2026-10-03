@@ -54,7 +54,7 @@ describe("功能测试项列表", () => {
     await userEvent.click(screen.getByRole("switch", { name: "失败即停" }));
     await userEvent.click(screen.getByRole("button", { name: "运行所选 (2)" }));
     await waitFor(() => expect(api.testing.startBatch).toHaveBeenCalledWith({
-      requestId: "request-id", planIds: ["alpha", "gamma"], stopOnFail: true
+      input: { requestId: "request-id", planIds: ["alpha", "gamma"], stopOnFail: true }
     }));
     expect(await screen.findByRole("progressbar", { name: "批量运行进度" })).toBeTruthy();
   });
@@ -70,7 +70,7 @@ describe("功能测试项列表", () => {
     await userEvent.click(all);
     await userEvent.click(screen.getByRole("button", { name: "运行所选 (3)" }));
     await waitFor(() => expect(api.testing.startBatch).toHaveBeenCalledWith({
-      requestId: "request-id", planIds: ["alpha", "beta", "gamma"], stopOnFail: false
+      input: { requestId: "request-id", planIds: ["alpha", "beta", "gamma"], stopOnFail: false }
     }));
   });
 });

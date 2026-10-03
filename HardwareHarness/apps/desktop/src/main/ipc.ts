@@ -1,24 +1,22 @@
 import { ipcMain, type IpcMainInvokeEvent } from "electron";
 import { z, ZodError } from "zod";
-import { agentKindSchema } from "@hardwareharness/contracts/agents";
-import type { HardwareHarnessAgentsApi, HardwareHarnessSettingsApi } from "@hardwareharness/contracts/desktop";
+import type { HardwareHarnessDialogsApi } from "@hardwareharness/contracts/desktop";
 import { deviceBundleKindSchema } from "@hardwareharness/contracts/devices";
 import { appError, toWireError } from "@hardwareharness/contracts/errors";
-import { llmSettingsInputSchema, projectViewSchema, themeChoiceSchema, welcomeLayoutSchema } from "@hardwareharness/contracts/storage";
-import { DESKTOP_CALL_CHANNEL, type DesktopDialogsPort, type DesktopMainChannel, type DesktopReply, type LocalApiEndpoint } from "../shared/desktop-ipc.js";
+import { themeChoiceSchema } from "@hardwareharness/contracts/storage";
+import { DESKTOP_CALL_CHANNEL, type DesktopMainChannel, type DesktopReply, type LocalApiEndpoint } from "../shared/desktop-ipc.js";
 
 interface DesktopWindowPort {
   minimize(): void;
   toggleMaximize(): void;
   close(): void;
   applyTheme(theme: "system" | "light" | "dark"): void;
+  flashFrame(flag: boolean): void;
 }
 
 export interface DesktopIpcDependencies {
   endpoint(): LocalApiEndpoint;
-  agents: HardwareHarnessAgentsApi;
-  settings: HardwareHarnessSettingsApi;
-  dialogs: DesktopDialogsPort;
+  dialogs: HardwareHarnessDialogsApi;
   windows: DesktopWindowPort;
 }
 
@@ -30,11 +28,10 @@ function handler<S extends z.ZodTypeAny>(args: S, run: (...values: z.infer<S> & 
 }
 
 const none = z.tuple([]);
-const agent = z.tuple([agentKindSchema]);
 
 /** Every main-process call with its argument schema; Python operations never pass through main. */
 export function createMainHandlers(dependencies: DesktopIpcDependencies): DesktopMainHandlers {
-  const { agents, settings, dialogs, windows } = dependencies;
+  const { dialogs, windows } = dependencies;
   return {
     "desktop.endpoint": handler(none, () => dependencies.endpoint()),
     "dialogs.exportText": handler(z.tuple([z.string().min(1), z.string()]), (path, content) => dialogs.exportText(path, content)),
@@ -44,31 +41,11 @@ export function createMainHandlers(dependencies: DesktopIpcDependencies): Deskto
     ),
     "dialogs.openBundle": handler(z.tuple([deviceBundleKindSchema]), (kind) => dialogs.openBundle(kind)),
     "dialogs.chooseProjectFolder": handler(none, () => dialogs.chooseProjectFolder()),
-    "agents.rotateGatewayToken": handler(none, () => agents.rotateGatewayToken()),
-    "agents.status": handler(agent, (kind) => agents.status(kind)),
-    "agents.preview": handler(agent, (kind) => agents.preview(kind)),
-    "agents.install": handler(agent, (kind) => agents.install(kind)),
-    "agents.remove": handler(agent, (kind) => agents.remove(kind)),
-    "agents.test": handler(agent, (kind) => agents.test(kind)),
-    "agents.listTools": handler(none, () => agents.listTools()),
-    "agents.openCodeStatus": handler(none, () => agents.openCodeStatus()),
-    "agents.startOpenCode": handler(none, () => agents.startOpenCode()),
-    "agents.stopOpenCode": handler(none, () => agents.stopOpenCode()),
-    "agents.restartOpenCode": handler(none, () => agents.restartOpenCode()),
-    "settings.getTheme": handler(none, () => settings.getTheme()),
-    "settings.setTheme": handler(z.tuple([themeChoiceSchema]), async (theme) => {
-      await settings.setTheme(theme);
-      windows.applyTheme(theme);
-    }),
-    "settings.getProjectView": handler(none, () => settings.getProjectView()),
-    "settings.setProjectView": handler(z.tuple([projectViewSchema]), (view) => settings.setProjectView(view)),
-    "settings.getWelcomeLayout": handler(none, () => settings.getWelcomeLayout()),
-    "settings.setWelcomeLayout": handler(z.tuple([welcomeLayoutSchema]), (layout) => settings.setWelcomeLayout(layout)),
-    "settings.getLlm": handler(none, () => settings.getLlm()),
-    "settings.saveLlm": handler(z.tuple([llmSettingsInputSchema]), (input) => settings.saveLlm(input)),
     "window.minimize": handler(none, () => windows.minimize()),
     "window.toggleMaximize": handler(none, () => windows.toggleMaximize()),
-    "window.close": handler(none, () => windows.close())
+    "window.close": handler(none, () => windows.close()),
+    "window.applyTheme": handler(z.tuple([themeChoiceSchema]), (theme) => windows.applyTheme(theme)),
+    "window.flash": handler(none, () => windows.flashFrame(true))
   };
 }
 

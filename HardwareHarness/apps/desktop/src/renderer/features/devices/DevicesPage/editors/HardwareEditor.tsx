@@ -44,11 +44,13 @@ export function HardwareEditor({ open, hardware, onClose, onChanged }: {
     mutationFn: async (values: HardwareEditorValues) => {
       const normalizedId = values.hardwareId.trim();
       return await window.hardwareharness.devices.saveHardware({
-        formatVersion: 2,
-        hardwareId: normalizedId,
-        label: values.label.trim() || normalizedId,
-        kind: "passive",
-        ports
+        input: {
+          formatVersion: 2,
+          hardwareId: normalizedId,
+          label: values.label.trim() || normalizedId,
+          kind: "passive",
+          ports
+        }
       });
     },
     onSuccess: async () => {

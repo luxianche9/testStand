@@ -20,8 +20,8 @@ test("settings returns to the page that opened it", async () => {
 
     await openSettingsAndReturn(page, () => expect(page.getByRole("heading", { name: "最近项目" })).toBeVisible());
 
-    await page.evaluate((rootPath) => window.hardwareharness.projects.initializeFolder(rootPath), projectRoot);
-    await page.evaluate(() => window.hardwareharness.projects.leave());
+    await page.evaluate((rootPath) => window.hardwareharness.projects.initializeFolder({ rootPath }), projectRoot);
+    await page.evaluate(() => window.hardwareharness.projects.leaveProject());
     await reloadAfterLeave(page);
     await page.getByText("settings-navigation-project", { exact: true }).first().click();
 

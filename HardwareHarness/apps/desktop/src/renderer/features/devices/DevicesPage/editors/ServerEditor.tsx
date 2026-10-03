@@ -136,14 +136,14 @@ export function ServerEditor({ open, server, hardware, onClose, onChanged }: {
         mode: values.mode,
         enabled: server?.enabled ?? true
       };
-      const saved = await devices.saveServer(input);
+      const saved = await devices.saveServer({ input });
       if (bundlePreview) {
-        await devices.applyBundle({ kind: "hardware", hardwareId: boundId, serverId, data: bundlePreview.data });
+        await devices.importBundleForServer({ data: bundlePreview.data, hardwareId: boundId, serverId });
       }
       await devices.saveHardware({
-        formatVersion: 2, hardwareId: boundId, label: input.label, kind: "managed", serverId, ports
+        input: { formatVersion: 2, hardwareId: boundId, label: input.label, kind: "managed", serverId, ports }
       });
-      await devices.refreshServer(serverId);
+      await devices.refreshServer({ serverId });
       return saved;
     },
     onSuccess: async () => { await onChanged(); onClose(); }

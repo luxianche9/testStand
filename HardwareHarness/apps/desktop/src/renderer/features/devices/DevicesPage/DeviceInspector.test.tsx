@@ -5,7 +5,7 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { DashboardSnapshot } from "@hardwareharness/contracts/desktop";
+import type { DashboardSnapshot } from "@hardwareharness/contracts/operations";
 import type {
   AdapterReleaseRecord, Hardware, ManagedDeviceDefinition
 } from "@hardwareharness/contracts/devices";
@@ -288,11 +288,13 @@ describe("device inspector", () => {
 
     const verdict = await screen.findByText("调用成功");
     const result = verdict.closest("section")!;
-    expect(invokeTool).toHaveBeenCalledWith(expect.objectContaining({
-      hardwareId: "E2E_CARD",
-      toolName: "E2E_MCP__write_voltage",
-      timeoutMs: 30_000
-    }));
+    expect(invokeTool).toHaveBeenCalledWith({
+      raw: expect.objectContaining({
+        hardwareId: "E2E_CARD",
+        toolName: "E2E_MCP__write_voltage",
+        timeoutMs: 30_000
+      })
+    });
     expect(result.querySelector("pre")?.textContent).toContain("\"voltage\": 3.3");
     expect(within(result).getByText("3.3")).toBeTruthy();
   });
@@ -350,11 +352,13 @@ describe("device inspector", () => {
     await userEvent.type(within(form).getByLabelText("接线"), "AO0→AI0");
     await userEvent.type(within(form).getByLabelText("观察结果"), "1.00 V");
     await userEvent.click(within(form).getByRole("button", { name: "添加冒烟记录" }));
-    expect(adapterApi.recordAdapterSmoke).toHaveBeenCalledWith("E2E_CARD", "alice", "AO0→AI0", "1.00 V");
+    expect(adapterApi.recordAdapterSmoke).toHaveBeenCalledWith({
+      hardwareId: "E2E_CARD", operator: "alice", wiring: "AO0→AI0", observation: "1.00 V"
+    });
     expect(await within(section).findByText("接线：AO0→AI0")).toBeTruthy();
 
     await userEvent.click(within(section).getByRole("button", { name: "标记为可用" }));
-    expect(adapterApi.setAdapterStatus).toHaveBeenCalledWith("E2E_CARD", "available");
+    expect(adapterApi.setAdapterStatus).toHaveBeenCalledWith({ hardwareId: "E2E_CARD", status: "available" });
     expect(await within(section).findByRole("button", { name: "退回开发中" })).toBeTruthy();
   });
 });

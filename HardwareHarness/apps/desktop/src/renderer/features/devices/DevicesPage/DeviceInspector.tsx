@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { DashboardSnapshot } from "@hardwareharness/contracts/desktop";
+import type { DashboardSnapshot } from "@hardwareharness/contracts/operations";
 import type { Hardware, McpServerConfig, PluginServerConfig } from "@hardwareharness/contracts/devices";
 import { MousePointerClickIcon } from "lucide-react";
 import { hardwareForServer } from "../../../lib/hardware.js";

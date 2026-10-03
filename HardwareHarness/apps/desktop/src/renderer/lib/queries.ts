@@ -5,33 +5,30 @@ import { queryKeys } from "./query-keys.js";
 
 /**
  * Queries shared by more than one page. Keeping them here means a page cannot silently disagree
- * with another about how often a key refetches — which is exactly what happened when the device
- * catalog and dashboard queries were each declared twice with drifting options.
+ * with another about how a key refetches. Backend changes arrive as SSE events and invalidate the
+ * matching keys (lib/event-invalidation.ts); a dropped event arrives as `gap`, which refetches
+ * everything, so nothing here polls unless the data changes outside the backend.
  */
 
-/** The catalog also changes from outside the UI (a bundle import, another window), and it has no
- *  event channel, so it is polled rather than left stale. */
+/** Refetched on `devices` events (every catalog write, from the UI or the Agent). */
 export function useDeviceCatalog() {
   return useQuery({
     queryKey: queryKeys.deviceCatalog,
-    queryFn: async () => ({ hardware: await window.hardwareharness.devices.listHardware() }),
-    refetchInterval: 10_000
+    queryFn: async () => ({ hardware: await window.hardwareharness.devices.listHardware() })
   });
 }
 
-/** Availability is pushed on the `availability` channel; this poll is the dropped-event
- *  fallback. */
+/** Refetched on `availability`, `devices`, `gateway`, `execution` and `testRun` events. */
 export function useDashboard() {
   return useQuery({
     queryKey: queryKeys.dashboard,
-    queryFn: () => window.hardwareharness.system.dashboard(),
-    refetchInterval: 10_000
+    queryFn: () => window.hardwareharness.system.dashboard()
   });
 }
 
 /** The open project document: path, dirty flag, and the single file contents. */
 export function useProjectDocument() {
-  return useQuery({ queryKey: queryKeys.projectDocument, queryFn: () => window.hardwareharness.projects.current() });
+  return useQuery({ queryKey: queryKeys.projectDocument, queryFn: () => window.hardwareharness.projects.document() });
 }
 
 export function useRecentProjects() {
@@ -42,7 +39,7 @@ export function useRecentProjects() {
 export function useWiringTasks() {
   return useQuery({
     queryKey: queryKeys.wiringTasks,
-    queryFn: () => window.hardwareharness.wiring.listTasks({ limit: 500 })
+    queryFn: () => window.hardwareharness.wiring.listTasks({ input: { limit: 500 } })
   });
 }
 
@@ -50,7 +47,7 @@ export function useWiringTasks() {
 export function useWiringChanges() {
   return useQuery({
     queryKey: queryKeys.wiringChanges,
-    queryFn: () => window.hardwareharness.wiring.listChanges({ limit: 500 })
+    queryFn: () => window.hardwareharness.wiring.listChanges({ input: { limit: 500 } })
   });
 }
 
@@ -83,7 +80,7 @@ export function useTestItemStatus() {
 export function useTestRuns(filters: TestRunListInput, enabled = true) {
   return useQuery({
     queryKey: queryKeys.testRuns(filters),
-    queryFn: () => window.hardwareharness.testing.listRuns(filters),
+    queryFn: () => window.hardwareharness.testing.listRuns({ input: filters }),
     enabled
   });
 }
@@ -91,7 +88,7 @@ export function useTestRuns(filters: TestRunListInput, enabled = true) {
 export function useTestDeviceTools(hardwareId: string) {
   return useQuery({
     queryKey: queryKeys.testDeviceTools(hardwareId),
-    queryFn: () => window.hardwareharness.testing.listDeviceTools(hardwareId),
+    queryFn: () => window.hardwareharness.testing.listDeviceTools({ hardwareId }),
     enabled: Boolean(hardwareId)
   });
 }
@@ -105,30 +102,27 @@ export function useTestRecoveryItems() {
 }
 
 /** A managed device's own declaration (`/device`), as the backend last cached it. The backend
- *  refreshes it on every server refresh, so this only has to follow that cadence. */
+ *  stores a new revision when it refreshes the device, which publishes `devices`. */
 export function useDeviceDefinition(hardwareId: string) {
   return useQuery({
     queryKey: queryKeys.deviceDefinition(hardwareId),
-    queryFn: () => window.hardwareharness.devices.getDefinition(hardwareId),
-    refetchInterval: 15_000
+    queryFn: () => window.hardwareharness.devices.getDefinition({ hardwareId })
   });
 }
 
-/** The adapter's release record (design doc §8.4); it only changes through this UI or the Agent. */
+/** The adapter's release record (design doc §8.4); every change is a catalog write (`devices`). */
 export function useAdapterStatus(hardwareId: string) {
   return useQuery({
     queryKey: queryKeys.adapterStatus(hardwareId),
-    queryFn: () => window.hardwareharness.devices.getAdapterStatus(hardwareId),
-    refetchInterval: 15_000
+    queryFn: () => window.hardwareharness.devices.getAdapterStatus({ hardwareId })
   });
 }
 
-/** Embedded OpenCode runtime. Pushed on the `opencode` channel; the poll covers dropped events. */
+/** Embedded OpenCode runtime, which the backend runs; refetched on `opencode` events. */
 export function useOpenCodeStatus() {
   return useQuery({
     queryKey: queryKeys.openCodeStatus,
-    queryFn: () => window.hardwareharness.agents.openCodeStatus(),
-    refetchInterval: 5_000
+    queryFn: () => window.hardwareharness.agents.openCodeStatus()
   });
 }
 
@@ -137,20 +131,22 @@ export function useLlmSettings() {
   return useQuery({ queryKey: queryKeys.llmSettings, queryFn: () => window.hardwareharness.settings.getLlm() });
 }
 
-/** External agent (Codex) integration state; config files change outside the app, so it is polled. */
+/** External agent (Codex) integration state. The one poll left: Codex's config.toml and the user
+ *  environment change outside HardwareHarness (the Codex CLI, another program), so no backend
+ *  event can announce them. Gateway changes still refetch at once (`gateway`). */
 export function useAgentIntegration(agent: AgentKind) {
   return useQuery({
     queryKey: queryKeys.agentIntegration(agent),
-    queryFn: () => window.hardwareharness.agents.status(agent),
+    queryFn: () => window.hardwareharness.agents.status({ agent }),
     refetchInterval: 15_000
   });
 }
 
-/** Tools the MCP gateway exposes (builtin + remote servers). */
+/** Tools the MCP gateway exposes (builtin + device tools); refetched on `devices`, `availability`
+ *  and `gateway` events. */
 export function useAgentTools() {
   return useQuery({
     queryKey: queryKeys.agentTools,
-    queryFn: () => window.hardwareharness.agents.listTools(),
-    refetchInterval: 10_000
+    queryFn: () => window.hardwareharness.agents.listTools()
   });
 }

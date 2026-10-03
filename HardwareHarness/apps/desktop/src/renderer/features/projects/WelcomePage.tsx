@@ -6,6 +6,7 @@ import type { WelcomeLayout } from "@hardwareharness/contracts/storage";
 import { CircleAlertIcon, FolderOpenIcon, Grid2X2Icon, ListIcon, ServerIcon } from "lucide-react";
 import { InitializeDialog } from "../../app/InitializeDialog.js";
 import { errorMessage } from "../../lib/errors.js";
+import { chooseProjectFolder } from "../../lib/projects.js";
 import { useDeviceCatalog, useRecentProjects } from "../../lib/queries.js";
 import { queryKeys } from "../../lib/query-keys.js";
 import {
@@ -34,7 +35,7 @@ export function WelcomePage({ onOpened }: { onOpened: (rootPath: string) => Prom
   const [error, setError] = useState<string>();
 
   useEffect(() => {
-    void window.hardwareharness.settings.getWelcomeLayout().then(setLayout);
+    void window.hardwareharness.settings.get().then((settings) => setLayout(settings.welcomeLayout));
   }, []);
 
   const openSelection = async (next: ProjectFolderSelection) => {
@@ -47,19 +48,19 @@ export function WelcomePage({ onOpened }: { onOpened: (rootPath: string) => Prom
       setSelection(next);
       return;
     }
-    await window.hardwareharness.projects.openFolder(next.rootPath);
+    await window.hardwareharness.projects.openFolder({ rootPath: next.rootPath });
     await onOpened(next.rootPath);
   };
 
   const choose = useMutation({
-    mutationFn: () => window.hardwareharness.projects.chooseFolder(),
+    mutationFn: () => chooseProjectFolder(),
     onSuccess: async (next) => { if (next) await openSelection(next); },
     onError: (reason) => setError(errorMessage(reason))
   });
   const initialize = useMutation({
     mutationFn: async () => {
       if (!selection) return null;
-      return await window.hardwareharness.projects.initializeFolder(selection.rootPath);
+      return await window.hardwareharness.projects.initializeFolder({ rootPath: selection.rootPath });
     },
     onSuccess: async (document) => {
       if (!document) return;
@@ -69,19 +70,19 @@ export function WelcomePage({ onOpened }: { onOpened: (rootPath: string) => Prom
     onError: (reason) => setError(errorMessage(reason))
   });
   const openRecent = useMutation({
-    mutationFn: (rootPath: string) => window.hardwareharness.projects.openFolder(rootPath),
+    mutationFn: (rootPath: string) => window.hardwareharness.projects.openFolder({ rootPath }),
     onSuccess: async (document) => { await onOpened(document.rootPath); },
     onError: (reason) => setError(errorMessage(reason))
   });
   const forget = useMutation({
-    mutationFn: (rootPath: string) => window.hardwareharness.projects.forgetRecent(rootPath),
+    mutationFn: (rootPath: string) => window.hardwareharness.projects.forgetRecent({ rootPath }),
     onSuccess: async () => { await client.invalidateQueries({ queryKey: queryKeys.recentProjects }); },
     onError: (reason) => setError(errorMessage(reason))
   });
 
   const changeLayout = (next: WelcomeLayout) => {
     setLayout(next);
-    void window.hardwareharness.settings.setWelcomeLayout(next);
+    void window.hardwareharness.settings.update({ welcomeLayout: next });
   };
   const busy = choose.isPending || initialize.isPending || openRecent.isPending;
   const projects = recent.data ?? [];

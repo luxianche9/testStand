@@ -40,11 +40,13 @@ describe("TestPlanPage", () => {
     await userEvent.click(screen.getByRole("button", { name: "保存" }));
     await waitFor(() => expect(api.testing.savePlan).toHaveBeenCalledOnce());
     await userEvent.click(screen.getByRole("button", { name: "校验" }));
-    await waitFor(() => expect(api.testing.validatePlan).toHaveBeenCalledWith("plan"));
+    await waitFor(() => expect(api.testing.validatePlan).toHaveBeenCalledWith({ planId: "plan" }));
     await userEvent.click(screen.getByRole("button", { name: "运行" }));
-    await waitFor(() => expect(api.testing.startRun).toHaveBeenCalledWith(expect.objectContaining({
-      planId: "plan", revision: 1, executionRevision: "exec", requestId: "request-id", parameters: {}
-    })));
+    await waitFor(() => expect(api.testing.startRun).toHaveBeenCalledWith({
+      input: expect.objectContaining({
+        planId: "plan", revision: 1, executionRevision: "exec", requestId: "request-id", parameters: {}
+      })
+    }));
     // The started run opens in 运行监控.
     await waitFor(() => expect(requested).toHaveBeenCalledWith("run"));
     stop();
