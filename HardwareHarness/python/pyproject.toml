@@ -140,7 +140,6 @@ forbidden_modules = [
 name = "Resource layer has no business dependencies"
 type = "forbidden"
 source_modules = [
-  "hardwareharness_backend.devices.mcp_client",
   "hardwareharness_backend.devices.plugin_transport",
   "hardwareharness_backend.streams.source",
   "hardwareharness_backend.streams.clock",

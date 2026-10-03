@@ -1,6 +1,6 @@
 ---
 name: mcp-server
-description: Create, extend, review and troubleshoot HardwareHarness device plugins built on the hardwareharness_device_sdk (mcp_servers/sdk + mcp_servers/adapters/<model>), from a device manual, vendor SDK header/DLL or native CLI. Covers the Device subclass, the hardwareharness.devices entry point, Device.isolation (inproc / subprocess), @tool operation semantics, parameter ranges and units, safe_state, typed read-only streams (scalar/bits/bytes/frames/block/blob: sampled readings, scan groups, write-then-publish readback, serial byte traffic with writer/transact/idle, stream metadata), the generated /device declaration (description, pinout, streams, capabilities), software waveforms, simulators (mode sim / dry-run), the in-process test harness and the --check compliance suite. Use for explicit $mcp-server requests and for any task that adds or changes a device adapter under mcp_servers/. Do not use for FireDAP (a separate local MCP HTTP service) or for the desktop app itself.
+description: Create, extend, review and troubleshoot HardwareHarness device plugins built on the hardwareharness_device_sdk (mcp_servers/sdk + mcp_servers/adapters/<model>), from a device manual, vendor SDK header/DLL or native CLI. Covers the Device subclass, the hardwareharness.devices entry point, Device.isolation (inproc / subprocess), @tool operation semantics, parameter ranges and units, safe_state, typed read-only streams (scalar/bits/bytes/frames/block/blob: sampled readings, scan groups, write-then-publish readback, serial byte traffic with writer/transact/idle, stream metadata), the generated /device declaration (description, pinout, streams, capabilities), software waveforms, simulators (mode sim / dry-run), the in-process test harness and the --check compliance suite. Use for explicit $mcp-server requests and for any task that adds or changes a device adapter under mcp_servers/. Do not use for the desktop app itself.
 ---
 
 # HardwareHarness 设备插件
@@ -52,7 +52,6 @@ description: Create, extend, review and troubleshoot HardwareHarness device plug
 - **并发交给 SDK**：不自己起采样线程、不自己打时间戳；只有设备要求的后台读线程（串口）由适配器写，持 `io_lock`，每次读返回调 `stream.idle()`。没有硬件定时的输出要出波形时用 SDK 的 `SoftwareWaveform`，不自己写定时循环。
 - **stdout 不归适配器**：`inproc` 插件和后端共用进程，后端 stdout 的第一行是给桌面应用的启动握手，适配器和驱动都不许往 stdout 打印；驱动会打印就设 `isolation = "subprocess"`（子进程把文件描述符 1 指向 stderr）。日志用 `logging`。
 - **秘密不进配置**：`settings` 只放非秘密配置（卡号、DLL 路径、COM 口、采样率、安全值），不在代码、测试、README 里写令牌或密码。
-- **不改 FireDAP**：`mcp_servers/servers/firedap/` 是独立的本机 MCP HTTP 服务，不是设备插件，本技能不处理。
 
 ## 参考资料
 

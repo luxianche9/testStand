@@ -14,9 +14,8 @@ describe("public contracts", () => {
   });
 
   it("applies stable defaults", () => {
-    expect(mcpServerSchema.parse({ serverId: "S1", label: "S", hardwareId: "H1", url: "http://127.0.0.1/mcp" })).toMatchObject({ transport: "mcp-http", enabled: true });
-    expect(mcpServerSchema.parse({ transport: "plugin", serverId: "P1", label: "P", hardwareId: "H2", type: "pci1762" })).toMatchObject({ settings: {}, mode: "real", enabled: true });
-    expect(mcpServerSchema.safeParse({ serverId: "S3", computerId: "PC1", label: "S", hardwareId: "H3", url: "http://127.0.0.1/mcp" }).success).toBe(false);
+    expect(mcpServerSchema.parse({ serverId: "P1", label: "P", hardwareId: "H2", type: "pci1762" })).toMatchObject({ settings: {}, mode: "real", enabled: true });
+    expect(mcpServerSchema.safeParse({ serverId: "S3", computerId: "PC1", label: "S", hardwareId: "H3", type: "pci1762" }).success).toBe(false);
   });
 
   it("validates managed hardware at the device trust boundary", () => {

@@ -33,7 +33,7 @@ test.describe.serial("manual control and Agent hardware calls", () => {
     const status = await page.evaluate(async ({ projectRoot, hardwareId }) => {
       await window.hardwareharness.projects.initializeFolder({ rootPath: projectRoot });
       await window.hardwareharness.devices.saveServer({ input: {
-        transport: "plugin", serverId: "E2E_RELAY", label: "PCI-1762 sim", hardwareId, type: "pci1762",
+        serverId: "E2E_RELAY", label: "PCI-1762 sim", hardwareId, type: "pci1762",
         settings: {}, mode: "sim", enabled: true
       } });
       const status = await window.hardwareharness.devices.refreshServer({ serverId: "E2E_RELAY" });

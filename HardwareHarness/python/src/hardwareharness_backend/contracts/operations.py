@@ -43,7 +43,6 @@ SENSITIVE_FIELDS = frozenset(
         "accesstoken",
         "bearertoken",
         "apikey",
-        "mcptoken",
         "credentials",
     }
 )

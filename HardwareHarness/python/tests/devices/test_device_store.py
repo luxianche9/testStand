@@ -28,11 +28,10 @@ def hardware(identifier: str) -> dict[str, Any]:
 
 def server(identifier: str, hardware_id: str) -> dict[str, Any]:
     return {
-        "transport": "mcp-http",
         "serverId": identifier,
         "label": identifier,
         "hardwareId": hardware_id,
-        "url": "http://127.0.0.1:8011/mcp",
+        "type": "pci1710l",
         "enabled": True,
     }
 

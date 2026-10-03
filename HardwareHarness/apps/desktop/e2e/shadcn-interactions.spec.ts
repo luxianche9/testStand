@@ -229,7 +229,7 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
     const saved = await page.evaluate(async () => (await window.hardwareharness.system.dashboard()).servers
       .find((server) => server.serverId === "KEYBOARD_DEV"));
     expect(saved).toMatchObject({
-      transport: "plugin", serverId: "KEYBOARD_DEV", hardwareId: "KEYBOARD_CARD", label: "Keyboard device", mode: "sim"
+      serverId: "KEYBOARD_DEV", hardwareId: "KEYBOARD_CARD", label: "Keyboard device", mode: "sim"
     });
     await expect(page.getByRole("tree", { name: "硬件列表" }).getByRole("treeitem", { name: /Keyboard device/ }))
       .toContainText("在线");

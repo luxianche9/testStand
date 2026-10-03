@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { DashboardSnapshot } from "@hardwareharness/contracts/operations";
-import type { Hardware, McpServerConfig, PluginServerConfig } from "@hardwareharness/contracts/devices";
+import type { Hardware, McpServerConfig } from "@hardwareharness/contracts/devices";
 import { MousePointerClickIcon } from "lucide-react";
 import { hardwareForServer } from "../../../lib/hardware.js";
 import { useDeviceDefinition } from "../../../lib/queries.js";
@@ -15,7 +15,7 @@ import { LiveStreams } from "./LiveStreams.js";
 import { parseDeviceSelection } from "./selection.js";
 
 type Callbacks = {
-  onEditServer: (server: PluginServerConfig) => void;
+  onEditServer: (server: McpServerConfig) => void;
   onEditHardware: (hardware: Hardware) => void;
   onChanged: () => Promise<void>;
 };
@@ -62,7 +62,7 @@ function ManagedInspector({ server, snapshot, hardware, onEditServer, onChanged 
       actions={
         <ServerActions
           server={server}
-          onEdit={server.transport === "plugin" ? () => onEditServer(server) : undefined}
+          onEdit={() => onEditServer(server)}
           onChanged={onChanged}
           onError={setError}
         />
@@ -73,13 +73,9 @@ function ManagedInspector({ server, snapshot, hardware, onEditServer, onChanged 
         <Meta items={[
           { label: "硬件 ID", value: server.hardwareId },
           { label: "Server ID", value: server.serverId },
-          ...(server.transport === "plugin"
-            ? [{ label: "设备类型", value: server.type }, { label: "运行模式", value: modeLabel(server.mode) }]
-            : [{ label: "MCP 地址", value: server.url }])
+          { label: "设备类型", value: server.type },
+          { label: "运行模式", value: modeLabel(server.mode) }
         ]} />
-        {server.transport === "mcp-http" && (
-          <p className="text-xs text-fg-3">本机 MCP 服务由它自己的注册脚本登记，这里只读，可以删除。</p>
-        )}
         {status.title && <p className="text-xs break-words text-fg-3">{status.title}</p>}
       </Section>
       <AdapterRelease hardwareId={server.hardwareId} onError={setError} />

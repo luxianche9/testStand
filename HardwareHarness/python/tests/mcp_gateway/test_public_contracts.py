@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import base64
-import hashlib
 from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, Mock
@@ -18,8 +16,6 @@ from hardwareharness_backend.contracts.mcp import (
     sdk_envelope_schema,
     with_error_schema,
 )
-from hardwareharness_backend.devices.mcp_client import McpHttpTransport
-from hardwareharness_backend.mcp_gateway.contract_tools import import_firmware
 from hardwareharness_backend.mcp_gateway.tool_registry import BUILTIN_TOOLS, ToolRegistry
 
 Json = dict[str, Any]
@@ -92,40 +88,20 @@ def test_gateway_and_sdk_shapes_keep_referenced_data_and_media_distinct() -> Non
     assert tool["_meta"]["hardwareharness"]["remoteToolName"] == "read"
 
 
-async def test_error_only_remote_result_cannot_be_reported_as_success() -> None:
-    transport = McpHttpTransport(Mock())
-    transport.sessions["S"] = {
-        "validators": {},
-        "client": Mock(
-            call_tool=AsyncMock(
-                return_value={
-                    "isError": True,
-                    "content": [{"type": "text", "text": "driver refused"}],
-                }
-            )
-        ),
-    }
-    for options in ({}, {"preserveEnvelope": True}):
-        with pytest.raises(AppError, match="driver refused") as caught:
-            await transport.call_remote("S", "write", {}, options)
-        assert caught.value.details["automaticRetry"] is False
-
-
 @pytest.mark.parametrize(
-    "server_id,tool_name,allowed",
+    "tool_name,kind,allowed",
     [
-        ("FIREDAP_MCP", "firedap_get_job", True),
-        ("FIREDAP_MCP", "firedap_wait_job", True),
-        ("PCI6208V_MCP", "get_hardware_info", True),
-        ("PCI6208V_MCP", "pci6208v_set_voltage", False),
-        ("THIRD_PARTY", "get_hardware_info", False),
+        ("get_hardware_info", "management", True),
+        ("pci6208v_set_voltage", "hardware", False),
+        ("get_hardware_info", "hardware", False),
     ],
 )
 async def test_only_platform_metadata_reads_bypass_active_call(
-    server_id: str,
     tool_name: str,
+    kind: str,
     allowed: bool,
 ) -> None:
+    server_id = "PCI6208V_MCP"
     name = f"{server_id}__{tool_name}"
     execution = ExecutionCoordinator()
     handle = execution.acquire(
@@ -143,7 +119,7 @@ async def test_only_platform_metadata_reads_bypass_active_call(
                     "externalName": name,
                     "remoteName": tool_name,
                     "serverId": server_id,
-                    "kind": "management",
+                    "kind": kind,
                     "annotations": {"readOnlyHint": True},
                 }
             ]
@@ -163,34 +139,6 @@ async def test_only_platform_metadata_reads_bypass_active_call(
             service.call_aggregated_tool.assert_not_called()
     finally:
         handle.release()
-
-
-async def test_firmware_transfer_does_not_require_large_model_payload(tmp_path: Path) -> None:
-    data = b"FIRMWARE" * 150000
-    (tmp_path / "image.bin").write_bytes(data)
-    name = "FIREDAP_MCP__firedap_import_firmware"
-    app = Mock(
-        projects=Mock(document=Mock(return_value={"rootPath": str(tmp_path)})),
-        devices=Mock(
-            list_tools=Mock(return_value=[{"externalName": name}]),
-            call_tool=AsyncMock(return_value={"artifactId": "sha256-id"}),
-        ),
-    )
-    digest = hashlib.sha256(data).hexdigest()
-    value = {"serverId": "FIREDAP_MCP", "path": "image.bin", "expectedSha256": digest}
-    assert await import_firmware(app, CONTEXT, value) == {"artifactId": "sha256-id"}
-    sent = app.devices.call_tool.call_args.args[2]
-    assert base64.b64decode(sent["content_base64"]) == data
-    assert sent["expected_sha256"] == digest
-    app.devices.call_tool.reset_mock()
-    for change in (
-        {"expectedSha256": "0" * 64},
-        {"path": str(tmp_path / "image.bin")},
-        {"path": "../outside.bin"},
-    ):
-        with pytest.raises(AppError):
-            await import_firmware(app, CONTEXT, {**value, **change})
-    app.devices.call_tool.assert_not_called()
 
 
 async def test_contract_discovery_obeys_authorization_and_exact_names() -> None:
@@ -293,7 +241,7 @@ def test_root_reference_to_union_and_optional_data_are_preserved() -> None:
     Draft202012Validator(normalized_output_schema(plain)).validate({"ok": True, "data": 2})
 
 
-async def test_registry_context_structured_endpoints_and_firmware_execute(tmp_path: Path) -> None:
+async def test_registry_context_and_structured_endpoints(tmp_path: Path) -> None:
     from .test_gateway import application
 
     app, devices, wiring = application()
@@ -319,29 +267,6 @@ async def test_registry_context_structured_endpoints_and_firmware_execute(tmp_pa
         },
     )
     assert wiring.request_task.call_args.args[0]["portA"] == "H.H.P1"
-    devices.list_tools.return_value = [
-        {
-            "externalName": "S1__firedap_import_firmware",
-            "remoteName": "firedap_import_firmware",
-            "serverId": "S1",
-            "kind": "management",
-            "inputSchema": {},
-        }
-    ]
-    devices.call_aggregated_tool = AsyncMock(
-        return_value={
-            "artifactId": "id",
-            "path": "managed/id.bin",
-            "sha256": "0" * 64,
-            "fileBytes": 1,
-        }
-    )
-    (tmp_path / "image.bin").write_bytes(b"x")
-    imported = await registry.invoke(
-        CONTEXT, "import_firmware_artifact", {"serverId": "S1", "path": "image.bin"}
-    )
-    assert imported["data"]["artifactId"] == "id"
-    devices.call_aggregated_tool.assert_awaited_once()
 
 
 async def test_all_public_builtin_schemas_allow_recoverable_errors() -> None:

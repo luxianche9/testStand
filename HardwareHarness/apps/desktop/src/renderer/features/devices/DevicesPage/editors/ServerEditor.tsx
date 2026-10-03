@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
-  DeviceBundlePreview, DeviceType, Hardware, HardwarePort, PluginServerConfig
+  DeviceBundlePreview, DeviceType, Hardware, HardwarePort, McpServerConfig
 } from "@hardwareharness/contracts/devices";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -35,7 +35,7 @@ const serverEditorSchema = z.object({
 });
 type ServerEditorValues = z.infer<typeof serverEditorSchema>;
 
-function initialValues(server: PluginServerConfig | undefined): ServerEditorValues {
+function initialValues(server: McpServerConfig | undefined): ServerEditorValues {
   if (!server) return { type: "", serverId: "", label: "", hardwareId: "", mode: "real", settings: "{}" };
   return {
     type: server.type,
@@ -55,7 +55,7 @@ function typeLabel(item: DeviceType): string {
 /** A device plugin instance and the managed hardware it drives are edited together. */
 export function ServerEditor({ open, server, hardware, onClose, onChanged }: {
   open: boolean;
-  server?: PluginServerConfig | undefined;
+  server?: McpServerConfig | undefined;
   hardware: Hardware[];
   onClose: () => void;
   onChanged: () => Promise<void>;
@@ -126,8 +126,7 @@ export function ServerEditor({ open, server, hardware, onClose, onChanged }: {
       const devices = window.hardwareharness.devices;
       const serverId = values.serverId.trim();
       const boundId = values.hardwareId.trim();
-      const input: PluginServerConfig = {
-        transport: "plugin",
+      const input: McpServerConfig = {
         serverId,
         label: values.label.trim() || serverId,
         hardwareId: boundId,

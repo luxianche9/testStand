@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Hardware, PluginServerConfig } from "@hardwareharness/contracts/devices";
+import type { Hardware, McpServerConfig } from "@hardwareharness/contracts/devices";
 import { CircleAlertIcon, RefreshCwIcon } from "lucide-react";
 import { errorMessage } from "../../../lib/errors.js";
 import { invalidateDeviceData } from "../../../lib/mutations.js";
@@ -18,7 +18,7 @@ export function DevicesPage() {
   const client = useQueryClient();
   const [selected, setSelected] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [serverEditor, setServerEditor] = useState<{ open: boolean; server?: PluginServerConfig }>({ open: false });
+  const [serverEditor, setServerEditor] = useState<{ open: boolean; server?: McpServerConfig }>({ open: false });
   const [hardwareEditor, setHardwareEditor] = useState<{ open: boolean; hardware?: Hardware }>({ open: false });
   const sidebar = useResizableWidth({
     storageKey: "hardwareharness.devices-sidebar-width",

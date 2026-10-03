@@ -1,12 +1,8 @@
-"""On-demand tool contracts and project-to-service firmware transfer."""
+"""On-demand tool contracts."""
 
 from __future__ import annotations
 
-import asyncio
-import base64
 import hashlib
-from collections.abc import Awaitable, Callable
-from pathlib import Path
 from typing import Any
 
 from hardwareharness_backend import CONTRACT_REVISION
@@ -15,8 +11,6 @@ from hardwareharness_backend.contracts.operations import Tool
 from hardwareharness_backend.contracts.validation import number, obj, string
 
 Record = dict[str, Any]
-DeviceToolCall = Callable[[Record, str, Record], Awaitable[Any]]
-_FIRMWARE_LIMIT = 32 * 1024 * 1024
 _META = {"kind": "platform"}
 
 
@@ -60,44 +54,6 @@ CONTRACT_TOOLS = [
         call=_unreachable,
         capability="projects.read",
         read_only=True,
-        meta=_META,
-    ),
-    Tool(
-        "import_firmware_artifact",
-        "Import a USER project firmware file into a selected service's managed immutable storage. "
-        "HH transfers bytes internally (up to 32 MiB), checks SHA-256 and returns the server path. "
-        "Inspect the returned file before flash; BIN requires an explicit base address.",
-        obj(
-            {
-                "serverId": string(1).describe(
-                    "Server from list_mcp_servers exposing firedap_import_firmware."
-                ),
-                "path": string(1).describe(
-                    "Relative USER project .bin/.hex/.ihex/.elf/.axf file; "
-                    "escapes and outside symlink targets rejected."
-                ),
-                "expectedSha256": string(64, 64, regex="^[0-9a-fA-F]{64}$")
-                .optional()
-                .describe("Expected SHA-256; mismatch aborts before any transfer."),
-            },
-            strict=True,
-        ),
-        {
-            "type": "object",
-            "properties": {
-                "artifactId": {"type": "string"},
-                "path": {"type": "string"},
-                "sha256": {"type": "string"},
-                "fileBytes": {"type": "integer"},
-                "immutable": {"const": True},
-                "requiresInspection": {"const": True},
-            },
-            "required": ["artifactId", "path", "sha256", "fileBytes"],
-        },
-        call=_unreachable,
-        capability="hardware.executeTools",
-        open_world=True,
-        profiles=frozenset({"adapter", "explore"}),
         meta=_META,
     ),
     Tool(
@@ -201,61 +157,3 @@ def read_tool_contract(registry: Any, context: Record, arguments: Record) -> Rec
         "referenceId": "hh-agent-interface",
     }
     return result
-
-
-async def import_firmware(
-    application: Any,
-    context: Record,
-    arguments: Record,
-    call_tool: DeviceToolCall | None = None,
-) -> Any:
-    """Send a project firmware file to a FireDAP service; ``call_tool`` runs the device tool
-    (the gateway passes its ``devices.callTool`` route through the registry middleware)."""
-    application.authorizer.authorize(context, "projects.read")
-    name = f"{arguments['serverId']}__firedap_import_firmware"
-    if not any(t["externalName"] == name for t in application.devices.list_tools(context)):
-        raise app_error(
-            "unavailable",
-            "Selected service does not expose managed firmware import",
-            {
-                "serverId": arguments["serverId"],
-                "recovery": "Connect/update FireDAP and refresh its public tool catalog.",
-            },
-        )
-    project = application.projects.document(context)
-    if not project:
-        raise app_error("requires_project", "Open a user project before importing firmware")
-    root = Path(project["rootPath"]).resolve()
-    relative = Path(arguments["path"])
-    candidate = (root / relative).resolve()
-    if relative.is_absolute() or not candidate.is_relative_to(root) or not candidate.is_file():
-        raise app_error(
-            "invalid_argument", "Firmware must be an existing file inside the user project"
-        )
-    if candidate.suffix.casefold() not in {".bin", ".hex", ".ihex", ".elf", ".axf"}:
-        raise app_error(
-            "invalid_argument", "Supported firmware extensions: .bin/.hex/.ihex/.elf/.axf"
-        )
-
-    def read() -> bytes:
-        with candidate.open("rb") as stream:
-            return stream.read(_FIRMWARE_LIMIT + 1)
-
-    data = await asyncio.to_thread(read)
-    if not data or len(data) > _FIRMWARE_LIMIT:
-        raise app_error("invalid_argument", "Firmware must be between 1 byte and 32 MiB")
-    digest = hashlib.sha256(data).hexdigest()
-    if arguments.get("expectedSha256", digest).lower() != digest:
-        raise app_error(
-            "conflict", "Firmware hash changed; no transfer performed", {"actualSha256": digest}
-        )
-    call = call_tool or application.devices.call_tool
-    return await call(
-        context,
-        name,
-        {
-            "filename": candidate.name,
-            "content_base64": base64.b64encode(data).decode("ascii"),
-            "expected_sha256": digest,
-        },
-    )

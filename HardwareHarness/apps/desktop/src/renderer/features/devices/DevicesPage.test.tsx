@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
-import type { DeviceType, PluginServerConfig } from "@hardwareharness/contracts/devices";
+import type { DeviceType, McpServerConfig } from "@hardwareharness/contracts/devices";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HardwareEditor } from "./DevicesPage/editors/HardwareEditor.js";
 import { ServerEditor } from "./DevicesPage/editors/ServerEditor.js";
@@ -88,7 +88,6 @@ describe("device editors", () => {
 
     await waitFor(() => expect(saveServer).toHaveBeenCalledWith({
       input: {
-        transport: "plugin",
         serverId: "PCI1762",
         label: "PCI-1762",
         hardwareId: "PCI1762_CARD_0",
@@ -124,8 +123,8 @@ describe("device editors", () => {
   });
 
   it("edits an existing instance without changing its type or ids", async () => {
-    const server: PluginServerConfig = {
-      transport: "plugin", serverId: "RELAY", label: "Relay", hardwareId: "RELAY_CARD", type: "pci1762",
+    const server: McpServerConfig = {
+      serverId: "RELAY", label: "Relay", hardwareId: "RELAY_CARD", type: "pci1762",
       settings: { description: "PCI-1762,BID#1" }, mode: "real", enabled: true
     };
     render(

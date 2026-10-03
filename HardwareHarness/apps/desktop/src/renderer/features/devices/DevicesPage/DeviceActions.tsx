@@ -7,10 +7,10 @@ import { Button, IconButton, useConfirm } from "../../../ui";
 /** Reported by every action group so the inspector shows one error strip under its header. */
 export type ReportError = (message: string | null) => void;
 
-/** Header actions of a managed device. A local MCP service is registered by its own script: remove only. */
+/** Header actions of a managed device. */
 export function ServerActions({ server, onEdit, onChanged, onError }: {
   server: McpServerConfig;
-  onEdit?: (() => void) | undefined;
+  onEdit: () => void;
   onChanged: () => Promise<void>;
   onError: ReportError;
 }) {
@@ -32,7 +32,7 @@ export function ServerActions({ server, onEdit, onChanged, onError }: {
   };
   return (
     <>
-      {onEdit && <IconButton label="编辑信息" size="icon-sm" onClick={onEdit}><PencilIcon /></IconButton>}
+      <IconButton label="编辑信息" size="icon-sm" onClick={onEdit}><PencilIcon /></IconButton>
       <IconButton label="删除设备" size="icon-sm" disabled={remove.isPending} onClick={() => void requestRemove()}>
         <Trash2Icon />
       </IconButton>

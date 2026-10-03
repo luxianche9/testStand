@@ -879,52 +879,6 @@ async def test_cleanup_failure_without_safety_is_separate_from_dut_verdict(
     assert completed["state"] == "error"
 
 
-async def test_firmware_operations_publish_separate_traceable_evidence(tmp_path: Path) -> None:
-    class FirmwareResolver(Resolver):
-        def resolve(self, hardware_id: str, tool_name: str) -> tuple[dict[str, Any], list[Any]]:
-            tool, issues = super().resolve(hardware_id, tool_name)
-            tool["operationSemantics"]["evidenceType"] = "firmware_job_status"
-            return tool, issues
-
-    resolver = FirmwareResolver()
-    engine = TestEngine(Projects(tmp_path), Devices(), resolver, ExecutionCoordinator())
-    plan = plan_with(
-        {
-            "id": "wait_flash",
-            "type": "InvokeTool",
-            "hardwareId": "dev",
-            "toolName": "firedap_wait_job",
-            "arguments": {
-                "hardwareId": "dut",
-                "expected_sha256": "a" * 64,
-                "output": {
-                    "jobId": "job-1",
-                    "operation": "flash",
-                    "state": "succeeded",
-                    "firmware": {"sha256": "a" * 64},
-                    "result": {"verified": True},
-                },
-            },
-        }
-    )
-    binding, _ = resolver.resolve("dev", "firedap_wait_job")
-    plan["resolvedBindings"] = {"wait_flash": binding}
-
-    completed = await finish(engine, await engine.start(plan, {}))
-    evidence = engine.runs[completed["runId"]].results[0]
-    assert evidence["kind"] == "observation"
-    assert evidence["evidenceType"] == "T2"  # §7.7: the programmer reports on its own job
-    assert evidence["operationEvidence"] == "firmware_job_status"
-    assert evidence["firmware"] == {
-        "sha256": "a" * 64,
-        "targetHardwareId": "dut",
-        "jobId": "job-1",
-        "operation": "flash",
-        "state": "succeeded",
-        "verified": True,
-    }
-
-
 def test_dispatched_operation_becomes_recovery_required_after_restart(tmp_path: Path) -> None:
     projects = Projects(tmp_path)
     state = RuntimeStateStore(projects)

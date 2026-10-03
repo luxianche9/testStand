@@ -1950,11 +1950,6 @@ export interface components {
         };
         /** DevicesSaveServerRequest */
         DevicesSaveServerRequest: {
-            /**
-             * Credentials
-             * @default null
-             */
-            credentials?: object | null;
             /** Input */
             input: object;
         };

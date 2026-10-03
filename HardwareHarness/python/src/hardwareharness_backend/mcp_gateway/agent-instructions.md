@@ -14,4 +14,4 @@
 
 调试硬件时，list_device_streams 列出服务的只读数据流；observe_stream 从现在起采集一段并可按 Observe 断言判定，expect_stream 从现在起等待匹配记录 (先调它再触发工具调用)。二者与测试步骤使用同一份判定逻辑；数据流只读，控制仍只经 MCP 工具。
 
-使用用户当前工程中的代码和资料。固件使用 import_firmware_artifact 导入目标服务的受管存储，导入后按工具契约执行烧录；测试计划中不允许内联 Python。
+使用用户当前工程中的代码和资料；测试计划中不允许内联 Python。

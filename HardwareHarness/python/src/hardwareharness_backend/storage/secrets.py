@@ -1,7 +1,7 @@
 """Credentials in the operating system's credential store (design doc §4.7).
 
 Entries live under the ``HardwareHarness`` service of Python ``keyring`` (Windows Credential
-Manager): ``mcp:<serverId>`` (a device service token), ``gateway``, ``opencode.llm.api-key``.
+Manager): ``gateway``, ``opencode.llm.api-key``.
 Only the entry names are kept on disk (``secret-keys.json``) so ``has`` needs no store round
 trip; values are read once at startup and kept in memory, so ``get`` never blocks the loop
 on the credential store.

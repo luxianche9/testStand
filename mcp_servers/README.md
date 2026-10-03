@@ -1,6 +1,5 @@
 # Hardware device plugins
 
-本机 FireDAP 烧录服务见 [`servers/firedap/README.md`](servers/firedap/README.md)（仍是旧布局，尚未迁入 SDK），
 霸天虎 V2 常用接口模型见 [`hardware-manuals/stm32-batianhu-v2/README.md`](hardware-manuals/stm32-batianhu-v2/README.md)。
 新硬件适配器按技能 [`skill/mcp-server`](../skill/mcp-server/SKILL.md) 编写。
 

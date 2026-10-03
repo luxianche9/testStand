@@ -262,14 +262,13 @@ async def test_wiring_orchestration_and_dashboard_facades() -> None:
         "list_availability",
     ]:
         getattr(devices, name).return_value = [name]
-    remote = {"transport": "mcp-http", "serverId": "R"}
-    local = {"transport": "plugin", "serverId": "P"}
-    devices.list_servers.return_value = [remote, local]
+    servers = [{"serverId": "R"}, {"serverId": "P"}]
+    devices.list_servers.return_value = servers
     dashboard = SystemApplication(
         authorizer, devices, Mock(gateway_status=lambda: {"running": True}), ExecutionCoordinator()
     ).dashboard(HUMAN)
     assert dashboard == {
-        "servers": [remote, local],
+        "servers": servers,
         "serverStatuses": ["list_server_statuses"],
         "hardware": ["list_hardware"],
         "tools": ["list_tools"],

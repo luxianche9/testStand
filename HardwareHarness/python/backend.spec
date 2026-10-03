@@ -17,8 +17,10 @@ DEVICE_PACKAGES = {
     "hh-adapter-pci6208v": "hh_adapter_pci6208v",
     "hh-adapter-cp118u-i": "hh_adapter_cp118u_i",
 }
-for distribution in DEVICE_PACKAGES:
+for distribution, package in DEVICE_PACKAGES.items():
     datas += copy_metadata(distribution)
+    # Package data, including the DAQNavi bridges built into <adapter>/bin/ by mcp_servers/native/build.py.
+    datas += collect_data_files(package)
 binaries = [(str(path), "icu") for path in (root / "vendor/icu/bin64").glob("*.dll")]
 hiddenimports = [
     "anyio._backends._asyncio", "uvicorn.loops.asyncio", "uvicorn.protocols.http.h11_impl",

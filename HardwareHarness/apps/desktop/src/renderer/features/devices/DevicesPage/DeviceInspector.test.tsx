@@ -15,18 +15,8 @@ import { queryKeys } from "../../../lib/query-keys.js";
 import { DeviceInspector } from "./DeviceInspector.js";
 import { HardwareListTree } from "./HardwareListTree.js";
 
-const fireDap = {
-  transport: "mcp-http" as const,
-  serverId: "FIREDAP_MCP",
-  label: "FireDAP",
-  hardwareId: "FIREDAP_0",
-  url: "http://127.0.0.1:8031/mcp",
-  enabled: true
-};
-
 const snapshot: DashboardSnapshot = {
   servers: [{
-    transport: "plugin",
     serverId: "E2E_MCP",
     label: "E2E fixture MCP",
     hardwareId: "E2E_CARD",
@@ -34,10 +24,18 @@ const snapshot: DashboardSnapshot = {
     settings: {},
     mode: "sim",
     enabled: true
-  }, fireDap],
+  }, {
+    serverId: "RELAY_MCP",
+    label: "Relay card",
+    hardwareId: "RELAY_0",
+    type: "pci1762",
+    settings: {},
+    mode: "real",
+    enabled: true
+  }],
   serverStatuses: [
     { serverId: "E2E_MCP", transport: { state: "online" } },
-    { serverId: "FIREDAP_MCP", transport: { state: "offline", message: "Connection refused" } }
+    { serverId: "RELAY_MCP", transport: { state: "offline", message: "Connection refused" } }
   ],
   hardware: [{ hardwareId: "E2E_CARD", serverId: "E2E_MCP", state: "open", health: "ok" }],
   tools: [{
@@ -210,9 +208,9 @@ describe("device trees", () => {
     renderTree(snapshot, { onSelect, onAddDevice });
     expect(screen.getByRole("tree", { name: "硬件列表" })).toBeTruthy();
     const device = screen.getByRole("treeitem", { name: /E2E fixture card/ });
-    const local = screen.getByRole("treeitem", { name: /FireDAP/ });
+    const offline = screen.getByRole("treeitem", { name: /Relay card/ });
     const passive = screen.getByRole("treeitem", { name: /DUT_A/ });
-    expect(within(local).getByText("离线")).toBeTruthy();
+    expect(within(offline).getByText("离线")).toBeTruthy();
     expect(screen.queryByText("write_voltage")).toBeNull();
     expect(screen.queryByRole("button", { name: "编辑信息" })).toBeNull();
     expect(screen.queryByRole("button", { name: "移除硬件" })).toBeNull();
@@ -297,15 +295,6 @@ describe("device inspector", () => {
     });
     expect(result.querySelector("pre")?.textContent).toContain("\"voltage\": 3.3");
     expect(within(result).getByText("3.3")).toBeTruthy();
-  });
-
-  it("shows a local MCP service read-only: its address and remove, no edit", () => {
-    renderInspector("s:FIREDAP_MCP");
-
-    expect(screen.getByRole("heading", { name: "FireDAP" })).toBeTruthy();
-    expect(screen.getByText("http://127.0.0.1:8031/mcp")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "编辑信息" })).toBeNull();
-    expect(screen.getByRole("button", { name: "删除设备" })).toBeTruthy();
   });
 
   it("shows passive hardware as editable without manual control", () => {

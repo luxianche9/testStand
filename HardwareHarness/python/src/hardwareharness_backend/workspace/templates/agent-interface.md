@@ -42,13 +42,6 @@ operation failed. It never resubmits the original action. Service terminal means
 (including stopped/offline/error), not hardware readiness. Wiring confirmed means human confirmation,
 not independent electrical verification.
 
-## Import firmware
-
-`import_firmware_artifact(serverId, path, expectedSha256=...)` imports a firmware file from a relative
-path inside the user project into the target service's managed storage. Use its returned accepted path
-with the advertised flash tool. It verifies content hash and format before making the artifact usable;
-importing does not flash the target. Do not change firmwareRoots or guess paths on the remote host.
-
 ## Recover from errors
 
 | Category | Next action |

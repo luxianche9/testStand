@@ -30,17 +30,17 @@ def test_passive_references() -> None:
 
 @pytest.mark.ts_case(PREFIX + "applies stable defaults")
 def test_defaults() -> None:
-    assert (
-        parse_mcp_server(
-            {
-                "serverId": "S1",
-                "label": "S",
-                "hardwareId": "H1",
-                "url": "http://127.0.0.1/mcp",
-            }
-        )["transport"]
-        == "mcp-http"
-    )
+    assert parse_mcp_server(
+        {"serverId": "P1", "label": "P", "hardwareId": "H2", "type": "pci1762"}
+    ) == {
+        "serverId": "P1",
+        "label": "P",
+        "hardwareId": "H2",
+        "type": "pci1762",
+        "settings": {},
+        "mode": "real",
+        "enabled": True,
+    }
 
 
 @pytest.mark.ts_case(PREFIX + "validates managed hardware at the device trust boundary")

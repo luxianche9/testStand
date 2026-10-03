@@ -737,35 +737,6 @@ class RunInterpreter:
             if step.get("anchor"):
                 anchor = self.io.set_anchor(str(step["anchor"]), step["hardwareId"], call["timing"])
                 self.emit("anchor.set", {"anchor": anchor, **self._current_execution_reference()})
-            semantics = (binding or {}).get("operationSemantics", {})
-            if str(semantics.get("evidenceType", "")).startswith("firmware_"):
-                firmware = output.get("firmware", {}) if isinstance(output, dict) else {}
-                result = output.get("result", {}) if isinstance(output, dict) else {}
-                self.publish_result(
-                    {
-                        "kind": "observation",
-                        "name": step.get("name", step["id"]),
-                        "value": clone(output),
-                        "sourceStepId": step["id"],
-                        "hardwareId": step["hardwareId"],
-                        "toolName": step["toolName"],
-                        # §7.7 grade: the programmer's own report of its job (T2).
-                        "evidenceType": judge.tool_evidence_type(semantics["evidenceType"]),
-                        "operationEvidence": semantics["evidenceType"],
-                        "firmware": {
-                            "sha256": arguments.get("expected_sha256") or firmware.get("sha256"),
-                            "targetHardwareId": arguments.get("hardwareId") or step["hardwareId"],
-                            "jobId": output.get("jobId") if isinstance(output, dict) else None,
-                            "operation": output.get("operation")
-                            if isinstance(output, dict)
-                            else None,
-                            "state": output.get("state") if isinstance(output, dict) else None,
-                            "verified": result.get("verified")
-                            if isinstance(result, dict)
-                            else None,
-                        },
-                    }
-                )
             verdict = "Pass"
             if step.get("assertions"):
                 assertions = self.bind(step["assertions"])

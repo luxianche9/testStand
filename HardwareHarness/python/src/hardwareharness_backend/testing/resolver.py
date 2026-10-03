@@ -179,12 +179,10 @@ def _operation_semantics(tool: Record) -> Record:
         return clone(declared)
     annotations = tool.get("annotations", {})
     name = str(tool.get("remoteName", ""))
-    known_hh_tool = name.startswith(("pci1710l_", "pci1762_", "pci6208v_", "cp118u_", "firedap_"))
+    known_hh_tool = name.startswith(("pci1710l_", "pci1762_", "pci6208v_", "cp118u_"))
     read_only = bool(annotations.get("readOnlyHint"))
     idempotent = bool(annotations.get("idempotentHint"))
-    if name.startswith(("get_", "list_")) or any(
-        token in name for token in ("_read_", "_get_", "target_info")
-    ):
+    if name.startswith(("get_", "list_")) or any(token in name for token in ("_read_", "_get_")):
         read_only = True
     if any(token in name for token in ("configure", "safe_state")):
         idempotent = True

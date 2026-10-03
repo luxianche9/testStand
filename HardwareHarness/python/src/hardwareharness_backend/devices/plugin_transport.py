@@ -5,9 +5,6 @@ its non-secret ``settings`` and ``mode`` (``sim`` runs the adapter's simulator).
 loads the device through :func:`hardwareharness_device_sdk.open_device`, in this process or in
 an isolated child process as the adapter's ``Device.isolation`` asks, and opens it (the SDK
 drives it to its safe state right after ``open``). Disconnecting drives it safe and closes it.
-
-Tools, results and the ``/device`` declaration have the same shapes as over MCP HTTP, so the
-layers above cannot tell the transports apart; there is no network, token or clock to sync.
 """
 
 from __future__ import annotations
@@ -32,7 +29,6 @@ from hardwareharness_backend.contracts.devices import (
 from hardwareharness_backend.contracts.errors import AppError, app_error
 from hardwareharness_backend.util import clone
 
-from .device_manifest import declared_streams
 from .schema_validation import schema_error
 from .tool_catalog import catalog_entry, request_arguments, unwrap_result
 
@@ -53,6 +49,16 @@ def child_command() -> list[str] | None:
     if getattr(sys, "frozen", False):
         return [sys.executable, CHILD_FLAG]
     return None
+
+
+def declared_streams(document: Record) -> list[Record]:
+    """``/device.streams[]`` entries that name an ``id`` and a ``type``, as declared."""
+    streams = document.get("streams")
+    return [
+        {**item, "id": str(item["id"]), "type": str(item["type"])}
+        for item in (streams if isinstance(streams, list) else [])
+        if isinstance(item, dict) and "id" in item and "type" in item
+    ]
 
 
 def plugin_config(server: Record) -> ServerConfig:
@@ -98,8 +104,6 @@ def _open(device_type: str, config: ServerConfig) -> DeviceHandle:
 
 
 class PluginTransport:
-    kind = "plugin"
-
     def __init__(self, opener: Opener = _open) -> None:
         self.opener = opener
         self.sessions: dict[str, Record] = {}
@@ -183,13 +187,6 @@ class PluginTransport:
             if tool["kind"] != "internal"
         ]
 
-    def has_tool(self, external_name: str) -> bool:
-        return any(
-            tool["externalName"] == external_name
-            for session in self.sessions.values()
-            for tool in session["tools"]
-        )
-
     def _find(self, external_name: str) -> tuple[Record, Record]:
         for session in self.sessions.values():
             for tool in session["tools"]:
@@ -197,7 +194,9 @@ class PluginTransport:
                     return session, tool
         raise RuntimeError(f"Unknown aggregated tool: {external_name}")
 
-    async def call(self, external_name: str, args: Record, options: Record | None = None) -> Any:
+    async def call_tool(
+        self, external_name: str, args: Record, options: Record | None = None
+    ) -> Any:
         session, tool = self._find(external_name)
         return await self._call(session, tool["remoteName"], args, options or {})
 
@@ -255,6 +254,14 @@ class PluginTransport:
         await self._describe(session)
         return dict(session["hardware"])
 
+    async def list_hardware(self, servers: list[Record]) -> list[Record]:
+        """The hardware of every enabled server that can be described now."""
+        results = await asyncio.gather(
+            *(self.describe_hardware(server) for server in servers if server["enabled"]),
+            return_exceptions=True,
+        )
+        return [item for item in results if not isinstance(item, BaseException)]
+
     async def describe_device(self, server: Record) -> Record | None:
         session = await self.ensure(server)
         await self._describe(session)
@@ -268,9 +275,3 @@ class PluginTransport:
     async def read_blob(self, server: Record, stream_id: str, ref: str) -> Record:
         session = await self.ensure(server)
         return dict(await session["device"].read_blob(stream_id, ref))
-
-    async def prepare_shutdown(self, server_id: str) -> Any:
-        session = self.sessions.get(server_id)
-        if session is None:
-            return []
-        return await session["device"].safe_all()

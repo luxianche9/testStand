@@ -6,15 +6,8 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, Mock
 
-import httpx
-import pytest
-
 from hardwareharness_backend.devices import DeviceService, DeviceStore
-from hardwareharness_backend.devices.device_manifest import (
-    declared_streams,
-    fetch_device,
-    service_base_url,
-)
+from hardwareharness_backend.devices.plugin_transport import declared_streams
 
 HARDWARE = "PCI1710L_MCP.HARDWARE_0"
 
@@ -42,36 +35,16 @@ def declaration(revision: str = "sha256:1") -> dict[str, Any]:
 
 def server() -> dict[str, Any]:
     return {
-        "transport": "mcp-http",
         "serverId": "PCI1710L_MCP",
         "label": "PCI-1710L",
         "hardwareId": HARDWARE,
-        "url": "http://127.0.0.1:8011/mcp",
+        "type": "pci1710l",
         "enabled": True,
     }
 
 
-def test_manifest_helpers() -> None:
-    assert service_base_url("http://10.0.0.2:8011/mcp/") == "http://10.0.0.2:8011"
-    document = declaration()
-    assert declared_streams(document) == [{"id": "ai0", "type": "scalar", "unit": "V"}]
-
-
-async def test_fetch_device_treats_404_as_an_older_service() -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        assert request.url.path == "/device"
-        return httpx.Response(404)
-
-    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
-        assert await fetch_device(http, "http://127.0.0.1:8011/mcp") is None
-
-
-async def test_fetch_device_rejects_a_document_without_revision() -> None:
-    async with httpx.AsyncClient(
-        transport=httpx.MockTransport(lambda _: httpx.Response(200, json={"identity": {}}))
-    ) as http:
-        with pytest.raises(RuntimeError, match="not a device declaration"):
-            await fetch_device(http, "http://127.0.0.1:8011/mcp")
+def test_declared_streams_keep_entries_with_id_and_type() -> None:
+    assert declared_streams(declaration()) == [{"id": "ai0", "type": "scalar", "unit": "V"}]
 
 
 async def test_store_keeps_the_definition(tmp_path: Path) -> None:
@@ -101,8 +74,8 @@ async def service_with(
         list_hardware=AsyncMock(return_value=[]),
         describe_device=AsyncMock(return_value=document),
     )
-    service = DeviceService(store, Mock(set=AsyncMock(), remove=AsyncMock()), transports)
-    await service.save_server(server(), {"mcpToken": "token"})
+    service = DeviceService(store, transports)
+    await service.save_server(server())
     return service, transports
 
 

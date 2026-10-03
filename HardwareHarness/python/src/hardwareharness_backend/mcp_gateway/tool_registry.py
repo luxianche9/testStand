@@ -37,7 +37,7 @@ from hardwareharness_backend.testing.tools import TESTING_TOOLS
 from hardwareharness_backend.util import clone
 
 from .agent_services import AGENT_TOOLS
-from .contract_tools import CONTRACT_TOOLS, import_firmware, read_tool_contract
+from .contract_tools import CONTRACT_TOOLS, read_tool_contract
 
 Record = dict[str, Any]
 Run = Callable[[Record, Record], Awaitable[Any]]
@@ -124,7 +124,6 @@ class ToolRegistry:
                     self._add(definition.name.replace(".", "_"), self._generated(definition))
         self._own: dict[str, Run] = {
             "get_tool_contract": self._tool_contract,
-            "import_firmware_artifact": self._import_firmware,
             "list_device_tools": self._list_device_tools,
             "enable_device_tools": self._enable_device_tools,
         }
@@ -185,9 +184,6 @@ class ToolRegistry:
 
     async def _tool_contract(self, context: Record, value: Record) -> Any:
         return read_tool_contract(self, context, value)
-
-    async def _import_firmware(self, context: Record, value: Record) -> Any:
-        return await import_firmware(self.application, context, value, self.call_device_tool)
 
     def _hardware_of(self, context: Record) -> dict[str, str]:
         """``{serverId: hardwareId}``; a server without one stands for itself."""

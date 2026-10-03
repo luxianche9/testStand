@@ -29,8 +29,6 @@ from hardwareharness_backend.devices import (
     DeviceCatalogService,
     DeviceService,
     DeviceStore,
-    DeviceTransportRegistry,
-    McpHttpTransport,
     PluginTransport,
 )
 from hardwareharness_backend.host.agents import AgentsApplication
@@ -87,7 +85,7 @@ class ServiceOptions:
 class Services:
     settings: SettingsStore
     secrets: SecretStore
-    transports: DeviceTransportRegistry
+    plugins: PluginTransport
     store: DeviceStore
     devices: DeviceService
     projects: ProjectService
@@ -129,10 +127,9 @@ class HostRuntime:
         secrets = SecretStore(root, backend)
         await secrets.initialize()
         plugins = PluginTransport()
-        transports = DeviceTransportRegistry([McpHttpTransport(secrets), plugins])
         store = DeviceStore(root / "devices")
         await store.initialize()
-        devices = DeviceService(store, secrets, transports)
+        devices = DeviceService(store, plugins)
         projects = ProjectService(settings)
         await projects.initialize()
         catalog = DeviceCatalogService(store)
@@ -242,7 +239,7 @@ class HostRuntime:
         self.services = Services(
             settings,
             secrets,
-            transports,
+            plugins,
             store,
             devices,
             projects,
@@ -330,7 +327,7 @@ class HostRuntime:
         await services.devices.safe_all()
         await services.live_streams.close()
         await services.application.projects.close()
-        await services.transports.close()
+        await services.plugins.close()
         await services.secrets.flush()
 
 

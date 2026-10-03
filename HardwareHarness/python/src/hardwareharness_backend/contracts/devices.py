@@ -18,22 +18,10 @@ from hardwareharness_backend.contracts.validation import (
 from hardwareharness_backend.util import Record
 
 connection_state_schema = enum("unknown", "checking", "online", "offline", "error")
-mcp_http_server_schema = obj(
-    {
-        "transport": literal("mcp-http"),
-        "serverId": string(1),
-        "label": string(1),
-        "hardwareId": string(1),
-        "url": string(url=True),
-        "enabled": boolean().default(True),
-    },
-    strict=True,
-)
 # A device plugin loaded into the backend: ``type`` names its ``hardwareharness.devices``
 # entry point, ``mode`` sim runs the adapter's simulator instead of the driver.
 plugin_server_schema = obj(
     {
-        "transport": literal("plugin"),
         "serverId": string(1),
         "label": string(1),
         "hardwareId": string(1),
@@ -157,16 +145,7 @@ device_bundle_apply_input_schema = obj(
 
 
 def parse_mcp_server(value: Any) -> Record:
-    if isinstance(value, dict) and "transport" not in value:
-        value = {**value, "transport": "mcp-http"}
-    from hardwareharness_backend.contracts.validation import discriminated
-
-    return parse_record(
-        discriminated(
-            "transport", {"mcp-http": mcp_http_server_schema, "plugin": plugin_server_schema}
-        ),
-        value,
-    )
+    return parse_record(plugin_server_schema, value)
 
 
 def parse_hardware(value: Any) -> Record:

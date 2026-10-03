@@ -20,6 +20,12 @@ PUBLIC_TOOLS = {
 BUILTIN = ("stream_read", "transact")
 
 
+@pytest.fixture(autouse=True)
+def fixed_ports(monkeypatch):
+    # Keep the bench's real MXSER registry (non-consecutive COM numbers) out of the simulated port map.
+    monkeypatch.setenv("MOXA_BASE_PORT", "3")
+
+
 @pytest.fixture
 def hh():
     with serve(Cp118uI) as harness:
@@ -156,7 +162,8 @@ def test_safe_state_idempotent_and_keeps_rx(loopback):
     assert rx_text(loopback, 1)["data"]["text"] == "x"
 
 
-def test_port_map_configuration():
+def test_port_map_configuration(monkeypatch):
+    monkeypatch.delenv("MOXA_BASE_PORT")
     assert configured_ports({}, discover=lambda count: None) == list(range(3, 11))
     moxa = [3, 4, 8, 7, 10, 5, 9, 6]
     assert configured_ports({}, discover=lambda count: moxa[:count]) == moxa

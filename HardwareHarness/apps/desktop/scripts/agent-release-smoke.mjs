@@ -21,7 +21,7 @@ export async function verifyAgentInterface(endpoint, token) {
     assert.ok(instructions?.trim());
     const { tools } = await client.listTools();
     const names = new Set(tools.map((tool) => tool.name));
-    for (const name of ["get_agent_context", "get_tool_contract", "read_reference", "get_execution_availability", "wait_for_status", "import_firmware_artifact"]) {
+    for (const name of ["get_agent_context", "get_tool_contract", "read_reference", "get_execution_availability", "wait_for_status"]) {
       assert.ok(names.has(name), `Missing public release tool: ${name}`);
     }
     for (const tool of tools) {

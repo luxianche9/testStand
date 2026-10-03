@@ -411,20 +411,6 @@
             "additionalProperties": true,
             "title": "Input",
             "type": "object"
-          },
-          "credentials": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Credentials",
-            "x-sensitive": true
           }
         },
         "required": [

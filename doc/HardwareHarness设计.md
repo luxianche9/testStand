@@ -30,7 +30,7 @@
 | 2026-09-30 | 重写为单一设计文档。新增：设备声明 `/device`；波形输出；被测产品协议层；测试语义补充 |
 | 2026-09-30 | 重写第 9 章终端软件架构：后端作为可独立运行的工作站服务；操作注册表同时生成 HTTP、MCP 与 TS 类型；运行日志作为唯一记录；前后端只保留 HTTP + SSE；密钥改用系统凭据库。新增 P9～P10、DEC-13～DEC-18、第 12.6 节 |
 | 2026-10-01 | 删除命令行 `hh` 和虚拟台架（原 T8、T9）：没有使用者，维护成本高于收益。DEC-18 改为不做虚拟台架；第 9.8 节只保留测试分层 |
-| 2026-10-03 | 单机插件化重构（任务书 `doc/plan/单机插件化重构.md`）：测试资源与测试终端在同一台电脑；每台设备从远程 MCP HTTP 服务改为后端进程内插件，必要时隔离到 stdio 子进程（第 2、4 章）；删除租约、测试资源图片、远程部署与服务管理、时钟同步、设备 SSE 数据通道；FireDAP 作为唯一的本机 MCP HTTP 服务保留（第 4.8 节）。删除 DEC-01、DEC-02、DEC-03、DEC-05、DEC-07，新增 DEC-19～DEC-24；第 12 章按完成情况重写 |
+| 2026-10-03 | 单机插件化重构（任务书 `doc/plan/单机插件化重构.md`）：测试资源与测试终端在同一台电脑；每台设备从远程 MCP HTTP 服务改为后端进程内插件，必要时隔离到 stdio 子进程（第 2、4 章）；删除租约、测试资源图片、远程部署与服务管理、时钟同步、设备 SSE 数据通道。删除 DEC-01、DEC-02、DEC-03、DEC-05、DEC-07，新增 DEC-19～DEC-23；第 12 章按完成情况重写 |
 
 ---
 
@@ -76,7 +76,7 @@ HardwareHarness 是一套通用的智能测试软件。目标是用**一套平�
 │   接入层  HTTP API │ Agent MCP 网关（127.0.0.1:8000）← 同一个操作注册表生成      │
 │   应用层  设备清单 · 计划 · 运行 · 判定 · 报告 · ICD · 执行协调                  │
 │   领域层  计划 IR / 编译器 / 解释器 / 判定器 / 表达式 / 协议解码                 │
-│   资源层  设备宿主 · 流 hub · 运行存储 · 系统凭据库 · FireDAP MCP 客户端          │
+│   资源层  设备宿主 · 流 hub · 运行存储 · 系统凭据库                              │
 │   OpenCode 进程管理 ──► OpenCode Agent（本地 LLM，OpenAI 兼容接口）              │
 │      │                                                                        │
 │   设备宿主：按实例配置加载 N 个设备插件（hardwareharness_device_sdk + hh_adapter_x）│
@@ -85,7 +85,6 @@ HardwareHarness 是一套通用的智能测试软件。目标是用**一套平�
 │            （PCI-1710L、PCI-1762 的厂商 SDK 本身经 hwcli_*.exe 子进程调用）       │
 │   厂商 DLL / VISA / 串口 → 板卡与仪器 → 接线 → 被测产品（DUT）                    │
 │                                                                               │
-│ FireDAP 烧录服务：本机 MCP HTTP 服务（127.0.0.1:8015，第 4.8 节）                 │
 └───────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -197,7 +196,7 @@ HardwareHarness 是一套通用的智能测试软件。目标是用**一套平�
 | `read_blob(streamId, ref)` | 读 blob 内容 |
 | `safe_all()` | 执行 `safe_state` |
 
-后端 `devices/plugin_transport.py` 的 `PluginTransport` 实现后端的设备传输协议：连接 = 加载并打开，断开 = `safe_state` 并关闭。工具目录项、结果信封和 `/device` 的形状与 FireDAP 的 MCP HTTP 传输一致（共用 `devices/tool_catalog.py`），上层（应用层、测试引擎、Agent 网关）看不出两种传输的区别。
+后端 `devices/plugin_transport.py` 的 `PluginTransport` 实现后端的设备传输协议：连接 = 加载并打开，断开 = `safe_state` 并关闭。工具目录项由 `devices/tool_catalog.py` 生成，上层（应用层、测试引擎、Agent 网关）只看到统一的工具目录、结果信封和 `/device`。
 
 ### 4.3 设备声明 `/device`
 
@@ -282,7 +281,7 @@ AI 通过网关读取声明（第 8.3 节的 `get_hardware_definition`），而�
 
 #### 4.4.3 调用上下文 `operationId`
 
-调用方随每次调用传一个 `operationId`：插件经 `DeviceHost.call(..., operation_id=)`（隔离子进程的协议里是 `params.operationId`）；FireDAP 经 MCP `tools/call` 的 `_meta.operationId`。
+调用方随每次调用传一个 `operationId`：插件经 `DeviceHost.call(..., operation_id=)`（隔离子进程的协议里是 `params.operationId`）。
 
 | 字段 | 必填 | 用途 |
 |---|---|---|
@@ -370,27 +369,17 @@ AI 通过网关读取声明（第 8.3 节的 `get_hardware_definition`），而�
 
   ```jsonc
   // 设备插件
-  {"transport": "plugin", "serverId": "PCI1762_1", "label": "PCI-1762", "hardwareId": "PCI1762_CARD_0",
+  {"serverId": "PCI1762_1", "label": "PCI-1762", "hardwareId": "PCI1762_CARD_0",
    "type": "pci1762",                        // hardwareharness.devices 中的类型名
    "settings": {"cardIndex": 0, "hwcliPath": "…"},   // 适配器自定义、非秘密
    "mode": "real",                           // real | sim
    "enabled": true}
-  // 本机 MCP HTTP 服务，只用于 FireDAP（第 4.8 节）
-  {"transport": "mcp-http", "serverId": "FIREDAP_MCP", "label": "FireDAP", "hardwareId": "…",
-   "url": "http://127.0.0.1:8015/mcp", "enabled": true}
   ```
 
 - 设备页“添加测试资源”从已安装类型中选择 `type`，编辑 `settings` 与 `mode`。同型号多块卡就添加多个实例，用 `settings` 区分卡号。
 - 后端按实例构造 SDK 的 `ServerConfig`：`manufacturer`/`model` 取自设备类，`dryRun = (mode == "sim")`。
 - **禁止**把令牌、密码写进 `settings` 或提交到仓库。
-- 密钥由后端通过 Python `keyring` 访问系统凭据库（Windows 上是“凭据管理器”），服务名固定为 `HardwareHarness`。条目：`gateway`（Agent 网关令牌）、`mcp:<serverId>`（FireDAP 的令牌）、`opencode.llm.api-key`（LLM 密钥）。旧 `safeStorage` 条目不导入。
-
-### 4.8 FireDAP：唯一的本机 MCP HTTP 服务
-
-- FireDAP 烧录服务（`mcp_servers/servers/firedap/`）是本机的独立 MCP Streamable HTTP 服务（`127.0.0.1:8015`），有自己的环境，不是设备插件，也不在四个适配器之列。
-- 后端只为它保留一个最小的 MCP HTTP 客户端（`devices/mcp_client.py`、`mcp_transport.py`）：`tools/list`、`tools/call`（`_meta.operationId`）、拉取 `/device`，Bearer 令牌取自 `mcp:<serverId>`。
-- 它只提供工具和声明，没有流；设备页只读显示它。
-- 注册：运行 `python -m hardwareharness_backend.host.register_firedap`，写入 `mcp-http` 实例记录与令牌。FireDAP 的启停由它自己的脚本负责，后端不管理它的进程。
+- 密钥由后端通过 Python `keyring` 访问系统凭据库（Windows 上是“凭据管理器”），服务名固定为 `HardwareHarness`。条目：`gateway`（Agent 网关令牌）、`opencode.llm.api-key`（LLM 密钥）。旧 `safeStorage` 条目不导入。
 
 ---
 
@@ -574,7 +563,7 @@ SDK 的 `waveform_capability(...)` 生成它；软件波形的 `maxUpdateHz` 不
 - **唯一的时钟**：SDK `clock.now_ms()` = 进程启动时读取一次的墙钟 + `perf_counter` 流逝量。单调、不倒退，单位为 Unix 毫秒（浮点）。
 - 流记录的 `t`、信封的 `timing`、水位线、后端的 `backend_ms()`，全部使用这个时钟。设备与后端之间的偏移和不确定度都是 0（`streams/clock.py` 的 `SharedClock`），不需要对时。
 - 隔离子进程在自己启动时锚定墙钟；只有两次锚定之间墙钟被调整，两者才会有差别，忽略不计。
-- **锚点的不确定度**：工具结果带 `timing.end` 时，锚点就是它，没有不确定度。结果没有设备计时（例如 FireDAP 工具）时，锚点取后端记录的调用结束时刻，不确定度为调用耗时；判定窗口按它收缩（第 7.7 节）。
+- **锚点的不确定度**：工具结果带 `timing.end` 时，锚点就是它，没有不确定度。结果没有设备计时时，锚点取后端记录的调用结束时刻，不确定度为调用耗时；判定窗口按它收缩（第 7.7 节）。
 - **精度边界**：端到端精度受操作系统调度限制，为毫秒级。需要更高时间精度的测量由仪器完成。
 
 ### 5.9 后端：hub、录制、实时显示
@@ -832,7 +821,7 @@ encoders:                         # 可选：用于组帧发送
 
 ### 7.8 未知结果与核销
 
-- `actuate` 调用超时、隔离子进程退出、FireDAP 连接中断或返回 `invalid_response` 时，结果为**未知**（`unknown_outcome`）。
+- `actuate` 调用超时、隔离子进程退出或返回 `invalid_response` 时，结果为**未知**（`unknown_outcome`）。
 - 该调用进入恢复列表，运行暂停或按策略中止。
 - 由人或 Agent 调用 `reconcile_test_operation`，并附上依据（例如观察到的流数据），把结果确认为已执行或未执行。该操作需要界面确认。
 - **禁止自动重发。**
@@ -868,7 +857,7 @@ encoders:                         # 可选：用于组帧发送
 ### 8.3 声明读取
 
 - Agent 通过网关的 `get_hardware_definition(hardwareId)` 读取设备声明。其内容来自后端缓存的 `/device`，包括引脚和流清单。
-- Agent 不直接调用设备插件或 FireDAP，只经网关。
+- Agent 不直接调用设备插件，只经网关。
 
 ### 8.4 安全边界
 
@@ -894,7 +883,7 @@ encoders:                         # 可选：用于组帧发送
 │            ▲ 两者都由同一个操作注册表生成（第 9.3 节）               │
 │ 应用层：设备清单 · 计划 · 运行 · 报告 · ICD · 执行协调 · OpenCode 管理 │
 │ 领域层：计划 IR · 编译器 · 解释器 · 判定器 · 表达式 · 协议解码        │
-│ 资源层：设备宿主（插件）· 流 hub · 运行存储 · 系统凭据库 · FireDAP 客户端 │
+│ 资源层：设备宿主（插件）· 流 hub · 运行存储 · 系统凭据库 │
 └──────────────────────────────────────────────────────────────────┘
       ▲ HTTP + SSE（127.0.0.1，单 token）       ▲ MCP（127.0.0.1）
  Electron 界面（只负责显示）               OpenCode Agent
@@ -912,7 +901,7 @@ encoders:                         # 可选：用于组帧发送
 | 接入层 | 把注册表中的操作暴露为 HTTP、MCP；鉴权、编解码 | 应用层、注册表 | `host`、`mcp_gateway` |
 | 应用层 | 用例：设备清单、计划、运行、报告、ICD、项目与接线、执行协调 | 领域层、资源层 | `application`、`devices\device_service.py`、`device_catalog_service.py`、`projects`、`wiring`、`testing\application.py`、`testing\store.py` |
 | 领域层 | 纯逻辑：计划 IR、编译器、解释器、判定器、表达式、协议解码。不做 I/O | 无（只依赖标准库和 Pydantic） | `testing\compiler.py`、`interpreter.py`、`expression.py`、`models.py`、`streams\judge.py`、`protocol` |
-| 资源层 | 外部连接和持久化：设备插件传输、FireDAP MCP 客户端、流 hub、运行存储、凭据库 | 无业务依赖 | `devices\plugin_transport.py`、`tool_catalog.py`、`mcp_client.py`、`mcp_transport.py`、`device_store.py`、`streams\source.py`、`clock.py`、`recorder.py`、`store.py`、`storage` |
+| 资源层 | 外部连接和持久化：设备插件传输、流 hub、运行存储、凭据库 | 无业务依赖 | `devices\plugin_transport.py`、`tool_catalog.py`、`device_store.py`、`streams\source.py`、`clock.py`、`recorder.py`、`store.py`、`storage` |
 | 契约 | 各层共用的数据模型和错误码 | 无 | `contracts` |
 
 - 依赖只能自上而下；领域层不得导入资源层。用 import-linter 检查（`HardwareHarness/python/pyproject.toml` 中 4 条契约：接入层不被下层导入、领域层不做 I/O、资源层无业务依赖、契约层不依赖其他层），前端用 dependency-cruiser 做同样的检查。
@@ -956,7 +945,7 @@ async def start_run(ctx: OpContext, req: StartRunRequest) -> RunRef: ...
   5. 执行；
   6. 写审计日志（`storage/audit_log.py`：调用方、操作、参数摘要、结果、耗时；JSONL，5 MB 轮转），敏感字段按模型上的标记脱敏；
   7. 对 `risk="actuate"` 的操作，如果结果未知（超时、子进程退出），返回 `unknown_outcome`，**任何入口都不自动重试**（第 7.8 节）。
-- 设备工具（`<serverId>__<tool>`）不在注册表中：它们来自已加载插件的工具描述（以及 FireDAP 的 `tools/list`），由网关按需展开（第 8.2 节），但调用时同样经过第 2、3、6、7 步。
+- 设备工具（`<serverId>__<tool>`）不在注册表中：它们来自已加载插件的工具描述，由网关按需展开（第 8.2 节），但调用时同样经过第 2、3、6、7 步。
 
 ### 9.4 前后端通信
 
@@ -1022,7 +1011,7 @@ run.completed │ run.aborted │ run.error
 
 | 页面 | 内容 | 数据来源 |
 |---|---|---|
-| 设备 | 扁平的设备列表（插件实例）与被动硬件列表；引脚表、流、能力（只读）；模拟模式与离线缓存标识；按已安装类型“添加测试资源”（type / settings / mode）；手动调用工具；FireDAP 只读显示 | 设备注册表（缓存的 `/device`）、`devices.listDeviceTypes`；运行态来自 `list_hardware` 与流状态 |
+| 设备 | 扁平的设备列表（插件实例）与被动硬件列表；引脚表、流、能力（只读）；模拟模式与离线缓存标识；按已安装类型“添加测试资源”（type / settings / mode）；手动调用工具 | 设备注册表（缓存的 `/device`）、`devices.listDeviceTypes`；运行态来自 `list_hardware` 与流状态 |
 | 台架接线 | 设备卡片、端口、连线；接线任务；工位绑定表 | `/device.pinout`、接线 YAML |
 | 计划 | 步骤树、参数、绑定、ICD；表单视图 | 步骤目录、设备工具 schema |
 | 运行台 | 左侧步骤树和判定结果；右侧曲线（uPlot）、串口终端视图（xterm.js）、报文表（原始和解码两栏）、派生字段曲线；人工判定对话框 | `/api/events`、`/api/live`、运行日志、协议层派生流 |
@@ -1041,10 +1030,10 @@ run.completed │ run.aborted │ run.error
 
 ### 9.7 设备注册表
 
-- **受管设备**（设备插件实例，以及 FireDAP）：定义以 `/device` 为准，后端只缓存，保存在 `devices/hardware/<id>/definition/device.json`，并记录 `manifestRevision`；连接时或修订号变化时更新。
+- **受管设备**（设备插件实例）：定义以 `/device` 为准，后端只缓存，保存在 `devices/hardware/<id>/definition/device.json`，并记录 `manifestRevision`；连接时或修订号变化时更新。
   - 用户不能编辑引脚和流声明。
 - **无源设备**（转接箱、线缆、DUT 本身，没有插件）：由用户或 Agent 在终端中定义，使用 `formatVersion 2` 格式和 `.hhhw` 包导入导出。
-- 设备未加载（打开失败、隔离子进程退出、FireDAP 未运行）时使用缓存显示，并标注“离线，显示的是缓存版本”。
+- 设备未加载（打开失败、隔离子进程退出）时使用缓存显示，并标注“离线，显示的是缓存版本”。
 
 ### 9.8 测试
 
@@ -1078,7 +1067,6 @@ run.completed │ run.aborted │ run.error
 | 自定义协议模块（调理板、ZT DA/TTL） | 串口适配器 + 适配器内组帧 | 待编写 |
 | 总线卡（1553B、429、1394、CAN） | 厂商 DLL 适配器 + frames 流 + 场景工具 | 待编写，难度最高 |
 | 视频 | 矩阵适配器 + ManualCheck；自动画质判定不在范围内 | 待编写 |
-| 烧录器 | FireDAP 本机 MCP HTTP 服务（第 4.8 节） | 已有 |
 
 ---
 
@@ -1104,7 +1092,6 @@ run.completed │ run.aborted │ run.error
 | DEC-21 | 接受后端崩溃时输出停在最后值；不做看门狗。只保证打开后 `safe_state`、正常退出 `safe_all`、测试中止 `safe_state` | 崩溃少见；看门狗进程或硬件看门狗的复杂度高于收益 | 心跳租约兜底（原 DEC-05）：为多终端设计，单机只剩崩溃这一种情况；外部看门狗进程：还要处理它自己的寿命 |
 | DEC-22 | 测试资源没有外观图和端口图；接线只用结构化引脚数据 | 图片链路（适配器资源、哈希、缓存、上传、协议）维护成本高，接线不依赖它 | 插件提供图片：链路长、无人使用。手动检查步骤的参考图和 Agent 附件保留，它们不是设备声明 |
 | DEC-23 | 不做租约；运行与手动控制的互斥由 `ExecutionCoordinator`，单设备串行由 `io_lock`/操作锁 | 单机只有一个后端，进程内互斥足够 | 租约（原 DEC-05）：防的是多终端争用，单机不存在 |
-| DEC-24 | FireDAP 保留为本机 MCP HTTP 服务，后端只为它保留最小的 MCP HTTP 客户端 | FireDAP 有自己的环境和发布方式，不在四个适配器之列；改造收益小 | 改成插件：要改 FireDAP 本身；不接入：失去烧录工具 |
 
 DEC-01（声明走 HTTP、动作走 MCP、数据走 SSE）、DEC-02（一台设备一个服务进程）、DEC-03（数据面用 SSE）由 DEC-19、DEC-20 取代；DEC-05（心跳租约）由 DEC-21、DEC-23 取代；DEC-07（终端统一部署管理）随远程机制一起删除（DEC-19）。这些编号不再复用。
 
@@ -1158,7 +1145,7 @@ DEC-01（声明走 HTTP、动作走 MCP、数据走 SSE）、DEC-02（一台设�
 | B18 | 4.2、4.7 | `PluginTransport`、`tool_catalog.py`、`plugin` 实例记录、`devices.listDeviceTypes`；冻结版 `--device-child` 入口 | 完成 |
 | B19 | 5.5、5.8 | 流改为直接读插件环形缓冲（`streams/source.py`）；`SharedClock`，`backend_ms` = SDK `now_ms` | 完成 |
 | B20 | 4.6 | 退出时 `DeviceService.safe_all()`；测试中止时 `safe_state` | 完成 |
-| B21 | 4.8 | 删除 SSH、远程 shell、部署流水线、服务注册表、生命周期命令、计算机记录、SSE 流客户端与 `/time` 估计、`paramiko`；只为 FireDAP 保留 MCP HTTP 客户端 | 完成 |
+| B21 | 4.7 | 删除 SSH、远程 shell、部署流水线、服务注册表、生命周期命令、计算机记录、SSE 流客户端与 `/time` 估计、`paramiko`、FireDAP 及 MCP HTTP 客户端 | 完成 |
 | B22 | — | 遗留措辞清理：`application/tools.py` 中 `remove_hardware_definition` 的描述仍提“关联图片”；`streams/judge.py` 模块说明仍提“跨服务”；`streams/live.py` 中按时钟不确定度处理的分支在共享时钟下不再触发 | 未完成 |
 
 ### 12.3 桌面渲染进程
@@ -1166,7 +1153,7 @@ DEC-01（声明走 HTTP、动作走 MCP、数据走 SSE）、DEC-02（一台设�
 | 编号 | 内容 | 状态 |
 |---|---|---|
 | U1 | 设备页：引脚表（只读）、模拟模式与离线缓存标识 | 完成 |
-| U2 | 设备页：扁平设备列表；按已安装类型添加实例（type/settings/mode）；FireDAP 只读 | 完成 |
+| U2 | 设备页：扁平设备列表；按已安装类型添加实例（type/settings/mode） | 完成 |
 | U4 | 运行台：报文表格（原始/解码两栏）、派生字段曲线、`ManualCheck` 对话框 | 完成 |
 | U5 | 计划编辑：绑定表、ICD 编辑与试解码 | 完成 |
 | U6 | `renderer/lib/event-invalidation.ts` 的注释仍提租约事件 | 未完成（措辞） |

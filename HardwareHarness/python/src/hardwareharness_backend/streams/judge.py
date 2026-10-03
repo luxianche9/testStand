@@ -232,20 +232,6 @@ def is_setpoint(descriptor: Record | None) -> bool:
     return evidence_type("", descriptor) == "S"
 
 
-def tool_evidence_type(semantic: str) -> str:
-    """Evidence grade of a tool result by its ``operationSemantics.evidenceType``.
-
-    A ``measurement`` tool reads the DUT directly (T1); ``controller_state`` is what the
-    controller holds, not what the DUT does (S); anything else the instrument reports about
-    itself, e.g. ``firmware_*`` job status (T2).
-    """
-    if semantic == "measurement":
-        return "T1"
-    if semantic == "controller_state":
-        return "S"
-    return "T2"
-
-
 @dataclass(frozen=True)
 class Anchor:
     t: float

@@ -21,21 +21,6 @@ if TYPE_CHECKING:
 
 T = TypeVar("T")
 
-# Platform-owned policy, independent of third-party readOnlyHint annotations.
-_BUILTIN_METADATA_READS = {
-    server: {"get_server_info", "list_hardware", "get_hardware_info", "get_pinout"}
-    for server in ("CP118U_I_MCP", "PCI1710L_MCP", "PCI6208V_MCP", "PCI1762_MCP")
-}
-_BUILTIN_METADATA_READS["FIREDAP_MCP"] = {
-    "get_server_info",
-    "list_hardware",
-    "get_hardware_info",
-    "get_pinout",
-    "firedap_get_job",
-    "firedap_wait_job",
-    "firedap_get_board_reference",
-}
-
 
 class ApplicationSystemPort(Protocol):
     def gateway_status(self) -> Json: ...
@@ -82,10 +67,8 @@ class DevicesApplication:
         profiles=("adapter",),
         idempotency="natural",
     )
-    async def save_server(
-        self, context: Json, input: Json, credentials: Json | None = None
-    ) -> Json:
-        return await self.service.save_server(parse_mcp_server(input), credentials)
+    async def save_server(self, context: Json, input: Json) -> Json:
+        return await self.service.save_server(parse_mcp_server(input))
 
     @operation(
         "devices.removeServer",
@@ -326,9 +309,9 @@ class DevicesApplication:
         )
         if server is None:
             raise app_error("unavailable", f"Unknown hardware server: {tool['serverId']}")
-        metadata_read = tool.get("remoteName") in _BUILTIN_METADATA_READS.get(
-            tool["serverId"], set()
-        )
+        # The SDK's own management tools (server/hardware info) are platform-owned metadata
+        # reads, independent of the adapter's annotations; only they bypass an active call.
+        metadata_read = tool["kind"] == "management"
         handle = (
             None
             if metadata_read

@@ -8,7 +8,7 @@ from hardwareharness_backend.contracts.devices import parse_mcp_server
 from hardwareharness_backend.contracts.errors import app_error
 from hardwareharness_backend.util import utc_now_iso
 
-from .device_manifest import declared_streams
+from .plugin_transport import PluginTransport, declared_streams
 
 Record = dict[str, Any]
 
@@ -17,8 +17,8 @@ SAFE_ALL_TIMEOUT_S = 5.0
 
 
 class DeviceService:
-    def __init__(self, store: Any, secrets: Any, transports: Any) -> None:
-        self.store, self.secrets, self.transports = store, secrets, transports
+    def __init__(self, store: Any, transport: PluginTransport) -> None:
+        self.store, self.transport = store, transport
         self._server_refreshes: dict[str, asyncio.Task[Record]] = {}
         self._server_statuses: dict[str, Record] = {}
         self._hardware: list[Record] = []
@@ -38,24 +38,21 @@ class DeviceService:
         return list(self._availability.values())
 
     def list_tools(self) -> list[Record]:
-        return list(self.transports.list_tools())
+        return list(self.transport.list_tools())
 
     async def call_tool(self, name: str, args: Record, options: Record | None = None) -> Any:
         return await self.call_aggregated_tool(name, args, options)
 
-    async def save_server(self, value: Record, credentials: Record | None = None) -> Record:
+    async def save_server(self, value: Record) -> Record:
         server = parse_mcp_server(value)
-        if credentials and "mcpToken" in credentials:
-            await self.secrets.set(f"mcp:{server['serverId']}", {"token": credentials["mcpToken"]})
         saved = await self.store.save_server(server)
-        await self.transports.disconnect(server["serverId"])
+        await self.transport.disconnect(server["serverId"])
         return dict(saved)
 
     async def remove_server(self, server_id: str) -> None:
         self._require_server(server_id)
-        await self.transports.disconnect(server_id)
+        await self.transport.disconnect(server_id)
         await self.store.remove_server(server_id)
-        await self.secrets.remove(f"mcp:{server_id}")
         self._server_statuses.pop(server_id, None)
         self._hardware = [item for item in self._hardware if item["serverId"] != server_id]
 
@@ -87,7 +84,7 @@ class DeviceService:
             self._server_statuses[server_id] = status
             return status
         try:
-            session = await self.transports.connect(server)
+            session = await self.transport.connect(server)
             hardware = session.get("hardware")
             if hardware:
                 self._hardware = [item for item in self._hardware if item["serverId"] != server_id]
@@ -122,7 +119,7 @@ class DeviceService:
     async def _sync_definition(self, server: Record, hardware_id: str) -> None:
         """Cache the service's ``/device`` when its revision changed."""
         try:
-            document = await self.transports.describe_device(server)
+            document = await self.transport.describe_device(server)
             if not isinstance(document, dict):
                 return
             self._streams[hardware_id] = declared_streams(document)
@@ -165,7 +162,7 @@ class DeviceService:
         return [result for result in results if not isinstance(result, BaseException)]
 
     async def refresh_hardware(self) -> list[Record]:
-        self._hardware = await self.transports.list_hardware(self.store.list_servers())
+        self._hardware = await self.transport.list_hardware(self.store.list_servers())
         return self._hardware
 
     async def call_aggregated_tool(
@@ -178,7 +175,7 @@ class DeviceService:
             raise RuntimeError(f"Unknown aggregated tool: {external_name}")
         server = self._require_server(tool["serverId"])
         options = options or {}
-        return await self.transports.call_tool(
+        return await self.transport.call_tool(
             external_name,
             args,
             {
@@ -206,7 +203,7 @@ class DeviceService:
 
     async def list_streams(self, hardware_id: str) -> list[Record]:
         """``[{id, type}]`` as the hardware's service declares them."""
-        streams = list(await self.transports.list_streams(self.server_for(hardware_id)))
+        streams = list(await self.transport.list_streams(self.server_for(hardware_id)))
         self._streams[hardware_id] = streams
         return streams
 
@@ -241,4 +238,4 @@ class DeviceService:
         await asyncio.gather(*(safe(tool) for tool in tools))
 
     async def read_blob(self, hardware_id: str, stream_id: str, ref: str) -> Record:
-        return dict(await self.transports.read_blob(self.server_for(hardware_id), stream_id, ref))
+        return dict(await self.transport.read_blob(self.server_for(hardware_id), stream_id, ref))

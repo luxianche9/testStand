@@ -14,7 +14,6 @@ from hardwareharness_backend.contracts.errors import AppError
 from hardwareharness_backend.devices import (
     DeviceService,
     DeviceStore,
-    DeviceTransportRegistry,
     PluginTransport,
 )
 from hardwareharness_backend.devices.plugin_transport import installed_device_types
@@ -26,7 +25,6 @@ pytestmark = pytest.mark.skipif(sys.platform != "win32", reason="the adapters ta
 
 def plugin(server_id: str, device_type: str, hardware_id: str) -> dict[str, Any]:
     return {
-        "transport": "plugin",
         "serverId": server_id,
         "label": server_id,
         "hardwareId": hardware_id,
@@ -42,7 +40,7 @@ async def devices(
     store = DeviceStore(tmp_path)
     await store.initialize()
     transport = PluginTransport()
-    service = DeviceService(store, Mock(), DeviceTransportRegistry([transport]))
+    service = DeviceService(store, transport)
     for server in servers:
         await service.save_server(server)
         await service.refresh_server(server["serverId"])
@@ -62,6 +60,7 @@ async def test_an_inproc_plugin_serves_tools_declaration_and_streams(tmp_path: P
         names = {tool["externalName"] for tool in service.list_tools()}
         assert {"RELAY__pci1762_set_relay", "RELAY__pci1762_safe_state"} <= names
         assert service.get_definition("RELAY_CARD")["offline"] is False  # type: ignore[index]
+        assert [item["hardwareId"] for item in await service.refresh_hardware()] == ["RELAY_CARD"]
         assert {item["id"] for item in await service.list_streams("RELAY_CARD")} >= {"relay", "di"}
 
         sources = StreamSources(transport.device_for)
