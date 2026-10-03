@@ -1,0 +1,5 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "noEmit": true, "customConditions": ["teststand-source"] },
+  "include": ["src", "vitest.config.ts"]
+}

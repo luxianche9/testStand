@@ -1,8 +1,0 @@
-HardwareHarness includes OpenCode 1.18.15 as an unmodified Windows x64 baseline sidecar.
-
-OpenCode is licensed under the MIT License. The complete license text is included
-in the adjacent LICENSE file. OpenCode is started only on the local loopback
-interface and is updated together with HardwareHarness.
-
-Project: https://github.com/anomalyco/opencode
-Homepage: https://opencode.ai

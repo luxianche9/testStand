@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "teststand-adapter-cp118u-i"
+version = "0.2.0"
+description = "testStand MCP adapter for the Moxa CP-118U-I 8-port serial card"
+requires-python = ">=3.11"
+dependencies = ["teststand-device-sdk>=0.2,<0.3"]
+
+[project.entry-points."teststand.devices"]
+cp118u_i = "teststand_adapter_cp118u_i:DEVICE"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+teststand_adapter_cp118u_i = ["py.typed"]

@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "teststand-adapter-pci1710l"
+version = "0.2.0"
+description = "testStand MCP adapter for the Advantech PCI-1710L multifunction DAQ card (16 AI, 16 DI, 16 DO)"
+requires-python = ">=3.11"
+dependencies = ["teststand-device-sdk>=0.2,<0.3"]
+
+[project.entry-points."teststand.devices"]
+pci1710l = "teststand_adapter_pci1710l:DEVICE"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+teststand_adapter_pci1710l = ["py.typed", "bin/*.exe"]

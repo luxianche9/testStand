@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "__DIST__"
+version = "0.1.0"
+description = "testStand device plugin for the __MANUFACTURER__ __MODEL__"
+requires-python = ">=3.11"
+dependencies = ["teststand-device-sdk__SDK_RANGE__"]
+
+[project.entry-points."teststand.devices"]
+__ADAPTER__ = "__PACKAGE__:DEVICE"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+__PACKAGE__ = ["py.typed"]

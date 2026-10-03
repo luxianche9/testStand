@@ -1,0 +1,169 @@
+[project]
+name = "teststand-backend"
+version = "0.1.0"
+description = "Python backend for the testStand desktop"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+  "mcp==1.29.1",
+  "pydantic==2.13.5",
+  "jsonschema==4.26.0",
+  "httpx==0.28.1",
+  "anyio==4.15.1",
+  "starlette==1.6.0",
+  "uvicorn==0.52.4",
+  "ada-url==1.15.3",
+  "ruamel.yaml==0.18.15",
+  "keyring==25.7.0",
+  "teststand-device-sdk",
+  "teststand-adapter-pci1710l",
+  "teststand-adapter-pci1762",
+  "teststand-adapter-pci6208v",
+  "teststand-adapter-cp118u-i",
+]
+
+[project.entry-points."teststand.test_steps"]
+
+[project.entry-points."teststand.result_listeners"]
+
+[tool.uv.sources]
+teststand-device-sdk = { path = "../../devices/sdk", editable = true }
+teststand-adapter-pci1710l = { path = "../../devices/adapters/pci1710l", editable = true }
+teststand-adapter-pci1762 = { path = "../../devices/adapters/pci1762", editable = true }
+teststand-adapter-pci6208v = { path = "../../devices/adapters/pci6208v", editable = true }
+teststand-adapter-cp118u-i = { path = "../../devices/adapters/cp118u_i", editable = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/teststand_backend"]
+
+[dependency-groups]
+dev = [
+  "ruff",
+  "mypy",
+  "pytest",
+  "pytest-asyncio",
+  "pytest-cov",
+  "types-jsonschema",
+  "pyinstaller==6.22.2",
+  "import-linter==2.15",
+]
+
+[tool.ruff]
+target-version = "py311"
+src = ["src", "tests"]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "ANN"]
+ignore = ["ANN401"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["teststand_backend"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["src", "tests"]
+mypy_path = ["src"]
+explicit_package_bases = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "--import-mode=importlib"
+markers = ["ts_case(name): original TypeScript specification case"]
+
+[tool.coverage.run]
+branch = true
+source = ["teststand_backend"]
+
+[tool.coverage.report]
+show_missing = true
+
+
+# Layering of the workstation service (design doc §9.2): imports only go downward.
+[tool.importlinter]
+root_package = "teststand_backend"
+include_external_packages = false
+
+[[tool.importlinter.contracts]]
+name = "Access layer (HTTP, MCP gateway) is not imported from below"
+type = "forbidden"
+source_modules = [
+  "teststand_backend.application",
+  "teststand_backend.devices",
+  "teststand_backend.projects",
+  "teststand_backend.wiring",
+  "teststand_backend.testing",
+  "teststand_backend.streams",
+  "teststand_backend.storage",
+  "teststand_backend.contracts",
+]
+forbidden_modules = [
+  "teststand_backend.host",
+  "teststand_backend.mcp_gateway",
+]
+
+[[tool.importlinter.contracts]]
+name = "Domain layer does no I/O: no application or resource imports"
+type = "forbidden"
+source_modules = [
+  "teststand_backend.testing.compiler",
+  "teststand_backend.testing.interpreter",
+  "teststand_backend.testing.expression",
+  "teststand_backend.testing.models",
+  "teststand_backend.streams.judge",
+]
+forbidden_modules = [
+  "teststand_backend.application",
+  "teststand_backend.devices",
+  "teststand_backend.projects",
+  "teststand_backend.wiring",
+  "teststand_backend.storage",
+  "teststand_backend.testing.application",
+  "teststand_backend.testing.engine",
+  "teststand_backend.testing.journal",
+  "teststand_backend.testing.run_io",
+  "teststand_backend.testing.runtime_state",
+  "teststand_backend.testing.store",
+  "teststand_backend.streams.source",
+  "teststand_backend.streams.clock",
+  "teststand_backend.streams.recorder",
+  "teststand_backend.streams.live",
+  "teststand_backend.streams.store",
+]
+
+[[tool.importlinter.contracts]]
+name = "Resource layer has no business dependencies"
+type = "forbidden"
+source_modules = [
+  "teststand_backend.devices.plugin_transport",
+  "teststand_backend.streams.source",
+  "teststand_backend.streams.clock",
+  "teststand_backend.streams.recorder",
+  "teststand_backend.storage",
+]
+forbidden_modules = [
+  "teststand_backend.application",
+  "teststand_backend.projects",
+  "teststand_backend.wiring",
+  "teststand_backend.testing",
+  "teststand_backend.streams.judge",
+]
+
+[[tool.importlinter.contracts]]
+name = "Contracts depend on nothing else in the service"
+type = "forbidden"
+source_modules = ["teststand_backend.contracts"]
+forbidden_modules = [
+  "teststand_backend.application",
+  "teststand_backend.devices",
+  "teststand_backend.projects",
+  "teststand_backend.wiring",
+  "teststand_backend.testing",
+  "teststand_backend.streams",
+  "teststand_backend.storage",
+]

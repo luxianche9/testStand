@@ -1,0 +1,48 @@
+{
+  "name": "teststand",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "packageManager": "pnpm@10.15.0",
+  "scripts": {
+    "dev": "pnpm --filter @teststand/desktop dev",
+    "clean": "node scripts/clean.mjs",
+    "build": "node scripts/verify-production-build.mjs",
+    "build:packages": "tsc -b tsconfig.packages.json && node scripts/write-dist-package-manifests.mjs",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "eslint packages apps --ext .ts,.tsx",
+    "test": "pnpm -r test",
+    "test:coverage": "vitest run --config vitest.coverage.config.ts --coverage",
+    "test:e2e": "pnpm --filter @teststand/desktop test:e2e",
+    "check:imports": "node scripts/check-import-boundaries.mjs",
+    "check:dependencies": "depcruise --config .dependency-cruiser.cjs packages apps/desktop/src --output-type err && knip --config knip.json --include \"dependencies,unlisted,exports,types,cycles\"",
+    "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm check:imports && pnpm check:branding && pnpm check:dependencies && pnpm build",
+    "verify:full": "pnpm verify && pnpm verify:python && pnpm test:e2e",
+    "python:setup": "uv sync --project python --frozen",
+    "verify:python": "uv run --project python python python/scripts/verify.py",
+    "build:python": "pnpm python:setup && uv run --project python python python/scripts/build.py",
+    "package:win": "pnpm build:python && pnpm build && pnpm --filter @teststand/desktop package:win",
+    "check:branding": "node scripts/check-branding.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "@typescript-eslint/eslint-plugin": "^8.39.0",
+    "@typescript-eslint/parser": "^8.39.0",
+    "@vitest/coverage-v8": "^3.2.7",
+    "dependency-cruiser": "^18.2.0",
+    "eslint": "^9.32.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "knip": "^6.32.1",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.7"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "electron"
+    ],
+    "patchedDependencies": {
+      "@assistant-ui/react-opencode@0.2.18": "patches/@assistant-ui__react-opencode@0.2.18.patch"
+    }
+  }
+}

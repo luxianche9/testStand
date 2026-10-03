@@ -1,0 +1,6 @@
+interface:
+  display_name: "testStand 设备插件"
+  short_description: "按 SDK 从手册生成和维护单硬件设备插件（工具、流、引脚、模拟器）"
+  default_prompt: "Use $device-plugin to create a testStand device plugin adapter for the requested device from its manual or SDK header."
+policy:
+  allow_implicit_invocation: true

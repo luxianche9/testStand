@@ -18,7 +18,6 @@ output/
 tmp/
 
 /logs/
-/mcp-server/
 run/
 sim_hardware/servers/*/server.json
 
@@ -31,5 +30,5 @@ examples/
 build/
 .import_linter_cache/
 
-# DAQNavi bridges built by mcp_servers/native/build.py
-mcp_servers/adapters/*/src/*/bin/
+# DAQNavi bridges built by devices/native/build.py
+devices/adapters/*/src/*/bin/
