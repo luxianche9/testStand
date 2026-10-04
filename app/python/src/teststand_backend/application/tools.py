@@ -26,8 +26,8 @@ from teststand_backend.util import clone
 Record = dict[str, Any]
 
 GLOSSARY = {
-    "rootPath": "Existing absolute directory on this HH host; this is the USER project, "
-    "not the HH installation.",
+    "rootPath": "Existing absolute directory on this testStand host; this is the USER project, "
+    "not the testStand installation.",
     "deviceId": "Copy deviceId from list_devices; one service binds one managed hardware object.",
     "lines": "Most recent service log lines, default 200, range 1–2000.",
     "hardwareId": "Copy the exact hardwareId from the hardware catalog; do not infer it from "
@@ -46,8 +46,6 @@ GLOSSARY = {
     "pinId": "Stable local pin identifier copied into wiring pin pairs.",
     "position": "position in the pins record; preserve the schema type and existing identifier "
     "values.",
-    "adapterStatus": "Managed hardware only: developing or available (design doc 8.4). Derived "
-    "from the adapter release record; ignored when saving.",
     "portA": "Copy ports[].endpointRef from get_hardware_definition, or supply exact "
     "hardwareId/portId. Same-port wiring needs distinct pin pairs.",
     "portB": "Second canonical endpointRef or structured endpoint; same-port loopback is "
@@ -200,7 +198,7 @@ PLATFORM_TOOLS = [
     ),
     _platform(
         "initialize_project",
-        "在指定的现有绝对目录创建并打开新 HH 工程。已有工程、未保存改动或活跃执行会拒绝。"
+        "在指定的现有绝对目录创建并打开新 testStand 工程。已有工程、未保存改动或活跃执行会拒绝。"
         "不会自动配置接线或完成 Python 依赖初始化；成功后检查工程状态。",
         _ROOT,
         _PROJECT,
@@ -210,8 +208,8 @@ PLATFORM_TOOLS = [
     ),
     _platform(
         "open_project",
-        "按本机绝对目录打开已有 HH 工程。未保存改动和活跃执行会阻止切换。成功后重新读取工程和"
-        "会话状态；不要假设上个工程的待办仍有效。",
+        "按本机绝对目录打开已有 testStand 工程。未保存改动和活跃执行会阻止切换。"
+        "成功后重新读取工程和会话状态；不要假设上个工程的待办仍有效。",
         _ROOT,
         _PROJECT,
         operation="projects.openFolder",

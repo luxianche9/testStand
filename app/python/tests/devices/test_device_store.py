@@ -79,7 +79,7 @@ async def test_canonical(tmp_path: Path) -> None:
     assert raw == {
         "formatVersion": 2,
         "hardwareId": "CARD",
-        "label": "CARD",
+        "label": "S1",  # a device's hardware is named after the device
         "ports": hardware("CARD")["ports"],
     }
     assert "credential" not in (store.root / "devices/S1.json").read_text()
@@ -94,8 +94,8 @@ async def test_one_device_index(tmp_path: Path) -> None:
         await store.save_hardware(hardware(identifier))
     with patch.object(store, "_read_all", wraps=store._read_all) as read_all:
         assert len(store.list_hardware()) == 3
-        # One scan per record kind: hardware, devices, adapter releases.
-        assert read_all.call_count == 3
+        # One scan per record kind: hardware, devices.
+        assert read_all.call_count == 2
 
 
 @pytest.mark.ts_case(PREFIX + "enforces one instance per hardware and deletion rules")
@@ -130,26 +130,12 @@ async def test_preview(tmp_path: Path) -> None:
     assert store.list_hardware() == []
 
 
-@pytest.mark.ts_case(
-    PREFIX + "only applies a bundle to the managed hardware owned by the named device"
-)
-async def test_managed_import(tmp_path: Path) -> None:
+async def test_bundles_never_replace_a_device_s_hardware(tmp_path: Path) -> None:
     store = await fixture(tmp_path)
     await store.save_device(instance("S1", "CARD"))
-    data = bundle("CARD", "Updated card")
-    with pytest.raises(Exception, match="Cannot replace managed hardware"):
-        await store.import_bundle(data)
-    with pytest.raises(Exception, match="does not match expected"):
-        await store.import_bundle(
-            data, {"expectedHardwareId": "OTHER", "allowManagedDeviceId": "S1"}
-        )
-    assert store.require_hardware("CARD")["label"] == "CARD"
-    result = await store.import_bundle(
-        data, {"expectedHardwareId": "CARD", "allowManagedDeviceId": "S1"}
-    )
-    assert result["id"] == "CARD" and result["replaced"] is True
-    saved = store.require_hardware("CARD")
-    assert (saved["label"], saved["kind"], saved["deviceId"]) == ("Updated card", "managed", "S1")
+    with pytest.raises(Exception, match="belongs to a device"):
+        await store.import_bundle(bundle("CARD", "Updated card"))
+    assert store.require_hardware("CARD")["label"] == instance("S1", "CARD")["label"]
 
 
 @pytest.mark.ts_case(PREFIX + "drops unknown legacy fields during bundle export")
@@ -243,4 +229,4 @@ async def test_every_write_notifies(tmp_path: Path) -> None:
     data = await store.export_bundle("CARD")
     await store.remove_hardware("CARD")
     await store.import_bundle(data)
-    assert len(writes) == 6
+    assert len(writes) == 7  # save_device also renames the hardware record after the device

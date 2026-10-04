@@ -139,3 +139,14 @@ async def test_an_instance_of_an_uninstalled_type_says_so(tmp_path: Path) -> Non
     [status] = service.list_device_statuses()
     assert status["transport"]["state"] != "online"
     assert "removed_card is not installed" in status["transport"]["message"]
+
+
+async def test_connecting_gives_the_hardware_the_plugin_s_connector_pins(tmp_path: Path) -> None:
+    service, transport = await devices(tmp_path, plugin("RELAY", "pci1762", "RELAY_CARD"))
+    try:
+        hardware = service.store.require_hardware("RELAY_CARD")
+        [port] = hardware["ports"]
+        assert (hardware["label"], port["name"], len(port["pins"])) == ("RELAY", "CN1", 62)
+        assert port["pins"][0] == {"pinId": "RELAY_CARD.CN1.1", "position": 1, "label": "IDI1"}
+    finally:
+        await transport.disconnect("RELAY")

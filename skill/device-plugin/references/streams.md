@@ -48,7 +48,7 @@ self.di = self.streams.add(BitsStream("di", sample=lambda: self._read_mask("DI")
                                       rate_hz=float(settings.get("bitRateHz", 20))))
 ```
 
-- 只在有人看时采样：后端 `watch` 这条流（测试运行的录制、运行台或设备页的实时显示）。没人看就不访问硬件。
+- 只在有人看时采样：后端 `watch` 这条流（测试运行的录制、运行监控或设备信息弹窗的实时显示）。没人看就不访问硬件。
 - 每次采样持有 `self.io_lock`，但不经过工具调用的操作锁：采样和工具调用交错，不会同时访问驱动。
 - `sample()` 返回 `None` 表示这次没有值（状态 `not_configured`）；抛 `DeviceError(category=NOT_CONFIGURED)` 同样是 `not_configured`，不计错误；其他异常计入 `errors`，状态 `error`，流不中断。
 - 每次尝试（包括失败）都推进水位，判定器据此知道"这段时间确实没有数据"。

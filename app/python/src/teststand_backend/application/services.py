@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Awaitable, Callable
-from typing import TYPE_CHECKING, Any, Literal, Protocol, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Protocol, TypeVar, cast
 
 from teststand_backend.contracts.devices import parse_device_instance, parse_hardware
 from teststand_backend.contracts.errors import app_error
@@ -216,65 +216,6 @@ class DevicesApplication:
         return await self.catalog.save_hardware(hardware)
 
     @operation(
-        "devices.getAdapterStatus",
-        capability="hardware.read",
-        risk="read",
-        profiles=("adapter",),
-        idempotency="natural",
-    )
-    def get_adapter_status(self, context: Json, hardware_id: str) -> Json:
-        """Adapter release record (design doc 8.4): status, evidence and missing gates."""
-        return self.catalog.adapter_status(hardware_id)
-
-    @operation(
-        "devices.recordAdapterCheck",
-        capability="hardware.manage",
-        risk="write",
-        profiles=("adapter",),
-    )
-    async def record_adapter_check(
-        self,
-        context: Json,
-        hardware_id: str,
-        kind: Literal["check", "simulator"],
-        note: str = "",
-    ) -> Json:
-        """Record that the adapter's ``--check`` or simulator tests passed just now."""
-        return await self.catalog.record_adapter_check(hardware_id, kind, note)
-
-    @operation(
-        "devices.recordAdapterSmoke",
-        capability="hardware.releaseAdapters",
-        risk="write",
-    )
-    async def record_adapter_smoke(
-        self, context: Json, hardware_id: str, operator: str, wiring: str, observation: str
-    ) -> Json:
-        """Add a manual bench smoke record (human only): who ran it, the wiring and what
-        they observed."""
-        for name, value in (
-            ("operator", operator),
-            ("wiring", wiring),
-            ("observation", observation),
-        ):
-            if not value.strip():
-                raise app_error("invalid_argument", f"{name} must not be empty")
-        smoke = {"operator": operator, "wiring": wiring, "observation": observation}
-        return await self.catalog.record_adapter_smoke(hardware_id, smoke)
-
-    @operation(
-        "devices.setAdapterStatus",
-        capability="hardware.releaseAdapters",
-        risk="write",
-        idempotency="natural",
-    )
-    async def set_adapter_status(
-        self, context: Json, hardware_id: str, status: Literal["developing", "available"]
-    ) -> Json:
-        """Mark the adapter available (every release gate met) or back in development."""
-        return await self.catalog.set_adapter_status(hardware_id, status)
-
-    @operation(
         "devices.removeHardware",
         capability="hardware.manage",
         risk="destructive",
@@ -307,28 +248,6 @@ class DevicesApplication:
     )
     async def inspect_bundle(self, context: Json, data: bytes) -> Json:
         return cast(Json, await self.service.store.inspect_bundle(data))
-
-    @operation("devices.importBundleForDevice", capability="hardware.manage", risk="write")
-    async def import_bundle_for_device(
-        self, context: Json, data: bytes, hardware_id: str, device_id: str
-    ) -> Json:
-        instance = next(
-            (item for item in self.service.list_devices() if item["deviceId"] == device_id),
-            None,
-        )
-        if instance is None:
-            raise ValueError(f"Device not found: {device_id}")
-        if instance["hardwareId"] != hardware_id:
-            raise ValueError(
-                f"Device {device_id} is assigned to hardware {instance['hardwareId']}, "
-                f"not {hardware_id}"
-            )
-        return cast(
-            Json,
-            await self.service.store.import_bundle(
-                data, {"expectedHardwareId": hardware_id, "allowManagedDeviceId": device_id}
-            ),
-        )
 
     @operation(
         "devices.callTool",

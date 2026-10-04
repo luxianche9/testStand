@@ -110,7 +110,7 @@ class StreamsApplication:
 
 
 _STREAM = {
-    "hardwareId": string(1).describe("Concrete managed HH hardware id."),
+    "hardwareId": string(1).describe("Concrete managed testStand hardware id."),
     "streamId": string(1).describe("Stream id from list_device_streams."),
 }
 _ANY_LIST = {"type": "array", "items": {"type": "object"}}

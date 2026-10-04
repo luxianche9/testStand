@@ -2,10 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ActivityIcon, SquareIcon } from "lucide-react";
 import type { DeviceStream, StreamInfo } from "@teststand/contracts/observability";
-import { errorMessage } from "../../../lib/errors.js";
-import { queryKeys } from "../../../lib/query-keys.js";
-import { Button, Section } from "../../../ui";
-import { StreamBoard, type StreamSource } from "../../streams/index.js";
+import { errorMessage } from "../../lib/errors.js";
+import { queryKeys } from "../../lib/query-keys.js";
+import { Button, Section } from "../../ui";
+import { StreamBoard, type StreamSource } from "../streams/index.js";
 
 /** Live frames only: a device watch has no recording to read ranges from. */
 const LIVE_SOURCE: StreamSource = {

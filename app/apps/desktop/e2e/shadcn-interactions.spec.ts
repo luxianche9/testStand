@@ -112,14 +112,14 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
     await page.evaluate((root) => window.teststand.projects.openFolder({ rootPath: root }), rootPath);
     await page.reload();
     await page.getByText("interaction-fixture", { exact: true }).first().click();
-    await expect(page.getByRole("tab", { name: "工位接线", exact: true })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "测试台架", exact: true })).toBeVisible();
     expect(await readNode(page, "DUT_A")).toEqual(afterMove);
   });
 
   test("restores each panel width after navigating and reloading", async () => {
     const panels = [
-      { tab: "工位接线", label: "调整侧栏宽度" },
-      { tab: "设备管理", label: "拖拽调整面板宽度" }
+      { tab: "测试台架", label: "调整侧栏宽度" },
+      { tab: "运行监控", label: "拖拽调整运行记录宽度" }
     ];
     const widths: number[] = [];
     for (const panel of panels) {
@@ -139,7 +139,7 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
       const separator = page.getByRole("separator", { name: panel.label, exact: true });
       await expect.poll(() => separator.evaluate((element) => parseFloat((element.parentElement as HTMLElement).style.gridTemplateColumns))).toBe(widths[index]);
     }
-    await page.getByRole("tab", { name: "工位接线", exact: true }).click();
+    await page.getByRole("tab", { name: "测试台架", exact: true }).click();
   });
 
   test("resizes the sidebar from the keyboard and retains its bounded width", async () => {
@@ -206,10 +206,11 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
   });
 
   test("submits the device editor with Enter and the keyboard-selected native type and mode", async () => {
-    await page.getByRole("tab", { name: "设备管理", exact: true }).click();
-    await page.getByRole("button", { name: "添加测试资源", exact: true }).click();
-    const dialog = page.getByRole("dialog", { name: "添加测试资源", exact: true });
-    await expect(dialog.getByRole("button", { name: "保存", exact: true })).toBeDisabled();
+    await page.getByRole("tab", { name: "测试台架", exact: true }).click();
+    await page.getByRole("button", { name: "添加", exact: true }).click();
+    await page.getByRole("menuitem", { name: "添加设备" }).click();
+    const dialog = page.getByRole("dialog", { name: "添加设备", exact: true });
+    await expect(dialog.getByRole("button", { name: "添加", exact: true })).toBeDisabled();
     const type = dialog.getByLabel("设备类型");
     await expect(type.locator("option:not([value=''])").first()).toBeAttached();
     await type.focus();
@@ -220,26 +221,23 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
     await mode.focus();
     await mode.press("End");
     await expect(mode).toHaveValue("sim");
-    await dialog.getByLabel("Device ID").fill("KEYBOARD_DEV");
-    await dialog.getByLabel("唯一 Hardware ID").fill("KEYBOARD_CARD");
-    await dialog.getByLabel("显示名称").fill("Keyboard device");
-    await expect(dialog.getByRole("button", { name: "保存", exact: true })).toBeEnabled();
-    await dialog.getByLabel("显示名称").press("Enter");
+    await dialog.getByLabel("名称").fill("Keyboard device");
+    await expect(dialog.getByRole("button", { name: "添加", exact: true })).toBeEnabled();
+    await dialog.getByLabel("名称").press("Enter");
     await expect(dialog).toBeHidden();
     const saved = await page.evaluate(async () => (await window.teststand.system.dashboard()).devices
-      .find((instance) => instance.deviceId === "KEYBOARD_DEV"));
-    expect(saved).toMatchObject({
-      deviceId: "KEYBOARD_DEV", hardwareId: "KEYBOARD_CARD", label: "Keyboard device", mode: "sim"
-    });
-    await expect(page.getByRole("tree", { name: "硬件列表" }).getByRole("treeitem", { name: /Keyboard device/ }))
+      .find((instance) => instance.label === "Keyboard device"));
+    expect(saved).toMatchObject({ label: "Keyboard device", mode: "sim" });
+    expect(saved?.hardwareId).toBe(`${saved?.deviceId}_CARD`);
+    await expect(page.getByRole("tabpanel", { name: "设备列表" }).getByRole("button", { name: /Keyboard device/ }))
       .toContainText("在线");
   });
 
   test("discards unsaved hardware editor changes on Escape", async () => {
-    await page.getByRole("tab", { name: "设备管理", exact: true }).click();
-    const hardware = page.getByRole("tree", { name: "硬件列表" }).getByRole("treeitem", { name: /DUT_A/ });
+    await page.getByRole("tab", { name: "测试台架", exact: true }).click();
+    const hardware = page.getByRole("tabpanel", { name: "设备列表" }).getByRole("button", { name: /^DUT_A/ });
     await hardware.click();
-    await page.getByRole("button", { name: "编辑", exact: true }).click();
+    await page.getByRole("dialog", { name: "DUT_A" }).getByRole("button", { name: "编辑", exact: true }).click();
     const editor = page.getByRole("dialog", { name: "编辑硬件", exact: true });
     await editor.getByLabel("显示名称").fill("Unsaved keyboard edit");
     await page.keyboard.press("Escape");
@@ -283,11 +281,11 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
     }).toBeLessThanOrEqual(1);
     expect(await page.evaluate((keys) => Object.fromEntries(keys.map((key) => [key, localStorage.getItem(key)])), Object.keys(savedWidths))).toEqual(savedWidths);
     await page.getByText("interaction-fixture", { exact: true }).first().click();
-    await expect(page.getByRole("tab", { name: "工位接线", exact: true })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "测试台架", exact: true })).toBeVisible();
     expect(await readNode(page, "DUT_A")).toEqual(node);
-    await page.getByRole("tab", { name: "工位接线", exact: true }).click();
+    await page.getByRole("tab", { name: "测试台架", exact: true }).click();
     const separator = page.getByRole("separator", { name: "调整侧栏宽度", exact: true });
-    await expect.poll(() => separator.evaluate((element) => parseFloat((element.parentElement as HTMLElement).style.gridTemplateColumns))).toBe(Number(savedWidths["teststand.wiring-library-width"]));
+    await expect.poll(() => separator.evaluate((element) => parseFloat((element.parentElement as HTMLElement).style.gridTemplateColumns))).toBe(Number(savedWidths["teststand.bench-devices-width"]));
   });
 });
 

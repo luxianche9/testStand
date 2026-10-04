@@ -230,7 +230,7 @@ _LIMIT = number(1, 200, integer=True).default(100).describe("Maximum returned ro
 AGENT_TOOLS = [
     Tool(
         "get_agent_context",
-        "Read installed HH version, current project, effective "
+        "Read installed testStand version, current project, effective "
         "capabilities and reference index. Works with no open project; does not initialize it.",
         obj({}, strict=True),
         _object(

@@ -51,7 +51,7 @@ class SettingsApplication:
         self,
         context: Record,
         theme: Literal["system", "light", "dark"] | None = None,
-        project_view: Literal["wiring", "plans", "runs", "manual"] | None = None,
+        project_view: Literal["bench", "plans", "runs"] | None = None,
         welcome_layout: Literal["grid", "list"] | None = None,
     ) -> Record:
         patch = {

@@ -13,7 +13,7 @@ from teststand_backend.util import Record
 
 theme_choice_schema = enum("system", "light", "dark")
 welcome_layout_schema = enum("grid", "list")
-project_view_schema = enum("wiring", "plans", "runs", "manual").catch("wiring")
+project_view_schema = enum("bench", "plans", "runs").catch("bench")
 user_settings_schema = obj(
     {
         "formatVersion": literal(1).default(1),
@@ -22,7 +22,7 @@ user_settings_schema = obj(
             obj({"rootPath": string(1), "name": string(1), "openedAt": string(datetime=True)})
         ).default([]),
         "welcomeLayout": welcome_layout_schema.default("grid"),
-        "projectView": project_view_schema.default("wiring"),
+        "projectView": project_view_schema.default("bench"),
         "llm": obj(
             {
                 "baseUrl": string(url=True).default("https://api.openai.com/v1"),

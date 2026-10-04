@@ -14,10 +14,6 @@ export function resolvePortRef(ref: string, hardware: Hardware[]): { hardware?: 
   return port ? { hardware: owner, port } : { hardware: owner };
 }
 
-export function hardwareForDevice(instance: DeviceInstance, hardware: Hardware[]): Hardware | undefined {
-  return hardware.find((item) => item.hardwareId === instance.hardwareId);
-}
-
 /** Human-readable port label used in wiring lists, task cards and connection drawers. */
 export function portLabel(ref: string, hardware: Hardware[]): string {
   const resolved = resolvePortRef(ref, hardware);

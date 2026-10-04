@@ -28,7 +28,6 @@ export const eventInvalidations: Record<TestStandEventName, readonly Invalidatio
     { key: queryKeys.deviceCatalog },
     { key: queryKeys.dashboard },
     { key: queryKeys.deviceDefinitionAll },
-    { key: queryKeys.adapterStatusAll },
     { key: queryKeys.deviceStreamsAll },
     { key: queryKeys.testDeviceToolsAll },
     { key: queryKeys.agentTools }

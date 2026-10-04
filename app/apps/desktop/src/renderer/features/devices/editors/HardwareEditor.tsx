@@ -4,9 +4,9 @@ import { useMutation } from "@tanstack/react-query";
 import type { Hardware, HardwarePort } from "@teststand/contracts/devices";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { errorMessage } from "../../../../lib/errors.js";
-import { Button, Dialog, DialogBody, DialogContent, DialogFooter, Input } from "../../../../ui";
-import { PortEditor } from "../../PortEditor.js";
+import { errorMessage } from "../../../lib/errors.js";
+import { Button, Dialog, DialogBody, DialogContent, DialogFooter, Input } from "../../../ui";
+import { PortEditor } from "../PortEditor.js";
 import { BundleActions } from "../BundleActions.js";
 import { EditorAlert, EditorField, EditorNote, EditorPanel, editorGrid } from "./EditorField.js";
 

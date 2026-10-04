@@ -238,23 +238,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/ops/devices.getAdapterStatus": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Adapter release record (design doc 8.4): status, evidence and missing gates. */
-        post: operations["devices.getAdapterStatus"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/ops/devices.getDefinition": {
         parameters: {
             query?: never;
@@ -300,23 +283,6 @@ export interface paths {
         put?: never;
         /** devices.importBundle */
         post: operations["devices.importBundle"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/ops/devices.importBundleForDevice": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** devices.importBundleForDevice */
-        post: operations["devices.importBundleForDevice"];
         delete?: never;
         options?: never;
         head?: never;
@@ -493,43 +459,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/ops/devices.recordAdapterCheck": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Record that the adapter's ``--check`` or simulator tests passed just now. */
-        post: operations["devices.recordAdapterCheck"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/ops/devices.recordAdapterSmoke": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Add a manual bench smoke record (human only): who ran it, the wiring and what
-         *     they observed.
-         */
-        post: operations["devices.recordAdapterSmoke"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/ops/devices.refreshDevice": {
         parameters: {
             query?: never;
@@ -609,23 +538,6 @@ export interface paths {
         put?: never;
         /** devices.saveHardware */
         post: operations["devices.saveHardware"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/ops/devices.setAdapterStatus": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Mark the adapter available (every release gate met) or back in development. */
-        post: operations["devices.setAdapterStatus"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1915,11 +1827,6 @@ export interface components {
             /** Hardwareid */
             hardwareId: string;
         };
-        /** DevicesGetAdapterStatusRequest */
-        DevicesGetAdapterStatusRequest: {
-            /** Hardwareid */
-            hardwareId: string;
-        };
         /** DevicesGetDefinitionRequest */
         DevicesGetDefinitionRequest: {
             /** Hardwareid */
@@ -1927,18 +1834,6 @@ export interface components {
         };
         /** DevicesGetHardwareRequest */
         DevicesGetHardwareRequest: {
-            /** Hardwareid */
-            hardwareId: string;
-        };
-        /** DevicesImportBundleForDeviceRequest */
-        DevicesImportBundleForDeviceRequest: {
-            /**
-             * Data
-             * Format: base64url
-             */
-            data: Uint8Array;
-            /** Deviceid */
-            deviceId: string;
             /** Hardwareid */
             hardwareId: string;
         };
@@ -1988,32 +1883,6 @@ export interface components {
         DevicesListPackagesRequest: Record<string, never>;
         /** DevicesListToolsRequest */
         DevicesListToolsRequest: Record<string, never>;
-        /** DevicesRecordAdapterCheckRequest */
-        DevicesRecordAdapterCheckRequest: {
-            /** Hardwareid */
-            hardwareId: string;
-            /**
-             * Kind
-             * @enum {string}
-             */
-            kind: "check" | "simulator";
-            /**
-             * Note
-             * @default
-             */
-            note?: string;
-        };
-        /** DevicesRecordAdapterSmokeRequest */
-        DevicesRecordAdapterSmokeRequest: {
-            /** Hardwareid */
-            hardwareId: string;
-            /** Observation */
-            observation: string;
-            /** Operator */
-            operator: string;
-            /** Wiring */
-            wiring: string;
-        };
         /** DevicesRefreshDeviceRequest */
         DevicesRefreshDeviceRequest: {
             /** Deviceid */
@@ -2038,16 +1907,6 @@ export interface components {
         DevicesSaveHardwareRequest: {
             /** Input */
             input: object;
-        };
-        /** DevicesSetAdapterStatusRequest */
-        DevicesSetAdapterStatusRequest: {
-            /** Hardwareid */
-            hardwareId: string;
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "developing" | "available";
         };
         /** DevicesUninstallPackageRequest */
         DevicesUninstallPackageRequest: {
@@ -2114,7 +1973,7 @@ export interface components {
              * Projectview
              * @default null
              */
-            projectView?: ("wiring" | "plans" | "runs" | "manual") | null;
+            projectView?: ("bench" | "plans" | "runs") | null;
             /**
              * Theme
              * @default null
@@ -2977,39 +2836,6 @@ export interface operations {
             };
         };
     };
-    "devices.getAdapterStatus": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["DevicesGetAdapterStatusRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": object;
-                };
-            };
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        error: components["schemas"]["WireError"];
-                    };
-                };
-            };
-        };
-    };
     "devices.getDefinition": {
         parameters: {
             query?: never;
@@ -3086,39 +2912,6 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["DevicesImportBundleRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": object;
-                };
-            };
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        error: components["schemas"]["WireError"];
-                    };
-                };
-            };
-        };
-    };
-    "devices.importBundleForDevice": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["DevicesImportBundleForDeviceRequest"];
             };
         };
         responses: {
@@ -3472,72 +3265,6 @@ export interface operations {
             };
         };
     };
-    "devices.recordAdapterCheck": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["DevicesRecordAdapterCheckRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": object;
-                };
-            };
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        error: components["schemas"]["WireError"];
-                    };
-                };
-            };
-        };
-    };
-    "devices.recordAdapterSmoke": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["DevicesRecordAdapterSmokeRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": object;
-                };
-            };
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        error: components["schemas"]["WireError"];
-                    };
-                };
-            };
-        };
-    };
     "devices.refreshDevice": {
         parameters: {
             query?: never;
@@ -3680,39 +3407,6 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["DevicesSaveHardwareRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": object;
-                };
-            };
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        error: components["schemas"]["WireError"];
-                    };
-                };
-            };
-        };
-    };
-    "devices.setAdapterStatus": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["DevicesSetAdapterStatusRequest"];
             };
         };
         responses: {

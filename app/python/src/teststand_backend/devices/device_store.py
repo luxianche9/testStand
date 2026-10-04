@@ -15,7 +15,6 @@ from typing import Any
 from urllib.parse import quote
 
 from teststand_backend.contracts.devices import (
-    parse_adapter_record,
     parse_device_instance,
     parse_hardware,
     parse_stored_hardware_definition,
@@ -36,7 +35,6 @@ Remove = Callable[[Path], Awaitable[None]]
 
 DEFINITION_DIR = "definition"
 DEFINITION_FILE = "device.json"
-ADAPTER_FILE = "adapter.json"
 
 
 def _delete(path: Path) -> None:
@@ -91,19 +89,21 @@ class DeviceStore:
                 and item["deviceId"] != instance["deviceId"]
             ):
                 raise RuntimeError(
-                    f"Hardware {instance['hardwareId']} is already assigned to MCP "
+                    f"Hardware {instance['hardwareId']} is already assigned to "
                     f"device {item['deviceId']}"
                 )
         segment = safe_segment(instance["deviceId"])
         await atomic_json(self._device_dir / (segment + ".json"), instance)
         self._changed()
-        if self.get_stored_hardware(instance["hardwareId"]) is None:
+        # The device's hardware record carries its name; ports come from the plugin on connect.
+        current = self.get_stored_hardware(instance["hardwareId"])
+        if current is None or current["label"] != instance["label"]:
             await self._save_stored_hardware(
                 {
                     "formatVersion": 2,
                     "hardwareId": instance["hardwareId"],
-                    "label": instance["hardwareId"],
-                    "ports": [],
+                    "label": instance["label"],
+                    "ports": current["ports"] if current else [],
                 }
             )
         return instance
@@ -127,28 +127,7 @@ class DeviceStore:
 
     def list_hardware(self) -> list[Record]:
         instances = {item["hardwareId"]: item for item in self.list_devices()}
-        adapters = self.list_adapters()
-        return [
-            self._derive_hardware(item, instances, adapters) for item in self.list_stored_hardware()
-        ]
-
-    def list_adapters(self) -> dict[str, Record]:
-        """Adapter release records (design doc 8.4) by hardwareId."""
-        records = self._read_all(self._hardware_dir, ADAPTER_FILE, parse_adapter_record)
-        return {item["hardwareId"]: item for item in records}
-
-    def get_adapter(self, hardware_id: str) -> Record:
-        return self.list_adapters().get(hardware_id) or parse_adapter_record(
-            {"hardwareId": hardware_id}
-        )
-
-    async def save_adapter(self, record: Record) -> Record:
-        parsed = parse_adapter_record(record)
-        if self.get_stored_hardware(parsed["hardwareId"]) is None:
-            raise RuntimeError(f"Unknown hardwareId: {parsed['hardwareId']}")
-        await atomic_json(self._hardware_path(parsed["hardwareId"]) / ADAPTER_FILE, parsed)
-        self._changed()
-        return parsed
+        return [self._derive_hardware(item, instances) for item in self.list_stored_hardware()]
 
     def get_hardware(self, hardware_id: str) -> Record | None:
         return next(
@@ -173,6 +152,23 @@ class DeviceStore:
         )
         await self._save_stored_hardware(stored)
         return self._derive_hardware(stored)
+
+    async def sync_managed_hardware(
+        self, hardware_id: str, label: str, ports: list[Record]
+    ) -> None:
+        """Keep a managed device's hardware record in step with its plugin: ports are replaced by
+        the declared pinout. The label follows the device's name (set by ``save_device``)."""
+        current = self.get_stored_hardware(hardware_id)
+        stored = parse_stored_hardware_definition(
+            {
+                "formatVersion": 2,
+                "hardwareId": hardware_id,
+                "label": current["label"] if current else label,
+                "ports": ports,
+            }
+        )
+        if current is None or current.get("ports") != stored["ports"]:
+            await self._save_stored_hardware(stored)
 
     async def remove_hardware(self, hardware_id: str) -> None:
         instance = next(
@@ -236,21 +232,15 @@ class DeviceStore:
     async def inspect_bundle(self, data: bytes) -> Record:
         return await asyncio.to_thread(_parse_bundle, data)
 
-    async def import_bundle(self, data: bytes, options: Record | None = None) -> Record:
-        options = options or {}
+    async def import_bundle(self, data: bytes) -> Record:
+        """Import a passive hardware definition (``.tshw``); devices get ports from their plugin."""
         stored = await asyncio.to_thread(_parse_bundle, data)
-        expected = options.get("expectedHardwareId")
-        if expected and expected != stored["hardwareId"]:
-            raise RuntimeError(
-                f"Bundle hardwareId {stored['hardwareId']} does not match expected "
-                f"hardwareId {expected}"
-            )
         replaced = self.get_stored_hardware(stored["hardwareId"]) is not None
-        assigned = next(
-            (s for s in self.list_devices() if s["hardwareId"] == stored["hardwareId"]), None
-        )
-        if replaced and assigned and assigned["deviceId"] != options.get("allowManagedDeviceId"):
-            raise RuntimeError(f"Cannot replace managed hardware {stored['hardwareId']}")
+        if any(item["hardwareId"] == stored["hardwareId"] for item in self.list_devices()):
+            raise RuntimeError(
+                f"Hardware {stored['hardwareId']} belongs to a device; "
+                "its ports come from the plugin"
+            )
         staging_root = Path(tempfile.mkdtemp(prefix=".import-", dir=self._hardware_dir))
         staging = staging_root / "hardware"
         target = self._hardware_path(stored["hardwareId"])
@@ -291,7 +281,6 @@ class DeviceStore:
         self,
         stored: Record,
         instances: dict[str, Record] | None = None,
-        adapters: dict[str, Record] | None = None,
     ) -> Record:
         instance = (
             instances.get(stored["hardwareId"])
@@ -300,21 +289,11 @@ class DeviceStore:
                 (s for s in self.list_devices() if s["hardwareId"] == stored["hardwareId"]), None
             )
         )
-        adapter = (adapters if adapters is not None else self.list_adapters()).get(
-            stored["hardwareId"]
-        )
         return parse_hardware(
             {
                 **stored,
                 "kind": "managed" if instance else "passive",
-                **(
-                    {
-                        "deviceId": instance["deviceId"],
-                        "adapterStatus": adapter["status"] if adapter else "developing",
-                    }
-                    if instance
-                    else {}
-                ),
+                **({"deviceId": instance["deviceId"]} if instance else {}),
             }
         )
 

@@ -157,20 +157,6 @@
         "title": "DevicesExportBundleRequest",
         "type": "object"
       },
-      "DevicesGetAdapterStatusRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "hardwareId": {
-            "title": "Hardwareid",
-            "type": "string"
-          }
-        },
-        "required": [
-          "hardwareId"
-        ],
-        "title": "DevicesGetAdapterStatusRequest",
-        "type": "object"
-      },
       "DevicesGetDefinitionRequest": {
         "additionalProperties": false,
         "properties": {
@@ -197,31 +183,6 @@
           "hardwareId"
         ],
         "title": "DevicesGetHardwareRequest",
-        "type": "object"
-      },
-      "DevicesImportBundleForDeviceRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "data": {
-            "format": "base64url",
-            "title": "Data",
-            "type": "string"
-          },
-          "hardwareId": {
-            "title": "Hardwareid",
-            "type": "string"
-          },
-          "deviceId": {
-            "title": "Deviceid",
-            "type": "string"
-          }
-        },
-        "required": [
-          "data",
-          "hardwareId",
-          "deviceId"
-        ],
-        "title": "DevicesImportBundleForDeviceRequest",
         "type": "object"
       },
       "DevicesImportBundleRequest": {
@@ -326,63 +287,6 @@
         "title": "DevicesListToolsRequest",
         "type": "object"
       },
-      "DevicesRecordAdapterCheckRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "hardwareId": {
-            "title": "Hardwareid",
-            "type": "string"
-          },
-          "kind": {
-            "enum": [
-              "check",
-              "simulator"
-            ],
-            "title": "Kind",
-            "type": "string"
-          },
-          "note": {
-            "default": "",
-            "title": "Note",
-            "type": "string"
-          }
-        },
-        "required": [
-          "hardwareId",
-          "kind"
-        ],
-        "title": "DevicesRecordAdapterCheckRequest",
-        "type": "object"
-      },
-      "DevicesRecordAdapterSmokeRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "hardwareId": {
-            "title": "Hardwareid",
-            "type": "string"
-          },
-          "operator": {
-            "title": "Operator",
-            "type": "string"
-          },
-          "wiring": {
-            "title": "Wiring",
-            "type": "string"
-          },
-          "observation": {
-            "title": "Observation",
-            "type": "string"
-          }
-        },
-        "required": [
-          "hardwareId",
-          "operator",
-          "wiring",
-          "observation"
-        ],
-        "title": "DevicesRecordAdapterSmokeRequest",
-        "type": "object"
-      },
       "DevicesRefreshDeviceRequest": {
         "additionalProperties": false,
         "properties": {
@@ -453,29 +357,6 @@
           "input"
         ],
         "title": "DevicesSaveHardwareRequest",
-        "type": "object"
-      },
-      "DevicesSetAdapterStatusRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "hardwareId": {
-            "title": "Hardwareid",
-            "type": "string"
-          },
-          "status": {
-            "enum": [
-              "developing",
-              "available"
-            ],
-            "title": "Status",
-            "type": "string"
-          }
-        },
-        "required": [
-          "hardwareId",
-          "status"
-        ],
-        "title": "DevicesSetAdapterStatusRequest",
         "type": "object"
       },
       "DevicesUninstallPackageRequest": {
@@ -660,10 +541,9 @@
             "anyOf": [
               {
                 "enum": [
-                  "wiring",
+                  "bench",
                   "plans",
-                  "runs",
-                  "manual"
+                  "runs"
                 ],
                 "type": "string"
               },
@@ -2434,61 +2314,6 @@
         "x-confirm": false
       }
     },
-    "/api/ops/devices.getAdapterStatus": {
-      "post": {
-        "operationId": "devices.getAdapterStatus",
-        "summary": "Adapter release record (design doc 8.4): status, evidence and missing gates.",
-        "tags": [
-          "devices"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DevicesGetAdapterStatusRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "read",
-        "x-capability": "hardware.read",
-        "x-profiles": [
-          "adapter"
-        ],
-        "x-idempotency": "natural",
-        "x-confirm": false
-      }
-    },
     "/api/ops/devices.getDefinition": {
       "post": {
         "operationId": "devices.getDefinition",
@@ -2623,59 +2448,6 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/DevicesImportBundleRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "write",
-        "x-capability": "hardware.manage",
-        "x-profiles": [],
-        "x-idempotency": "none",
-        "x-confirm": false
-      }
-    },
-    "/api/ops/devices.importBundleForDevice": {
-      "post": {
-        "operationId": "devices.importBundleForDevice",
-        "summary": "devices.importBundleForDevice",
-        "tags": [
-          "devices"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DevicesImportBundleForDeviceRequest"
               }
             }
           }
@@ -3285,114 +3057,6 @@
         "x-confirm": false
       }
     },
-    "/api/ops/devices.recordAdapterCheck": {
-      "post": {
-        "operationId": "devices.recordAdapterCheck",
-        "summary": "Record that the adapter's ``--check`` or simulator tests passed just now.",
-        "tags": [
-          "devices"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DevicesRecordAdapterCheckRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "write",
-        "x-capability": "hardware.manage",
-        "x-profiles": [
-          "adapter"
-        ],
-        "x-idempotency": "none",
-        "x-confirm": false
-      }
-    },
-    "/api/ops/devices.recordAdapterSmoke": {
-      "post": {
-        "operationId": "devices.recordAdapterSmoke",
-        "summary": "Add a manual bench smoke record (human only): who ran it, the wiring and what\nthey observed.",
-        "tags": [
-          "devices"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DevicesRecordAdapterSmokeRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "write",
-        "x-capability": "hardware.releaseAdapters",
-        "x-profiles": [],
-        "x-idempotency": "none",
-        "x-confirm": false
-      }
-    },
     "/api/ops/devices.refreshDevice": {
       "post": {
         "operationId": "devices.refreshDevice",
@@ -3664,59 +3328,6 @@
           "adapter",
           "plan"
         ],
-        "x-idempotency": "natural",
-        "x-confirm": false
-      }
-    },
-    "/api/ops/devices.setAdapterStatus": {
-      "post": {
-        "operationId": "devices.setAdapterStatus",
-        "summary": "Mark the adapter available (every release gate met) or back in development.",
-        "tags": [
-          "devices"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DevicesSetAdapterStatusRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "write",
-        "x-capability": "hardware.releaseAdapters",
-        "x-profiles": [],
         "x-idempotency": "natural",
         "x-confirm": false
       }

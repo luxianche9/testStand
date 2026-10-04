@@ -182,7 +182,7 @@ def sdk_envelope_schema(structured_content: Record) -> Record:
     """Describe the MCP SDK response around validated structured content.
 
     This envelope is transport-only.  ``structuredContent`` is validated against
-    the remote tool schema, while callers inside HH receive the separately
+    the remote tool schema, while callers inside testStand receive the separately
     normalized business result.
     """
     embedded = _embedded_schema(structured_content)

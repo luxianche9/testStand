@@ -59,7 +59,7 @@ async def test_serialized_settings(tmp_path: Path) -> None:
     blocked.set()
     await asyncio.gather(first, second)
     assert store.get()["theme"] == persisted["theme"] == "dark"
-    assert store.get()["projectView"] == persisted["projectView"] == "wiring"
+    assert store.get()["projectView"] == persisted["projectView"] == "bench"
 
 
 @pytest.mark.asyncio
@@ -67,7 +67,7 @@ async def test_settings_defaults_strip_and_clone(tmp_path: Path) -> None:
     store = SettingsStore(tmp_path / "settings.json")
     await store.initialize()
     result = await store.update({"projectView": "retired-view", "extra": 2})
-    assert result["projectView"] == "wiring"
+    assert result["projectView"] == "bench"
     assert "extra" not in result
     result["llm"]["model"] = "mutated"
     assert store.get()["llm"]["model"] == "gpt-4.1"

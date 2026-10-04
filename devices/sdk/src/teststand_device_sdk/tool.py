@@ -27,7 +27,7 @@ class ToolAnnotations(BaseModel):
 READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 OPERATE = ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False)
 
-HardwareId = Annotated[str, Field(description="Bound hardwareId from list_hardware; the HH gateway supplies this automatically.",
+HardwareId = Annotated[str, Field(description="Bound hardwareId from list_hardware; the testStand gateway supplies this automatically.",
                                   min_length=1)]
 
 F = TypeVar("F", bound=Callable[..., Any])

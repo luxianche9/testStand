@@ -4,7 +4,7 @@ import type { TestPlan, TestPlanDraftAnalysis, TestPlanIssue } from "@teststand/
 import { invalidateTestingData } from "../../lib/mutations.js";
 import { useKeyboardShortcut } from "../../lib/hooks/useKeyboardShortcut.js";
 import { defaultRunParameters } from "./plan-helpers.js";
-import { clonePlan } from "./plan-model.js";
+import { clonePlan, findStep } from "./plan-model.js";
 
 type Confirm = (options: { title: string; message: React.ReactNode; confirmLabel?: string; danger?: boolean })
   => Promise<boolean>;
@@ -37,10 +37,11 @@ export function usePlanEditor({ confirm, onRunStarted }: {
   const [runParameters, setRunParameters] = useState<Record<string, unknown>>({});
   const loadToken = useRef(0);
 
-  const adopt = useCallback((plan: TestPlan) => {
+  /** Shows `plan`; `keepStep` keeps the selected step when it still exists (a reload of the same plan). */
+  const adopt = useCallback((plan: TestPlan, keepStep = false) => {
     setSelectedPlanId(plan.id);
     setDraft(plan);
-    setSelectedStepId(undefined);
+    setSelectedStepId((current) => keepStep && current && findStep(plan, current) ? current : undefined);
     setPast([]);
     setFuture([]);
     setDirty(false);
@@ -50,12 +51,12 @@ export function usePlanEditor({ confirm, onRunStarted }: {
     setRunParameters(defaultRunParameters(plan));
   }, []);
 
-  const loadPlan = useCallback(async (id: string) => {
+  const loadPlan = useCallback(async (id: string, keepStep = false) => {
     const token = ++loadToken.current;
     setSelectedPlanId(id);
     try {
       const plan = await window.teststand.testing.loadPlan({ planId: id });
-      if (token === loadToken.current) { adopt(plan); setMessage(undefined); }
+      if (token === loadToken.current) { adopt(plan, keepStep); setMessage(undefined); }
     } catch (error) {
       if (token === loadToken.current) setMessage(errorText(error));
     }
@@ -86,10 +87,12 @@ export function usePlanEditor({ confirm, onRunStarted }: {
 
   useEffect(() => window.teststand.events.subscribe("testPlan", (payload) => {
     const event = payload as { planId?: string; revision?: number };
-    if (!selectedPlanId || event.planId !== selectedPlanId || event.revision === draft?.revision) return;
+    if (!selectedPlanId || event.planId !== selectedPlanId) return;
+    // Events of our own saves can arrive after a later revision is already shown.
+    if (draft && typeof event.revision === "number" && event.revision <= draft.revision) return;
     if (dirty) setConflict(true);
-    else void loadPlan(selectedPlanId);
-  }), [selectedPlanId, draft?.revision, dirty, loadPlan]);
+    else void loadPlan(selectedPlanId, true);
+  }), [selectedPlanId, draft, dirty, loadPlan]);
 
   useEffect(() => {
     if (!message) return;

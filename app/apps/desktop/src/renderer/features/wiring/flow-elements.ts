@@ -19,6 +19,7 @@ export type FlowNodeOptions = {
   editingHardwareId?: string | undefined;
   movePort: (hardwareId: string, portId: string, side: PortSide, offset: number) => void;
   resizeNode: (hardwareId: string, width: number, height: number) => void;
+  onControl?: ((hardwareId: string, anchor: DOMRect) => void) | undefined;
 };
 
 export function fallbackHardware(hardwareId: string, portIds: Iterable<string> = []): Hardware {
@@ -60,7 +61,8 @@ export function toFlowNode(
       portEditing: options.interactive && options.editingHardwareId === node.hardwareId,
       interactive: options.interactive,
       movePort: options.movePort,
-      resizeNode: options.resizeNode
+      resizeNode: options.resizeNode,
+      onControl: item?.kind === "managed" ? options.onControl : undefined
     }
   };
 }

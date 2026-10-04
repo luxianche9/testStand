@@ -395,12 +395,40 @@ def _apply_operation(plan: Record, operation: Record, resolver: Any | None = Non
     raise app_error("invalid_argument", f"Unknown test plan operation: {kind}")
 
 
+def default_arguments(schema: Record) -> Record:
+    """Values for the required parameters of a tool input schema: the declared default, else the
+    first enum value, the minimum, ``False``, ``0`` or ``""``."""
+    declared = schema.get("properties")
+    properties: Record = declared if isinstance(declared, dict) else {}
+    output: Record = {}
+    for name in schema.get("required", []) if isinstance(schema.get("required"), list) else []:
+        field = properties.get(name)
+        if not isinstance(field, dict):
+            continue
+        kind = field.get("type")
+        if "default" in field:
+            output[name] = clone(field["default"])
+        elif isinstance(field.get("enum"), list) and field["enum"]:
+            output[name] = clone(field["enum"][0])
+        elif kind in ("integer", "number"):
+            output[name] = field.get("minimum", 0)
+        elif kind == "boolean":
+            output[name] = False
+        elif kind == "string":
+            output[name] = ""
+    return output
+
+
 def _bind_step(step: Record, hardware_id: str, tool_name: str, resolver: Any | None) -> None:
     if resolver is None:
         raise app_error("validation_failed", "Device tool resolver is unavailable")
     tool, issues = resolver.resolve(hardware_id, tool_name)
     if not tool:
         raise app_error("validation_failed", "Device tool binding is invalid", {"issues": issues})
+    if step.get("toolName") != tool_name or not isinstance(step.get("arguments"), dict):
+        # A new tool starts from its required parameters' defaults, so the step is runnable
+        # as soon as it is bound; the user then changes what differs.
+        step["arguments"] = default_arguments(tool.get("inputSchema", {}))
     step["hardwareId"] = hardware_id
     step["toolName"] = tool_name
     step["bindingRevision"] = tool["bindingRevision"]

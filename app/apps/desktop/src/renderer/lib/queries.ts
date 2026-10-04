@@ -43,7 +43,7 @@ export function useWiringTasks() {
   });
 }
 
-/** 工位接线的人工更改日志（持久化在项目运行库中）。刷新由 project 事件驱动。 */
+/** 测试台架接线的人工更改日志（持久化在项目运行库中）。刷新由 project 事件驱动。 */
 export function useWiringChanges() {
   return useQuery({
     queryKey: queryKeys.wiringChanges,
@@ -111,13 +111,6 @@ export function useDeviceDefinition(hardwareId: string) {
 }
 
 /** The adapter's release record (design doc §8.4); every change is a catalog write (`devices`). */
-export function useAdapterStatus(hardwareId: string) {
-  return useQuery({
-    queryKey: queryKeys.adapterStatus(hardwareId),
-    queryFn: () => window.teststand.devices.getAdapterStatus({ hardwareId })
-  });
-}
-
 /** Embedded OpenCode runtime, which the backend runs; refetched on `opencode` events. */
 export function useOpenCodeStatus() {
   return useQuery({

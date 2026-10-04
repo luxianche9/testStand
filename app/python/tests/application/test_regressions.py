@@ -133,14 +133,6 @@ async def test_device_application_crud_and_binary_boundaries() -> None:
     assert await app.export_bundle(HUMAN, "H1") == b"zip"
     assert await app.import_bundle(HUMAN, b"zip") == {"hardwareId": "H1"}
     assert await app.inspect_bundle(HUMAN, b"zip") == {"hardwareId": "H1"}
-    assert await app.import_bundle_for_device(HUMAN, b"zip", "H1", "S") == {"hardwareId": "H1"}
-    devices.store.import_bundle.assert_awaited_with(
-        b"zip", {"expectedHardwareId": "H1", "allowManagedDeviceId": "S"}
-    )
-    with pytest.raises(ValueError, match="not found"):
-        await app.import_bundle_for_device(HUMAN, b"zip", "H1", "absent")
-    with pytest.raises(ValueError, match="not H2"):
-        await app.import_bundle_for_device(HUMAN, b"zip", "H2", "S")
     passive: Json = {
         "formatVersion": 2,
         "hardwareId": "P",

@@ -131,8 +131,9 @@
   align-items: center;
   justify-content: center;
   min-width: 0;
+  min-height: 0;
   width: 100%;
-  height: 100%;
+  flex: 1 1 auto;
   padding: 4px 8px;
   overflow: hidden;
   color: var(--tf-fg);
@@ -147,6 +148,29 @@
   pointer-events: none;
   background: var(--tf-surface-1);
 }
+.flow-node-control {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  margin-bottom: 8px;
+  padding: 0 8px;
+  border: 1px solid var(--tf-line-strong);
+  border-radius: calc(var(--tf-radius) - 1px);
+  background: var(--tf-surface-0);
+  color: var(--tf-fg-2);
+  font-size: 11px;
+  cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+.flow-node-control:hover,
+.flow-node-control:focus-visible {
+  background: var(--tf-surface-3);
+  color: var(--tf-fg);
+  outline: none;
+}
+.flow-node-control svg { width: 12px; height: 12px; }
 .flow-hardware-node.selected {
   border-color: var(--tf-signal);
   box-shadow: 0 0 0 2px color-mix(in oklch, var(--tf-signal) 22%, transparent), var(--tf-shadow-overlay);

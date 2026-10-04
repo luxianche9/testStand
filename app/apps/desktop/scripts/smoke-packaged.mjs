@@ -190,7 +190,7 @@ async function verifyDevicePackages(application, page) {
     dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [path] });
   }, relay);
   const click = (locator) => locator.evaluate((element) => element.click());
-  await click(page.getByRole("tab", { name: "设备管理", exact: true }));
+  await click(page.getByRole("tab", { name: "测试台架", exact: true }));
   await click(page.getByRole("button", { name: "设备类型" }));
   await click(page.getByRole("button", { name: /安装设备包/ }));
   const confirm = page.getByRole("dialog", { name: "安装设备包" });

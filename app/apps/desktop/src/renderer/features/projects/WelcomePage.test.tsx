@@ -9,7 +9,7 @@ import { WelcomePage } from "./WelcomePage";
 
 vi.mock("../wiring/TopologyPreview.js", () => ({
   TopologyPreview: ({ project }: { project: RecentProjectSummary }) => (
-    <div role="img" aria-label={`${project.name} 工位接线缩略图`} />
+    <div role="img" aria-label={`${project.name} 测试台架缩略图`} />
   )
 }));
 
@@ -57,7 +57,7 @@ describe("WelcomePage", () => {
     await userEvent.click(await screen.findByText("project-a", { exact: true }));
     await waitFor(() => expect(api.projects.openFolder).toHaveBeenCalledWith({ rootPath: "C:\\work\\project-a" }));
     await waitFor(() => expect(onOpened).toHaveBeenCalledWith("C:\\work\\project-a"));
-    expect(screen.getByRole("img", { name: "project-a 工位接线缩略图" })).toBeTruthy();
+    expect(screen.getByRole("img", { name: "project-a 测试台架缩略图" })).toBeTruthy();
     expect(screen.getByText("项目文件夹不存在")).toBeTruthy();
   });
 

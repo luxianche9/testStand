@@ -18,6 +18,8 @@ type CanvasNodeData = {
   interactive?: boolean;
   movePort: (hardwareId: string, portId: string, side: PortSide, offset: number) => void;
   resizeNode: (hardwareId: string, width: number, height: number) => void;
+  /** Opens the device's action menu at the control button; absent for passive hardware. */
+  onControl?: ((hardwareId: string, anchor: DOMRect) => void) | undefined;
 };
 export type HardwareFlowNode = Node<CanvasNodeData, "hardware">;
 export type TopologyEdge = Edge<{ connectionId: string; signal?: SignalKind | undefined }>;

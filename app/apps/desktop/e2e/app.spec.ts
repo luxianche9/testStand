@@ -57,11 +57,11 @@ test.describe.serial("testStand folder project desktop", () => {
     await expect(page.getByRole("heading", { name: "最近项目" })).toBeVisible();
     await expect(page.getByRole("button", { name: "打开项目文件夹" })).toBeVisible();
     await expect(page.getByRole("button", { name: "设置", exact: true })).toBeVisible();
-    await expect(page.getByRole("tab", { name: "工位接线", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("tab", { name: "测试台架", exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "打开 AI 侧栏" })).toHaveCount(0);
     await page.getByRole("button", { name: "设置", exact: true }).click();
     await expect(page.getByRole("heading", { name: "外观" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "设备管理", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "测试台架", exact: true })).toHaveCount(0);
     await page.getByRole("button", { name: "返回", exact: true }).click();
     await expect(page.getByRole("heading", { name: "最近项目" })).toBeVisible();
     await page.screenshot({ path: resolve(artifactDir, "welcome-light.png"), fullPage: true });
@@ -77,10 +77,11 @@ test.describe.serial("testStand folder project desktop", () => {
     // Every launch still returns to the welcome page even when recent projects exist.
     await expect(page.getByRole("heading", { name: "最近项目" })).toBeVisible();
     await page.getByText("project-a", { exact: true }).first().click();
-    await expect(page.getByRole("tab", { name: "工位接线", exact: true })).toBeVisible();
-    await expect(page.getByRole("tab", { name: "动作编排", exact: true })).toHaveCount(0);
-    await expect(page.getByRole("tab", { name: "设备管理", exact: true })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "测试台架", exact: true })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "测试编排", exact: true })).toBeVisible();
     await expect(page.getByRole("tab", { name: "运行监控", exact: true })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "设备管理", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("tab", { name: "工位接线", exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "打开 AI 侧栏" })).toBeVisible();
   });
 
@@ -110,13 +111,12 @@ test.describe.serial("testStand folder project desktop", () => {
     expect(result.afterSave.dirty).toBe(false);
     expect(result.beforeSave?.file.wiring.connections[0]?.pins).toEqual([{ a: "1", b: "1" }, { a: "2", b: "2" }]);
 
-    await page.getByRole("tab", { name: "设备管理", exact: true }).click();
-    await expect(page.getByRole("heading", { name: "设备管理" })).toBeVisible();
-    await expect(page.getByRole("treeitem", { name: /DUT_A/ })).toBeVisible();
-    await page.screenshot({ path: resolve(artifactDir, "devices-page.png"), fullPage: true });
-
-    await page.getByRole("tab", { name: "工位接线", exact: true }).click();
-    await expect(page.getByRole("tab", { name: /^硬件库/ })).toBeVisible();
+    await page.getByRole("tab", { name: "测试台架", exact: true }).click();
+    const list = page.getByRole("tabpanel", { name: "设备列表" });
+    await list.getByRole("button", { name: /DUT_A/ }).click();
+    await expect(page.getByRole("dialog", { name: "DUT_A" }).getByText("光纤口")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await page.screenshot({ path: resolve(artifactDir, "bench-page.png"), fullPage: true });
     await page.getByRole("tab", { name: /^接线日志/ }).click();
     await expect(page.getByRole("tabpanel", { name: "接线日志" }).getByRole("region", { name: "历史记录" })).toBeVisible();
     await expect(page.getByRole("button", { name: "信箱" })).toHaveCount(0);
@@ -142,7 +142,7 @@ test.describe.serial("testStand folder project desktop", () => {
     });
 
     await expect(page.getByLabel("2 条待处理接线任务")).toBeVisible();
-    await page.getByRole("tab", { name: "工位接线", exact: true }).click();
+    await page.getByRole("tab", { name: "测试台架", exact: true }).click();
     await page.getByRole("tab", { name: /^接线日志/ }).click();
     const pending = page.getByRole("tabpanel", { name: "接线日志" }).getByRole("region", { name: "待处理" });
     for (let remaining = taskIds.length; remaining > 0; remaining--) {
@@ -173,7 +173,7 @@ test.describe.serial("testStand folder project desktop", () => {
     await expect(page.getByText("MCP Gateway", { exact: false }).first()).toBeVisible();
     await expect(page.getByText("Codex", { exact: true }).first()).toBeVisible();
 
-    await page.getByRole("tab", { name: "工位接线", exact: true }).click();
+    await page.getByRole("tab", { name: "测试台架", exact: true }).click();
     const openAssistant = page.getByRole("button", { name: "打开 AI 侧栏" });
     if (await openAssistant.isVisible()) await openAssistant.click();
     await expect(page.getByRole("button", { name: "关闭 AI 侧栏" })).toBeVisible();
@@ -276,7 +276,7 @@ test.describe.serial("testStand folder project desktop", () => {
     await expect(dialog.getByRole("button", { name: "保存并继续" })).toBeVisible();
     await expect(dialog.getByRole("button", { name: "放弃修改" })).toBeVisible();
     await dialog.getByRole("button", { name: "取消" }).click();
-    await expect(page.getByRole("tab", { name: "工位接线", exact: true })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "测试台架", exact: true })).toBeVisible();
     await requestLeaveProject(page);
     await dialog.getByRole("button", { name: "放弃修改" }).click();
     await expect(page.getByRole("heading", { name: "最近项目" })).toBeVisible();

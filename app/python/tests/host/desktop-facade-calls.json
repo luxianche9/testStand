@@ -91,20 +91,6 @@
     }
   },
   {
-    "operation": "devices.importBundleForDevice",
-    "body": {
-      "data": {
-        "__bytes__": [
-          0,
-          255,
-          128
-        ]
-      },
-      "hardwareId": "ID",
-      "deviceId": "S"
-    }
-  },
-  {
     "operation": "projects.document",
     "body": {}
   },

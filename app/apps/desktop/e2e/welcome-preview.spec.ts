@@ -59,7 +59,7 @@ test("renders the saved wiring canvas as a recent-project React Flow preview", a
     page.on("dialog", (dialog) => void dialog.accept().catch(() => undefined));
     await page.reload({ waitUntil: "domcontentloaded" });
     await rendererReady(page);
-    const preview = page.getByRole("img", { name: "project-preview 工位接线缩略图" });
+    const preview = page.getByRole("img", { name: "project-preview 测试台架缩略图" });
     await expect(preview.locator(".react-flow__node")).toHaveCount(2);
     await expect(preview.locator(".react-flow__edge")).toHaveCount(1);
     const edgePath = preview.locator(".react-flow__edge.wiring-flow-edge .react-flow__edge-path");

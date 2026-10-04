@@ -17,6 +17,35 @@ log = logging.getLogger(__name__)
 SAFE_ALL_TIMEOUT_S = 5.0
 
 
+def pinout_ports(document: Record) -> list[Record]:
+    """Wiring ports from the ``/device`` pinout: one port per connector, its pins labelled with
+    the signal they carry (the first function's signal)."""
+    declared = document.get("pinout")
+    pinout: Record = declared if isinstance(declared, dict) else {}
+    pins = {pin["pinId"]: pin for pin in pinout.get("pins", []) if isinstance(pin, dict)}
+    ports: list[Record] = []
+    for connector in pinout.get("connectors", []):
+        members = [pins[pin_id] for pin_id in connector.get("pinIds", []) if pin_id in pins]
+        ports.append(
+            {
+                "portId": connector["connectorId"],
+                "name": connector.get("name") or connector["connectorId"],
+                "pins": [
+                    {
+                        "pinId": pin["pinId"],
+                        "position": pin["position"],
+                        "label": next(
+                            (str(f["signal"]) for f in pin.get("functions", []) if f.get("signal")),
+                            "",
+                        ),
+                    }
+                    for pin in sorted(members, key=lambda item: item["position"])
+                ],
+            }
+        )
+    return ports
+
+
 class DeviceService:
     def __init__(
         self, store: Any, transport: PluginTransport, packages: PluginStore | None = None
@@ -128,6 +157,9 @@ class DeviceService:
             if not isinstance(document, dict):
                 return
             self._streams[hardware_id] = declared_streams(document)
+            await self.store.sync_managed_hardware(
+                hardware_id, instance["label"], pinout_ports(document)
+            )
             cached = self.store.get_definition(hardware_id)
             revision = document.get("manifestRevision")
             if cached is not None and cached["document"].get("manifestRevision") == revision:

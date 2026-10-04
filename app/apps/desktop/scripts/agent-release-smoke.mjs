@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
-// Uses only the installed application's public MCP interface. No HH module imports or source reads.
+// Uses only the installed application's public MCP interface. No testStand module imports or source reads.
 // The caller must supply its own isolated, initialized project and test-only gateway credentials.
 export async function verifyAgentInterface(endpoint, token) {
   const client = new Client({ name: "teststand-release-contract-smoke", version: "1.0.0" });

@@ -107,6 +107,9 @@ export interface ToolCatalogItem {
   description?: string;
   inputSchema: Record<string, unknown>;
   kind: string;
+  /** The plugin's declared semantics: `actuate` changes outputs, `read` only reads, `safe` drives
+   *  outputs to their safe values. */
+  contractMetadata?: { operationSemantics?: { kind?: string } };
 }
 
 export const hardwarePinSchema = z.object({
@@ -131,32 +134,13 @@ const hardwareFields = {
 export const storedHardwareDefinitionSchema = z.object({ formatVersion: z.literal(2).default(2), ...hardwareFields });
 export type StoredHardwareDefinition = z.infer<typeof storedHardwareDefinitionSchema>;
 
-/** Adapter release (design doc §8.4): "developing" until every release gate is met. */
-export const adapterStatusSchema = z.enum(["developing", "available"]);
-export type AdapterStatus = z.infer<typeof adapterStatusSchema>;
-export type AdapterReleaseGate = "check" | "simulator" | "smoke";
-export interface AdapterEvidence { at: string; note: string }
-/** A manual bench smoke run: who ran it, the wiring used and what they observed. */
-export interface AdapterSmokeRecord { operator: string; at: string; wiring: string; observation: string }
-export interface AdapterReleaseRecord {
-  hardwareId: string;
-  status: AdapterStatus;
-  check?: AdapterEvidence;
-  simulator?: AdapterEvidence;
-  smoke: AdapterSmokeRecord[];
-  /** Release gates not met yet; "available" needs this empty. */
-  gaps: AdapterReleaseGate[];
-}
-
 export const hardwareSchema = z.object({
   formatVersion: z.literal(2).default(2),
   hardwareId: z.string().min(1),
   label: z.string().min(1),
   kind: z.enum(["managed", "passive"]),
   deviceId: z.string().min(1).optional(),
-  ports: z.array(hardwarePortSchema).default([]),
-  /** Managed hardware only, derived by the backend from the adapter record. */
-  adapterStatus: adapterStatusSchema.optional()
+  ports: z.array(hardwarePortSchema).default([])
 }).superRefine((value, context) => {
   if (value.kind === "managed" && !value.deviceId) context.addIssue({ code: z.ZodIssueCode.custom, message: "Managed hardware requires deviceId" });
   if (value.kind === "passive" && value.deviceId) context.addIssue({ code: z.ZodIssueCode.custom, message: "Passive hardware cannot reference a device instance" });

@@ -1,7 +1,7 @@
 # testStand public interface
 
-Contract revision: 2026-09-16.2. Use public tools and bundled references to develop against installed HH.
-No HH repository, backend Python source, private transport token or installation file is needed.
+Contract revision: 2026-09-16.2. Use public tools and bundled references to develop against installed testStand.
+No testStand repository, backend Python source, private transport token or installation file is needed.
 
 ## Discover and inspect
 
@@ -26,7 +26,7 @@ source, content hash and version (for bundled materials). A query matches the or
 The bundled `ts-agent-interface` reference describes the installed public interface.
 
 `register_reference` imports a user's UTF-8 .md/.txt/.json/.csv document from a relative file path
-inside the user project. It does not read HH installation files or arbitrary host paths. References
+inside the user project. It does not read testStand installation files or arbitrary host paths. References
 are copied into managed storage, SHA-256 hashed and may be associated with a registered hardwareId.
 Use letters, digits, - or _ in referenceId. Existing IDs require expectedHash from read_reference.
 Binary/PDF extraction is not offered; export the relevant text to a supported project file first.

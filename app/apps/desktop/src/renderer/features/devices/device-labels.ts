@@ -1,6 +1,6 @@
 import type { HardwareAvailability, DeviceStatus } from "@teststand/contracts/devices";
-import { hardwareStatus } from "../../../lib/hardware-status.js";
-import type { Tone } from "../../../ui";
+import { hardwareStatus } from "../../lib/hardware-status.js";
+import type { Tone } from "../../ui";
 
 export type RowStatus = { tone: Tone; label: string; title?: string | undefined; pulse?: boolean };
 

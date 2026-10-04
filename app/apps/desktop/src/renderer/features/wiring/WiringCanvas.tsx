@@ -15,13 +15,15 @@ import {
 import "@xyflow/react/dist/style.css";
 import { CableIcon } from "lucide-react";
 import { cn } from "../../ui/index.js";
-import { HARDWARE_MIME } from "./HardwareLibrary.js";
 import { wiringNodeTypes } from "./HardwareNode.js";
 import type { HardwareFlowNode, ManualPair, NodeMenu, TopologyEdge } from "./wiring-model.js";
 
 const fitOptions = { padding: 0.2, maxZoom: 1 };
 
 /** The bench: dotted canvas, faceplate nodes, signal-coloured cables. */
+/** Drag payload of a device list row: its hardwareId. */
+export const HARDWARE_MIME = "application/teststand-hardware";
+
 export function WiringCanvas({
   nodes, edges, onNodesChange, onEdgesChange, onConnect, onDropHardware, onMoveNode,
   onSelectConnection, onNodeMenu
@@ -55,7 +57,10 @@ export function WiringCanvas({
   const drop = (event: DragEvent) => {
     event.preventDefault();
     const hardwareId = event.dataTransfer.getData(HARDWARE_MIME);
-    if (hardwareId) onDropHardware(hardwareId, flow.screenToFlowPosition({ x: event.clientX, y: event.clientY }));
+    if (!hardwareId) return;
+    // The user is arranging the bench: never refit the view under their hand.
+    framed.current = true;
+    onDropHardware(hardwareId, flow.screenToFlowPosition({ x: event.clientX, y: event.clientY }));
   };
 
   return (
@@ -84,8 +89,6 @@ export function WiringCanvas({
         }}
         onEdgeClick={(_event, edge) => onSelectConnection(String(edge.data?.connectionId ?? edge.id))}
         onPaneClick={() => onSelectConnection(undefined)}
-        fitView
-        fitViewOptions={fitOptions}
         minZoom={0.3}
         maxZoom={2}
         deleteKeyCode={null}
@@ -118,7 +121,7 @@ export function WiringCanvas({
           </div>
           <strong className="text-sm font-medium text-fg">把设备从左侧拖到画布</strong>
           <span className="max-w-[300px] text-center text-xs text-fg-3">
-            画布是工程文档，加入节点不会调用远端硬件。
+            放上画布后用连接器拖线；卡片上的「控制」可以直接操作设备。
           </span>
         </div>
       )}

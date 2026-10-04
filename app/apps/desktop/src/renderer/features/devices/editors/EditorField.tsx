@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { CircleAlertIcon } from "lucide-react";
-import { cn, Field } from "../../../../ui";
+import { cn, Field } from "../../../ui";
 
 /** Editor dialog field on the two-column grid; `span` stretches it across both columns. */
 export function EditorField({ label, required, span, error, hint, children }: {

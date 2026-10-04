@@ -25,12 +25,13 @@ test("settings returns to the page that opened it", async () => {
     await reloadAfterLeave(page);
     await page.getByText("settings-navigation-project", { exact: true }).first().click();
 
-    await expect(page.getByRole("tab", { name: /^硬件库/ })).toBeVisible();
-    await openSettingsAndReturn(page, () => expect(page.getByRole("tab", { name: /^硬件库/ })).toBeVisible());
+    const devices = page.getByRole("tabpanel", { name: "设备列表" });
+    await expect(devices).toBeVisible();
+    await openSettingsAndReturn(page, () => expect(devices).toBeVisible());
 
-    await page.getByRole("tab", { name: "设备管理" }).click();
-    await expect(page.getByRole("heading", { name: "设备管理" })).toBeVisible();
-    await openSettingsAndReturn(page, () => expect(page.getByRole("heading", { name: "设备管理" })).toBeVisible());
+    await page.getByRole("tab", { name: "测试编排" }).click();
+    await expect(page.getByRole("button", { name: "新建功能测试项" })).toBeVisible();
+    await openSettingsAndReturn(page, () => expect(page.getByRole("button", { name: "新建功能测试项" })).toBeVisible());
 
   } finally {
     await application.close().catch(() => undefined);

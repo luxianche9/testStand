@@ -8,7 +8,6 @@ import {
   Minimize2Icon,
   MinusIcon,
   ScrollTextIcon,
-  ServerIcon,
   SettingsIcon,
   XIcon
 } from "lucide-react";
@@ -18,9 +17,8 @@ import type { ProjectView } from "@teststand/contracts/storage";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger, cn } from "../ui";
 import type { AppPage } from "./app-navigation.js";
 
-export const PROJECT_VIEWS: { view: ProjectView; label: string; icon: ReactNode }[] = [
-  { view: "manual", label: "设备管理", icon: <ServerIcon /> },
-  { view: "wiring", label: "工位接线", icon: <CableIcon /> },
+const PROJECT_VIEWS: { view: ProjectView; label: string; icon: ReactNode }[] = [
+  { view: "bench", label: "测试台架", icon: <CableIcon /> },
   { view: "plans", label: "测试编排", icon: <FlaskConicalIcon /> },
   { view: "runs", label: "运行监控", icon: <ScrollTextIcon /> }
 ];
@@ -40,7 +38,7 @@ export function TitleBar(props: {
   project: ProjectDocument | null | undefined;
   assistantOpen: boolean;
   busy: boolean;
-  /** Open wiring requests, counted on the 工位接线 tab. */
+  /** Open wiring requests, counted on the 测试台架 tab. */
   pendingTaskCount: number;
   onNavigate: (page: AppPage) => void;
   onProjectAction: (action: ProjectAction) => void;
@@ -125,7 +123,7 @@ function Brand() {
           "text-[10px] leading-none font-bold text-signal-fg"
         )}
       >
-        HH
+        TS
       </span>
       <span className="text-sm font-semibold text-fg max-[1100px]:hidden">testStand</span>
       <span aria-hidden className="text-fg-3">/</span>
@@ -169,7 +167,7 @@ function ViewTabs({ value, dimmed, pendingTaskCount, onChange }: {
           >
             <span className={lit ? "text-signal" : "text-fg-3"}>{item.icon}</span>
             <span className="max-[1100px]:hidden">{item.label}</span>
-            {item.view === "wiring" && pendingTaskCount > 0 && (
+            {item.view === "bench" && pendingTaskCount > 0 && (
               <span
                 aria-label={`${pendingTaskCount} 条待处理接线任务`}
                 className="tf-num rounded-xs bg-signal px-1 text-2xs leading-4 font-semibold text-signal-fg"

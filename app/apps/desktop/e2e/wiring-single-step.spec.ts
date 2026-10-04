@@ -57,13 +57,13 @@ test.describe.serial("single-step wiring tasks", () => {
   });
 
   test("keeps a request pending in the wiring log and keeps history", async () => {
-    await page.getByRole("tab", { name: "设备管理", exact: true }).click();
+    await page.getByRole("tab", { name: "测试编排", exact: true }).click();
     const id = await page.evaluate(async () => (await window.teststand.wiring.requestTask({ input: {
       portA: "DUT_A.J1", portB: "DUT_B.J1", action: "connect",
       pins: [{ a: "1", b: "2" }, { a: "3", b: "3" }]
     } })).wiringTaskId);
     await expect(page.getByLabel("1 条待处理接线任务")).toBeVisible();
-    await page.getByRole("tab", { name: "工位接线", exact: true }).click();
+    await page.getByRole("tab", { name: "测试台架", exact: true }).click();
     await page.getByRole("tab", { name: /^接线日志/ }).click();
     const log = page.getByRole("tabpanel", { name: "接线日志" });
     const open = log.getByRole("region", { name: "待处理" });

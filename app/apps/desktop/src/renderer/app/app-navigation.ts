@@ -17,7 +17,7 @@ export type AppNavigationAction =
 
 export const initialAppNavigation: AppNavigationState = {
   page: "welcome",
-  projectView: "wiring",
+  projectView: "bench",
   settingsReturnPage: "welcome"
 };
 
@@ -46,5 +46,5 @@ export function appNavigationReducer(state: AppNavigationState, action: AppNavig
 }
 
 export function isProjectView(page: AppPage): page is ProjectView {
-  return page === "wiring" || page === "plans" || page === "runs" || page === "manual";
+  return page === "bench" || page === "plans" || page === "runs";
 }

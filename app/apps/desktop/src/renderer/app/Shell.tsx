@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useReducer, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useReducer, useState } from "react";
 import { QueryClient, QueryClientProvider, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { ProjectDocument, ProjectFolderSelection } from "@teststand/contracts/projects";
 import type { ProjectView } from "@teststand/contracts/storage";
@@ -16,14 +16,12 @@ import { isTaskActionable } from "../features/wiring/wiring-model.js";
 import { ManualCheckDialog } from "../features/testing/ManualCheckDialog.js";
 import { appNavigationReducer, initialAppNavigation, isProjectView, type AppPage } from "./app-navigation.js";
 import { readAssistantOpen, writeAssistantOpen } from "./assistant-preference.js";
-import { dispatchAppCommand } from "./commands.js";
-import { CommandPalette, paletteIcons, type PaletteCommand } from "./CommandPalette.js";
 import { AgentConfirmationDialog } from "./AgentConfirmationDialog.js";
 import { DirtyDialog } from "./DirtyDialog.js";
 import { ErrorBoundary } from "./ErrorBoundary.js";
 import { FeatureFallback } from "./FeatureFallback.js";
 import { InitializeDialog } from "./InitializeDialog.js";
-import { TitleBar, PROJECT_VIEWS, type ProjectAction } from "./TitleBar.js";
+import { TitleBar, type ProjectAction } from "./TitleBar.js";
 
 const AssistantSidebar = lazy(() => import("../features/agent/assistant.js")
   .then((module) => ({ default: module.AssistantSidebar })));
@@ -61,7 +59,6 @@ function Shell() {
   const [navigation, navigate] = useReducer(appNavigationReducer, initialAppNavigation);
   const [assistantOpen, setAssistantOpen] = useState(readAssistantOpen);
   const [pendingSelection, setPendingSelection] = useState<ProjectFolderSelection>();
-  const [paletteOpen, setPaletteOpen] = useState(false);
   const toast = useToast();
   const setError = useCallback((message?: string) => { if (message) toast.error(message); }, [toast]);
 
@@ -91,7 +88,6 @@ function Shell() {
   );
 
   useKeyboardShortcut("s", save.mutateAsync, Boolean(project.data));
-  useKeyboardShortcut("k", () => setPaletteOpen((open) => !open));
   useEffect(() => { writeAssistantOpen(assistantOpen); }, [assistantOpen]);
   useEffect(() => { if (!project.data) setAssistantOpen(false); }, [project.data]);
   useEffect(() => {
@@ -172,55 +168,6 @@ function Shell() {
   useEffect(() => { if (pendingKey) setAssistantOpen(true); }, [pendingKey]);
   const page = navigation.page;
 
-  const runCommand = (id: Parameters<typeof dispatchAppCommand>[0], view: ProjectView) => {
-    if (page !== view) switchPage(view);
-    // Give the lazily loaded page a frame to mount its command listeners.
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      if (!dispatchAppCommand(id)) toast.info("该页面暂时无法执行此命令");
-    }));
-  };
-
-  const commands = useMemo<PaletteCommand[]>(() => {
-    const list: PaletteCommand[] = [];
-    if (currentProject) {
-      for (const view of PROJECT_VIEWS) {
-        list.push({
-          id: `go-${view.view}`, label: `前往 ${view.label}`, group: "页面",
-          icon: paletteIcons[view.view], run: () => switchPage(view.view)
-        });
-      }
-    }
-    list.push({ id: "go-settings", label: "打开设置", group: "页面", icon: paletteIcons.settings, run: openSettings });
-    if (currentProject) {
-      list.push(
-        { id: "test-run-selected", label: "运行所选测试项", group: "测试编排", icon: paletteIcons.run,
-          keywords: "run test", run: () => runCommand("testing.run-selected", "plans") },
-        { id: "test-new-item", label: "新建测试项", group: "测试编排", icon: paletteIcons.add,
-          keywords: "new test item", run: () => runCommand("testing.new-item", "plans") },
-        { id: "wiring-new", label: "新建接线", group: "工位接线", icon: paletteIcons.add,
-          keywords: "connection wire", run: () => runCommand("wiring.new-connection", "wiring") }
-      );
-    }
-    list.push({ id: "project-open", label: "打开项目文件夹…", group: "项目", icon: paletteIcons.open,
-      run: () => handleProjectAction("open") });
-    if (currentProject) {
-      list.push(
-        { id: "project-save", label: "保存项目", group: "项目", icon: paletteIcons.save, shortcut: "Ctrl S",
-          run: () => handleProjectAction("save") },
-        { id: "toggle-ai", label: assistantOpen ? "关闭 AI 助手" : "打开 AI 助手", group: "视图",
-          icon: paletteIcons.ai, keywords: "assistant agent", run: () => setAssistantOpen((open) => !open) }
-      );
-    }
-    list.push(
-      { id: "theme-dark", label: "切换到深色主题", group: "视图", icon: paletteIcons.dark,
-        keywords: "theme dark", run: () => void theme.select("dark") },
-      { id: "theme-light", label: "切换到浅色主题", group: "视图", icon: paletteIcons.light,
-        keywords: "theme light", run: () => void theme.select("light") }
-    );
-    return list;
-  // The command closures read the latest render state; rebuilding on these inputs is sufficient.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentProject, assistantOpen, page, theme.choice]);
 
   return (
     <div className="flex h-full flex-col bg-surface-0 text-fg">
@@ -265,7 +212,6 @@ function Shell() {
         )}
       </div>
 
-      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} commands={commands} />
       <AgentConfirmationDialog />
       <ManualCheckDialog />
       <DirtyDialog

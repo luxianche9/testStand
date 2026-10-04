@@ -245,7 +245,10 @@ TESTING_TOOLS = [
     _testing(
         "list_test_device_tools",
         "List original MCP tool names and current schemas for one concrete hardwareId.",
-        obj({"hardwareId": string(1).describe("Concrete managed HH hardware id.")}, strict=True),
+        obj(
+            {"hardwareId": string(1).describe("Concrete managed testStand hardware id.")},
+            strict=True,
+        ),
         _object(
             {"hardwareId": {"type": "string"}, "tools": _ANY_LIST, "issues": _ISSUES},
             ["hardwareId", "tools", "issues"],

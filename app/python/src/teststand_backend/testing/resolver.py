@@ -12,6 +12,14 @@ from .validation import issue
 Record = dict[str, Any]
 
 
+def is_test_action(item: Record) -> bool:
+    """A tool a test step may call: the device's own operations, not the platform's management
+    tools or the stream reads that Observe / Expect steps already cover."""
+    return item.get("kind") == "hardware" and not str(item.get("remoteName", "")).endswith(
+        "_stream_read"
+    )
+
+
 class DeviceToolResolver:
     def __init__(self, devices: Any, catalog: Any, icds: Any | None = None) -> None:
         self.devices, self.catalog = devices, catalog
@@ -142,7 +150,7 @@ class DeviceToolResolver:
             }
         tools = []
         for item in self.devices.list_tools():
-            if item.get("deviceId") != instance.get("deviceId"):
+            if item.get("deviceId") != instance.get("deviceId") or not is_test_action(item):
                 continue
             result_schema = business_result_schema(item.get("upstreamOutputSchema"))
             semantics = _operation_semantics(item)

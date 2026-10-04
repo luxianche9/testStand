@@ -4,7 +4,7 @@ export const themeChoiceSchema = z.enum(["system", "light", "dark"]);
 export type ThemeChoice = z.infer<typeof themeChoiceSchema>;
 export const welcomeLayoutSchema = z.enum(["grid", "list"]);
 export type WelcomeLayout = z.infer<typeof welcomeLayoutSchema>;
-export const projectViewSchema = z.enum(["wiring", "plans", "runs", "manual"]).catch("wiring");
+export const projectViewSchema = z.enum(["bench", "plans", "runs"]).catch("bench");
 export type ProjectView = z.infer<typeof projectViewSchema>;
 
 export const userSettingsSchema = z.object({
@@ -16,7 +16,7 @@ export const userSettingsSchema = z.object({
     openedAt: z.string().datetime()
   })).default([]),
   welcomeLayout: welcomeLayoutSchema.default("grid"),
-  projectView: projectViewSchema.default("wiring"),
+  projectView: projectViewSchema.default("bench"),
   llm: z.object({
     baseUrl: z.string().url().default("https://api.openai.com/v1"),
     model: z.string().trim().min(1).default("gpt-4.1")

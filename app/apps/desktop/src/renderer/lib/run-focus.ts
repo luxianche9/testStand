@@ -7,6 +7,11 @@ export function openRunMonitor(runId: string) {
   window.dispatchEvent(new CustomEvent(OPEN_RUN, { detail: { runId } }));
 }
 
+/** The run most recently asked for, without consuming it: a render may be discarded and retried. */
+export function peekRequestedRun(): string | undefined {
+  return pending;
+}
+
 /** The run most recently asked for, once. */
 export function takeRequestedRun(): string | undefined {
   const runId = pending;

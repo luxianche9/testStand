@@ -1,6 +1,7 @@
 import { useEffect, useRef, type CSSProperties, type PointerEvent } from "react";
 import { Handle, NodeResizer, useUpdateNodeInternals, type NodeProps } from "@xyflow/react";
 import type { PortPosition, PortSide } from "@teststand/contracts/wiring";
+import { SlidersHorizontalIcon } from "lucide-react";
 import { cn } from "../../ui/index.js";
 import {
   MAX_CARD_HEIGHT,
@@ -46,6 +47,19 @@ function HardwareNode({ id, data, selected, width, height }: NodeProps<HardwareF
       />
       <div className="flow-node-body">
         <div className="flow-node-caption">{data.hardware.label}</div>
+        {data.onControl && interactive && (
+          <button
+            type="button"
+            className="flow-node-control nodrag"
+            aria-label={`控制 ${data.hardware.label}`}
+            onClick={(event) => {
+              event.stopPropagation();
+              data.onControl?.(id, event.currentTarget.getBoundingClientRect());
+            }}
+          >
+            <SlidersHorizontalIcon aria-hidden />控制
+          </button>
+        )}
       </div>
       {data.hardware.ports.map((port) => (
         <DraggablePort

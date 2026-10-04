@@ -1,28 +1,7 @@
 import type { ReactNode } from "react";
 import type { Hardware } from "@teststand/contracts/devices";
 import { CircleAlertIcon, SearchXIcon } from "lucide-react";
-import { Badge, EmptyState, PanelBody, PanelHeader, Section, type Tone } from "../../../ui";
-
-/** Inspector frame: nameplate header (name, status, actions) above stacked sections. Ids live in 基本信息. */
-export function InspectorShell({ title, status, actions, notice, children }: {
-  title: string;
-  status?: { label: string; tone: Tone; title?: string | undefined } | undefined;
-  actions: ReactNode;
-  /** Error strip shown directly under the header (failed action). */
-  notice?: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <>
-      <PanelHeader actions={actions} className="h-10">
-        <h2 className="min-w-0 truncate text-sm font-semibold text-fg">{title}</h2>
-        {status && <Badge tone={status.tone} title={status.title}>{status.label}</Badge>}
-      </PanelHeader>
-      {notice}
-      <PanelBody>{children}</PanelBody>
-    </>
-  );
-}
+import { Badge, EmptyState, PanelBody, PanelHeader, Section, type Tone } from "../../ui";
 
 /** Two-column key/value list; values are mono so ids and addresses line up. */
 export function Meta({ items }: { items: { label: string; value: ReactNode }[] }) {
@@ -91,8 +70,4 @@ export function HardwareSections({ hardware }: { hardware: Hardware }) {
 /** Pin IDs are often qualified with the port ID; drop that prefix for display. */
 function shortPinId(portId: string, pinId: string): string {
   return pinId.startsWith(`${portId}.`) ? pinId.slice(portId.length + 1) : pinId;
-}
-
-export function Missing({ title }: { title: string }) {
-  return <EmptyState icon={<SearchXIcon />} title={title} description="它可能已被删除。请从左侧重新选择。" />;
 }

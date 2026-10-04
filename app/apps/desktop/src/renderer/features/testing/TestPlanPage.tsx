@@ -8,7 +8,6 @@ import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import type { Hardware } from "@teststand/contracts/devices";
 import type { TestPlan, TestRunSnapshot, TestStep, TestStepCatalogItem } from "@teststand/contracts/testing";
 import { HeaderTabs, Splitter, useConfirm } from "../../ui";
-import { onAppCommand } from "../../app/commands.js";
 import { useResizableWidth } from "../../lib/resizable.js";
 import { useCurrentTestRun, useTestItemStatus } from "../../lib/queries.js";
 import { queryKeys } from "../../lib/query-keys.js";
@@ -70,16 +69,6 @@ export function TestPlanPage() {
     if (runId && runId !== seenRun.current) openRunMonitor(runId);
     seenRun.current = runId;
   }, [run, currentRun.isFetched]);
-
-  const commandState = useRef(actions);
-  commandState.current = actions;
-  useEffect(() => {
-    const offs = [
-      onAppCommand("testing.run-selected", () => void commandState.current.runSelected()),
-      onAppCommand("testing.new-item", () => commandState.current.setPrompt({ kind: "create", name: defaultName() }))
-    ];
-    return () => { for (const off of offs) off(); };
-  }, []);
 
   const guardState = useRef(editor);
   guardState.current = editor;

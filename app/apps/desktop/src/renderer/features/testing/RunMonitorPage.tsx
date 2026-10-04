@@ -9,7 +9,7 @@ import { errorMessage } from "../../lib/errors.js";
 import { useResizableWidth } from "../../lib/resizable.js";
 import { useCurrentTestRun, useTestItemStatus } from "../../lib/queries.js";
 import { queryKeys } from "../../lib/query-keys.js";
-import { onRunRequested, takeRequestedRun } from "../../lib/run-focus.js";
+import { onRunRequested, peekRequestedRun, takeRequestedRun } from "../../lib/run-focus.js";
 import {
   BusTerminal, PRE_ROLL_MS, RunOverview, runRange, SignalScope, stepAt,
   type ConsoleJump, type StreamSource, type TimeRange
@@ -41,13 +41,18 @@ export function RunMonitorPage() {
   const status = useTestItemStatus();
   const currentRun = useCurrentTestRun();
   const run = currentRun.data;
-  const [runId, setRunId] = useState<string | undefined>(() => takeRequestedRun() ?? activeRunId(run));
+  const [runId, setRunId] = useState<string | undefined>(() => peekRequestedRun() ?? activeRunId(run));
   const left = useResizableWidth({
     storageKey: "teststand.run-log-sidebar-width", defaultWidth: 280, min: 220, max: 640, direction: "right"
   });
   const plans = (status.data?.items ?? []).map((item) => ({ id: item.planId, name: item.name }));
 
-  useEffect(() => onRunRequested((requested) => setRunId(takeRequestedRun() ?? requested)), []);
+  useEffect(() => {
+    // Consumed once mounted: the initial render may have been retried.
+    const requested = takeRequestedRun();
+    if (requested) setRunId(requested);
+    return onRunRequested((next) => setRunId(takeRequestedRun() ?? next));
+  }, []);
   // Follow a newly started run (single run or the current batch item).
   const followed = useRef<string | undefined>(activeRunId(run));
   useEffect(() => {

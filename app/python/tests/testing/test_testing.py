@@ -1007,3 +1007,28 @@ def test_latest_run_and_batch_are_none_without_an_open_project() -> None:
     state = RuntimeStateStore(Closed())
     assert state.latest_run() is None
     assert state.latest_batch() is None
+
+
+def test_binding_a_tool_fills_its_required_parameters() -> None:
+    from teststand_backend.testing.store import default_arguments
+
+    schema = {
+        "type": "object",
+        "properties": {
+            "channel": {"type": "integer", "minimum": 0},
+            "closed": {"type": "boolean"},
+            "kind": {"type": "string", "enum": ["DI", "RELAY"]},
+            "volts": {"type": "number", "default": 1.5},
+            "note": {"type": "string"},
+            "optional": {"type": "integer"},
+        },
+        "required": ["channel", "closed", "kind", "volts", "note"],
+    }
+    assert default_arguments(schema) == {
+        "channel": 0,
+        "closed": False,
+        "kind": "DI",
+        "volts": 1.5,
+        "note": "",
+    }
+    assert default_arguments({}) == {}

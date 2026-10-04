@@ -17,7 +17,7 @@ export function TopologyPreview({ project, hardware, compact }: {
     <div
       className={compact ? "topology-preview compact" : "topology-preview"}
       role="img"
-      aria-label={`${project.name} 工位接线缩略图`}
+      aria-label={`${project.name} 测试台架缩略图`}
     >
       {topology.nodes.length ? (
         <ReactFlow<HardwareFlowNode, TopologyEdge>

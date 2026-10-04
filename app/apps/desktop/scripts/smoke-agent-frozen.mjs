@@ -9,7 +9,7 @@ import { verifyAgentInterface } from "./agent-release-smoke.mjs";
 
 const [backendInput, reportInput] = process.argv.slice(2);
 assert.ok(backendInput && reportInput, "Usage: node smoke-agent-frozen.mjs <frozen-backend-directory> <report.json>");
-const root = await mkdtemp(join(tmpdir(), "HH 发行接口 "));
+const root = await mkdtemp(join(tmpdir(), "testStand 发行接口 "));
 const backend = join(root, "resources", "backend");
 const project = join(root, "用户工程 中文");
 const token = randomUUID();

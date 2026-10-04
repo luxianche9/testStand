@@ -176,7 +176,7 @@ function ProjectPreview({ project, hardware, compact }: {
     <span
       className={cn("topology-preview", compact && "compact")}
       role="img"
-      aria-label={`${project.name} 工位接线缩略图`}
+      aria-label={`${project.name} 测试台架缩略图`}
     />
   );
   return (

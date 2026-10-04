@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import type { DeviceBundleKind, DeviceBundlePreview } from "@teststand/contracts/devices";
 import { CircleAlertIcon, DownloadIcon, UploadIcon } from "lucide-react";
-import { errorMessage } from "../../../lib/errors.js";
-import { Button } from "../../../ui";
+import { errorMessage } from "../../lib/errors.js";
+import { Button } from "../../ui";
 
 /**
  * Import/export controls for the canonical hardware `.tshw` bundle.

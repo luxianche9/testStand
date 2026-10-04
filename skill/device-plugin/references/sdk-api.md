@@ -97,7 +97,7 @@ def set_voltage(self, channel: AoChannel, volts: Volts) -> dict[str, Any]:
 | `evidence` | `controller_state`、`measurement`、`observation` 等 |
 | `safety_action` | 短名或 `{"toolName": ..., "arguments": {...}}`；必须指向已存在的工具，否则构造 `DeviceHost` 时失败 |
 
-方法参数不能用 `*args/**kwargs`，每个参数必须用 `param()` 标注。返回值是信封的 `data`。同一份声明同时生成设备页的手动调用表单、Agent 网关的工具和测试计划的步骤目录，不在别处再写一遍。
+方法参数不能用 `*args/**kwargs`，每个参数必须用 `param()` 标注。返回值是信封的 `data`。同一份声明同时生成测试台架卡片“控制”的参数表单、Agent 网关的工具和测试计划的步骤目录，不在别处再写一遍。
 
 工具只报告测量值和状态，不接收期望值、不返回通过 / 失败。工具运行期间写入的流记录自动带本次操作号，并进入结果 `meta.streamRefs`；适配器什么都不用做。
 
@@ -166,7 +166,7 @@ self.waveform = SoftwareWaveform(self._waveform_write, lock=self.io_lock,
 - 忠实模拟控制器状态：输出影子、配置门槛（未配置就读要返回相同错误）、句柄。
 - 输入默认读空闲值。演示效果只能由环境变量开启：`HARDWARE_DRY_RUN_AI_NOISE`（`sim.ai_noise_enabled()`、`demo_voltage()`）、`HARDWARE_DRY_RUN_SERIAL_LOOPBACK`（`sim.serial_loopback_enabled()`）。
 - 记录写入历史（如 `writes` 列表），测试用它证明越界值没有到达驱动。
-- 模拟器同时用于：适配器单元测试、`--check`、设备页 `mode: sim` 的实例、桌面应用的端到端测试。它不在设备之间回送接线（没有虚拟台架）。
+- 模拟器同时用于：适配器单元测试、`--check`、测试台架上 `mode: sim` 的设备、桌面应用的端到端测试。它不在设备之间回送接线（没有虚拟台架）。
 
 ## 测试工具（`teststand_device_sdk.testing`）
 

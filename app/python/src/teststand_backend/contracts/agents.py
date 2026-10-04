@@ -14,7 +14,6 @@ CAPABILITIES = (
     "hardware.read",
     "hardware.manage",
     "hardware.executeTools",
-    "hardware.releaseAdapters",
     "projects.read",
     "projects.manage",
     "wiring.read",

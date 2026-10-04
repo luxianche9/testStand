@@ -1,5 +1,5 @@
 import type { AgentConfirmation, AgentConfirmationAnswer, AgentIntegrationPreview, AgentIntegrationStatus, AgentToolInfo, McpGatewayStatus, OpenCodeRuntimeStatus } from "./agents.js";
-import type { AdapterReleaseRecord, DevicePackageChange, DevicePackageInspection, DeviceType, Hardware, InstalledDevicePackage, HardwareAvailability, ManagedDeviceDefinition, ManagedHardware, DeviceInstance, DeviceStatus, StoredHardwareDefinition, ToolCatalogItem } from "./devices.js";
+import type { DevicePackageChange, DevicePackageInspection, DeviceType, Hardware, InstalledDevicePackage, HardwareAvailability, ManagedDeviceDefinition, ManagedHardware, DeviceInstance, DeviceStatus, StoredHardwareDefinition, ToolCatalogItem } from "./devices.js";
 import type { ExecutionActivity, ManualToolInvocationResult } from "./execution.js";
 import type { DeviceStream, RunIo, RunMessages, RunRejudge, RunStreams, RunStreamWindow, RunTimeline, StreamProbe, StreamRead } from "./observability.js";
 import type { operations } from "./openapi.generated.js";
@@ -59,15 +59,10 @@ export interface OperationResults {
   "devices.getHardware": Hardware;
   "devices.getDefinition": ManagedDeviceDefinition | null;
   "devices.saveHardware": Hardware;
-  "devices.getAdapterStatus": AdapterReleaseRecord;
-  "devices.recordAdapterCheck": AdapterReleaseRecord;
-  "devices.recordAdapterSmoke": AdapterReleaseRecord;
-  "devices.setAdapterStatus": AdapterReleaseRecord;
   "devices.removeHardware": { hardwareId: string };
   "devices.exportBundle": Uint8Array;
   "devices.importBundle": BundleImport;
   "devices.inspectBundle": StoredHardwareDefinition;
-  "devices.importBundleForDevice": BundleImport;
   "devices.callTool": unknown;
   "devices.listTools": ToolCatalogItem[];
   "streams.listStreams": DeviceStream[];

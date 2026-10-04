@@ -45,19 +45,24 @@ test.describe.serial("manual control and Agent hardware calls", () => {
     expect(status.transport.state, status.transport.message).toBe("online");
     await reloadAfterLeave(page);
     await page.getByText("manual-control-project", { exact: true }).first().click();
-    await page.getByRole("tab", { name: "设备管理" }).click();
+    await page.getByRole("tab", { name: "测试台架" }).click();
 
-    await expect(page.getByRole("heading", { name: "设备管理" })).toBeVisible();
-    await page.getByRole("treeitem", { name: new RegExp(hardwareId) }).click();
-    await expect(page.getByText("模拟", { exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "占用硬件" })).toHaveCount(0);
-    await page.getByRole("button", { name: /pci1762_set_relay/ }).click();
-    await page.getByLabel(/Channel/).fill("2");
-    await page.getByLabel(/Closed/).check();
-    await page.getByRole("button", { name: "执行一次" }).click();
-    await expect(page.getByText("调用成功", { exact: true })).toBeVisible();
-    const resultPre = page.getByText("调用成功", { exact: true }).locator("xpath=ancestor::section//pre");
-    await expect(resultPre).toContainText('"closed": true');
+    // Clicking the device in the list shows its information; the card on the canvas controls it.
+    await page.getByRole("tabpanel", { name: "设备列表" }).getByRole("button", { name: /PCI-1762 sim/ }).click();
+    const info = page.getByRole("dialog", { name: "PCI-1762 sim" });
+    await expect(info.getByText("模拟", { exact: true }).first()).toBeVisible();
+    await expect(info.getByText("CN1", { exact: true })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await page.getByRole("button", { name: "控制 PCI-1762 sim" }).click();
+    const menu = page.getByRole("menu", { name: "PCI-1762 sim 的控制动作" });
+    await expect(menu.getByRole("menuitem")).toHaveText([/set_relay/, /set_bank/, /read_bit/, /safe_state/]);
+    await menu.getByRole("menuitem", { name: /set_relay/ }).click();
+    const action = page.getByRole("dialog", { name: "PCI-1762 sim · set_relay" });
+    await action.getByLabel(/Channel/).fill("2");
+    await action.getByLabel(/Closed/).check();
+    await action.getByRole("button", { name: "确认执行" }).click();
+    await expect(action.getByText("调用成功", { exact: true })).toBeVisible();
+    await expect(action.locator("pre")).toContainText('"closed": true');
 
     const readback = await page.evaluate(async (hardwareId) => (await window.teststand.manual.invokeTool({ raw: {
       hardwareId, toolName: "E2E_RELAY__pci1762_read_bit", arguments: { channel: 2, kind: "RELAY" }

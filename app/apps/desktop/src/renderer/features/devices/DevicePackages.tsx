@@ -4,9 +4,9 @@ import type {
   DevicePackageInspection, DeviceType, InstalledDevicePackage
 } from "@teststand/contracts/devices";
 import { CircleAlertIcon, PackagePlusIcon, RotateCwIcon, Trash2Icon } from "lucide-react";
-import { errorMessage } from "../../../lib/errors.js";
-import { queryKeys } from "../../../lib/query-keys.js";
-import { Badge, Button, Dialog, DialogBody, DialogContent, DialogFooter, useConfirm } from "../../../ui";
+import { errorMessage } from "../../lib/errors.js";
+import { queryKeys } from "../../lib/query-keys.js";
+import { Badge, Button, Dialog, DialogBody, DialogContent, DialogFooter, useConfirm } from "../../ui";
 
 const actionLabels = { install: "安装", upgrade: "升级", reinstall: "重新安装" } as const;
 const size = (bytes: number) =>
