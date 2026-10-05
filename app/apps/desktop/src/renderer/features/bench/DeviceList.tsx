@@ -36,7 +36,7 @@ export function DeviceList({ hardware, placed, header, footer, onOpen, ...props 
     return { label: status.label, tone: statusTone[status.tone], title: status.title, pulse: status.tone === "warn" };
   };
   const groups = [
-    { key: "managed", title: "设备", empty: "还没有设备。先在上方「设备类型」里安装设备包（.tsdev），再点「+」添加设备。",
+    { key: "managed", title: "设备", empty: "还没有设备。点上方「+」→「添加设备…」，选择设备的设备包（.tsdev）。",
       items: hardware.filter((item) => item.kind === "managed") },
     { key: "passive", title: "被测件 / 夹具", empty: "被测板、转接箱等不受控的硬件，用于接线。",
       items: hardware.filter((item) => item.kind !== "managed") }

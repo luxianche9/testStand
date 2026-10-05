@@ -7,6 +7,9 @@ whose ``*.dist-info`` carries the ``teststand.devices`` entry point) and records
 ``installed.json``. :func:`teststand_device_sdk.activate_plugins` reads that file in the
 backend and in every isolated child.
 
+Users never see "types": adding a device installs its package when needed and removing the
+last device of a package uninstalls it.
+
 A brand-new type is usable at once. Replacing or removing a type the backend may already have
 imported only takes effect at the next start: the change is kept under ``pending`` and applied
 by :meth:`PluginStore.initialize` before anything is imported.
@@ -380,9 +383,6 @@ class PluginStore:
             elif self._shipped(key) is not None:
                 # testStand's own copy is already on the path ahead of any package site.
                 skipped.add(name)
-        owner = self._builtin_owner(manifest["type"])
-        if owner is not None:
-            problems.append(f"Device type {manifest['type']} is built in ({owner})")
         return problems, skipped
 
     def _current(self, device_type: str) -> Record | None:
@@ -399,16 +399,20 @@ class PluginStore:
         manifest, wheels = _read_archive(data)
         problems, skipped = self._check(manifest, wheels)
         current = self._current(manifest["type"])
-        action = (
-            "install"
-            if current is None
-            else "reinstall"
-            if current["version"] == manifest["version"]
-            else "upgrade"
-        )
+        sha = _sha256(data)
+        # ``present``: nothing to install, the driver is already here (this exact package, or the
+        # development environment ships the adapter itself).
+        if self._builtin_owner(manifest["type"]) is not None or (
+            current and current["sha256"] == sha
+        ):
+            action = "present"
+        elif current is None:
+            action = "install"
+        else:
+            action = "reinstall" if current["version"] == manifest["version"] else "upgrade"
         return {
             "manifest": manifest,
-            "sha256": _sha256(data),
+            "sha256": sha,
             "size": len(data),
             "files": [
                 {
@@ -421,7 +425,8 @@ class PluginStore:
             ],
             "action": action,
             "installedVersion": current["version"] if current else None,
-            "restartRequired": manifest["type"] in self.state["types"],
+            "restartRequired": action in ("reinstall", "upgrade")
+            and manifest["type"] in self.state["types"],
             "problems": problems,
         }
 
@@ -435,6 +440,13 @@ class PluginStore:
                     {"problems": report["problems"]},
                 )
             manifest, wheels = _read_archive(data)
+            if report["action"] == "present":
+                return {
+                    "type": manifest["type"],
+                    "version": manifest["version"],
+                    "action": "present",
+                    "restartRequired": False,
+                }
             device_type = manifest["type"]
             directory = f"{manifest['version']}-{report['sha256'][:12]}"
             target = self.root / device_type / directory
@@ -480,6 +492,13 @@ class PluginStore:
                 "action": report["action"],
                 "restartRequired": restart,
             }
+
+    def installed(self, device_type: str) -> bool:
+        """Whether ``device_type`` came from a package (and is not already being removed)."""
+        change = self.state["pending"].get(device_type)
+        return device_type in self.state["types"] and not (
+            change and change["action"] == "uninstall"
+        )
 
     async def uninstall(self, device_type: str) -> Record:
         async with self._lock:

@@ -1,5 +1,5 @@
 import type { AgentConfirmation, AgentConfirmationAnswer, AgentIntegrationPreview, AgentIntegrationStatus, AgentToolInfo, McpGatewayStatus, OpenCodeRuntimeStatus } from "./agents.js";
-import type { DevicePackageChange, DevicePackageInspection, DeviceType, Hardware, InstalledDevicePackage, HardwareAvailability, ManagedDeviceDefinition, ManagedHardware, DeviceInstance, DeviceStatus, StoredHardwareDefinition, ToolCatalogItem } from "./devices.js";
+import type { DeviceAdded, DevicePackageInspection, Hardware, HardwareAvailability, ManagedDeviceDefinition, ManagedHardware, DeviceInstance, DeviceStatus, StoredHardwareDefinition, ToolCatalogItem } from "./devices.js";
 import type { ExecutionActivity, ManualToolInvocationResult } from "./execution.js";
 import type { DeviceStream, RunIo, RunMessages, RunRejudge, RunStreams, RunStreamWindow, RunTimeline, StreamProbe, StreamRead } from "./observability.js";
 import type { operations } from "./openapi.generated.js";
@@ -50,11 +50,8 @@ export interface OperationResults {
   "devices.removeDevice": { deviceId: string };
   "devices.refreshDevice": DeviceStatus;
   "devices.listManagedHardware": ManagedHardware[];
-  "devices.listDeviceTypes": DeviceType[];
-  "devices.listPackages": InstalledDevicePackage[];
   "devices.inspectPackage": DevicePackageInspection;
-  "devices.installPackage": DevicePackageChange;
-  "devices.uninstallPackage": DevicePackageChange;
+  "devices.addDevice": DeviceAdded;
   "devices.listHardware": Hardware[];
   "devices.getHardware": Hardware;
   "devices.getDefinition": ManagedDeviceDefinition | null;

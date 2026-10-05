@@ -14,20 +14,6 @@ export const deviceInstanceSchema = z.object({
   enabled: z.boolean().default(true)
 }).strict();
 export type DeviceInstance = z.infer<typeof deviceInstanceSchema>;
-/** An installed device plugin type (`devices.listDeviceTypes`); `error` when it cannot be loaded. */
-export interface DeviceType {
-  type: string;
-  manufacturer?: string;
-  model?: string;
-  isolation?: "inproc" | "subprocess";
-  description?: string;
-  /** Adapter distribution version. */
-  version?: string;
-  /** `package`: installed from a `.tsdev` file; `builtin`: shipped in the backend environment. */
-  source?: "builtin" | "package";
-  error?: string;
-}
-
 /** The manifest (`package.json`) of a `.tsdev` device package. */
 export interface DevicePackageManifest {
   formatVersion: 1;
@@ -45,42 +31,26 @@ export interface DevicePackageManifest {
   builtAt?: string;
 }
 
-/** What installing a `.tsdev` would do (`devices.inspectPackage`); nothing is written. */
+/** What adding a device from a `.tsdev` would install (`devices.inspectPackage`); nothing is written.
+ *  `present`: the driver is already here, nothing is installed. */
 export interface DevicePackageInspection {
   manifest: DevicePackageManifest;
   sha256: string;
   size: number;
   /** `skipped`: a dependency testStand already ships; its own copy is used instead. */
   files: { name: string; size: number; sha256: string; skipped: boolean }[];
-  action: "install" | "upgrade" | "reinstall";
+  action: "install" | "upgrade" | "reinstall" | "present";
   installedVersion: string | null;
   restartRequired: boolean;
   /** Reasons it cannot be installed here; empty when it can. */
   problems: string[];
 }
 
-/** An installed device package (`devices.listPackages`). */
-export interface InstalledDevicePackage {
-  type: string;
-  version: string;
-  distribution: string;
-  manufacturer: string;
-  model: string;
-  isolation: "inproc" | "subprocess";
-  description: string;
-  vendorDrivers: string[];
-  sha256: string;
-  installedAt: string;
-  /** False until the next start when this is an install waiting to replace nothing. */
-  active: boolean;
-  /** A change that takes effect at the next start of testStand. */
-  pending?: { action: "install"; version: string } | { action: "uninstall" };
-}
-
-export interface DevicePackageChange {
-  type: string;
-  version?: string;
-  action?: "install" | "upgrade" | "reinstall";
+/** `devices.addDevice`: the new device, its first connection attempt, and whether testStand must
+ *  restart because a newer driver replaced one already loaded. */
+export interface DeviceAdded {
+  device: DeviceInstance;
+  status: DeviceStatus;
   restartRequired: boolean;
 }
 export type StoredDevice = DeviceInstance;

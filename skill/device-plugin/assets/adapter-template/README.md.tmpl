@@ -25,4 +25,4 @@ cd devices
 .\test.ps1 -Target __ADAPTER__                 # pytest + 模拟器上的合规检查
 ```
 
-交付给 testStand 用设备包：`python devices/pack.py __ADAPTER__` 生成 `devices/dist/__ADAPTER__-<版本>.tsdev`；在 testStand 设备管理页“设备类型 → 安装设备包…”安装，之后在“添加测试资源”中选类型 `__ADAPTER__`，先用 `mode: sim` 验证，再改为 `mode: real` 做空载验收。
+交付给 testStand 用设备包：`python devices/pack.py __ADAPTER__` 生成 `devices/dist/__ADAPTER__-<版本>.tsdev`；在 testStand 测试台架点“+ → 添加设备…”选这个文件，先以模拟模式添加验证，再编辑为实物做空载验收。

@@ -204,6 +204,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ops/devices.addDevice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add a device from its ``.tsdev`` package (human only: the package runs code in the
+         *     backend). The package is installed when needed, the device gets generated ids and is
+         *     connected at once.
+         */
+        post: operations["devices.addDevice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ops/devices.callTool": {
         parameters: {
             query?: never;
@@ -315,25 +336,11 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** What installing a ``.tsdev`` would do: manifest, files, SHA-256 and any problems. */
+        /**
+         * What adding a device from a ``.tsdev`` would install: manifest, files, SHA-256 and any
+         *     problems. Writes nothing.
+         */
         post: operations["devices.inspectPackage"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/ops/devices.installPackage": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Install a device package (human only: it runs code in the backend). */
-        post: operations["devices.installPackage"];
         delete?: never;
         options?: never;
         head?: never;
@@ -374,23 +381,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/ops/devices.listDeviceTypes": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Device plugins installed with the backend (``teststand.devices`` entry points). */
-        post: operations["devices.listDeviceTypes"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/ops/devices.listHardware": {
         parameters: {
             query?: never;
@@ -419,23 +409,6 @@ export interface paths {
         put?: never;
         /** devices.listManagedHardware */
         post: operations["devices.listManagedHardware"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/ops/devices.listPackages": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Installed device packages (``.tsdev``), with any change waiting for a restart. */
-        post: operations["devices.listPackages"];
         delete?: never;
         options?: never;
         head?: never;
@@ -485,7 +458,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** devices.removeDevice */
+        /**
+         * Remove a device; the last device of a package also takes the package away (at the
+         *     next start, since its code may be loaded).
+         */
         post: operations["devices.removeDevice"];
         delete?: never;
         options?: never;
@@ -538,23 +514,6 @@ export interface paths {
         put?: never;
         /** devices.saveHardware */
         post: operations["devices.saveHardware"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/ops/devices.uninstallPackage": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Remove an installed device package; takes effect at the next start. */
-        post: operations["devices.uninstallPackage"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1815,6 +1774,25 @@ export interface components {
              */
             agent: "codex";
         };
+        /** DevicesAddDeviceRequest */
+        DevicesAddDeviceRequest: {
+            /**
+             * Data
+             * Format: base64url
+             */
+            data: Uint8Array;
+            /**
+             * Label
+             * @default
+             */
+            label?: string;
+            /**
+             * Mode
+             * @default real
+             * @enum {string}
+             */
+            mode?: "real" | "sim";
+        };
         /** DevicesCallToolRequest */
         DevicesCallToolRequest: {
             /** Args */
@@ -1861,26 +1839,14 @@ export interface components {
              */
             data: Uint8Array;
         };
-        /** DevicesInstallPackageRequest */
-        DevicesInstallPackageRequest: {
-            /**
-             * Data
-             * Format: base64url
-             */
-            data: Uint8Array;
-        };
         /** DevicesListDevicesRequest */
         DevicesListDevicesRequest: Record<string, never>;
         /** DevicesListDevicesWithStatusRequest */
         DevicesListDevicesWithStatusRequest: Record<string, never>;
-        /** DevicesListDeviceTypesRequest */
-        DevicesListDeviceTypesRequest: Record<string, never>;
         /** DevicesListHardwareRequest */
         DevicesListHardwareRequest: Record<string, never>;
         /** DevicesListManagedHardwareRequest */
         DevicesListManagedHardwareRequest: Record<string, never>;
-        /** DevicesListPackagesRequest */
-        DevicesListPackagesRequest: Record<string, never>;
         /** DevicesListToolsRequest */
         DevicesListToolsRequest: Record<string, never>;
         /** DevicesRefreshDeviceRequest */
@@ -1907,11 +1873,6 @@ export interface components {
         DevicesSaveHardwareRequest: {
             /** Input */
             input: object;
-        };
-        /** DevicesUninstallPackageRequest */
-        DevicesUninstallPackageRequest: {
-            /** Devicetype */
-            deviceType: string;
         };
         /** ManualInvokeToolRequest */
         ManualInvokeToolRequest: {
@@ -2770,6 +2731,39 @@ export interface operations {
             };
         };
     };
+    "devices.addDevice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DevicesAddDeviceRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": object;
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: components["schemas"]["WireError"];
+                    };
+                };
+            };
+        };
+    };
     "devices.callTool": {
         parameters: {
             query?: never;
@@ -3001,39 +2995,6 @@ export interface operations {
             };
         };
     };
-    "devices.installPackage": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["DevicesInstallPackageRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": object;
-                };
-            };
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        error: components["schemas"]["WireError"];
-                    };
-                };
-            };
-        };
-    };
     "devices.listDevices": {
         parameters: {
             query?: never;
@@ -3100,39 +3061,6 @@ export interface operations {
             };
         };
     };
-    "devices.listDeviceTypes": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["DevicesListDeviceTypesRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": object[];
-                };
-            };
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        error: components["schemas"]["WireError"];
-                    };
-                };
-            };
-        };
-    };
     "devices.listHardware": {
         parameters: {
             query?: never;
@@ -3176,39 +3104,6 @@ export interface operations {
         requestBody?: {
             content: {
                 "application/json": components["schemas"]["DevicesListManagedHardwareRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": object[];
-                };
-            };
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        error: components["schemas"]["WireError"];
-                    };
-                };
-            };
-        };
-    };
-    "devices.listPackages": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["DevicesListPackagesRequest"];
             };
         };
         responses: {
@@ -3407,39 +3302,6 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["DevicesSaveHardwareRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": object;
-                };
-            };
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        error: components["schemas"]["WireError"];
-                    };
-                };
-            };
-        };
-    };
-    "devices.uninstallPackage": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["DevicesUninstallPackageRequest"];
             };
         };
         responses: {

@@ -35,10 +35,6 @@
     "body": {}
   },
   {
-    "operation": "devices.listDeviceTypes",
-    "body": {}
-  },
-  {
     "operation": "devices.listHardware",
     "body": {}
   },

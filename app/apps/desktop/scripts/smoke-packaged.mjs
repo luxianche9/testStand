@@ -173,17 +173,17 @@ async function verifyAgentUi(page) {
 }
 
 /**
- * The release has no device types of its own: install pci1762 through the Devices page (the user's
- * path, with the native file dialog answered), the other packages through the API, then open sim
- * instances, including pci6208v, which runs in the frozen backend's isolated child process.
+ * A release ships no drivers: every device is added from its device package. Add PCI-1762 the
+ * user's way (+ → 添加设备…, native file dialog answered), the others through the API, all
+ * simulated; call a tool on PCI-1762 and on PCI-6208V (isolated child of the frozen backend).
+ * Removing the last PCI-1762 removes its package at the next start.
  */
 async function verifyDevicePackages(application, page) {
   const files = (await readdir(devicePackagesDir)).filter((name) => name.endsWith(".tsdev")).sort();
   for (const type of ["pci1710l", "pci1762", "pci6208v", "cp118u_i"]) {
     assert.ok(files.some((name) => name.startsWith(`${type}-`)), `Missing device package for ${type} in ${devicePackagesDir}`);
   }
-  assert.deepEqual(await page.evaluate(() => window.teststand.devices.listDeviceTypes()), [],
-    "A release must not ship built-in device types");
+  assert.deepEqual((await page.evaluate(() => window.teststand.system.dashboard())).devices, []);
 
   const relay = resolve(devicePackagesDir, files.find((name) => name.startsWith("pci1762-")));
   await application.evaluate(({ dialog }, path) => {
@@ -191,14 +191,15 @@ async function verifyDevicePackages(application, page) {
   }, relay);
   const click = (locator) => locator.evaluate((element) => element.click());
   await click(page.getByRole("tab", { name: "测试台架", exact: true }));
-  await click(page.getByRole("button", { name: "设备类型" }));
-  await click(page.getByRole("button", { name: /安装设备包/ }));
-  const confirm = page.getByRole("dialog", { name: "安装设备包" });
+  await page.getByRole("button", { name: "添加", exact: true }).click();
+  await page.getByRole("menuitem", { name: "添加设备…" }).click();
+  const confirm = page.getByRole("dialog", { name: "添加设备" });
   await confirm.getByText("Advantech PCI-1762", { exact: true }).waitFor();
   await confirm.getByText("Advantech DAQNavi", { exact: true }).waitFor();
-  await click(confirm.getByRole("button", { name: "安装", exact: true }));
-  await page.getByRole("status").filter({ hasText: "pci1762 0.2.0 已安装" }).waitFor();
-  await click(page.getByRole("dialog", { name: "设备类型" }).getByText("关闭", { exact: true }));
+  await confirm.getByLabel("运行模式").selectOption("sim");
+  await click(confirm.getByRole("button", { name: "添加", exact: true }));
+  await confirm.waitFor({ state: "hidden" });
+  await page.getByRole("tabpanel", { name: "设备列表" }).getByRole("button", { name: /PCI-1762/ }).waitFor();
 
   for (const name of files.filter((item) => !item.startsWith("pci1762-"))) {
     const bytes = [...await readFile(resolve(devicePackagesDir, name))];
@@ -206,42 +207,29 @@ async function verifyDevicePackages(application, page) {
       const bytes = new Uint8Array(data);
       const report = await window.teststand.devices.inspectPackage({ data: bytes });
       if (report.problems.length) throw new Error(report.problems.join("; "));
-      return window.teststand.devices.installPackage({ data: bytes });
+      return window.teststand.devices.addDevice({ data: bytes, label: "", mode: "sim" });
     }, bytes);
     assert.equal(result.restartRequired, false, `${name} should be usable at once`);
+    assert.equal(result.status.transport.state, "online", `${name}: ${JSON.stringify(result.status.transport)}`);
   }
-  const types = await page.evaluate(() => window.teststand.devices.listDeviceTypes());
-  assert.deepEqual(types.map((item) => [item.type, item.source, item.error ?? null]).sort(), [
-    ["cp118u_i", "package", null], ["pci1710l", "package", null], ["pci1762", "package", null], ["pci6208v", "package", null]
-  ]);
 
-  const calls = {
-    pci1762: ["pci1762_set_relay", { channel: 0, closed: true }],
-    pci6208v: ["pci6208v_set_voltage", { channel: 0, volts: 1.25 }]
-  };
-  for (const [type, [tool, args]] of Object.entries(calls)) {
-    const result = await page.evaluate(async ({ type, tool, args }) => {
-      const deviceId = `SMOKE_${type.toUpperCase()}`;
-      const hardwareId = `${deviceId}_CARD`;
-      await window.teststand.devices.saveDevice({ input: {
-        deviceId, label: type, hardwareId, type, settings: {}, mode: "sim", enabled: true
-      } });
-      const status = await window.teststand.devices.refreshDevice({ deviceId });
-      const call = await window.teststand.devices.callTool({ name: `${deviceId}__${tool}`, args: { hardwareId, ...args } });
-      return { status, call };
-    }, { type, tool, args });
-    assert.equal(result.status.transport.state, "online", `${type}: ${JSON.stringify(result.status.transport)}`);
-    assert.ok(JSON.stringify(result.call).includes(String(Object.values(args).at(-1))), `${type}: ${JSON.stringify(result.call)}`);
+  const calls = { PCI1762: ["pci1762_set_relay", { channel: 0, closed: true }],
+    PCI6208V: ["pci6208v_set_voltage", { channel: 0, volts: 1.25 }] };
+  for (const [deviceId, [tool, args]] of Object.entries(calls)) {
+    const call = await page.evaluate(({ deviceId, tool, args }) => window.teststand.devices.callTool({
+      name: `${deviceId}__${tool}`, args: { hardwareId: `${deviceId}_CARD`, ...args } }), { deviceId, tool, args });
+    assert.ok(JSON.stringify(call).includes(String(Object.values(args).at(-1))), `${deviceId}: ${JSON.stringify(call)}`);
   }
-  const removal = await page.evaluate(() => window.teststand.devices.uninstallPackage({ deviceType: "pci1762" }));
-  assert.equal(removal.restartRequired, true);
+  await page.evaluate(() => window.teststand.devices.removeDevice({ deviceId: "PCI1762" }));
 }
 
 async function verifyPendingRemovalApplied(page) {
-  const packages = await page.evaluate(() => window.teststand.devices.listPackages());
-  assert.deepEqual(packages.map((item) => item.type).sort(), ["cp118u_i", "pci1710l", "pci6208v"]);
-  const status = await page.evaluate(() => window.teststand.devices.refreshDevice({ deviceId: "SMOKE_PCI1762" }));
-  assert.match(JSON.stringify(status), /pci1762 is not installed/);
+  const installed = JSON.parse(await readFile(join(userDataDir, "plugins", "installed.json"), "utf8"));
+  assert.deepEqual(Object.keys(installed.types).sort(), ["cp118u_i", "pci1710l", "pci6208v"]);
+  const relay = resolve(devicePackagesDir, (await readdir(devicePackagesDir)).find((name) => name.startsWith("pci1762-")));
+  const report = await page.evaluate((data) => window.teststand.devices.inspectPackage({ data: new Uint8Array(data) }),
+    [...await readFile(relay)]);
+  assert.equal(report.action, "install");
 }
 
 function startProcessAudit() {

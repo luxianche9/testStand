@@ -8,6 +8,7 @@ import json
 import sys
 import zipfile
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -188,7 +189,6 @@ def test_tampered_wheel_fails_its_hash() -> None:
 @pytest.mark.parametrize(
     ("data", "problem"),
     [
-        (package(type="pci1762", wheels=[wheel(device_type="pci1762")]), "is built in"),
         (package(sdk=">=9"), "needs device SDK"),
         (package(wheels=[wheel(requires=("teststand-device-sdk>=9",))]), "Adapter needs"),
         (package(wheels=[wheel(requires=("teststand-device-sdk", "numpy"))]), "numpy is not in"),
@@ -227,9 +227,9 @@ async def test_wheel_data_purelib_is_unpacked_into_the_site(tmp_path: Path, isol
     assert (site / "fake_extra.py").read_text() == "VALUE = 7\n"
 
 
-async def test_device_package_operations(tmp_path: Path, isolated: Any) -> None:
-    from types import SimpleNamespace
-
+async def test_adding_a_device_installs_its_package_and_removing_it_uninstalls(
+    tmp_path: Path, isolated: Any
+) -> None:
     from teststand_backend.application import DefaultAuthorizer, DevicesApplication
     from teststand_backend.application.authorization import (
         AGENT_REQUEST_CONTEXT as AGENT,
@@ -238,30 +238,49 @@ async def test_device_package_operations(tmp_path: Path, isolated: Any) -> None:
         HUMAN_REQUEST_CONTEXT as HUMAN,
     )
     from teststand_backend.contracts.operations import operation_spec
+    from teststand_backend.devices import DeviceService, DeviceStore, PluginTransport
 
-    changes: list[str] = []
-    store = SimpleNamespace(changed=lambda: changes.append("devices"))
-    service = SimpleNamespace(store=store, packages=await store_for(tmp_path))
-    app = DevicesApplication(DefaultAuthorizer(), service, SimpleNamespace())  # type: ignore[arg-type]
+    packages = await store_for(tmp_path)
+    devices = DeviceStore(tmp_path / "devices")
+    await devices.initialize()
+    service = DeviceService(devices, PluginTransport(), packages)
+    app = DevicesApplication(DefaultAuthorizer(), service, None)  # type: ignore[arg-type]
     data = package()
     assert app.inspect_package(HUMAN, data)["action"] == "install"
-    assert (await app.install_package(HUMAN, data))["type"] == "fake"
-    assert [item["type"] for item in app.list_packages(HUMAN)] == ["fake"]
-    assert (await app.uninstall_package(HUMAN, "fake"))["restartRequired"] is True
-    assert changes == ["devices", "devices"]
-    # Installing runs code in the backend: an agent may list packages but never install them.
-    for method in (app.inspect_package, app.install_package, app.uninstall_package):
+    first = await app.add_device(HUMAN, data, "继电器卡", "sim")
+    assert first["device"]["deviceId"] == "FAKE" and first["device"]["label"] == "继电器卡"
+    assert first["device"]["hardwareId"] == "FAKE_CARD" and first["restartRequired"] is False
+    # The same package again: nothing to install, a second device of that model.
+    assert app.inspect_package(HUMAN, data)["action"] == "present"
+    second = await app.add_device(HUMAN, data)
+    assert (second["device"]["deviceId"], second["device"]["label"]) == ("FAKE_2", "FAKE-1")
+    await app.remove_device(HUMAN, "FAKE")
+    assert packages.installed("fake")  # still used by FAKE_2
+    await app.remove_device(HUMAN, "FAKE_2")
+    assert not packages.installed("fake")
+    assert (await store_for(tmp_path)).list_packages() == []
+    # The package runs code in the backend: an agent can never add one.
+    for method in (app.inspect_package, app.add_device):
         spec = operation_spec(method)
         assert spec is not None and not DefaultAuthorizer().is_allowed(AGENT, spec.capability)
-    listing = operation_spec(app.list_packages)
-    assert listing is not None and DefaultAuthorizer().is_allowed(AGENT, listing.capability)
     bare = DevicesApplication(
         DefaultAuthorizer(),
         SimpleNamespace(packages=None),  # type: ignore[arg-type]
         SimpleNamespace(),  # type: ignore[arg-type]
     )
     with pytest.raises(AppError, match="not available"):
-        bare.list_packages(HUMAN)
+        bare.inspect_package(HUMAN, data)
+
+
+async def test_a_driver_the_environment_already_has_is_not_installed(
+    tmp_path: Path, isolated: Any
+) -> None:
+    plugins = await store(tmp_path)
+    data = package(type="pci1762", wheels=[wheel(device_type="pci1762")])
+    report = plugins.inspect(data)
+    assert report["problems"] == [] and report["action"] == "present"
+    assert (await plugins.install(data))["action"] == "present"
+    assert plugins.list_packages() == []
 
 
 store_for = store
@@ -300,7 +319,7 @@ async def test_inspect_compares_with_a_pending_upgrade(tmp_path: Path, isolated:
     upgrade = package(wheels=[wheel(version="1.1.0")], version="1.1.0")
     await plugins.install(upgrade)
     report = plugins.inspect(upgrade)
-    assert report["action"] == "reinstall" and report["installedVersion"] == "1.1.0"
+    assert report["action"] == "present" and report["installedVersion"] == "1.1.0"
     await plugins.uninstall("fake")
     assert plugins.inspect(upgrade)["action"] == "install"
 

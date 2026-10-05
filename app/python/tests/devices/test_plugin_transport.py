@@ -6,7 +6,6 @@ import asyncio
 import sys
 from pathlib import Path
 from typing import Any
-from unittest.mock import Mock
 
 import pytest
 
@@ -123,15 +122,6 @@ async def test_a_dead_device_process_is_an_unknown_outcome(tmp_path: Path) -> No
         assert failure.value.details["outcomeKnown"] is False
     finally:
         await transport.close()
-
-
-async def test_device_types_operation_lists_the_installed_plugins() -> None:
-    from teststand_backend.application import HUMAN_REQUEST_CONTEXT as HUMAN
-    from teststand_backend.application import DefaultAuthorizer, DevicesApplication
-
-    app = DevicesApplication(DefaultAuthorizer(), Mock(), Mock())
-    types = {item["type"] for item in app.list_device_types(HUMAN)}
-    assert {"pci1710l", "pci1762", "pci6208v", "cp118u_i"} <= types
 
 
 async def test_an_instance_of_an_uninstalled_type_says_so(tmp_path: Path) -> None:

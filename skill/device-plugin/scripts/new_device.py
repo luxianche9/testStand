@@ -129,8 +129,7 @@ Next steps (see skill/device-plugin/SKILL.md):
   2. Run skill/device-plugin/scripts/check_adapter.ps1 -Adapter {adapter}  (pytest + compliance + TODO scan).
   3. Build its device package: python devices/pack.py {adapter}  ->  devices/dist/{adapter}-<version>.tsdev
      (list vendor drivers and required files under [tool.teststand.package] in its pyproject.toml).
-  4. In testStand: Devices page -> 设备类型 -> 安装设备包…, then add a device of type "{adapter}":
-     mode sim first, then mode real.""")
+  4. In testStand: 测试台架 -> + -> 添加设备…, pick that .tsdev: mode sim first, then edit it to real.""")
     return 0
 
 

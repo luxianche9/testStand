@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { useQueryClient } from "@tanstack/react-query";
 import { ReactFlowProvider, useEdgesState, useNodesState } from "@xyflow/react";
 import type { DeviceInstance, Hardware, ToolCatalogItem } from "@teststand/contracts/devices";
-import { BoxesIcon, PlusIcon, RefreshCwIcon, TriangleAlertIcon } from "lucide-react";
+import { PlusIcon, RefreshCwIcon, TriangleAlertIcon } from "lucide-react";
 import { errorMessage } from "../../lib/errors.js";
 import { invalidateDeviceData, invalidateWiringData } from "../../lib/mutations.js";
 import { useDashboard, useWiringTasks } from "../../lib/queries.js";
@@ -11,7 +11,7 @@ import {
   Button, ConfirmDialog, HeaderTabs, IconButton, Menu, MenuContent, MenuItem, MenuTrigger, SegmentedControl, Spinner,
   Splitter, Toolbar, ToolbarDivider, cn
 } from "../../ui/index.js";
-import { DevicePackagesDialog } from "../devices/DevicePackages.js";
+import { AddDeviceDialog, pickDevicePackage, type StagedPackage } from "../devices/AddDeviceDialog.js";
 import { DeviceEditor } from "../devices/editors/DeviceEditor.js";
 import { HardwareEditor } from "../devices/editors/HardwareEditor.js";
 import { EditPinsModal, ListCreateConnectionModal, ManualConnectionModal } from "../wiring/ConnectionEditor.js";
@@ -84,9 +84,10 @@ function Bench() {
   const [controlMenu, setControlMenu] = useState<ControlMenuState>();
   const [action, setAction] = useState<{ tool: ToolCatalogItem; hardwareId: string }>();
   const [info, setInfo] = useState<InfoTarget>();
-  const [deviceEditor, setDeviceEditor] = useState<{ open: boolean; instance?: DeviceInstance }>({ open: false });
+  const [editingDevice, setEditingDevice] = useState<DeviceInstance>();
+  const [staged, setStaged] = useState<StagedPackage>();
+  const [pickError, setPickError] = useState<string>();
   const [partEditor, setPartEditor] = useState<{ open: boolean; hardware?: Hardware }>({ open: false });
-  const [typesOpen, setTypesOpen] = useState(false);
   const [checking, setChecking] = useState(false);
   const [nodes, setNodes, onNodesChange] = useNodesState<HardwareFlowNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<TopologyEdge>([]);
@@ -136,6 +137,16 @@ function Bench() {
       setChecking(false);
     }
   };
+  /** A device is added from its device package: pick the .tsdev, then confirm in the dialog. */
+  const addDevice = async () => {
+    setPickError(undefined);
+    try {
+      const picked = await pickDevicePackage();
+      if (picked) setStaged(picked);
+    } catch (error) {
+      setPickError(errorMessage(error));
+    }
+  };
   const requestRemoveNode = (hardwareId: string) => {
     setEditingPortHardwareId((current) => current === hardwareId ? undefined : current);
     if (connections.some((entry) => touchesHardware(entry, hardwareId))) setPendingRemoveHardwareId(hardwareId);
@@ -173,7 +184,6 @@ function Bench() {
       onChange={setSideTab}
       actions={sideTab === "devices" && (
         <span className="ml-auto flex items-center gap-0.5">
-          <IconButton label="设备类型" size="icon-sm" onClick={() => setTypesOpen(true)}><BoxesIcon /></IconButton>
           <IconButton label="检测设备状态" size="icon-sm" disabled={checking} onClick={() => void checkStatus()}>
             <RefreshCwIcon className={cn(checking && "animate-spin")} />
           </IconButton>
@@ -182,7 +192,7 @@ function Bench() {
               <IconButton label="添加" size="icon-sm"><PlusIcon /></IconButton>
             </MenuTrigger>
             <MenuContent align="end">
-              <MenuItem onSelect={() => setDeviceEditor({ open: true })}>添加设备</MenuItem>
+              <MenuItem onSelect={() => void addDevice()}>添加设备…</MenuItem>
               <MenuItem onSelect={() => setPartEditor({ open: true })}>添加被测件 / 夹具</MenuItem>
             </MenuContent>
           </Menu>
@@ -240,6 +250,9 @@ function Bench() {
             </Button>
           </Toolbar>
           <div className="relative grid min-h-0 min-w-0 grid-cols-[minmax(0,1fr)]">
+            {pickError && (
+              <ErrorBanner className="absolute top-2 right-3 left-3 z-20 shadow-overlay" message={pickError} />
+            )}
             {save.isError && (
               <ErrorBanner
                 className="absolute top-2 right-3 left-3 z-20 shadow-overlay"
@@ -316,15 +329,14 @@ function Bench() {
         onClose={() => setInfo(undefined)}
         onEdit={(target) => {
           setInfo(undefined);
-          if (target.instance) setDeviceEditor({ open: true, instance: target.instance });
+          if (target.instance) setEditingDevice(target.instance);
           else setPartEditor({ open: true, hardware: target.hardware });
         }}
         onChanged={refreshAll}
       />
       <DeviceEditor
-        open={deviceEditor.open}
-        instance={deviceEditor.instance}
-        onClose={() => setDeviceEditor({ open: false })}
+        instance={editingDevice}
+        onClose={() => setEditingDevice(undefined)}
         onChanged={refreshAll}
       />
       <HardwareEditor
@@ -333,7 +345,7 @@ function Bench() {
         onClose={() => setPartEditor({ open: false })}
         onChanged={refreshAll}
       />
-      <DevicePackagesDialog open={typesOpen} onClose={() => setTypesOpen(false)} />
+      <AddDeviceDialog staged={staged} onClose={() => setStaged(undefined)} onAdded={refreshAll} />
       <ManualConnectionModal
         pair={manualPair}
         hardware={hardware}

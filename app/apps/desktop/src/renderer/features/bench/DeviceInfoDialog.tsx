@@ -91,7 +91,6 @@ function DeviceInfo({ target, instance, onClose, onEdit, onChanged }: InfoProps 
               label: "型号",
               value: identity ? `${identity.manufacturer ?? ""} ${identity.model ?? ""}`.trim() : instance.type
             },
-            { label: "设备类型", value: instance.type },
             { label: "运行模式", value: modeLabel(instance.mode) },
             { label: "设备 ID", value: instance.deviceId }
           ]} />

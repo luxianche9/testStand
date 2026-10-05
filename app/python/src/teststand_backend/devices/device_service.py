@@ -84,11 +84,20 @@ class DeviceService:
         return dict(saved)
 
     async def remove_device(self, device_id: str) -> None:
-        self._require_device(device_id)
+        """Remove a device; the last device of a package also takes the package away (at the
+        next start, since its code may be loaded)."""
+        instance = self._require_device(device_id)
         await self.transport.disconnect(device_id)
         await self.store.remove_device(device_id)
         self._device_statuses.pop(device_id, None)
         self._hardware = [item for item in self._hardware if item["deviceId"] != device_id]
+        device_type = instance["type"]
+        if (
+            self.packages is not None
+            and self.packages.installed(device_type)
+            and not any(item["type"] == device_type for item in self.list_devices())
+        ):
+            await self.packages.uninstall(device_type)
 
     def _require_device(self, device_id: str) -> Record:
         instance = self.store.get_device(device_id)

@@ -1,7 +1,7 @@
 {
-  "application": { "lines": [745, 762], "branches": [136, 152] },
+  "application": { "lines": [740, 757], "branches": [136, 152] },
   "contracts": { "lines": [744, 825], "branches": [251, 310] },
-  "devices": { "lines": [950, 1041], "branches": [263, 326] },
+  "devices": { "lines": [967, 1051], "branches": [269, 332] },
   "host": { "lines": [919, 1157], "branches": [187, 256] },
   "mcp_gateway": { "lines": [616, 645], "branches": [161, 186] },
   "projects": { "lines": [235, 260], "branches": [36, 50] },

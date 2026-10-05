@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import re
 from collections.abc import Awaitable, Callable
-from typing import TYPE_CHECKING, Any, Protocol, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Literal, Protocol, TypeVar, cast
 
 from teststand_backend.contracts.devices import parse_device_instance, parse_hardware
 from teststand_backend.contracts.errors import app_error
 from teststand_backend.contracts.operations import operation
 from teststand_backend.devices.plugin_store import PluginStore
-from teststand_backend.devices.plugin_transport import installed_device_types
 from teststand_backend.util import utc_now_iso
 
 from .authorization import Authorizer, Json
@@ -79,6 +79,8 @@ class DevicesApplication:
         confirm=True,
     )
     async def remove_device(self, context: Json, device_id: str) -> Json:
+        """Remove a device; the last device of a package also takes the package away (at the
+        next start, since its code may be loaded)."""
         await self.service.remove_device(device_id)
         return {"deviceId": device_id}
 
@@ -103,50 +105,52 @@ class DevicesApplication:
         return await self.service.refresh_hardware()
 
     @operation(
-        "devices.listDeviceTypes",
-        capability="hardware.read",
-        risk="read",
-        profiles=("adapter", "plan", "explore"),
-        idempotency="natural",
-    )
-    def list_device_types(self, context: Json) -> list[Json]:
-        """Device plugins installed with the backend (``teststand.devices`` entry points)."""
-        return installed_device_types()
-
-    @operation(
-        "devices.listPackages",
-        capability="devices.read",
-        risk="read",
-        profiles=("adapter",),
-        idempotency="natural",
-    )
-    def list_packages(self, context: Json) -> list[Json]:
-        """Installed device packages (``.tsdev``), with any change waiting for a restart."""
-        return self._packages().list_packages()
-
-    @operation(
         "devices.inspectPackage",
         capability="devices.manageDevices",
         risk="read",
         idempotency="natural",
     )
     def inspect_package(self, context: Json, data: bytes) -> Json:
-        """What installing a ``.tsdev`` would do: manifest, files, SHA-256 and any problems."""
+        """What adding a device from a ``.tsdev`` would install: manifest, files, SHA-256 and any
+        problems. Writes nothing."""
         return self._packages().inspect(data)
 
-    @operation("devices.installPackage", capability="devices.manageDevices", risk="write")
-    async def install_package(self, context: Json, data: bytes) -> Json:
-        """Install a device package (human only: it runs code in the backend)."""
-        result = await self._packages().install(data)
+    @operation("devices.addDevice", capability="devices.manageDevices", risk="write")
+    async def add_device(
+        self, context: Json, data: bytes, label: str = "", mode: Literal["real", "sim"] = "real"
+    ) -> Json:
+        """Add a device from its ``.tsdev`` package (human only: the package runs code in the
+        backend). The package is installed when needed, the device gets generated ids and is
+        connected at once."""
+        installed = await self._packages().install(data)
+        manifest = self._packages().inspect(data)["manifest"]
+        taken = {item["deviceId"] for item in self.service.list_devices()}
+        base = re.sub(r"[^A-Z0-9_]", "_", manifest["type"].upper())
+        device_id = next(
+            candidate
+            for candidate in (base, *(f"{base}_{index}" for index in range(2, 1000)))
+            if candidate not in taken
+        )
+        instance = await self.service.save_device(
+            parse_device_instance(
+                {
+                    "deviceId": device_id,
+                    "label": label.strip() or manifest["model"],
+                    "hardwareId": f"{device_id}_CARD",
+                    "type": manifest["type"],
+                    "settings": {},
+                    "mode": mode,
+                    "enabled": True,
+                }
+            )
+        )
         self.service.store.changed()
-        return result
-
-    @operation("devices.uninstallPackage", capability="devices.manageDevices", risk="write")
-    async def uninstall_package(self, context: Json, device_type: str) -> Json:
-        """Remove an installed device package; takes effect at the next start."""
-        result = await self._packages().uninstall(device_type)
-        self.service.store.changed()
-        return result
+        status = await self.service.refresh_device(device_id)
+        return {
+            "device": instance,
+            "status": status,
+            "restartRequired": installed["restartRequired"],
+        }
 
     def _packages(self) -> PluginStore:
         if self.service.packages is None:

@@ -7,7 +7,7 @@ Each hardware device is the device plugin SDK plus one adapter, loaded by the
 testStand backend as a plugin. The four boards (PCI-1710L, PCI-1762,
 PCI-6208V, CP-118U-I) are built from this directory. A release of testStand ships
 none of them: each adapter is delivered as a `.tsdev` device package and installed
-on the Devices page (设备类型 → 安装设备包…).
+on the bench page (+ → 添加设备…), which installs its driver and adds the device in one step.
 
 ```
 sdk/                     teststand_device_sdk: DeviceHost, plugin loading (in process or child
