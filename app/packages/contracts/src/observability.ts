@@ -68,6 +68,26 @@ export interface StreamInfo {
   states: string[];
   /** A numeric field decoded from a protocol binding's source stream (finished runs only). */
   derived?: DerivedStreamInfo;
+  /** What the device plugin declared for the stream (`/device.streams[]` without id and type). */
+  declaration?: StreamDeclaration;
+}
+
+/** How a bits stream reads best: indicator lamps, relay / switch contacts, or one control code. */
+export type BitsDisplay = "lamps" | "switches" | "code";
+
+export interface StreamDeclaration {
+  label?: string;
+  kind?: "measured" | "setpoint" | string;
+  unit?: string;
+  rateHz?: number;
+  /** bits: number of lines. */
+  width?: number;
+  /** bits: one name per line. */
+  bitLabels?: string[];
+  /** bits: the plugin's suggested display. */
+  display?: BitsDisplay | string;
+  /** bits shown as a code: names of known values, keyed by the decimal value. */
+  codeLabels?: Record<string, string>;
 }
 
 export interface DerivedStreamInfo {
@@ -214,6 +234,8 @@ export interface TimelineCall {
   tb1: number | null;
   state: string;
   timing?: Record<string, unknown>;
+  /** What the device returned (`{error}` for a failed call); bulky results are `{truncated, preview}`. */
+  result?: unknown;
 }
 
 export interface TimelineAnchor {

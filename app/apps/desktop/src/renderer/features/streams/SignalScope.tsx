@@ -1,11 +1,13 @@
 import { useMemo, useState, type ComponentProps, type ReactNode } from "react";
-import { ActivityIcon, ChevronRightIcon } from "lucide-react";
+import { ActivityIcon, ChevronRightIcon, GaugeIcon } from "lucide-react";
 import type { RunTimeline, StreamInfo, StreamWindow } from "@teststand/contracts/observability";
-import { cn, EmptyState, SegmentedControl } from "../../ui";
+import { cn, EmptyState, IconButton, SegmentedControl } from "../../ui";
+import { DisplayMenu, useChannelDisplays, type ChannelDisplay } from "./channel-display.js";
+import { StatePanel } from "./StatePanel.js";
 import { StreamScope, type SeriesStyle } from "./StreamScope.js";
 import {
-  analogData, CHANNEL_COLORS, clockTime, combinedOverlays, deviceName, isSampled, logicData, NO_OVERLAYS, pointAt,
-  pointText, relativeTime, relevantStreams, streamUnit, type TimeRange
+  analogData, bitsWidth, CHANNEL_COLORS, clockTime, codeText, combinedOverlays, deviceName, isSampled, logicData,
+  NO_OVERLAYS, pointAt, pointMask, pointText, relativeTime, relevantStreams, streamUnit, type TimeRange
 } from "./stream-model.js";
 import { useStreamsPoints, type StreamSource } from "./useStreamReader.js";
 
@@ -21,6 +23,12 @@ const LOGIC_MAX_PX = 180;
 
 type Layout = "overlay" | "split";
 
+const PANEL_KEY = "teststand.scope-state-panel";
+
+function storedPanelOpen(): boolean {
+  try { return localStorage.getItem(PANEL_KEY) !== "false"; } catch { return true; }
+}
+
 interface Channel {
   stream: StreamInfo;
   color: string;
@@ -28,10 +36,12 @@ interface Channel {
 }
 
 /**
- * Multi-channel oscilloscope of a run: one strip per analog channel (or all overlaid) on one time
- * axis, bit streams as a logic analyser underneath, the judged windows as a verdict strip along
- * the top of each plot. The channel list reads every visible channel at the cursor (or the
- * view's end) and toggles channels on click.
+ * Multi-channel oscilloscope of a run: a status panel of every shown channel at the cursor (lamps,
+ * relay contacts, codes, numbers), one strip per analog channel (or all overlaid) on one time
+ * axis, bit streams as a logic analyser underneath — a lane per bit or one bus lane of values —
+ * and the judged windows as a verdict strip along the top of each plot. The channel list reads
+ * every visible channel at the cursor (or the view's end), toggles channels on click and picks
+ * how each bits channel is shown.
  */
 export function SignalScope({
   timeline, source, live, follow, spanMs, from, range, origin, marker, syncKey, controls, emptyText,
@@ -57,6 +67,8 @@ export function SignalScope({
   const [layout, setLayout] = useState<Layout>("split");
   const [cursor, setCursor] = useState<number>();
   const [othersOpen, setOthersOpen] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(storedPanelOpen);
+  const { displayOf, setDisplay } = useChannelDisplays();
 
   const channels = useMemo<Channel[]>(() => (timeline?.streams ?? [])
     .filter((stream) => isSampled(String(stream.type)))
@@ -106,17 +118,22 @@ export function SignalScope({
     if (!read.length) return undefined;
     const data = logicData(read.map((channel) => {
       const item = points.reads[channel.stream.key];
+      const { declaration } = channel.stream;
       return {
         label: `${deviceName(channel.stream.hardwareId)}/${channel.stream.streamId}`,
         points: item?.points ?? [],
-        holdUntil: holdUntil(item)
+        holdUntil: holdUntil(item),
+        mode: displayOf(channel.stream).trace,
+        bitLabels: declaration?.bitLabels,
+        width: declaration?.width,
+        codeLabels: declaration?.codeLabels
       };
     }));
     // Each lane takes its channel's colour, as in the channel list.
     const styles = data.owners.map((owner): SeriesStyle => ({ color: read[owner]?.color ?? "", stepped: true }));
     return { data, styles };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [logic.map((channel) => channel.stream.key).join(), points.reads, view]);
+  }, [logic.map((channel) => channel.stream.key).join(), points.reads, view, displayOf]);
   const analogOverlays = useMemo(
     () => combinedOverlays(timeline, analog.map((channel) => channel.stream)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -169,6 +186,8 @@ export function SignalScope({
             at={readAt}
             visible={visible}
             onToggle={toggle}
+            displayOf={displayOf}
+            onDisplay={setDisplay}
           />
           {hiddenCount > 0 && (
             <>
@@ -188,6 +207,8 @@ export function SignalScope({
                   at={readAt}
                   visible={visible}
                   onToggle={toggle}
+                  displayOf={displayOf}
+                  onDisplay={setDisplay}
                 />
               )}
             </>
@@ -200,6 +221,18 @@ export function SignalScope({
           {live && <span className="text-2xs text-run">● 实时</span>}
           <div className="ml-auto flex items-center gap-1">
             {controls}
+            <IconButton
+              label={panelOpen ? "隐藏状态面板" : "显示状态面板"}
+              size="icon-sm"
+              variant="ghost"
+              aria-pressed={panelOpen}
+              onClick={() => setPanelOpen((open) => {
+                try { localStorage.setItem(PANEL_KEY, String(!open)); } catch { /* Storage may be unavailable. */ }
+                return !open;
+              })}
+            >
+              <GaugeIcon />
+            </IconButton>
             <SegmentedControl<Layout>
               label="通道布局"
               size="xs"
@@ -209,6 +242,15 @@ export function SignalScope({
             />
           </div>
         </div>
+        {panelOpen && (
+          <StatePanel
+            channels={shown}
+            reads={points.reads}
+            at={cursor ?? (follow ? undefined : marker ?? view?.[1])}
+            displayOf={displayOf}
+            onDisplay={setDisplay}
+          />
+        )}
         {analog.length > 0 && layout === "overlay" && (
           <div className="min-h-0 flex-1 px-1 pt-1">
             <StreamScope
@@ -279,12 +321,14 @@ export function SignalScope({
   );
 }
 
-function ChannelGroups({ channels, reads, at, visible, onToggle }: {
+function ChannelGroups({ channels, reads, at, visible, onToggle, displayOf, onDisplay }: {
   channels: Channel[];
   reads: Readonly<Record<string, StreamWindow>>;
   at: number | undefined;
   visible: ReadonlySet<string>;
   onToggle: (key: string) => void;
+  displayOf: (stream: StreamInfo) => ChannelDisplay;
+  onDisplay: (stream: StreamInfo, next: Partial<ChannelDisplay>) => void;
 }) {
   const groups = new Map<string, Channel[]>();
   for (const channel of channels) {
@@ -298,29 +342,50 @@ function ChannelGroups({ channels, reads, at, visible, onToggle }: {
       </div>
       {items.map(({ stream, color }) => {
         const on = visible.has(stream.key);
-        const point = at === undefined ? undefined : pointAt(reads[stream.key]?.points, at);
+        const points = reads[stream.key]?.points;
+        const point = at === undefined ? undefined : pointAt(points, at);
+        const bits = stream.type === "bits";
+        const mask = pointMask(point);
+        const reading = bits && mask !== undefined
+          ? codeText(mask, bitsWidth(stream, points), stream.declaration?.codeLabels).short
+          : pointText(String(stream.type), point);
         return (
-          <button
-            key={stream.key}
-            type="button"
-            aria-pressed={on}
-            title={`${stream.hardwareId}/${stream.streamId} · ${stream.type} · ${stream.count} 个样本`}
-            onClick={() => onToggle(stream.key)}
-            className={cn(
-              "flex h-6 w-full items-center gap-2 px-2 text-left font-mono text-2xs transition-colors duration-120",
-              on ? "text-fg hover:bg-surface-2" : "text-fg-3 hover:bg-surface-2 hover:text-fg-2"
-            )}
-          >
-            <span aria-hidden className="h-0.5 w-3 shrink-0" style={{ background: color, opacity: on ? 1 : 0.35 }} />
-            <span className="min-w-0 flex-1 truncate">{stream.streamId}</span>
-            {stream.count === 0 && <span className="text-fg-3">空</span>}
-            {on && (
-              <span className="tf-num shrink-0 text-fg">
-                {pointText(String(stream.type), point)}
-                {streamUnit(stream) && <span className="text-fg-3"> {streamUnit(stream)}</span>}
+          <div key={stream.key} className="group flex h-6 items-center pr-1 hover:bg-surface-2">
+            <button
+              type="button"
+              aria-pressed={on}
+              title={[
+                `${stream.hardwareId}/${stream.streamId}`,
+                stream.declaration?.label ?? stream.type,
+                `${stream.count} 个样本`
+              ].join(" · ")}
+              onClick={() => onToggle(stream.key)}
+              className={cn(
+                "flex h-6 min-w-0 flex-1 items-center gap-2 pl-2 text-left font-mono text-2xs",
+                "transition-colors duration-120",
+                on ? "text-fg" : "text-fg-3 hover:text-fg-2"
+              )}
+            >
+              <span aria-hidden className="h-0.5 w-3 shrink-0" style={{ background: color, opacity: on ? 1 : 0.35 }} />
+              <span className="min-w-0 flex-1 truncate">{stream.streamId}</span>
+              {stream.count === 0 && <span className="text-fg-3">空</span>}
+              {on && (
+                <span className="tf-num shrink-0 text-fg">
+                  {reading}
+                  {streamUnit(stream) && <span className="text-fg-3"> {streamUnit(stream)}</span>}
+                </span>
+              )}
+            </button>
+            {bits && (
+              <span className={on ? "" : "invisible group-hover:visible"}>
+                <DisplayMenu
+                  stream={stream}
+                  display={displayOf(stream)}
+                  onChange={(next) => onDisplay(stream, next)}
+                />
               </span>
             )}
-          </button>
+          </div>
         );
       })}
     </div>

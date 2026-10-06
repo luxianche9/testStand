@@ -1,8 +1,8 @@
 import type { TestRunLog } from "@teststand/contracts/testing";
 import { ArrowRightIcon } from "lucide-react";
-import { Badge, Button, cn, Reading, StatusLamp, VerdictBadge, type Tone } from "../../ui";
-import type { ExecutionTrace, MeasurementSeries } from "./run-log-model.js";
-import { formatNumber, friendlyField, type SyncLabel } from "./run-format.js";
+import { Badge, Button, StatusLamp, VerdictBadge, type Tone } from "../../ui";
+import type { ExecutionTrace } from "./run-log-model.js";
+import type { SyncLabel } from "./run-format.js";
 import { CopyableId } from "./RunEvidence.js";
 
 const finishedStates = new Set(["Pass", "Fail", "Error", "skipped", "Aborted"]);
@@ -11,18 +11,24 @@ const activeStates: Record<string, string> = {
   starting: "启动中", running: "运行中", paused: "已暂停", cleaning: "清理中"
 };
 
-/** Header of one run: plan, one primary verdict, progress, and only the side statuses that went wrong. */
+/**
+ * Header of one run: plan, one primary verdict, progress and the steps running now, and only the
+ * side statuses that went wrong.
+ */
 export function RunSummary({
-  log, trace, syncLabel, activeCount, following, hasProblem, onCurrent, onProblem, actions
+  log, trace, syncLabel, activeCount, current = [], following, hasProblem, onCurrent, onProblem, leading, actions
 }: {
   log: TestRunLog;
   trace: ExecutionTrace;
   syncLabel: SyncLabel;
   activeCount: number;
+  /** Names of the steps running now. */
+  current?: string[];
   following: boolean;
   hasProblem: boolean;
   onCurrent: () => void;
   onProblem: () => void;
+  leading?: React.ReactNode;
   actions?: React.ReactNode;
 }) {
   const { run } = log;
@@ -35,6 +41,7 @@ export function RunSummary({
   return (
     <div className="grid gap-2">
       <div className="flex flex-wrap items-center gap-2">
+        {leading}
         <div className="min-w-48 flex-1">
           <div className="truncate text-sm font-semibold text-fg">{run.planName}</div>
           <div className="mt-0.5 flex items-center gap-2 text-2xs text-fg-3">
@@ -55,6 +62,11 @@ export function RunSummary({
       </div>
       <div className="flex items-center gap-2">
         <RunProgress trace={trace} />
+        {current.length > 0 && (
+          <span className="min-w-0 max-w-[40%] truncate text-xs text-run" title={current.join("、")}>
+            正在执行：{current.join("、")}
+          </span>
+        )}
         {activeCount > 0 && !following && (
           <Button size="xs" variant="outline" onClick={onCurrent}>回到正在执行</Button>
         )}
@@ -122,29 +134,6 @@ function RunProgress({ trace }: { trace: ExecutionTrace }) {
         <div className="h-full bg-signal transition-[width] duration-300" style={{ width: `${percent}%` }} />
       </div>
       <span className="tf-num text-2xs text-fg-3">{done}/{nodes.length}</span>
-    </div>
-  );
-}
-
-/** Latest value of every measured quantity, as instrument readouts. */
-export function LiveReadings({ series }: { series: MeasurementSeries[] }) {
-  if (!series.length) return null;
-  return (
-    <div
-      aria-label="最新读数"
-      className={cn(
-        "grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3",
-        "rounded-md border border-line bg-surface-0 px-3 py-2"
-      )}
-    >
-      {series.slice(-12).map((item) => (
-        <Reading
-          key={item.key}
-          label={friendlyField(item.field)}
-          value={formatNumber(item.points.at(-1)?.value ?? 0)}
-          {...(item.unit ? { unit: item.unit } : {})}
-        />
-      ))}
     </div>
   );
 }

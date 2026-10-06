@@ -213,7 +213,8 @@ describe("stream model", () => {
       }],
       calls: [{
         operationId: "op", executionId: "e1", stepId: "set", hardwareId: "srv.PCIE6208V_CARD", toolName: "write_ao",
-        arguments: { channel: 0, value: 6 }, tb0: 1_010, tb1: 1_020, state: "failed"
+        arguments: { channel: 0, value: 6 }, tb0: 1_010, tb1: 1_020, state: "failed",
+        result: { error: { code: "unavailable", message: "board busy" } }
       }],
       marks: [{ type: "run_started", tb: 1_000 }]
     });
@@ -226,7 +227,12 @@ describe("stream model", () => {
       "event:run_started:1000:", "step:e1", "call:op", "CP118U_I/serial1:1", "call-end:op", "step-end:e1"
     ]);
     expect(entries.find((entry) => entry.id === "call:op")?.text).toBe("write_ao channel=0 value=6");
+    expect(entries.find((entry) => entry.id === "call-end:op")?.text).toBe("write_ao 失败：board busy");
+    expect(entries.find((entry) => entry.id === "call:op")?.hardwareId).toBe("srv.PCIE6208V_CARD");
+    expect(bus.hardwareId).toBe("CP118U_I");
     expect(entries.find((entry) => entry.id === "step-end:e1")?.text).toBe("set pass · 200 ms");
+    const named = timelineEntries(value, new Map([["e1", "设置输出电压"]]));
+    expect(named.find((entry) => entry.id === "step:e1")?.text).toBe("设置输出电压 · Invoke · 测试");
     expect(timelineEntries(undefined)).toEqual([]);
 
     const line = consoleLine(bus, "text", 1_000);
@@ -235,6 +241,26 @@ describe("stream model", () => {
     expect(line).toMatch(/RX\[0m OK$/);
     expect(consoleLine(bus, "hex")).toMatch(/4f 4b$/);
     expect(relativeTime(500, 1_000)).toBe("-0.500");
+  });
+
+  it("shows what each device call returned", () => {
+    const call = (operationId: string, result: unknown) => ({
+      operationId, executionId: "e1", stepId: "read", hardwareId: "PCI1710L", toolName: "read_ai",
+      arguments: { channel: 3 }, tb0: 1_000, tb1: 1_050, state: "succeeded", result
+    });
+    const entries = timelineEntries(timeline({
+      calls: [
+        call("value", { value: 3.3, unit: "V" }),
+        call("scalar", 7),
+        call("none", undefined),
+        call("bulky", { truncated: true, preview: "x".repeat(2000) })
+      ]
+    }));
+    const reply = (id: string) => entries.find((entry) => entry.id === `call-end:${id}`);
+    expect(reply("value")).toMatchObject({ tb: 1_050, tag: "← ", text: 'read_ai value=3.3 unit="V"' });
+    expect(reply("scalar")?.text).toBe("read_ai 7");
+    expect(reply("none")?.text).toBe("read_ai 完成");
+    expect(reply("bulky")?.text).toHaveLength("read_ai ".length + 200);
   });
 
   it("reads volts off analog channel ids only", () => {

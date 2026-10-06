@@ -26,13 +26,13 @@ interface Bar {
 
 /**
  * Whole-run overview on the run's time axis: regions, leaf steps, judged windows and tool calls.
- * The brush marks what the instruments show; drag to show a part, click a step to zoom to it,
- * click elsewhere to pick an instant.
+ * Drag to show a part, click a step to zoom to it, click elsewhere to pick an instant.
  */
-export function RunOverview({ timeline, range, view, origin, marker, onSelect, onStep, onPick }: {
+export function RunOverview({ timeline, stepNames, range, origin, marker, onSelect, onStep, onPick }: {
   timeline: RunTimeline;
+  /** Step names by execution id, so the step lane reads as the plan does. */
+  stepNames?: ReadonlyMap<string, string> | undefined;
   range: TimeRange;
-  view: TimeRange | undefined;
   origin: number;
   marker: number | undefined;
   onSelect: (range: TimeRange) => void;
@@ -45,7 +45,7 @@ export function RunOverview({ timeline, range, view, origin, marker, onSelect, o
   const [start, end] = range;
   const span = Math.max(end - start, 1);
   const pct = (tb: number) => ((Math.min(Math.max(tb, start), end) - start) / span) * 100;
-  const rows = useMemo(() => overviewRows(timeline), [timeline]);
+  const rows = useMemo(() => overviewRows(timeline, stepNames), [timeline, stepNames]);
   const ticks = useMemo(() => rulerTicks(start, end, origin), [start, end, origin]);
 
   const tbAt = (clientX: number) => {
@@ -129,12 +129,6 @@ export function RunOverview({ timeline, range, view, origin, marker, onSelect, o
             {ticks.map((tick) => (
               <span key={tick.tb} className="absolute inset-y-0 w-px bg-line" style={{ left: `${pct(tick.tb)}%` }} />
             ))}
-            {view && (
-              <span
-                className="absolute top-0 bottom-0 border border-signal bg-signal/8"
-                style={box(view[0], view[1])}
-              />
-            )}
             {dragged && <span className="absolute top-0 bottom-0 bg-signal/25" style={dragged} />}
             {marker !== undefined && marker >= start && marker <= end && (
               <span className="absolute -top-1 bottom-0 w-px bg-signal" style={{ left: `${pct(marker)}%` }} />
@@ -146,7 +140,10 @@ export function RunOverview({ timeline, range, view, origin, marker, onSelect, o
   );
 }
 
-function overviewRows(timeline: RunTimeline): { label: string; bars: Bar[] }[] {
+function overviewRows(
+  timeline: RunTimeline,
+  stepNames?: ReadonlyMap<string, string>
+): { label: string; bars: Bar[] }[] {
   const parents = new Set(timeline.steps.flatMap((step) => step.parentExecutionId ? [step.parentExecutionId] : []));
   const now = Date.now();
   const regions = new Map<string, { tb0: number; tb1: number }>();
@@ -165,8 +162,8 @@ function overviewRows(timeline: RunTimeline): { label: string; bars: Bar[] }[] {
   const steps = timeline.steps.flatMap((step) => step.tb0 == null || parents.has(step.executionId) ? [] : [{
     id: `step:${step.executionId}`, tb0: step.tb0, tb1: step.tb1 ?? now,
     className: step.tb1 == null ? "animate-pulse bg-run/60" : TONE_CLASS[verdictTone(step.verdict)],
-    title: `${step.stepId} · ${step.stepType} · ${step.verdict ?? "运行中"}`,
-    label: step.stepId,
+    title: `${stepNames?.get(step.executionId) ?? step.stepId} · ${step.stepType} · ${step.verdict ?? "运行中"}`,
+    label: stepNames?.get(step.executionId) ?? step.stepId,
     executionId: step.executionId
   }]);
   const windows = timeline.windows.flatMap((item) => item.tb0 == null ? [] : [{

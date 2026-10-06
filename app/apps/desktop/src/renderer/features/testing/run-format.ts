@@ -1,6 +1,8 @@
+import type { RunTimeline } from "@teststand/contracts/observability";
 import type { TestResult, TestRunEvent, TestRunLog } from "@teststand/contracts/testing";
-import type { Tone } from "../../ui";
-import type { ExecutionTrace, StepRunState } from "./run-log-model.js";
+import type { TestStep } from "@teststand/contracts/testing";
+import { deviceName, stepDepths, type ConsoleEntry } from "../streams/index.js";
+import type { ExecutionTrace, ExecutionTraceNode } from "./run-log-model.js";
 
 export type SyncLabel = "实时" | "同步中" | "正在补齐日志" | "历史快照";
 
@@ -17,13 +19,6 @@ export function firstSequenceGap(items: Array<{ sequence: number }>, after: numb
     expected += 1;
   }
   return undefined;
-}
-
-export function filterEvents(events: TestRunEvent[], filter: string): TestRunEvent[] {
-  if (filter === "all") return events;
-  if (filter === "step") return events.filter((item) => item.type.startsWith("step."));
-  if (filter === "operation") return events.filter((item) => item.type.includes("operation") || item.operationId);
-  return events.filter((item) => item.type.includes("error") || item.error);
 }
 
 export function activeExecutions(log: TestRunLog, trace: ExecutionTrace): string[] {
@@ -50,20 +45,10 @@ export function firstProblemExecution(log: TestRunLog, trace: ExecutionTrace): s
   return errorStep ? nodes.find((node) => node.stepId === errorStep)?.executionId : undefined;
 }
 
-export function formatTime(value: string): string { return new Date(value).toLocaleTimeString(); }
-
-export function formatNumber(value: number): string {
-  return Number.isInteger(value) ? String(value) : value.toPrecision(6);
-}
-
-export function eventDetail(event: TestRunEvent): string {
+function eventDetail(event: TestRunEvent): string {
   if (typeof event.stepId === "string") return event.stepId;
   if (typeof event.operationId === "string") return event.operationId;
   return event.error ? JSON.stringify(event.error) : "";
-}
-
-export function friendlyField(field: string): string {
-  return field === "value" ? "测量值" : field.replace(/^value\./, "");
 }
 
 function summarizeValue(value: unknown): string {
@@ -145,28 +130,10 @@ function verdictSummary(result: TestResult): string {
   return [label, detail].filter(Boolean).join("，");
 }
 
-export function assertionLimits(assertions: TestResult[]): string {
-  const values = assertions.map((item) => formatLimits(item.limits)).filter(Boolean);
-  return [...new Set(values)].join("；");
-}
-
-const stateLabels: Record<StepRunState, string> = {
-  waiting: "等待", running: "运行中", Pass: "通过", Fail: "失败", Error: "错误", skipped: "跳过", Aborted: "已终止"
-};
-export function stateLabel(value: StepRunState): string { return stateLabels[value]; }
-
-function stateTone(value: StepRunState): Tone {
-  if (value === "running") return "run";
-  if (value === "Pass") return "pass";
-  if (value === "Fail" || value === "Error") return "fail";
-  if (value === "Aborted") return "invalid";
-  return "neutral";
-}
-
 const resultKindLabels: Record<string, string> = {
   assertion: "断言", measurement: "测量", observation: "观察", note: "备注", verdict: "判定"
 };
-export function resultKindLabel(kind: string): string { return resultKindLabels[kind] ?? kind; }
+function resultKindLabel(kind: string): string { return resultKindLabels[kind] ?? kind; }
 
 /** Evidence grades (design §7.7); S is display only and never decides a verdict. */
 const evidenceLabels: Record<string, string> = {
@@ -185,17 +152,6 @@ const operationStateLabels: Record<string, string> = {
 };
 export function operationStateLabel(value: string): string { return operationStateLabels[value] ?? value; }
 
-export function sparkPath(values: number[], width: number, height: number): string {
-  if (!values.length) return "";
-  const min = Math.min(...values);
-  const range = Math.max(...values) - min || 1;
-  return values.map((value, index) => {
-    const x = values.length === 1 ? width / 2 : index / (values.length - 1) * width;
-    const y = height - (value - min) / range * (height - 8) - 4;
-    return `${index ? "L" : "M"}${x},${y}`;
-  }).join(" ");
-}
-
 /** Plain-text export of the technical event log. */
 export function eventsAsText(log: TestRunLog): string {
   const header = `# ${log.run.planName} · ${log.run.runId}\n# ${log.run.state} · ${log.run.verdict}\n`;
@@ -211,4 +167,120 @@ export function resultsAsCsv(log: TestRunLog): string {
     result.value ?? result.actual ?? "", result.unit ?? "", result.passed ?? "", result.limits ?? ""
   ].map(quote).join(","));
   return ["sequence,at,kind,name,step,value,unit,passed,limits", ...rows].join("\n") + "\n";
+}
+
+/**
+ * Published results as run-console lines: measured values, assertions (actual against limits) and
+ * verdicts that have no stream window (those are already lines of the timeline). A result sits at
+ * the end of the step that published it.
+ */
+export function resultConsoleEntries(results: TestResult[], timeline: RunTimeline | undefined): ConsoleEntry[] {
+  if (!timeline) return [];
+  const stepEnd = new Map(timeline.steps.map((step) => [step.executionId, step.tb1 ?? step.tb0]));
+  const depths = stepDepths(timeline);
+  const windowed = new Set(timeline.windows.map((item) => item.sequence));
+  return results.flatMap((result): ConsoleEntry[] => {
+    if (windowed.has(result.sequence)) return [];
+    const tb = (result.executionId ? stepEnd.get(result.executionId) : undefined) ?? Date.parse(result.at);
+    if (!Number.isFinite(tb)) return [];
+    const kind = typeof result.kind === "string" ? result.kind : "note";
+    const unit = typeof result.unit === "string" && result.unit && kind !== "assertion" && kind !== "verdict"
+      ? ` ${result.unit}` : "";
+    const failed = result.passed === false || result.verdict === "Fail" || result.verdict === "Error";
+    const passed = result.passed === true || result.verdict === "Pass";
+    return [{
+      id: `result:${result.sequence}`,
+      tb: tb as number,
+      kind: "judge",
+      source: typeof result.hardwareId === "string" ? deviceName(result.hardwareId) : "result",
+      ...(typeof result.hardwareId === "string" ? { hardwareId: result.hardwareId } : {}),
+      ...(result.executionId && depths.has(result.executionId)
+        ? { depth: (depths.get(result.executionId) ?? 0) + 1, executionId: result.executionId }
+        : {}),
+      tag: kind === "assertion" || kind === "verdict" ? "JG" : "= ",
+      color: failed ? "31" : passed ? "32" : "37",
+      text: `${result.name} · ${resultKindLabel(kind)} · ${resultSummary(result)}${unit}`
+    }];
+  });
+}
+
+const OUTLINE_REGIONS = [["prepare", "准备"], ["test", "测试"], ["cleanup", "清理"]] as const;
+/** Outline marks of a step state and their ANSI colours. */
+const OUTLINE_STATE: Record<string, { mark: string; color: string; label: string }> = {
+  waiting: { mark: "○", color: "2;37", label: "" },
+  running: { mark: "▶", color: "1;33", label: "执行中" },
+  Pass: { mark: "✓", color: "32", label: "" },
+  Fail: { mark: "✗", color: "1;31", label: "失败" },
+  Error: { mark: "!", color: "1;31", label: "错误" },
+  skipped: { mark: "–", color: "2;37", label: "跳过" },
+  Aborted: { mark: "■", color: "33", label: "已终止" }
+};
+
+/**
+ * The whole plan as console lines on top of the run console: every step of every region as a
+ * tree, with its state, duration, loop or attempt count and its first result. Steps not reached
+ * yet are listed too (dim), so the run is never a black box.
+ */
+export function planOutlineEntries(
+  trace: ExecutionTrace | undefined,
+  typeLabel: (type: string) => string = (type) => type
+): ConsoleEntry[] {
+  if (!trace) return [];
+  const entries: ConsoleEntry[] = [];
+  const line = (id: string, text: string, color: string, tag: string, executionId?: string) => {
+    entries.push({
+      id: `plan:${id}`, tb: Number.NEGATIVE_INFINITY, kind: "plan", outline: entries.length, source: "计划",
+      tag, color, text, ...(executionId ? { executionId } : {})
+    });
+  };
+  const walk = (nodes: ExecutionTraceNode[], prefix: string, path: string) => {
+    nodes.forEach((node, index) => {
+      const last = index === nodes.length - 1;
+      const state = OUTLINE_STATE[node.state] ?? OUTLINE_STATE.waiting!;
+      const scopes = node.iterations.length ? node.iterations : node.attempts;
+      const current = scopes.at(-1);
+      const count = current?.count ?? node.iterationCount ?? node.attemptCount;
+      const scope = current
+        ? node.iterations.length ? `第 ${current.index + 1}${count ? `/${count}` : ""} 次` : `第 ${current.index + 1} 次尝试`
+        : "";
+      const result = node.results[0];
+      const details = [
+        typeLabel(node.step.type),
+        state.label,
+        scope,
+        node.durationMs != null && node.state !== "running" ? durationText(node.durationMs) : "",
+        result ? clipText(`${resultSummary(result)}${typeof result.unit === "string" ? ` ${result.unit}` : ""}`, 60)
+          : ""
+      ].filter(Boolean).join(" · ");
+      const name = node.step.name ?? node.stepId;
+      line(`${path}/${index}`, `${prefix}${last ? "└─" : "├─"} ${name}  \x1b[2m${details}\x1b[0m`, state.color,
+        `${state.mark} `, node.pending ? undefined : node.executionId);
+      const children = current ? current.children : node.children.length ? node.children : pendingChildren(node);
+      walk(children, `${prefix}${last ? "   " : "│  "}`, `${path}/${index}`);
+    });
+  };
+  for (const [region, label] of OUTLINE_REGIONS) {
+    const nodes = trace.regions[region];
+    if (!nodes.length) continue;
+    line(region, `${label}区（${nodes.length} 项）`, "1;37", "  ");
+    walk(nodes, "", region);
+  }
+  return entries;
+}
+
+/** A step not reached yet still lists what it contains. */
+function pendingChildren(node: ExecutionTraceNode): ExecutionTraceNode[] {
+  if (!node.pending) return [];
+  return (node.step.children ?? []).map((step: TestStep, index: number) => ({
+    ...node, executionId: `${node.executionId}/${index}`, stepId: step.id, step, children: [], iterations: [],
+    attempts: [], results: [], relatedAssertions: [], operations: [], state: "waiting", pending: true
+  }));
+}
+
+function durationText(ms: number): string {
+  return ms >= 1000 ? `${(ms / 1000).toFixed(2)} s` : `${Math.round(ms)} ms`;
+}
+
+function clipText(text: string, max: number): string {
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text;
 }

@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS meta(k TEXT PRIMARY KEY, v TEXT);
 CREATE TABLE IF NOT EXISTS streams(
   key TEXT PRIMARY KEY, hardwareId TEXT, streamId TEXT, type TEXT, clock TEXT,
   count INTEGER NOT NULL DEFAULT 0, watermark REAL, watermarkTb REAL,
-  maxSpan REAL NOT NULL DEFAULT 0);
+  maxSpan REAL NOT NULL DEFAULT 0, declaration TEXT);
 CREATE TABLE IF NOT EXISTS records(
   i INTEGER PRIMARY KEY, key TEXT NOT NULL, seq INTEGER, t REAL NOT NULL, tEnd REAL NOT NULL,
   tb REAL NOT NULL, op TEXT, data TEXT NOT NULL);
@@ -146,6 +146,7 @@ class StreamStore:
         key: str,
         *,
         stream_type: str | None = None,
+        declaration: Record | None = None,
         clock: Record | None = None,
         watermark: float | None = None,
         watermark_tb: float | None = None,
@@ -155,6 +156,9 @@ class StreamStore:
         if stream_type is not None:
             sets.append("type = ?")
             values.append(stream_type)
+        if declaration is not None:
+            sets.append("declaration = ?")
+            values.append(json.dumps(declaration))
         if clock is not None:
             sets.append("clock = ?")
             values.append(json.dumps(clock))
@@ -316,6 +320,7 @@ class StreamStore:
                     "watermarkTb": row["watermarkTb"],
                     "gaps": gaps[0],
                     "states": states,
+                    **_declaration(row),
                 }
             )
         return result
@@ -715,6 +720,12 @@ def _slim(record: Record) -> Record:
 
 def _judge_record(record: Record) -> Record:
     return {key: value for key, value in record.items() if key not in {"i", "tb"}}
+
+
+def _declaration(row: sqlite3.Row) -> Record:
+    """What the plugin declared for the stream; recordings made before it was kept have none."""
+    text = row["declaration"] if "declaration" in row.keys() else None  # noqa: SIM118 (Row: values)
+    return {"declaration": json.loads(text)} if text else {}
 
 
 def _json(raw: str | None) -> Any:

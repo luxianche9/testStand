@@ -66,7 +66,7 @@ class Pci1762(Device):
                                               rate_hz=float(settings.get("bitRateHz", 20)),
                                               bit_labels=[f"IDI{bit}" for bit in range(CHANNELS)], kind="measured"))
         self.relay = self.streams.add(BitsStream("relay", bit_labels=[f"R{bit}" for bit in range(CHANNELS)],
-                                                 label="Relay coil control"))
+                                                 label="Relay coil control", display="switches"))
 
     def _request(self, command: dict[str, Any]) -> Any:
         return unwrap(self.cli.call(command))

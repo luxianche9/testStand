@@ -211,6 +211,8 @@ async def test_observe_expect_guard_pass_and_rejudge_consistently(tmp_path: Path
     timeline = engine.get_run_timeline(run_id)
     assert {step["stepId"] for step in timeline["steps"]} >= {"drive", "level", "answer"}
     assert {call["stepId"] for call in timeline["calls"]} == {"drive", "ask"}
+    # Each call carries its final state and what the device returned (the console's reply line).
+    assert all(call["state"] == "succeeded" and "result" in call for call in timeline["calls"])
     windows = {window["stepId"]: window for window in timeline["windows"]}
     assert windows["level"]["verdict"] == "Pass" and windows["level"]["tb0"] is not None
     assert "matchTb" in windows["answer"]

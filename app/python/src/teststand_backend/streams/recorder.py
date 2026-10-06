@@ -68,7 +68,9 @@ class _Track:
         kind = event["type"]
         if kind == "hello":
             self.stream_type = event["streamType"]
-            self.store.update_stream(self.key, stream_type=self.stream_type)
+            self.store.update_stream(
+                self.key, stream_type=self.stream_type, declaration=event.get("declaration")
+            )
             self.note_state("connected")
         elif kind == "batch":
             watermark_tb = self._to_backend(event.get("watermark"))

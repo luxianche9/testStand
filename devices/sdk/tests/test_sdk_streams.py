@@ -258,6 +258,10 @@ def test_describe_declares_metadata():
         "id": "ao0", "type": "scalar", "unit": "V", "label": "AO0", "kind": "setpoint"}
     assert BitsStream("di", bit_labels=("a", "b")).describe() == {"id": "di", "type": "bits", "width": 2,
                                                                    "bitLabels": ["a", "b"]}
+    assert BitsStream("state", width=8, display="code", code_labels={1: "RUN", 2: "FAULT"}).describe() == {
+        "id": "state", "type": "bits", "width": 8, "display": "code", "codeLabels": {"1": "RUN", "2": "FAULT"}}
+    with pytest.raises(ValueError):
+        BitsStream("x", display="dial")
     assert BlockStream("ai", read_block=lambda: None, rate_hz=5, unit="V").describe() == {
         "id": "ai", "type": "block", "unit": "V", "rateHz": 5.0}
     assert ByteStream("com1").describe() == {"id": "com1", "type": "bytes", "writable": False}

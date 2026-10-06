@@ -439,6 +439,8 @@ AI 通过网关读取声明（第 8.3 节的 `get_hardware_definition`），而�
 | `unit` | scalar、block | 物理单位，例如 `V`、`A`、`Hz` |
 | `width` | bits | 位数 |
 | `bitLabels` | bits | 可选，每位的名称 |
+| `display` | bits | 可选，界面的建议显示方式：`lamps`（每位一盏指示灯，DI/DO）、`switches`（每位一个开关触点，继电器）、`code`（整字作为控制码/状态码）；省略时有 `bitLabels` 按 `lamps`，否则按 `code`。用户可在运行监控里逐通道切换 |
+| `codeLabels` | bits | 可选，`code` 显示时已知值的名称，键为十进制值，例如 `{"1": "RUN", "2": "FAULT"}` |
 | `rateHz` | 轮询类流 | 生效的采样频率 |
 | `writable` | bytes、frames | 是否可以通过 `_transact`/发送工具写入 |
 | `idScheme` | frames | 身份编码方案，见第 5.4 节 |

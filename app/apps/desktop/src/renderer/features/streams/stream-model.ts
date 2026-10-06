@@ -36,6 +36,8 @@ export interface ScopeData {
   bits?: number[];
   /** Stacked logic lanes: the label of each series, lane `n` drawn at `n * BIT_LANE`. */
   lanes?: string[];
+  /** Bus lanes (their series are empty; the scope paints the value segments). */
+  buses?: { lane: number; segments: BusSegment[] }[];
 }
 
 /** Vertical spacing of stacked bit lanes; a lane is 0 (low) to 1 (high). */
@@ -136,7 +138,22 @@ export function analogData(inputs: AnalogInput[]): ScopeData {
   return { ...alignSeries(series), labels: inputs.map((input) => input.label), stepped: false };
 }
 
-export type LogicInput = Omit<AnalogInput, "level">;
+export interface LogicInput extends Omit<AnalogInput, "level"> {
+  /** `bus`: the whole mask as one lane of value segments (a control / status code). */
+  mode?: "logic" | "bus";
+  /** Names of the bits (plugin `bitLabels`), used for the lane names. */
+  bitLabels?: string[] | undefined;
+  width?: number | undefined;
+  codeLabels?: Record<string, string> | undefined;
+}
+
+/** One value held on a bus lane over `[tb0, tb1]`. */
+interface BusSegment {
+  tb0: number;
+  tb1: number;
+  mask: number;
+  text: string;
+}
 
 /** A logic analyser view: lanes for the bits that change, the steady streams summarised. */
 export interface LogicData extends ScopeData {
@@ -147,14 +164,16 @@ export interface LogicData extends ScopeData {
 }
 
 /**
- * Bit streams as one logic analyser: every bit that changes within the window in its own lane.
- * A bit that holds one level says nothing a reading doesn't, so steady streams are only listed.
+ * Bit streams as one logic analyser: every bit that changes within the window in its own lane,
+ * named by the plugin's bit labels; a stream in `bus` mode takes one lane of value segments. A
+ * bit that holds one level says nothing a reading doesn't, so steady streams are only listed.
  */
 export function logicData(inputs: LogicInput[]): LogicData {
   const series: Series[] = [];
   const lanes: string[] = [];
   const owners: number[] = [];
   const steady: LogicData["steady"] = [];
+  const buses: NonNullable<ScopeData["buses"]> = [];
   inputs.forEach((input, owner) => {
     const masks = input.points.map((point) => maskOf(point.mask));
     const x = input.points.map((point) => point.tb / 1000);
@@ -162,6 +181,23 @@ export function logicData(inputs: LogicInput[]): LogicData {
     if (input.holdUntil !== undefined && lastTb !== undefined && input.holdUntil > lastTb) {
       x.push(input.holdUntil / 1000);
       masks.push(masks.at(-1) ?? 0);
+    }
+    if (input.mode === "bus") {
+      if (!masks.length) return;
+      const lane = lanes.length;
+      lanes.push(input.label);
+      owners.push(owner);
+      series.push({ x, y: masks.map(() => null) });
+      const segments: BusSegment[] = [];
+      masks.forEach((mask, index) => {
+        const tb = (x[index] ?? 0) * 1000;
+        const previous = segments.at(-1);
+        if (previous && previous.mask === mask) { previous.tb1 = tb; return; }
+        if (previous) previous.tb1 = tb;
+        segments.push({ tb0: tb, tb1: tb, mask, text: codeText(mask, input.width, input.codeLabels).short });
+      });
+      buses.push({ lane, segments });
+      return;
     }
     const changed = masks.reduce((all, mask, index) => index ? all | (mask ^ (masks[index - 1] ?? 0)) : all, 0);
     if (!changed) {
@@ -171,12 +207,45 @@ export function logicData(inputs: LogicInput[]): LogicData {
     for (let bit = 0; bit < 32; bit += 1) {
       if (!(changed & (1 << bit))) continue;
       const lane = lanes.length;
-      lanes.push(`${input.label}.${bit}`);
+      lanes.push(`${input.label}.${input.bitLabels?.[bit] ?? bit}`);
       owners.push(owner);
       series.push({ x, y: masks.map((mask) => (mask & (1 << bit) ? 1 : 0) + lane * BIT_LANE) });
     }
   });
-  return { ...alignSeries(series), labels: lanes, stepped: true, lanes, owners, steady };
+  return {
+    ...alignSeries(series), labels: lanes, stepped: true, lanes, owners, steady, ...(buses.length ? { buses } : {})
+  };
+}
+
+/** A bits mask as a code: hex padded to the width, decimal, grouped binary and the declared name. */
+export function codeText(
+  mask: number,
+  width: number | undefined,
+  codeLabels?: Record<string, string>
+): { hex: string; dec: string; bin: string; name?: string; short: string } {
+  const bits = Math.max(width ?? 0, mask ? Math.floor(Math.log2(mask)) + 1 : 1, 4);
+  const hex = `0x${mask.toString(16).toUpperCase().padStart(Math.ceil(bits / 4), "0")}`;
+  const bin = mask.toString(2).padStart(Math.ceil(bits / 4) * 4, "0").replace(/(.{4})(?=.)/g, "$1 ");
+  const name = codeLabels?.[String(mask)];
+  return { hex, dec: String(mask), bin, ...(name ? { name } : {}), short: name ?? hex };
+}
+
+/** Bits held in a mask, by number. */
+export function maskBits(mask: number, width: number): boolean[] {
+  return Array.from({ length: width }, (_, bit) => Boolean(mask & (1 << bit)));
+}
+
+/** A bits stream's number of lines: declared, else enough for every bit seen (at least 8). */
+export function bitsWidth(stream: Pick<StreamInfo, "declaration">, points: StreamPoint[] | undefined): number {
+  const declared = stream.declaration?.width;
+  if (declared) return declared;
+  const union = (points ?? []).reduce((all, point) => all | maskOf(point.mask), 0);
+  return Math.max(8, union ? Math.floor(Math.log2(union)) + 1 : 0);
+}
+
+/** The mask of a bits point (0 when absent). */
+export function pointMask(point: StreamPoint | undefined): number | undefined {
+  return point ? maskOf(point.mask) : undefined;
 }
 
 /** The last point at or before `tb` (points sorted by time). */
@@ -448,15 +517,26 @@ export function relativeTime(tb: number, origin: number, digits = 3): string {
 
 // -- run console ---------------------------------------------------------------------------------
 
-export type EntryKind = "bus" | "call" | "step" | "judge" | "event";
+export type EntryKind = "plan" | "bus" | "call" | "step" | "judge" | "event";
 
-/** One console line: bus traffic, a tool call, a step boundary, a verdict or a run event. */
+/**
+ * One console line: a step of the plan outline, bus traffic, a tool call, a step boundary, a
+ * verdict or a run event.
+ */
 export interface ConsoleEntry {
   id: string;
   tb: number;
   kind: EntryKind;
+  /** Plan outline lines come first, in this order, without a time. */
+  outline?: number;
+  /** Nesting under the step it belongs to, as indentation. */
+  depth?: number;
+  /** The step execution a line is about; clicking an outline line zooms to it. */
+  executionId?: string;
   /** Where it happened: `CP118U_I/serial1`, `PCI1710L`, `step`, `run`. */
   source: string;
+  /** The device a line belongs to, for the console's device filter. */
+  hardwareId?: string;
   /** Bus lines keep their stream and record so a new display mode can re-render them. */
   key?: string;
   type?: string;
@@ -471,12 +551,39 @@ const TONE_COLOR: Record<OverlayTone, string> = { pass: "32", fail: "31", run: "
 const FAILED_CALL = new Set(["failed", "outcome_unknown", "recovery_required"]);
 const REGION_LABEL: Record<string, string> = { prepare: "准备", test: "测试", cleanup: "清理" };
 
+const CALL_STATE_LABEL: Record<string, string> = {
+  failed: "失败", outcome_unknown: "结果未知", recovery_required: "需要恢复"
+};
+
+function clip(text: string): string {
+  return text.length > 200 ? `${text.slice(0, 197)}...` : text;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 /** Tool arguments as `key=value`; strings are quoted so control characters stay visible. */
 function formatArguments(args: Record<string, unknown> | undefined): string {
-  const text = Object.entries(args ?? {})
+  return clip(Object.entries(args ?? {})
     .map(([name, value]) => `${name}=${JSON.stringify(value) ?? "undefined"}`)
-    .join(" ");
-  return text.length > 200 ? `${text.slice(0, 197)}...` : text;
+    .join(" "));
+}
+
+/** What a device returned: an object as `key=value`, anything else as JSON. */
+function formatResult(result: unknown): string {
+  if (result === undefined) return "完成";
+  if (isRecord(result) && result.truncated === true && typeof result.preview === "string") {
+    return `${result.preview.slice(0, 197)}...`;
+  }
+  if (isRecord(result)) return formatArguments(result) || "{}";
+  return clip(JSON.stringify(result) ?? String(result));
+}
+
+function callError(result: unknown): string {
+  const error = isRecord(result) && isRecord(result.error) ? result.error : undefined;
+  const message = error?.message ?? error?.code;
+  return typeof message === "string" ? message : "";
 }
 
 function formatDurationMs(value: number | null | undefined): string {
@@ -491,7 +598,7 @@ export function recordEntry(
 ): ConsoleEntry {
   return {
     id: `${stream.key}:${record.i}`, tb: record.tb, kind: "bus", source: shortLabel(stream),
-    key: stream.key, type: String(stream.type), record
+    hardwareId: stream.hardwareId, key: stream.key, type: String(stream.type), record
   };
 }
 
@@ -503,44 +610,81 @@ function windowText(item: RunTimeline["windows"][number]): string {
   return `${item.name ?? item.stepId} · ${item.type} · ${item.verdict}${latency}${detail ? ` · ${detail}` : ""}`;
 }
 
-/** Console entries derived from the run timeline: steps, tool calls, verdicts, violations, events. */
-export function timelineEntries(timeline: RunTimeline | undefined): ConsoleEntry[] {
+/** Nesting depth of every step execution (a top-level step of a region is 0). */
+export function stepDepths(timeline: RunTimeline | undefined): Map<string, number> {
+  const parents = new Map((timeline?.steps ?? []).map((step) => [step.executionId, step.parentExecutionId]));
+  const depths = new Map<string, number>();
+  const depthOf = (executionId: string, seen = 0): number => {
+    const known = depths.get(executionId);
+    if (known !== undefined) return known;
+    const parent = parents.get(executionId);
+    const depth = parent && parents.has(parent) && seen < 64 ? depthOf(parent, seen + 1) + 1 : 0;
+    depths.set(executionId, depth);
+    return depth;
+  };
+  for (const executionId of parents.keys()) depthOf(executionId);
+  return depths;
+}
+
+/**
+ * Console entries derived from the run timeline: steps, tool calls and what the devices returned,
+ * verdicts, violations, events. `stepNames` (by execution id) names the steps as the plan does.
+ */
+export function timelineEntries(
+  timeline: RunTimeline | undefined,
+  stepNames?: ReadonlyMap<string, string>
+): ConsoleEntry[] {
   if (!timeline) return [];
   const entries: ConsoleEntry[] = [];
   const push = (entry: Omit<ConsoleEntry, "tb">, tb: number | null | undefined) => {
     if (isNumber(tb)) entries.push({ ...entry, tb });
   };
+  const depths = stepDepths(timeline);
+  /** Lines inside a step sit one level under it. */
+  const inside = (executionId: string | undefined) =>
+    executionId && depths.has(executionId) ? { depth: (depths.get(executionId) ?? 0) + 1, executionId } : {};
   for (const step of timeline.steps) {
     const region = REGION_LABEL[step.region] ?? step.region;
+    const name = stepNames?.get(step.executionId) ?? step.stepId;
+    const at = { depth: depths.get(step.executionId) ?? 0, executionId: step.executionId };
     push({
-      id: `step:${step.executionId}`, kind: "step", source: "step", tag: "▶ ", color: "1;37",
-      text: `${step.stepId} · ${step.stepType} · ${region}`
+      id: `step:${step.executionId}`, kind: "step", source: "step", ...at, tag: "▶ ", color: "1;37",
+      text: `${name} · ${step.stepType} · ${region}`
     }, step.tb0);
     if (step.tb1 != null && step.verdict != null) {
       const duration = formatDurationMs(step.durationMs ?? (step.tb0 != null ? step.tb1 - step.tb0 : null));
       push({
-        id: `step-end:${step.executionId}`, kind: "step", source: "step", tag: "■ ",
+        id: `step-end:${step.executionId}`, kind: "step", source: "step", ...at, tag: "■ ",
         color: TONE_COLOR[verdictTone(step.verdict)],
-        text: `${step.stepId} ${step.verdict}${duration ? ` · ${duration}` : ""}`
+        text: `${name} ${step.verdict}${duration ? ` · ${duration}` : ""}`
       }, step.tb1);
     }
   }
   for (const call of timeline.calls) {
     const source = deviceName(call.hardwareId);
+    const { hardwareId } = call;
+    const at = inside(call.executionId);
     push({
-      id: `call:${call.operationId}`, kind: "call", source, tag: "OP", color: "34",
+      id: `call:${call.operationId}`, kind: "call", source, hardwareId, ...at, tag: "→ ", color: "34",
       text: `${call.toolName} ${formatArguments(call.arguments)}`.trim()
     }, call.tb0);
-    if (FAILED_CALL.has(call.state)) {
+    if (call.state === "succeeded") {
       push({
-        id: `call-end:${call.operationId}`, kind: "call", source, tag: "OP", color: "31",
-        text: `✗ ${call.toolName} ${call.state}`
+        id: `call-end:${call.operationId}`, kind: "call", source, hardwareId, ...at, tag: "← ", color: "32",
+        text: `${call.toolName} ${formatResult(call.result)}`
+      }, call.tb1 ?? call.tb0);
+    } else if (FAILED_CALL.has(call.state)) {
+      const error = callError(call.result);
+      push({
+        id: `call-end:${call.operationId}`, kind: "call", source, hardwareId, ...at, tag: "✗ ", color: "31",
+        text: `${call.toolName} ${CALL_STATE_LABEL[call.state] ?? call.state}${error ? `：${error}` : ""}`
       }, call.tb1 ?? call.tb0);
     }
   }
   for (const item of timeline.windows) {
     push({
-      id: `judge:${item.sequence}`, kind: "judge", source: shortLabel(item), tag: "JG",
+      id: `judge:${item.sequence}`, kind: "judge", source: shortLabel(item), hardwareId: item.hardwareId,
+      ...inside(item.executionId), tag: "JG",
       color: TONE_COLOR[verdictTone(item.verdict)], text: windowText(item)
     }, item.tb1 ?? item.tb0);
   }
@@ -548,6 +692,7 @@ export function timelineEntries(timeline: RunTimeline | undefined): ConsoleEntry
     const [hardwareId = "", streamId = item.key] = item.key.split("__");
     push({
       id: `violation:${item.stepId}:${item.tb}`, kind: "judge", source: shortLabel({ hardwareId, streamId }),
+      hardwareId,
       tag: "!!", color: "1;31", text: `Guard ${item.stepId} 越限 → ${item.onViolation} ${JSON.stringify(item.violation)}`
     }, item.tb);
   }
@@ -555,7 +700,8 @@ export function timelineEntries(timeline: RunTimeline | undefined): ConsoleEntry
     const region = mark.region ? ` ${REGION_LABEL[mark.region] ?? mark.region}` : "";
     push({
       id: `event:${mark.type}:${mark.tb}:${mark.hardwareId ?? ""}`, kind: "event",
-      source: mark.hardwareId ? deviceName(mark.hardwareId) : "run", tag: "··", color: "2;37",
+      source: mark.hardwareId ? deviceName(mark.hardwareId) : "run",
+      ...(mark.hardwareId ? { hardwareId: mark.hardwareId } : {}), tag: "··", color: "2;37",
       text: `${mark.type}${region}${mark.message ? ` ${mark.message}` : ""}`
     }, mark.tb);
   }
@@ -580,13 +726,23 @@ export function consoleLine(entry: ConsoleEntry, mode: TerminalMode, origin?: nu
   }
   const source = entry.source.length > SOURCE_WIDTH ? `${entry.source.slice(0, SOURCE_WIDTH - 1)}…` : entry.source;
   const body = entry.kind === "bus" || entry.kind === "event" ? text : `\x1b[${color}m${text}\x1b[0m`;
-  const time = origin === undefined ? clockTime(entry.tb) : relativeTime(entry.tb, origin).padStart(9);
+  const time = entry.outline !== undefined ? " ".repeat(TIME_WIDTH)
+    : origin === undefined ? clockTime(entry.tb) : relativeTime(entry.tb, origin).padStart(TIME_WIDTH);
+  const indent = "  ".repeat(Math.min(entry.depth ?? 0, 12));
   return `\x1b[2m${time}\x1b[0m \x1b[2;36m${source.padEnd(SOURCE_WIDTH)}\x1b[0m `
-    + `\x1b[${color}m${tag}\x1b[0m ${body}`;
+    + `${indent}\x1b[${color}m${tag}\x1b[0m ${body}`;
 }
 
-/** Console order: time, then events, steps, calls, bus traffic and verdicts at the same instant. */
-const KIND_ORDER: Record<EntryKind, number> = { event: 0, step: 1, call: 2, bus: 3, judge: 4 };
+const TIME_WIDTH = 9;
+
+/**
+ * Console order: the plan outline first, then time; at one instant events, steps, calls, bus
+ * traffic and verdicts.
+ */
+const KIND_ORDER: Record<EntryKind, number> = { plan: -1, event: 0, step: 1, call: 2, bus: 3, judge: 4 };
 export function compareEntries(a: ConsoleEntry, b: ConsoleEntry): number {
+  if (a.outline !== undefined || b.outline !== undefined) {
+    return (a.outline ?? Infinity) - (b.outline ?? Infinity);
+  }
   return a.tb - b.tb || KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 }
