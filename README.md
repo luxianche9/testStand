@@ -53,7 +53,7 @@ pnpm install          # Node 依赖（含 Electron 二进制）
 pnpm python:setup     # = uv sync --project python --frozen，创建 app/python/.venv
 ```
 
-开发环境中四个适配器以 editable 方式装进后端的虚拟环境，设备可在仿真模式下运行，无需真实板卡。
+开发环境中四个适配器以 editable 方式装进后端的虚拟环境。设备只驱动真实硬件，需要装好对应板卡和厂商驱动。
 
 ## 启动（开发模式）
 
