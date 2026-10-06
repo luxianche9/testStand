@@ -4,18 +4,21 @@ import type { RunTimeline, StreamInfo, StreamRecord } from "@teststand/contracts
 import "@xterm/xterm/css/xterm.css";
 import { cn, SegmentedControl } from "../../ui";
 import {
-  compareEntries, consoleLine, isSampled, recordEntry, shortLabel, timelineEntries,
+  compareEntries, consoleLine, deviceName, isSampled, recordEntry, timelineEntries,
   type ConsoleEntry, type EntryKind, type TerminalMode
 } from "./stream-model.js";
 import { fontStack, tokenColor, useThemeVersion } from "./theme-colors.js";
 import { RECORD_CAP, useStreamRecords, type RecordsState, type StreamSource } from "./useStreamReader.js";
 
+/** Hide the cursor, clear the screen and the scrollback, home the cursor. */
+const CLEAR = "\x1b[?25l\x1b[2J\x1b[3J\x1b[H";
 /** Entries kept in the console; the oldest are dropped beyond this. */
 const ENTRY_CAP = RECORD_CAP;
 /** Out-of-order entries (a call reported after later bus traffic) redraw the console at most this often. */
 const REDRAW_MS = 250;
 
 const KINDS: { kind: EntryKind; label: string }[] = [
+  { kind: "plan", label: "计划" },
   { kind: "bus", label: "总线" },
   { kind: "call", label: "操作" },
   { kind: "step", label: "步骤" },
@@ -30,22 +33,32 @@ export interface ConsoleJump {
 }
 
 /**
- * Run console: every bus/serial record of the run merged with the tool calls, step boundaries,
- * verdicts and run events, in backend-time order, with the time relative to the run start. A
- * click on a line picks its instant; `jump` scrolls to an instant picked elsewhere.
+ * Run console: the plan outline (every step with its state) on top, then every bus/serial record
+ * of the run merged with the tool calls and what the devices returned, step boundaries, verdicts
+ * and run events, in backend-time order, nested under their step, with the time relative to the
+ * run start. Lines can be filtered by kind and by device. A click on an outline step zooms to it,
+ * a click on any other line picks its instant; `jump` scrolls to an instant picked elsewhere.
  */
-export function BusTerminal({ timeline, source, live, origin, jump, onPick }: {
+export function BusTerminal({ timeline, source, live, origin, jump, stepNames, outline, extra, onPick, onStep }: {
   timeline: RunTimeline | undefined;
   source: StreamSource;
   live: boolean;
   origin: number | undefined;
   jump?: ConsoleJump | undefined;
+  /** Step names by execution id, so step lines read as the plan does. */
+  stepNames?: ReadonlyMap<string, string> | undefined;
+  /** The plan outline; each new outline replaces the previous one. */
+  outline?: readonly ConsoleEntry[] | undefined;
+  /** Further lines from outside the timeline (published results). */
+  extra?: readonly ConsoleEntry[] | undefined;
   onPick?: (tb: number) => void;
+  onStep?: (executionId: string) => void;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const terminal = useRef<Terminal | undefined>(undefined);
   const entries = useRef<ConsoleEntry[]>([]);
-  const ids = useRef(new Set<string>());
+  /** Entries by id; a line whose text changes (a step name arriving later) is replaced. */
+  const ids = useRef(new Map<string, ConsoleEntry>());
   /** Entries currently in the terminal, in order (one logical line each). */
   const written = useRef<ConsoleEntry[]>([]);
   const redrawTimer = useRef<number | undefined>(undefined);
@@ -54,7 +67,7 @@ export function BusTerminal({ timeline, source, live, origin, jump, onPick }: {
   const [failed, setFailed] = useState<string>();
   const [mode, setMode] = useState<TerminalMode>("text");
   const [kinds, setKinds] = useState<ReadonlySet<EntryKind>>(new Set(KINDS.map((item) => item.kind)));
-  const [mutedStreams, setMutedStreams] = useState<ReadonlySet<string>>(new Set());
+  const [mutedDevices, setMutedDevices] = useState<ReadonlySet<string>>(new Set());
   const [feeds, setFeeds] = useState<Readonly<Record<string, RecordsState>>>({});
   const [counts, setCounts] = useState<Readonly<Record<EntryKind, number>>>(emptyCounts);
   const theme = useThemeVersion();
@@ -63,42 +76,54 @@ export function BusTerminal({ timeline, source, live, origin, jump, onPick }: {
     !isSampled(String(stream.type)) && (stream.count > 0 || (live && !stream.states.includes("not_configured")))),
   [timeline?.streams, live]);
 
-  const view = useRef({ mode, kinds, mutedStreams, origin });
-  view.current = { mode, kinds, mutedStreams, origin };
+  const devices = useMemo(() => consoleDevices(timeline, buses), [timeline, buses]);
+
+  const view = useRef({ mode, kinds, mutedDevices, origin });
+  view.current = { mode, kinds, mutedDevices, origin };
   const shows = (entry: ConsoleEntry) => {
-    const { kinds: shownKinds, mutedStreams: muted } = view.current;
-    return shownKinds.has(entry.kind) && !(entry.key && muted.has(entry.key));
+    const { kinds: shownKinds, mutedDevices: muted } = view.current;
+    return shownKinds.has(entry.kind) && !(entry.hardwareId && muted.has(entry.hardwareId));
   };
   /** Writes `batch`; `done` runs once xterm has parsed it (writes are asynchronous). */
-  const render = (batch: ConsoleEntry[], done?: () => void) => {
+  /** Writes `batch` after `prefix` (escape sequences) in one write. */
+  const render = (batch: ConsoleEntry[], done?: () => void, prefix = "") => {
     const target = terminal.current;
     const shown = batch.filter(shows);
     written.current.push(...shown);
-    if (!target || !shown.length) {
+    if (!target || (!shown.length && !prefix)) {
       done?.();
       return;
     }
     const { mode: display, origin: zero } = view.current;
-    target.write(`${shown.map((entry) => consoleLine(entry, display, zero)).join("\r\n")}\r\n`, done);
+    const lines = shown.map((entry) => `${consoleLine(entry, display, zero)}\r\n`).join("");
+    target.write(`${prefix}${lines}`, done);
   };
   /** Rewrites the console, then scrolls back to the picked instant. */
   const redraw = () => {
     if (redrawTimer.current !== undefined) window.clearTimeout(redrawTimer.current);
     redrawTimer.current = undefined;
     written.current = [];
-    const target = terminal.current;
-    target?.reset();
-    target?.write("\x1b[?25l");
-    render(entries.current, () => { if (picked.current !== undefined) reveal(picked.current); });
+    // Clearing and rewriting in one write never paints an empty console in between (reset() would).
+    render(entries.current, () => { if (picked.current !== undefined) reveal(picked.current); }, CLEAR);
   };
   const scheduleRedraw = () => {
     if (redrawTimer.current === undefined) redrawTimer.current = window.setTimeout(redraw, REDRAW_MS);
   };
 
-  const add = (batch: ConsoleEntry[]) => {
-    const fresh = batch.filter((entry) => !ids.current.has(entry.id));
+  const add = (batch: readonly ConsoleEntry[]) => {
+    const known = ids.current;
+    const changed = batch.filter((entry) => {
+      const previous = known.get(entry.id);
+      return previous !== undefined && previous.text !== entry.text;
+    });
+    if (changed.length) {
+      for (const entry of changed) known.set(entry.id, entry);
+      entries.current = entries.current.map((entry) => known.get(entry.id) ?? entry);
+      scheduleRedraw();
+    }
+    const fresh = batch.filter((entry) => !known.has(entry.id));
     if (!fresh.length) return;
-    for (const entry of fresh) ids.current.add(entry.id);
+    for (const entry of fresh) known.set(entry.id, entry);
     fresh.sort(compareEntries);
     const list = entries.current;
     const last = list.at(-1);
@@ -107,7 +132,9 @@ export function BusTerminal({ timeline, source, live, origin, jump, onPick }: {
     list.push(...fresh);
     if (!inOrder) list.sort(compareEntries);
     if (list.length > ENTRY_CAP) {
-      for (const entry of list.splice(0, list.length - ENTRY_CAP)) ids.current.delete(entry.id);
+      // The oldest log lines go; the plan outline on top stays.
+      const head = Math.max(0, list.findIndex((entry) => entry.outline === undefined));
+      for (const entry of list.splice(head, list.length - ENTRY_CAP)) ids.current.delete(entry.id);
       scheduleRedraw();
     } else if (inOrder && redrawTimer.current === undefined) {
       render(fresh);
@@ -120,7 +147,23 @@ export function BusTerminal({ timeline, source, live, origin, jump, onPick }: {
   addRef.current = add;
 
   // Timeline-derived lines (steps, calls, verdicts, events) grow as the run goes on.
-  useEffect(() => { addRef.current(timelineEntries(timeline)); }, [timeline]);
+  useEffect(() => { addRef.current(timelineEntries(timeline, stepNames)); }, [timeline, stepNames]);
+  useEffect(() => { if (extra) addRef.current(extra); }, [extra]);
+  useEffect(() => {
+    const known = ids.current;
+    const previous = entries.current.filter((entry) => entry.outline !== undefined);
+    const next = outline ?? [];
+    const same = previous.length === next.length
+      && previous.every((entry, index) => entry.id === next[index]?.id && entry.text === next[index]?.text);
+    if (same) return;
+    for (const entry of previous) known.delete(entry.id);
+    for (const entry of next) known.set(entry.id, entry);
+    entries.current = [...next, ...entries.current.filter((entry) => entry.outline === undefined)];
+    setCounts(countKinds(entries.current));
+    if (terminal.current) scheduleRedraw();
+  // `scheduleRedraw` only reads refs.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [outline]);
 
   const onRecords = useCallback((stream: StreamInfo, records: StreamRecord[]) => {
     addRef.current(records.map((record) => recordEntry(stream, record)));
@@ -180,6 +223,10 @@ export function BusTerminal({ timeline, source, live, origin, jump, onPick }: {
         const entry = index === undefined ? undefined : written.current[index];
         if (!entry) return;
         instance.selectLines(lineStart(instance, bufferRow), lineEnd(instance, bufferRow));
+        if (entry.outline !== undefined) {
+          if (entry.executionId && !entry.executionId.startsWith("pending:")) onStepRef.current?.(entry.executionId);
+          return;
+        }
         picked.current = entry.tb;
         onPickRef.current?.(entry.tb);
       };
@@ -205,6 +252,8 @@ export function BusTerminal({ timeline, source, live, origin, jump, onPick }: {
 
   const onPickRef = useRef(onPick);
   onPickRef.current = onPick;
+  const onStepRef = useRef(onStep);
+  onStepRef.current = onStep;
 
   /** Scrolls to and selects the first line at or after `tb`. */
   const reveal = (tb: number) => {
@@ -222,7 +271,7 @@ export function BusTerminal({ timeline, source, live, origin, jump, onPick }: {
     if (!terminal.current) return;
     redraw();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, kinds, mutedStreams, origin]);
+  }, [mode, kinds, mutedDevices, origin]);
   useEffect(() => () => { if (redrawTimer.current !== undefined) window.clearTimeout(redrawTimer.current); }, []);
 
   useEffect(() => {
@@ -234,7 +283,7 @@ export function BusTerminal({ timeline, source, live, origin, jump, onPick }: {
   }, [jump]);
 
   const toggleKind = (kind: EntryKind) => setKinds((current) => toggled(current, kind));
-  const toggleStream = (key: string) => setMutedStreams((current) => toggled(current, key));
+  const toggleDevice = (hardwareId: string) => setMutedDevices((current) => toggled(current, hardwareId));
   const feedStates = Object.values(feeds);
   const errors = Object.entries(feeds).filter(([, state]) => state.error);
   const truncated = feedStates.some((state) => state.truncated) || entries.current.length >= ENTRY_CAP;
@@ -259,15 +308,16 @@ export function BusTerminal({ timeline, source, live, origin, jump, onPick }: {
             {label} <span className="tf-num text-fg-3">{counts[kind]}</span>
           </FilterChip>
         ))}
-        {buses.length > 0 && <span aria-hidden className="mx-1 h-4 w-px bg-line" />}
-        {buses.map((stream) => (
+        {devices.length > 0 && <span aria-hidden className="mx-1 h-4 w-px bg-line" />}
+        {devices.map((device) => (
           <FilterChip
-            key={stream.key}
+            key={device.hardwareId}
             mono
-            on={kinds.has("bus") && !mutedStreams.has(stream.key)}
-            onClick={() => toggleStream(stream.key)}
+            title={`${device.hardwareId}：该设备的操作、应答、总线收发与判定`}
+            on={!mutedDevices.has(device.hardwareId)}
+            onClick={() => toggleDevice(device.hardwareId)}
           >
-            {shortLabel(stream)}
+            {device.label}
           </FilterChip>
         ))}
         <SegmentedControl<TerminalMode>
@@ -293,15 +343,16 @@ export function BusTerminal({ timeline, source, live, origin, jump, onPick }: {
           </span>
         )}
         {truncated && <span className="truncate">仅保留最近 {ENTRY_CAP} 条</span>}
-        <span className="ml-auto">点击一行定位到该时刻</span>
+        <span className="ml-auto">点击一行定位到该时刻，点击计划中的步骤缩放到该步骤</span>
       </div>
     </div>
   );
 }
 
-function FilterChip({ on, mono, onClick, children }: {
+function FilterChip({ on, mono, title, onClick, children }: {
   on: boolean;
   mono?: boolean;
+  title?: string;
   onClick: () => void;
   children: ReactNode;
 }) {
@@ -309,6 +360,7 @@ function FilterChip({ on, mono, onClick, children }: {
     <button
       type="button"
       aria-pressed={on}
+      title={title}
       onClick={onClick}
       className={cn(
         "h-5 rounded-sm border px-1.5 text-2xs transition-colors duration-120",
@@ -339,8 +391,25 @@ function RecordFeed({ stream, source, live, onRecords, onState }: {
   return null;
 }
 
+/** Every device the run talked to or recorded, labelled by its short name (the full id when two share one). */
+function consoleDevices(
+  timeline: RunTimeline | undefined,
+  buses: StreamInfo[]
+): { hardwareId: string; label: string }[] {
+  const ids = new Set<string>();
+  for (const call of timeline?.calls ?? []) ids.add(call.hardwareId);
+  for (const stream of buses) ids.add(stream.hardwareId);
+  for (const item of timeline?.windows ?? []) if (item.hardwareId) ids.add(item.hardwareId);
+  const sorted = [...ids].filter(Boolean).sort();
+  const names = sorted.map(deviceName);
+  return sorted.map((hardwareId, index) => ({
+    hardwareId,
+    label: names.filter((name) => name === names[index]).length > 1 ? hardwareId : names[index] ?? hardwareId
+  }));
+}
+
 function emptyCounts(): Record<EntryKind, number> {
-  return { bus: 0, call: 0, step: 0, judge: 0, event: 0 };
+  return { plan: 0, bus: 0, call: 0, step: 0, judge: 0, event: 0 };
 }
 
 function countKinds(entries: ConsoleEntry[]): Record<EntryKind, number> {

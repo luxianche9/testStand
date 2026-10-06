@@ -98,6 +98,54 @@ function drawOverlays(plot: uPlot, overlays: ScopeOverlays, marker: number | und
   ctx.restore();
 }
 
+/** Bus lanes as a logic analyser draws them: one hexagon per held value, the value inside. */
+function drawBuses(plot: uPlot, data: ScopeData | undefined, colors: string[], text: string) {
+  if (!data?.buses?.length) return;
+  const { ctx, bbox } = plot;
+  const ratio = devicePixelRatio || 1;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(bbox.left, bbox.top, bbox.width, bbox.height);
+  ctx.clip();
+  ctx.font = tokenFont(10 * ratio, "mono");
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "center";
+  ctx.lineWidth = ratio;
+  for (const bus of data.buses) {
+    const color = colors[bus.lane] ?? text;
+    const high = plot.valToPos(bus.lane * BIT_LANE + 1, "y", true);
+    const low = plot.valToPos(bus.lane * BIT_LANE, "y", true);
+    const middle = (high + low) / 2;
+    for (const segment of bus.segments) {
+      const left = Math.max(plot.valToPos(segment.tb0 / 1000, "x", true), bbox.left - 8 * ratio);
+      const right = Math.min(
+        Math.max(plot.valToPos(segment.tb1 / 1000, "x", true), left + 2 * ratio),
+        bbox.left + bbox.width + 8 * ratio
+      );
+      if (right < bbox.left || left > bbox.left + bbox.width) continue;
+      const slant = Math.min(4 * ratio, (right - left) / 2);
+      ctx.beginPath();
+      ctx.moveTo(left, middle);
+      ctx.lineTo(left + slant, high);
+      ctx.lineTo(right - slant, high);
+      ctx.lineTo(right, middle);
+      ctx.lineTo(right - slant, low);
+      ctx.lineTo(left + slant, low);
+      ctx.closePath();
+      ctx.fillStyle = withAlpha(color, 0.14);
+      ctx.fill();
+      ctx.strokeStyle = color;
+      ctx.stroke();
+      const room = right - left - 2 * slant - 4 * ratio;
+      if (ctx.measureText(segment.text).width <= room) {
+        ctx.fillStyle = text;
+        ctx.fillText(segment.text, (Math.max(left, bbox.left) + Math.min(right, bbox.left + bbox.width)) / 2, middle);
+      }
+    }
+  }
+  ctx.restore();
+}
+
 function tickDigits(increment: number): number {
   if (increment >= 1) return 0;
   if (increment >= 0.1) return 1;
@@ -185,6 +233,11 @@ export function StreamScope({
       // A stacked scope keeps the vertical grid but leaves the time labels to the last scope.
       const hideTime: uPlot.Axis = timeAxis ? {} : { size: 2, values: (_self, splits) => splits.map(() => "") };
       const font = tokenFont(11);
+      const laneColors = current.labels.map((_, index) => {
+        const style = series?.[index];
+        if (style) return resolveColor(style.color);
+        return tokenColor(SERIES_TOKENS[index % SERIES_TOKENS.length] ?? "--tf-ch-1");
+      });
       const plotOptions: uPlot.Options = {
         ...size(),
         legend: { show: false },
@@ -235,7 +288,10 @@ export function StreamScope({
           points: { show: false }
         },
         hooks: {
-          draw: [(self) => drawOverlays(self, latest.current.overlays, latest.current.marker, colors)],
+          draw: [(self) => {
+            drawBuses(self, latest.current.data, laneColors, tokenColor("--tf-fg"));
+            drawOverlays(self, latest.current.overlays, latest.current.marker, colors);
+          }],
           setSelect: [(self) => {
             const { left, width } = self.select;
             if (width > 2) {
@@ -254,8 +310,14 @@ export function StreamScope({
             if (!target) return;
             if (index == null || at === undefined) { target.textContent = ""; return; }
             const suffix = latest.current.unit ? ` ${latest.current.unit}` : "";
+            const buses = latest.current.data?.buses;
             const values = self.data.slice(1).map((column, lane) => {
               const value = column[index];
+              const bus = buses?.find((item) => item.lane === lane);
+              if (bus && lanes) {
+                const held = [...bus.segments].reverse().find((segment) => segment.tb0 <= at);
+                return `${lanes[lane]}=${held?.text ?? "—"}`;
+              }
               if (!lanes) return `${formatNumber(value)}${suffix}`;
               return `${lanes[lane]}=${value == null ? "—" : Math.round(value - lane * BIT_LANE)}`;
             });

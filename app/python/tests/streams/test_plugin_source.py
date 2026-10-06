@@ -128,3 +128,24 @@ async def test_sources_resolve_loaded_devices_and_share_the_clock() -> None:
     assert sources.clock("H") is SHARED_CLOCK
     assert SHARED_CLOCK.snapshot() == {"offsetMs": 0.0, "uncertaintyMs": 0.0}
     assert SHARED_CLOCK.to_backend(12.5) == 12.5 == SHARED_CLOCK.to_server(12.5)
+
+
+async def test_hello_carries_what_the_plugin_declared_for_the_stream(tmp_path: Any) -> None:
+    from teststand_backend.streams.store import StreamStore
+
+    class DescribedDevice(FakeDevice):
+        async def describe(self) -> Record:
+            relay = {"id": "relay", "type": "bits", "width": 2, "bitLabels": ["R0", "R1"]}
+            return {"device": {"streams": [{**relay, "display": "switches"}]}}
+
+    events = StreamSource(DescribedDevice([{"next": 0}]), "relay", since=None).events()
+    (hello,) = await take(events, 1)
+    declaration = {"width": 2, "bitLabels": ["R0", "R1"], "display": "switches"}
+    assert hello["declaration"] == declaration
+    await events.aclose()  # type: ignore[attr-defined]
+
+    store = StreamStore(tmp_path / "run.sqlite")
+    key = store.add_stream("RELAY", "relay")
+    store.update_stream(key, stream_type="bits", declaration=declaration)
+    assert store.streams()[0]["declaration"] == declaration
+    store.close()

@@ -33,7 +33,7 @@ from .journal import RunJournal, recording_path
 from .models import plan_hardware_ids
 from .run_io import RunIO, rejudge
 from .runtime_state import RuntimeStateStore
-from .timeline import build_timeline
+from .timeline import attach_call_results, build_timeline
 
 Record = dict[str, Any]
 
@@ -272,7 +272,9 @@ class TestEngine:
                 for info in self.derived_views.stream_infos(run_id, store, recorded):
                     streams.append(info)
                     gaps[info["key"]] = gaps.get(info["derived"]["source"], [])
-        return build_timeline(run_id, events, results, streams, gaps)
+        timeline = build_timeline(run_id, events, results, streams, gaps)
+        attach_call_results(timeline["calls"], self.runtime.operations(run_id))
+        return timeline
 
     def read_run_messages(self, run_id: str, query: Record) -> Record:
         """The run's protocol traffic decoded with its frozen ICDs (U4 message table)."""

@@ -123,7 +123,7 @@ class Stream:
     def describe(self) -> dict[str, Any]:
         """Declaration for ``/device.streams``: ``{id, type}`` plus the metadata that is set."""
         result: dict[str, Any] = {"id": self.stream_id, "type": self.type}
-        for key in ("unit", "width", "bitLabels"):
+        for key in ("unit", "width", "bitLabels", "display", "codeLabels"):
             if self.declaration.get(key) is not None:
                 result[key] = self.declaration[key]
         if self.sampler is not None:
@@ -185,15 +185,26 @@ class ScalarStream(Stream):
             self.publish(value, t=t)
 
 
+BITS_DISPLAYS = ("lamps", "switches", "code")
+"""How a bits stream reads best: independent lines as indicator ``lamps`` (DI, DO), relay or switch
+contacts as ``switches``, or the whole mask as one control / status ``code``."""
+
+
 class BitsStream(Stream):
-    """Bit masks ``{mask}`` (bit i = line i). ``publish_on_change`` drops sampled masks equal to the last one."""
+    """Bit masks ``{mask}`` (bit i = line i). ``publish_on_change`` drops sampled masks equal to the last one.
+
+    ``display`` tells the testStand front end how to show the stream (``BITS_DISPLAYS``; by default
+    ``lamps`` with ``bit_labels`` and ``code`` without). ``code_labels`` names known values of a
+    ``code`` stream, e.g. ``{0x01: "RUN", 0x02: "FAULT"}``.
+    """
 
     type: ClassVar[str] = "bits"
 
     def __init__(self, stream_id: str, *, sample: Callable[[], int | None] | None = None, rate_hz: float = 10.0,
                  publish_on_change: bool = False, capacity: int = 4096, width: int | None = None,
                  bit_labels: Sequence[str] | None = None, label: str | None = None,
-                 kind: str | None = None) -> None:
+                 kind: str | None = None, display: str | None = None,
+                 code_labels: Mapping[int, str] | None = None) -> None:
         super().__init__(stream_id, capacity=capacity, label=label, kind=kind)
         labels = list(bit_labels) if bit_labels is not None else None
         if width is None and labels is not None:
@@ -202,7 +213,10 @@ class BitsStream(Stream):
             raise ValueError(f"{stream_id}: width must be 1..64, got {width}")
         if labels is not None and len(labels) != width:
             raise ValueError(f"{stream_id}: bit_labels needs one label per bit ({width}), got {len(labels)}")
-        self.declaration.update(width=width, bitLabels=labels)
+        if display is not None and display not in BITS_DISPLAYS:
+            raise ValueError(f"{stream_id}: display must be one of {BITS_DISPLAYS}, got {display!r}")
+        codes = {str(int(value)): str(name) for value, name in code_labels.items()} if code_labels else None
+        self.declaration.update(width=width, bitLabels=labels, display=display, codeLabels=codes)
         self.publish_on_change = publish_on_change
         self._last: int | None = None
         if sample is not None:

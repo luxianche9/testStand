@@ -1,24 +1,29 @@
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CrosshairIcon, ListChecksIcon, ScrollTextIcon, ZoomOutIcon } from "lucide-react";
+import {
+  CrosshairIcon, ListChecksIcon, PanelLeftCloseIcon, PanelLeftOpenIcon, ScrollTextIcon, ZoomOutIcon
+} from "lucide-react";
 import type { RunTimeline } from "@teststand/contracts/observability";
 import type { TestRunSnapshot } from "@teststand/contracts/testing";
 import { Button, EmptyState, IconButton, SegmentedControl, Splitter, useConfirm } from "../../ui";
 import { useToast } from "../../ui/toast.js";
 import { errorMessage } from "../../lib/errors.js";
 import { useResizableWidth } from "../../lib/resizable.js";
-import { useCurrentTestRun, useTestItemStatus } from "../../lib/queries.js";
+import { useCurrentTestRun, useTestItemStatus, useTestStepCatalog } from "../../lib/queries.js";
 import { queryKeys } from "../../lib/query-keys.js";
 import { onRunRequested, peekRequestedRun, takeRequestedRun } from "../../lib/run-focus.js";
 import {
-  BusTerminal, PRE_ROLL_MS, RunOverview, runRange, SignalScope, stepAt,
+  BusTerminal, PRE_ROLL_MS, RunOverview, runRange, SignalScope,
   type ConsoleJump, type StreamSource, type TimeRange
 } from "../streams/index.js";
 import { RunControls } from "./EditorToolbar.js";
 import { isActiveRun } from "./plan-helpers.js";
+import { activeExecutions, firstProblemExecution, planOutlineEntries, resultConsoleEntries } from "./run-format.js";
+import { buildExecutionTrace } from "./run-log-model.js";
+import { RunHeader } from "./RunHeader.js";
 import { RunHistory } from "./RunHistory.js";
 import { RunMessages } from "./RunMessages.js";
-import { TestRunLogPage } from "./TestRunLogPage.js";
+import { useRunLog } from "./useRunLog.js";
 
 const SPANS = [
   { value: "2000", label: "2 s" },
@@ -30,12 +35,19 @@ type Span = (typeof SPANS)[number]["value"];
 type Lower = "console" | "messages";
 
 /** Where an instant was picked; the picking instrument does not scroll itself. */
-type PickSource = "scope" | "console" | "messages" | "log" | "overview";
+type PickSource = "scope" | "console" | "messages" | "overview";
+
+const HISTORY_KEY = "teststand.run-history-open";
+
+function storedHistoryOpen(): boolean {
+  try { return localStorage.getItem(HISTORY_KEY) !== "false"; } catch { return true; }
+}
 
 /**
- * 运行监控: every test run on the left; the selected run as a set of instruments on one time
- * axis — an overview of steps, verdicts and calls, a multi-channel oscilloscope, a console of all
- * bus traffic and actions — next to its step log. Picking an instant anywhere moves all of them.
+ * 运行监控: every test run on the left; the selected run under a header of its verdict, progress
+ * and controls, as a set of instruments on one time axis — an overview of steps, verdicts and
+ * calls, a multi-channel oscilloscope, and a console of every step, device call with what the
+ * device returned, bus record and result. Picking an instant anywhere moves all of them.
  */
 export function RunMonitorPage() {
   const status = useTestItemStatus();
@@ -46,6 +58,24 @@ export function RunMonitorPage() {
     storageKey: "teststand.run-log-sidebar-width", defaultWidth: 280, min: 220, max: 640, direction: "right"
   });
   const plans = (status.data?.items ?? []).map((item) => ({ id: item.planId, name: item.name }));
+  // Collapsed, the run history folds into the monitor's title bar; nothing selected keeps it open.
+  const [historyOpen, setHistoryOpen] = useState(storedHistoryOpen);
+  const showHistory = historyOpen || !runId;
+  const toggleHistory = () => setHistoryOpen((open) => {
+    try { localStorage.setItem(HISTORY_KEY, String(!open)); } catch { /* Storage may be unavailable. */ }
+    return !open;
+  });
+  const historyToggle = (
+    <Button
+      size="xs"
+      variant="ghost"
+      aria-expanded={showHistory}
+      title={showHistory ? "收起运行记录" : "展开运行记录"}
+      onClick={toggleHistory}
+    >
+      {showHistory ? <PanelLeftCloseIcon /> : <><PanelLeftOpenIcon />运行记录</>}
+    </Button>
+  );
 
   useEffect(() => {
     // Consumed once mounted: the initial render may have been retried.
@@ -65,14 +95,26 @@ export function RunMonitorPage() {
   return (
     <div
       className="grid h-full min-h-0 overflow-hidden bg-surface-0"
-      style={{ gridTemplateColumns: `${left.width}px 1px minmax(0,1fr)` }}
+      style={{ gridTemplateColumns: showHistory ? `${left.width}px 1px minmax(0,1fr)` : "minmax(0,1fr)" }}
     >
-      <aside aria-label="运行记录" className="flex min-h-0 min-w-0 flex-col bg-surface-1">
-        <RunHistory planId={undefined} plans={plans} selectedRunId={runId} onOpenRun={setRunId} />
-      </aside>
-      <Splitter label="拖拽调整运行记录宽度" {...left.separatorProps} />
+      {showHistory && (
+        <>
+          <aside aria-label="运行记录" className="flex min-h-0 min-w-0 flex-col bg-surface-1">
+            <RunHistory planId={undefined} plans={plans} selectedRunId={runId} onOpenRun={setRunId} />
+          </aside>
+          <Splitter label="拖拽调整运行记录宽度" {...left.separatorProps} />
+        </>
+      )}
       <main aria-label="运行监控" className="min-h-0 min-w-0">
-        {runId ? <RunMonitor key={runId} runId={runId} run={live && run ? run : undefined} live={live} /> : (
+        {runId ? (
+          <RunMonitor
+            key={runId}
+            runId={runId}
+            run={live && run ? run : undefined}
+            live={live}
+            historyToggle={historyToggle}
+          />
+        ) : (
           <EmptyState icon={<ScrollTextIcon />} title="选择一条运行记录" description="在左侧选择运行记录，或在测试编排中启动运行。" />
         )}
       </main>
@@ -84,7 +126,13 @@ function activeRunId(run: TestRunSnapshot | null | undefined): string | undefine
   return isActiveRun(run) ? run.runId : undefined;
 }
 
-function RunMonitor({ runId, run, live }: { runId: string; run: TestRunSnapshot | undefined; live: boolean }) {
+function RunMonitor({ runId, run, live, historyToggle }: {
+  runId: string;
+  run: TestRunSnapshot | undefined;
+  live: boolean;
+  /** Shows or hides the run history; sits at the start of the title bar. */
+  historyToggle: React.ReactNode;
+}) {
   const client = useQueryClient();
   const toast = useToast();
   const [confirm, confirmDialog] = useConfirm();
@@ -102,13 +150,25 @@ function RunMonitor({ runId, run, live }: { runId: string; run: TestRunSnapshot 
     max: () => Math.max(220, window.innerHeight - 280),
     direction: "down"
   });
-  const logSize = useResizableWidth({
-    storageKey: "teststand.run-log-width",
-    defaultWidth: 440,
-    min: 300,
-    max: () => Math.max(360, window.innerWidth - 760),
-    direction: "left"
-  });
+  const runLog = useRunLog(runId, live);
+  const log = runLog.log;
+  const trace = useMemo(
+    () => log && buildExecutionTrace(log.plan, log.events, log.results, log.run.operations ?? []),
+    [log]
+  );
+  const activeExecutionIds = useMemo(() => (log && trace ? activeExecutions(log, trace) : []), [log, trace]);
+  const problemExecutionId = useMemo(
+    () => (log && trace ? firstProblemExecution(log, trace) : undefined),
+    [log, trace]
+  );
+  const catalog = useTestStepCatalog().data;
+  const outline = useMemo(() => planOutlineEntries(
+    trace,
+    (type) => catalog?.find((item) => item.type === type)?.label ?? type
+  ), [trace, catalog]);
+  const stepNames = useMemo(() => new Map([...(trace?.byExecutionId.values() ?? [])].flatMap(
+    (node): [string, string][] => node.step.name ? [[node.executionId, node.step.name]] : []
+  )), [trace]);
   // Polled while the run is live: the recording grows with every sample the devices deliver (stream
   // extents, decoded messages), and those samples are not events; `testRun` events only mark steps.
   const timeline = useQuery({
@@ -148,13 +208,7 @@ function RunMonitor({ runId, run, live }: { runId: string; run: TestRunSnapshot 
   const instruments = live || Boolean(data?.streams.length) || Boolean(data?.calls.length);
   const decoded = messages.data?.bindings.length ? messages.data : undefined;
   const lowerShown: Lower = decoded ? lower : "console";
-
-  const locate = (tb: number) => {
-    const executionId = stepAt(data, tb);
-    if (!executionId) return;
-    const selector = `[data-execution-id="${globalThis.CSS.escape(executionId)}"]`;
-    document.querySelector<HTMLElement>(selector)?.scrollIntoView?.({ block: "center", behavior: "smooth" });
-  };
+  const results = useMemo(() => resultConsoleEntries(log?.results ?? [], data), [log?.results, data]);
   const select = (next: TimeRange) => {
     setFollow(false);
     setZoom(next);
@@ -166,13 +220,13 @@ function RunMonitor({ runId, run, live }: { runId: string; run: TestRunSnapshot 
   const pick = (tb: number, source: PickSource) => {
     setMarker(tb);
     if (source !== "console" && source !== "messages") setJump((current) => ({ tb, seq: (current?.seq ?? 0) + 1 }));
-    if (source !== "log") locate(tb);
     if (source === "scope") return;
     // Bring the picked instant into view, keeping the current zoom width.
     const width = view ? view[1] - view[0] : spanMs;
     if (following || !view || tb < view[0] || tb > view[1]) select([tb - width / 2, tb + width / 2]);
   };
-  const zoomStep = (executionId: string | undefined, source: PickSource) => {
+  /** Zooms the instruments to the time a step ran and scrolls the console to its start. */
+  const zoomStep = (executionId: string | undefined) => {
     const stepped = stepRange(data, executionId);
     if (!stepped) return;
     select(stepped);
@@ -180,13 +234,7 @@ function RunMonitor({ runId, run, live }: { runId: string; run: TestRunSnapshot 
     if (start != null) {
       setMarker(start);
       setJump((current) => ({ tb: start, seq: (current?.seq ?? 0) + 1 }));
-      if (source !== "log") locate(start);
     }
-  };
-  // Clicking a step in the log zooms the instruments to the time it ran.
-  const focusStep = (event: MouseEvent<HTMLDivElement>) => {
-    const target = (event.target as HTMLElement).closest<HTMLElement>("[data-execution-id]");
-    if (target) zoomStep(target.dataset.executionId, "log");
   };
   const refreshRun = () => {
     void client.invalidateQueries({ queryKey: queryKeys.testRun });
@@ -241,91 +289,99 @@ function RunMonitor({ runId, run, live }: { runId: string; run: TestRunSnapshot 
       <IconButton label="复位缩放" size="icon-sm" disabled={!zoom} onClick={reset}><ZoomOutIcon /></IconButton>
     </>
   );
-  const log = (
-    <div className="min-h-0 min-w-0" onClickCapture={focusStep}>
-      <TestRunLogPage runId={runId} live={live} actions={actions} />
+  const terminal = (
+    <BusTerminal
+      timeline={data}
+      source={source}
+      live={live}
+      origin={origin}
+      jump={jump}
+      stepNames={stepNames}
+      outline={outline}
+      extra={results}
+      onPick={(tb) => pick(tb, "console")}
+      onStep={zoomStep}
+    />
+  );
+  const lowerPane = (
+    <div className="flex min-h-0 min-w-0 flex-col">
+      {decoded && (
+        <div className="flex h-8 shrink-0 items-center border-b border-line bg-surface-1 px-2">
+          <SegmentedControl<Lower>
+            label="下方面板"
+            size="xs"
+            value={lowerShown}
+            onChange={setLower}
+            options={[
+              { value: "console", label: "控制台" },
+              { value: "messages", label: `报文 ${decoded.total}` }
+            ]}
+          />
+        </div>
+      )}
+      <div className={lowerShown === "console" ? "min-h-0 flex-1" : "hidden"}>{terminal}</div>
+      {decoded && lowerShown === "messages" && (
+        <div className="min-h-0 flex-1">
+          <RunMessages data={decoded} origin={origin} jump={jump} onPick={(tb) => pick(tb, "messages")} />
+        </div>
+      )}
     </div>
   );
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col">
+      <RunHeader
+        state={runLog}
+        trace={trace}
+        activeExecutionIds={activeExecutionIds}
+        problemExecutionId={problemExecutionId}
+        following={following}
+        onCurrent={reset}
+        onProblem={() => zoomStep(problemExecutionId)}
+        leading={historyToggle}
+        actions={actions}
+      />
       {instruments && data && range && origin !== undefined && (
         <RunOverview
           timeline={data}
+          stepNames={stepNames}
           range={range}
-          view={view}
           origin={origin}
           marker={marker}
           onSelect={select}
-          onStep={(executionId) => zoomStep(executionId, "overview")}
+          onStep={zoomStep}
           onPick={(tb) => pick(tb, "overview")}
         />
       )}
-      {instruments ? (
-        <div
-          className="grid min-h-0 flex-1"
-          style={{ gridTemplateColumns: `minmax(0,1fr) 1px ${logSize.width}px` }}
-        >
-          <section
-            aria-label="运行信号"
-            className="grid min-h-0 min-w-0"
-            style={{ gridTemplateRows: `${scopeSize.width}px 1px minmax(0,1fr)` }}
-          >
-            <div className="min-h-0 min-w-0 bg-surface-0">
-              <SignalScope
-                timeline={data}
-                source={source}
-                live={live}
-                follow={following}
-                spanMs={spanMs}
-                from={from}
-                range={shown}
-                origin={origin}
-                marker={marker}
-                syncKey={`run:${runId}`}
-                controls={controls}
-                emptyText={live ? "本次运行尚未记录波形数据" : "本次运行没有记录波形数据"}
-                onPick={(tb) => pick(tb, "scope")}
-                onSelectRange={select}
-                onReset={reset}
-              />
-            </div>
-            <Splitter label="拖拽调整示波器高度" {...scopeSize.separatorProps} />
-            <div className="flex min-h-0 min-w-0 flex-col">
-              {decoded && (
-                <div className="flex h-8 shrink-0 items-center border-b border-line bg-surface-1 px-2">
-                  <SegmentedControl<Lower>
-                    label="下方面板"
-                    size="xs"
-                    value={lowerShown}
-                    onChange={setLower}
-                    options={[
-                      { value: "console", label: "控制台" },
-                      { value: "messages", label: `报文 ${decoded.total}` }
-                    ]}
-                  />
-                </div>
-              )}
-              <div className={lowerShown === "console" ? "min-h-0 flex-1" : "hidden"}>
-                <BusTerminal
-                  timeline={data}
-                  source={source}
-                  live={live}
-                  origin={origin}
-                  jump={jump}
-                  onPick={(tb) => pick(tb, "console")}
-                />
-              </div>
-              {decoded && lowerShown === "messages" && (
-                <div className="min-h-0 flex-1">
-                  <RunMessages data={decoded} origin={origin} jump={jump} onPick={(tb) => pick(tb, "messages")} />
-                </div>
-              )}
-            </div>
-          </section>
-          <Splitter label="拖拽调整步骤日志宽度" {...logSize.separatorProps} />
-          {log}
-        </div>
-      ) : <div className="min-h-0 flex-1">{log}</div>}
+      {/* One tree whether or not the scope shows, so the console keeps its lines and filters. */}
+      <section
+        aria-label={instruments ? "运行信号" : undefined}
+        className="grid min-h-0 min-w-0 flex-1"
+        style={{ gridTemplateRows: instruments ? `${scopeSize.width}px 1px minmax(0,1fr)` : "minmax(0,1fr)" }}
+      >
+        {instruments && (
+          <div className="min-h-0 min-w-0 bg-surface-0">
+            <SignalScope
+              timeline={data}
+              source={source}
+              live={live}
+              follow={following}
+              spanMs={spanMs}
+              from={from}
+              range={shown}
+              origin={origin}
+              marker={marker}
+              syncKey={`run:${runId}`}
+              controls={controls}
+              emptyText={live ? "本次运行尚未记录波形数据" : "本次运行没有记录波形数据"}
+              onPick={(tb) => pick(tb, "scope")}
+              onSelectRange={select}
+              onReset={reset}
+            />
+          </div>
+        )}
+        {instruments && <Splitter label="拖拽调整示波器高度" {...scopeSize.separatorProps} />}
+        {lowerPane}
+      </section>
       {confirmDialog}
     </div>
   );

@@ -2,7 +2,7 @@ import type {
   TestOperationSnapshot, TestPlan, TestResult, TestRunEvent, TestStep
 } from "@teststand/contracts/testing";
 
-export type StepRunState = "waiting" | "running" | "Pass" | "Fail" | "Error" | "skipped" | "Aborted";
+type StepRunState = "waiting" | "running" | "Pass" | "Fail" | "Error" | "skipped" | "Aborted";
 export interface StepProjection { state: StepRunState; durationMs?: number; startedAt?: string; completedAt?: string }
 export interface MeasurementPoint { at: string; value: number; sequence: number }
 export interface MeasurementSeries {
@@ -13,7 +13,7 @@ export interface MeasurementSeries {
   points: MeasurementPoint[];
 }
 
-export interface TraceIteration {
+interface TraceIteration {
   index: number;
   count?: number;
   state: StepRunState;

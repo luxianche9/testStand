@@ -12,7 +12,9 @@ import type { RunLogState } from "./useRunLog.js";
  * Header of the run monitor: plan, verdict, progress and the step running now, the run controls,
  * and export. What the run did step by step is in the console below it.
  */
-export function RunHeader({ state, trace, activeExecutionIds, problemExecutionId, following, onCurrent, onProblem, actions }: {
+export function RunHeader({
+  state, trace, activeExecutionIds, problemExecutionId, following, onCurrent, onProblem, leading, actions
+}: {
   state: RunLogState;
   trace: ExecutionTrace | undefined;
   activeExecutionIds: string[];
@@ -21,6 +23,8 @@ export function RunHeader({ state, trace, activeExecutionIds, problemExecutionId
   following: boolean;
   onCurrent: () => void;
   onProblem: () => void;
+  /** Before the title (the run history toggle). */
+  leading?: React.ReactNode;
   /** Extra header controls (pause / resume / abort, re-judge). */
   actions?: React.ReactNode;
 }) {
@@ -28,7 +32,8 @@ export function RunHeader({ state, trace, activeExecutionIds, problemExecutionId
   const shell = "shrink-0 border-b border-line bg-surface-1 px-3 py-2";
   if (!log || !trace) {
     return (
-      <div className={shell}>
+      <div className={`${shell} flex items-center gap-2`}>
+        {leading}
         {error
           ? <span className="text-xs text-fail">读取运行日志失败：{error}</span>
           : <Spinner label="正在读取运行日志…" />}
@@ -51,6 +56,7 @@ export function RunHeader({ state, trace, activeExecutionIds, problemExecutionId
         hasProblem={Boolean(problemExecutionId)}
         onCurrent={onCurrent}
         onProblem={onProblem}
+        leading={leading}
         actions={<>{actions}<ExportButtons log={log} /></>}
       />
       {integrityWarning && <InlineWarning>{integrityWarning}</InlineWarning>}

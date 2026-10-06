@@ -74,7 +74,7 @@ def test_di_is_sampled_in_one_round_trip_and_only_on_change(hh):
         {"id": "di", "type": "bits", "width": 16, "bitLabels": [f"IDI{n}" for n in range(16)], "rateHz": 20.0,
          "kind": "measured"},
         {"id": "relay", "type": "bits", "width": 16, "bitLabels": [f"R{n}" for n in range(16)],
-         "label": "Relay coil control"}]
+         "display": "switches", "label": "Relay coil control"}]
     with hh.subscribe("di") as events:
         events.receive()
         device.cli.di = 0b101

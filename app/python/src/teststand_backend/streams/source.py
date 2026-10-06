@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import weakref
 from collections.abc import AsyncIterator, Callable
 from typing import Any
 
@@ -58,6 +59,28 @@ class StreamSources:
 
     def clock(self, hardware_id: str) -> SharedClock:
         return SHARED_CLOCK
+
+
+_DECLARED: weakref.WeakKeyDictionary[Any, asyncio.Task[list[Record]]] = weakref.WeakKeyDictionary()
+
+
+async def _declared_streams(device: Any) -> list[Record]:
+    """The device's stream declarations, read once per loaded device (``describe`` builds every
+    tool schema, and every stream of the device asks)."""
+    task = _DECLARED.get(device)
+    if task is None:
+        task = asyncio.ensure_future(_describe_streams(device))
+        _DECLARED[device] = task
+    return await asyncio.shield(task)
+
+
+async def _describe_streams(device: Any) -> list[Record]:
+    try:
+        described = await device.describe()
+    except Exception:  # a device without a document still records
+        return []
+    streams = ((described or {}).get("device") or {}).get("streams") or []
+    return [item for item in streams if isinstance(item, dict)]
 
 
 class StreamSource:
@@ -100,6 +123,14 @@ class StreamSource:
             await asyncio.sleep(backoff)
             backoff = min(backoff * 2, BACKOFF_MAX)
 
+    async def _declaration(self) -> Record | None:
+        """The stream's ``/device.streams[]`` entry (label, unit, width, bitLabels, display ...)."""
+        streams = await _declared_streams(self.device)
+        for item in streams:
+            if isinstance(item, dict) and item.get("id") == self.stream_id:
+                return {key: value for key, value in item.items() if key not in {"id", "type"}}
+        return None
+
     async def _session(self) -> AsyncIterator[Record]:
         cursor = self._cursor
         if cursor is None and self.since is not None:
@@ -107,7 +138,12 @@ class StreamSource:
         first = await self.device.read_stream(self.stream_id, cursor, 0, self._epoch)
         self._epoch, position = first["epoch"], first["next"]
         self.stream_type = first["streamType"]
-        yield {"type": "hello", "streamType": first["streamType"], "epoch": first["epoch"]}
+        yield {
+            "type": "hello",
+            "streamType": first["streamType"],
+            "epoch": first["epoch"],
+            **({"declaration": declaration} if (declaration := await self._declaration()) else {}),
+        }
         if "gap" in first:
             self._open_gap(first["gap"])
         last_status: Record | None = None

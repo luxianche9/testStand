@@ -90,4 +90,22 @@ describe("RunMonitorPage", () => {
     expect(screen.queryByRole("region", { name: "运行信号" })).toBeNull();
     expect(screen.queryByRole("button", { name: "复核判定" })).toBeNull();
   });
+
+  it("folds the run history into the title bar and keeps that choice", async () => {
+    localStorage.removeItem("teststand.run-history-open");
+    api.testing.currentRun.mockResolvedValue(makeRun(plan, { runId: "run-fold" }));
+    openRunMonitor("run-fold");
+    render(<RunMonitorPage />, { wrapper: Wrapper });
+    const history = () => document.querySelector('aside[aria-label="运行记录"]');
+    expect(history(), "open at first").not.toBeNull();
+    // The header swaps its loading row for the summary once the log arrives; click the settled one.
+    await waitFor(() => expect(document.querySelector('[aria-label="正在读取运行日志…"]')).toBeNull(), {
+      timeout: 5_000
+    });
+    await userEvent.click(await screen.findByTitle("收起运行记录", {}, { timeout: 5_000 }));
+    expect(history()).toBeNull();
+    expect(localStorage.getItem("teststand.run-history-open")).toBe("false");
+    await userEvent.click(screen.getByTitle("展开运行记录"));
+    expect(history(), "open again").not.toBeNull();
+  }, 15_000);
 });

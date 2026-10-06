@@ -7,9 +7,14 @@ time cursor can link a step, its call, its window and the recorded samples.
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 Record = dict[str, Any]
+
+# A call's result travels with the timeline, which a live run polls every second; a bulky
+# result (a block of samples) is cut to a preview here, the full one stays on the operation.
+RESULT_PREVIEW_CHARS = 2000
 
 _MARKS = {
     "run.started",
@@ -202,6 +207,26 @@ def _window(result: Record, offsets: dict[str, Any]) -> Record | None:
         **({"matchTb": backend(match_t, None)} if match_t is not None else {}),
         **({"uncertaintyMs": raw["uncertaintyMs"]} if raw.get("uncertaintyMs") else {}),
     }
+
+
+def attach_call_results(calls: list[Record], operations: list[Record]) -> None:
+    """What each call returned, or its error, and its final state, from the operation records."""
+    by_id = {str(item.get("operationId")): item for item in operations}
+    for call in calls:
+        operation = by_id.get(str(call.get("operationId")))
+        if operation is None:
+            continue
+        if operation.get("state"):
+            call["state"] = operation["state"]
+        if "result" in operation:
+            call["result"] = _preview(operation["result"])
+
+
+def _preview(value: Any) -> Any:
+    text = json.dumps(value, ensure_ascii=False, default=str)
+    if len(text) <= RESULT_PREVIEW_CHARS:
+        return value
+    return {"truncated": True, "preview": text[:RESULT_PREVIEW_CHARS]}
 
 
 def _violation_tb(violation: Record, offset: Any) -> float | None:
