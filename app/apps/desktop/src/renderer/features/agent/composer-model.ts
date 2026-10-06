@@ -143,8 +143,12 @@ export function formatContext(value?: number) {
   return `${Math.round(value / 1_000)}k ctx`;
 }
 
+/** A session's own model, unless it names a provider testStand no longer configures (older sessions
+ *  used another provider id); then the configured model. */
 function selectionFromSession(session: Session | null, fallback: OpenCodeSelection): OpenCodeSelection {
-  const model = session?.model ? { providerID: session.model.providerID, modelID: session.model.id } : fallback.model;
+  const model = session?.model && session.model.providerID === fallback.model.providerID
+    ? { providerID: session.model.providerID, modelID: session.model.id }
+    : fallback.model;
   const agent = session?.agent ?? fallback.agent;
   return agent ? { model, agent } : { model };
 }

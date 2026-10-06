@@ -13,6 +13,12 @@ describe("renderer error messages", () => {
     expect(errorMessage(new Error("Network detail"))).toBe("Network detail");
   });
 
+  it("reads OpenCode's error objects instead of printing [object Object]", () => {
+    expect(errorMessage({ name: "ProviderModelNotFoundError", data: { message: "Model not found: openai/m." } }))
+      .toBe("Model not found: openai/m.");
+    expect(errorMessage({ name: "MessageAbortedError" })).toBe("MessageAbortedError");
+  });
+
   it("exposes category copy for detailed error views", () => {
     expect(errorCategoryMessage("assertion_failed")).toBe("断言未通过");
     expect(errorCategoryMessage("error")).toBeUndefined();

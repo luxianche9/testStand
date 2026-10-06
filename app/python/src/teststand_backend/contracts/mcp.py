@@ -171,11 +171,45 @@ def business_result_schema(upstream: Record | None) -> Record:
     """
     if not upstream:
         return {}
+    compact = _data_schema(upstream)
+    if compact is not None:
+        return compact
     payload = _payload_schema(upstream)
     result: Record = {"allOf": [clone(payload["allOf"][0])]}
     if payload.get("$defs"):
         result["$defs"] = clone(payload["$defs"])
     return result
+
+
+def _data_schema(upstream: Record) -> Record | None:
+    """The schema of the SDK envelope's ``data`` alone, with only the ``$defs`` it uses: the
+    envelope's error, meta and timing parts never reach a caller, and listing them for every tool
+    multiplies what an agent has to read."""
+    data = (upstream.get("properties") or {}).get("data")
+    definitions = upstream.get("$defs") or {}
+    if not isinstance(data, dict):
+        return None
+    choices = [item for item in data.get("anyOf", [data]) if item != {"type": "null"}]
+    if len(choices) != 1:
+        return None
+    root = {key: value for key, value in clone(choices[0]).items() if key != "default"}
+    used: Record = {}
+    pending = [root]
+    while pending:
+        node = pending.pop()
+        if isinstance(node, dict):
+            ref = node.get("$ref")
+            if isinstance(ref, str) and ref.startswith("#/$defs/"):
+                name = ref.removeprefix("#/$defs/")
+                if name not in definitions:
+                    return None
+                if name not in used:
+                    used[name] = clone(definitions[name])
+                    pending.append(used[name])
+            pending.extend(node.values())
+        elif isinstance(node, list):
+            pending.extend(node)
+    return {**root, "$defs": used} if used else root
 
 
 def sdk_envelope_schema(structured_content: Record) -> Record:

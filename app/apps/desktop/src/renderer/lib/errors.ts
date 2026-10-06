@@ -29,5 +29,11 @@ export function errorMessage(value: unknown): string {
     const mapped = ERROR_CATEGORY_MESSAGES[candidate.category as ErrorCategory];
     if (mapped) return mapped;
   }
-  return value instanceof Error ? value.message : String(value);
+  if (value instanceof Error) return value.message;
+  // OpenCode reports errors as `{ name, data: { message } }`.
+  const shaped = value as { message?: unknown; name?: unknown; data?: { message?: unknown } } | null | undefined;
+  if (typeof shaped?.data?.message === "string") return shaped.data.message;
+  if (typeof shaped?.message === "string") return shaped.message;
+  if (typeof shaped?.name === "string") return shaped.name;
+  return typeof value === "string" ? value : JSON.stringify(value) ?? String(value);
 }

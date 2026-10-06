@@ -39,7 +39,7 @@ class SettingsApplication:
         if self.secrets.has(LLM_SECRET):
             value = self.secrets.get(LLM_SECRET).get("apiKey", UNDEFINED)
             key = value if isinstance(value, str) and value else None
-        return LlmChoice(llm["baseUrl"], llm["model"], key)
+        return LlmChoice(llm["baseUrl"], llm["model"], key, llm.get("api", "chat"))
 
     @operation("settings.get", capability="system.manage", risk="read")
     def get(self, context: Record) -> Record:
@@ -75,6 +75,7 @@ class SettingsApplication:
         context: Record,
         base_url: str,
         model: str,
+        api: Literal["chat", "responses"] = "chat",
         api_key: str | None = None,
         clear_api_key: bool = False,
     ) -> Record:
@@ -82,7 +83,7 @@ class SettingsApplication:
         restarts, starts or stops to match, after this returns."""
         before = self._snapshot()
         try:
-            llm = {"baseUrl": base_url.strip(), "model": model.strip()}
+            llm = {"baseUrl": base_url.strip(), "model": model.strip(), "api": api}
             await self.settings.update({"llm": llm})
             key = api_key.strip() if isinstance(api_key, str) else ""
             if clear_api_key:

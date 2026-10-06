@@ -54,20 +54,22 @@ class LlmChoice:
     base_url: str
     model: str
     api_key: str | None
+    api: str = "chat"
 
 
 PROVIDER = "llm"
 """The one provider OpenCode is given: the user's OpenAI-compatible endpoint."""
 
 
-def opencode_config(endpoint: str, base_url: str, model: str) -> str:
+def opencode_config(endpoint: str, base_url: str, model: str, api: str = "chat") -> str:
     """``OPENCODE_CONFIG_CONTENT``: secrets stay ``{env:...}`` references.
 
-    The provider speaks Chat Completions (``@ai-sdk/openai-compatible``): OpenAI's own SDK
-    provider uses the Responses API, which DeepSeek, Qwen, Kimi, GLM and most gateways lack.
+    ``api`` ``chat`` speaks Chat Completions (``@ai-sdk/openai-compatible``), which DeepSeek,
+    Qwen, Kimi, GLM and most gateways offer; ``responses`` uses OpenAI's own provider and the
+    Responses API.
     Shell commands and anything outside the project folder need the operator's approval: the
     agent works through the testStand tools, not through testStand's files or the hardware
-    drivers directly.
+    drivers directly. Only the primary agents are enabled (see the subagent note below).
     """
     return json.dumps(
         {
@@ -80,10 +82,14 @@ def opencode_config(endpoint: str, base_url: str, model: str) -> str:
             "agent": {
                 "build": {"prompt": AGENT_INSTRUCTIONS},
                 "plan": {"prompt": AGENT_INSTRUCTIONS},
+                # Subagents run in child sessions whose approval requests the sidebar does not
+                # show, so a subagent asking to run a command would wait forever.
+                "general": {"disable": True},
+                "explore": {"disable": True},
             },
             "provider": {
                 PROVIDER: {
-                    "npm": "@ai-sdk/openai-compatible",
+                    "npm": "@ai-sdk/openai" if api == "responses" else "@ai-sdk/openai-compatible",
                     "name": "LLM",
                     "options": {
                         "baseURL": base_url,
@@ -251,7 +257,7 @@ class OpenCodeRuntime:
             "OPENCODE_SERVER_USERNAME": USERNAME,
             "OPENCODE_SERVER_PASSWORD": self.password,
             "OPENCODE_CONFIG_CONTENT": opencode_config(
-                self.gateway_endpoint(), llm.base_url, llm.model
+                self.gateway_endpoint(), llm.base_url, llm.model, llm.api
             ),
             "TESTSTAND_MCP_TOKEN": self.gateway_token(),
             "TESTSTAND_LLM_API_KEY": llm.api_key,

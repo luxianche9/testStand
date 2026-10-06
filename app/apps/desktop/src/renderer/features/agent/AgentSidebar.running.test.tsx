@@ -91,7 +91,8 @@ function installApi() {
       }))
     },
     settings: {
-      getLlm: vi.fn(async () => ({ baseUrl: "https://api.openai.com/v1", model: "gpt-4.1", apiKeyConfigured: true }))
+      getLlm: vi.fn(async () => ({ baseUrl: "https://api.openai.com/v1", model: "gpt-4.1",
+        api: "chat", apiKeyConfigured: true }))
     },
     events: { subscribe: vi.fn(() => () => undefined) }
   } as unknown as TestStandApi;

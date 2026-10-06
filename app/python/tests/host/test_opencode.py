@@ -101,6 +101,7 @@ def test_config_names_the_secrets_and_gives_both_agents_the_instructions() -> No
     assert config["default_agent"] == "build"
     assert config["agent"]["build"]["prompt"] == AGENT_INSTRUCTIONS
     assert config["agent"]["plan"]["prompt"] == AGENT_INSTRUCTIONS
+    assert config["agent"]["general"] == config["agent"]["explore"] == {"disable": True}
     assert config["provider"]["llm"]["npm"] == "@ai-sdk/openai-compatible"
     assert config["permission"] == {"bash": "ask", "external_directory": "ask"}
     assert config["provider"]["llm"]["options"] == {

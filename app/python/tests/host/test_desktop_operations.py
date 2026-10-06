@@ -61,7 +61,12 @@ async def test_saving_the_model_settings_reconciles_opencode_afterwards(tmp_path
     application, opencode = await settings_application(tmp_path)
     context = dict(HUMAN_REQUEST_CONTEXT)
     saved = await application.save_llm(context, " https://llm/v1 ", " m ", api_key=" key ")
-    assert saved == {"baseUrl": "https://llm/v1", "model": "m", "apiKeyConfigured": True}
+    assert saved == {
+        "baseUrl": "https://llm/v1",
+        "model": "m",
+        "api": "chat",
+        "apiKeyConfigured": True,
+    }
     assert application.llm_choice() == LlmChoice("https://llm/v1", "m", "key")
     [action] = opencode.scheduled
     await action()

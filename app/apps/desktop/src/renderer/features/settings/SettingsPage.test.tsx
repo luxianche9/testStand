@@ -22,8 +22,10 @@ const codex: AgentIntegrationStatus = {
 function setup() {
   const api = {
     settings: {
-      getLlm: vi.fn(async () => ({ baseUrl: "https://llm.example/v1", model: "gpt-x", apiKeyConfigured: true })),
-      saveLlm: vi.fn(async (input: { baseUrl: string; model: string }) => ({ ...input, apiKeyConfigured: true }))
+      getLlm: vi.fn(async () => ({ baseUrl: "https://llm.example/v1", model: "gpt-x",
+        api: "chat", apiKeyConfigured: true })),
+      saveLlm: vi.fn(async (input: { baseUrl: string; model: string }) => ({
+        api: "chat", ...input, apiKeyConfigured: true }))
     },
     agents: {
       openCodeStatus: vi.fn(async () => ({ state: "running", workspaceState: "ready", version: "1.2.3" })),

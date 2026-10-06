@@ -17,6 +17,7 @@ from __future__ import annotations
 import hashlib
 import inspect
 import json
+import re
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
@@ -100,6 +101,19 @@ def generated_definition(definition: OperationDefinition) -> Record:
                 "resultMode": "data",
             }
         },
+    }
+
+
+_QUOTED_IDENTIFIER = re.compile(r'^"[A-Za-z0-9_.:/\\-]+"$')
+
+
+def unquote_identifiers(args: Record) -> Record:
+    """Some models (seen with grok over Chat Completions) send top-level string arguments
+    JSON-encoded twice: ``{"hardwareId": "\\"PCI1762_CARD_0\\""}``. An id, name or path
+    wrapped in one extra pair of quotes is unwrapped; any other text is passed as sent."""
+    return {
+        key: value[1:-1] if isinstance(value, str) and _QUOTED_IDENTIFIER.match(value) else value
+        for key, value in args.items()
     }
 
 
@@ -281,6 +295,7 @@ class ToolRegistry:
         return output
 
     async def invoke(self, context: Record, name: str, args: Record) -> Record:
+        args = unquote_identifiers(args)
         entry = self._entries.get(name)
         if entry is not None:
             if not self._in_mode(entry.profiles, context):

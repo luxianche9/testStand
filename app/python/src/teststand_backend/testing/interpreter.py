@@ -1073,10 +1073,7 @@ class RunInterpreter:
                 }
                 self.ports.operations.update_operation(operation_id, **call)
                 output = envelope["data"]
-                output_schema = tool.get(
-                    "resultSchema",
-                    tool.get("outputSchema", tool.get("upstreamOutputSchema", {})),
-                )
+                output_schema = tool.get("resultSchema", tool.get("upstreamOutputSchema", {}))
                 if output_schema:
                     errors = list(Draft202012Validator(output_schema).iter_errors(output))
                     if errors:

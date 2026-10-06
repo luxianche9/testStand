@@ -162,7 +162,12 @@ async def test_real_child_settings_project_and_credentials(client: Client, tmp_p
         "settings.saveLlm",
         {"baseUrl": "https://example.com/v1", "model": "m", "apiKey": "key-value"},
     )
-    assert saved == {"baseUrl": "https://example.com/v1", "model": "m", "apiKeyConfigured": True}
+    assert saved == {
+        "baseUrl": "https://example.com/v1",
+        "model": "m",
+        "api": "chat",
+        "apiKeyConfigured": True,
+    }
     # A key and a project: the service tries to start OpenCode, which this test run lacks.
     [failed] = await client.wait_for(
         lambda item: item[1] == "opencode" and item[2]["state"] == "error"
@@ -295,6 +300,7 @@ async def test_partial_settings_commit_is_visible_after_a_failed_save(
     assert await client.invoke("settings.getLlm") == {
         "baseUrl": "https://example.com/changed",
         "model": "new-model",
+        "api": "chat",
         "apiKeyConfigured": False,
     }
 

@@ -20,6 +20,7 @@ function installApi(currentStatus: OpenCodeRuntimeStatus, settings: LlmSettings)
   const saveLlmSettings = vi.fn(async (input: { baseUrl: string; model: string; clearApiKey?: boolean }) => ({
     baseUrl: input.baseUrl,
     model: input.model,
+    api: "chat" as const,
     apiKeyConfigured: !input.clearApiKey
   }));
   const api = {
@@ -54,7 +55,7 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 const llm = (apiKeyConfigured: boolean): LlmSettings =>
-  ({ baseUrl: "https://api.openai.com/v1", model: "gpt-4.1", apiKeyConfigured });
+  ({ baseUrl: "https://api.openai.com/v1", model: "gpt-4.1", api: "chat", apiKeyConfigured });
 
 describe("AssistantSidebar runtime states", () => {
   it.each([
@@ -70,7 +71,8 @@ describe("AssistantSidebar runtime states", () => {
   });
 
   it("keeps configuration out of the sidebar and routes users to settings", async () => {
-    installApi(status("stopped"), { baseUrl: "https://old.example/v1", model: "old-model", apiKeyConfigured: true });
+    installApi(status("stopped"), { baseUrl: "https://old.example/v1", model: "old-model",
+      api: "chat", apiKeyConfigured: true });
     const onOpenSettings = vi.fn();
     renderSidebar(onOpenSettings);
     expect(screen.queryByRole("button", { name: "打开模型设置" })).toBeNull();

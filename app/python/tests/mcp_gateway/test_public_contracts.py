@@ -11,6 +11,7 @@ from teststand_backend.application import DefaultAuthorizer, ExecutionCoordinato
 from teststand_backend.application.services import DevicesApplication
 from teststand_backend.contracts.errors import AppError
 from teststand_backend.contracts.mcp import (
+    business_result_schema,
     normalized_output_schema,
     public_remote_tool,
     sdk_envelope_schema,
@@ -290,3 +291,36 @@ async def test_listed_result_schemas_are_objects_mcp_clients_accept() -> None:
     for tool in ToolRegistry(app).list_builtin(CONTEXT):
         properties = tool["outputSchema"].get("properties", {})
         assert all(isinstance(value, dict) for value in properties.values()), tool["name"]
+
+
+def test_business_result_keeps_only_the_data_choice_and_the_definitions_it_uses() -> None:
+    envelope = {
+        "type": "object",
+        "properties": {
+            "data": {"anyOf": [{"$ref": "#/$defs/Reading"}, {"type": "null"}], "default": None},
+            "error": {"$ref": "#/$defs/Error"},
+        },
+        "$defs": {
+            "Reading": {"type": "object", "properties": {"unit": {"$ref": "#/$defs/Unit"}}},
+            "Unit": {"enum": ["V", "A"]},
+            "Error": {"type": "object"},
+        },
+    }
+    assert business_result_schema(envelope) == {
+        "$ref": "#/$defs/Reading",
+        "$defs": {
+            "Reading": {"type": "object", "properties": {"unit": {"$ref": "#/$defs/Unit"}}},
+            "Unit": {"enum": ["V", "A"]},
+        },
+    }
+    plain = {"properties": {"data": {"type": "object", "default": {}}}}
+    assert business_result_schema(plain) == {"type": "object"}
+    # A dangling reference or a real union keeps the whole upstream schema embedded.
+    dangling = {"properties": {"data": {"$ref": "#/$defs/Missing"}}}
+    union = {"properties": {"data": {"anyOf": [{"type": "string"}, {"type": "number"}]}}}
+    for upstream in (dangling, union):
+        assert business_result_schema(upstream)["$defs"]["HHUpstream"]["properties"] == {
+            "data": upstream["properties"]["data"]
+            if upstream is union
+            else {"$ref": "#/$defs/HHUpstream/$defs/Missing"}
+        }

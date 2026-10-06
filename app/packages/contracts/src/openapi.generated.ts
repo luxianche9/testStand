@@ -1937,6 +1937,12 @@ export interface components {
         /** SettingsSaveLlmRequest */
         SettingsSaveLlmRequest: {
             /**
+             * Api
+             * @default chat
+             * @enum {string}
+             */
+            api?: "chat" | "responses";
+            /**
              * Apikey
              * @default null
              */

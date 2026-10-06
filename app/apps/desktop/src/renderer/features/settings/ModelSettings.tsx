@@ -7,13 +7,14 @@ import { EyeIcon, EyeOffIcon } from "lucide-react";
 import { errorMessage } from "../../lib/errors.js";
 import { useLlmSettings, useOpenCodeStatus } from "../../lib/queries.js";
 import { queryKeys } from "../../lib/query-keys.js";
-import { Badge, Button, Field, IconButton, Input, cn, useToast } from "../../ui";
+import { Badge, Button, Field, IconButton, Input, Select, cn, useToast } from "../../ui";
 import { OpenCodeRuntimeCard, RUNTIME_MUTATION_KEY } from "./OpenCodeRuntimeCard.js";
 import { Notice, SettingsCard, SettingsHeader } from "./SettingsLayout.js";
 
 const schema = z.object({
   baseUrl: z.string().trim().min(1, "请输入 Base URL").url("请输入有效的 URL"),
   model: z.string().trim().min(1, "请输入模型 ID"),
+  api: z.enum(["chat", "responses"]),
   apiKey: z.string()
 });
 type ModelForm = z.infer<typeof schema>;
@@ -29,13 +30,13 @@ export function ModelSettings() {
   const [error, setError] = useState<string>();
   const form = useForm<ModelForm>({
     resolver: zodResolver(schema),
-    defaultValues: { baseUrl: "https://api.openai.com/v1", model: "gpt-4.1", apiKey: "" }
+    defaultValues: { baseUrl: "https://api.openai.com/v1", model: "gpt-4.1", api: "chat", apiKey: "" }
   });
   const [baseUrl, model] = useWatch({ control: form.control, name: ["baseUrl", "model"] });
 
   useEffect(() => {
     if (!settings.data) return;
-    form.reset({ baseUrl: settings.data.baseUrl, model: settings.data.model, apiKey: "" });
+    form.reset({ baseUrl: settings.data.baseUrl, model: settings.data.model, api: settings.data.api, apiKey: "" });
   }, [form, settings.data]);
 
   const refresh = () => Promise.all([
@@ -90,6 +91,13 @@ export function ModelSettings() {
               </Field>
               <Field inline label="模型 ID" className={fieldRow} error={errors.model?.message}>
                 <Input className="font-mono text-xs" spellCheck={false} {...form.register("model")} />
+              </Field>
+              <Field inline label="接口协议" className={fieldRow}
+                hint="大多数服务（DeepSeek、通义千问、Kimi、智谱、各类中转网关）用 Chat Completions；OpenAI 官方或工具调用参数异常时可改用 Responses。">
+                <Select {...form.register("api")}>
+                  <option value="chat">Chat Completions（OpenAI 兼容）</option>
+                  <option value="responses">Responses（OpenAI）</option>
+                </Select>
               </Field>
               <Field inline label="API Key" className={fieldRow}>
                 <SecretInput

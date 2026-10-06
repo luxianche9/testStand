@@ -489,6 +489,15 @@
             "title": "Model",
             "type": "string"
           },
+          "api": {
+            "default": "chat",
+            "enum": [
+              "chat",
+              "responses"
+            ],
+            "title": "Api",
+            "type": "string"
+          },
           "apiKey": {
             "anyOf": [
               {

@@ -169,7 +169,6 @@ class DeviceToolResolver:
                     "description": item.get("description", ""),
                     "inputSchema": item.get("inputSchema", {}),
                     "resultSchema": result_schema,
-                    "outputSchema": result_schema,
                     "annotations": item.get("annotations", {}),
                     "bindingRevision": binding_revision,
                     "operationSemantics": semantics,

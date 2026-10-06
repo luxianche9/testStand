@@ -133,13 +133,21 @@ export function issueCategory(issue: TestPlanIssue): string {
   return "结构";
 }
 
-export function schemaFieldPaths(schema: Record<string, unknown>, prefix = "output"): string[] {
+export function schemaFieldPaths(
+  schema: Record<string, unknown>,
+  prefix = "output",
+  defs = (schema.$defs ?? {}) as Record<string, Record<string, unknown>>
+): string[] {
+  // Device result schemas point at their type through `$ref: "#/$defs/<name>"`.
+  const ref = typeof schema.$ref === "string" ? schema.$ref : undefined;
+  const target = ref?.startsWith("#/$defs/") ? defs[ref.slice(8)] : undefined;
+  if (target) return schemaFieldPaths(target, prefix, defs);
   const properties = schema.properties;
   if (!properties || typeof properties !== "object" || Array.isArray(properties)) return [];
   return Object.entries(properties as Record<string, unknown>).flatMap(([key, value]) => {
     const path = `${prefix}.${key}`;
     const nested = value && typeof value === "object" && !Array.isArray(value)
-      ? schemaFieldPaths(value as Record<string, unknown>, path)
+      ? schemaFieldPaths(value as Record<string, unknown>, path, defs)
       : [];
     return nested.length ? nested : [path];
   });
