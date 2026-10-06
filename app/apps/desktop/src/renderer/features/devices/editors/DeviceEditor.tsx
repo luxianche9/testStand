@@ -5,7 +5,7 @@ import type { DeviceInstance } from "@teststand/contracts/devices";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { errorMessage } from "../../../lib/errors.js";
-import { Button, Dialog, DialogBody, DialogContent, DialogFooter, Input, Select, Textarea } from "../../../ui";
+import { Button, Dialog, DialogBody, DialogContent, DialogFooter, Input, Textarea } from "../../../ui";
 import { EditorAlert, EditorField, editorGrid } from "./EditorField.js";
 
 /** `settings` is edited as JSON text; only a JSON object is accepted. */
@@ -20,16 +20,15 @@ function parseSettings(text: string): Record<string, unknown> | undefined {
 
 const deviceEditorSchema = z.object({
   label: z.string(),
-  mode: z.enum(["real", "sim"]),
   settings: z.string().refine((value) => parseSettings(value) !== undefined, "设置必须是 JSON 对象")
 });
 type DeviceEditorValues = z.infer<typeof deviceEditorSchema>;
 
 function initialValues(instance: DeviceInstance): DeviceEditorValues {
-  return { label: instance.label, mode: instance.mode, settings: JSON.stringify(instance.settings, null, 2) };
+  return { label: instance.label, settings: JSON.stringify(instance.settings, null, 2) };
 }
 
-/** Edit a device: its name, real/simulated, and (advanced) the driver's own settings. Adding a
+/** Edit a device: its name and (advanced) the driver's own settings. Adding a
  *  device is done from its device package (AddDeviceDialog). */
 export function DeviceEditor({ instance, onClose, onChanged }: {
   instance: DeviceInstance | undefined;
@@ -40,7 +39,7 @@ export function DeviceEditor({ instance, onClose, onChanged }: {
   const { register, reset, handleSubmit, formState } = useForm<DeviceEditorValues>({
     resolver: zodResolver(deviceEditorSchema),
     mode: "onChange",
-    defaultValues: { label: "", mode: "real", settings: "{}" }
+    defaultValues: { label: "", settings: "{}" }
   });
   const { errors, isValid } = formState;
 
@@ -55,8 +54,7 @@ export function DeviceEditor({ instance, onClose, onChanged }: {
       await devices.saveDevice({ input: {
         ...instance,
         label: values.label.trim() || instance.label,
-        settings: parseSettings(values.settings) ?? {},
-        mode: values.mode
+        settings: parseSettings(values.settings) ?? {}
       } });
       await devices.refreshDevice({ deviceId: instance.deviceId });
     },
@@ -71,12 +69,6 @@ export function DeviceEditor({ instance, onClose, onChanged }: {
           <form id="device-editor-form" className={editorGrid} onSubmit={(event) => { void submit(event); }}>
             <EditorField label="名称">
               <Input {...register("label")} />
-            </EditorField>
-            <EditorField label="运行模式">
-              <Select {...register("mode")}>
-                <option value="real">实物（驱动真实硬件）</option>
-                <option value="sim">模拟（不接硬件）</option>
-              </Select>
             </EditorField>
             <details className="col-span-2 text-xs text-fg-2">
               <summary className="cursor-pointer select-none py-1">高级设置</summary>

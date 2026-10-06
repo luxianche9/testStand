@@ -1,7 +1,7 @@
 """Device plugins loaded into the backend process (design: single-machine plugin model).
 
-A ``plugin`` instance record names a device type (its ``teststand.devices`` entry point),
-its non-secret ``settings`` and ``mode`` (``sim`` runs the adapter's simulator). Connecting
+A device record names its driver (a ``teststand.devices`` entry point) and the driver's
+non-secret ``settings``; it always drives the real hardware. Connecting
 loads the device through :func:`teststand_device_sdk.open_device`, in this process or in
 an isolated child process as the adapter's ``Device.isolation`` asks, and opens it (the SDK
 drives it to its safe state right after ``open``). Disconnecting drives it safe and closes it.
@@ -79,7 +79,6 @@ def plugin_config(instance: Record) -> DeviceConfig:
             "manufacturer": device_cls.manufacturer,
             "model": device_cls.model,
             "computerId": "LOCAL",
-            "dryRun": instance["mode"] == "sim",
             "settings": instance.get("settings") or {},
         },
         env={},

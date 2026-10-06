@@ -158,7 +158,7 @@ function OpenCodeRuntimeAssistant({ client, workspace, initialSessionId, model, 
   AssistantProps & { client: OpencodeClient; workspace: string; initialSessionId: string | undefined }) {
   const attachments = useMemo(() => new OpenCodeAttachmentAdapter(), []);
   const fallbackSelection = useMemo<OpenCodeSelection>(
-    () => ({ model: { providerID: "openai", modelID: model } }),
+    () => ({ model: { providerID: "llm", modelID: model } }),
     [model]
   );
   const [selection, setSelection] = useState<OpenCodeSelection>(fallbackSelection);

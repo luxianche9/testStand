@@ -70,4 +70,4 @@
 - [ ] 仓库中没有令牌、密码；`settings` 里只有非秘密配置
 - [ ] `[tool.teststand.package]` 写明 `vendorDrivers`（台架需预装的厂商驱动）和 `requiredFiles`；`python devices/pack.py <adapter>` 能生成 `.tsdev`
 - [ ] 用户在 testStand 测试台架用“添加设备…”选这个设备包添加设备（添加前会显示清单），不改 testStand 本身
-- [ ] 首次上架由人在测试台架先以 `mode: sim`、再以 `mode: real` 空载验收，结束后 `safe_state`；结果记录在 README 或交付说明里
+- [ ] 首次上架由人在测试台架上对真实硬件空载验收，结束后 `safe_state`；结果记录在 README 或交付说明里

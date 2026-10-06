@@ -109,8 +109,13 @@ class DeviceStore:
         return instance
 
     async def remove_device(self, device_id: str) -> None:
+        """Remove a device and its hardware record: a device's ports come from its plugin, so
+        nothing of it is left behind as a stray passive part."""
+        instance = self.get_device(device_id)
         segment = safe_segment(device_id)
         await _remove(self._device_dir / (segment + ".json"))
+        if instance is not None:
+            await _remove(self._hardware_path(instance["hardwareId"]))
         self._changed()
 
     def list_stored_hardware(self) -> list[Record]:

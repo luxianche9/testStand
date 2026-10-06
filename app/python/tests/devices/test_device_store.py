@@ -107,7 +107,7 @@ async def test_assignment(tmp_path: Path) -> None:
     with pytest.raises(Exception, match="assigned"):
         await store.remove_hardware("CARD")
     await store.remove_device("S1")
-    assert store.require_hardware("CARD")["kind"] == "passive"
+    assert store.get_hardware("CARD") is None  # a device leaves no stray passive part behind
 
 
 @pytest.mark.ts_case(PREFIX + "round-trips a canonical hardware-only bundle")
@@ -225,8 +225,15 @@ async def test_every_write_notifies(tmp_path: Path) -> None:
     await store.save_hardware(hardware("CARD"))
     await store.save_device(instance("S1", "CARD"))
     await store.save_definition("CARD", {"manifestRevision": "1"})
-    await store.remove_device("S1")
     data = await store.export_bundle("CARD")
-    await store.remove_hardware("CARD")
+    await store.remove_device("S1")
     await store.import_bundle(data)
+    await store.remove_hardware("CARD")
     assert len(writes) == 7  # save_device also renames the hardware record after the device
+
+
+async def test_removing_an_unknown_device_is_harmless(tmp_path: Path) -> None:
+    store = await fixture(tmp_path)
+    await store.save_hardware(hardware("DUT_1"))
+    await store.remove_device("NOBODY")
+    assert store.get_hardware("DUT_1") is not None

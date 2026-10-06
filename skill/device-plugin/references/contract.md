@@ -7,12 +7,12 @@
 | 项 | 要求 |
 |---|---|
 | 类型发现 | 适配器包在 `pyproject.toml` 声明入口点 `[project.entry-points."teststand.devices"] <type> = "teststand_adapter_<adapter>:DEVICE"`。后端用 `device_types()`（`importlib.metadata.entry_points(group="teststand.devices")`）列出可装的类型 |
-| 实例配置 | 后端的硬件实例记录 `{transport: "plugin", deviceId, label, hardwareId, type, settings, mode: real\|sim, enabled}`。同型号多块卡 = 多个实例，`settings` 区分卡号 |
+| 实例配置 | 后端的硬件实例记录 `{transport: "plugin", deviceId, label, hardwareId, type, settings, enabled}`。同型号多块卡 = 多个实例，`settings` 区分卡号 |
 | 加载 | 后端调用 `open_device(type, DeviceConfig)`，再 `start()`：SDK 构造 `DeviceHost`，打开设备并立即 `safe_state` |
 | 隔离 | `Device.isolation`：`inproc`（默认，`InprocDevice`，在后端进程内直接调用）或 `subprocess`（`SubprocessDevice`，在 `python -m teststand_device_sdk.child` 子进程里运行，父子之间 stdio JSON 行）。两者对上层是同一个异步句柄，上层看不出区别 |
 | 子进程 | 子进程的原 stdout 只给协议用，文件描述符 1 在导入适配器前指向 stderr，驱动打印不会污染协议；stdin EOF（后端退出或关闭）时执行 `safe_state`、关闭设备并退出；Windows 上用 Job Object 保证子进程随后端退出。子进程退出时未完成的调用失败为 `device_unreachable`，`details.outcomeKnown: false` |
 | 一实例一硬件 | `list_hardware` 恰好一项，`hardwareId` 等于实例记录的登记值 |
-| 模拟 | 实例 `mode: sim`（`DeviceConfig.dry_run`，或环境变量 `HARDWARE_DRY_RUN=1`）：`select_driver` 选模拟器，`/device.identity.dryRun` 为 `true`，`executionMode` 报告 `nonphysical_driver_override` |
+| 模拟 | 仅供适配器单元测试和 `--check`（`DeviceConfig.dry_run`）：`select_driver` 选模拟器，`/device.identity.dryRun` 为 `true`，`executionMode` 报告 `nonphysical_driver_override` |
 | 合规检查 | `python -m teststand_device_sdk --adapter <type 或模块> --check`：在模拟器上进程内运行合规套件，见 `sdk-api.md` |
 | 时钟 | SDK `now_ms()` 是记录 `t`、水位、`timing` 的唯一时钟，后端的时间也取自它；同一台电脑上不需要对时 |
 

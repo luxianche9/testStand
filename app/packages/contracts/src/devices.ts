@@ -10,7 +10,6 @@ export const deviceInstanceSchema = z.object({
   hardwareId: z.string().min(1),
   type: z.string().min(1),
   settings: z.record(z.unknown()).default({}),
-  mode: z.enum(["real", "sim"]).default("real"),
   enabled: z.boolean().default(true)
 }).strict();
 export type DeviceInstance = z.infer<typeof deviceInstanceSchema>;
@@ -171,7 +170,6 @@ export interface DeviceDeclaration {
     hardwareRevision?: string;
     adapter?: { name: string; version: string };
     sdkVersion?: string;
-    dryRun?: boolean;
   };
   description?: string;
   pinout?: { connectors: DeviceDeclaredConnector[]; pins: DeviceDeclaredPin[]; activeMode?: string; modes?: unknown; hardwareRevision?: string } | null;

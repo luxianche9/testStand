@@ -1,13 +1,16 @@
-"""Device plugins loaded into the backend: real adapters in simulator mode (design D6)."""
+"""Device plugins loaded into the backend: the real adapters, with their simulated drivers
+swapped in by the test (the product always drives real hardware)."""
 
 from __future__ import annotations
 
 import asyncio
 import sys
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
 import pytest
+from teststand_device_sdk import DeviceConfig, DeviceHandle, open_device
 
 from teststand_backend.contracts.errors import AppError
 from teststand_backend.devices import (
@@ -15,7 +18,7 @@ from teststand_backend.devices import (
     DeviceStore,
     PluginTransport,
 )
-from teststand_backend.devices.plugin_transport import installed_device_types
+from teststand_backend.devices.plugin_transport import child_command, installed_device_types
 from teststand_backend.streams.clock import SHARED_CLOCK
 from teststand_backend.streams.source import StreamSources
 
@@ -29,8 +32,12 @@ def plugin(device_id: str, device_type: str, hardware_id: str) -> dict[str, Any]
         "hardwareId": hardware_id,
         "type": device_type,
         "settings": {},
-        "mode": "sim",
     }
+
+
+def simulated(device_type: str, config: DeviceConfig) -> DeviceHandle:
+    """The adapter on its simulated driver, so these tests need no hardware."""
+    return open_device(device_type, replace(config, dry_run=True), child_command=child_command())
 
 
 async def devices(
@@ -38,7 +45,7 @@ async def devices(
 ) -> tuple[DeviceService, PluginTransport]:
     store = DeviceStore(tmp_path)
     await store.initialize()
-    transport = PluginTransport()
+    transport = PluginTransport(simulated)
     service = DeviceService(store, transport)
     for instance in devices:
         await service.save_device(instance)

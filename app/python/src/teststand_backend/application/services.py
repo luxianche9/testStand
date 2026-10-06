@@ -3,7 +3,8 @@ from __future__ import annotations
 import asyncio
 import re
 from collections.abc import Awaitable, Callable
-from typing import TYPE_CHECKING, Any, Literal, Protocol, TypeVar, cast
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Protocol, TypeVar, cast
 
 from teststand_backend.contracts.devices import parse_device_instance, parse_hardware
 from teststand_backend.contracts.errors import app_error
@@ -67,6 +68,7 @@ class DevicesApplication:
         risk="write",
         profiles=("adapter",),
         idempotency="natural",
+        confirm=True,
     )
     async def save_device(self, context: Json, input: Json) -> Json:
         return await self.service.save_device(parse_device_instance(input))
@@ -75,6 +77,7 @@ class DevicesApplication:
         "devices.removeDevice",
         capability="devices.manageDevices",
         risk="destructive",
+        profiles=("adapter",),
         idempotency="natural",
         confirm=True,
     )
@@ -115,13 +118,10 @@ class DevicesApplication:
         problems. Writes nothing."""
         return self._packages().inspect(data)
 
-    @operation("devices.addDevice", capability="devices.manageDevices", risk="write")
-    async def add_device(
-        self, context: Json, data: bytes, label: str = "", mode: Literal["real", "sim"] = "real"
-    ) -> Json:
-        """Add a device from its ``.tsdev`` package (human only: the package runs code in the
-        backend). The package is installed when needed, the device gets generated ids and is
-        connected at once."""
+    @operation("devices.addDevice", capability="devices.manageDevices", risk="write", confirm=True)
+    async def add_device(self, context: Json, data: bytes, label: str = "") -> Json:
+        """Add a device from its ``.tsdev`` package. The package is installed when needed, the
+        device gets generated ids and is connected at once."""
         installed = await self._packages().install(data)
         manifest = self._packages().inspect(data)["manifest"]
         taken = {item["deviceId"] for item in self.service.list_devices()}
@@ -139,7 +139,6 @@ class DevicesApplication:
                     "hardwareId": f"{device_id}_CARD",
                     "type": manifest["type"],
                     "settings": {},
-                    "mode": mode,
                     "enabled": True,
                 }
             )
@@ -151,6 +150,25 @@ class DevicesApplication:
             "status": status,
             "restartRequired": installed["restartRequired"],
         }
+
+    @operation(
+        "devices.addDeviceFromFile",
+        capability="devices.manageDevices",
+        risk="write",
+        profiles=("adapter", "plan", "explore"),
+        confirm=True,
+    )
+    async def add_device_from_file(self, context: Json, path: str, label: str = "") -> Json:
+        """Add a device from a ``.tsdev`` device package on this computer (absolute path). The
+        package's driver code runs inside testStand, so the operator confirms first."""
+        file = Path(path)
+        if file.suffix.lower() != ".tsdev" or not file.is_absolute():
+            raise app_error("invalid_argument", "path must be an absolute path to a .tsdev file")
+        try:
+            data = await asyncio.to_thread(file.read_bytes)
+        except OSError as error:
+            raise app_error("not_found", f"Cannot read {path}: {error}") from error
+        return await self.add_device(context, data, label)
 
     def _packages(self) -> PluginStore:
         if self.service.packages is None:
@@ -459,13 +477,13 @@ class WiringApplication:
         return document
 
     @operation(
-        "wiring.addManagedHardwareToCanvas",
+        "wiring.addHardwareToCanvas",
         capability="projects.manage",
         risk="write",
         profiles=("plan",),
     )
-    async def add_managed_hardware_to_canvas(self, context: Json, hardware_id: str) -> Json:
-        return await self.wiring.add_managed_hardware_to_canvas(hardware_id)
+    async def add_hardware_to_canvas(self, context: Json, hardware_id: str) -> Json:
+        return await self.wiring.add_hardware_to_canvas(hardware_id)
 
     @operation("wiring.requestTask", capability="wiring.request", risk="write", profiles=("plan",))
     async def request_task(self, context: Json, input: Json) -> Json:

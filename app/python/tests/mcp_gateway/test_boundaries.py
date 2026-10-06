@@ -58,10 +58,10 @@ _CASES: list[tuple[str, dict[str, Any], str, str, list[Any]]] = [
     ),
     ("remove_hardware_definition", {"hardwareId": "H"}, "devices", "remove_hardware", ["H"]),
     (
-        "add_managed_hardware_to_canvas",
+        "add_hardware_to_canvas",
         {"hardwareId": "H"},
         "wiring",
-        "add_managed_hardware_to_canvas",
+        "add_hardware_to_canvas",
         ["H"],
     ),
     (
@@ -69,7 +69,7 @@ _CASES: list[tuple[str, dict[str, Any], str, str, list[Any]]] = [
         {"portA": "A.J", "portB": "B.J", "action": "connect"},
         "wiring",
         "request_task",
-        [{"portA": "A.J", "portB": "B.J", "pins": [], "action": "connect", "timeoutMs": 1800000}],
+        [{"portA": "A.J", "portB": "B.J", "pins": [], "action": "connect", "timeoutMs": 86400000}],
     ),
     ("cancel_wiring_task", {"wiringTaskId": "W"}, "wiring", "cancel_task", ["W", None]),
     ("get_wiring_task", {"wiringTaskId": "W"}, "wiring", "get_task", ["W"]),

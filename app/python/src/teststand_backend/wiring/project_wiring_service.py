@@ -67,17 +67,12 @@ class ProjectWiringService:
         self._tasks.clear()
         self._last_changes.clear()
 
-    async def add_managed_hardware_to_canvas(self, hardware_id: str) -> Record:
+    async def add_hardware_to_canvas(self, hardware_id: str) -> Record:
         async with self._lock("canvas:nodes"):
             identifier = hardware_id.strip()
             if not identifier:
                 raise app_error("invalid_argument", "hardwareId is required")
             hardware = self.catalog.get_hardware(identifier)
-            if hardware["kind"] != "managed":
-                raise app_error(
-                    "permission_denied",
-                    f"Only managed hardware can be added by an Agent: {identifier}",
-                )
             wiring = self.projects.wiring()
             existing = next(
                 (node for node in wiring["nodes"] if node["hardwareId"] == identifier), None
@@ -122,7 +117,7 @@ class ProjectWiringService:
                 self.catalog.resolve_port(port_b)["hardware"]["hardwareId"],
             }
         )
-        timeout_ms = min(max(input.get("timeoutMs", 1_800_000), 1000), 86_400_000)
+        timeout_ms = min(max(input.get("timeoutMs", 86_400_000), 1000), 7 * 86_400_000)
         now = now_ms()
         for existing in self._tasks.values():
             if existing["status"] not in ("pending", "in_progress"):

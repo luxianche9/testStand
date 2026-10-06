@@ -61,23 +61,25 @@ describe("device and hardware editors", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
-  it("edits a device's name, mode and settings without touching its ids", async () => {
+  it("edits a device's name and settings without touching its ids", async () => {
     const instance: DeviceInstance = {
       deviceId: "RELAY", label: "Relay", hardwareId: "RELAY_CARD", type: "pci1762",
-      settings: { description: "PCI-1762,BID#1" }, mode: "real", enabled: true
+      settings: { description: "PCI-1762,BID#1" }, enabled: true
     };
     render(<DeviceEditor instance={instance} onClose={vi.fn()} onChanged={vi.fn(async () => undefined)} />,
       { wrapper: Wrapper });
-    expect(screen.queryByLabelText(/设备类型/)).toBeNull();
-    await userEvent.selectOptions(screen.getByLabelText(/运行模式/), "sim");
+    expect(screen.queryByLabelText(/设备类型|运行模式/)).toBeNull();
+    const name = screen.getByLabelText(/名称/);
+    await userEvent.clear(name);
+    await userEvent.type(name, "继电器卡");
     await userEvent.click(screen.getByRole("button", { name: "保存" }));
-    await waitFor(() => expect(saveDevice).toHaveBeenCalledWith({ input: { ...instance, mode: "sim" } }));
+    await waitFor(() => expect(saveDevice).toHaveBeenCalledWith({ input: { ...instance, label: "继电器卡" } }));
     expect(refreshDevice).toHaveBeenCalledWith({ deviceId: "RELAY" });
   });
 
   it("rejects driver settings that are not a JSON object", async () => {
     const instance: DeviceInstance = {
-      deviceId: "RELAY", label: "Relay", hardwareId: "RELAY_CARD", type: "pci1762", settings: {}, mode: "real",
+      deviceId: "RELAY", label: "Relay", hardwareId: "RELAY_CARD", type: "pci1762", settings: {},
       enabled: true
     };
     render(<DeviceEditor instance={instance} onClose={vi.fn()} onChanged={vi.fn(async () => undefined)} />,

@@ -14,7 +14,7 @@ describe("public contracts", () => {
   });
 
   it("applies stable defaults", () => {
-    expect(deviceInstanceSchema.parse({ deviceId: "P1", label: "P", hardwareId: "H2", type: "pci1762" })).toMatchObject({ settings: {}, mode: "real", enabled: true });
+    expect(deviceInstanceSchema.parse({ deviceId: "P1", label: "P", hardwareId: "H2", type: "pci1762" })).toMatchObject({ settings: {}, enabled: true });
     expect(deviceInstanceSchema.safeParse({ deviceId: "S3", computerId: "PC1", label: "S", hardwareId: "H3", type: "pci1762" }).success).toBe(false);
   });
 

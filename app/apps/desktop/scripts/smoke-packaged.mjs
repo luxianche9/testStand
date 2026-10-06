@@ -174,8 +174,9 @@ async function verifyAgentUi(page) {
 
 /**
  * A release ships no drivers: every device is added from its device package. Add PCI-1762 the
- * user's way (+ → 添加设备…, native file dialog answered), the others through the API, all
- * simulated; call a tool on PCI-1762 and on PCI-6208V (isolated child of the frozen backend).
+ * user's way (+ → 添加设备…, native file dialog answered), the others through the API, all on
+ * the bench's real cards; call a tool on PCI-1762 and on PCI-6208V (isolated child of the
+ * frozen backend). Closing testStand drives every output back to its safe value.
  * Removing the last PCI-1762 removes its package at the next start.
  */
 async function verifyDevicePackages(application, page) {
@@ -196,7 +197,6 @@ async function verifyDevicePackages(application, page) {
   const confirm = page.getByRole("dialog", { name: "添加设备" });
   await confirm.getByText("Advantech PCI-1762", { exact: true }).waitFor();
   await confirm.getByText("Advantech DAQNavi", { exact: true }).waitFor();
-  await confirm.getByLabel("运行模式").selectOption("sim");
   await click(confirm.getByRole("button", { name: "添加", exact: true }));
   await confirm.waitFor({ state: "hidden" });
   await page.getByRole("tabpanel", { name: "设备列表" }).getByRole("button", { name: /PCI-1762/ }).waitFor();
@@ -207,7 +207,7 @@ async function verifyDevicePackages(application, page) {
       const bytes = new Uint8Array(data);
       const report = await window.teststand.devices.inspectPackage({ data: bytes });
       if (report.problems.length) throw new Error(report.problems.join("; "));
-      return window.teststand.devices.addDevice({ data: bytes, label: "", mode: "sim" });
+      return window.teststand.devices.addDevice({ data: bytes, label: "" });
     }, bytes);
     assert.equal(result.restartRequired, false, `${name} should be usable at once`);
     assert.equal(result.status.transport.state, "online", `${name}: ${JSON.stringify(result.status.transport)}`);

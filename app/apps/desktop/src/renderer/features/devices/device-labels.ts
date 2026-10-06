@@ -18,9 +18,3 @@ export function hardwareRowStatus(deviceStatus?: DeviceStatus, availability?: Ha
   if (status.label === "检测中") return { tone: "run", pulse: true, label: status.label, title: status.title };
   return { tone: statusTones[status.tone], label: status.label, title: status.title };
 }
-
-const modeLabels: Record<"real" | "sim", string> = { real: "实物", sim: "模拟" };
-
-export function modeLabel(mode: "real" | "sim"): string {
-  return modeLabels[mode];
-}

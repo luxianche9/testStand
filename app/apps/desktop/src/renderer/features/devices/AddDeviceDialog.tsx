@@ -3,7 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import type { DeviceAdded, DevicePackageInspection } from "@teststand/contracts/devices";
 import { RotateCwIcon } from "lucide-react";
 import { errorMessage } from "../../lib/errors.js";
-import { Button, Dialog, DialogBody, DialogContent, DialogFooter, Input, Select } from "../../ui";
+import { Button, Dialog, DialogBody, DialogContent, DialogFooter, Input } from "../../ui";
 import { EditorField } from "./editors/EditorField.js";
 
 const size = (bytes: number) =>
@@ -21,8 +21,8 @@ export async function pickDevicePackage(): Promise<StagedPackage | undefined> {
 
 /**
  * 添加设备: a device is added from its device package (`.tsdev`). The package's code runs in the
- * backend, so what it is and what it contains is shown first; the user names the device, chooses
- * real or simulated, and adds it. The device is connected straight away.
+ * backend, so what it is and what it contains is shown first; the user names the device and adds
+ * it. The device is connected to the real hardware straight away.
  */
 export function AddDeviceDialog({ staged, onClose, onAdded }: {
   staged: StagedPackage | undefined;
@@ -48,10 +48,9 @@ function AddDevice({ staged, onClose, onAdded }: {
   const { report } = staged;
   const { manifest } = report;
   const [label, setLabel] = useState(manifest.model);
-  const [mode, setMode] = useState<"real" | "sim">("real");
   const [added, setAdded] = useState<DeviceAdded>();
   const add = useMutation({
-    mutationFn: () => window.teststand.devices.addDevice({ data: staged.data, label, mode }),
+    mutationFn: () => window.teststand.devices.addDevice({ data: staged.data, label }),
     onSuccess: async (result) => {
       await onAdded();
       if (result.restartRequired) setAdded(result);
@@ -106,17 +105,9 @@ function AddDevice({ staged, onClose, onAdded }: {
             </div>
           ))}
         </dl>
-        <div className="grid grid-cols-2 gap-3">
-          <EditorField label="名称">
-            <Input value={label} onChange={(event) => setLabel(event.target.value)} />
-          </EditorField>
-          <EditorField label="运行模式">
-            <Select value={mode} onChange={(event) => setMode(event.target.value as "real" | "sim")}>
-              <option value="real">实物（驱动真实硬件）</option>
-              <option value="sim">模拟（不接硬件）</option>
-            </Select>
-          </EditorField>
-        </div>
+        <EditorField label="名称">
+          <Input value={label} onChange={(event) => setLabel(event.target.value)} />
+        </EditorField>
         <details className="text-xs text-fg-3">
           <summary className="cursor-pointer select-none">设备包文件</summary>
           <ul className="mt-1 grid gap-0.5" aria-label="设备包文件">

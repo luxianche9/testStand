@@ -18,8 +18,9 @@ from teststand_backend.contracts.validation import (
 from teststand_backend.util import Record
 
 connection_state_schema = enum("unknown", "checking", "online", "offline", "error")
-# A device plugin loaded into the backend: ``type`` names its ``teststand.devices``
-# entry point, ``mode`` sim runs the adapter's simulator instead of the driver.
+# A device plugin loaded into the backend: ``type`` names its ``teststand.devices`` entry point.
+# Devices always drive real hardware. Unknown fields are dropped rather than rejected, so a
+# record written by an older version (with ``mode``) still loads.
 device_instance_schema = obj(
     {
         "deviceId": string(1),
@@ -27,10 +28,8 @@ device_instance_schema = obj(
         "hardwareId": string(1),
         "type": string(1),
         "settings": record(unknown()).default({}),
-        "mode": enum("real", "sim").default("real"),
         "enabled": boolean().default(True),
     },
-    strict=True,
 )
 hardware_state_schema = enum("initializing", "open", "unreachable", "faulted", "closing", "closed")
 _managed_fields = {

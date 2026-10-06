@@ -51,7 +51,7 @@ class Pci1234(Device):
 | 成员 | 说明 |
 |---|---|
 | `config: DeviceConfig` | 见下文 |
-| `hardware_id`、`dry_run` | 来自配置；`dry_run` 即实例的 `mode: sim` |
+| `hardware_id`、`dry_run` | 来自配置；`dry_run` 只在适配器测试和 `--check` 中为真 |
 | `streams: StreamRegistry` | `self.streams.add(stream)` 返回该流，重复 id 报错；`self.streams.scan(streams, fn, rate_hz=)` 建扫描组。见 `streams.md` |
 | `io_lock: threading.RLock` | SDK 采样线程持有它调用 `sample()`；适配器自己的后台线程（串口读线程）和字节流写入器访问驱动时也必须持有。工具调用之间已由 SDK 的操作锁串行 |
 | `select_driver(real, simulated)` | 模拟模式时构造模拟器，否则构造真实驱动；两者都是无参可调用对象 |
@@ -138,7 +138,7 @@ raise DeviceError(f"AO_VWriteChannel failed rc={rc}", category=DEVICE_ERROR,
 |---|---|
 | `device_id`、`hardware_id` | 实例身份，来自实例记录 |
 | `manufacturer`、`model` | 必须与设备类的类属性一致，否则 `DeviceHost` 拒绝启动；后端从设备类取 |
-| `dry_run` | 实例 `mode: sim`，或环境变量 `HARDWARE_DRY_RUN` |
+| `dry_run` | 适配器测试、`--check`，或环境变量 `HARDWARE_DRY_RUN`（testStand 后端从不设置） |
 | `settings` | 适配器专用、非秘密：`cardIndex`、`dllPath`、`hwcliPath`、`safeVolts`、采样率等 |
 | `build` | 可选的构建信息（源码版本），由 `get_device_info` 报告 |
 
@@ -166,7 +166,7 @@ self.waveform = SoftwareWaveform(self._waveform_write, lock=self.io_lock,
 - 忠实模拟控制器状态：输出影子、配置门槛（未配置就读要返回相同错误）、句柄。
 - 输入默认读空闲值。演示效果只能由环境变量开启：`HARDWARE_DRY_RUN_AI_NOISE`（`sim.ai_noise_enabled()`、`demo_voltage()`）、`HARDWARE_DRY_RUN_SERIAL_LOOPBACK`（`sim.serial_loopback_enabled()`）。
 - 记录写入历史（如 `writes` 列表），测试用它证明越界值没有到达驱动。
-- 模拟器同时用于：适配器单元测试、`--check`、测试台架上 `mode: sim` 的设备、桌面应用的端到端测试。它不在设备之间回送接线（没有虚拟台架）。
+- 模拟器只用于：适配器单元测试和 `--check`；testStand 里的设备总是驱动真实硬件。它不在设备之间回送接线（没有虚拟台架）。
 
 ## 测试工具（`teststand_device_sdk.testing`）
 

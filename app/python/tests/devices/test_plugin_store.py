@@ -247,7 +247,7 @@ async def test_adding_a_device_installs_its_package_and_removing_it_uninstalls(
     app = DevicesApplication(DefaultAuthorizer(), service, None)  # type: ignore[arg-type]
     data = package()
     assert app.inspect_package(HUMAN, data)["action"] == "install"
-    first = await app.add_device(HUMAN, data, "继电器卡", "sim")
+    first = await app.add_device(HUMAN, data, "继电器卡")
     assert first["device"]["deviceId"] == "FAKE" and first["device"]["label"] == "继电器卡"
     assert first["device"]["hardwareId"] == "FAKE_CARD" and first["restartRequired"] is False
     # The same package again: nothing to install, a second device of that model.
@@ -259,10 +259,19 @@ async def test_adding_a_device_installs_its_package_and_removing_it_uninstalls(
     await app.remove_device(HUMAN, "FAKE_2")
     assert not packages.installed("fake")
     assert (await store_for(tmp_path)).list_packages() == []
-    # The package runs code in the backend: an agent can never add one.
-    for method in (app.inspect_package, app.add_device):
+    # The package runs code in the backend: when an agent adds one, the operator confirms first.
+    for method in (app.add_device, app.add_device_from_file, app.remove_device, app.save_device):
         spec = operation_spec(method)
-        assert spec is not None and not DefaultAuthorizer().is_allowed(AGENT, spec.capability)
+        assert spec is not None and spec.confirm
+        assert DefaultAuthorizer().is_allowed(AGENT, spec.capability)
+    file = tmp_path / "fake.tsdev"
+    file.write_bytes(data)
+    third = await app.add_device_from_file(HUMAN, str(file), "从文件")
+    assert third["device"]["label"] == "从文件"
+    with pytest.raises(AppError, match="absolute path"):
+        await app.add_device_from_file(HUMAN, "fake.tsdev")
+    with pytest.raises(AppError, match="Cannot read"):
+        await app.add_device_from_file(HUMAN, str(tmp_path / "missing.tsdev"))
     bare = DevicesApplication(
         DefaultAuthorizer(),
         SimpleNamespace(packages=None),  # type: ignore[arg-type]

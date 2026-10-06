@@ -214,11 +214,30 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Add a device from its ``.tsdev`` package (human only: the package runs code in the
-         *     backend). The package is installed when needed, the device gets generated ids and is
-         *     connected at once.
+         * Add a device from its ``.tsdev`` package. The package is installed when needed, the
+         *     device gets generated ids and is connected at once.
          */
         post: operations["devices.addDevice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ops/devices.addDeviceFromFile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add a device from a ``.tsdev`` device package on this computer (absolute path). The
+         *     package's driver code runs inside testStand, so the operator confirms first.
+         */
+        post: operations["devices.addDeviceFromFile"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1563,7 +1582,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/ops/wiring.addManagedHardwareToCanvas": {
+    "/api/ops/wiring.addHardwareToCanvas": {
         parameters: {
             query?: never;
             header?: never;
@@ -1572,8 +1591,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** wiring.addManagedHardwareToCanvas */
-        post: operations["wiring.addManagedHardwareToCanvas"];
+        /** wiring.addHardwareToCanvas */
+        post: operations["wiring.addHardwareToCanvas"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1774,6 +1793,16 @@ export interface components {
              */
             agent: "codex";
         };
+        /** DevicesAddDeviceFromFileRequest */
+        DevicesAddDeviceFromFileRequest: {
+            /**
+             * Label
+             * @default
+             */
+            label?: string;
+            /** Path */
+            path: string;
+        };
         /** DevicesAddDeviceRequest */
         DevicesAddDeviceRequest: {
             /**
@@ -1786,12 +1815,6 @@ export interface components {
              * @default
              */
             label?: string;
-            /**
-             * Mode
-             * @default real
-             * @enum {string}
-             */
-            mode?: "real" | "sim";
         };
         /** DevicesCallToolRequest */
         DevicesCallToolRequest: {
@@ -2258,8 +2281,8 @@ export interface components {
             details?: unknown;
             message: string;
         };
-        /** WiringAddManagedHardwareToCanvasRequest */
-        WiringAddManagedHardwareToCanvasRequest: {
+        /** WiringAddHardwareToCanvasRequest */
+        WiringAddHardwareToCanvasRequest: {
             /** Hardwareid */
             hardwareId: string;
         };
@@ -2741,6 +2764,39 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["DevicesAddDeviceRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": object;
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: components["schemas"]["WireError"];
+                    };
+                };
+            };
+        };
+    };
+    "devices.addDeviceFromFile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DevicesAddDeviceFromFileRequest"];
             };
         };
         responses: {
@@ -5338,7 +5394,7 @@ export interface operations {
             };
         };
     };
-    "wiring.addManagedHardwareToCanvas": {
+    "wiring.addHardwareToCanvas": {
         parameters: {
             query?: never;
             header?: never;
@@ -5347,7 +5403,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["WiringAddManagedHardwareToCanvasRequest"];
+                "application/json": components["schemas"]["WiringAddHardwareToCanvasRequest"];
             };
         };
         responses: {

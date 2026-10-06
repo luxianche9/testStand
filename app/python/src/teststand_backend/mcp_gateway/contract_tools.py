@@ -129,7 +129,11 @@ def read_tool_contract(registry: Any, context: Record, arguments: Record) -> Rec
             "hasMore": end < len(matches),
             "nextOffset": end if end < len(matches) else None,
         }
-    tool = next((item for item in catalog if item["name"] == name), None)
+    # Agents see the tools under their MCP client's prefix (OpenCode: ``teststand_<name>``).
+    for candidate in (name, name.removeprefix("teststand_"), name.removeprefix("teststand__")):
+        tool = next((item for item in catalog if item["name"] == candidate), None)
+        if tool is not None:
+            break
     if tool is None:
         raise app_error(
             "not_found",

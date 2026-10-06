@@ -23,7 +23,7 @@ const report = (patch: Partial<DevicePackageInspection> = {}): DevicePackageInsp
 });
 const device = {
   deviceId: "PCI6208V", label: "AO 卡", hardwareId: "PCI6208V_CARD", type: "pci6208v", settings: {},
-  mode: "sim" as const, enabled: true
+  enabled: true
 };
 const addDevice = vi.fn(async () => ({
   device, status: { deviceId: "PCI6208V", transport: { state: "online" as const } }, restartRequired: false
@@ -48,7 +48,7 @@ afterEach(() => {
 });
 
 describe("adding a device from its device package", () => {
-  it("shows what the package is, then adds the device with its name and mode", async () => {
+  it("shows what the package is, then adds the device with its name", async () => {
     const onClose = vi.fn();
     const onAdded = vi.fn(async () => undefined);
     render(<AddDeviceDialog staged={{ data: bytes, report: report() }} onClose={onClose} onAdded={onAdded} />,
@@ -60,9 +60,8 @@ describe("adding a device from its device package", () => {
     expect((name as HTMLInputElement).value).toBe("PCI-6208V");
     await userEvent.clear(name);
     await userEvent.type(name, "AO 卡");
-    await userEvent.selectOptions(screen.getByLabelText("运行模式"), "sim");
     await userEvent.click(screen.getByRole("button", { name: "添加" }));
-    await waitFor(() => expect(addDevice).toHaveBeenCalledWith({ data: bytes, label: "AO 卡", mode: "sim" }));
+    await waitFor(() => expect(addDevice).toHaveBeenCalledWith({ data: bytes, label: "AO 卡" }));
     expect(onAdded).toHaveBeenCalledOnce();
     expect(onClose).toHaveBeenCalledOnce();
   });

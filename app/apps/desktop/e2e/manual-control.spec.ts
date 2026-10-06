@@ -29,12 +29,12 @@ test.describe.serial("manual control and Agent hardware calls", () => {
     if (userDataDir?.startsWith(tmpdir())) await rm(userDataDir, { recursive: true, force: true });
   });
 
-  test("invokes a simulated plugin device tool from a generated form", async () => {
+  test("controls the real PCI-1762 from its canvas card", async () => {
     const status = await page.evaluate(async ({ projectRoot, hardwareId }) => {
       await window.teststand.projects.initializeFolder({ rootPath: projectRoot });
       await window.teststand.devices.saveDevice({ input: {
-        deviceId: "E2E_RELAY", label: "PCI-1762 sim", hardwareId, type: "pci1762",
-        settings: {}, mode: "sim", enabled: true
+        deviceId: "E2E_RELAY", label: "PCI-1762 e2e", hardwareId, type: "pci1762",
+        settings: {}, enabled: true
       } });
       const status = await window.teststand.devices.refreshDevice({ deviceId: "E2E_RELAY" });
       await window.teststand.wiring.updateDocument({ wiring: { nodes: [{ hardwareId, x: 20, y: 20, portPositions: {} }], connections: [] } });
@@ -48,16 +48,15 @@ test.describe.serial("manual control and Agent hardware calls", () => {
     await page.getByRole("tab", { name: "测试台架" }).click();
 
     // Clicking the device in the list shows its information; the card on the canvas controls it.
-    await page.getByRole("tabpanel", { name: "设备列表" }).getByRole("button", { name: /PCI-1762 sim/ }).click();
-    const info = page.getByRole("dialog", { name: "PCI-1762 sim" });
-    await expect(info.getByText("模拟", { exact: true }).first()).toBeVisible();
+    await page.getByRole("tabpanel", { name: "设备列表" }).getByRole("button", { name: /PCI-1762 e2e/ }).click();
+    const info = page.getByRole("dialog", { name: "PCI-1762 e2e" });
     await expect(info.getByText("CN1", { exact: true })).toBeVisible();
     await page.keyboard.press("Escape");
-    await page.getByRole("button", { name: "控制 PCI-1762 sim" }).click();
-    const menu = page.getByRole("menu", { name: "PCI-1762 sim 的控制动作" });
+    await page.getByRole("button", { name: "控制 PCI-1762 e2e" }).click();
+    const menu = page.getByRole("menu", { name: "PCI-1762 e2e 的控制动作" });
     await expect(menu.getByRole("menuitem")).toHaveText([/set_relay/, /set_bank/, /read_bit/, /safe_state/]);
     await menu.getByRole("menuitem", { name: /set_relay/ }).click();
-    const action = page.getByRole("dialog", { name: "PCI-1762 sim · set_relay" });
+    const action = page.getByRole("dialog", { name: "PCI-1762 e2e · set_relay" });
     await action.getByLabel(/Channel/).fill("2");
     await action.getByLabel(/Closed/).check();
     await action.getByRole("button", { name: "确认执行" }).click();

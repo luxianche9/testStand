@@ -38,9 +38,11 @@ def test_defaults() -> None:
         "hardwareId": "H2",
         "type": "pci1762",
         "settings": {},
-        "mode": "real",
         "enabled": True,
     }
+    # A record from an older version still loads; its simulation flag is gone.
+    old = {"deviceId": "P1", "label": "P", "hardwareId": "H2", "type": "pci1762", "mode": "sim"}
+    assert "mode" not in parse_device_instance(old)
 
 
 @pytest.mark.ts_case(PREFIX + "validates managed hardware at the device trust boundary")

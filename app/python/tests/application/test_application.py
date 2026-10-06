@@ -24,7 +24,7 @@ Json = dict[str, Any]
 AGENT_ALLOWED = {
     "system.read",
     "devices.read",
-    "devices.controlDevices",
+    "devices.manageDevices",  # each such operation asks the operator to confirm
     "hardware.read",
     "hardware.manage",
     "hardware.executeTools",
@@ -117,15 +117,13 @@ async def test_agent_allowed() -> None:
 )
 async def test_agent_denied() -> None:
     app, devices, wiring = make_app()
-    operations = [
-        app.devices.remove_device(AGENT, "S1"),
-        app.wiring.start_task(AGENT, "WT"),
-    ]
+    # Device management is confirmed per call by the operation registry; operator work is
+    # never the agent's.
+    operations = [app.wiring.start_task(AGENT, "WT")]
     for operation in operations:
         with pytest.raises(Exception) as caught:
             await operation
         assert getattr(caught.value, "category", None) == "permission_denied"
-    devices.remove_device.assert_not_called()
     wiring.start_task.assert_not_called()
 
 

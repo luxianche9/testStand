@@ -5,7 +5,7 @@ import { PencilIcon, RefreshCwIcon, Trash2Icon, UploadIcon } from "lucide-react"
 import { errorMessage } from "../../lib/errors.js";
 import { useDashboard, useDeviceDefinition } from "../../lib/queries.js";
 import { Badge, Button, Dialog, DialogBody, DialogContent, DialogFooter, Section, cn, useConfirm } from "../../ui";
-import { hardwareRowStatus, modeLabel } from "../devices/device-labels.js";
+import { hardwareRowStatus } from "../devices/device-labels.js";
 import { ErrorStrip, HardwareSections, Meta } from "../devices/inspector-parts.js";
 import { LiveStreams } from "../devices/LiveStreams.js";
 
@@ -78,7 +78,6 @@ function DeviceInfo({ target, instance, onClose, onEdit, onChanged }: InfoProps 
           title="基本信息"
           actions={
             <span className="flex items-center gap-1">
-              {instance.mode === "sim" && <Badge tone="signal">模拟</Badge>}
               <Badge tone={status.tone} title={status.title}>{status.label}</Badge>
             </span>
           }
@@ -91,7 +90,6 @@ function DeviceInfo({ target, instance, onClose, onEdit, onChanged }: InfoProps 
               label: "型号",
               value: identity ? `${identity.manufacturer ?? ""} ${identity.model ?? ""}`.trim() : instance.type
             },
-            { label: "运行模式", value: modeLabel(instance.mode) },
             { label: "设备 ID", value: instance.deviceId }
           ]} />
           {status.title && <p className={cn("text-xs break-words", status.tone === "fail" ? "text-fail" : "text-fg-3")}>

@@ -33,7 +33,8 @@
 | 2026-10-03 | 单机插件化重构（任务书 `doc/plan/单机插件化重构.md`）：测试资源与测试终端在同一台电脑；每台设备从远程 MCP HTTP 服务改为后端进程内插件，必要时隔离到 stdio 子进程（第 2、4 章）；删除租约、测试资源图片、远程部署与服务管理、时钟同步、设备 SSE 数据通道。删除 DEC-01、DEC-02、DEC-03、DEC-05、DEC-07，新增 DEC-19～DEC-23；第 12 章按完成情况重写 |
 | 2026-10-03 | 设备包：发布版不再内置适配器，每种设备类型以 `.tsdev` 设备包安装（第 4.1、4.8 节）；新增 DEC-24 |
 | 2026-10-04 | 新用户全流程走查后：“设备管理”与“工位接线”合并为“测试台架”（第 9.6.2 节）；设备端口取自插件 pinout；删除适配器放行记录与命令面板；测试步骤只列设备动作，绑定工具时填入必填参数默认值 |
-| 2026-10-05 | 去掉“设备类型”概念：添加设备 = 选设备包 + 名称 + 实物/模拟（`devices.addDevice`），删除最后一台设备时卸载其驱动；删除 `listDeviceTypes`、`listPackages`、`installPackage`、`uninstallPackage` |
+| 2026-10-05 | 去掉“设备类型”概念：添加设备 = 选设备包 + 名称（`devices.addDevice`），删除最后一台设备时卸载其驱动；删除 `listDeviceTypes`、`listPackages`、`installPackage`、`uninstallPackage` |
+| 2026-10-06 | 去掉模拟运行（设备记录不再有 `mode`）；Agent 可经 `devices.addDeviceFromFile` 添加设备，添加/编辑/删除设备都要操作员确认；OpenCode 改用 OpenAI 兼容（Chat Completions）接口，shell 与工程外文件访问需确认 |
 
 ---
 
@@ -99,14 +100,14 @@ testStand 是一套通用的智能测试软件。目标是用**一套平台 + �
 |---|---|---|
 | 驱动定义 | 适配器继承 SDK 的 `Device`，用 `@tool` 声明操作，用类型化的流声明数据 | 4.1、4.4 |
 | 类型发现 | 适配器包在 `pyproject.toml` 声明 entry point 组 `teststand.devices`，后端用 `importlib.metadata.entry_points` 列出可用类型 | 4.1 |
-| 实例配置 | 后端硬件记录 `{type, settings, mode: real\|sim}`；同型号多块卡 = 多个实例 | 4.7 |
+| 设备记录 | 后端设备记录 `{type, settings}`，总是驱动真实硬件；同型号多块卡 = 多台设备 | 4.7 |
 | 宿主 | SDK 的 `DeviceHost` 承载一个设备：工具、信封、操作号、生命周期、流、声明 | 4.2 |
 | 隔离 | `Device.isolation = "inproc" \| "subprocess"`，由插件决定，上层无感 | 4.5 |
 | 声明 | `/device` 文档由 SDK 从类属性、`pinout()`、`capability_details()`、流注册表和工具表自动生成 | 4.3 |
 | 工具 | 每个 `@tool` 的签名与 `operationSemantics` 同时生成界面表单、Agent 工具和测试步骤目录 | 4.4 |
 | 流 | 后端直接读插件的环形缓冲（隔离插件经子进程的 stdio），带序号、水位线和缺口 | 5 |
 | 时钟 | SDK `now_ms()` 与后端 `backend_ms()` 是同一个时钟源，设备时间就是后端时间 | 5.8 |
-| 仿真 | `mode: sim` 时 `select_driver(real, simulated)` 选模拟器；同一接口的另一实现 | 4.6 |
+| 模拟驱动 | 只供适配器自己的单元测试和 `--check` 使用（`select_driver(real, simulated)`）；testStand 产品里没有模拟运行 | 4.6 |
 | 合规 | `--check` 在模拟器上进程内跑合规套件 | 4.1 |
 
 同一信息只有一个来源：引脚、流清单只从 `/device` 获得，不再有同义的工具；工具 schema 只从 `@tool` 获得。
@@ -364,7 +365,7 @@ AI 通过网关读取声明（第 8.3 节的 `get_hardware_definition`），而�
 - 并发：
   - 单设备串行：工具调用经 SDK 的操作锁（`operation_lock`）一次一个；所有驱动调用都在 `io_lock`（RLock）下执行，采样线程和适配器的后台读线程也持有它。
   - 运行与手动互斥：后端 `application/execution.py` 的 `ExecutionCoordinator` 按 `hardwareId` 登记正在进行的活动（一次测试运行占用它用到的全部设备，一次手动调用占用一台设备），冲突时返回 `conflict` 和冲突的活动。它是进程内的互斥，不是租约（DEC-23）。
-- 模拟：实例 `mode: sim`（SDK 中为 `dryRun`，也可用环境变量 `HARDWARE_DRY_RUN=1`）时 `select_driver(real, simulated)` 选模拟驱动，`/device.identity.dryRun` 为 `true`，`executionMode` 为 `nonphysical_driver_override`，界面必须醒目标示。模拟器输入读空闲值；演示噪声、串口回环只能用 `HARDWARE_DRY_RUN_*` 环境变量开启。
+- 模拟驱动只在适配器开发时用：适配器单元测试和 `--check` 合规检查在模拟驱动上运行（SDK 的 `dry_run`）。testStand 本身没有模拟运行选项，设备总是驱动真实硬件；后端构造 `DeviceConfig` 时不读 `HARDWARE_DRY_RUN` 等环境变量。
 
 ### 4.7 实例配置与凭据
 
@@ -379,8 +380,8 @@ AI 通过网关读取声明（第 8.3 节的 `get_hardware_definition`），而�
    "enabled": true}
   ```
 
-- 添加设备（`devices.addDevice`）：选设备包，填名称和 `mode`；`deviceId`、`hardwareId` 由后端生成，驱动在需要时安装，设备随即连接。设备的端口与针脚由插件声明的 pinout 在连接时写入，不手填。编辑只改名称、`mode` 和“高级设置”里的驱动 `settings`。同型号多块卡就用同一个设备包添加多次，用 `settings` 区分卡号。
-- 后端按实例构造 SDK 的 `DeviceConfig`：`manufacturer`/`model` 取自设备类，`dryRun = (mode == "sim")`。
+- 添加设备（`devices.addDevice`）：选设备包，填名称；`deviceId`、`hardwareId` 由后端生成，驱动在需要时安装，设备随即连接。设备的端口与针脚由插件声明的 pinout 在连接时写入，不手填。编辑只改名称和“高级设置”里的驱动 `settings`。Agent 也能添加设备（`devices.addDeviceFromFile`，给出 `.tsdev` 的绝对路径）；添加、编辑、删除设备时都由操作员在 testStand 里确认。同型号多块卡就用同一个设备包添加多次，用 `settings` 区分卡号。
+- 后端按设备记录构造 SDK 的 `DeviceConfig`：`manufacturer`/`model` 取自设备类。
 - **禁止**把令牌、密码写进 `settings` 或提交到仓库。
 - 密钥由后端通过 Python `keyring` 访问系统凭据库（Windows 上是“凭据管理器”），服务名固定为 `testStand`。条目：`gateway`（Agent 网关令牌）、`opencode.llm.api-key`（LLM 密钥）。旧 `safeStorage` 条目不导入。
 
@@ -1025,7 +1026,7 @@ run.completed │ run.aborted │ run.error
 
 | 页面 | 内容 | 数据来源 |
 |---|---|---|
-| 测试台架 | 左侧“设备”列表（设备与被测件/夹具）和“接线日志”；单击设备打开设备信息弹窗（型号、模式、状态、插件声明的连接器针脚、实时数据、编辑/删除），拖到画布上才放置；画布卡片上的“控制”按钮列出该设备的动作（只含设备自己的工具，不含平台管理工具与流读取），选中后弹窗填参数并“确认执行”，结果显示在弹窗内；画布/列表两种接线视图（同端口跳线只在列表中可见）；“+”添加设备（选设备包、填名称、实物/模拟，ID 自动生成）或被测件 | 设备注册表、`devices.inspectPackage`/`addDevice`、`/device.pinout`、接线 YAML；运行态来自 `list_hardware` 与流状态 |
+| 测试台架 | 左侧“设备”列表（设备与被测件/夹具）和“接线日志”；单击设备打开设备信息弹窗（型号、状态、插件声明的连接器针脚、实时数据、编辑/删除），拖到画布上才放置；画布卡片上的“控制”按钮列出该设备的动作（只含设备自己的工具，不含平台管理工具与流读取），选中后弹窗填参数并“确认执行”，结果显示在弹窗内；画布/列表两种接线视图（同端口跳线只在列表中可见）；“+”添加设备（选设备包、填名称，ID 自动生成）或被测件 | 设备注册表、`devices.inspectPackage`/`addDevice`、`/device.pinout`、接线 YAML；运行态来自 `list_hardware` 与流状态 |
 | 计划 | 步骤树、参数、绑定、ICD；表单视图 | 步骤目录、设备工具 schema |
 | 运行台 | 左侧步骤树和判定结果；右侧曲线（uPlot）、串口终端视图（xterm.js）、报文表（原始和解码两栏）、派生字段曲线；人工判定对话框 | `/api/events`、`/api/live`、运行日志、协议层派生流 |
 | Agent | OpenCode 会话；待确认的高风险操作 | 网关 |
@@ -1050,14 +1051,14 @@ run.completed │ run.aborted │ run.error
 
 ### 9.8 测试
 
-- 不做虚拟台架（DEC-18）。各适配器的模拟驱动（`select_driver(real, simulated)`）用于适配器单元测试、`--check`、`mode: sim` 实例和端到端测试；输入读空闲值，不在设备之间回送接线。
+- 不做虚拟台架，也没有模拟运行（DEC-18）。各适配器的模拟驱动只用于适配器单元测试和 `--check`；后端的插件传输测试在测试代码里把驱动换成模拟驱动。
 - 适配器测试用 SDK 的进程内测试工具 `serve(Device)`：`hh.call` 返回信封、`hh.device()` 返回声明、`hh.subscribe()` 按 `hello`/`batch`/`gap`/`status` 事件读流。
-- 桌面应用的端到端测试（Playwright）使用真实 SDK 插件的模拟模式（`mode: sim`），不用假 MCP 服务器。
+- 桌面应用的端到端测试（Playwright）在实物台架上运行，直接驱动真实板卡（串行执行，每个用例结束时设备回到安全状态）。
 - 实物台架用于冒烟测试：新设备包装上后，先模拟、再实物空载逐个动作验收。
 - 测试分层：
   - 领域层：纯单元测试，不需要硬件；
   - 应用层 + 接入层：对注册表中每个操作做契约测试（请求模型、错误码、能力检查），并检查 `openapi.json` 与生成的 TS 类型没有过期；
-  - 端到端：模拟模式的插件 + 桌面应用；实物冒烟：实物台架 + 桌面应用。
+  - 端到端与打包冒烟：实物台架 + 桌面应用。
 
 ---
 
@@ -1099,7 +1100,7 @@ run.completed │ run.aborted │ run.error
 | DEC-15 | 运行日志是一次运行的唯一记录，状态由日志推导 | 恢复、核销、报告、重判需要的都是“发生过什么”；可变状态与日志并存时两者会不一致 | 日志 + 可变状态表 + 结果文件分开存（旧做法）：恢复时要把几处拼起来 |
 | DEC-16 | 前后端只用 HTTP + SSE；stdio 只做一行启动握手和退出通知；单 token | 通道越少，一个功能涉及的代码位置越少；SSE 可直接用 curl 调试 | stdio JSON-RPC 双向回调（旧做法）：主进程成为必经中转；WebSocket：需要自定义心跳和重连，而 SSE 自带续传 |
 | DEC-17 | 密钥存进系统凭据库（Python `keyring`） | 后端无界面时也要读取令牌；删除主进程回调 | Electron `safeStorage`（旧做法）：只能由主进程解密；明文文件：不安全 |
-| DEC-18 | 不做虚拟台架；端到端测试用真实 SDK 插件的模拟模式，实物台架做冒烟（2026-10-03 修订） | 只有一个台架、一个小团队，虚拟台架没有使用者；模拟模式走的是真实插件代码 | 虚拟台架：实现后无人使用；TS 假 MCP 服务器（2026-10-01 版本）：与真实插件行为会分叉 |
+| DEC-18 | 不做虚拟台架，也不提供模拟运行；端到端测试与冒烟都在实物台架上（2026-10-06 修订） | 只有一个台架、一个小团队；模拟运行容易被误当成真实结果，台架上的真实板卡始终可用 | 虚拟台架：实现后无人使用；TS 假 MCP 服务器（2026-10-01 版本）：与真实插件行为会分叉 |
 | DEC-19 | 测试资源与测试终端在同一台电脑；设备是后端进程内插件（entry point 发现类型，硬件记录决定实例） | 实际使用是一台电脑驱动全部资源，资源很少变动；通用化是为了加新类型，而不是为了在终端之间共享。单机场景下没有项目把每台设备做成网络服务（OpenHTF plugs、QCoDeS Station、ros2_control、OpenTAP 均为进程内） | 每台设备一个 MCP HTTP 服务（原 DEC-01/02/03）：需要部署、令牌、对时、租约、SSE 续传，单机没有收益 |
 | DEC-20 | 需要隔离的插件用 stdio JSON 行子进程，父进程用 Job Object 管寿命 | 只为驱动写 stdout、崩溃或独占进程而隔离；stdio 不占端口、不需要令牌，父进程退出时子进程自然结束 | 回环 HTTP：仍需端口、令牌和健康检查；全部子进程：多数驱动没有必要，徒增开销 |
 | DEC-21 | 接受后端崩溃时输出停在最后值；不做看门狗。只保证打开后 `safe_state`、正常退出 `safe_all`、测试中止 `safe_state` | 崩溃少见；看门狗进程或硬件看门狗的复杂度高于收益 | 心跳租约兜底（原 DEC-05）：为多终端设计，单机只剩崩溃这一种情况；外部看门狗进程：还要处理它自己的寿命 |
@@ -1166,7 +1167,7 @@ DEC-01（声明走 HTTP、动作走 MCP、数据走 SSE）、DEC-02（一台设�
 
 | 编号 | 内容 | 状态 |
 |---|---|---|
-| U1 | 测试台架：设备信息弹窗（引脚表只读、模拟模式与离线缓存标识） | 完成 |
+| U1 | 测试台架：设备信息弹窗（引脚表只读、离线缓存标识） | 完成 |
 | U2 | 测试台架：设备管理与工位接线合并；卡片“控制”执行设备动作 | 完成 |
 | U4 | 运行台：报文表格（原始/解码两栏）、派生字段曲线、`ManualCheck` 对话框 | 完成 |
 | U5 | 计划编辑：绑定表、ICD 编辑与试解码 | 完成 |

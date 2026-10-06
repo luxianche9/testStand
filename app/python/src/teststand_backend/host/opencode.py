@@ -56,21 +56,35 @@ class LlmChoice:
     api_key: str | None
 
 
+PROVIDER = "llm"
+"""The one provider OpenCode is given: the user's OpenAI-compatible endpoint."""
+
+
 def opencode_config(endpoint: str, base_url: str, model: str) -> str:
-    """``OPENCODE_CONFIG_CONTENT``: secrets stay ``{env:...}`` references."""
+    """``OPENCODE_CONFIG_CONTENT``: secrets stay ``{env:...}`` references.
+
+    The provider speaks Chat Completions (``@ai-sdk/openai-compatible``): OpenAI's own SDK
+    provider uses the Responses API, which DeepSeek, Qwen, Kimi, GLM and most gateways lack.
+    Shell commands and anything outside the project folder need the operator's approval: the
+    agent works through the testStand tools, not through testStand's files or the hardware
+    drivers directly.
+    """
     return json.dumps(
         {
             "autoupdate": False,
-            "enabled_providers": ["openai"],
-            "model": f"openai/{model}",
-            "small_model": f"openai/{model}",
+            "enabled_providers": [PROVIDER],
+            "model": f"{PROVIDER}/{model}",
+            "small_model": f"{PROVIDER}/{model}",
+            "permission": {"bash": "ask", "external_directory": "ask"},
             "default_agent": "build",
             "agent": {
                 "build": {"prompt": AGENT_INSTRUCTIONS},
                 "plan": {"prompt": AGENT_INSTRUCTIONS},
             },
             "provider": {
-                "openai": {
+                PROVIDER: {
+                    "npm": "@ai-sdk/openai-compatible",
+                    "name": "LLM",
                     "options": {
                         "baseURL": base_url,
                         "apiKey": "{env:TESTSTAND_LLM_API_KEY}",

@@ -77,7 +77,7 @@ async def fixture(root: Path) -> tuple[ProjectWiringService, ProjectService, lis
 async def test_canvas(tmp_path: Path) -> None:
     service, projects, notifications = await fixture(tmp_path)
     before = clone(projects.wiring()["connections"])
-    added = await service.add_managed_hardware_to_canvas("CARD_A")
+    added = await service.add_hardware_to_canvas("CARD_A")
     assert added["added"] is True and added["dirty"] is True
     assert added["node"]["x"] == 410 and added["node"]["y"] == 80
     assert added["node"]["portPositions"] == {
@@ -88,21 +88,20 @@ async def test_canvas(tmp_path: Path) -> None:
     assert len(notifications) == 1
 
 
-@pytest.mark.ts_case(PREFIX + "is idempotent and refuses passive hardware")
+@pytest.mark.ts_case(PREFIX + "is idempotent and also places passive hardware")
 @pytest.mark.asyncio
 async def test_canvas_idempotence(tmp_path: Path) -> None:
     service, projects, notifications = await fixture(tmp_path)
-    first = await service.add_managed_hardware_to_canvas("CARD_A")
-    assert await service.add_managed_hardware_to_canvas("CARD_A") == {
+    first = await service.add_hardware_to_canvas("CARD_A")
+    assert await service.add_hardware_to_canvas("CARD_A") == {
         "added": False,
         "dirty": True,
         "node": first["node"],
     }
     assert sum(node["hardwareId"] == "CARD_A" for node in projects.wiring()["nodes"]) == 1
     assert len(notifications) == 1
-    with pytest.raises(AppError) as error:
-        await service.add_managed_hardware_to_canvas("DUT_A")
-    assert error.value.category == "permission_denied"
+    # Passive parts (the unit under test, fixtures) go on the canvas the same way.
+    assert (await service.add_hardware_to_canvas("DUT_B"))["added"] is True
 
 
 @pytest.mark.ts_case(

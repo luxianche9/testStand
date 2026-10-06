@@ -205,30 +205,27 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
     expect(await page.evaluate(async () => (await window.teststand.projects.document())?.file.wiring.connections)).toEqual([]);
   });
 
-  test("submits the device editor with Enter and the keyboard-selected native mode", async () => {
+  test("submits the device editor with Enter", async () => {
     await page.evaluate(() => window.teststand.devices.saveDevice({ input: {
       deviceId: "KEYBOARD_DEV", label: "Keyboard device", hardwareId: "KEYBOARD_DEV_CARD", type: "pci1762",
-      settings: {}, mode: "real", enabled: true
+      settings: {}, enabled: true
     } }));
     await page.getByRole("tab", { name: "测试台架", exact: true }).click();
     const row = page.getByRole("tabpanel", { name: "设备列表" }).getByRole("button", { name: /Keyboard device/ });
     await row.click();
     await page.getByRole("dialog", { name: "Keyboard device" }).getByRole("button", { name: "编辑", exact: true }).click();
     const dialog = page.getByRole("dialog", { name: "编辑设备", exact: true });
-    await expect(dialog.getByLabel("设备类型")).toHaveCount(0);
-    const mode = dialog.getByLabel("运行模式");
-    await expect(mode).toHaveValue("real");
-    await mode.focus();
-    await mode.press("End");
-    await expect(mode).toHaveValue("sim");
-    await dialog.getByLabel("名称").fill("Keyboard device sim");
+    await expect(dialog.getByLabel(/设备类型|运行模式/)).toHaveCount(0);
+    await dialog.getByLabel("名称").fill("Keyboard relay card");
     await dialog.getByLabel("名称").press("Enter");
     await expect(dialog).toBeHidden();
     const saved = await page.evaluate(async () => (await window.teststand.system.dashboard()).devices
       .find((instance) => instance.deviceId === "KEYBOARD_DEV"));
-    expect(saved).toMatchObject({ label: "Keyboard device sim", mode: "sim", hardwareId: "KEYBOARD_DEV_CARD" });
-    await expect(page.getByRole("tabpanel", { name: "设备列表" }).getByRole("button", { name: /Keyboard device sim/ }))
+    expect(saved).toMatchObject({ label: "Keyboard relay card", hardwareId: "KEYBOARD_DEV_CARD" });
+    await expect(page.getByRole("tabpanel", { name: "设备列表" }).getByRole("button", { name: /Keyboard relay card/ }))
       .toContainText("在线");
+    // Free the card for the other suites.
+    await page.evaluate(() => window.teststand.devices.removeDevice({ deviceId: "KEYBOARD_DEV" }));
   });
 
   test("discards unsaved hardware editor changes on Escape", async () => {

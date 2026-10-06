@@ -53,8 +53,8 @@ GLOSSARY = {
     "a": "Exact pinId on portA, copied from that port's pins list.",
     "b": "Exact pinId on portB, copied from that port's pins list.",
     "action": "connect or disconnect requests human work; it never moves a cable automatically.",
-    "timeoutMs": "Pending wiring task expiration in milliseconds; default 1800000, range "
-    "1000–86400000. Does not expire work already in progress.",
+    "timeoutMs": "Pending wiring task expiration in milliseconds; default 86400000 (one day), "
+    "range 1000..604800000.",
     "wiringTaskId": "ID returned by request_wiring_task; valid only in this application session.",
     "message": "Optional reason recorded on the task; cancellation does not undo physical wiring.",
     "status": "Filter by the exact lifecycle status; a successful program exit is not a test "
@@ -237,10 +237,8 @@ PLATFORM_TOOLS = [
                             "deviceId": _STRING,
                             "hardwareId": _STRING,
                             "enabled": _BOOLEAN,
-                            "transport": _STRING,
+                            "label": _STRING,
                             "type": _STRING,
-                            "mode": _STRING,
-                            "url": _STRING,
                         },
                         ["deviceId"],
                     )
@@ -318,15 +316,15 @@ PLATFORM_TOOLS = [
         fields=("hardwareId",),
     ),
     _platform(
-        "add_managed_hardware_to_canvas",
-        "幂等地将已登记主动硬件加入当前工程画布，已存在时返回 added=false。会改变工程未保存"
-        "状态；不创建物理接线或测量结果。",
+        "add_hardware_to_canvas",
+        "幂等地将已登记硬件（设备或被测件/夹具）加入当前工程画布，已存在时返回 added=false。"
+        "会改变工程未保存状态；不创建物理接线或测量结果。",
         _HARDWARE_ID,
         _object(
             {"added": _BOOLEAN, "node": _object({}), "dirty": _BOOLEAN},
             ["added", "node", "dirty"],
         ),
-        operation="wiring.addManagedHardwareToCanvas",
+        operation="wiring.addHardwareToCanvas",
         fields=("hardwareId",),
     ),
     _platform(
@@ -344,7 +342,7 @@ PLATFORM_TOOLS = [
                     "permitted only for different ports."
                 ),
                 "action": wiring_action_schema,
-                "timeoutMs": number(1000, 86_400_000, integer=True).default(1_800_000),
+                "timeoutMs": number(1000, 7 * 86_400_000, integer=True).default(86_400_000),
             },
             strict=True,
         ),

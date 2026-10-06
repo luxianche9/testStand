@@ -49,7 +49,7 @@ def application(overrides: dict[str, Any] | None = None) -> tuple[Any, Any, Any]
     projects = Mock(document=Mock(return_value={"dirty": False, "file": {"task": {}}}))
     wiring = Mock(
         request_task=AsyncMock(return_value={"wiringTaskId": "WT"}),
-        add_managed_hardware_to_canvas=AsyncMock(return_value={"added": True}),
+        add_hardware_to_canvas=AsyncMock(return_value={"added": True}),
         get_task=Mock(return_value={"wiringTaskId": "WT"}),
         list_tasks=Mock(return_value=[]),
         cancel_task=AsyncMock(),

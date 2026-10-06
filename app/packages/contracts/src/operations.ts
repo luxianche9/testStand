@@ -52,6 +52,7 @@ export interface OperationResults {
   "devices.listManagedHardware": ManagedHardware[];
   "devices.inspectPackage": DevicePackageInspection;
   "devices.addDevice": DeviceAdded;
+  "devices.addDeviceFromFile": DeviceAdded;
   "devices.listHardware": Hardware[];
   "devices.getHardware": Hardware;
   "devices.getDefinition": ManagedDeviceDefinition | null;
@@ -75,7 +76,7 @@ export interface OperationResults {
   "projects.listRecent": RecentProjectSummary[];
   "projects.forgetRecent": void;
   "wiring.updateDocument": ProjectDocument;
-  "wiring.addManagedHardwareToCanvas": { added: boolean; node: ProjectCanvasNode; dirty: boolean };
+  "wiring.addHardwareToCanvas": { added: boolean; node: ProjectCanvasNode; dirty: boolean };
   "wiring.requestTask": WiringTask;
   "wiring.startTask": WiringTask;
   "wiring.completeTask": WiringTask;

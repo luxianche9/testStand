@@ -45,7 +45,8 @@ The backend calls `open_device(type, config)`. `config` is a `DeviceConfig`, usu
 built with `DeviceConfig.from_mapping({deviceId, hardwareId, manufacturer, model,
 dryRun, settings})`; `settings` holds the adapter's nonsecret options. In the backend
 a device instance is the record `{deviceId, label, hardwareId,
-type, settings, mode: real|sim, enabled}`; `mode: sim` sets `dryRun`.
+type, settings, enabled}` and always drives the real hardware; `dryRun` (the simulated
+driver) is for the adapter's own tests and `--check` only.
 `device_types()` lists the installed types, `load_device()` also accepts
 `module` or `module:ClassName`.
 

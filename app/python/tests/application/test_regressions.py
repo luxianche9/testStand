@@ -215,7 +215,7 @@ async def test_wiring_orchestration_and_dashboard_facades() -> None:
     authorizer = DefaultAuthorizer()
     assert authorizer.allowed_capabilities(SYSTEM_REQUEST_CONTEXT) == list(CAPABILITIES)
     wiring = Mock(
-        add_managed_hardware_to_canvas=AsyncMock(return_value={"added": True}),
+        add_hardware_to_canvas=AsyncMock(return_value={"added": True}),
         request_task=AsyncMock(return_value={"status": "pending"}),
         start_task=AsyncMock(return_value={"status": "in_progress"}),
         complete_task=AsyncMock(return_value={"status": "confirmed"}),
@@ -233,7 +233,7 @@ async def test_wiring_orchestration_and_dashboard_facades() -> None:
     assert await app.update_document(HUMAN, {}) == saved
     wiring.record_manual_changes.assert_called_once_with([], [])
     assert app.list_changes(HUMAN) == []
-    assert await app.add_managed_hardware_to_canvas(AGENT, "H") == {"added": True}
+    assert await app.add_hardware_to_canvas(AGENT, "H") == {"added": True}
     await app.request_task(
         HUMAN, {"portA": "A", "portB": "B", "action": "connect", "timeoutMs": 1000}
     )

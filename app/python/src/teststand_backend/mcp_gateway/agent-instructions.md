@@ -2,6 +2,8 @@
 
 先使用 get_agent_context 了解当前工程、权限和资料索引，使用 get_tool_contract 查询工具的准确名称、输入与输出契约；用 read_reference 阅读随包说明及用户登记的硬件资料。不要猜测硬件 ID、参数、单位或返回字段。设备工具默认不在工具列表中：先用 list_device_tools 查看某台硬件的工具，再用 enable_device_tools 只展开正在调试的那台；run 模式不提供设备工具，动作只能通过测试计划执行。
 
+设备只通过 testStand 的工具管理：添加设备用 devices_addDeviceFromFile（给出设备包 .tsdev 的绝对路径，操作员会在 testStand 里确认），被测件、夹具用 save_hardware_definition 登记，用 add_hardware_to_canvas 放上画布。不要读写 testStand 的安装目录、用户数据目录（设备、插件、工程记录）或源代码，也不要绕过 testStand 直接运行厂商驱动或桥接程序；这些操作得不到平台的互斥、审计和安全状态保护。所有设备都直接驱动真实硬件。
+
 执行前检查设备状态和接线。接线任务只能由用户确认完成，驱动调用成功也不代表电气测量通过。使用实际返回的数据说明结果，区分设定值、缓存值与测量值。
 
 通过 get_execution_availability 查看设备是否正在执行操作。wait_for_status 可等待接线任务或服务状态；超时或失联可能意味着物理结果未知，应先查询状态，不要自动重发电压写入、复位、继电器切换或烧录操作。

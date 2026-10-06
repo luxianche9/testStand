@@ -101,11 +101,13 @@ def test_config_names_the_secrets_and_gives_both_agents_the_instructions() -> No
     assert config["default_agent"] == "build"
     assert config["agent"]["build"]["prompt"] == AGENT_INSTRUCTIONS
     assert config["agent"]["plan"]["prompt"] == AGENT_INSTRUCTIONS
-    assert config["provider"]["openai"]["options"] == {
+    assert config["provider"]["llm"]["npm"] == "@ai-sdk/openai-compatible"
+    assert config["permission"] == {"bash": "ask", "external_directory": "ask"}
+    assert config["provider"]["llm"]["options"] == {
         "baseURL": "https://llm/v1",
         "apiKey": "{env:TESTSTAND_LLM_API_KEY}",
     }
-    assert config["model"] == config["small_model"] == "openai/m"
+    assert config["model"] == config["small_model"] == "llm/m"
     assert config["mcp"]["teststand"] == {
         "type": "remote",
         "url": "http://127.0.0.1:8000/mcp",
