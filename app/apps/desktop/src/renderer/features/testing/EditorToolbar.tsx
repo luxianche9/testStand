@@ -1,35 +1,32 @@
 import { useState } from "react";
 import {
-  CheckCircle2Icon, CircleStopIcon, ListChecksIcon, PauseIcon, PlayIcon, Redo2Icon, SaveIcon, SlidersHorizontalIcon,
+  CheckCircle2Icon, CircleStopIcon, FileCogIcon, ListChecksIcon, PauseIcon, PlayIcon, Redo2Icon, SaveIcon,
   Undo2Icon
 } from "lucide-react";
 import type { TestPlan, TestPlanIssue, TestRunSnapshot } from "@teststand/contracts/testing";
 import { Badge, Button, IconButton, Toolbar, ToolbarDivider } from "../../ui";
 import { isActiveRun } from "./plan-helpers.js";
 
-type Confirm = (options: { title: string; message: React.ReactNode; confirmLabel?: string; danger?: boolean })
+export type Confirm = (options: { title: string; message: React.ReactNode; confirmLabel?: string; danger?: boolean })
   => Promise<boolean>;
 
-/** Editor command bar: identity + edit state, edit history, validation, parameters and run control. */
-export function EditorToolbar({ draft, run, dirty, conflict, issues, past, future, message,
-  confirm, onSave, onUndo, onRedo, onValidate, onIssues, onParameters, onStart, onRunChanged }: {
+/** Plan editor command bar: identity + edit state, edit history, plan properties and validation. */
+export function EditorToolbar({ draft, dirty, conflict, issues, past, future, message, planProperties,
+  onPlanProperties, onSave, onUndo, onRedo, onValidate, onIssues }: {
   draft: TestPlan | undefined;
-  run: TestRunSnapshot | null | undefined;
   dirty: boolean;
   conflict: boolean;
   issues: TestPlanIssue[];
   past: number;
   future: number;
   message: string | undefined;
-  confirm: Confirm;
+  planProperties: boolean;
+  onPlanProperties: () => void;
   onSave: () => void;
   onUndo: () => void;
   onRedo: () => void;
   onValidate: () => void;
   onIssues: () => void;
-  onParameters: () => void;
-  onStart: () => void;
-  onRunChanged: () => void;
 }) {
   const hasErrors = issues.some((issue) => issue.severity === "error");
   return (
@@ -46,17 +43,28 @@ export function EditorToolbar({ draft, run, dirty, conflict, issues, past, futur
       <IconButton label="撤销" size="icon-sm" disabled={!past} onClick={onUndo}><Undo2Icon /></IconButton>
       <IconButton label="重做" size="icon-sm" disabled={!future} onClick={onRedo}><Redo2Icon /></IconButton>
       <ToolbarDivider />
+      <Button size="sm" variant={planProperties ? "secondary" : "outline"} aria-pressed={planProperties}
+        disabled={!draft} onClick={onPlanProperties}>
+        <FileCogIcon />计划属性
+      </Button>
       <Button size="sm" variant="outline" disabled={!draft} onClick={onValidate}><CheckCircle2Icon />校验</Button>
-      {issues.length > 0 && (
-        <Button size="sm" variant={hasErrors ? "danger" : "outline"} onClick={onIssues}>
-          <ListChecksIcon /><span className="tf-num">{issues.length}</span> 个问题
-        </Button>
-      )}
-      {draft && draft.parameters.length > 0 && (
-        <Button size="sm" variant="outline" onClick={onParameters}><SlidersHorizontalIcon />运行参数</Button>
-      )}
-      <RunControls run={run} disabled={!draft} confirm={confirm} onStart={onStart} onChanged={onRunChanged} />
+      <IssuesButton issues={issues} hasErrors={hasErrors} onClick={onIssues} />
     </Toolbar>
+  );
+}
+
+/** 「N 个问题」, shown only when validation found any. */
+export function IssuesButton({ issues, hasErrors, onClick }: {
+  issues: TestPlanIssue[];
+  hasErrors?: boolean;
+  onClick: () => void;
+}) {
+  if (!issues.length) return null;
+  const errors = hasErrors ?? issues.some((issue) => issue.severity === "error");
+  return (
+    <Button size="sm" variant={errors ? "danger" : "outline"} onClick={onClick}>
+      <ListChecksIcon /><span className="tf-num">{issues.length}</span> 个问题
+    </Button>
   );
 }
 

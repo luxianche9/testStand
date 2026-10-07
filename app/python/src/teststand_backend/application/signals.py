@@ -126,7 +126,8 @@ class SignalsApplication:
         saved."""
         view = apply_operations(self.projects.signals(), operations, self.signals)
         document = await self.update_document(context, view)
-        return document["file"]["signals"]
+        signals: Json = document["file"]["signals"]
+        return signals
 
     @operation(
         "signals.write",

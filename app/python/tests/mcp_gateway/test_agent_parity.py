@@ -46,4 +46,4 @@ def test_every_operation_is_an_agent_tool_or_human_only() -> None:
     missing = set(OPERATIONS) - agent - HUMAN_ONLY
     assert not missing, f"Give these operations an Agent tool or list them as human-only: {missing}"
     assert not HUMAN_ONLY & agent, "An operation listed human-only is an Agent tool"
-    assert HUMAN_ONLY <= set(OPERATIONS)
+    assert set(OPERATIONS) >= HUMAN_ONLY

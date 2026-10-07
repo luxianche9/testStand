@@ -51,7 +51,11 @@ def test_a_batch_refers_to_the_ids_it_creates() -> None:
         {"type": "add_hardware", "hardwareId": "AO", "nodeId": "ao"},
         {"type": "add_hardware", "hardwareId": "DUT", "nodeId": "dut", "x": 700, "y": 40},
         {"type": "add_widget", "widget": "value", "nodeId": "v", "label": "AI0"},
-        {"type": "link", "from": {"nodeId": "ao", "handle": "ai0"}, "to": {"nodeId": "v", "handle": "in"}},
+        {
+            "type": "link",
+            "from": {"nodeId": "ao", "handle": "ai0"},
+            "to": {"nodeId": "v", "handle": "in"},
+        },
         {
             "type": "link",
             "linkId": "vref",
@@ -101,7 +105,10 @@ def test_a_batch_refers_to_the_ids_it_creates() -> None:
         ([{"type": "remove_node", "nodeId": "ghost"}], "No node ghost"),
         ([{"type": "remove_link", "linkId": "ghost"}], "No link ghost"),
         (
-            [{"type": "add_hardware", "hardwareId": "AO", "nodeId": "ao"}, {"type": "update_widget", "nodeId": "ao"}],
+            [
+                {"type": "add_hardware", "hardwareId": "AO", "nodeId": "ao"},
+                {"type": "update_widget", "nodeId": "ao"},
+            ],
             "is not a widget",
         ),
     ],

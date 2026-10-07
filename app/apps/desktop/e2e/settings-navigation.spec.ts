@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { _electron as electron, expect, test, type Page } from "@playwright/test";
-import { reloadAfterLeave, rendererReady } from "./renderer.js";
+import { reloadAfterLeave, rendererReady, showPanel } from "./renderer.js";
 
 const desktopDir = resolve(import.meta.dirname, "..");
 const gatewayPort = 18082;
@@ -25,11 +25,11 @@ test("settings returns to the page that opened it", async () => {
     await reloadAfterLeave(page);
     await page.getByText("settings-navigation-project", { exact: true }).first().click();
 
-    const devices = page.getByRole("tabpanel", { name: "设备列表" });
+    const devices = page.getByRole("complementary", { name: "设备列表" });
     await expect(devices).toBeVisible();
     await openSettingsAndReturn(page, () => expect(devices).toBeVisible());
 
-    await page.getByRole("tab", { name: "测试编排" }).click();
+    await showPanel(page, "测试");
     await expect(page.getByRole("button", { name: "新建功能测试项" })).toBeVisible();
     await openSettingsAndReturn(page, () => expect(page.getByRole("button", { name: "新建功能测试项" })).toBeVisible());
 
@@ -44,6 +44,9 @@ async function openSettingsAndReturn(page: Page, assertReturned: () => Promise<v
   await expect(page.getByRole("heading", { name: "外观" })).toBeVisible();
   await page.getByRole("button", { name: "AI 模型" }).click();
   await expect(page.getByRole("heading", { name: "AI 模型" })).toBeVisible();
+  // The activity bar's 设置 icon toggles: a second click returns, as 返回 does.
+  await page.getByRole("button", { name: "设置", exact: true }).click();
+  await assertReturned();
   await page.getByRole("button", { name: "设置", exact: true }).click();
   await page.getByRole("button", { name: "返回", exact: true }).click();
   await assertReturned();

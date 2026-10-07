@@ -13,7 +13,7 @@ import type {
  * - control widget (`out`) → writable signal.
  */
 
-export type SignalType = "scalar" | "bits" | "bytes" | "frames" | string;
+type SignalType = "scalar" | "bits" | "bytes" | "frames" | string;
 
 /** One row of a hardware node: a stream or a passive signal. */
 export interface SignalInfo {
@@ -33,13 +33,13 @@ export interface SignalInfo {
   declaration?: StreamDeclaration;
 }
 
-export const DISPLAY_TYPES: Partial<Record<SignalWidget, SignalType[]>> = {
+const DISPLAY_TYPES: Partial<Record<SignalWidget, SignalType[]>> = {
   scope: ["scalar", "bits"],
   value: ["scalar"],
   lamps: ["bits"],
   terminal: ["bytes", "frames"]
 };
-export const CONTROL_TYPES: Partial<Record<SignalWidget, SignalType[]>> = {
+const CONTROL_TYPES: Partial<Record<SignalWidget, SignalType[]>> = {
   switch: ["bits"],
   setpoint: ["scalar"]
 };
@@ -68,7 +68,7 @@ export const WIDGET_SIZES: Record<SignalWidget, { width: number; height: number 
   setpoint: { width: 220, height: 110 }
 };
 
-export function isControl(widget: SignalWidget): boolean {
+function isControl(widget: SignalWidget): boolean {
   return widget in CONTROL_TYPES;
 }
 
@@ -77,7 +77,7 @@ export function widgetHandle(widget: SignalWidget): "in" | "out" {
 }
 
 /** `<hardwareId>__<streamId>`: the key live frames and recordings use. */
-export function streamKey(hardwareId: string, streamId: string): string {
+function streamKey(hardwareId: string, streamId: string): string {
   return `${hardwareId}__${streamId}`;
 }
 
@@ -165,7 +165,7 @@ function sameEnd(a: SignalEnd, b: SignalEnd): boolean {
 }
 
 /** The device node and end that carry a passive signal. */
-export function carrierOf(view: SignalView, end: SignalEnd): SignalEnd | undefined {
+function carrierOf(view: SignalView, end: SignalEnd): SignalEnd | undefined {
   const nodes = new Map(view.nodes.map((node) => [node.nodeId, node]));
   for (const link of view.links) {
     for (const [mine, other] of [[link.from, link.to], [link.to, link.from]] as const) {
@@ -284,13 +284,4 @@ export function widgetSignals(view: SignalView, catalog: Catalog, nodeId: string
 
 export function newId(prefix: string): string {
   return `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
-}
-
-/** Default widget for a signal type: what "generate a default panel" places next to a device. */
-export function defaultWidget(info: SignalInfo): SignalWidget | undefined {
-  if (info.origin !== "device") return undefined;
-  if (info.type === "scalar") return info.actions.includes("set") ? "setpoint" : "scope";
-  if (info.type === "bits") return info.actions.includes("setBit") ? "switch" : "lamps";
-  if (info.type === "bytes" || info.type === "frames") return "terminal";
-  return undefined;
 }

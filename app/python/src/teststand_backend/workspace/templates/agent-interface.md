@@ -15,6 +15,15 @@ Physical actions and hardware I/O still obey execution conflicts; metadata is no
 these checks. Do not stop an active hardware call just to read the public status or contract.
 Physical wiring confirmation and driver success have separate meanings from measured electrical facts.
 
+## Wiring and the signal view
+
+`request_wiring` submits every pin change a task needs as one batch (`changes`, each a connect or
+disconnect of `portA`/`portB` with `pins`; `replaceAll` also disconnects every saved connection the
+batch does not name). The call blocks until the operator confirms or rejects the whole batch in the
+conversation; a confirmed batch is applied, logged and saved. The wiring is never edited directly.
+`get_signal_view` returns the signal view (nodes and links); `apply_signal_view_operations` changes
+it with the same rules as the operator's canvas.
+
 ## Read documentation
 
 Call `read_reference` without `referenceId` or `query` to list bundled and registered references.

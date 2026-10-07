@@ -89,7 +89,7 @@ export function DialogFooter({ className, ...props }: React.ComponentPropsWithou
 }
 
 /** Replaces window.confirm: resolves the decision through callbacks instead of blocking. */
-export function ConfirmDialog({ open, title, message, confirmLabel = "确认", danger, onConfirm, onCancel }: {
+function ConfirmDialog({ open, title, message, confirmLabel = "确认", danger, onConfirm, onCancel }: {
   open: boolean;
   title: string;
   message: React.ReactNode;

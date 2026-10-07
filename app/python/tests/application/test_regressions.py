@@ -246,6 +246,13 @@ async def test_wiring_orchestration_and_dashboard_facades() -> None:
     assert answered == {"status": "confirmed"}
     assert wiring.request_task.call_args.args[0]["requestedBy"] == "agent"
     wiring.wait_for_answer.assert_awaited_with("W")
+    # Cancelling the Agent's request withdraws the question from the operator.
+    wiring.wait_for_answer.side_effect = asyncio.CancelledError
+    with pytest.raises(asyncio.CancelledError):
+        await app.request_wiring(
+            AGENT, {"changes": [{"action": "connect", "portA": "A", "portB": "B"}]}
+        )
+    wiring.cancel_task.assert_awaited_once_with("W", "The request was cancelled")
     assert (await app.complete_task(HUMAN, "W", "confirmed", "ok"))["status"] == "confirmed"
     assert (await app.cancel_task(AGENT, "W", "cancel"))["status"] == "cancelled"
     assert app.get_task(HUMAN, "W") == {"id": "W"} and app.list_tasks(HUMAN) == []

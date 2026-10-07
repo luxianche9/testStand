@@ -8,7 +8,7 @@ import {
   LampsWidget, ScopeWidget, SetpointWidget, SwitchWidget, TerminalWidget, ValueWidget, type WidgetInput
 } from "./widgets.js";
 
-export type HardwareNodeData = {
+type HardwareNodeData = {
   node: HardwareSignalNode;
   label: string;
   kind: "managed" | "passive" | "missing";
@@ -20,7 +20,7 @@ export type HardwareNodeData = {
   /** Opens the device's actions (tools without a stream, such as configuring a port). */
   onControl: (hardwareId: string, anchor: DOMRect) => void;
 };
-export type WidgetNodeData = {
+type WidgetNodeData = {
   node: WidgetSignalNode;
   inputs: WidgetInput[];
   onRemove: (nodeId: string) => void;

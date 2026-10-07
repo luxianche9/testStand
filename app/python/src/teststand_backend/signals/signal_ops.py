@@ -43,11 +43,11 @@ def _issue(message: str) -> Exception:
 
 def _below(nodes: Iterable[Record]) -> float:
     """The top of a free row under every node on the canvas."""
-    return max([40.0, *(node["y"] + node.get("height", 200) + 40 for node in nodes)])
+    return float(max([40.0, *(node["y"] + node.get("height", 200) + 40 for node in nodes)]))
 
 
 def _node(view: Record, node_id: str) -> Record:
-    node = next((item for item in view["nodes"] if item["nodeId"] == node_id), None)
+    node: Record | None = next((item for item in view["nodes"] if item["nodeId"] == node_id), None)
     if node is None:
         raise _issue(f"No node {node_id} on the signal view")
     return node
@@ -74,11 +74,12 @@ def apply_operations(view: Record, operations: list[Record], catalog: SignalCata
     result = clone(view)
     for index, operation in enumerate(operations):
         kind = operation.get("type")
+        apply = _APPLY.get(kind) if isinstance(kind, str) else None
+        if apply is None:
+            raise _issue(f"operations[{index}]: unknown type {kind}")
         try:
-            _APPLY[kind](result, operation, catalog)
+            apply(result, operation, catalog)
         except KeyError as error:
-            if kind not in _APPLY:
-                raise _issue(f"operations[{index}]: unknown type {kind}") from error
             raise _issue(f"operations[{index}] ({kind}): missing {error}") from error
     return result
 
@@ -247,9 +248,8 @@ def default_panel(view: Record, entries: list[Record]) -> Record:
                 continue
             signal = {"nodeId": node["nodeId"], "handle": stream["id"]}
             if widget == "scope" and scope:
-                links.append(
-                    {"linkId": new_id("ln"), "from": signal, "to": {"nodeId": scope, "handle": "in"}}
-                )
+                to = {"nodeId": scope, "handle": "in"}
+                links.append({"linkId": new_id("ln"), "from": signal, "to": to})
                 continue
             width, height = WIDGET_SIZES[widget]
             node_id = new_id("w")

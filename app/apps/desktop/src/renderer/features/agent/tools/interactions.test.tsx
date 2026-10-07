@@ -4,6 +4,7 @@ import type { OpenCodePermissionRequest, OpenCodeQuestionRequest } from "@assist
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { onSidePanelRequested } from "../../../lib/side-panel.js";
 import { OpenCodePermissionCard } from "./PermissionCard";
 import { OpenCodeQuestionCard } from "./QuestionCard";
 import { getPatchInfo } from "./shared";
@@ -56,9 +57,9 @@ describe("OpenCode interaction cards", () => {
       .toEqual({ files: ["a.ts"], added: 1, removed: 1 });
   });
 
-  it("renders test plan revisions and opens the testing workspace", async () => {
+  it("renders test plan revisions and opens the plan in the test panel", async () => {
     const navigate = vi.fn();
-    window.addEventListener("teststand:navigate-plans", navigate);
+    const stop = onSidePanelRequested(navigate);
     render(
       <TestPlanTool
         type="tool-call"
@@ -66,7 +67,7 @@ describe("OpenCode interaction cards", () => {
         toolName="apply_test_plan_operations"
         args={{}}
         argsText="{}"
-        result={{ data: { plan: { name: "台架测试", revision: 4 }, appliedOperations: 2, issues: [] } }}
+        result={{ data: { plan: { id: "plan-1", name: "台架测试", revision: 4 }, appliedOperations: 2, issues: [] } }}
         status={{ type: "complete" }}
         addResult={vi.fn()}
         resume={vi.fn()}
@@ -77,8 +78,8 @@ describe("OpenCode interaction cards", () => {
     expect(screen.getByText("台架测试")).toBeTruthy();
     expect(screen.getByText("rev 4")).toBeTruthy();
     expect(screen.getByText("修改 2 个节点")).toBeTruthy();
-    await userEvent.click(screen.getByRole("button", { name: "在测试计划页查看" }));
-    expect(navigate).toHaveBeenCalledOnce();
-    window.removeEventListener("teststand:navigate-plans", navigate);
+    await userEvent.click(screen.getByRole("button", { name: "在测试面板查看" }));
+    expect(navigate).toHaveBeenCalledWith("testing", "plan-1");
+    stop();
   });
 });

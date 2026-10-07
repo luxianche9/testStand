@@ -90,7 +90,7 @@ class ProjectWiringService:
         ``input`` is ``{changes: [{action, portA, portB, pins}], replaceAll?, note?,
         requestedBy?}``, or a single change's fields. ``replaceAll`` also disconnects every saved
         connection whose port pair is not connected by ``changes``."""
-        raw = input["changes"] if "changes" in input else [input]
+        raw = input.get("changes", [input])
         changes = [self._change(item) for item in raw]
         if input.get("replaceAll"):
             kept = {(item["portA"], item["portB"]) for item in changes}

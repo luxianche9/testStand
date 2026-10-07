@@ -6,7 +6,8 @@ import { cleanup, render, screen, waitFor, within } from "@testing-library/react
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { TestPlanPage } from "./TestPlanPage.js";
+import { useBenchRun } from "../signals/use-bench-run.js";
+import { TestPanel } from "./TestPanel.js";
 import { installTestingApi, makeItem, makePlan } from "./testing-api.fixture.js";
 
 const plans = [makePlan("alpha", "上电自检"), makePlan("beta", "串口回环"), makePlan("gamma", "电源纹波")];
@@ -16,6 +17,10 @@ const items = [
   makeItem("gamma", "电源纹波")
 ];
 let api: ReturnType<typeof installTestingApi>;
+
+function Panel() {
+  return <TestPanel bench={useBenchRun()} />;
+}
 
 function Wrapper({ children }: { children: ReactNode }) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
@@ -34,7 +39,7 @@ afterEach(() => {
 
 describe("功能测试项列表", () => {
   it("summarises the current unit's results", async () => {
-    render(<TestPlanPage />, { wrapper: Wrapper });
+    render(<Panel />, { wrapper: Wrapper });
     const list = await screen.findByRole("complementary", { name: "功能测试项列表" });
     await within(list).findByText("上电自检");
     expect(screen.getByTestId("item-summary").textContent).toBe("1 PASS · 1 FAIL · 1 未测");
@@ -44,7 +49,7 @@ describe("功能测试项列表", () => {
   });
 
   it("counts the selection and runs checked items in list order", async () => {
-    render(<TestPlanPage />, { wrapper: Wrapper });
+    render(<Panel />, { wrapper: Wrapper });
     await screen.findByRole("checkbox", { name: "选择 电源纹波" });
     await userEvent.click(screen.getByRole("checkbox", { name: "选择 电源纹波" }));
     await userEvent.click(screen.getByRole("checkbox", { name: "选择 上电自检" }));
@@ -60,7 +65,7 @@ describe("功能测试项列表", () => {
   });
 
   it("runs every item via select-all", async () => {
-    render(<TestPlanPage />, { wrapper: Wrapper });
+    render(<Panel />, { wrapper: Wrapper });
     const all = await screen.findByRole("checkbox", { name: "全选功能测试项" });
     await waitFor(() => expect(all.hasAttribute("disabled")).toBe(false));
     await userEvent.click(all);

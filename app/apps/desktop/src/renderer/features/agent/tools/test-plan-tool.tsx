@@ -1,6 +1,7 @@
 import type { ToolCallMessagePartComponent } from "@assistant-ui/react";
 import { ActivityIcon, ListTreeIcon } from "lucide-react";
 import { Badge, Button, StatusLamp, type Tone } from "../../../ui";
+import { openSidePanel } from "../../../lib/side-panel.js";
 import { ToolFallback } from "../ToolFallback";
 
 function verdictBadgeTone(verdict: string): Tone {
@@ -54,9 +55,9 @@ export const TestPlanTool: ToolCallMessagePartComponent = ({ toolName, argsText,
             size="xs"
             variant="outline"
             className="w-fit"
-            onClick={() => window.dispatchEvent(new CustomEvent("teststand:navigate-plans"))}
+            onClick={() => openSidePanel("testing", stringValue(plan?.id))}
           >
-            在测试计划页查看
+            在测试面板查看
           </Button>
         </div>
         {status?.type === "incomplete" && <ToolFallback.Error status={status} />}

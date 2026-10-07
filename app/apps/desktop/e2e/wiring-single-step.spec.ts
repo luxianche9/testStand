@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from "@playwright/test";
-import { reloadAfterLeave, rendererReady } from "./renderer.js";
+import { reloadAfterLeave, rendererReady, showPanel } from "./renderer.js";
 
 const desktopDir = resolve(import.meta.dirname, "..");
 const artifacts = resolve(desktopDir, "../../output/playwright/wiring-single-step");
@@ -55,42 +55,34 @@ test.describe.serial("single-step wiring tasks", () => {
     if (userData && dirname(userData) === resolve(tmpdir())) await rm(userData, { recursive: true, force: true });
   });
 
-  test("keeps a request pending in the wiring log and keeps history", async () => {
-    await page.getByRole("tab", { name: "测试编排", exact: true }).click();
-    const id = await page.evaluate(async () => (await window.teststand.wiring.requestTask({ input: {
-      portA: "DUT_A.J1", portB: "DUT_B.J1", action: "connect",
-      pins: [{ a: "1", b: "2" }, { a: "3", b: "3" }]
-    } })).wiringTaskId);
-    await expect(page.getByLabel("1 条待处理接线任务")).toBeVisible();
-    await page.getByRole("tab", { name: "测试台架", exact: true }).click();
-    await page.getByRole("tab", { name: /^接线日志/ }).click();
-    const log = page.getByRole("tabpanel", { name: "接线日志" });
-    const open = log.getByRole("region", { name: "待处理" });
-    const card = open.getByRole("region", { name: "接线任务", exact: true });
-    await expect(card).toBeVisible();
-    await expect(card.getByRole("button", { name: "完成", exact: true })).toBeEnabled();
-    await expect(card.getByRole("button", { name: "未完成", exact: true })).toBeEnabled();
-    await expect(card.getByRole("button", { name: "开始处理" })).toHaveCount(0);
+  test("logs the change once a request is confirmed and nothing for a rejected one", async () => {
+    const id = await page.evaluate(async () => (await window.teststand.wiring.requestTask({ input: { changes: [
+      { action: "connect", portA: "DUT_A.J1", portB: "DUT_B.J1", pins: [{ a: "1", b: "2" }, { a: "3", b: "3" }] }
+    ] } })).wiringTaskId);
+    // The request is answered in the conversation: the log has no pending cards and nothing changed yet.
+    await showPanel(page, "接线日志");
+    const log = page.getByRole("region", { name: "接线日志" });
+    const changes = log.getByRole("region", { name: "变更记录" });
+    await expect(log.getByRole("region", { name: "待处理" })).toHaveCount(0);
+    await expect(changes.getByText(/暂无接线变更/)).toBeVisible();
     expect(await page.evaluate((taskId) => window.teststand.wiring.getTask({ taskId }).then((task) => task.status), id)).toBe("pending");
-    await page.screenshot({ animations: "disabled", path: join(artifacts, "pending-light.png") });
-    await card.getByRole("button", { name: "完成", exact: true }).click();
-    await expect(open).toHaveCount(0);
-    const history = log.getByRole("region", { name: "历史记录" });
-    await history.getByRole("button", { name: "AI 指导", exact: true }).click();
-    const entry = history.getByRole("button", { name: /连接 DUT_A/ });
-    await entry.click();
-    await expect(history.getByRole("region", { name: "接线任务", exact: true }).getByText("已完成", { exact: true })).toBeVisible();
-    await page.screenshot({ animations: "disabled", path: join(artifacts, "task-log.png") });
-    await entry.click();
-    await expect(cables(page)).toHaveCount(1);
 
-    const rejectedId = await page.evaluate(async () => (await window.teststand.wiring.requestTask({ input: {
-      portA: "DUT_A.J1", portB: "DUT_B.J1", action: "disconnect", pins: [{ a: "1", b: "2" }]
-    } })).wiringTaskId);
-    await open.getByRole("region", { name: "断线任务", exact: true }).getByRole("button", { name: "未完成", exact: true }).click();
-    await expect(open).toHaveCount(0);
-    await expect(history.getByRole("listitem")).toHaveCount(2);
+    await page.evaluate((taskId) => window.teststand.wiring.completeTask({ taskId, outcome: "confirmed" }), id);
+    const entry = changes.getByRole("listitem").filter({ hasText: "新增接线 DUT_A 串口 ↔ DUT_B 串口" });
+    await expect(entry).toBeVisible();
+    await expect(entry.getByLabel("AI 接线")).toBeVisible();
+    await page.screenshot({ animations: "disabled", path: join(artifacts, "task-log.png") });
+    await expect(cables(page)).toHaveCount(1);
+    await log.getByRole("group", { name: "日志来源" }).getByRole("button", { name: "人工更改" }).click();
+    await expect(changes.getByText(/暂无人工更改/)).toBeVisible();
+    await log.getByRole("group", { name: "日志来源" }).getByRole("button", { name: "全部" }).click();
+
+    const rejectedId = await page.evaluate(async () => (await window.teststand.wiring.requestTask({ input: { changes: [
+      { action: "disconnect", portA: "DUT_A.J1", portB: "DUT_B.J1", pins: [{ a: "1", b: "2" }] }
+    ] } })).wiringTaskId);
+    await page.evaluate((taskId) => window.teststand.wiring.completeTask({ taskId, outcome: "rejected" }), rejectedId);
     expect(await page.evaluate((taskId) => window.teststand.wiring.getTask({ taskId }).then((task) => task.status), rejectedId)).toBe("rejected");
+    await expect(changes.getByRole("listitem")).toHaveCount(1);
     await expect(cables(page)).toHaveCount(1);
   });
 
@@ -108,18 +100,16 @@ test.describe.serial("single-step wiring tasks", () => {
     await expect(page.getByRole("region", { name: "针脚列表" })).toContainText("同端口接线");
     await page.screenshot({ animations: "disabled", path: join(artifacts, "same-port-list.png") });
     expect(await page.evaluate(async () => (await window.teststand.projects.document())?.file.wiring.connections.length)).toBe(2);
-    const taskId = await page.evaluate(async () => (await window.teststand.wiring.requestTask({ input: {
-      portA: "DUT_A.J1", portB: "DUT_A.J1", pins: [{ a: "1", b: "2" }], action: "disconnect"
-    } })).wiringTaskId);
-    await page.getByRole("tab", { name: /^接线日志/ }).click();
-    const card = page.getByRole("tabpanel", { name: "接线日志" }).getByRole("region", { name: "待处理" })
-      .getByRole("region", { name: "断线任务", exact: true });
-    await expect(card).toHaveCount(1);
+    const taskId = await page.evaluate(async () => (await window.teststand.wiring.requestTask({ input: { changes: [
+      { action: "disconnect", portA: "DUT_A.J1", portB: "DUT_A.J1", pins: [{ a: "1", b: "2" }] }
+    ] } })).wiringTaskId);
+    await page.evaluate((id) => window.teststand.wiring.completeTask({ taskId: id, outcome: "confirmed" }), taskId);
+    await showPanel(page, "接线日志");
+    const changes = page.getByRole("region", { name: "接线日志" }).getByRole("region", { name: "变更记录" });
+    await expect(changes.getByText("删除接线 DUT_A 串口 ↔ DUT_A 串口")).toBeVisible();
     await page.evaluate(() => { document.documentElement.dataset.theme = "dark"; document.documentElement.classList.add("dark"); });
     await page.setViewportSize({ width: 960, height: 600 });
     await page.screenshot({ animations: "disabled", path: join(artifacts, "same-port-dark-960.png") });
-    await card.getByRole("button", { name: "完成", exact: true }).click();
-    await expect(card).toHaveCount(0);
     expect(await page.evaluate((id) => window.teststand.wiring.getTask({ taskId: id }).then((task) => task.status), taskId)).toBe("confirmed");
     expect(await page.evaluate(async () => (await window.teststand.projects.document())?.file.wiring.connections.length)).toBe(1);
     expect(errors).toEqual([]);

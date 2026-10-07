@@ -197,8 +197,12 @@ _SIGNAL_END = obj(
     },
     strict=True,
 )
-_NEW_NODE = string(1).optional().describe(
-    "Id for the new node, so later operations of the batch can refer to it; default: generated."
+_NEW_NODE = (
+    string(1)
+    .optional()
+    .describe(
+        "Id for the new node, so later operations of the batch can refer to it; default: generated."
+    )
 )
 
 
@@ -492,7 +496,8 @@ PLATFORM_TOOLS = [
         "link、remove_node（连同其连线）、remove_link、update_widget、move_node、default_panel"
         "（给每台已知设备的每个流配默认控件，同画布的“默认面板”）、clear。新节点/连线可自带 "
         "nodeId/linkId 供同批后续操作引用。连线方向：设备流→被测对象信号或显示控件的 in；控制控件"
-        "的 out→可写的设备流。返回编辑后的信号视图；与画布编辑一样，save_project 前只在工程缓冲区。",
+        "的 out→可写的设备流。返回编辑后的信号视图；与画布编辑一样，save_project 前只在"
+        "工程缓冲区。",
         obj(
             {
                 "operations": array(_SIGNAL_OPERATION, 1).describe(

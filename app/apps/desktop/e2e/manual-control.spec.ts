@@ -4,7 +4,7 @@ import { join, resolve } from "node:path";
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from "@playwright/test";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { reloadAfterLeave, rendererReady } from "./renderer.js";
+import { reloadAfterLeave, rendererReady, showPanel } from "./renderer.js";
 
 const desktopDir = resolve(import.meta.dirname, "..");
 const gatewayPort = 18086;
@@ -46,10 +46,10 @@ test.describe.serial("manual control and Agent hardware calls", () => {
     expect(status.transport.state, status.transport.message).toBe("online");
     await reloadAfterLeave(page);
     await page.getByText("manual-control-project", { exact: true }).first().click();
-    await page.getByRole("tab", { name: "测试台架" }).click();
+    await showPanel(page, "设备");
 
     // Clicking the device in the list shows its information; the card on the canvas controls it.
-    await page.getByRole("tabpanel", { name: "设备列表" }).getByRole("button", { name: /PCI-1762 e2e/ }).click();
+    await page.getByRole("complementary", { name: "设备列表" }).getByRole("button", { name: /PCI-1762 e2e/ }).click();
     const info = page.getByRole("dialog", { name: "PCI-1762 e2e" });
     await expect(info.getByText("CN1", { exact: true })).toBeVisible();
     await page.keyboard.press("Escape");

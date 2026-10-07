@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from "@playwright/test";
-import { reloadAfterLeave, rendererReady } from "./renderer.js";
+import { reloadAfterLeave, rendererReady, showPanel } from "./renderer.js";
 
 const desktopDir = resolve(import.meta.dirname, "..");
 const artifacts = resolve(desktopDir, "../../output/playwright/signal-view");
@@ -100,15 +100,16 @@ test.describe.serial("signal view and pin list", () => {
         ]
       } });
     });
-    await page.getByRole("tab", { name: "测试编排", exact: true }).click();
-    await page.getByRole("button", { name: /信号视图运行/ }).first().click();
-    await page.getByRole("button", { name: "运行", exact: true }).click();
+    await showPanel(page, "测试");
+    await page.getByRole("list", { name: "功能测试项" }).getByRole("button", { name: /信号视图运行/ }).first().click();
+    await page.getByRole("toolbar", { name: "测试流程操作" }).getByRole("button", { name: "运行", exact: true }).click();
     // The bench is shown at once, with the run docked under the canvas.
     await expect(page.getByRole("region", { name: "信号视图" })).toBeVisible();
     const dock = page.getByRole("region", { name: "运行面板" });
     await expect(dock).toContainText("信号视图运行");
     await expect(page.getByRole("button", { name: /正在运行 信号视图运行/ })).toBeVisible();
-    await expect(dock.getByText("第一步").first()).toBeVisible();
+    // The run's steps and their states are the test panel's flow.
+    await expect(page.getByRole("tree", { name: "测试流程" }).getByRole("treeitem", { name: /第一步/ })).toBeVisible();
     await page.screenshot({ path: join(artifacts, "run-docked.png") });
     // Finished, the run stays on the canvas as a replay until the operator returns to live data.
     await expect(dock.getByRole("button", { name: "返回实时" })).toBeVisible({ timeout: 20_000 });

@@ -1,9 +1,8 @@
 import { lazy, Suspense, useCallback, useEffect, useReducer, useState } from "react";
 import { QueryClient, QueryClientProvider, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { ProjectDocument, ProjectFolderSelection } from "@teststand/contracts/projects";
-import type { ProjectView } from "@teststand/contracts/storage";
 import { ToastProvider, TooltipProvider, useToast } from "../ui";
-import { useDashboard, useProjectDocument, useWiringTasks } from "../lib/queries.js";
+import { useDashboard, useProjectDocument } from "../lib/queries.js";
 import { useTheme } from "../lib/theme.js";
 import { errorMessage } from "../lib/errors.js";
 import { queryKeys } from "../lib/query-keys.js";
@@ -12,9 +11,10 @@ import { useKeyboardShortcut } from "../lib/hooks/useKeyboardShortcut.js";
 import { useDirtyGuard } from "../lib/hooks/useDirtyGuard.js";
 import { chooseProjectFolder } from "../lib/projects.js";
 import { onRunRequested } from "../lib/run-focus.js";
-import { isTaskActionable } from "../features/wiring/wiring-model.js";
+import { onSidePanelRequested, type SidePanel } from "../lib/side-panel.js";
 import { ManualCheckDialog } from "../features/testing/ManualCheckDialog.js";
-import { appNavigationReducer, initialAppNavigation, isProjectView, type AppPage } from "./app-navigation.js";
+import { ActivityBar } from "./ActivityBar.js";
+import { appNavigationReducer, initialAppNavigation, type AppPage } from "./app-navigation.js";
 import { readAssistantOpen, writeAssistantOpen } from "./assistant-preference.js";
 import { AgentConfirmationDialog } from "./AgentConfirmationDialog.js";
 import { DirtyDialog } from "./DirtyDialog.js";
@@ -55,9 +55,9 @@ function Shell() {
   const theme = useTheme();
   const dashboard = useDashboard();
   const project = useProjectDocument();
-  const wiringTasks = useWiringTasks();
   const [navigation, navigate] = useReducer(appNavigationReducer, initialAppNavigation);
   const [assistantOpen, setAssistantOpen] = useState(readAssistantOpen);
+  const [panel, setPanel] = useState<SidePanel | undefined>("devices");
   const [pendingSelection, setPendingSelection] = useState<ProjectFolderSelection>();
   const toast = useToast();
   const setError = useCallback((message?: string) => { if (message) toast.error(message); }, [toast]);
@@ -91,26 +91,22 @@ function Shell() {
   useEffect(() => { writeAssistantOpen(assistantOpen); }, [assistantOpen]);
   useEffect(() => { if (!project.data) setAssistantOpen(false); }, [project.data]);
   useEffect(() => {
-    const openPlans = () => {
-      if (!project.data) return;
-      navigate({ type: "show-content", page: "plans" });
-      void window.teststand.settings.update({ projectView: "plans" });
-    };
-    window.addEventListener("teststand:navigate-plans", openPlans);
-    // The operator started a run: watch it on the bench's signal view, which is already watching.
-    const stopRuns = onRunRequested(() => {
-      if (project.data) navigate({ type: "show-content", page: "bench" });
+    if (!project.data) return;
+    const stopPanels = onSidePanelRequested((next) => {
+      navigate({ type: "show-content", page: "bench" });
+      setPanel(next);
     });
+    // The operator started a run: watch it on the bench's signal view, which is already watching.
+    const stopRuns = onRunRequested(() => navigate({ type: "show-content", page: "bench" }));
     return () => {
-      window.removeEventListener("teststand:navigate-plans", openPlans);
+      stopPanels();
       stopRuns();
     };
   }, [project.data]);
 
   const enterProject = useCallback(async () => {
     await syncProject();
-    const savedView = (await window.teststand.settings.get()).projectView;
-    navigate({ type: "enter-project", view: savedView });
+    navigate({ type: "show-content", page: "bench" });
     setAssistantOpen(readAssistantOpen());
   }, [syncProject]);
 
@@ -130,17 +126,19 @@ function Shell() {
     await enterProject();
   }, [enterProject]);
 
-  const switchPage = (next: AppPage) => {
-    if (!beforeNavigation({ next })) return;
-    if (next === "settings") { navigate({ type: "open-settings" }); return; }
-    if (next === "welcome" && project.data) { dirtyGuard.guard("返回欢迎页", goWelcome); return; }
-    if (isProjectView(next) && !project.data) return;
-    navigate({ type: "show-content", page: next });
-    if (isProjectView(next)) void window.teststand.settings.update({ projectView: next });
+  const openSettings = () => {
+    if (navigation.page === "settings" || beforeNavigation({ next: "settings" })) navigate({ type: "open-settings" });
   };
-
-  const openSettings = () => navigate({ type: "open-settings" });
   const returnFromSettings = () => navigate({ type: "return-from-settings", hasProject: Boolean(project.data) });
+  /** An activity bar icon: show its panel, or fold the sidebar away when it is the one shown. */
+  const togglePanel = (next: SidePanel) => {
+    if (navigation.page === "settings") {
+      returnFromSettings();
+      setPanel(next);
+      return;
+    }
+    setPanel((current) => current === next ? undefined : next);
+  };
 
   const handleProjectAction = (action: ProjectAction) => {
     if (action !== "save" && !beforeNavigation({ action })) return;
@@ -161,31 +159,31 @@ function Shell() {
   };
 
   const currentProject = project.data ?? null;
-  const taskList = wiringTasks.data ?? [];
-  const pendingTasks = currentProject ? taskList.filter(isTaskActionable) : [];
-  const pendingKey = pendingTasks.map((task) => task.wiringTaskId).join(",");
-  // A wiring request is answered in the conversation card, so make sure the conversation is on screen.
-  useEffect(() => { if (pendingKey) setAssistantOpen(true); }, [pendingKey]);
-  const page = navigation.page;
-
+  const page: AppPage = navigation.page;
 
   return (
     <div className="flex h-full flex-col bg-surface-0 text-fg">
       <TitleBar
         page={page}
-        projectView={navigation.projectView}
         project={currentProject}
         assistantOpen={assistantOpen}
         busy={save.isPending}
-        pendingTaskCount={pendingTasks.length}
-        onNavigate={switchPage}
         onProjectAction={handleProjectAction}
         onToggleAssistant={() => setAssistantOpen((open) => !open)}
       />
       <div className="flex min-h-0 flex-1 overflow-hidden">
+        <ActivityBar
+          panel={panel}
+          inProject={page !== "welcome" && Boolean(currentProject)}
+          settingsOpen={page === "settings"}
+          theme={theme.resolved}
+          onPanel={togglePanel}
+          onSettings={() => (page === "settings" ? returnFromSettings() : openSettings())}
+          onToggleTheme={() => void theme.select(theme.resolved === "dark" ? "light" : "dark")}
+        />
         <main className="flex min-h-0 min-w-0 flex-1 flex-col">
           {/* One boundary per open project: switching its pages must not remount them. */}
-          <ErrorBoundary key={isProjectView(page) ? `project-${currentProject?.rootPath}` : `content-${page}`}>
+          <ErrorBoundary key={page === "bench" ? `project-${currentProject?.rootPath}` : `content-${page}`}>
             <Suspense fallback={<FeatureFallback />}>
               {page === "settings"
                 ? <SettingsPage
@@ -195,7 +193,7 @@ function Shell() {
                     onBack={returnFromSettings}
                   />
                 : page !== "welcome" && currentProject
-                  ? <ProjectWorkspace view={page as ProjectView} />
+                  ? <ProjectWorkspace panel={panel} />
                   : <WelcomePage onOpened={() => enterProject()} />}
             </Suspense>
           </ErrorBoundary>

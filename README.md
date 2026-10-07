@@ -8,7 +8,7 @@
 
 ```
 Electron 桌面应用（app/apps/desktop）
-  渲染进程（React）：测试台架（针脚列表 + 信号视图，运行在信号视图上看）/ 测试编排 / Agent 面板
+  渲染进程（React）：测试台架一个界面（活动栏切换设备/测试/运行记录/接线日志侧栏，针脚列表 + 信号视图，运行在信号视图上看）+ Agent 面板
   主进程：启动 Python 后端（stdout 一行握手 {port, token}，关闭 stdin = 退出）、窗口、原生对话框
         │  HTTP /api/ops + SSE（127.0.0.1，单 token）
         ▼

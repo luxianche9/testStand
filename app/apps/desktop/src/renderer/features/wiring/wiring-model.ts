@@ -3,27 +3,6 @@ import type { PinPair, ProjectWiringConnection, WiringTask, WiringTaskChange } f
 import { portLabel } from "../../lib/hardware.js";
 import type { Tone } from "../../ui/cn.js";
 
-/** Splits a `<hardwareId>.<portId>` reference, longest hardwareId first so `DUT_1` never shadows
- *  `DUT_10`. Returns undefined when the device is not registered. */
-export function splitPortRef(
-  ref: string,
-  hardware: Hardware[]
-): { hardwareId: string; portId: string } | undefined {
-  const owner = [...hardware].sort((a, b) => b.hardwareId.length - a.hardwareId.length)
-    .find((item) => ref.startsWith(`${item.hardwareId}.`));
-  if (!owner) return undefined;
-  return { hardwareId: owner.hardwareId, portId: ref.slice(owner.hardwareId.length + 1) };
-}
-
-export function connectionLabel(connection: ProjectWiringConnection, hardware: Hardware[]): string {
-  return `${portLabel(connection.portA, hardware)} ↔ ${portLabel(connection.portB, hardware)}`;
-}
-
-export function changeTitle(change: WiringTaskChange, hardware: Hardware[]): string {
-  const verb = change.action === "connect" ? "连接" : "断开";
-  return `${verb} ${portLabel(change.portA, hardware)} → ${portLabel(change.portB, hardware)}`;
-}
-
 export function pinCountText(item: { pins: PinPair[] }): string {
   return item.pins.length ? `${item.pins.length} 对针脚` : "整体连接，无针脚";
 }
@@ -64,7 +43,7 @@ export function isTaskActionable(task: WiringTask): boolean {
 }
 
 /** The port pairs a `request_wiring` call asks for, in either of its input forms. */
-export function requestedPairs(args: unknown): string[] {
+function requestedPairs(args: unknown): string[] {
   if (!args || typeof args !== "object") return [];
   const record = args as { changes?: unknown; portA?: unknown; portB?: unknown };
   const changes = Array.isArray(record.changes) ? record.changes as Array<Record<string, unknown>> : [record];

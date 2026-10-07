@@ -6,6 +6,18 @@ export async function rendererReady(page: Page): Promise<Page> {
   return page;
 }
 
+/** The activity bar at the window's left edge. */
+export function activityBar(page: Page) {
+  return page.getByRole("navigation", { name: "活动栏" });
+}
+
+/** Show a sidebar panel (设备, 测试, 运行记录, 接线日志); a click on the shown one would fold it away. */
+export async function showPanel(page: Page, label: string): Promise<void> {
+  const button = activityBar(page).getByRole("button", { name: label, exact: true });
+  if (await button.getAttribute("aria-pressed") !== "true") await button.click();
+  await expect(button).toHaveAttribute("aria-pressed", "true");
+}
+
 /**
  * Reload after a test changed and left the project through the API. Events only invalidate queries, so the
  * interface may still hold a dirty document for a moment, and its dirty-project guard would cancel the unload

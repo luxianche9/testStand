@@ -150,7 +150,7 @@ async def test_invalid_pin(tmp_path: Path) -> None:
 @pytest.mark.asyncio
 async def test_batch_is_answered_once(tmp_path: Path) -> None:
     service, projects, notifications = await fixture(tmp_path)
-    changes = [
+    changes: list[dict[str, Any]] = [
         {"action": "connect", "portA": "CARD_A.P1", "portB": "DUT_A.P1", "pins": []},
         {"action": "connect", "portA": "DUT_A.P2", "portB": "DUT_B.P2"},
     ]

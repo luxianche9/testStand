@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -17,6 +17,8 @@ export interface StepActions {
   onToggle: (id: string) => void;
   onDuplicate: (id: string) => void;
   onDelete: (id: string) => void;
+  /** Shown under the selected step's row: its properties. */
+  renderDetail?: (step: TestStep) => ReactNode;
 }
 
 /** One plan region (准备 / 测试 / 清理) as a drop zone with a sortable step tree. */
@@ -145,6 +147,9 @@ function SortableStep({ step, region, parentId, actions }: {
           </IconButton>
         </span>
       </div>
+      {selected && actions.renderDetail && (
+        <div className="border-t border-line bg-surface-1">{actions.renderDetail(step)}</div>
+      )}
       {open && nested.length > 0 && (
         <div className="ml-4 grid gap-1 border-l border-line py-1 pr-1 pl-2">
           <SortableContext items={nested.map((item) => item.id)} strategy={verticalListSortingStrategy}>

@@ -94,17 +94,23 @@ async def test_all_builtin_routes_and_defaults(
 ) -> None:
     gateway, app = make_gateway()
     result: Any = []
+    data: Any = result
     if name == "update_test_task":
         result = {"task": _TASK, "dirty": True, "extra": "omit"}
+        data = {"task": _TASK, "dirty": True}
     elif name == "get_hardware_definition":
-        result = {"hardwareId": "H", "ports": []}
+        result = {"hardwareId": "H", "ports": [{"portId": "J1"}]}
+        # Each port is given the endpoint the wiring tools take.
+        port = {
+            "portId": "J1",
+            "endpointRef": "H.J1",
+            "endpoint": {"hardwareId": "H", "portId": "J1"},
+        }
+        data = {"hardwareId": "H", "ports": [port]}
     handler = AsyncMock(return_value=result)
     getattr(app, group).__dict__[method] = handler
     output = await gateway.invoke_tool(name, args)
-    assert output == {
-        "ok": True,
-        "data": {"task": _TASK, "dirty": True} if name == "update_test_task" else result,
-    }
+    assert output == {"ok": True, "data": data}
     handler.assert_awaited_once_with(
         {"actor": "agent", "source": "mcp"}, **keywords(group, method, expected)
     )
@@ -447,5 +453,43 @@ async def test_waiting_tool_reports_progress_and_is_cancelled_with_its_request()
                 finally:
                     calling.cancel()
                     await asyncio.gather(calling, return_exceptions=True)
+    finally:
+        await gateway.stop()
+
+
+async def test_waiting_tool_returns_the_answer() -> None:
+    gateway, app = make_gateway()
+
+    async def run(*_args: Any, **_kwargs: Any) -> dict[str, Any]:
+        await asyncio.sleep(0.1)
+        return {"status": "confirmed"}
+
+    app.wiring.request_wiring = run
+    await gateway.start()
+    try:
+        async with httpx.AsyncClient(headers=_HEADERS) as client:
+            url = gateway.status()["endpoint"]
+            initialized = await client.post(url, json=_INITIALIZE)
+            client.headers["mcp-session-id"] = initialized.headers["mcp-session-id"]
+            await client.post(url, json={"jsonrpc": "2.0", "method": "notifications/initialized"})
+            # Without a progress token the wait goes on silently until the operator answers.
+            with patch("teststand_backend.mcp_gateway.gateway.PROGRESS_INTERVAL_S", 0.02):
+                answered = await client.post(
+                    url,
+                    json={
+                        "jsonrpc": "2.0",
+                        "id": 2,
+                        "method": "tools/call",
+                        "params": {
+                            "name": "request_wiring",
+                            "arguments": {
+                                "changes": [{"portA": "A.J", "portB": "B.J", "action": "connect"}]
+                            },
+                        },
+                    },
+                )
+            result = result_body(answered)
+            assert not result.get("isError"), result
+            assert result["structuredContent"] == {"ok": True, "data": {"status": "confirmed"}}
     finally:
         await gateway.stop()

@@ -4,28 +4,31 @@ import type { DeviceInstance, Hardware, ToolCatalogItem } from "@teststand/contr
 import { PlusIcon, RefreshCwIcon, TriangleAlertIcon } from "lucide-react";
 import { errorMessage } from "../../lib/errors.js";
 import { invalidateDeviceData, invalidateWiringData } from "../../lib/mutations.js";
-import { useDashboard, useProjectDocument, useWiringTasks } from "../../lib/queries.js";
+import { useDashboard, useProjectDocument, useTestItemStatus } from "../../lib/queries.js";
 import { useResizableWidth } from "../../lib/resizable.js";
 import { onRunRequested } from "../../lib/run-focus.js";
 import {
-  HeaderTabs, IconButton, Menu, MenuContent, MenuItem, MenuTrigger, SegmentedControl, Spinner, Splitter, cn
+  IconButton, Menu, MenuContent, MenuItem, MenuTrigger, PanelHeader, SegmentedControl, Spinner, Splitter, cn
 } from "../../ui/index.js";
 import { AddDeviceDialog, pickDevicePackage, type StagedPackage } from "../devices/AddDeviceDialog.js";
 import { DeviceEditor } from "../devices/editors/DeviceEditor.js";
 import { HardwareEditor } from "../devices/editors/HardwareEditor.js";
 import { SignalViewPane } from "../signals/SignalViewPane.js";
+import { useBenchRun } from "../signals/use-bench-run.js";
+import { WidgetPalette } from "../signals/WidgetPalette.js";
+import { RunHistory } from "../testing/RunHistory.js";
+import { TestPanel } from "../testing/TestPanel.js";
 import { EditPinsModal, ListCreateConnectionModal } from "../wiring/ConnectionEditor.js";
 import { PinList } from "../wiring/PinList.js";
 import { WiringLogPanel } from "../wiring/WiringLogPanel.js";
 import { useWiringDocument } from "../wiring/use-wiring-document.js";
-import { isTaskActionable } from "../wiring/wiring-model.js";
 import { ActionDialog } from "./ActionDialog.js";
 import { DeviceControlMenu, type ControlMenuState } from "./DeviceControlMenu.js";
 import { DeviceInfoDialog, type InfoTarget } from "./DeviceInfoDialog.js";
 import { DeviceList } from "./DeviceList.js";
 import { actionName, deviceActions } from "./device-actions.js";
+import { SIDE_PANEL_LABELS, type SidePanel } from "../../lib/side-panel.js";
 
-type SideTab = "devices" | "log";
 const BANNER = "absolute top-2 right-3 left-3 z-20 shadow-overlay";
 export type BenchView = "signals" | "pins";
 
@@ -35,15 +38,19 @@ const viewOptions = [
 ] as const;
 
 /**
- * 测试台架: the bench's hardware, its physical wiring as a pin list, and its signal view, where
- * signals feed displays and controls drive signals. The physical and the logical view never refer
- * to each other.
+ * 测试台架, the project's one screen: the sidebar panel the activity bar picks (设备 and 控件, 测试,
+ * 运行记录, 接线日志) beside the signal view, where signals feed displays and controls drive signals,
+ * or the physical wiring as a pin list. The physical and the logical view never refer to each other.
  */
-export function BenchPage({ view, onView }: { view?: BenchView; onView?: (view: BenchView) => void }) {
+export function BenchPage({ panel, view, onView }: {
+  panel?: SidePanel | undefined;
+  view?: BenchView;
+  onView?: (view: BenchView) => void;
+}) {
   const [own, setOwn] = useState<BenchView>("signals");
   // A run asked for is shown on the signal view.
   useEffect(() => onRunRequested(() => (onView ?? setOwn)("signals")), [onView]);
-  return <Bench view={view ?? own} onView={onView ?? setOwn} />;
+  return <Bench panel={panel} view={view ?? own} onView={onView ?? setOwn} />;
 }
 
 function Centered({ children }: { children: ReactNode }) {
@@ -63,13 +70,17 @@ function ErrorBanner({ message, className }: { message: string; className?: stri
   );
 }
 
-function Bench({ view, onView }: { view: BenchView; onView: (view: BenchView) => void }) {
+function Bench({ panel, view, onView }: {
+  panel: SidePanel | undefined;
+  view: BenchView;
+  onView: (view: BenchView) => void;
+}) {
   const client = useQueryClient();
   const dashboard = useDashboard();
   const document = useProjectDocument();
   const { project, catalog, save, wiring, hardware, edits } = useWiringDocument();
-  const [sideTab, setSideTab] = useState<SideTab>("devices");
-  const tasks = useWiringTasks();
+  const bench = useBenchRun();
+  const status = useTestItemStatus();
   const library = useResizableWidth({
     storageKey: "teststand.bench-devices-width", defaultWidth: 300, min: 220, max: 520, direction: "right"
   });
@@ -135,18 +146,15 @@ function Bench({ view, onView }: { view: BenchView; onView: (view: BenchView) =>
   }
 
   const editingConnection = connections.find((item) => item.connectionId === editingConnectionId);
-  const allTasks = tasks.data ?? [];
-  const pendingTaskCount = allTasks.filter(isTaskActionable).length;
+  const plans = (status.data?.items ?? []).map((item) => ({ id: item.planId, name: item.name }));
   const controlled = controlMenu && hardware.find((item) => item.hardwareId === controlMenu.hardwareId);
   const actionHardware = action && hardware.find((item) => item.hardwareId === action.hardwareId);
-  const sideTabs = (
-    <HeaderTabs<SideTab>
-      label="测试台架侧栏"
-      idPrefix="bench-side"
-      value={sideTab}
-      onChange={setSideTab}
-      actions={sideTab === "devices" && (
-        <span className="ml-auto flex items-center gap-0.5">
+  const devicesHeader = (
+    <PanelHeader
+      title={SIDE_PANEL_LABELS.devices}
+      meta={hardware.length}
+      actions={(
+        <>
           <IconButton label="检测设备状态" size="icon-sm" disabled={checking} onClick={() => void checkStatus()}>
             <RefreshCwIcon className={cn(checking && "animate-spin")} />
           </IconButton>
@@ -159,40 +167,51 @@ function Bench({ view, onView }: { view: BenchView; onView: (view: BenchView) =>
               <MenuItem onSelect={() => setPartEditor({ open: true })}>添加被测件 / 夹具</MenuItem>
             </MenuContent>
           </Menu>
-        </span>
+        </>
       )}
-      options={[
-        { value: "devices", label: "设备", meta: hardware.length },
-        {
-          value: "log",
-          label: "接线日志",
-          meta: pendingTaskCount > 0
-            ? <span className="rounded-xs bg-signal px-1 font-semibold text-signal-fg">{pendingTaskCount}</span>
-            : allTasks.length
-        }
-      ]}
     />
   );
+  // `hidden` comes last: merged after a display class such as `flex`, it would lose.
+  const shown = (side: SidePanel, className?: string) => cn("min-h-0 min-w-0", className, panel !== side && "hidden");
 
   return (
     <main className="h-full min-h-0 min-w-0 overflow-hidden bg-surface-0">
-      <section className="grid h-full" style={{ gridTemplateColumns: `${library.width}px 1px minmax(0, 1fr)` }}>
-        {sideTab === "devices" ? (
+      <section
+        className="grid h-full"
+        style={{ gridTemplateColumns: panel ? `${library.width}px 1px minmax(0, 1fr)` : "minmax(0, 1fr)" }}
+      >
+        {/* Every panel stays mounted: the test panel keeps the open plan's draft while another is shown. */}
+        <div id="bench-side-devices" className={shown("devices")}>
           <DeviceList
-            id="bench-side-devices"
-            role="tabpanel"
-            header={sideTabs}
+            header={devicesHeader}
             hardware={hardware}
             placed={placed}
             onOpen={(item) => openInfo(item.hardwareId)}
-            footer={hardware.length > 0 && (
-              <p className="shrink-0 border-t border-line px-3 py-1.5 text-2xs text-fg-3">单击查看信息，拖到信号视图上放置</p>
+            footer={(
+              <>
+                {hardware.length > 0 && (
+                  <p className="shrink-0 border-t border-line px-3 py-1.5 text-2xs text-fg-3">
+                    单击查看信息，拖到信号视图上放置
+                  </p>
+                )}
+                <WidgetPalette onPlace={() => onView("signals")} />
+              </>
             )}
           />
-        ) : (
-          <WiringLogPanel id="bench-side-log" role="tabpanel" header={sideTabs} hardware={hardware} />
-        )}
-        <Splitter label="调整侧栏宽度" {...library.separatorProps} />
+        </div>
+        <div id="bench-side-testing" className={shown("testing")}><TestPanel bench={bench} /></div>
+        <section id="bench-side-history" aria-label={SIDE_PANEL_LABELS.history}
+          className={shown("history", "flex flex-col bg-surface-1")}>
+          <PanelHeader title={SIDE_PANEL_LABELS.history} />
+          <RunHistory
+            planId={undefined}
+            plans={plans}
+            selectedRunId={bench.runId}
+            onOpenRun={(runId) => { bench.setRunId(runId); onView("signals"); }}
+          />
+        </section>
+        <div id="bench-side-log" className={shown("log")}><WiringLogPanel hardware={hardware} /></div>
+        {panel && <Splitter label="调整侧栏宽度" {...library.separatorProps} />}
         <section className="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)]">
           <div className="flex h-9 items-center gap-2 border-b border-line bg-surface-1 px-2">
             <SegmentedControl<BenchView> label="台架视图" value={view} options={viewOptions} onChange={onView} />
@@ -205,7 +224,7 @@ function Bench({ view, onView }: { view: BenchView; onView: (view: BenchView) =>
             )}
             {/* Both stay mounted: the signal view keeps its live data while the pin list is shown. */}
             <div className={cn("min-h-0", view !== "signals" && "hidden")}>
-              <SignalViewPane online={online} onInfo={openInfo} onControl={openControl} />
+              <SignalViewPane bench={bench} online={online} onInfo={openInfo} onControl={openControl} />
             </div>
             <div className={cn("min-h-0", view !== "pins" && "hidden")}>
               <PinList

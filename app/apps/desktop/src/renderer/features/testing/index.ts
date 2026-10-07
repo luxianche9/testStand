@@ -1,1 +1,1 @@
-export { TestPlanPage } from "./TestPlanPage.js";
+export { TestPanel } from "./TestPanel.js";

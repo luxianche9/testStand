@@ -1,23 +1,22 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { TestRunSnapshot } from "@teststand/contracts/testing";
 import { ChevronDownIcon, ChevronUpIcon, ListChecksIcon, RadioIcon } from "lucide-react";
 import { errorMessage } from "../../lib/errors.js";
 import { queryKeys } from "../../lib/query-keys.js";
-import { Button, IconButton, SegmentedControl, useConfirm, useToast } from "../../ui/index.js";
-import { BusTerminal, RunOverview, type ConsoleJump } from "../streams/index.js";
+import { onRunStepFocused } from "../../lib/run-focus.js";
+import { Button, IconButton, useConfirm, useToast } from "../../ui/index.js";
+import type { ConsoleJump } from "../streams/index.js";
 import { RunControls } from "../testing/EditorToolbar.js";
 import { RunHeader } from "../testing/RunHeader.js";
 import { RunMessages } from "../testing/RunMessages.js";
 import { stepRange, type RunView } from "../testing/useRunView.js";
 import type { SignalTime } from "./signal-data.js";
 
-type Lower = "console" | "messages";
-
 /**
- * The run under the signal view: verdict, progress and controls, an overview of steps, verdicts
- * and calls on the canvas' time axis, and the console of every step, device call and bus record
- * (or the decoded messages). Picking a step zooms every widget to it.
+ * The run under the signal view: verdict, progress and controls, export, and the messages decoded
+ * from its bus records. Its steps and their states are the test panel's flow; bus and serial
+ * traffic is shown by the terminal widgets on the canvas.
  */
 export function RunDock({ view, run, live, replay, time, height, onBackToLive }: {
   view: RunView;
@@ -32,13 +31,11 @@ export function RunDock({ view, run, live, replay, time, height, onBackToLive }:
   const client = useQueryClient();
   const toast = useToast();
   const [confirm, confirmDialog] = useConfirm();
-  const [lower, setLower] = useState<Lower>("console");
   const [open, setOpen] = useState(true);
   const [jump, setJump] = useState<ConsoleJump>();
   const [rejudging, setRejudging] = useState(false);
-  const { timeline, origin, range, decoded } = view;
+  const { timeline, origin, decoded } = view;
   const runId = view.runLog.log?.run.runId;
-  const lowerShown: Lower = decoded ? lower : "console";
 
   const zoomStep = (executionId: string | undefined) => {
     const stepped = stepRange(timeline, executionId);
@@ -50,6 +47,10 @@ export function RunDock({ view, run, live, replay, time, height, onBackToLive }:
       setJump((current) => ({ tb: start, seq: (current?.seq ?? 0) + 1 }));
     }
   };
+  // A step picked in the test panel's flow.
+  const zoomRef = useRef(zoomStep);
+  zoomRef.current = zoomStep;
+  useEffect(() => onRunStepFocused((executionId) => zoomRef.current(executionId)), []);
   const pick = (tb: number, scroll: boolean) => {
     time.pick(tb);
     if (scroll) setJump((current) => ({ tb, seq: (current?.seq ?? 0) + 1 }));
@@ -75,10 +76,12 @@ export function RunDock({ view, run, live, replay, time, height, onBackToLive }:
 
   const leading = (
     <>
-      <IconButton label={open ? "收起运行面板" : "展开运行面板"} size="icon-sm" variant="ghost" aria-expanded={open}
-        onClick={() => setOpen((value) => !value)}>
-        {open ? <ChevronDownIcon /> : <ChevronUpIcon />}
-      </IconButton>
+      {decoded && (
+        <IconButton label={open ? "收起报文" : "展开报文"} size="icon-sm" variant="ghost" aria-expanded={open}
+          onClick={() => setOpen((value) => !value)}>
+          {open ? <ChevronDownIcon /> : <ChevronUpIcon />}
+        </IconButton>
+      )}
       {replay && (
         <Button size="xs" variant="outline" onClick={onBackToLive}><RadioIcon />返回实时</Button>
       )}
@@ -96,7 +99,7 @@ export function RunDock({ view, run, live, replay, time, height, onBackToLive }:
   );
   return (
     <section aria-label="运行面板" className="flex min-h-0 flex-col border-t border-line-strong bg-surface-0"
-      style={open ? { height } : undefined}>
+      style={open && decoded ? { height } : undefined}>
       <RunHeader
         state={view.runLog}
         trace={view.trace}
@@ -108,50 +111,9 @@ export function RunDock({ view, run, live, replay, time, height, onBackToLive }:
         leading={leading}
         actions={actions}
       />
-      {open && timeline && range && origin !== undefined && (
-        <RunOverview
-          timeline={timeline}
-          stepNames={view.stepNames}
-          range={range}
-          origin={origin}
-          marker={time.marker}
-          onSelect={time.select}
-          onStep={zoomStep}
-          onPick={(tb) => pick(tb, true)}
-        />
-      )}
-      {open && view.source && (
-        <div className="flex min-h-0 flex-1 flex-col">
-          {decoded && (
-            <div className="flex h-8 shrink-0 items-center border-b border-line bg-surface-1 px-2">
-              <SegmentedControl<Lower>
-                label="下方面板"
-                size="xs"
-                value={lowerShown}
-                onChange={setLower}
-                options={[{ value: "console", label: "控制台" }, { value: "messages", label: `报文 ${decoded.total}` }]}
-              />
-            </div>
-          )}
-          <div className={lowerShown === "console" ? "min-h-0 flex-1" : "hidden"}>
-            <BusTerminal
-              timeline={timeline}
-              source={view.source}
-              live={live}
-              origin={origin}
-              jump={jump}
-              stepNames={view.stepNames}
-              outline={view.outline}
-              extra={view.results}
-              onPick={(tb) => pick(tb, false)}
-              onStep={zoomStep}
-            />
-          </div>
-          {decoded && lowerShown === "messages" && (
-            <div className="min-h-0 flex-1">
-              <RunMessages data={decoded} origin={origin} jump={jump} onPick={(tb) => pick(tb, false)} />
-            </div>
-          )}
+      {open && decoded && (
+        <div className="min-h-0 flex-1">
+          <RunMessages data={decoded} origin={origin} jump={jump} onPick={(tb) => pick(tb, false)} />
         </div>
       )}
       {confirmDialog}

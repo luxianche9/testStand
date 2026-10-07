@@ -1,28 +1,11 @@
-import type { ReactNode } from "react";
-import {
-  BotIcon,
-  CableIcon,
-  ChevronDownIcon,
-  FlaskConicalIcon,
-  Maximize2Icon,
-  Minimize2Icon,
-  MinusIcon,
-  SettingsIcon,
-  XIcon
-} from "lucide-react";
+import { BotIcon, ChevronDownIcon, Maximize2Icon, Minimize2Icon, MinusIcon, XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ProjectDocument } from "@teststand/contracts/projects";
-import type { ProjectView } from "@teststand/contracts/storage";
 import { useCurrentTestRun } from "../lib/queries.js";
 import { openRunMonitor } from "../lib/run-focus.js";
 import { isActiveRun } from "../features/testing/plan-helpers.js";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger, StatusLamp, cn } from "../ui";
 import type { AppPage } from "./app-navigation.js";
-
-const PROJECT_VIEWS: { view: ProjectView; label: string; icon: ReactNode }[] = [
-  { view: "bench", label: "测试台架", icon: <CableIcon /> },
-  { view: "plans", label: "测试编排", icon: <FlaskConicalIcon /> }
-];
 
 export type ProjectAction = "save" | "open" | "welcome";
 
@@ -35,19 +18,14 @@ const barButton = cn(
 
 export function TitleBar(props: {
   page: AppPage;
-  projectView: ProjectView;
   project: ProjectDocument | null | undefined;
   assistantOpen: boolean;
   busy: boolean;
-  /** Open wiring requests, counted on the 测试台架 tab. */
-  pendingTaskCount: number;
-  onNavigate: (page: AppPage) => void;
   onProjectAction: (action: ProjectAction) => void;
   onToggleAssistant: () => void;
 }) {
   const { page, project, busy } = props;
   const inProject = page !== "welcome" && Boolean(project);
-  const activeView = PROJECT_VIEWS.some((item) => item.view === page) ? (page as ProjectView) : props.projectView;
 
   return (
     <header
@@ -77,14 +55,6 @@ export function TitleBar(props: {
         </MenuContent>
       </Menu>
 
-      {inProject && (
-        <ViewTabs
-          value={activeView}
-          dimmed={page === "settings"}
-          pendingTaskCount={props.pendingTaskCount}
-          onChange={props.onNavigate}
-        />
-      )}
       <span className="flex-1 self-stretch" />
 
       {inProject && <RunIndicator />}
@@ -100,15 +70,6 @@ export function TitleBar(props: {
           <span className="max-[1100px]:hidden">AI助手</span>
         </button>
       )}
-      <button
-        type="button"
-        aria-label="设置"
-        aria-pressed={page === "settings"}
-        onClick={() => props.onNavigate("settings")}
-        className={barButton}
-      >
-        <SettingsIcon />
-      </button>
       <span aria-hidden className="mx-1 h-4 w-px bg-line" />
       <WindowControls />
     </header>
@@ -150,57 +111,6 @@ function Brand() {
       <span className="text-sm font-semibold text-fg max-[1100px]:hidden">testStand</span>
       <span aria-hidden className="text-fg-3">/</span>
     </span>
-  );
-}
-
-function ViewTabs({ value, dimmed, pendingTaskCount, onChange }: {
-  value: ProjectView;
-  /** Settings is open: keep the last view selected for AT but drop its highlight. */
-  dimmed: boolean;
-  pendingTaskCount: number;
-  onChange: (page: AppPage) => void;
-}) {
-  return (
-    <div
-      role="tablist"
-      aria-label="项目子页面"
-      className={cn(
-        "absolute top-0 left-1/2 flex h-full -translate-x-1/2 items-stretch",
-        noDrag
-      )}
-    >
-      {PROJECT_VIEWS.map((item) => {
-        const selected = item.view === value;
-        const lit = selected && !dimmed;
-        return (
-          <button
-            key={item.view}
-            type="button"
-            role="tab"
-            aria-label={item.label}
-            aria-selected={selected}
-            onClick={() => onChange(item.view)}
-            className={cn(
-              "relative inline-flex items-center gap-1.5 px-3 text-xs whitespace-nowrap text-fg-2",
-              "transition-colors duration-120 hover:text-fg [&_svg]:size-3.5",
-              "after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:content-['']",
-              lit ? "bg-surface-0 font-medium text-fg after:bg-signal" : "hover:bg-surface-2 after:bg-transparent"
-            )}
-          >
-            <span className={lit ? "text-signal" : "text-fg-3"}>{item.icon}</span>
-            <span className="max-[1100px]:hidden">{item.label}</span>
-            {item.view === "bench" && pendingTaskCount > 0 && (
-              <span
-                aria-label={`${pendingTaskCount} 条待处理接线任务`}
-                className="tf-num rounded-xs bg-signal px-1 text-2xs leading-4 font-semibold text-signal-fg"
-              >
-                {pendingTaskCount > 99 ? "99+" : pendingTaskCount}
-              </span>
-            )}
-          </button>
-        );
-      })}
-    </div>
   );
 }
 

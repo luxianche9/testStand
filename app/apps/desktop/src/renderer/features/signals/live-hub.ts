@@ -12,7 +12,7 @@ interface Consumer {
 }
 
 /** The backend serves at most this many keys per live subscription. */
-export const MAX_LIVE_KEYS = 64;
+const MAX_LIVE_KEYS = 64;
 const RESTART_MS = 30;
 
 /**

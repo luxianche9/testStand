@@ -9,10 +9,6 @@ export function isSampled(type: string): boolean {
   return SAMPLED.has(type);
 }
 
-export function streamLabel(stream: Pick<StreamInfo, "hardwareId" | "streamId">): string {
-  return `${stream.hardwareId}/${stream.streamId}`;
-}
-
 /** Short device name: the hardware id after its host prefix, without a `_CARD_n` suffix. */
 export function deviceName(hardwareId: string): string {
   return hardwareId.slice(hardwareId.lastIndexOf(".") + 1).replace(/_CARD(_\d+)?$/i, "");
@@ -440,7 +436,7 @@ export function stepAt(timeline: RunTimeline | undefined, tb: number): string | 
 }
 
 /** Context the recorder keeps before a run starts and after it ends. */
-export const PRE_ROLL_MS = 1_000;
+const PRE_ROLL_MS = 1_000;
 const TAIL_MS = 500;
 
 /**
@@ -525,7 +521,13 @@ export function relativeTime(tb: number, origin: number, digits = 3): string {
 
 // -- run console ---------------------------------------------------------------------------------
 
-export type EntryKind = "plan" | "bus" | "call" | "step" | "judge" | "event";
+/** Scroll a message list to the first entry at or after `tb`; `seq` makes repeated jumps to one instant count. */
+export interface ConsoleJump {
+  tb: number;
+  seq: number;
+}
+
+type EntryKind = "plan" | "bus" | "call" | "step" | "judge" | "event";
 
 /**
  * One console line: a step of the plan outline, bus traffic, a tool call, a step boundary, a

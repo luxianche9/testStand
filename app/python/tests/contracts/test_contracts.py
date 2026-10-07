@@ -93,3 +93,27 @@ def test_errors() -> None:
         "details": {"holder": "run"},
     }
     assert to_wire_error(RuntimeError("boom")) == {"category": "error", "message": "boom"}
+
+
+def test_hardware_signals() -> None:
+    def part(*signals: dict[str, object], kind: str = "passive") -> dict[str, object]:
+        extra = {"deviceId": "S1"} if kind == "managed" else {}
+        return {
+            "hardwareId": "DUT",
+            "label": "DUT",
+            "kind": kind,
+            "signals": list(signals),
+            **extra,
+        }
+
+    status = {"signalId": "status", "type": "bits", "direction": "output", "width": 2}
+    parsed = parse_hardware(part({**status, "bitLabels": ["ok", "fault"]}))
+    assert parsed["signals"][0]["label"] == ""
+    for invalid, message in [
+        (part(status, status), "Duplicate signalId"),
+        (part({**status, "bitLabels": ["ok"]}), "one label per bit"),
+        (part({**status, "type": "scalar"}), "for bits signals"),
+        (part(status, kind="managed"), "only passive parts"),
+    ]:
+        with pytest.raises(ValidationError, match=message):
+            parse_hardware(invalid)

@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from "@playwright/test";
-import { reloadAfterLeave, rendererReady } from "./renderer.js";
+import { activityBar, reloadAfterLeave, rendererReady, showPanel } from "./renderer.js";
 
 const desktopDir = resolve(import.meta.dirname, "..");
 
@@ -93,34 +93,39 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
     await page.evaluate((root) => window.teststand.projects.openFolder({ rootPath: root }), rootPath);
     await page.reload();
     await page.getByText("interaction-fixture", { exact: true }).first().click();
-    await expect(page.getByRole("tab", { name: "测试台架", exact: true })).toBeVisible();
+    await expect(activityBar(page).getByRole("button", { name: "设备", exact: true })).toBeVisible();
     expect(await readNode(page, "scope")).toEqual(afterMove);
   });
 
-  test("restores each panel width after navigating and reloading", async () => {
-    const panels = [
-      { tab: "测试台架", label: "调整侧栏宽度" },
-      { tab: "测试编排", label: "拖拽调整测试侧栏宽度" }
-    ];
-    const widths: number[] = [];
-    for (const panel of panels) {
-      await page.getByRole("tab", { name: panel.tab, exact: true }).click();
-      const separator = page.getByRole("separator", { name: panel.label, exact: true });
-      const bounds = (await separator.boundingBox())!;
-      await page.mouse.move(bounds.x + 2, bounds.y + bounds.height / 2);
-      await page.mouse.down();
-      await page.mouse.move(bounds.x + 62, bounds.y + bounds.height / 2, { steps: 8 });
-      await page.mouse.up();
-      widths.push(await separator.evaluate((element) => parseFloat((element.parentElement as HTMLElement).style.gridTemplateColumns)));
-    }
+  test("restores the sidebar width and the test list height after switching panels and reloading", async () => {
+    const sidebar = page.getByRole("separator", { name: "调整侧栏宽度", exact: true });
+    const listSplit = page.getByRole("separator", { name: "拖拽调整测试项列表高度", exact: true });
+    const sidebarWidth = () => sidebar.evaluate((element) =>
+      parseFloat((element.parentElement as HTMLElement).style.gridTemplateColumns));
+    const listHeight = () => listSplit.evaluate((element) =>
+      parseFloat((element.parentElement as HTMLElement).style.gridTemplateRows.split(" ")[1]!));
+    await showPanel(page, "设备");
+    let bounds = (await sidebar.boundingBox())!;
+    await page.mouse.move(bounds.x + 2, bounds.y + bounds.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(bounds.x + 62, bounds.y + bounds.height / 2, { steps: 8 });
+    await page.mouse.up();
+    const width = await sidebarWidth();
+    // The panels share the sidebar and its width.
+    await showPanel(page, "测试");
+    expect(await sidebarWidth()).toBe(width);
+    bounds = (await listSplit.boundingBox())!;
+    await page.mouse.move(bounds.x + bounds.width / 2, bounds.y);
+    await page.mouse.down();
+    await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + 40, { steps: 8 });
+    await page.mouse.up();
+    const height = await listHeight();
     await page.reload();
     await page.getByText("interaction-fixture", { exact: true }).first().click();
-    for (const [index, panel] of panels.entries()) {
-      await page.getByRole("tab", { name: panel.tab, exact: true }).click();
-      const separator = page.getByRole("separator", { name: panel.label, exact: true });
-      await expect.poll(() => separator.evaluate((element) => parseFloat((element.parentElement as HTMLElement).style.gridTemplateColumns))).toBe(widths[index]);
-    }
-    await page.getByRole("tab", { name: "测试台架", exact: true }).click();
+    await showPanel(page, "测试");
+    await expect.poll(sidebarWidth).toBe(width);
+    await expect.poll(listHeight).toBe(height);
+    await showPanel(page, "设备");
   });
 
   test("resizes the sidebar from the keyboard and retains its bounded width", async () => {
@@ -191,8 +196,8 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
       deviceId: "KEYBOARD_DEV", label: "Keyboard device", hardwareId: "KEYBOARD_DEV_CARD", type: "pci1762",
       settings: {}, enabled: true
     } }));
-    await page.getByRole("tab", { name: "测试台架", exact: true }).click();
-    const row = page.getByRole("tabpanel", { name: "设备列表" }).getByRole("button", { name: /Keyboard device/ });
+    await showPanel(page, "设备");
+    const row = page.getByRole("complementary", { name: "设备列表" }).getByRole("button", { name: /Keyboard device/ });
     await row.click();
     await page.getByRole("dialog", { name: "Keyboard device" }).getByRole("button", { name: "编辑", exact: true }).click();
     const dialog = page.getByRole("dialog", { name: "编辑设备", exact: true });
@@ -203,15 +208,15 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
     const saved = await page.evaluate(async () => (await window.teststand.system.dashboard()).devices
       .find((instance) => instance.deviceId === "KEYBOARD_DEV"));
     expect(saved).toMatchObject({ label: "Keyboard relay card", hardwareId: "KEYBOARD_DEV_CARD" });
-    await expect(page.getByRole("tabpanel", { name: "设备列表" }).getByRole("button", { name: /Keyboard relay card/ }))
+    await expect(page.getByRole("complementary", { name: "设备列表" }).getByRole("button", { name: /Keyboard relay card/ }))
       .toContainText("在线");
     // Free the card for the other suites.
     await page.evaluate(() => window.teststand.devices.removeDevice({ deviceId: "KEYBOARD_DEV" }));
   });
 
   test("discards unsaved hardware editor changes on Escape", async () => {
-    await page.getByRole("tab", { name: "测试台架", exact: true }).click();
-    const hardware = page.getByRole("tabpanel", { name: "设备列表" }).getByRole("button", { name: /^DUT_A/ });
+    await showPanel(page, "设备");
+    const hardware = page.getByRole("complementary", { name: "设备列表" }).getByRole("button", { name: /^DUT_A/ });
     await hardware.click();
     await page.getByRole("dialog", { name: "DUT_A" }).getByRole("button", { name: "编辑", exact: true }).click();
     const editor = page.getByRole("dialog", { name: "编辑硬件", exact: true });
@@ -257,9 +262,9 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
     }).toBeLessThanOrEqual(1);
     expect(await page.evaluate((keys) => Object.fromEntries(keys.map((key) => [key, localStorage.getItem(key)])), Object.keys(savedWidths))).toEqual(savedWidths);
     await page.getByText("interaction-fixture", { exact: true }).first().click();
-    await expect(page.getByRole("tab", { name: "测试台架", exact: true })).toBeVisible();
+    await expect(activityBar(page).getByRole("button", { name: "设备", exact: true })).toBeVisible();
     expect(await readNode(page, "scope")).toEqual(node);
-    await page.getByRole("tab", { name: "测试台架", exact: true }).click();
+    await showPanel(page, "设备");
     const separator = page.getByRole("separator", { name: "调整侧栏宽度", exact: true });
     await expect.poll(() => separator.evaluate((element) => parseFloat((element.parentElement as HTMLElement).style.gridTemplateColumns))).toBe(Number(savedWidths["teststand.bench-devices-width"]));
   });

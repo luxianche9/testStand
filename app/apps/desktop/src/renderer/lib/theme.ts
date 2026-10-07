@@ -13,7 +13,7 @@ export function useTheme() {
     return () => media.removeEventListener("change", listener);
   }, []);
 
-  const resolved = choice === "dark" || (choice === "system" && systemDark) ? "dark" : "light";
+  const resolved: "light" | "dark" = choice === "dark" || (choice === "system" && systemDark) ? "dark" : "light";
   useEffect(() => { document.documentElement.dataset.theme = resolved; }, [resolved]);
 
   const select = async (next: ThemeChoice) => {
@@ -21,5 +21,5 @@ export function useTheme() {
     await window.teststand.settings.update({ theme: next });
     await window.teststand.window.applyTheme(next);
   };
-  return { choice, select };
+  return { choice, resolved, select };
 }

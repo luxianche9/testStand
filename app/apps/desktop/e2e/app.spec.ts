@@ -6,7 +6,7 @@ import { promisify } from "node:util";
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from "@playwright/test";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { reloadAfterLeave, rendererReady } from "./renderer.js";
+import { activityBar, reloadAfterLeave, rendererReady, showPanel } from "./renderer.js";
 
 const desktopDir = resolve(import.meta.dirname, "..");
 const workspaceDir = resolve(desktopDir, "../..");
@@ -57,11 +57,11 @@ test.describe.serial("testStand folder project desktop", () => {
     await expect(page.getByRole("heading", { name: "最近项目" })).toBeVisible();
     await expect(page.getByRole("button", { name: "打开项目文件夹" })).toBeVisible();
     await expect(page.getByRole("button", { name: "设置", exact: true })).toBeVisible();
-    await expect(page.getByRole("tab", { name: "测试台架", exact: true })).toHaveCount(0);
+    await expect(activityBar(page).getByRole("button", { name: "设备", exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "打开 AI 侧栏" })).toHaveCount(0);
     await page.getByRole("button", { name: "设置", exact: true }).click();
     await expect(page.getByRole("heading", { name: "外观" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "测试台架", exact: true })).toHaveCount(0);
+    await expect(activityBar(page).getByRole("button", { name: "设备", exact: true })).toHaveCount(0);
     await page.getByRole("button", { name: "返回", exact: true }).click();
     await expect(page.getByRole("heading", { name: "最近项目" })).toBeVisible();
     await page.screenshot({ path: resolve(artifactDir, "welcome-light.png"), fullPage: true });
@@ -77,12 +77,12 @@ test.describe.serial("testStand folder project desktop", () => {
     // Every launch still returns to the welcome page even when recent projects exist.
     await expect(page.getByRole("heading", { name: "最近项目" })).toBeVisible();
     await page.getByText("project-a", { exact: true }).first().click();
-    await expect(page.getByRole("tab", { name: "测试台架", exact: true })).toBeVisible();
-    await expect(page.getByRole("tab", { name: "测试编排", exact: true })).toBeVisible();
-    // Runs are watched on the bench's signal view; there is no separate monitor page.
+    // One screen: the activity bar switches the sidebar's panels; runs are watched on the signal view.
+    for (const label of ["设备", "测试", "运行记录", "接线日志"]) {
+      await expect(activityBar(page).getByRole("button", { name: label, exact: true })).toBeVisible();
+    }
+    await expect(page.getByRole("tab", { name: "测试编排", exact: true })).toHaveCount(0);
     await expect(page.getByRole("tab", { name: "运行监控", exact: true })).toHaveCount(0);
-    await expect(page.getByRole("tab", { name: "设备管理", exact: true })).toHaveCount(0);
-    await expect(page.getByRole("tab", { name: "工位接线", exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "打开 AI 侧栏" })).toBeVisible();
   });
 
@@ -97,62 +97,54 @@ test.describe.serial("testStand folder project desktop", () => {
           ]
         } });
       }
-      const pending = await window.teststand.wiring.requestTask({ input: { portA: "DUT_A.J1", portB: "DUT_B.J1", pins: [{ a: "1", b: "1" }, { a: "2", b: "2" }], action: "connect" } });
-      await window.teststand.wiring.startTask({ taskId: pending.wiringTaskId, operatorName: "e2e" });
+      const pending = await window.teststand.wiring.requestTask({ input: { changes: [
+        { action: "connect", portA: "DUT_A.J1", portB: "DUT_B.J1", pins: [{ a: "1", b: "1" }, { a: "2", b: "2" }] }
+      ] } });
       await window.teststand.wiring.completeTask({ taskId: pending.wiringTaskId, outcome: "confirmed" });
       const beforeSave = await window.teststand.projects.document();
       const afterSave = await window.teststand.projects.saveProject();
       return { beforeSave, afterSave };
     });
-    expect(result.beforeSave?.dirty).toBe(true);
+    // A confirmed wiring task saves the project: the wiring is what the operator confirmed on the bench.
+    expect(result.beforeSave?.dirty).toBe(false);
     expect(result.afterSave.dirty).toBe(false);
     expect(result.beforeSave?.file.wiring.connections[0]?.pins).toEqual([{ a: "1", b: "1" }, { a: "2", b: "2" }]);
 
-    await page.getByRole("tab", { name: "测试台架", exact: true }).click();
-    const list = page.getByRole("tabpanel", { name: "设备列表" });
+    await showPanel(page, "设备");
+    const list = page.getByRole("complementary", { name: "设备列表" });
     await list.getByRole("button", { name: /DUT_A/ }).click();
     await expect(page.getByRole("dialog", { name: "DUT_A" }).getByText("光纤口")).toBeVisible();
     await page.keyboard.press("Escape");
     await page.screenshot({ path: resolve(artifactDir, "bench-page.png"), fullPage: true });
-    await page.getByRole("tab", { name: /^接线日志/ }).click();
-    await expect(page.getByRole("tabpanel", { name: "接线日志" }).getByRole("region", { name: "历史记录" })).toBeVisible();
+    await showPanel(page, "接线日志");
+    const log = page.getByRole("region", { name: "接线日志" });
+    await expect(log.getByRole("region", { name: "变更记录" })).toBeVisible();
+    await expect(log.getByText("新增接线 DUT_A J1 ↔ DUT_B J1").first()).toBeVisible();
     await expect(page.getByRole("button", { name: "信箱" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "命令面板" })).toHaveCount(0);
     await page.screenshot({ path: resolve(artifactDir, "project-wiring.png") });
 
   });
 
-  test("processes consecutive Agent wiring requests through clickable confirmations", async () => {
-    const taskIds = await page.evaluate(async () => {
-      const connect = await window.teststand.wiring.requestTask({ input: {
-        portA: "DUT_A.FIBER",
-        portB: "DUT_B.FIBER",
-        action: "connect"
-      } });
-      const disconnect = await window.teststand.wiring.requestTask({ input: {
-        portA: "DUT_A.J1",
-        portB: "DUT_B.J1",
-        pins: [{ a: "1", b: "1" }, { a: "2", b: "2" }],
-        action: "disconnect"
-      } });
-      return [connect.wiringTaskId, disconnect.wiringTaskId];
-    });
-
-    await expect(page.getByLabel("2 条待处理接线任务")).toBeVisible();
-    await page.getByRole("tab", { name: "测试台架", exact: true }).click();
-    await page.getByRole("tab", { name: /^接线日志/ }).click();
-    const pending = page.getByRole("tabpanel", { name: "接线日志" }).getByRole("region", { name: "待处理" });
-    for (let remaining = taskIds.length; remaining > 0; remaining--) {
-      const cards = pending.getByRole("region", { name: /^(接线|断线)任务$/ });
-      await expect(cards).toHaveCount(remaining);
-      const confirm = cards.first().getByRole("button", { name: "完成", exact: true });
-      await expect(confirm).toBeEnabled();
-      await confirm.click();
-    }
-
-    await expect(pending).toHaveCount(0);
-    const completed = await page.evaluate(async (ids) => Promise.all(ids.map((id) => window.teststand.wiring.getTask({ taskId: id }))), taskIds);
-    expect(completed.map((task) => task.status)).toEqual(["confirmed", "confirmed"]);
+  test("applies one batch of Agent wiring changes with a single confirmation", async () => {
+    const taskId = await page.evaluate(async () => (await window.teststand.wiring.requestTask({ input: { changes: [
+      { action: "connect", portA: "DUT_A.FIBER", portB: "DUT_B.FIBER" },
+      { action: "disconnect", portA: "DUT_A.J1", portB: "DUT_B.J1", pins: [{ a: "1", b: "1" }, { a: "2", b: "2" }] }
+    ] } })).wiringTaskId);
+    // Wiring requests are answered in the conversation only; the log lists what changed.
+    await showPanel(page, "接线日志");
+    const changes = page.getByRole("region", { name: "接线日志" }).getByRole("region", { name: "变更记录" });
+    const before = await changes.getByRole("listitem").count();
+    const task = await page.evaluate(async (id) => {
+      await window.teststand.wiring.completeTask({ taskId: id, outcome: "confirmed" });
+      return await window.teststand.wiring.getTask({ taskId: id });
+    }, taskId);
+    expect(task.status).toBe("confirmed");
+    await expect(changes.getByRole("listitem")).toHaveCount(before + 2);
+    await expect(changes.getByText("新增接线 DUT_A 光纤口 ↔ DUT_B 光纤口")).toBeVisible();
+    await expect(changes.getByText("删除接线 DUT_A J1 ↔ DUT_B J1")).toBeVisible();
+    const connections = await page.evaluate(async () => (await window.teststand.projects.document())?.file.wiring.connections);
+    expect(connections?.map((item) => `${item.portA}-${item.portB}`)).toEqual(["DUT_A.FIBER-DUT_B.FIBER"]);
   });
 
   test("uses settings as the only configuration surface and switches themes", async () => {
@@ -170,7 +162,7 @@ test.describe.serial("testStand folder project desktop", () => {
     await expect(page.getByText("MCP Gateway", { exact: false }).first()).toBeVisible();
     await expect(page.getByText("Codex", { exact: true }).first()).toBeVisible();
 
-    await page.getByRole("tab", { name: "测试台架", exact: true }).click();
+    await activityBar(page).getByRole("button", { name: "设备", exact: true }).click();
     const openAssistant = page.getByRole("button", { name: "打开 AI 侧栏" });
     if (await openAssistant.isVisible()) await openAssistant.click();
     await expect(page.getByRole("button", { name: "关闭 AI 侧栏" })).toBeVisible();
@@ -253,7 +245,7 @@ test.describe.serial("testStand folder project desktop", () => {
       const results = mcpData(await client.callTool({ name: "read_test_run_results", arguments: { runId: started.runId, afterSequence: 0 } }));
       expect(results.results).toEqual(expect.arrayContaining([expect.objectContaining({ name: "安全清理", value: "done" })]));
 
-      await page.getByRole("tab", { name: "测试编排", exact: true }).click();
+      await showPanel(page, "测试");
       await expect(page.getByRole("list", { name: "功能测试项" }).getByText("Agent 编排计划", { exact: true }).first())
         .toBeVisible();
       await expect(page.getByRole("list", { name: "功能测试项" }).getByText("中止", { exact: true }).first()).toBeVisible();
@@ -276,7 +268,7 @@ test.describe.serial("testStand folder project desktop", () => {
     await expect(dialog.getByRole("button", { name: "保存并继续" })).toBeVisible();
     await expect(dialog.getByRole("button", { name: "放弃修改" })).toBeVisible();
     await dialog.getByRole("button", { name: "取消" }).click();
-    await expect(page.getByRole("tab", { name: "测试台架", exact: true })).toBeVisible();
+    await expect(activityBar(page).getByRole("button", { name: "设备", exact: true })).toBeVisible();
     await requestLeaveProject(page);
     await dialog.getByRole("button", { name: "放弃修改" }).click();
     await expect(page.getByRole("heading", { name: "最近项目" })).toBeVisible();
@@ -288,10 +280,12 @@ test.describe.serial("testStand folder project desktop", () => {
     const transport = new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${gatewayPort}/mcp`), { requestInit: { headers: { Authorization: `Bearer ${gatewayTestToken}` } } });
     await client.connect(transport);
     const names = (await client.listTools()).tools.map((tool) => tool.name);
-    expect(names).toContain("request_wiring_task");
+    expect(names).toEqual(expect.arrayContaining(["request_wiring", "get_signal_view", "apply_signal_view_operations"]));
     expect(names).not.toContain("list_test_flows");
     expect(names).not.toContain("start_python_run");
-    const task = await client.callTool({ name: "request_wiring_task", arguments: { portA: "A.J1", portB: "B.J1", action: "connect" } });
+    const task = await client.callTool({
+      name: "request_wiring", arguments: { changes: [{ action: "connect", portA: "A.J1", portB: "B.J1" }] }
+    });
     expect(task.isError).toBeTruthy();
     await client.close();
     expect(rendererErrors).toEqual([]);

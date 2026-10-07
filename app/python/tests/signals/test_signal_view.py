@@ -215,3 +215,42 @@ async def test_write_goes_through_the_manual_tool_path() -> None:
         "OFFLINE": False,
         "DUT": True,
     }
+
+
+async def test_operations_edit_the_project_buffer_and_writes_need_the_tool() -> None:
+    saved: dict[str, Any] = {}
+
+    async def update(view: dict[str, Any]) -> dict[str, Any]:
+        saved.update(view)
+        return {"dirty": True, "file": {"signals": view}}
+
+    projects = Mock(
+        signals=Mock(return_value={"nodes": [], "links": []}),
+        update_signals_with_layout=AsyncMock(side_effect=update),
+    )
+    catalog = Mock(
+        find_hardware=HARDWARE.get,
+        get_hardware=HARDWARE.get,
+        list_hardware=lambda: list(HARDWARE.values()),
+    )
+    devices = Mock(known_streams=STREAMS.get, list_tools=Mock(return_value=[]))
+    wiring = Mock()
+    app = SignalsApplication(DefaultAuthorizer(), projects, wiring, catalog, devices, Mock())
+    assert app.get_document(HUMAN) == {"nodes": [], "links": []}
+    edited = await app.apply_operations(
+        HUMAN, [{"type": "add_hardware", "hardwareId": "AO", "nodeId": "ao"}]
+    )
+    assert (
+        [item["nodeId"] for item in edited["nodes"]]
+        == ["ao"]
+        == [item["nodeId"] for item in saved["nodes"]]
+    )
+    wiring.notify_project_changed.assert_called_once_with()
+    panel = await app.apply_operations(HUMAN, [{"type": "default_panel", "hardwareIds": ["RELAY"]}])
+    assert [item.get("widget") for item in panel["nodes"]] == [None, "lamps", "switch"]
+    # A batch with an operation it cannot apply is refused before anything is saved.
+    with pytest.raises(AppError, match="unknown type"):
+        await app.apply_operations(HUMAN, [{"type": "teleport"}])
+    projects.signals.return_value = view((end("ao", "ao0"), end("dut", "vref")))
+    with pytest.raises(AppError, match="does not offer pci6208v_set_voltage"):
+        await app.write(HUMAN, {"nodeId": "dut", "handle": "vref", "action": "set", "value": 1})
