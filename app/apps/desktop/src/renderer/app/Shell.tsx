@@ -97,9 +97,9 @@ function Shell() {
       void window.teststand.settings.update({ projectView: "plans" });
     };
     window.addEventListener("teststand:navigate-plans", openPlans);
-    // A run started (here or by an agent): watch it on 运行监控.
+    // The operator started a run: watch it on the bench's signal view, which is already watching.
     const stopRuns = onRunRequested(() => {
-      if (project.data) navigate({ type: "show-content", page: "runs" });
+      if (project.data) navigate({ type: "show-content", page: "bench" });
     });
     return () => {
       window.removeEventListener("teststand:navigate-plans", openPlans);

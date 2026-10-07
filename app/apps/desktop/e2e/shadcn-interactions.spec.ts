@@ -100,7 +100,7 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
   test("restores each panel width after navigating and reloading", async () => {
     const panels = [
       { tab: "测试台架", label: "调整侧栏宽度" },
-      { tab: "运行监控", label: "拖拽调整运行记录宽度" }
+      { tab: "测试编排", label: "拖拽调整测试侧栏宽度" }
     ];
     const widths: number[] = [];
     for (const panel of panels) {

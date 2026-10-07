@@ -54,8 +54,11 @@ export function SignalDataProvider({ value, children }: { value: SignalData; chi
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
 
-/** Follow / zoom state of one time axis. `start` keeps a run's start in view while it follows. */
-export function useSignalTime(live: boolean, start?: number): SignalTime {
+/**
+ * Follow / zoom state of one time axis. `start` keeps a run's start in view while it follows;
+ * `whole` is shown when nothing is zoomed and the data no longer arrives (a finished run).
+ */
+export function useSignalTime(live: boolean, start?: number, whole?: TimeRange): SignalTime {
   const [follow, setFollow] = useState(live);
   const [zoom, setZoom] = useState<TimeRange>();
   const [span, setSpan] = useState<Span>("10000");
@@ -75,19 +78,19 @@ export function useSignalTime(live: boolean, start?: number): SignalTime {
     follow: following,
     spanMs,
     from,
-    range: following ? undefined : zoom,
+    range: following ? undefined : zoom ?? whole,
     marker,
     span,
     setSpan: (next) => { setSpan(next); setZoom(undefined); if (live) setFollow(true); },
     select: (next) => { setFollow(false); setZoom(next); },
     pick: setMarker,
     reset: () => { setZoom(undefined); if (live) setFollow(true); }
-  }), [following, spanMs, from, zoom, marker, span, live]);
+  }), [following, spanMs, from, zoom, whole, marker, span, live]);
 }
 
-/** The devices' live data through one shared subscription, as long as the canvas is mounted. */
-export function useLiveSource(): StreamSource {
+/** The devices' live frames through one shared subscription, as long as the canvas is mounted. */
+export function useLiveHub(): NonNullable<StreamSource["live"]> {
   const hub = useMemo(() => createLiveHub(window.teststand.streams.live), []);
   useEffect(() => () => hub.close(), [hub]);
-  return useMemo(() => ({ live: hub }), [hub]);
+  return hub;
 }

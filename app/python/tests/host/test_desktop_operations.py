@@ -48,10 +48,10 @@ async def test_settings_update_only_what_was_given(tmp_path: Path) -> None:
     context = dict(HUMAN_REQUEST_CONTEXT)
     updated = await application.update(context, theme="dark")
     assert updated["theme"] == "dark" and updated["welcomeLayout"] == "grid"
-    updated = await application.update(context, project_view="runs", welcome_layout="list")
+    updated = await application.update(context, project_view="plans", welcome_layout="list")
     assert (updated["theme"], updated["projectView"], updated["welcomeLayout"]) == (
         "dark",
-        "runs",
+        "plans",
         "list",
     )
     assert application.get(context) == updated

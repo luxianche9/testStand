@@ -6,7 +6,7 @@ import {
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import type { Hardware } from "@teststand/contracts/devices";
-import type { TestPlan, TestRunSnapshot, TestStep, TestStepCatalogItem } from "@teststand/contracts/testing";
+import type { TestPlan, TestStep, TestStepCatalogItem } from "@teststand/contracts/testing";
 import { HeaderTabs, Splitter, useConfirm } from "../../ui";
 import { useResizableWidth } from "../../lib/resizable.js";
 import { useCurrentTestRun, useTestItemStatus } from "../../lib/queries.js";
@@ -27,7 +27,8 @@ import { usePlanEditor } from "./usePlanEditor.js";
 
 type SideTab = "items" | "library";
 
-/** 测试编排: 测试项 / 组件库 on the left · flow editor with 属性 below. Runs open in 运行监控. */
+/** 测试编排: 测试项 / 组件库 on the left · flow editor with 属性 below. A run started here is shown on
+ *  the bench's signal view; every run, however started, is followed there. */
 export function TestPlanPage() {
   const client = useQueryClient();
   const [confirm, confirmDialog] = useConfirm();
@@ -58,17 +59,6 @@ export function TestPlanPage() {
   useEffect(() => {
     if (!selectedPlanId && firstPlanId) void loadPlan(firstPlanId);
   }, [selectedPlanId, loadPlan, firstPlanId]);
-
-  // A run started while this page is open (another batch item, the agent) is shown in 运行监控;
-  // the run already going when the page opened is not.
-  const seenRun = useRef<string | null | undefined>(currentRun.isFetched ? activeId(run) : undefined);
-  useEffect(() => {
-    if (!currentRun.isFetched) return;
-    const runId = activeId(run);
-    if (seenRun.current === undefined) { seenRun.current = runId; return; }
-    if (runId && runId !== seenRun.current) openRunMonitor(runId);
-    seenRun.current = runId;
-  }, [run, currentRun.isFetched]);
 
   const guardState = useRef(editor);
   guardState.current = editor;
@@ -231,9 +221,6 @@ export function TestPlanPage() {
   );
 }
 
-function activeId(run: TestRunSnapshot | null | undefined): string | null {
-  return isActiveRun(run) ? run.runId : null;
-}
 
 function defaultName(): string {
   return `新测试计划 ${new Date().toLocaleTimeString()}`;

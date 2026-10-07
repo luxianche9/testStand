@@ -79,7 +79,8 @@ test.describe.serial("testStand folder project desktop", () => {
     await page.getByText("project-a", { exact: true }).first().click();
     await expect(page.getByRole("tab", { name: "测试台架", exact: true })).toBeVisible();
     await expect(page.getByRole("tab", { name: "测试编排", exact: true })).toBeVisible();
-    await expect(page.getByRole("tab", { name: "运行监控", exact: true })).toBeVisible();
+    // Runs are watched on the bench's signal view; there is no separate monitor page.
+    await expect(page.getByRole("tab", { name: "运行监控", exact: true })).toHaveCount(0);
     await expect(page.getByRole("tab", { name: "设备管理", exact: true })).toHaveCount(0);
     await expect(page.getByRole("tab", { name: "工位接线", exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "打开 AI 侧栏" })).toBeVisible();
@@ -253,7 +254,8 @@ test.describe.serial("testStand folder project desktop", () => {
       expect(results.results).toEqual(expect.arrayContaining([expect.objectContaining({ name: "安全清理", value: "done" })]));
 
       await page.getByRole("tab", { name: "测试编排", exact: true }).click();
-      await expect(page.getByText("Agent 编排计划", { exact: true }).first()).toBeVisible();
+      await expect(page.getByRole("list", { name: "功能测试项" }).getByText("Agent 编排计划", { exact: true }).first())
+        .toBeVisible();
       await expect(page.getByRole("list", { name: "功能测试项" }).getByText("中止", { exact: true }).first()).toBeVisible();
     } finally {
       await client.close();

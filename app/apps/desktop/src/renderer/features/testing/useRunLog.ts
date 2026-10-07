@@ -12,7 +12,8 @@ export interface RunLogState {
 /**
  * Incrementally mirrors one run's log: reads pages after the last seen sequences, coalesces
  * notifications for 100 ms, rebuilds from zero when a sequence gap shows up, and polls every
- * 5 s as a fallback while the run is live.
+ * 5 s as a fallback while the run is live. The run turning live or ending keeps what was read:
+ * only a different run starts over.
  */
 export function useRunLog(runId: string | undefined, live: boolean): RunLogState {
   const [log, setLog] = useState<TestRunLog>();
@@ -22,6 +23,9 @@ export function useRunLog(runId: string | undefined, live: boolean): RunLogState
   const logRef = useRef<TestRunLog | undefined>(undefined);
   const eventSequence = useRef(0);
   const resultSequence = useRef(0);
+  const liveRef = useRef(live);
+  liveRef.current = live;
+  const scheduleRef = useRef<(() => void) | undefined>(undefined);
 
   useEffect(() => {
     setLog(undefined);
@@ -30,7 +34,7 @@ export function useRunLog(runId: string | undefined, live: boolean): RunLogState
     setIntegrityWarning(undefined);
     eventSequence.current = 0;
     resultSequence.current = 0;
-    setSyncLabel(live ? "同步中" : "历史快照");
+    setSyncLabel(liveRef.current ? "同步中" : "历史快照");
     if (!runId) return;
     let stopped = false;
     let inFlight = false;
@@ -89,7 +93,7 @@ export function useRunLog(runId: string | undefined, live: boolean): RunLogState
             setIntegrityWarning("检测到日志序号缺口，已从头重建运行视图。");
             void synchronize(true);
           } else {
-            setSyncLabel(live ? "实时" : "历史快照");
+            setSyncLabel(liveRef.current ? "实时" : "历史快照");
             if (pending) schedule();
           }
         }
@@ -108,13 +112,21 @@ export function useRunLog(runId: string | undefined, live: boolean): RunLogState
       if (ahead) schedule();
     });
     schedule();
-    const fallback = live ? window.setInterval(schedule, 5_000) : undefined;
+    scheduleRef.current = schedule;
     return () => {
       stopped = true;
+      scheduleRef.current = undefined;
       stopEvents();
       if (coalesceTimer !== undefined) window.clearTimeout(coalesceTimer);
-      if (fallback !== undefined) window.clearInterval(fallback);
     };
+  }, [runId]);
+
+  // Polling while live; the run ending reads once more so the final state shows.
+  useEffect(() => {
+    scheduleRef.current?.();
+    if (!live) return undefined;
+    const fallback = window.setInterval(() => scheduleRef.current?.(), 5_000);
+    return () => window.clearInterval(fallback);
   }, [runId, live]);
 
   return { log, error, integrityWarning, syncLabel };

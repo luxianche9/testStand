@@ -1,7 +1,7 @@
 const OPEN_RUN = "teststand:open-run";
 let pending: string | undefined;
 
-/** Shows a run on the 运行监控 page (the shell switches to it; the page picks the run up). */
+/** Shows a run on the bench's signal view (the shell switches to the bench; the view picks the run up). */
 export function openRunMonitor(runId: string) {
   pending = runId;
   window.dispatchEvent(new CustomEvent(OPEN_RUN, { detail: { runId } }));

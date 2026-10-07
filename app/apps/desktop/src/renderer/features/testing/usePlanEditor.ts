@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { TestPlan, TestPlanDraftAnalysis, TestPlanIssue } from "@teststand/contracts/testing";
 import { invalidateTestingData } from "../../lib/mutations.js";
+import { queryKeys } from "../../lib/query-keys.js";
 import { useKeyboardShortcut } from "../../lib/hooks/useKeyboardShortcut.js";
 import { defaultRunParameters } from "./plan-helpers.js";
 import { clonePlan, findStep } from "./plan-model.js";
@@ -187,6 +188,8 @@ export function usePlanEditor({ confirm, onRunStarted }: {
           parameters: runParameters
         }
       });
+      // The signal view is live as soon as it knows the run is the current one: tell it first.
+      client.setQueryData(queryKeys.testRun, run);
       onRunStarted(run.runId);
       await invalidateTestingData(client);
       setMessage("测试运行已启动");

@@ -47,7 +47,7 @@ describe("TestPlanPage", () => {
         planId: "plan", revision: 1, executionRevision: "exec", requestId: "request-id", parameters: {}
       })
     }));
-    // The started run opens in 运行监控.
+    // The started run opens on the bench's signal view.
     await waitFor(() => expect(requested).toHaveBeenCalledWith("run"));
     stop();
   });

@@ -7,20 +7,21 @@ import {
   Maximize2Icon,
   Minimize2Icon,
   MinusIcon,
-  ScrollTextIcon,
   SettingsIcon,
   XIcon
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ProjectDocument } from "@teststand/contracts/projects";
 import type { ProjectView } from "@teststand/contracts/storage";
-import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger, cn } from "../ui";
+import { useCurrentTestRun } from "../lib/queries.js";
+import { openRunMonitor } from "../lib/run-focus.js";
+import { isActiveRun } from "../features/testing/plan-helpers.js";
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger, StatusLamp, cn } from "../ui";
 import type { AppPage } from "./app-navigation.js";
 
 const PROJECT_VIEWS: { view: ProjectView; label: string; icon: ReactNode }[] = [
   { view: "bench", label: "测试台架", icon: <CableIcon /> },
-  { view: "plans", label: "测试编排", icon: <FlaskConicalIcon /> },
-  { view: "runs", label: "运行监控", icon: <ScrollTextIcon /> }
+  { view: "plans", label: "测试编排", icon: <FlaskConicalIcon /> }
 ];
 
 export type ProjectAction = "save" | "open" | "welcome";
@@ -86,6 +87,7 @@ export function TitleBar(props: {
       )}
       <span className="flex-1 self-stretch" />
 
+      {inProject && <RunIndicator />}
       {inProject && (
         <button
           type="button"
@@ -110,6 +112,26 @@ export function TitleBar(props: {
       <span aria-hidden className="mx-1 h-4 w-px bg-line" />
       <WindowControls />
     </header>
+  );
+}
+
+/** The run in progress, wherever it was started; a click shows it on the bench's signal view. */
+function RunIndicator() {
+  const run = useCurrentTestRun().data;
+  if (!isActiveRun(run)) return null;
+  const paused = run.state === "paused";
+  return (
+    <button
+      type="button"
+      aria-label={`正在运行 ${run.planName}，查看运行`}
+      title="在测试台架的信号视图中查看本次运行"
+      onClick={() => openRunMonitor(run.runId)}
+      className={cn(barButton, "max-w-56")}
+    >
+      <StatusLamp tone={paused ? "invalid" : "run"} pulse={!paused} />
+      <span className="truncate text-fg">{run.planName}</span>
+      <span className="shrink-0 text-fg-3">{paused ? "已暂停" : "运行中"}</span>
+    </button>
   );
 }
 

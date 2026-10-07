@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { DeviceInstance, Hardware, ToolCatalogItem } from "@teststand/contracts/devices";
 import { PlusIcon, RefreshCwIcon, TriangleAlertIcon } from "lucide-react";
@@ -6,6 +6,7 @@ import { errorMessage } from "../../lib/errors.js";
 import { invalidateDeviceData, invalidateWiringData } from "../../lib/mutations.js";
 import { useDashboard, useProjectDocument, useWiringTasks } from "../../lib/queries.js";
 import { useResizableWidth } from "../../lib/resizable.js";
+import { onRunRequested } from "../../lib/run-focus.js";
 import {
   HeaderTabs, IconButton, Menu, MenuContent, MenuItem, MenuTrigger, SegmentedControl, Spinner, Splitter, cn
 } from "../../ui/index.js";
@@ -40,6 +41,8 @@ const viewOptions = [
  */
 export function BenchPage({ view, onView }: { view?: BenchView; onView?: (view: BenchView) => void }) {
   const [own, setOwn] = useState<BenchView>("signals");
+  // A run asked for is shown on the signal view.
+  useEffect(() => onRunRequested(() => (onView ?? setOwn)("signals")), [onView]);
   return <Bench view={view ?? own} onView={onView ?? setOwn} />;
 }
 

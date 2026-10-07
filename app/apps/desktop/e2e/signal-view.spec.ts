@@ -89,6 +89,34 @@ test.describe.serial("signal view and pin list", () => {
       .toEqual(["scope", "switch", "value"]);
   });
 
+  test("shows a run started in the plan editor on the signal view from its first step", async () => {
+    await page.evaluate(async () => {
+      const created = await window.teststand.testing.createPlan({ input: { requestId: crypto.randomUUID(), name: "信号视图运行" } });
+      await window.teststand.testing.applyPlanOperations({ input: {
+        planId: created.plan.id, baseRevision: created.plan.revision, requestId: crypto.randomUUID(),
+        operations: [
+          { type: "insert_step", region: "test", step: { id: "first", type: "PublishResult", name: "第一步", value: "ok" } },
+          { type: "insert_step", region: "test", step: { id: "wait", type: "Delay", name: "等待", durationMs: 1_500 } }
+        ]
+      } });
+    });
+    await page.getByRole("tab", { name: "测试编排", exact: true }).click();
+    await page.getByRole("button", { name: /信号视图运行/ }).first().click();
+    await page.getByRole("button", { name: "运行", exact: true }).click();
+    // The bench is shown at once, with the run docked under the canvas.
+    await expect(page.getByRole("region", { name: "信号视图" })).toBeVisible();
+    const dock = page.getByRole("region", { name: "运行面板" });
+    await expect(dock).toContainText("信号视图运行");
+    await expect(page.getByRole("button", { name: /正在运行 信号视图运行/ })).toBeVisible();
+    await expect(dock.getByText("第一步").first()).toBeVisible();
+    await page.screenshot({ path: join(artifacts, "run-docked.png") });
+    // Finished, the run stays on the canvas as a replay until the operator returns to live data.
+    await expect(dock.getByRole("button", { name: "返回实时" })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole("button", { name: /正在运行/ })).toHaveCount(0);
+    await dock.getByRole("button", { name: "返回实时" }).click();
+    await expect(dock).toHaveCount(0);
+  });
+
   test("shows the physical wiring as a pin list", async () => {
     await page.getByRole("button", { name: "针脚列表", exact: true }).click();
     const list = page.getByRole("region", { name: "针脚列表" });
