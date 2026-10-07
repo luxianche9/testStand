@@ -109,6 +109,15 @@ def _validate(
             )
             continue
         plugin = plugin_by_type.get(str(step_type))
+        if isinstance(step.get("settings"), dict):
+            issues.append(
+                issue(
+                    "error",
+                    "step.settings",
+                    "Step fields go directly on the step; move them out of settings",
+                    path + "/settings",
+                )
+            )
         if plugin:
             try:
                 plugin_issues = plugin.validate(step)

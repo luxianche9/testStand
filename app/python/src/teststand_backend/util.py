@@ -1,10 +1,11 @@
-"""Small shared helpers: record type, absent-value sentinel, time, ids and JSON text."""
+"""Small shared helpers: record type, absent-value sentinel, time, ids, JSON text and search."""
 
 from __future__ import annotations
 
 import copy
 import json
 import math
+import re
 import time
 import uuid
 from datetime import UTC, datetime
@@ -79,6 +80,17 @@ def json_dumps(value: Any, indent: int | None = None) -> str:
 
 def json_loads(text: str | bytes) -> Any:
     return json.loads(text)
+
+
+def search_terms(query: str | None) -> list[str]:
+    """Case-folded words of a search query; ``a_b`` and ``a b`` find the same text."""
+    return [term for term in re.split(r"[\s_]+", (query or "").casefold()) if term]
+
+
+def matches_terms(terms: list[str], text: str) -> bool:
+    """Every term occurs in ``text``, in any order (an empty query matches everything)."""
+    folded = text.casefold().replace("_", " ")
+    return all(term in folded for term in terms)
 
 
 def _strip_undefined(value: Any) -> Any:

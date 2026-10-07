@@ -1009,7 +1009,7 @@ def test_latest_run_and_batch_are_none_without_an_open_project() -> None:
     assert state.latest_batch() is None
 
 
-def test_binding_a_tool_fills_its_required_parameters() -> None:
+def test_binding_a_tool_fills_only_declared_defaults() -> None:
     from teststand_backend.testing.store import default_arguments
 
     schema = {
@@ -1024,11 +1024,58 @@ def test_binding_a_tool_fills_its_required_parameters() -> None:
         },
         "required": ["channel", "closed", "kind", "volts", "note"],
     }
-    assert default_arguments(schema) == {
-        "channel": 0,
-        "closed": False,
-        "kind": "DI",
-        "volts": 1.5,
-        "note": "",
-    }
+    assert default_arguments(schema) == {"volts": 1.5}
     assert default_arguments({}) == {}
+
+
+class SchemaResolver(Resolver):
+    def resolve(self, hardware_id: str, tool_name: str) -> tuple[dict[str, Any], list[Any]]:
+        tool, issues = super().resolve(hardware_id, tool_name)
+        tool["inputSchema"] = {
+            "type": "object",
+            "properties": {"channel": {"type": "integer"}, "volts": {"type": "number"}},
+            "required": ["channel", "volts"],
+        }
+        return tool, issues
+
+
+async def test_binding_keeps_arguments_already_set(tmp_path: Path) -> None:
+    store = TestPlanStore(Projects(tmp_path), SchemaResolver())
+    await store.create({"id": "bind", "name": "Bind"})
+    step = {"id": "set", "type": "InvokeTool", "arguments": {"channel": 1, "volts": 2.5}}
+    await store.apply_operations("bind", 1, [{"type": "insert_step", "step": step}])
+    bound = await store.apply_operations(
+        "bind",
+        2,
+        [{"type": "bind_invoke_tool", "stepId": "set", "hardwareId": "ao", "toolName": "write"}],
+    )
+    invoke = bound["plan"]["regions"]["test"][0]
+    assert invoke["arguments"] == {"channel": 1, "volts": 2.5}
+    assert invoke["toolName"] == "write"
+    rebound = await store.apply_operations(
+        "bind",
+        3,
+        [{"type": "bind_invoke_tool", "stepId": "set", "hardwareId": "ao", "toolName": "read"}],
+    )
+    assert rebound["plan"]["regions"]["test"][0]["arguments"] == {"channel": 1, "volts": 2.5}
+
+
+async def test_step_fields_wrapped_in_settings_are_rejected(tmp_path: Path) -> None:
+    from teststand_backend.testing.validation import validate_plan
+
+    plan = plan_with({"id": "d", "type": "Delay", "settings": {"durationMs": 5}})
+    assert "step.settings" in [item["code"] for item in validate_plan(plan, None, [])]
+    store = TestPlanStore(Projects(tmp_path), SchemaResolver())
+    await store.create({"id": "wrap", "name": "Wrap"})
+    wrapped = {"id": "d", "type": "Delay", "settings": {"durationMs": 5}}
+    with pytest.raises(AppError, match="no settings"):
+        await store.apply_operations("wrap", 1, [{"type": "insert_step", "step": wrapped}])
+    await store.apply_operations(
+        "wrap", 1, [{"type": "insert_step", "step": {"id": "d", "type": "Delay"}}]
+    )
+    with pytest.raises(AppError, match="no settings"):
+        await store.apply_operations(
+            "wrap",
+            2,
+            [{"type": "update_step", "stepId": "d", "patch": {"settings": {"durationMs": 5}}}],
+        )

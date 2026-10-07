@@ -151,21 +151,25 @@ _RUN_OUTPUT = _open_object(
     ],
 )
 
-_OPERATION_FIELDS = (
-    "type",
-    "patch",
-    "parameters",
-    "region",
-    "parentId",
-    "branch",
-    "index",
-    "step",
-    "stepId",
-    "enabled",
-    "hardwareId",
-    "toolName",
-)
-GLOSSARY = {name: f"Operation {name} field." for name in _OPERATION_FIELDS}
+# Descriptions of the plan operation fields, which the schemas below leave undescribed.
+GLOSSARY = {
+    "type": "Operation kind.",
+    "patch": "Fields to set: plan fields for set_plan_fields, step root fields for update_step.",
+    "parameters": "Complete list of typed run parameter definitions.",
+    "region": "Plan region: prepare, test (default) or cleanup.",
+    "parentId": "Container step that receives the step; omit for the region's top level.",
+    "branch": "children (default) or elseChildren (the If step's else branch).",
+    "index": "Position among the siblings; omit to append.",
+    "step": (
+        "Complete step: {id, type, ...fields}. Fields from the catalog's settingsSchema sit "
+        "directly on the step, never in a nested settings object. An InvokeTool step may "
+        "carry hardwareId, toolName and arguments; it is bound on insert."
+    ),
+    "stepId": "Id of an existing step.",
+    "enabled": "false skips the step at run time.",
+    "hardwareId": "Concrete managed hardware id.",
+    "toolName": "Original device tool name from list_test_device_tools.",
+}
 
 
 def _target(**fields: Schema) -> dict[str, Schema]:
@@ -237,7 +241,8 @@ TESTING_TOOLS = [
     ),
     _testing(
         "get_test_step_catalog",
-        "Read built-in and trusted plugin step contracts.",
+        "Read built-in and trusted plugin step contracts. settingsSchema lists the fields "
+        "that sit directly on a step next to id and type (there is no settings object).",
         _EMPTY,
         _ANY_LIST,
         operation="testing.listStepCatalog",

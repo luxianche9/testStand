@@ -337,6 +337,7 @@ def _apply_operation(plan: Record, operation: Record, resolver: Any | None = Non
         )
         index = int(operation.get("index", len(target)))
         inserted = clone(operation.get("step", {}))
+        _reject_settings_wrapper(inserted)
         if (
             inserted.get("type") == "InvokeTool"
             and inserted.get("hardwareId")
@@ -359,6 +360,7 @@ def _apply_operation(plan: Record, operation: Record, resolver: Any | None = Non
             "inputSchemaHash",
             "retryAllowed",
         }
+        _reject_settings_wrapper(operation.get("patch", {}))
         for key, value in operation.get("patch", {}).items():
             if key not in protected:
                 step[key] = clone(value)
@@ -396,27 +398,29 @@ def _apply_operation(plan: Record, operation: Record, resolver: Any | None = Non
 
 
 def default_arguments(schema: Record) -> Record:
-    """Values for the required parameters of a tool input schema: the declared default, else the
-    first enum value, the minimum, ``False``, ``0`` or ``""``."""
+    """The declared defaults of a tool input schema's required parameters.
+
+    Parameters without a declared default stay absent: a guessed physical value (the minimum
+    voltage, an open relay) would run silently, while a missing one fails validation and
+    asks for an explicit choice."""
     declared = schema.get("properties")
     properties: Record = declared if isinstance(declared, dict) else {}
     output: Record = {}
     for name in schema.get("required", []) if isinstance(schema.get("required"), list) else []:
         field = properties.get(name)
-        if not isinstance(field, dict):
-            continue
-        kind = field.get("type")
-        if "default" in field:
+        if isinstance(field, dict) and "default" in field:
             output[name] = clone(field["default"])
-        elif isinstance(field.get("enum"), list) and field["enum"]:
-            output[name] = clone(field["enum"][0])
-        elif kind in ("integer", "number"):
-            output[name] = field.get("minimum", 0)
-        elif kind == "boolean":
-            output[name] = False
-        elif kind == "string":
-            output[name] = ""
     return output
+
+
+def _reject_settings_wrapper(step: Any) -> None:
+    if isinstance(step, dict) and isinstance(step.get("settings"), dict):
+        raise app_error(
+            "invalid_argument",
+            "Step fields go directly on the step next to id and type; there is no settings "
+            "object (the catalog's settingsSchema lists those root fields)",
+            {"field": "settings"},
+        )
 
 
 def _bind_step(step: Record, hardware_id: str, tool_name: str, resolver: Any | None) -> None:
@@ -425,10 +429,19 @@ def _bind_step(step: Record, hardware_id: str, tool_name: str, resolver: Any | N
     tool, issues = resolver.resolve(hardware_id, tool_name)
     if not tool:
         raise app_error("validation_failed", "Device tool binding is invalid", {"issues": issues})
-    if step.get("toolName") != tool_name or not isinstance(step.get("arguments"), dict):
-        # A new tool starts from its required parameters' defaults, so the step is runnable
-        # as soon as it is bound; the user then changes what differs.
-        step["arguments"] = default_arguments(tool.get("inputSchema", {}))
+    schema = tool.get("inputSchema", {})
+    current = step.get("arguments")
+    if not isinstance(current, dict):
+        step["arguments"] = default_arguments(schema)
+    elif step.get("toolName") != tool_name:
+        # Another tool keeps the values of parameters it shares with the old one; binding
+        # never overwrites a value the user or agent already set.
+        declared = schema.get("properties")
+        names = set(declared) if isinstance(declared, dict) else set(current)
+        step["arguments"] = {
+            **default_arguments(schema),
+            **{key: value for key, value in current.items() if key in names},
+        }
     step["hardwareId"] = hardware_id
     step["toolName"] = tool_name
     step["bindingRevision"] = tool["bindingRevision"]

@@ -12,6 +12,7 @@ from typing import Any
 from teststand_backend import CONTRACT_REVISION
 from teststand_backend import __version__ as app_version
 from teststand_backend.contracts.errors import AppError
+from teststand_backend.util import matches_terms, search_terms
 
 from .files import MAX_FILE_BYTES, atomic_write, source_path
 
@@ -158,19 +159,19 @@ class ReferenceService:
             else [self._load(entry["referenceId"]) for entry in self.index()]
         )
         rows: list[Json] = []
+        terms = search_terms(query)
         for reference in references:
-            for line_number, line in enumerate(reference["content"].splitlines(), 1):
-                if query is None or query.casefold() in line.casefold():
-                    # One pathological line must not expand a bounded page to several MiB.
-                    for column in range(0, max(1, len(line)), 1000):
-                        rows.append(
-                            {
-                                "referenceId": reference["referenceId"],
-                                "line": line_number,
-                                "column": column + 1,
-                                "text": line[column : column + 1000],
-                            }
-                        )
+            for line_number, line in _matching_lines(reference["content"], terms):
+                # One pathological line must not expand a bounded page to several MiB.
+                for column in range(0, max(1, len(line)), 1000):
+                    rows.append(
+                        {
+                            "referenceId": reference["referenceId"],
+                            "line": line_number,
+                            "column": column + 1,
+                            "text": line[column : column + 1000],
+                        }
+                    )
         result = self._page(rows, offset, limit, "lines")
         result["sources"] = [self._metadata(reference) for reference in references]
         return result
@@ -193,3 +194,28 @@ class ReferenceService:
             "nextOffset": after if after < len(items) else None,
             "hasMore": after < len(items),
         }
+
+
+def _matching_lines(content: str, terms: list[str]) -> list[tuple[int, str]]:
+    """Numbered lines answering a query: without terms every line; otherwise, in each
+    section (a Markdown heading up to the next) holding all terms, its heading and every
+    line holding one of them, so a query finds words that are spread over a section."""
+    lines = list(enumerate(content.splitlines(), 1))
+    if not terms:
+        return lines
+    sections: list[list[tuple[int, str]]] = [[]]
+    for numbered in lines:
+        if numbered[1].lstrip().startswith("#") and sections[-1]:
+            sections.append([])
+        sections[-1].append(numbered)
+    output: list[tuple[int, str]] = []
+    for section in sections:
+        if not matches_terms(terms, "\n".join(line for _, line in section)):
+            continue
+        output.extend(
+            (number, line)
+            for index, (number, line) in enumerate(section)
+            if (index == 0 and line.lstrip().startswith("#"))
+            or any(matches_terms([term], line) for term in terms)
+        )
+    return output

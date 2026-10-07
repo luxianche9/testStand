@@ -153,6 +153,10 @@ async def test_contract_discovery_obeys_authorization_and_exact_names() -> None:
     assert contract["data"]["referenceId"] == "ts-agent-interface"
     with pytest.raises(AppError, match="Unknown authorized"):
         await registry.invoke(CONTEXT, "get_tool_contract", {"toolName": "missing"})
+    words = await registry.invoke(
+        CONTEXT, "get_tool_contract", {"query": "teststand_hardware definition get"}
+    )
+    assert "get_hardware_definition" in [item["name"] for item in words["data"]["items"]]
 
 
 @pytest.mark.parametrize(

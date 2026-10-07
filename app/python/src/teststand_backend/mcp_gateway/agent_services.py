@@ -283,7 +283,10 @@ AGENT_TOOLS = [
                 .describe("ID from the reference index; omit to list or search all."),
                 "query": string(1, 200)
                 .optional()
-                .describe("Optional case-insensitive literal search; no regex."),
+                .describe(
+                    "Words to find, case-insensitive and in any order, within one section; "
+                    "returns that section's heading and the lines holding them. No regex."
+                ),
                 "offset": _OFFSET,
                 "limit": _LIMIT,
             },

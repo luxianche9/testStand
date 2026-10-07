@@ -9,6 +9,7 @@ from teststand_backend import CONTRACT_REVISION
 from teststand_backend.contracts.errors import app_error
 from teststand_backend.contracts.operations import Tool
 from teststand_backend.contracts.validation import number, obj, string
+from teststand_backend.util import matches_terms, search_terms
 
 Record = dict[str, Any]
 _META = {"kind": "platform"}
@@ -30,7 +31,10 @@ CONTRACT_TOOLS = [
                 .describe("Exact name from tools/list; omit to search."),
                 "query": string()
                 .optional()
-                .describe("Case-insensitive name/description substring for discovery."),
+                .describe(
+                    "Words matched case-insensitively in any order against tool names and "
+                    "descriptions, e.g. 'wiring task'."
+                ),
                 "offset": number(0, None, integer=True)
                 .default(0)
                 .describe("Zero-based catalog offset."),
@@ -111,11 +115,12 @@ def read_tool_contract(registry: Any, context: Record, arguments: Record) -> Rec
     base = {"contractRevision": CONTRACT_REVISION, "catalogRevision": revision}
     name = arguments.get("toolName")
     if not name:
-        query = arguments.get("query", "").casefold()
+        # The client prefix (OpenCode: ``teststand_``) is not part of a tool name.
+        terms = [term for term in search_terms(arguments.get("query")) if term != "teststand"]
         matches = [
             item
             for item in catalog
-            if query in (item["name"] + " " + item.get("description", "")).casefold()
+            if matches_terms(terms, item["name"] + " " + item.get("description", ""))
         ]
         offset, limit = arguments.get("offset", 0), arguments.get("limit", 20)
         end = offset + limit

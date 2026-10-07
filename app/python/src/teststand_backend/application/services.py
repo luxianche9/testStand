@@ -49,6 +49,7 @@ class DevicesApplication:
         idempotency="natural",
     )
     def list_devices(self, context: Json) -> list[Json]:
+        """Registered devices (plugin instances) without connection status."""
         return self.service.list_devices()
 
     @operation(
@@ -71,6 +72,7 @@ class DevicesApplication:
         confirm=True,
     )
     async def save_device(self, context: Json, input: Json) -> Json:
+        """Create or update a device's settings; the operator confirms in testStand."""
         return await self.service.save_device(parse_device_instance(input))
 
     @operation(
@@ -523,6 +525,7 @@ class WiringApplication:
         idempotency="natural",
     )
     def list_changes(self, context: Json, input: Json | None = None) -> list[Json]:
+        """The project's wiring change log: confirmed wiring tasks and manual edits."""
         return self.wiring.list_changes(input)
 
     @operation(

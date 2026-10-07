@@ -106,6 +106,8 @@ class TestingApplication:
         idempotency="natural",
     )
     async def save_plan(self, context: Record, plan: Record, base_revision: int) -> Record:
+        """Replace a saved plan with a complete plan document at ``baseRevision``. Prefer
+        apply_test_plan_operations for edits; this is for the operator's editor."""
         result = cast(Record, await self.store.save(plan, base_revision))
         self._notify_plan(result["plan"], "saved")
         return result
@@ -171,6 +173,7 @@ class TestingApplication:
         idempotency="natural",
     )
     def analyze_plan_draft(self, context: Record, input: Record) -> Record:
+        """Validate an unsaved plan draft against current devices without saving it."""
         return cast(
             Record,
             self.store.analyze(cast(Record, input["plan"]), int(input["baseRevision"])),
@@ -386,6 +389,7 @@ class TestingApplication:
         idempotency="natural",
     )
     def current_unit(self, context: Record) -> Record:
+        """The current unit under test (serial number and attributes) runs are recorded for."""
         return self.ensure_unit()
 
     # Functional test items: one saved plan per item, ordered per project.
@@ -473,6 +477,7 @@ class TestingApplication:
         idempotency="natural",
     )
     def current_batch(self, context: Record) -> Record | None:
+        """The active or latest batch run of several test items, or null."""
         return self.batches.current()
 
     @operation(
@@ -483,6 +488,7 @@ class TestingApplication:
         idempotency="natural",
     )
     def get_batch(self, context: Record, batch_id: str) -> Record:
+        """One batch run with the state and verdict of each of its items."""
         return self.batches.get(batch_id)
 
     @operation(
@@ -517,6 +523,7 @@ class TestingApplication:
         idempotency="natural",
     )
     def current_run(self, context: Record) -> Record | None:
+        """The active or latest test run, or null."""
         return cast(Record | None, self.engine.current())
 
     @operation(
@@ -599,6 +606,7 @@ class TestingApplication:
         idempotency="natural",
     )
     def list_run_streams(self, context: Record, run_id: str) -> Record:
+        """The data streams recorded during a run, with their keys for readRunStream."""
         return cast(Record, self.engine.list_run_streams(run_id))
 
     @operation(
@@ -611,6 +619,7 @@ class TestingApplication:
     def read_run_stream(
         self, context: Record, run_id: str, key: str, query: Record | None = None
     ) -> Record:
+        """Records of one run stream, by key from listRunStreams, optionally windowed."""
         return cast(Record, self.engine.read_run_stream(run_id, key, query or {}))
 
     @operation(
@@ -621,6 +630,7 @@ class TestingApplication:
         idempotency="natural",
     )
     def get_run_timeline(self, context: Record, run_id: str) -> Record:
+        """Each step execution of a run with its start/end time and outcome."""
         return cast(Record, self.engine.get_run_timeline(run_id))
 
     @operation(
@@ -655,6 +665,8 @@ class TestingApplication:
         idempotency="natural",
     )
     def rejudge_run(self, context: Record, run_id: str) -> Record:
+        """Judge a finished run's recordings again with the current assertions; the stored
+        verdict is not changed."""
         return cast(Record, self.engine.rejudge_run(run_id))
 
     @operation(

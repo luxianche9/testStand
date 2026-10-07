@@ -212,9 +212,19 @@ def test_hardware_reference_metadata_survives_search_without_exposing_full_text(
     assert all("content" not in item for item in index)
     search = service.read({"query": "connector j1 uses ground"})
     assert search["lines"] == [
-        {"referenceId": "board", "line": 3, "column": 1, "text": "Connector J1 uses GROUND."}
+        {"referenceId": "board", "line": 1, "column": 1, "text": "# Board"},
+        {"referenceId": "board", "line": 3, "column": 1, "text": "Connector J1 uses GROUND."},
     ]
     assert any(source.get("hardwareId") == "DUT_1" for source in search["sources"])
     blank = service.read({"referenceId": "board", "offset": 1, "limit": 1})
     assert blank["lines"][0]["text"] == ""
     assert service.read({"referenceId": "board", "query": "not present"})["total"] == 0
+
+
+def test_reference_search_finds_words_spread_over_a_section(tmp_path: Path) -> None:
+    data = "# Steps\n\nInvokeTool needs hardwareId.\nArguments sit on the step.\n# Other\nstep\n"
+    (tmp_path / "plan.md").write_bytes(data.encode("utf-8"))
+    service = ReferenceService(str(tmp_path))
+    service.register({"referenceId": "plan", "title": "Plan", "path": "plan.md"})
+    found = service.read({"referenceId": "plan", "query": "invoketool arguments step"})
+    assert [row["line"] for row in found["lines"]] == [1, 3, 4]
