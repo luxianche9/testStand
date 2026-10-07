@@ -161,6 +161,18 @@ describe("stream model", () => {
     expect(data.stepped).toBe(true);
   });
 
+  it("keeps the lanes a live view asked for even when those bits hold in the window", () => {
+    const points = [{ t: 0, tb: 1_000, mask: 0b01 }, { t: 1, tb: 2_000, mask: 0b11 }];
+    const steady = [{ t: 0, tb: 1_000, mask: 0b01 }];
+    expect(logicData([{ label: "do", points }]).changedBits).toEqual([0b10]);
+    const kept = logicData([{ label: "do", points: steady, keepBits: 0b10 }]);
+    expect(kept.lanes).toEqual(["do.1"]);
+    expect(kept.steady).toEqual([]);
+    expect(kept.changedBits).toEqual([0]);
+    // A stream without points has no lanes to keep.
+    expect(logicData([{ label: "do", points: [], keepBits: 0b10 }]).lanes).toEqual([]);
+  });
+
   it("reads the last point at or before an instant", () => {
     const points = [{ t: 0, tb: 100, v: 1 }, { t: 1, tb: 200, v: 2 }, { t: 2, tb: 300, v: 3 }];
     expect(pointAt(points, 50)).toBeUndefined();

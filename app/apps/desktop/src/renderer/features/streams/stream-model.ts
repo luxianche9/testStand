@@ -145,6 +145,8 @@ export interface LogicInput extends Omit<AnalogInput, "level"> {
   bitLabels?: string[] | undefined;
   width?: number | undefined;
   codeLabels?: Record<string, string> | undefined;
+  /** Bits shown as lanes even when they hold one level in the window (a live view keeps its lanes). */
+  keepBits?: number | undefined;
 }
 
 /** One value held on a bus lane over `[tb0, tb1]`. */
@@ -161,6 +163,8 @@ export interface LogicData extends ScopeData {
   owners: number[];
   /** Inputs with no bit changing in the window, with their level. */
   steady: { label: string; mask: number }[];
+  /** Per input, the bits that change within the window. */
+  changedBits: number[];
 }
 
 /**
@@ -174,6 +178,7 @@ export function logicData(inputs: LogicInput[]): LogicData {
   const owners: number[] = [];
   const steady: LogicData["steady"] = [];
   const buses: NonNullable<ScopeData["buses"]> = [];
+  const changedBits = inputs.map(() => 0);
   inputs.forEach((input, owner) => {
     const masks = input.points.map((point) => maskOf(point.mask));
     const x = input.points.map((point) => point.tb / 1000);
@@ -199,7 +204,9 @@ export function logicData(inputs: LogicInput[]): LogicData {
       buses.push({ lane, segments });
       return;
     }
-    const changed = masks.reduce((all, mask, index) => index ? all | (mask ^ (masks[index - 1] ?? 0)) : all, 0);
+    const toggled = masks.reduce((all, mask, index) => index ? all | (mask ^ (masks[index - 1] ?? 0)) : all, 0);
+    changedBits[owner] = toggled;
+    const changed = masks.length ? toggled | (input.keepBits ?? 0) : 0;
     if (!changed) {
       if (masks.length) steady.push({ label: input.label, mask: masks.at(-1) ?? 0 });
       return;
@@ -213,7 +220,8 @@ export function logicData(inputs: LogicInput[]): LogicData {
     }
   });
   return {
-    ...alignSeries(series), labels: lanes, stepped: true, lanes, owners, steady, ...(buses.length ? { buses } : {})
+    ...alignSeries(series), labels: lanes, stepped: true, lanes, owners, steady, changedBits,
+    ...(buses.length ? { buses } : {})
   };
 }
 

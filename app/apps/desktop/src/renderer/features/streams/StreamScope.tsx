@@ -153,15 +153,47 @@ function tickDigits(increment: number): number {
   return 3;
 }
 
+/** A live view's sliding window: `[from ?? now - spanMs, now]`. */
+export interface FollowWindow {
+  spanMs: number;
+  from?: number | undefined;
+}
+
+function followRange({ spanMs, from }: FollowWindow): TimeRange {
+  const now = Date.now();
+  return [from ?? now - spanMs, now];
+}
+
+/**
+ * Value range with hysteresis while following: it grows at once to fit new data but only shrinks
+ * when the data uses less than a quarter of it, so a sliding window does not rescale every frame.
+ */
+export function heldRange(
+  rangeNum: (min: number, max: number, mult: number, extra: boolean) => uPlot.Range.MinMax,
+  following: () => boolean
+) {
+  let held: uPlot.Range.MinMax | undefined;
+  return (_self: uPlot, min: number | null, max: number | null): uPlot.Range.MinMax => {
+    if (min == null || max == null) return held ?? [0, 1];
+    const [low, high] = rangeNum(min, max, 0.1, true);
+    const span = (high ?? 0) - (low ?? 0);
+    const keep = held && following() && (held[0] ?? 0) <= min && (held[1] ?? 0) >= max
+      && (held[1] ?? 0) - (held[0] ?? 0) <= 4 * span;
+    if (!keep) held = [low, high];
+    return held ?? [low, high];
+  };
+}
+
 /**
  * Oscilloscope trace(s) (uPlot). Scopes sharing `syncKey` move their cursor together; dragging
  * selects a time window, a click picks an instant, double-click resets. With `origin` the time
  * axis reads in seconds from that instant; `height="fill"` sizes the plot to its container.
- * Stacked scopes show the time axis only under the last one (`timeAxis`).
+ * Stacked scopes show the time axis only under the last one (`timeAxis`). With `follow` the time
+ * axis slides every animation frame, independent of how often data arrives.
  */
 export function StreamScope({
   label, unit = "", data, range, overlays, height = 120, axisWidth, timeAxis = true, readoutTime = true, syncKey,
-  series, origin, marker, onPick, onSelectRange, onReset, onCursor
+  series, origin, marker, follow, onPick, onSelectRange, onReset, onCursor
 }: {
   label?: ReactNode;
   /** Appended to the readout values. */
@@ -179,6 +211,8 @@ export function StreamScope({
   series?: SeriesStyle[] | undefined;
   origin?: number | undefined;
   marker?: number | undefined;
+  /** Slide the time axis with the clock; `range` is ignored meanwhile. */
+  follow?: FollowWindow | undefined;
   onPick?: (tb: number) => void;
   onSelectRange?: (range: TimeRange) => void;
   onReset?: () => void;
@@ -190,10 +224,14 @@ export function StreamScope({
   const [failed, setFailed] = useState<string>();
   const theme = useThemeVersion();
   const latest = useRef({
-    data, range, overlays, origin, marker, unit, readoutTime, onPick, onSelectRange, onReset, onCursor
+    data, range, overlays, origin, marker, unit, readoutTime, follow, onPick, onSelectRange, onReset, onCursor
   });
   latest.current = {
-    data, range, overlays, origin, marker, unit, readoutTime, onPick, onSelectRange, onReset, onCursor
+    data, range, overlays, origin, marker, unit, readoutTime, follow, onPick, onSelectRange, onReset, onCursor
+  };
+  const shownRange = () => {
+    const current = latest.current;
+    return current.follow ? followRange(current.follow) : current.range;
   };
   const styles = series?.map((item) => `${item.color}/${item.stepped}`).join(",") ?? "";
   const shape = data
@@ -206,6 +244,7 @@ export function StreamScope({
     if (!element || !shape) return;
     let disposed = false;
     let observer: ResizeObserver | undefined;
+    let resizeFrame = 0;
     let removeListeners: (() => void) | undefined;
     const size = () => ({
       width: Math.max(element.clientWidth, 100),
@@ -244,7 +283,9 @@ export function StreamScope({
         padding: [4, 10, timeAxis ? 0 : 2, 0],
         scales: {
           x: { time: !relative },
-          y: lanes ? { auto: false, range: [-0.25, lanes.length * BIT_LANE - 0.25] } : { auto: true }
+          y: lanes
+            ? { auto: false, range: [-0.25, lanes.length * BIT_LANE - 0.25] }
+            : { auto: true, range: heldRange(UPlot.rangeNum, () => Boolean(latest.current.follow)) }
         },
         axes: [
           {
@@ -329,7 +370,7 @@ export function StreamScope({
       };
       const instance = new UPlot(plotOptions, [current.x, ...current.ys] as uPlot.AlignedData, element);
       plot.current = instance;
-      applyRange(instance, latest.current.range);
+      applyRange(instance, shownRange());
 
       let downAt: number | undefined;
       const over = instance.over;
@@ -352,12 +393,21 @@ export function StreamScope({
         over.removeEventListener("dblclick", onDouble);
         over.removeEventListener("mouseleave", onLeave);
       };
-      observer = new ResizeObserver(() => instance.setSize(size()));
+      // One resize per frame, and none when the size did not change (a sliding sidebar, a reflow).
+      observer = new ResizeObserver(() => {
+        if (resizeFrame) return;
+        resizeFrame = requestAnimationFrame(() => {
+          resizeFrame = 0;
+          const next = size();
+          if (next.width !== instance.width || next.height !== instance.height) instance.setSize(next);
+        });
+      });
       observer.observe(element);
     }).catch((cause: unknown) => setFailed(cause instanceof Error ? cause.message : String(cause)));
     return () => {
       disposed = true;
       observer?.disconnect();
+      cancelAnimationFrame(resizeFrame);
       removeListeners?.();
       plot.current?.destroy();
       plot.current = undefined;
@@ -370,8 +420,22 @@ export function StreamScope({
     const instance = plot.current;
     if (!instance || !data) return;
     instance.setData([data.x, ...data.ys] as uPlot.AlignedData, !data.lanes);
-    applyRange(instance, range);
+    applyRange(instance, shownRange());
+  // `shownRange` reads `range` and `follow` through `latest`.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, range]);
+
+  const following = follow !== undefined;
+  useEffect(() => {
+    if (!following) return undefined;
+    let frame = requestAnimationFrame(function slide() {
+      const instance = plot.current;
+      const window = latest.current.follow;
+      if (instance && window) applyRange(instance, followRange(window));
+      frame = requestAnimationFrame(slide);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [following]);
 
   useEffect(() => { plot.current?.redraw(false, false); }, [overlays, marker]);
 

@@ -20,8 +20,11 @@ export interface StreamSource {
 const COLUMNS = 1500;
 const POLL_MS = 300;
 const RETRY_MS = 1_000;
-/** Live views redraw at this rate; frames arriving in between are merged into the buffer. */
-const TICK_MS = 100;
+/**
+ * Live views take new frames at most at this rate (the hub sends up to 20 a second); frames
+ * arriving in between are merged into the buffer. The time axis slides on its own (`StreamScope`).
+ */
+const TICK_MS = 50;
 const PAGE = 1_000;
 /** A live terminal starts with the records of this window (the hub keeps 10 minutes). */
 const LIVE_RECORDS_MS = 60_000;
@@ -72,13 +75,22 @@ export function useStreamsPoints(source: StreamSource, keys: readonly string[], 
     const subscribe = sources.current.live;
     if (!live || !subscribe || !wanted.length) return undefined;
     let buffers: Record<string, StreamWindow> = {};
+    // Nothing new, nothing to render: idle streams cost no re-render.
+    let dirty = true;
+    let fixed: TimeRange | undefined;
     const unsubscribe = subscribe({ keys: wanted, width, windowMs: spanMs }, (frame: LiveFrame) => {
       buffers = mergeFrame(buffers, frame);
-    }, () => { buffers = {}; });
+      dirty = true;
+    }, () => { buffers = {}; dirty = true; });
     const tick = () => {
       const now = Date.now();
       const { follow: following, start: t0, end: t1 } = shown.current;
-      const range: TimeRange = following || t0 === undefined || t1 === undefined ? [now - spanMs, now] : [t0, t1];
+      const sliding = following || t0 === undefined || t1 === undefined;
+      const range: TimeRange = sliding ? [now - spanMs, now] : [t0, t1];
+      const moved = !sliding && (fixed?.[0] !== range[0] || fixed?.[1] !== range[1]);
+      if (!dirty && !moved) return;
+      dirty = false;
+      fixed = sliding ? undefined : range;
       buffers = trimBuffers(buffers, now - spanMs);
       setState({ reads: buffers, range, errors: {} });
     };

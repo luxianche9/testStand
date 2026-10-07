@@ -1,4 +1,4 @@
-import { useMemo, useState, type ComponentProps, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from "react";
 import { ActivityIcon, ChevronRightIcon, GaugeIcon } from "lucide-react";
 import type { RunTimeline, StreamInfo, StreamWindow } from "@teststand/contracts/observability";
 import { cn, EmptyState, IconButton, SegmentedControl } from "../../ui";
@@ -66,6 +66,20 @@ export function SignalScope({
   const [chosen, setChosen] = useState<ReadonlySet<string>>();
   const [layout, setLayout] = useState<Layout>("split");
   const [cursor, setCursor] = useState<number>();
+  // The cursor moves with every mouse event; the readings follow it once per frame.
+  const cursorFrame = useRef(0);
+  const cursorAt = useRef<number | undefined>(undefined);
+  const onCursor = useCallback((tb: number | undefined) => {
+    cursorAt.current = tb;
+    if (cursorFrame.current) return;
+    cursorFrame.current = requestAnimationFrame(() => {
+      cursorFrame.current = 0;
+      setCursor(cursorAt.current);
+    });
+  }, []);
+  useEffect(() => () => cancelAnimationFrame(cursorFrame.current), []);
+  /** While following, a bit keeps its lane once it has changed, so lanes don't come and go. */
+  const keptBits = useRef(new Map<string, number>());
   const [othersOpen, setOthersOpen] = useState(false);
   const [panelOpen, setPanelOpen] = useState(storedPanelOpen);
   const { displayOf, setDisplay } = useChannelDisplays();
@@ -94,7 +108,9 @@ export function SignalScope({
   const holdUntil = (item: StreamWindow | undefined) =>
     view ? Math.min(view[1], item?.watermarkTb ?? view[1]) : undefined;
 
+  const overlaid = layout === "overlay";
   const analogPlot = useMemo(() => {
+    if (!overlaid) return undefined;
     const inputs = analog.flatMap((channel) => {
       const item = points.reads[channel.stream.key];
       return item ? [{
@@ -107,7 +123,7 @@ export function SignalScope({
     return inputs.length ? analogData(inputs) : undefined;
   // `holdUntil` only reads `view`.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [analog.map((channel) => channel.stream.key).join(), points.reads, view]);
+  }, [overlaid, analog.map((channel) => channel.stream.key).join(), points.reads, view]);
   const analogStyles = useMemo<SeriesStyle[]>(() => analog
     .filter((channel) => points.reads[channel.stream.key])
     .map((channel) => ({ color: channel.color, stepped: !channel.stream.states.includes("sampling") })),
@@ -116,6 +132,8 @@ export function SignalScope({
   const logicPlot = useMemo(() => {
     const read = logic.filter((channel) => points.reads[channel.stream.key]);
     if (!read.length) return undefined;
+    const kept = keptBits.current;
+    if (!follow) kept.clear();
     const data = logicData(read.map((channel) => {
       const item = points.reads[channel.stream.key];
       const { declaration } = channel.stream;
@@ -126,14 +144,21 @@ export function SignalScope({
         mode: displayOf(channel.stream).trace,
         bitLabels: declaration?.bitLabels,
         width: declaration?.width,
-        codeLabels: declaration?.codeLabels
+        codeLabels: declaration?.codeLabels,
+        keepBits: kept.get(channel.stream.key)
       };
     }));
+    if (follow) {
+      read.forEach((channel, index) => {
+        const key = channel.stream.key;
+        kept.set(key, (kept.get(key) ?? 0) | (data.changedBits[index] ?? 0));
+      });
+    }
     // Each lane takes its channel's colour, as in the channel list.
     const styles = data.owners.map((owner): SeriesStyle => ({ color: read[owner]?.color ?? "", stepped: true }));
     return { data, styles };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [logic.map((channel) => channel.stream.key).join(), points.reads, view, displayOf]);
+  }, [logic.map((channel) => channel.stream.key).join(), points.reads, view, displayOf, follow]);
   const analogOverlays = useMemo(
     () => combinedOverlays(timeline, analog.map((channel) => channel.stream)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -159,7 +184,7 @@ export function SignalScope({
   const lanes = logicPlot?.data.lanes?.length ?? 0;
   const scopeProps = {
     range: view, axisWidth: lanes ? LOGIC_AXIS_PX : AXIS_PX, syncKey, origin, marker, onPick, onSelectRange,
-    onReset, onCursor: setCursor
+    onReset, onCursor, follow: follow ? { spanMs, from } : undefined
   };
   const logicHeight = Math.min(lanes * LANE_PX + 30, LOGIC_MAX_PX);
   const steady = logicPlot?.data.steady ?? [];
@@ -265,7 +290,7 @@ export function SignalScope({
           </div>
         )}
         {analog.length > 0 && layout === "split" && (
-          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto" style={{ scrollbarGutter: "stable" }}>
             {analog.map((channel, index) => (
               <SplitTrace
                 key={channel.stream.key}

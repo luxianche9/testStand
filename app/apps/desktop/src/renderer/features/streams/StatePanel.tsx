@@ -1,4 +1,5 @@
-import type { StreamInfo, StreamWindow } from "@teststand/contracts/observability";
+import { memo } from "react";
+import type { StreamInfo, StreamPoint, StreamWindow } from "@teststand/contracts/observability";
 import { cn } from "../../ui";
 import { DisplayMenu, type ChannelDisplay } from "./channel-display.js";
 import {
@@ -14,6 +15,11 @@ export interface PanelChannel {
  * Status panel of the scope: every shown channel as an instrument at the cursor (or the newest
  * reading while following) — a number for analog channels, and for bits channels lamps, relay
  * contacts or the code, as the plugin suggests or the user picked.
+ *
+ * Its layout never depends on the readings: numbers and codes sit in fixed-width cards, lamp rows
+ * are as wide as the channel's bit count, and the scrollbar gutter is always reserved. Otherwise
+ * a reading that changes width (moving the cursor, a new sample) could rewrap the panel and
+ * resize the traces below it.
  */
 export function StatePanel({ channels, reads, at, displayOf, onDisplay }: {
   channels: PanelChannel[];
@@ -30,53 +36,71 @@ export function StatePanel({ channels, reads, at, displayOf, onDisplay }: {
         "flex max-h-[45%] shrink-0 flex-wrap content-start gap-2 overflow-y-auto",
         "border-b border-line bg-surface-0 p-2"
       )}
+      style={{ scrollbarGutter: "stable" }}
     >
       {channels.map(({ stream, color }) => {
         const points = reads[stream.key]?.points;
-        const point = at === undefined ? points?.at(-1) : pointAt(points, at);
-        const name = stream.declaration?.label ?? stream.streamId;
         const bits = stream.type === "bits";
         const display = bits ? displayOf(stream) : undefined;
         return (
-          <article
+          <StateCard
             key={stream.key}
-            aria-label={`${deviceName(stream.hardwareId)} ${name}`}
-            className="min-w-36 rounded-md border border-line bg-surface-1 px-2 py-1.5"
-          >
-            <header className="flex items-center gap-1.5 text-2xs">
-              <span aria-hidden className="h-0.5 w-3 shrink-0" style={{ background: color }} />
-              <span className="truncate font-medium text-fg" title={`${stream.hardwareId}/${stream.streamId}`}>
-                {name}
-              </span>
-              <span className="truncate text-fg-3">{deviceName(stream.hardwareId)}</span>
-              {stream.declaration?.kind === "setpoint" && <span className="text-invalid">设定值</span>}
-              {display && (
-                <span className="ml-auto">
-                  <DisplayMenu stream={stream} display={display} onChange={(next) => onDisplay(stream, next)} />
-                </span>
-              )}
-            </header>
-            {display
-              ? (
-                <BitsState
-                  stream={stream}
-                  mask={pointMask(point)}
-                  width={bitsWidth(stream, points)}
-                  mode={display.state}
-                />
-              )
-              : (
-                <div className="tf-num mt-1 font-mono text-xl leading-6 text-fg">
-                  {pointText(String(stream.type), point)}
-                  {streamUnit(stream) && <span className="ml-1 text-xs text-fg-3">{streamUnit(stream)}</span>}
-                </div>
-              )}
-          </article>
+            stream={stream}
+            color={color}
+            point={at === undefined ? points?.at(-1) : pointAt(points, at)}
+            width={bits ? bitsWidth(stream, points) : 0}
+            trace={display?.trace}
+            state={display?.state}
+            onDisplay={onDisplay}
+          />
         );
       })}
     </section>
   );
 }
+
+/** One channel's card; re-renders only when its reading or look changes. */
+const StateCard = memo(function StateCard({ stream, color, point, width, trace, state, onDisplay }: {
+  stream: StreamInfo;
+  color: string;
+  point: StreamPoint | undefined;
+  width: number;
+  trace: ChannelDisplay["trace"] | undefined;
+  state: ChannelDisplay["state"] | undefined;
+  onDisplay: (stream: StreamInfo, next: Partial<ChannelDisplay>) => void;
+}) {
+  const name = stream.declaration?.label ?? stream.streamId;
+  const display = trace && state ? { trace, state } : undefined;
+  const fixed = !display || display.state === "code";
+  return (
+    <article
+      aria-label={`${deviceName(stream.hardwareId)} ${name}`}
+      className={cn("rounded-md border border-line bg-surface-1 px-2 py-1.5", fixed ? "w-48" : "min-w-48")}
+    >
+      <header className="flex min-w-0 items-center gap-1.5 text-2xs">
+        <span aria-hidden className="h-0.5 w-3 shrink-0" style={{ background: color }} />
+        <span className="truncate font-medium text-fg" title={`${stream.hardwareId}/${stream.streamId}`}>
+          {name}
+        </span>
+        <span className="truncate text-fg-3">{deviceName(stream.hardwareId)}</span>
+        {stream.declaration?.kind === "setpoint" && <span className="shrink-0 text-invalid">设定值</span>}
+        {display && (
+          <span className="ml-auto">
+            <DisplayMenu stream={stream} display={display} onChange={(next) => onDisplay(stream, next)} />
+          </span>
+        )}
+      </header>
+      {display
+        ? <BitsState stream={stream} mask={pointMask(point)} width={width} mode={display.state} />
+        : (
+          <div className="tf-num mt-1 truncate font-mono text-xl leading-6 text-fg">
+            {pointText(String(stream.type), point)}
+            {streamUnit(stream) && <span className="ml-1 text-xs text-fg-3">{streamUnit(stream)}</span>}
+          </div>
+        )}
+    </article>
+  );
+});
 
 function BitsState({ stream, mask, width, mode }: {
   stream: StreamInfo;
@@ -89,13 +113,13 @@ function BitsState({ stream, mask, width, mode }: {
   if (mode === "code") {
     return (
       <div className="mt-1 grid gap-0.5">
-        <div className="flex items-baseline gap-2">
-          <span className="tf-num font-mono text-xl leading-6 text-fg">{code.hex}</span>
+        <div className="flex min-w-0 items-baseline gap-2">
+          <span className="tf-num shrink-0 font-mono text-xl leading-6 text-fg">{code.hex}</span>
           {code.name && (
-            <span className="rounded-sm bg-signal/15 px-1.5 text-xs font-medium text-signal">{code.name}</span>
+            <span className="truncate rounded-sm bg-signal/15 px-1.5 text-xs font-medium text-signal">{code.name}</span>
           )}
         </div>
-        <div className="tf-num font-mono text-2xs text-fg-3">
+        <div className="tf-num truncate font-mono text-2xs text-fg-3">
           {code.dec} · {code.bin}
         </div>
       </div>

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ActivityIcon, CrosshairIcon, ZoomOutIcon } from "lucide-react";
 import type { RunTimeline, StreamInfo, StreamWindow } from "@teststand/contracts/observability";
 import { cn, EmptyState, IconButton, SegmentedControl, Select } from "../../ui";
-import { StreamScope } from "./StreamScope.js";
+import { StreamScope, type FollowWindow } from "./StreamScope.js";
 import { StreamTerminal } from "./StreamTerminal.js";
 import {
   isSampled, NO_OVERLAYS, overlaysFor, scopeData, streamLabel, type TerminalMode, type TimeRange
@@ -121,6 +121,7 @@ export function StreamBoard({ streams, source, live, range, focus, timeline, syn
                 stream={stream}
                 read={points.reads[stream.key]}
                 range={points.range}
+                follow={following ? { spanMs: Number(span) } : undefined}
                 error={points.errors[stream.key]}
                 timeline={timeline}
                 syncKey={syncKey}
@@ -176,10 +177,11 @@ export function StreamBoard({ streams, source, live, range, focus, timeline, syn
   );
 }
 
-function ScopeRow({ stream, read, range, error, timeline, syncKey, onPick, onSelectRange, onReset }: {
+function ScopeRow({ stream, read, range, follow, error, timeline, syncKey, onPick, onSelectRange, onReset }: {
   stream: StreamInfo;
   read: StreamWindow | undefined;
   range: TimeRange | undefined;
+  follow: FollowWindow | undefined;
   error: string | undefined;
   timeline: RunTimeline | undefined;
   syncKey: string;
@@ -200,6 +202,7 @@ function ScopeRow({ stream, read, range, error, timeline, syncKey, onPick, onSel
         label={`${streamLabel(stream)} · ${type}`}
         data={data}
         range={range}
+        follow={follow}
         overlays={overlays}
         syncKey={syncKey}
         onSelectRange={onSelectRange}
