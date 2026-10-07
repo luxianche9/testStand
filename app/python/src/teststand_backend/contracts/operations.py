@@ -265,6 +265,9 @@ class Tool:
     check: Callable[[Any, Record], Any] | None = None
     """Precondition ``(application, context)`` checked before the operation is invoked."""
     profiles: frozenset[str] = frozenset()
+    waits: bool = False
+    """The call blocks until a person answers: the gateway reports progress while it waits and
+    cancels the operation when the Agent's request is cancelled."""
 
     def definition(self) -> Record:
         result: Record = {

@@ -1,7 +1,7 @@
 import type { HardwareSignals, SignalView } from "@teststand/contracts/signals";
 import { describe, expect, it } from "vitest";
 import {
-  catalogOf, defaultPanel, linkProblem, parseHandle, handleId, resolveEnd, widgetSignals
+  catalogOf, linkProblem, parseHandle, handleId, resolveEnd, widgetSignals
 } from "./signal-model.js";
 
 const relay = {
@@ -83,18 +83,5 @@ describe("signal view rules", () => {
   it("round-trips handle ids", () => {
     expect(parseHandle(handleId("relay", 5))).toEqual({ handle: "relay", bit: 5 });
     expect(parseHandle(handleId("ai0"))).toEqual({ handle: "ai0" });
-  });
-});
-
-describe("default panel", () => {
-  it("places known devices with a widget per stream and one scope for their analog inputs", () => {
-    const panel = defaultPanel({ nodes: [], links: [] }, catalog);
-    const kinds = panel.nodes.flatMap((node) => node.kind === "widget" ? [node.widget] : [node.hardwareId]);
-    expect(kinds).toEqual(["RELAY", "lamps", "switch", "AO", "setpoint", "scope"]);
-    for (const link of panel.links) {
-      const others = { ...panel, links: panel.links.filter((item) => item !== link) };
-      expect(linkProblem(others, catalog, link)).toBeUndefined();
-    }
-    expect(defaultPanel(panel, catalog).nodes).toHaveLength(panel.nodes.length);
   });
 });

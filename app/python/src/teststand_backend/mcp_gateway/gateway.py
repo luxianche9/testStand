@@ -42,6 +42,8 @@ from .redaction import redact
 from .tool_registry import ENABLED_HARDWARE, ToolRegistry
 
 Record = dict[str, Any]
+PROGRESS_INTERVAL_S = 20.0
+"""Progress cadence of a tool waiting for the operator; MCP clients time out after ~60 s."""
 PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05", "2024-10-07"]
 # The installed TS SDK supports this historical version in both client and server roles.
 if "2024-10-07" not in SDK_PROTOCOL_VERSIONS:
@@ -436,8 +438,6 @@ class LocalMcpGateway:
 
         async def call_tool(request: Any) -> Any:
             try:
-                # TS exposes cancellation as a signal that this handler does not use.
-                # Cancelling the MCP request must not cancel the application operation.
                 operation = asyncio.create_task(
                     self.registry.invoke(
                         context, request.params.name, request.params.arguments or {}
@@ -445,7 +445,11 @@ class LocalMcpGateway:
                 )
                 self._operations.add(operation)
                 operation.add_done_callback(self._operation_finished)
-                data = await asyncio.shield(operation)
+                if self.registry.waits(request.params.name):
+                    data = await self._wait_for_person(protocol, request, operation)
+                else:
+                    # Cancelling the MCP request must not cancel the application operation.
+                    data = await asyncio.shield(operation)
                 if request.params.name == "enable_device_tools":
                     await protocol.request_context.session.send_tool_list_changed()
                 return types.ServerResult(
@@ -511,6 +515,33 @@ class LocalMcpGateway:
         task = asyncio.create_task(owner())
         await ready
         return {"transport": transport, "protocol": protocol, "task": task, "stop": stop}
+
+    @staticmethod
+    async def _wait_for_person(
+        protocol: Any, request: Any, operation: asyncio.Task[Record]
+    ) -> Record:
+        """Await a tool that blocks until the operator answers. Progress notifications keep the
+        client's request timeout from expiring; cancelling the request (the user stops the Agent)
+        cancels the operation, which withdraws the question."""
+        meta = request.params.meta
+        token = getattr(meta, "progressToken", None) if meta is not None else None
+        ticks = 0
+        try:
+            while True:
+                done, _ = await asyncio.wait({operation}, timeout=PROGRESS_INTERVAL_S)
+                if done:
+                    return operation.result()
+                ticks += 1
+                if token is not None:
+                    await protocol.request_context.session.send_progress_notification(
+                        token,
+                        float(ticks),
+                        message="Waiting for the operator",
+                        related_request_id=protocol.request_context.request_id,
+                    )
+        except asyncio.CancelledError:
+            operation.cancel()
+            raise
 
     def _operation_finished(self, task: asyncio.Task[Record]) -> None:
         self._operations.discard(task)

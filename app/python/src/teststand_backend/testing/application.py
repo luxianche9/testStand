@@ -116,10 +116,13 @@ class TestingApplication:
         "testing.deletePlan",
         capability="testing.manage",
         risk="destructive",
+        profiles=("plan",),
         idempotency="natural",
         confirm=True,
     )
     async def delete_plan(self, context: Record, plan_id: str) -> Record:
+        """Delete a saved test plan and its file; the operator confirms it first. A running plan
+        cannot be deleted."""
         if self.engine.active and self.engine.active.plan["id"] == plan_id:
             raise app_error("conflict", "Cannot delete the active test plan")
         result = cast(Record, await self.store.delete(plan_id))
@@ -429,9 +432,12 @@ class TestingApplication:
         "testing.reorderItems",
         capability="testing.manage",
         risk="write",
+        profiles=("plan",),
         idempotency="natural",
     )
     def reorder_items(self, context: Record, input: Record) -> Record:
+        """Set the order of the test plans in the test tree (and of a batch run): ``planIds``
+        first, in this order; returns the item statuses."""
         self.store.runtime.set_metadata(_ORDER_KEY, list(dict.fromkeys(_plan_ids(input))))
         self._notify_items({"kind": "order"})
         return self.list_item_status(context)

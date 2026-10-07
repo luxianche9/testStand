@@ -216,7 +216,7 @@ async def test_wiring_orchestration_and_dashboard_facades() -> None:
     assert authorizer.allowed_capabilities(SYSTEM_REQUEST_CONTEXT) == list(CAPABILITIES)
     wiring = Mock(
         request_task=AsyncMock(return_value={"status": "pending"}),
-        start_task=AsyncMock(return_value={"status": "in_progress"}),
+        wait_for_answer=AsyncMock(return_value={"status": "confirmed"}),
         complete_task=AsyncMock(return_value={"status": "confirmed"}),
         cancel_task=AsyncMock(return_value={"status": "cancelled"}),
         get_task=Mock(return_value={"id": "W"}),
@@ -232,14 +232,20 @@ async def test_wiring_orchestration_and_dashboard_facades() -> None:
     assert await app.update_document(HUMAN, {}) == saved
     wiring.record_manual_changes.assert_called_once_with([], [])
     assert app.list_changes(HUMAN) == []
-    await app.request_task(
-        HUMAN, {"portA": "A", "portB": "B", "action": "connect", "timeoutMs": 1000}
-    )
+    await app.request_task(HUMAN, {"portA": "A", "portB": "B", "action": "connect"})
     wiring.request_task.assert_awaited_with(
-        {"portA": "A", "portB": "B", "action": "connect", "timeoutMs": 1000, "pins": []}
+        {
+            "changes": [{"action": "connect", "portA": "A", "portB": "B", "pins": []}],
+            "replaceAll": False,
+        }
     )
-    await app.start_task(HUMAN, "W")
-    wiring.start_task.assert_awaited_with("W")
+    wiring.request_task.return_value = {"wiringTaskId": "W", "status": "pending"}
+    answered = await app.request_wiring(
+        AGENT, {"changes": [{"action": "connect", "portA": "A", "portB": "B"}], "note": "n"}
+    )
+    assert answered == {"status": "confirmed"}
+    assert wiring.request_task.call_args.args[0]["requestedBy"] == "agent"
+    wiring.wait_for_answer.assert_awaited_with("W")
     assert (await app.complete_task(HUMAN, "W", "confirmed", "ok"))["status"] == "confirmed"
     assert (await app.cancel_task(AGENT, "W", "cancel"))["status"] == "cancelled"
     assert app.get_task(HUMAN, "W") == {"id": "W"} and app.list_tasks(HUMAN) == []

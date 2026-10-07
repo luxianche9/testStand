@@ -49,6 +49,7 @@ def application(overrides: dict[str, Any] | None = None) -> tuple[Any, Any, Any]
     projects = Mock(document=Mock(return_value={"dirty": False, "file": {"task": {}}}))
     wiring = Mock(
         request_task=AsyncMock(return_value={"wiringTaskId": "WT"}),
+        wait_for_answer=AsyncMock(return_value={"wiringTaskId": "WT", "status": "confirmed"}),
         add_hardware_to_canvas=AsyncMock(return_value={"added": True}),
         get_task=Mock(return_value={"wiringTaskId": "WT"}),
         list_tasks=Mock(return_value=[]),
@@ -183,7 +184,7 @@ async def test_stateful_session() -> None:
             headers,
             json.dumps({"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}),
         )
-        for name in ["request_wiring_task", "request_wiring_task", "save_hardware_definition"]:
+        for name in ["request_wiring", "apply_signal_view_operations", "save_hardware_definition"]:
             assert name in tools.text
         for name in [
             "save_remote_computer",
@@ -251,9 +252,10 @@ async def test_tool_routes() -> None:
     }
     app, devices, wiring = application({"list_tools": Mock(return_value=[remote])})
     gateway = LocalMcpGateway(app, secrets())
-    await gateway.invoke_tool(
-        "request_wiring_task", {"portA": "A.J1", "portB": "B.J1", "action": "connect"}
+    answered = await gateway.invoke_tool(
+        "request_wiring", {"changes": [{"portA": "A.J1", "portB": "B.J1", "action": "connect"}]}
     )
+    assert answered["data"]["status"] == "confirmed"
     await gateway.invoke_tool("S1.measure", {"voltage": 5})
     assert wiring.request_task.call_args.args[0]["requestedBy"] == "agent"
     devices.call_aggregated_tool.assert_awaited_once_with("S1.measure", {"voltage": 5})

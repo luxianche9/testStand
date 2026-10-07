@@ -65,6 +65,7 @@ class _Entry:
     profiles: frozenset[str]
     """Work modes listing the tool; empty: every mode."""
     run: Run
+    waits: bool = False
 
 
 def tool_annotations(definition: OperationDefinition, open_world: bool) -> Record:
@@ -170,7 +171,9 @@ class ToolRegistry:
             result = await self.operations.invoke(context, operation.name, payload)
             return result if tool.result is None else tool.result(result)
 
-        return _Entry(definition, operation.spec.capability, operation.spec.profiles, run)
+        return _Entry(
+            definition, operation.spec.capability, operation.spec.profiles, run, tool.waits
+        )
 
     def _generated(self, definition: OperationDefinition) -> _Entry:
         async def run(context: Record, arguments: Record) -> Any:
@@ -272,6 +275,11 @@ class ToolRegistry:
     def _remote_visible(self, context: Record) -> bool:
         remote = self.operations.definitions.get(REMOTE_CALL)
         return remote is not None and self._in_mode(remote.spec.profiles, context)
+
+    def waits(self, name: str) -> bool:
+        """Whether tool ``name`` blocks until a person answers it."""
+        entry = self._entries.get(name)
+        return entry is not None and entry.waits
 
     def list_builtin(self, context: Record) -> list[Record]:
         is_allowed = self.application.authorizer.is_allowed

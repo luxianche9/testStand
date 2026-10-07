@@ -9,9 +9,7 @@ from teststand_backend.testing.runtime_state import RuntimeStateStore
 from teststand_backend.util import (
     Record,
     clone,
-    iso_from_ms,
     new_uuid,
-    now_ms,
     parse_date_ms,
     utc_now_iso,
 )
@@ -25,6 +23,7 @@ class WiringProjectPort(Protocol):
     def wiring(self) -> Record: ...
     def document(self) -> Record: ...
     def update_wiring(self, wiring: Record) -> Record: ...
+    async def save(self) -> Record: ...
 
 
 class WiringHardwareCatalogPort(Protocol):
@@ -43,6 +42,7 @@ class ProjectWiringService:
         self._project_notifier: Callable[[], None] | None = None
         self._runtime = RuntimeStateStore(projects)
         self._last_changes: dict[str, Record] = {}
+        self._answered: dict[str, asyncio.Event] = {}
 
     def set_notifier(self, notifier: Callable[[Record], None]) -> None:
         self._notifier = notifier
@@ -60,60 +60,112 @@ class ProjectWiringService:
             return
         await asyncio.to_thread(self._runtime.initialize)
         tasks = await asyncio.to_thread(self._runtime.load_wiring_tasks, str(session["projectId"]))
-        self._tasks = {str(task["wiringTaskId"]): task for task in tasks}
+        self._tasks = {}
+        for stored in tasks:
+            task = _current_shape(stored)
+            if task["status"] == "pending":
+                # Nobody waits for a task of an earlier session: its request ended with it.
+                task = {
+                    **task,
+                    "status": "cancelled",
+                    "completedAt": utc_now_iso(),
+                    "message": "testStand restarted before the operator answered",
+                }
+            if task != stored:
+                await asyncio.to_thread(
+                    self._runtime.save_wiring_task, str(session["projectId"]), task
+                )
+            self._tasks[str(task["wiringTaskId"])] = task
 
     def clear_session(self) -> None:
+        for event in self._answered.values():
+            event.set()
         self._tasks.clear()
+        self._answered.clear()
         self._last_changes.clear()
 
     async def request_task(self, input: Record) -> Record:
-        references = [input[key].strip() for key in ("portA", "portB")]
-        if not all(references):
-            raise app_error("invalid_argument", "Two port references are required")
-        endpoints = [self.catalog.resolve_port(reference) for reference in references]
-        canonical = [
-            f"{item['hardware']['hardwareId']}.{item['port']['portId']}" for item in endpoints
-        ]
-        port_a, port_b, pins = canonical_ports(canonical[0], canonical[1], input.get("pins", []))
-        self.catalog.validate_pins(port_a, port_b, pins)
-        hardware_ids = sorted(
-            {
-                self.catalog.resolve_port(port_a)["hardware"]["hardwareId"],
-                self.catalog.resolve_port(port_b)["hardware"]["hardwareId"],
-            }
-        )
-        timeout_ms = min(max(input.get("timeoutMs", 86_400_000), 1000), 7 * 86_400_000)
-        now = now_ms()
+        """One wiring task holding every change of ``input``: the operator answers it once.
+
+        ``input`` is ``{changes: [{action, portA, portB, pins}], replaceAll?, note?,
+        requestedBy?}``, or a single change's fields. ``replaceAll`` also disconnects every saved
+        connection whose port pair is not connected by ``changes``."""
+        raw = input["changes"] if "changes" in input else [input]
+        changes = [self._change(item) for item in raw]
+        if input.get("replaceAll"):
+            kept = {(item["portA"], item["portB"]) for item in changes}
+            changes += [
+                {
+                    "action": "disconnect",
+                    "portA": item["portA"],
+                    "portB": item["portB"],
+                    "pins": clone(item.get("pins", [])),
+                }
+                for item in self.projects.wiring()["connections"]
+                if (item["portA"], item["portB"]) not in kept
+            ]
+        if not changes:
+            raise app_error("invalid_argument", "A wiring task needs at least one change")
+        pairs = [(item["portA"], item["portB"]) for item in changes]
+        if len(set(pairs)) != len(pairs):
+            raise app_error("invalid_argument", "Each port pair may appear once in one request")
         for existing in self._tasks.values():
-            if existing["status"] not in ("pending", "in_progress"):
+            if existing["status"] != "pending":
                 continue
-            if existing["portA"] == port_a and existing["portB"] == port_b:
+            overlap = {(item["portA"], item["portB"]) for item in existing["changes"]} & set(pairs)
+            if overlap:
                 raise app_error(
                     "conflict",
-                    "A pending wiring task already exists for this port pair",
+                    "A pending wiring task already changes this port pair",
                     {
                         "existingTaskId": existing["wiringTaskId"],
-                        "status": existing["status"],
-                        "recovery": "Read or cancel the existing task before requesting another.",
+                        "ports": sorted(f"{a} <-> {b}" for a, b in overlap),
+                        "recovery": "Wait for the operator's answer to the pending task.",
                     },
                 )
-        task = {
+        hardware_ids = sorted(
+            {
+                self.catalog.resolve_port(port)["hardware"]["hardwareId"]
+                for pair in pairs
+                for port in pair
+            }
+        )
+        task: Record = {
             "wiringTaskId": new_uuid(),
-            "action": input["action"],
-            "portA": port_a,
-            "portB": port_b,
-            "pins": pins,
+            "changes": changes,
             "hardwareIds": hardware_ids,
             "status": "pending",
-            "requestedAt": iso_from_ms(now),
-            "expiresAt": iso_from_ms(now + timeout_ms),
+            "requestedAt": utc_now_iso(),
         }
+        if input.get("note"):
+            task["note"] = input["note"]
         if input.get("requestedBy"):
-            task["operatorName"] = input["requestedBy"]
+            task["requestedBy"] = input["requestedBy"]
         self._tasks[task["wiringTaskId"]] = task
+        self._answered[task["wiringTaskId"]] = asyncio.Event()
         self._persist(task)
         self._emit(task)
         return clone(task)
+
+    def _change(self, item: Record) -> Record:
+        references = [str(item.get(key, "")).strip() for key in ("portA", "portB")]
+        if not all(references):
+            raise app_error("invalid_argument", "Two port references are required")
+        canonical = [
+            f"{found['hardware']['hardwareId']}.{found['port']['portId']}"
+            for found in (self.catalog.resolve_port(reference) for reference in references)
+        ]
+        port_a, port_b, pins = canonical_ports(canonical[0], canonical[1], item.get("pins", []))
+        self.catalog.validate_pins(port_a, port_b, pins)
+        return {"action": item["action"], "portA": port_a, "portB": port_b, "pins": pins}
+
+    async def wait_for_answer(self, wiring_task_id: str) -> Record:
+        """The task once the operator answered it (or it was cancelled)."""
+        task = self.get_task(wiring_task_id)
+        event = self._answered.get(wiring_task_id)
+        if task["status"] == "pending" and event is not None:
+            await event.wait()
+        return self.get_task(wiring_task_id)
 
     def validate_document_connections(self, wiring: Record) -> None:
         """Validate edited same-port pins; untouched connections of unresolved hardware pass."""
@@ -129,35 +181,21 @@ class ProjectWiringService:
             )
             self.catalog.validate_pins(port_a, port_b, pins)
 
-    async def start_task(self, wiring_task_id: str, operator_name: str = "operator") -> Record:
-        async with self._lock(wiring_task_id):
-            task = self.get_task(wiring_task_id)
-            self._apply_lazy_timeout(task)
-            if task["status"] != "pending":
-                raise app_error("conflict", f"Wiring task is {task['status']}, not pending")
-            started = {
-                **task,
-                "status": "in_progress",
-                "startedAt": utc_now_iso(),
-                "operatorName": operator_name.strip() or "operator",
-            }
-            self._tasks[wiring_task_id] = started
-            self._persist(started)
-            self._emit(started)
-            return clone(started)
-
     async def complete_task(
-        self, wiring_task_id: str, outcome: str, message: str | None = None
+        self,
+        wiring_task_id: str,
+        outcome: str,
+        message: str | None = None,
+        operator_name: str = "operator",
     ) -> Record:
         async with self._lock(wiring_task_id):
             task = self.get_task(wiring_task_id)
-            if task["status"] not in ("pending", "in_progress"):
-                raise app_error("conflict", f"Wiring task is {task['status']}, not in progress")
-            if task["status"] == "pending":
-                task = {**task, "operatorName": "operator"}
+            if task["status"] != "pending":
+                raise app_error("conflict", f"Wiring task is {task['status']}, not pending")
+            task = {**task, "operatorName": operator_name.strip() or "operator"}
             if outcome == "confirmed":
                 try:
-                    self._apply_confirmed_wiring(task)
+                    await self._apply_confirmed_wiring(task)
                 except Exception as error:
                     return self._finish(task, "failed", f"Failed to update wiring: {error}")
             return self._finish(task, outcome, message)
@@ -165,8 +203,7 @@ class ProjectWiringService:
     async def cancel_task(self, wiring_task_id: str, message: str | None = None) -> Record:
         async with self._lock(wiring_task_id):
             task = self.get_task(wiring_task_id)
-            self._apply_lazy_timeout(task)
-            if task["status"] not in ("pending", "in_progress"):
+            if task["status"] != "pending":
                 return clone(task)
             return self._finish(task, "cancelled", message)
 
@@ -176,19 +213,12 @@ class ProjectWiringService:
             raise app_error(
                 "not_found",
                 f"Unknown wiringTaskId: {wiring_task_id}",
-                {
-                    "recovery": "Tasks are session-scoped. Read get_project for saved "
-                    "connections and list_wiring_tasks for current tasks."
-                },
+                {"recovery": "Tasks are session-scoped. Read get_project for saved connections."},
             )
-        self._apply_lazy_timeout(task)
         return clone(task)
 
     def list_tasks(self, input: Record | None = None) -> list[Record]:
         query = input or {}
-        for task in list(self._tasks.values()):
-            if task["status"] == "pending":
-                self._apply_lazy_timeout(task)
         limit = min(max(query.get("limit", 100), 1), 500)
         items = [
             task
@@ -198,8 +228,11 @@ class ProjectWiringService:
         items.sort(key=lambda task: task["requestedAt"], reverse=True)
         return [clone(task) for task in items[: int(limit)]]
 
-    def record_manual_changes(self, previous: list[Record], current: list[Record]) -> list[Record]:
-        """Log the operator's edits of the pin list; a no-op edit leaves no entry."""
+    def record_manual_changes(
+        self, previous: list[Record], current: list[Record], wiring_task_id: str | None = None
+    ) -> list[Record]:
+        """Log edits of the pin list: the operator's, or a confirmed wiring task's
+        (``wiring_task_id``); a no-op edit leaves no entry."""
         session = getattr(self.projects, "session", lambda: None)()
         if not session:
             return []
@@ -224,13 +257,15 @@ class ProjectWiringService:
                 "pins": clone(source.get("pins", [])),
                 "at": now,
             }
+            if wiring_task_id is not None:
+                entry["wiringTaskId"] = wiring_task_id
             if kind == "changed" and old is not None:
                 entry["previous"] = {
                     "portA": old["portA"],
                     "portB": old["portB"],
                     "pins": clone(old.get("pins", [])),
                 }
-            entries.append(self._coalesce(entry))
+            entries.append(entry if wiring_task_id else self._coalesce(entry))
         self._runtime.initialize()
         for entry in entries:
             if entry.pop("dropped", False):
@@ -255,6 +290,7 @@ class ProjectWiringService:
         last = self._last_changes.get(entry["connectionId"])
         if (
             last is None
+            or "wiringTaskId" in last
             or last["kind"] == "removed"
             or entry["kind"] == "added"
             or parse_date_ms(entry["at"]) - parse_date_ms(last["at"]) > COALESCE_MS
@@ -303,34 +339,44 @@ class ProjectWiringService:
         )
         return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
-    def _apply_confirmed_wiring(self, task: Record) -> None:
+    async def _apply_confirmed_wiring(self, task: Record) -> None:
+        """Apply every change of a confirmed task, log it and save the project: the wiring now
+        is what the operator confirmed on the bench."""
         wiring = self.projects.wiring()
-        index = next(
-            (
-                index
-                for index, item in enumerate(wiring["connections"])
-                if item["portA"] == task["portA"] and item["portB"] == task["portB"]
-            ),
-            -1,
-        )
-        if task["action"] == "connect":
-            connection = {
-                "connectionId": wiring["connections"][index]["connectionId"]
-                if index >= 0
-                else new_uuid(),
-                "portA": task["portA"],
-                "portB": task["portB"],
-                "pins": task["pins"],
-                "confirmedAt": utc_now_iso(),
-                "confirmedBy": task.get("operatorName", "operator"),
-            }
-            if index >= 0:
-                wiring["connections"][index] = connection
-            else:
-                wiring["connections"].append(connection)
-        elif index >= 0:
-            del wiring["connections"][index]
+        previous = clone(wiring["connections"])
+        connections = wiring["connections"]
+        now = utc_now_iso()
+        for change in task["changes"]:
+            index = next(
+                (
+                    index
+                    for index, item in enumerate(connections)
+                    if item["portA"] == change["portA"] and item["portB"] == change["portB"]
+                ),
+                -1,
+            )
+            if change["action"] == "connect":
+                connection = {
+                    "connectionId": connections[index]["connectionId"]
+                    if index >= 0
+                    else new_uuid(),
+                    "portA": change["portA"],
+                    "portB": change["portB"],
+                    "pins": clone(change["pins"]),
+                    "confirmedAt": now,
+                    "confirmedBy": task.get("operatorName", "operator"),
+                }
+                if index >= 0:
+                    connections[index] = connection
+                else:
+                    connections.append(connection)
+            elif index >= 0:
+                del connections[index]
         self.projects.update_wiring(wiring)
+        self.record_manual_changes(
+            previous, self.projects.wiring()["connections"], task["wiringTaskId"]
+        )
+        await self.projects.save()
         if self._project_notifier:
             self._project_notifier()
 
@@ -343,21 +389,10 @@ class ProjectWiringService:
         self._tasks[task["wiringTaskId"]] = finished
         self._persist(finished)
         self._emit(finished)
+        event = self._answered.pop(task["wiringTaskId"], None)
+        if event is not None:
+            event.set()
         return clone(finished)
-
-    def _apply_lazy_timeout(self, task: Record) -> None:
-        if task["status"] != "pending" or parse_date_ms(task["expiresAt"]) > now_ms():
-            return
-        expired = {
-            **task,
-            "status": "timed_out",
-            "completedAt": utc_now_iso(),
-            "message": "Wiring task expired before processing started",
-        }
-        self._tasks[task["wiringTaskId"]] = expired
-        self._persist(expired)
-        task.update(expired)
-        self._emit(expired)
 
     def _emit(self, task: Record) -> None:
         if self._notifier:
@@ -386,3 +421,18 @@ def canonical_ports(left: str, right: str, pins: list[Record]) -> tuple[str, str
     if a <= b:
         return a, b, [{"a": pin["a"], "b": pin["b"]} for pin in pins]
     return b, a, [{"a": pin["b"], "b": pin["a"]} for pin in pins]
+
+
+def _current_shape(task: Record) -> Record:
+    """A stored task in the batch shape: tasks of earlier versions held one change and could be
+    in progress or timed out."""
+    result = clone(task)
+    if "changes" not in result:
+        result["changes"] = [
+            {key: result.pop(key) for key in ("action", "portA", "portB", "pins") if key in result}
+        ]
+    result.pop("expiresAt", None)
+    result.pop("startedAt", None)
+    if result["status"] in ("in_progress", "timed_out"):
+        result["status"] = "cancelled" if result["status"] == "timed_out" else "pending"
+    return result

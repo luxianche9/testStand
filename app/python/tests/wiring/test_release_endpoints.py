@@ -70,9 +70,10 @@ async def test_same_port_loopback_keeps_real_identity_and_persists_after_confirm
             "pins": [{"a": "TX", "b": "RX"}],
         }
     )
-    assert task["portA"] == task["portB"] == "CARD.CARD.P1"
+    [change] = task["changes"]
+    assert change["portA"] == change["portB"] == "CARD.CARD.P1"
     assert task["hardwareIds"] == ["CARD"]
-    assert task["pins"] == [{"a": "RX", "b": "TX"}]
+    assert change["pins"] == [{"a": "RX", "b": "TX"}]
     assert projects.wiring()["connections"] == []
     with pytest.raises(AppError) as conflict:
         await service.request_task(

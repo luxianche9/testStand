@@ -47,7 +47,7 @@ export function OpenCodeToolUIs() {
   useAssistantToolUI({ toolName: "resume_test_run", render: TestPlanTool });
   useAssistantToolUI({ toolName: "abort_test_run", render: TestPlanTool });
   // OpenCode prefixes MCP tools with the server name; register both spellings.
-  useAssistantToolUI({ toolName: "request_wiring_task", render: WiringTaskTool });
-  useAssistantToolUI({ toolName: "teststand_request_wiring_task", render: WiringTaskTool });
+  useAssistantToolUI({ toolName: "request_wiring", render: WiringTaskTool });
+  useAssistantToolUI({ toolName: "teststand_request_wiring", render: WiringTaskTool });
   return null;
 }

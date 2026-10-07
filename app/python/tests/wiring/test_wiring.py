@@ -1,3 +1,4 @@
+import asyncio
 from pathlib import Path
 from typing import Any
 
@@ -6,7 +7,6 @@ import pytest
 from teststand_backend.contracts.errors import AppError
 from teststand_backend.projects import ProjectService
 from teststand_backend.storage import SettingsStore
-from teststand_backend.util import iso_from_ms
 from teststand_backend.wiring import ProjectWiringService
 
 PREFIX = "packages/wiring/src/project-wiring-agent.test.ts::Agent canvas permissions::"
@@ -83,11 +83,17 @@ async def test_task_cable(tmp_path: Path) -> None:
         {"portA": "DUT_A.P1", "portB": "DUT_B.P1", "pins": pins, "action": "connect"}
     )
     assert task["status"] == "pending"
-    assert (await service.start_task(task["wiringTaskId"], "tester"))["status"] == "in_progress"
-    assert (await service.complete_task(task["wiringTaskId"], "confirmed"))["status"] == "confirmed"
+    assert projects.wiring()["connections"] == []
+    done = await service.complete_task(task["wiringTaskId"], "confirmed", operator_name="tester")
+    assert done["status"] == "confirmed"
     assert len(projects.wiring()["connections"]) == 1
     assert projects.wiring()["connections"][0]["pins"] == pins
-    assert projects.document()["dirty"] is True
+    assert projects.wiring()["connections"][0]["confirmedBy"] == "tester"
+    # A confirmed task is saved: the wiring is what the operator confirmed on the bench.
+    assert projects.document()["dirty"] is False
+    [entry] = service.list_changes()
+    assert entry["kind"] == "added"
+    assert entry["wiringTaskId"] == task["wiringTaskId"]
     await projects.close()
 
 
@@ -99,7 +105,6 @@ async def test_pinless(tmp_path: Path) -> None:
     task = await service.request_task(
         {"portA": "DUT_A.P2", "portB": "DUT_B.P2", "action": "connect"}
     )
-    await service.start_task(task["wiringTaskId"], "tester")
     await service.complete_task(task["wiringTaskId"], "confirmed")
     assert len(projects.wiring()["connections"]) == 1
     assert projects.wiring()["connections"][0]["pins"] == []
@@ -119,10 +124,12 @@ async def test_canonical(tmp_path: Path) -> None:
             "action": "connect",
         }
     )
-    assert task["portA"] == "DUT_A.P1"
-    assert task["pins"] == [{"a": "2", "b": "1"}]
-    with pytest.raises(AppError, match="already exists"):
+    [change] = task["changes"]
+    assert change["portA"] == "DUT_A.P1"
+    assert change["pins"] == [{"a": "2", "b": "1"}]
+    with pytest.raises(AppError, match="already changes this port pair") as raised:
         await service.request_task({"portA": "DUT_A.P1", "portB": "DUT_B.P1", "action": "connect"})
+    assert raised.value.details["existingTaskId"] == task["wiringTaskId"]
 
 
 @pytest.mark.ts_case(APP_PREFIX + "refuses pin pairs that name a pin the port does not have")
@@ -141,36 +148,53 @@ async def test_invalid_pin(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_lazy_timeout_only_pending(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from teststand_backend.wiring import project_wiring_service as implementation
-
-    clock = [1000]
-    monkeypatch.setattr(implementation, "now_ms", lambda: clock[0])
-    monkeypatch.setattr(implementation, "utc_now_iso", lambda: iso_from_ms(clock[0]))
-    service, _, _ = await fixture(tmp_path)
-    notifications: list[dict[str, Any]] = []
-    service.set_notifier(notifications.append)
-    task = await service.request_task(
-        {"portA": "DUT_A.P1", "portB": "DUT_B.P1", "action": "connect", "timeoutMs": 1}
-    )
-    assert task["expiresAt"] == iso_from_ms(2000)
-    clock[0] = 2000
-    with pytest.raises(AppError, match="already exists"):
+async def test_batch_is_answered_once(tmp_path: Path) -> None:
+    service, projects, notifications = await fixture(tmp_path)
+    changes = [
+        {"action": "connect", "portA": "CARD_A.P1", "portB": "DUT_A.P1", "pins": []},
+        {"action": "connect", "portA": "DUT_A.P2", "portB": "DUT_B.P2"},
+    ]
+    task = await service.request_task({"changes": changes, "replaceAll": True, "note": "why"})
+    # replaceAll disconnects the saved connection the batch does not name.
+    assert [(item["action"], item["portA"]) for item in task["changes"]] == [
+        ("connect", "CARD_A.P1"),
+        ("connect", "DUT_A.P2"),
+        ("disconnect", "DUT_A.P1"),
+    ]
+    assert task["hardwareIds"] == ["CARD_A", "DUT_A", "DUT_B"]
+    assert task["note"] == "why"
+    await service.complete_task(task["wiringTaskId"], "confirmed")
+    pairs = sorted((item["portA"], item["portB"]) for item in projects.wiring()["connections"])
+    assert pairs == [("CARD_A.P1", "DUT_A.P1"), ("DUT_A.P2", "DUT_B.P2")]
+    assert sorted(entry["kind"] for entry in service.list_changes()) == [
+        "added",
+        "added",
+        "removed",
+    ]
+    assert notifications == [True]
+    with pytest.raises(AppError, match="at least one change"):
+        await service.request_task({"changes": []})
+    with pytest.raises(AppError, match="once in one request"):
         await service.request_task(
-            {"portA": "DUT_A.P1", "portB": "DUT_B.P1", "action": "disconnect"}
+            {"changes": [changes[1], {**changes[1], "action": "disconnect"}]}
         )
-    assert service.get_task(task["wiringTaskId"])["status"] == "timed_out"
-    assert [item["status"] for item in notifications] == ["pending", "timed_out"]
-    await service.cancel_task(task["wiringTaskId"])
-    assert len(notifications) == 2
+
+
+@pytest.mark.asyncio
+async def test_wait_for_answer(tmp_path: Path) -> None:
+    service, _, _ = await fixture(tmp_path)
     task = await service.request_task(
-        {"portA": "DUT_A.P1", "portB": "DUT_B.P1", "action": "connect", "timeoutMs": 1000}
+        {"portA": "DUT_A.P2", "portB": "DUT_B.P2", "action": "connect"}
     )
-    started = await service.start_task(task["wiringTaskId"], " ")
-    assert started["operatorName"] == "operator"
-    clock[0] = 10_000
-    assert service.get_task(task["wiringTaskId"])["status"] == "in_progress"
-    assert (await service.complete_task(task["wiringTaskId"], "confirmed"))["status"] == "confirmed"
+    waiting = asyncio.create_task(service.wait_for_answer(task["wiringTaskId"]))
+    await asyncio.sleep(0)
+    assert not waiting.done()
+    await service.complete_task(task["wiringTaskId"], "rejected", "wrong cable")
+    answered = await asyncio.wait_for(waiting, 1)
+    assert (answered["status"], answered["message"]) == ("rejected", "wrong cable")
+    assert (await service.wait_for_answer(task["wiringTaskId"]))["status"] == "rejected"
+    with pytest.raises(AppError, match="not pending"):
+        await service.complete_task(task["wiringTaskId"], "confirmed")
 
 
 @pytest.mark.asyncio
@@ -181,20 +205,17 @@ async def test_finish_failure_rejection_disconnect_shutdown(
     task = await service.request_task(
         {"portA": "DUT_A.P1", "portB": "DUT_B.P1", "action": "disconnect"}
     )
-    await service.start_task(task["wiringTaskId"], "tester")
     await service.complete_task(task["wiringTaskId"], "confirmed")
     assert projects.wiring()["connections"] == []
     assert len(notifications) == 1
     rejected = await service.request_task(
         {"portA": "DUT_A.P1", "portB": "DUT_B.P1", "action": "connect"}
     )
-    await service.start_task(rejected["wiringTaskId"])
     await service.complete_task(rejected["wiringTaskId"], "rejected", "no")
     assert projects.wiring()["connections"] == []
     failed = await service.request_task(
         {"portA": "DUT_A.P1", "portB": "DUT_B.P1", "action": "connect"}
     )
-    await service.start_task(failed["wiringTaskId"])
 
     def fail_update(wiring: dict[str, Any]) -> dict[str, Any]:
         raise RuntimeError("diskless state failed")
@@ -203,20 +224,19 @@ async def test_finish_failure_rejection_disconnect_shutdown(
     result = await service.complete_task(failed["wiringTaskId"], "confirmed")
     assert result["status"] == "failed"
     assert result["message"] == "Failed to update wiring: diskless state failed"
+    monkeypatch.undo()
     pending = await service.request_task(
         {"portA": "DUT_A.P1", "portB": "DUT_B.P1", "action": "connect"}
     )
-    active = await service.request_task(
-        {"portA": "DUT_A.P2", "portB": "DUT_B.P2", "action": "connect"}
-    )
-    await service.start_task(active["wiringTaskId"])
     await service.close()
     assert service.get_task(pending["wiringTaskId"])["status"] == "pending"
-    assert service.get_task(active["wiringTaskId"])["status"] == "in_progress"
 
+    # Nobody waits for a pending task of an earlier session any more.
     restored = ProjectWiringService(projects, service.catalog)
     await restored.initialize()
-    assert restored.get_task(pending["wiringTaskId"])["status"] == "pending"
-    assert restored.get_task(active["wiringTaskId"])["status"] == "in_progress"
+    cancelled = restored.get_task(pending["wiringTaskId"])
+    assert cancelled["status"] == "cancelled"
+    assert cancelled["message"] == "testStand restarted before the operator answered"
+    assert restored.get_task(task["wiringTaskId"])["status"] == "confirmed"
     service.clear_session()
     assert service.list_tasks() == []

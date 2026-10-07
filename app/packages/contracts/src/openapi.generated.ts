@@ -375,7 +375,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** devices.listDevices */
+        /** Registered devices (plugin instances) without connection status. */
         post: operations["devices.listDevices"];
         delete?: never;
         options?: never;
@@ -514,7 +514,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** devices.saveDevice */
+        /** Create or update a device's settings; the operator confirms in testStand. */
         post: operations["devices.saveDevice"];
         delete?: never;
         options?: never;
@@ -650,7 +650,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** projects.listRecent */
+        /** Recently opened project folders, newest first; open one with open_project. */
         post: operations["projects.listRecent"];
         delete?: never;
         options?: never;
@@ -763,6 +763,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ops/signals.applyOperations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Edit the signal view with a list of operations applied in order; the whole batch is
+         *     checked by the signal view rules and applied completely or not at all. Returns the
+         *     resulting view. Like a canvas edit, it stays in the project buffer until the project is
+         *     saved.
+         */
+        post: operations["signals.applyOperations"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ops/signals.catalog": {
         parameters: {
             query?: never;
@@ -777,6 +799,26 @@ export interface paths {
          *     the device was connected once), a passive part's declared signals.
          */
         post: operations["signals.catalog"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ops/signals.getDocument": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * The project's signal view: hardware and widget nodes on the canvas and the links
+         *     between them.
+         */
+        post: operations["signals.getDocument"];
         delete?: never;
         options?: never;
         head?: never;
@@ -809,7 +851,12 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** signals.write */
+        /**
+         * Write a signal the way a control widget does: ``input`` is ``{nodeId, handle, bit?,
+         *     action, value}`` naming a node and handle on the signal view; action is one of the
+         *     stream's control actions (set, setBit, setMask, sendText, sendHex, sendFrame). Refused
+         *     while a test runs.
+         */
         post: operations["signals.write"];
         delete?: never;
         options?: never;
@@ -982,7 +1029,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** testing.analyzePlanDraft */
+        /** Validate an unsaved plan draft against current devices without saving it. */
         post: operations["testing.analyzePlanDraft"];
         delete?: never;
         options?: never;
@@ -1067,7 +1114,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** testing.currentBatch */
+        /** The active or latest batch run of several test items, or null. */
         post: operations["testing.currentBatch"];
         delete?: never;
         options?: never;
@@ -1084,7 +1131,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** testing.currentRun */
+        /** The active or latest test run, or null. */
         post: operations["testing.currentRun"];
         delete?: never;
         options?: never;
@@ -1101,7 +1148,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** testing.currentUnit */
+        /** The current unit under test (serial number and attributes) runs are recorded for. */
         post: operations["testing.currentUnit"];
         delete?: never;
         options?: never;
@@ -1118,7 +1165,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** testing.deletePlan */
+        /**
+         * Delete a saved test plan and its file; the operator confirms it first. A running plan
+         *     cannot be deleted.
+         */
         post: operations["testing.deletePlan"];
         delete?: never;
         options?: never;
@@ -1135,7 +1185,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** testing.getBatch */
+        /** One batch run with the state and verdict of each of its items. */
         post: operations["testing.getBatch"];
         delete?: never;
         options?: never;
@@ -1169,7 +1219,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** testing.getRunTimeline */
+        /** Each step execution of a run with its start/end time and outcome. */
         post: operations["testing.getRunTimeline"];
         delete?: never;
         options?: never;
@@ -1288,7 +1338,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** testing.listRunStreams */
+        /** The data streams recorded during a run, with their keys for readRunStream. */
         post: operations["testing.listRunStreams"];
         delete?: never;
         options?: never;
@@ -1441,7 +1491,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** testing.readRunStream */
+        /** Records of one run stream, by key from listRunStreams, optionally windowed. */
         post: operations["testing.readRunStream"];
         delete?: never;
         options?: never;
@@ -1475,7 +1525,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** testing.rejudgeRun */
+        /**
+         * Judge a finished run's recordings again with the current assertions; the stored
+         *     verdict is not changed.
+         */
         post: operations["testing.rejudgeRun"];
         delete?: never;
         options?: never;
@@ -1492,7 +1545,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** testing.reorderItems */
+        /**
+         * Set the order of the test plans in the test tree (and of a batch run): ``planIds``
+         *     first, in this order; returns the item statuses.
+         */
         post: operations["testing.reorderItems"];
         delete?: never;
         options?: never;
@@ -1543,7 +1599,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** testing.savePlan */
+        /**
+         * Replace a saved plan with a complete plan document at ``baseRevision``. Prefer
+         *     apply_test_plan_operations for edits; this is for the operator's editor.
+         */
         post: operations["testing.savePlan"];
         delete?: never;
         options?: never;
@@ -1662,7 +1721,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** wiring.completeTask */
+        /**
+         * The operator's answer to a wiring task: ``confirmed`` applies every change and saves
+         *     the project; ``rejected`` carries the operator's reason in ``message``.
+         */
         post: operations["wiring.completeTask"];
         delete?: never;
         options?: never;
@@ -1696,7 +1758,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** wiring.listChanges */
+        /** The project's wiring change log: confirmed wiring tasks and manual edits. */
         post: operations["wiring.listChanges"];
         delete?: never;
         options?: never;
@@ -1730,7 +1792,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** wiring.requestTask */
+        /**
+         * Create one wiring task holding every change; the operator confirms or rejects it once.
+         *     Returns at once with the pending task.
+         */
         post: operations["wiring.requestTask"];
         delete?: never;
         options?: never;
@@ -1738,7 +1803,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/ops/wiring.startTask": {
+    "/api/ops/wiring.requestWiring": {
         parameters: {
             query?: never;
             header?: never;
@@ -1747,8 +1812,13 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** wiring.startTask */
-        post: operations["wiring.startTask"];
+        /**
+         * Ask the operator to make wiring changes on the bench and wait for the answer. The call
+         *     returns only when the operator confirmed (the project wiring then holds the changes and is
+         *     saved) or rejected the request (``message`` says why); cancelling the call cancels the
+         *     task.
+         */
+        post: operations["wiring.requestWiring"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2012,8 +2082,15 @@ export interface components {
              */
             welcomeLayout?: ("grid" | "list") | null;
         };
+        /** SignalsApplyOperationsRequest */
+        SignalsApplyOperationsRequest: {
+            /** Operations */
+            operations: object[];
+        };
         /** SignalsCatalogRequest */
         SignalsCatalogRequest: Record<string, never>;
+        /** SignalsGetDocumentRequest */
+        SignalsGetDocumentRequest: Record<string, never>;
         /** SignalsUpdateDocumentRequest */
         SignalsUpdateDocumentRequest: {
             /** Signals */
@@ -2353,6 +2430,11 @@ export interface components {
              * @default null
              */
             message?: string | null;
+            /**
+             * Operatorname
+             * @default operator
+             */
+            operatorName?: string;
             /** Outcome */
             outcome: string;
             /** Taskid */
@@ -2384,15 +2466,10 @@ export interface components {
             /** Input */
             input: object;
         };
-        /** WiringStartTaskRequest */
-        WiringStartTaskRequest: {
-            /**
-             * Operatorname
-             * @default null
-             */
-            operatorName?: string | null;
-            /** Taskid */
-            taskId: string;
+        /** WiringRequestWiringRequest */
+        WiringRequestWiringRequest: {
+            /** Input */
+            input: object;
         };
         /** WiringUpdateDocumentRequest */
         WiringUpdateDocumentRequest: {
@@ -3860,6 +3937,39 @@ export interface operations {
             };
         };
     };
+    "signals.applyOperations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignalsApplyOperationsRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": object;
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: components["schemas"]["WireError"];
+                    };
+                };
+            };
+        };
+    };
     "signals.catalog": {
         parameters: {
             query?: never;
@@ -3879,6 +3989,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": object[];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: components["schemas"]["WireError"];
+                    };
+                };
+            };
+        };
+    };
+    "signals.getDocument": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SignalsGetDocumentRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": object;
                 };
             };
             default: {
@@ -5741,7 +5884,7 @@ export interface operations {
             };
         };
     };
-    "wiring.startTask": {
+    "wiring.requestWiring": {
         parameters: {
             query?: never;
             header?: never;
@@ -5750,7 +5893,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["WiringStartTaskRequest"];
+                "application/json": components["schemas"]["WiringRequestWiringRequest"];
             };
         };
         responses: {

@@ -581,10 +581,34 @@
         "title": "SettingsUpdateRequest",
         "type": "object"
       },
+      "SignalsApplyOperationsRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "operations": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Operations",
+            "type": "array"
+          }
+        },
+        "required": [
+          "operations"
+        ],
+        "title": "SignalsApplyOperationsRequest",
+        "type": "object"
+      },
       "SignalsCatalogRequest": {
         "additionalProperties": false,
         "properties": {},
         "title": "SignalsCatalogRequest",
+        "type": "object"
+      },
+      "SignalsGetDocumentRequest": {
+        "additionalProperties": false,
+        "properties": {},
+        "title": "SignalsGetDocumentRequest",
         "type": "object"
       },
       "SignalsUpdateDocumentRequest": {
@@ -1458,6 +1482,11 @@
             ],
             "default": null,
             "title": "Message"
+          },
+          "operatorName": {
+            "default": "operator",
+            "title": "Operatorname",
+            "type": "string"
           }
         },
         "required": [
@@ -1536,30 +1565,19 @@
         "title": "WiringRequestTaskRequest",
         "type": "object"
       },
-      "WiringStartTaskRequest": {
+      "WiringRequestWiringRequest": {
         "additionalProperties": false,
         "properties": {
-          "taskId": {
-            "title": "Taskid",
-            "type": "string"
-          },
-          "operatorName": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Operatorname"
+          "input": {
+            "additionalProperties": true,
+            "title": "Input",
+            "type": "object"
           }
         },
         "required": [
-          "taskId"
+          "input"
         ],
-        "title": "WiringStartTaskRequest",
+        "title": "WiringRequestWiringRequest",
         "type": "object"
       },
       "WiringUpdateDocumentRequest": {
@@ -2736,7 +2754,7 @@
     "/api/ops/devices.listDevices": {
       "post": {
         "operationId": "devices.listDevices",
-        "summary": "devices.listDevices",
+        "summary": "Registered devices (plugin instances) without connection status.",
         "tags": [
           "devices"
         ],
@@ -3194,7 +3212,7 @@
     "/api/ops/devices.saveDevice": {
       "post": {
         "operationId": "devices.saveDevice",
-        "summary": "devices.saveDevice",
+        "summary": "Create or update a device's settings; the operator confirms in testStand.",
         "tags": [
           "devices"
         ],
@@ -3632,7 +3650,7 @@
     "/api/ops/projects.listRecent": {
       "post": {
         "operationId": "projects.listRecent",
-        "summary": "projects.listRecent",
+        "summary": "Recently opened project folders, newest first; open one with open_project.",
         "tags": [
           "projects"
         ],
@@ -3680,7 +3698,10 @@
         },
         "x-risk": "read",
         "x-capability": "projects.read",
-        "x-profiles": [],
+        "x-profiles": [
+          "explore",
+          "plan"
+        ],
         "x-idempotency": "natural",
         "x-confirm": false
       }
@@ -4007,6 +4028,62 @@
         "x-confirm": false
       }
     },
+    "/api/ops/signals.applyOperations": {
+      "post": {
+        "operationId": "signals.applyOperations",
+        "summary": "Edit the signal view with a list of operations applied in order; the whole batch is\nchecked by the signal view rules and applied completely or not at all. Returns the\nresulting view. Like a canvas edit, it stays in the project buffer until the project is\nsaved.",
+        "tags": [
+          "signals"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignalsApplyOperationsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/WireError"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-risk": "write",
+        "x-capability": "projects.manage",
+        "x-profiles": [
+          "explore",
+          "plan"
+        ],
+        "x-idempotency": "none",
+        "x-confirm": false
+      }
+    },
     "/api/ops/signals.catalog": {
       "post": {
         "operationId": "signals.catalog",
@@ -4058,6 +4135,62 @@
         },
         "x-risk": "read",
         "x-capability": "hardware.read",
+        "x-profiles": [
+          "explore",
+          "plan"
+        ],
+        "x-idempotency": "natural",
+        "x-confirm": false
+      }
+    },
+    "/api/ops/signals.getDocument": {
+      "post": {
+        "operationId": "signals.getDocument",
+        "summary": "The project's signal view: hardware and widget nodes on the canvas and the links\nbetween them.",
+        "tags": [
+          "signals"
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignalsGetDocumentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/WireError"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-risk": "read",
+        "x-capability": "projects.read",
         "x-profiles": [
           "explore",
           "plan"
@@ -4122,7 +4255,7 @@
     "/api/ops/signals.write": {
       "post": {
         "operationId": "signals.write",
-        "summary": "signals.write",
+        "summary": "Write a signal the way a control widget does: ``input`` is ``{nodeId, handle, bit?,\naction, value}`` naming a node and handle on the signal view; action is one of the\nstream's control actions (set, setBit, setMask, sendText, sendHex, sendFrame). Refused\nwhile a test runs.",
         "tags": [
           "signals"
         ],
@@ -4167,7 +4300,9 @@
         },
         "x-risk": "actuate",
         "x-capability": "hardware.executeTools",
-        "x-profiles": [],
+        "x-profiles": [
+          "explore"
+        ],
         "x-idempotency": "none",
         "x-confirm": false
       }
@@ -4673,7 +4808,7 @@
     "/api/ops/testing.analyzePlanDraft": {
       "post": {
         "operationId": "testing.analyzePlanDraft",
-        "summary": "testing.analyzePlanDraft",
+        "summary": "Validate an unsaved plan draft against current devices without saving it.",
         "tags": [
           "testing"
         ],
@@ -4946,7 +5081,7 @@
     "/api/ops/testing.currentBatch": {
       "post": {
         "operationId": "testing.currentBatch",
-        "summary": "testing.currentBatch",
+        "summary": "The active or latest batch run of several test items, or null.",
         "tags": [
           "testing"
         ],
@@ -5008,7 +5143,7 @@
     "/api/ops/testing.currentRun": {
       "post": {
         "operationId": "testing.currentRun",
-        "summary": "testing.currentRun",
+        "summary": "The active or latest test run, or null.",
         "tags": [
           "testing"
         ],
@@ -5070,7 +5205,7 @@
     "/api/ops/testing.currentUnit": {
       "post": {
         "operationId": "testing.currentUnit",
-        "summary": "testing.currentUnit",
+        "summary": "The current unit under test (serial number and attributes) runs are recorded for.",
         "tags": [
           "testing"
         ],
@@ -5125,7 +5260,7 @@
     "/api/ops/testing.deletePlan": {
       "post": {
         "operationId": "testing.deletePlan",
-        "summary": "testing.deletePlan",
+        "summary": "Delete a saved test plan and its file; the operator confirms it first. A running plan\ncannot be deleted.",
         "tags": [
           "testing"
         ],
@@ -5170,7 +5305,9 @@
         },
         "x-risk": "destructive",
         "x-capability": "testing.manage",
-        "x-profiles": [],
+        "x-profiles": [
+          "plan"
+        ],
         "x-idempotency": "natural",
         "x-confirm": true
       }
@@ -5178,7 +5315,7 @@
     "/api/ops/testing.getBatch": {
       "post": {
         "operationId": "testing.getBatch",
-        "summary": "testing.getBatch",
+        "summary": "One batch run with the state and verdict of each of its items.",
         "tags": [
           "testing"
         ],
@@ -5288,7 +5425,7 @@
     "/api/ops/testing.getRunTimeline": {
       "post": {
         "operationId": "testing.getRunTimeline",
-        "summary": "testing.getRunTimeline",
+        "summary": "Each step execution of a run with its start/end time and outcome.",
         "tags": [
           "testing"
         ],
@@ -5628,7 +5765,7 @@
     "/api/ops/testing.listRunStreams": {
       "post": {
         "operationId": "testing.listRunStreams",
-        "summary": "testing.listRunStreams",
+        "summary": "The data streams recorded during a run, with their keys for readRunStream.",
         "tags": [
           "testing"
         ],
@@ -6182,7 +6319,7 @@
     "/api/ops/testing.readRunStream": {
       "post": {
         "operationId": "testing.readRunStream",
-        "summary": "testing.readRunStream",
+        "summary": "Records of one run stream, by key from listRunStreams, optionally windowed.",
         "tags": [
           "testing"
         ],
@@ -6292,7 +6429,7 @@
     "/api/ops/testing.rejudgeRun": {
       "post": {
         "operationId": "testing.rejudgeRun",
-        "summary": "testing.rejudgeRun",
+        "summary": "Judge a finished run's recordings again with the current assertions; the stored\nverdict is not changed.",
         "tags": [
           "testing"
         ],
@@ -6347,7 +6484,7 @@
     "/api/ops/testing.reorderItems": {
       "post": {
         "operationId": "testing.reorderItems",
-        "summary": "testing.reorderItems",
+        "summary": "Set the order of the test plans in the test tree (and of a batch run): ``planIds``\nfirst, in this order; returns the item statuses.",
         "tags": [
           "testing"
         ],
@@ -6392,7 +6529,9 @@
         },
         "x-risk": "write",
         "x-capability": "testing.manage",
-        "x-profiles": [],
+        "x-profiles": [
+          "plan"
+        ],
         "x-idempotency": "natural",
         "x-confirm": false
       }
@@ -6510,7 +6649,7 @@
     "/api/ops/testing.savePlan": {
       "post": {
         "operationId": "testing.savePlan",
-        "summary": "testing.savePlan",
+        "summary": "Replace a saved plan with a complete plan document at ``baseRevision``. Prefer\napply_test_plan_operations for edits; this is for the operator's editor.",
         "tags": [
           "testing"
         ],
@@ -6885,9 +7024,7 @@
         },
         "x-risk": "write",
         "x-capability": "wiring.request",
-        "x-profiles": [
-          "plan"
-        ],
+        "x-profiles": [],
         "x-idempotency": "none",
         "x-confirm": false
       }
@@ -6895,7 +7032,7 @@
     "/api/ops/wiring.completeTask": {
       "post": {
         "operationId": "wiring.completeTask",
-        "summary": "wiring.completeTask",
+        "summary": "The operator's answer to a wiring task: ``confirmed`` applies every change and saves\nthe project; ``rejected`` carries the operator's reason in ``message``.",
         "tags": [
           "wiring"
         ],
@@ -6993,9 +7130,7 @@
         },
         "x-risk": "read",
         "x-capability": "wiring.read",
-        "x-profiles": [
-          "plan"
-        ],
+        "x-profiles": [],
         "x-idempotency": "natural",
         "x-confirm": false
       }
@@ -7003,7 +7138,7 @@
     "/api/ops/wiring.listChanges": {
       "post": {
         "operationId": "wiring.listChanges",
-        "summary": "wiring.listChanges",
+        "summary": "The project's wiring change log: confirmed wiring tasks and manual edits.",
         "tags": [
           "wiring"
         ],
@@ -7109,9 +7244,7 @@
         },
         "x-risk": "read",
         "x-capability": "wiring.read",
-        "x-profiles": [
-          "plan"
-        ],
+        "x-profiles": [],
         "x-idempotency": "natural",
         "x-confirm": false
       }
@@ -7119,7 +7252,7 @@
     "/api/ops/wiring.requestTask": {
       "post": {
         "operationId": "wiring.requestTask",
-        "summary": "wiring.requestTask",
+        "summary": "Create one wiring task holding every change; the operator confirms or rejects it once.\nReturns at once with the pending task.",
         "tags": [
           "wiring"
         ],
@@ -7164,17 +7297,15 @@
         },
         "x-risk": "write",
         "x-capability": "wiring.request",
-        "x-profiles": [
-          "plan"
-        ],
+        "x-profiles": [],
         "x-idempotency": "none",
         "x-confirm": false
       }
     },
-    "/api/ops/wiring.startTask": {
+    "/api/ops/wiring.requestWiring": {
       "post": {
-        "operationId": "wiring.startTask",
-        "summary": "wiring.startTask",
+        "operationId": "wiring.requestWiring",
+        "summary": "Ask the operator to make wiring changes on the bench and wait for the answer. The call\nreturns only when the operator confirmed (the project wiring then holds the changes and is\nsaved) or rejected the request (``message`` says why); cancelling the call cancels the\ntask.",
         "tags": [
           "wiring"
         ],
@@ -7183,7 +7314,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/WiringStartTaskRequest"
+                "$ref": "#/components/schemas/WiringRequestWiringRequest"
               }
             }
           }
@@ -7218,8 +7349,10 @@
           }
         },
         "x-risk": "write",
-        "x-capability": "wiring.confirm",
-        "x-profiles": [],
+        "x-capability": "wiring.request",
+        "x-profiles": [
+          "plan"
+        ],
         "x-idempotency": "none",
         "x-confirm": false
       }

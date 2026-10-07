@@ -69,19 +69,20 @@ async def test_effective_availability_accounts_for_holders_and_disabled_device()
     assert output["hardware"][0]["busyReason"] == "device_disabled_or_missing"
 
 
-async def test_wait_is_bounded_and_detects_existing_wiring_change() -> None:
-    status = {"wiringTaskId": "W", "status": "pending"}
-    app = SimpleNamespace(wiring=SimpleNamespace(get_task=lambda context, id: dict(status)))
-    first = await invoke(app, "wait_for_status", {"kind": "wiring", "id": "W", "timeoutMs": 0})
+async def test_wait_is_bounded_and_detects_a_service_change() -> None:
+    status: dict[str, Any] = {"deviceId": "S", "transport": {"state": "connecting"}}
+    dashboard = {"devices": [{"deviceId": "S"}], "deviceStatuses": [status]}
+    app = SimpleNamespace(system=SimpleNamespace(dashboard=lambda context: dashboard))
+    first = await invoke(app, "wait_for_status", {"kind": "service", "id": "S", "timeoutMs": 0})
     assert first["timedOut"] and not first["changed"]
     pending = asyncio.create_task(
         invoke(
             app,
             "wait_for_status",
-            {"kind": "wiring", "id": "W", "revision": first["revision"], "timeoutMs": 500},
+            {"kind": "service", "id": "S", "revision": first["revision"], "timeoutMs": 500},
         )
     )
     await asyncio.sleep(0)
-    status["status"] = "confirmed"
+    status["transport"] = {"state": "online"}
     done = await pending
     assert done["changed"] and done["terminal"] and not done["timedOut"]

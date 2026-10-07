@@ -58,15 +58,25 @@ _CASES: list[tuple[str, dict[str, Any], str, str, list[Any]]] = [
     ),
     ("remove_hardware_definition", {"hardwareId": "H"}, "devices", "remove_hardware", ["H"]),
     (
-        "request_wiring_task",
-        {"portA": "A.J", "portB": "B.J", "action": "connect"},
+        "request_wiring",
+        {"changes": [{"portA": "A.J", "portB": "B.J", "action": "connect"}]},
         "wiring",
-        "request_task",
-        [{"portA": "A.J", "portB": "B.J", "pins": [], "action": "connect", "timeoutMs": 86400000}],
+        "request_wiring",
+        [
+            {
+                "changes": [{"portA": "A.J", "portB": "B.J", "pins": [], "action": "connect"}],
+                "replaceAll": False,
+            }
+        ],
     ),
-    ("cancel_wiring_task", {"wiringTaskId": "W"}, "wiring", "cancel_task", ["W", None]),
-    ("get_wiring_task", {"wiringTaskId": "W"}, "wiring", "get_task", ["W"]),
-    ("list_wiring_tasks", {}, "wiring", "list_tasks", [{"limit": 100}]),
+    ("get_signal_view", {}, "signals", "get_document", []),
+    (
+        "apply_signal_view_operations",
+        {"operations": [{"type": "clear"}]},
+        "signals",
+        "apply_operations",
+        [[{"type": "clear"}]],
+    ),
 ]
 
 
@@ -102,17 +112,23 @@ async def test_all_builtin_routes_and_defaults(
 
 async def test_zod_argument_errors_and_nested_stripping() -> None:
     gateway, app = make_gateway()
-    app.wiring.request_task.return_value = {}
+    app.wiring.request_wiring = AsyncMock(return_value={})
     await gateway.invoke_tool(
-        "request_wiring_task",
+        "request_wiring",
         {
-            "portA": "A.J",
-            "portB": "B.J",
-            "action": "connect",
-            "pins": [{"a": "1", "b": "2", "extra": "stripped"}],
+            "changes": [
+                {
+                    "portA": {"hardwareId": "A", "portId": "J"},
+                    "portB": "B.J",
+                    "action": "connect",
+                    "pins": [{"a": "1", "b": "2", "extra": "stripped"}],
+                }
+            ]
         },
     )
-    assert app.wiring.request_task.call_args.kwargs["input"]["pins"] == [{"a": "1", "b": "2"}]
+    [change] = app.wiring.request_wiring.call_args.kwargs["input"]["changes"]
+    assert change["portA"] == "A.J"
+    assert change["pins"] == [{"a": "1", "b": "2"}]
     with pytest.raises(ValidationError) as caught:
         await gateway.invoke_tool("get_hardware_definition", {"hardwareId": 5, "extra": True})
     assert [(issue["code"], issue["path"]) for issue in caught.value.issues] == [
@@ -186,7 +202,7 @@ def result_body(response: httpx.Response) -> Any:
 
 async def test_http_routes_and_tool_errors() -> None:
     gateway, app = make_gateway()
-    app.wiring.get_task.return_value = _TASK
+    app.signals.get_document.return_value = _TASK
     await gateway.start()
     try:
         async with httpx.AsyncClient(headers=_HEADERS) as client:
@@ -218,7 +234,7 @@ async def test_http_routes_and_tool_errors() -> None:
                     "jsonrpc": "2.0",
                     "id": 4,
                     "method": "tools/call",
-                    "params": {"name": "get_wiring_task", "arguments": {"wiringTaskId": "W"}},
+                    "params": {"name": "get_signal_view", "arguments": {}},
                 },
             )
             assert result_body(success) == {
@@ -238,14 +254,14 @@ async def test_http_routes_and_tool_errors() -> None:
                     "jsonrpc": "2.0",
                     "id": 2,
                     "method": "tools/call",
-                    "params": {"name": "get_wiring_task", "arguments": {}},
+                    "params": {"name": "apply_signal_view_operations", "arguments": {}},
                 },
             )
             result = result_body(response)
             assert result["isError"] is True
             error = result["structuredContent"]["error"]
             assert error["category"] == "invalid_argument"
-            assert error["validationIssues"][0]["path"] == ["wiringTaskId"]
+            assert error["validationIssues"][0]["path"] == ["operations"]
             assert json.loads(result["content"][0]["text"]) == result["structuredContent"]
             response = await client.post(
                 url,
@@ -327,7 +343,7 @@ async def test_mcp_cancellation_keeps_application_operation_running() -> None:
         completed.set()
         return {"runId": "R"}
 
-    app.wiring.request_task = run
+    app.devices.refresh_device = run
     await gateway.start()
     try:
         async with httpx.AsyncClient(headers=_HEADERS) as client:
@@ -342,10 +358,7 @@ async def test_mcp_cancellation_keeps_application_operation_running() -> None:
                         "jsonrpc": "2.0",
                         "id": 2,
                         "method": "tools/call",
-                        "params": {
-                            "name": "request_wiring_task",
-                            "arguments": {"portA": "A.J", "portB": "B.J", "action": "connect"},
-                        },
+                        "params": {"name": "refresh_device", "arguments": {"deviceId": "S"}},
                     },
                 )
             )
@@ -365,5 +378,74 @@ async def test_mcp_cancellation_keeps_application_operation_running() -> None:
                 finish.set()
                 calling.cancel()
                 await asyncio.gather(calling, return_exceptions=True)
+    finally:
+        await gateway.stop()
+
+
+async def test_waiting_tool_reports_progress_and_is_cancelled_with_its_request() -> None:
+    gateway, app = make_gateway()
+    started, cancelled = asyncio.Event(), asyncio.Event()
+
+    async def run(*_args: Any, **_kwargs: Any) -> dict[str, Any]:
+        started.set()
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            cancelled.set()
+            raise
+        return {}
+
+    app.wiring.request_wiring = run
+    arguments = {"changes": [{"portA": "A.J", "portB": "B.J", "action": "connect"}]}
+    await gateway.start()
+    try:
+        async with httpx.AsyncClient(headers=_HEADERS) as client:
+            url = gateway.status()["endpoint"]
+            initialized = await client.post(url, json=_INITIALIZE)
+            client.headers["mcp-session-id"] = initialized.headers["mcp-session-id"]
+            await client.post(url, json={"jsonrpc": "2.0", "method": "notifications/initialized"})
+            progress: list[Any] = []
+
+            async def call() -> None:
+                body = {
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "method": "tools/call",
+                    "params": {
+                        "name": "request_wiring",
+                        "arguments": arguments,
+                        "_meta": {"progressToken": "P"},
+                    },
+                }
+                async with client.stream("POST", url, json=body) as response:
+                    async for line in response.aiter_lines():
+                        if line.startswith("data: "):
+                            message = json.loads(line[6:])
+                            if message.get("method") == "notifications/progress":
+                                progress.append(message["params"])
+
+            with patch("teststand_backend.mcp_gateway.gateway.PROGRESS_INTERVAL_S", 0.02):
+                calling = asyncio.create_task(call())
+                try:
+                    await asyncio.wait_for(started.wait(), 1)
+                    for _ in range(100):
+                        if len(progress) >= 2:
+                            break
+                        await asyncio.sleep(0.02)
+                    assert progress[0]["progressToken"] == "P"
+                    assert progress[1]["progress"] > progress[0]["progress"]
+                    await client.post(
+                        url,
+                        json={
+                            "jsonrpc": "2.0",
+                            "method": "notifications/cancelled",
+                            "params": {"requestId": 2, "reason": "user stopped the agent"},
+                        },
+                    )
+                    # Stopping the Agent withdraws the question from the operator.
+                    await asyncio.wait_for(cancelled.wait(), 1)
+                finally:
+                    calling.cancel()
+                    await asyncio.gather(calling, return_exceptions=True)
     finally:
         await gateway.stop()

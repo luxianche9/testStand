@@ -66,13 +66,13 @@ async def test_documentary_canvas(tmp_path: Path) -> None:
         {"portA": "DUT_A.J1", "portB": "DUT_B.J1", "pins": pins, "action": "connect"}
     )
     assert task["status"] == "pending"
-    assert (await wiring.start_task(task["wiringTaskId"], "tester"))["status"] == "in_progress"
+    assert projects.wiring()["connections"] == []
     assert (await wiring.complete_task(task["wiringTaskId"], "confirmed"))["status"] == "confirmed"
     assert (
         len(projects.wiring()["connections"]) == 1
         and projects.wiring()["connections"][0]["pins"] == pins
     )
-    assert projects.document()["dirty"] is True
+    assert projects.document()["dirty"] is False
     await projects.close()
 
 
@@ -85,7 +85,6 @@ async def test_pinless(tmp_path: Path) -> None:
     task = await wiring.request_task(
         {"portA": "DUT_A.FIBER", "portB": "DUT_B.FIBER", "action": "connect"}
     )
-    await wiring.start_task(task["wiringTaskId"], "tester")
     await wiring.complete_task(task["wiringTaskId"], "confirmed")
     assert (
         len(projects.wiring()["connections"]) == 1
@@ -108,8 +107,9 @@ async def test_swapped_ports(tmp_path: Path) -> None:
             "action": "connect",
         }
     )
-    assert first["portA"] == "DUT_A.J1" and first["pins"] == [{"a": "2", "b": "1"}]
-    with pytest.raises(Exception, match="already exists"):
+    [change] = first["changes"]
+    assert change["portA"] == "DUT_A.J1" and change["pins"] == [{"a": "2", "b": "1"}]
+    with pytest.raises(Exception, match="already changes this port pair"):
         await wiring.request_task({"portA": "DUT_A.J1", "portB": "DUT_B.J1", "action": "connect"})
     await projects.close()
 

@@ -2,6 +2,7 @@ from typing import Any
 
 from teststand_backend.contracts.validation import (
     array,
+    boolean,
     enum,
     number,
     obj,
@@ -25,17 +26,23 @@ project_wiring_connection_schema = obj(
 )
 # The physical wiring: which pins are joined. Signals and their links are the signal view.
 project_wiring_schema = obj({"connections": array(project_wiring_connection_schema)})
-wiring_task_status_schema = enum(
-    "pending", "in_progress", "confirmed", "rejected", "cancelled", "timed_out", "failed"
-)
+wiring_task_status_schema = enum("pending", "confirmed", "rejected", "cancelled", "failed")
 wiring_outcome_schema = enum("confirmed", "rejected")
-request_wiring_task_input_schema = obj(
+wiring_change_schema = obj(
     {
+        "action": wiring_action_schema,
         "portA": string(1),
         "portB": string(1),
-        "pins": array(pin_pair_schema).optional(),
-        "action": wiring_action_schema,
-        "timeoutMs": number(1, integer=True).optional(),
+        "pins": array(pin_pair_schema).default([]),
+    },
+    strict=True,
+)
+# One task holds every change the operator answers at once.
+request_wiring_task_input_schema = obj(
+    {
+        "changes": array(wiring_change_schema).default([]),
+        "replaceAll": boolean().default(False),
+        "note": string().optional(),
         "requestedBy": string(1).optional(),
     },
     strict=True,
@@ -54,6 +61,12 @@ def parse_project_wiring(value: Any) -> Record:
 
 
 def parse_request_wiring_task_input(value: Any) -> Record:
+    """A request of ``changes``; one change's own fields (``action, portA, portB, pins``) are
+    accepted as a request of that single change."""
+    if isinstance(value, dict) and "changes" not in value and "portA" in value:
+        single = {key: value[key] for key in ("action", "portA", "portB", "pins") if key in value}
+        rest = {key: item for key, item in value.items() if key not in single}
+        value = {**rest, "changes": [single]}
     return parse_record(request_wiring_task_input_schema, value)
 
 

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { SignalWidget } from "@teststand/contracts/signals";
 import type { TestRunSnapshot } from "@teststand/contracts/testing";
 import {
@@ -7,6 +8,7 @@ import {
   TerminalSquareIcon, ToggleRightIcon, XIcon, ZoomOutIcon
 } from "lucide-react";
 import { useCurrentTestRun, useSignalCatalog, useTestItemStatus } from "../../lib/queries.js";
+import { queryKeys } from "../../lib/query-keys.js";
 import { useResizableWidth } from "../../lib/resizable.js";
 import { onRunRequested, peekRequestedRun, takeRequestedRun } from "../../lib/run-focus.js";
 import { Button, IconButton, SegmentedControl, Splitter, Toolbar, ToolbarDivider, Tooltip } from "../../ui/index.js";
@@ -20,7 +22,7 @@ import { SignalCanvas } from "./SignalCanvas.js";
 import {
   SPANS, SignalDataProvider, useLiveHub, useSignalTime, type SignalData, type SignalMode, type Span
 } from "./signal-data.js";
-import { WIDGET_LABELS, WIDGET_SIZES, catalogOf, defaultPanel } from "./signal-model.js";
+import { WIDGET_LABELS, WIDGET_SIZES, catalogOf } from "./signal-model.js";
 import { useSignalDocument } from "./use-signal-document.js";
 
 const PALETTE: { widget: SignalWidget; icon: ReactNode }[] = [
@@ -57,6 +59,12 @@ function Pane({ online, onInfo, onControl }: PaneProps) {
   const signals = useSignalCatalog();
   const catalog = useMemo(() => catalogOf(signals.data), [signals.data]);
   const { view, edits } = useSignalDocument();
+  const client = useQueryClient();
+  // The same signal view operation the Agent uses, so both lay a default panel out alike.
+  const defaultPanel = useMutation({
+    mutationFn: () => window.teststand.signals.applyOperations({ operations: [{ type: "default_panel" }] }),
+    onSettled: () => client.invalidateQueries({ queryKey: queryKeys.projectDocument })
+  });
   const run = useCurrentTestRun().data;
   const hub = useLiveHub();
   const [runId, setRunId] = useState<string | undefined>(() => peekRequestedRun() ?? activeRunId(run));
@@ -135,7 +143,7 @@ function Pane({ online, onInfo, onControl }: PaneProps) {
           <ToolbarDivider />
           <Tooltip content="每台已连接的设备放一个节点，每个流配一个默认控件">
             <IconButton label="生成默认面板" size="icon-sm" variant="ghost"
-              onClick={() => edits.replace(defaultPanel(view, catalog))}>
+              disabled={defaultPanel.isPending} onClick={() => defaultPanel.mutate()}>
               <LayoutGridIcon />
             </IconButton>
           </Tooltip>

@@ -8,7 +8,7 @@ from teststand_backend.contracts.errors import AppError
 from teststand_backend.devices import DeviceCatalogService, DeviceStore
 from teststand_backend.projects import ProjectService
 from teststand_backend.storage import SettingsStore
-from teststand_backend.util import Record, iso_from_ms
+from teststand_backend.util import Record
 from teststand_backend.wiring import ProjectWiringService
 
 
@@ -70,7 +70,7 @@ async def test_direct_completion_saves_same_port_pins_and_history(tmp_path: Path
             "portA": "DUT.J1",
             "portB": "DUT.J1",
             "action": "disconnect",
-            "pins": task["pins"],
+            "pins": task["changes"][0]["pins"],
         }
     )
     await service.complete_task(disconnect["wiringTaskId"], "confirmed")
@@ -135,28 +135,6 @@ async def test_completion_is_serialized_and_terminal_tasks_cannot_be_confirmed(
     )
     assert sum(isinstance(outcome, AppError) for outcome in outcomes) == 1
     assert len(projects.wiring()["connections"]) == 1
-
-
-async def test_expired_task_cannot_update_wiring(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    module = "teststand_backend.wiring.project_wiring_service"
-    monkeypatch.setattr(module + ".now_ms", lambda: 1000)
-    service, projects = await setup(tmp_path)
-    task = await service.request_task(
-        {
-            "portA": "DUT.J1",
-            "portB": "DUT.J1",
-            "action": "connect",
-            "pins": [{"a": "1", "b": "2"}],
-            "timeoutMs": 1000,
-        }
-    )
-    assert task["expiresAt"] == iso_from_ms(2000)
-    monkeypatch.setattr(module + ".now_ms", lambda: 2000)
-    with pytest.raises(AppError, match="timed_out"):
-        await service.complete_task(task["wiringTaskId"], "confirmed")
-    assert projects.wiring()["connections"] == []
 
 
 async def test_pending_task_can_be_rejected_without_starting(tmp_path: Path) -> None:

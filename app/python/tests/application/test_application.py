@@ -72,7 +72,7 @@ def make_app() -> tuple[TestStandApplication, Mock, Mock]:
         {"externalName": "S1.measure", "deviceId": "S1", "kind": "hardware"}
     ]
     devices.list_devices.return_value = [{"deviceId": "S1", "hardwareId": "H1", "enabled": True}]
-    wiring = Mock(request_task=AsyncMock(), start_task=AsyncMock())
+    wiring = Mock(request_task=AsyncMock(), complete_task=AsyncMock())
     app = TestStandApplication(
         {
             "devices": devices,
@@ -119,12 +119,12 @@ async def test_agent_denied() -> None:
     app, devices, wiring = make_app()
     # Device management is confirmed per call by the operation registry; operator work is
     # never the agent's.
-    operations = [app.wiring.start_task(AGENT, "WT")]
+    operations = [app.wiring.complete_task(AGENT, "WT", "confirmed")]
     for operation in operations:
         with pytest.raises(Exception) as caught:
             await operation
         assert getattr(caught.value, "category", None) == "permission_denied"
-    wiring.start_task.assert_not_called()
+    wiring.complete_task.assert_not_called()
 
 
 @pytest.mark.ts_case(
@@ -134,9 +134,9 @@ async def test_agent_denied() -> None:
 async def test_human_allowed() -> None:
     app, devices, wiring = make_app()
     await app.devices.remove_device(HUMAN, "S1")
-    await app.wiring.start_task(HUMAN, "WT", "operator")
+    await app.wiring.complete_task(HUMAN, "WT", "confirmed", None, "tester")
     devices.remove_device.assert_awaited_once_with("S1")
-    wiring.start_task.assert_called_once_with("WT", "operator")
+    wiring.complete_task.assert_called_once_with("WT", "confirmed", None, "tester")
 
 
 @pytest.mark.ts_case(

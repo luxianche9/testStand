@@ -146,16 +146,22 @@
     }
   },
   {
-    "operation": "wiring.startTask",
-    "body": {
-      "taskId": "ID"
-    }
-  },
-  {
     "operation": "wiring.completeTask",
     "body": {
       "taskId": "ID",
-      "outcome": "confirmed"
+      "outcome": "rejected",
+      "message": "wrong cable",
+      "operatorName": "tester"
+    }
+  },
+  {
+    "operation": "signals.applyOperations",
+    "body": {
+      "operations": [
+        {
+          "type": "default_panel"
+        }
+      ]
     }
   },
   {

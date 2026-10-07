@@ -7,7 +7,7 @@ import type { OperationName } from "./operations.generated.js";
 import type { ProjectDocument, ProjectFolderSelection, RecentProjectSummary } from "./projects.js";
 import type { LlmSettings, UserSettings } from "./storage.js";
 import type { IcdCheck, IcdDocument, IcdSaveResult, IcdSummary, TestBatch, TestDeviceTools, TestItemStatusList, TestOperationSnapshot, TestPlan, TestPlanDraftAnalysis, TestPlanMutationResult, TestPlanSummary, TestPlanValidation, TestRunLog, TestRunPage, TestRunSnapshot, TestStepCatalogItem, TestUnit } from "./testing.js";
-import type { HardwareSignals } from "./signals.js";
+import type { HardwareSignals, SignalView } from "./signals.js";
 import type { WiringChange, WiringTask } from "./wiring.js";
 
 export { BYTES_RESULT_OPERATIONS, OPERATION_NAMES, type OperationName } from "./operations.generated.js";
@@ -78,7 +78,7 @@ export interface OperationResults {
   "projects.forgetRecent": void;
   "wiring.updateDocument": ProjectDocument;
   "wiring.requestTask": WiringTask;
-  "wiring.startTask": WiringTask;
+  "wiring.requestWiring": WiringTask;
   "wiring.completeTask": WiringTask;
   "wiring.cancelTask": WiringTask;
   "wiring.getTask": WiringTask;
@@ -86,6 +86,8 @@ export interface OperationResults {
   "wiring.listTasks": WiringTask[];
   "signals.catalog": HardwareSignals[];
   "signals.updateDocument": ProjectDocument;
+  "signals.getDocument": SignalView;
+  "signals.applyOperations": SignalView;
   "signals.write": ManualToolInvocationResult;
   "manual.invokeTool": ManualToolInvocationResult;
   "testing.listPlans": TestPlanSummary[];

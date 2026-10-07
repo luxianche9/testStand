@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, Protocol, TypeVar, cast
 from teststand_backend.contracts.devices import parse_device_instance, parse_hardware
 from teststand_backend.contracts.errors import app_error
 from teststand_backend.contracts.operations import operation
+from teststand_backend.contracts.wiring import parse_request_wiring_task_input
 from teststand_backend.devices.plugin_store import PluginStore
 from teststand_backend.util import utc_now_iso
 
@@ -416,9 +417,11 @@ class ProjectsApplication:
         "projects.listRecent",
         capability="projects.read",
         risk="read",
+        profiles=("plan", "explore"),
         idempotency="natural",
     )
     async def list_recent(self, context: Json) -> list[Json]:
+        """Recently opened project folders, newest first; open one with open_project."""
         return await self.projects.list_recent()
 
     @operation(
@@ -478,42 +481,57 @@ class WiringApplication:
         self.wiring.notify_project_changed()
         return document
 
-    @operation("wiring.requestTask", capability="wiring.request", risk="write", profiles=("plan",))
+    @operation("wiring.requestTask", capability="wiring.request", risk="write")
     async def request_task(self, context: Json, input: Json) -> Json:
-        request = {key: input[key] for key in ["portA", "portB", "action"]}
-        request["pins"] = input.get("pins", [])
-        if "timeoutMs" in input:
-            request["timeoutMs"] = input["timeoutMs"]
-        requested_by = input.get("requestedBy", "agent" if context["actor"] == "agent" else None)
-        if requested_by is not None:
-            request["requestedBy"] = requested_by
-        return await self.wiring.request_task(request)
+        """Create one wiring task holding every change; the operator confirms or rejects it once.
+        Returns at once with the pending task."""
+        return await self.wiring.request_task(self._request(context, input))
 
-    @operation("wiring.startTask", capability="wiring.confirm", risk="write")
-    async def start_task(
-        self, context: Json, task_id: str, operator_name: str | None = None
-    ) -> Json:
-        if operator_name is None:
-            return await self.wiring.start_task(task_id)
-        return await self.wiring.start_task(task_id, operator_name)
+    @operation(
+        "wiring.requestWiring",
+        capability="wiring.request",
+        risk="write",
+        profiles=("plan",),
+    )
+    async def request_wiring(self, context: Json, input: Json) -> Json:
+        """Ask the operator to make wiring changes on the bench and wait for the answer. The call
+        returns only when the operator confirmed (the project wiring then holds the changes and is
+        saved) or rejected the request (``message`` says why); cancelling the call cancels the
+        task."""
+        task = await self.wiring.request_task(self._request(context, input))
+        try:
+            return await self.wiring.wait_for_answer(task["wiringTaskId"])
+        except asyncio.CancelledError:
+            await asyncio.shield(
+                self.wiring.cancel_task(task["wiringTaskId"], "The request was cancelled")
+            )
+            raise
+
+    @staticmethod
+    def _request(context: Json, input: Json) -> Json:
+        request = parse_request_wiring_task_input(input)
+        if "requestedBy" not in request and context["actor"] == "agent":
+            request["requestedBy"] = "agent"
+        return request
 
     @operation("wiring.completeTask", capability="wiring.confirm", risk="write")
     async def complete_task(
-        self, context: Json, task_id: str, outcome: str, message: str | None = None
+        self,
+        context: Json,
+        task_id: str,
+        outcome: str,
+        message: str | None = None,
+        operator_name: str = "operator",
     ) -> Json:
-        return await self.wiring.complete_task(task_id, outcome, message)
+        """The operator's answer to a wiring task: ``confirmed`` applies every change and saves
+        the project; ``rejected`` carries the operator's reason in ``message``."""
+        return await self.wiring.complete_task(task_id, outcome, message, operator_name)
 
-    @operation("wiring.cancelTask", capability="wiring.request", risk="write", profiles=("plan",))
+    @operation("wiring.cancelTask", capability="wiring.request", risk="write")
     async def cancel_task(self, context: Json, task_id: str, message: str | None = None) -> Json:
         return await self.wiring.cancel_task(task_id, message)
 
-    @operation(
-        "wiring.getTask",
-        capability="wiring.read",
-        risk="read",
-        profiles=("plan",),
-        idempotency="natural",
-    )
+    @operation("wiring.getTask", capability="wiring.read", risk="read", idempotency="natural")
     def get_task(self, context: Json, task_id: str) -> Json:
         return self.wiring.get_task(task_id)
 
@@ -528,13 +546,7 @@ class WiringApplication:
         """The project's wiring change log: confirmed wiring tasks and manual edits."""
         return self.wiring.list_changes(input)
 
-    @operation(
-        "wiring.listTasks",
-        capability="wiring.read",
-        risk="read",
-        profiles=("plan",),
-        idempotency="natural",
-    )
+    @operation("wiring.listTasks", capability="wiring.read", risk="read", idempotency="natural")
     def list_tasks(self, context: Json, input: Json | None = None) -> list[Json]:
         return self.wiring.list_tasks(input)
 

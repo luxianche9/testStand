@@ -1,5 +1,5 @@
 import type { Hardware, HardwarePort } from "@teststand/contracts/devices";
-import type { PinPair, ProjectWiringConnection, WiringTask } from "@teststand/contracts/wiring";
+import type { PinPair, ProjectWiringConnection, WiringTask, WiringTaskChange } from "@teststand/contracts/wiring";
 import { portLabel } from "../../lib/hardware.js";
 import type { Tone } from "../../ui/cn.js";
 
@@ -19,9 +19,9 @@ export function connectionLabel(connection: ProjectWiringConnection, hardware: H
   return `${portLabel(connection.portA, hardware)} ↔ ${portLabel(connection.portB, hardware)}`;
 }
 
-export function taskTitle(task: WiringTask, hardware: Hardware[]): string {
-  const verb = task.action === "connect" ? "连接" : "断开";
-  return `${verb} ${portLabel(task.portA, hardware)} → ${portLabel(task.portB, hardware)}`;
+export function changeTitle(change: WiringTaskChange, hardware: Hardware[]): string {
+  const verb = change.action === "connect" ? "连接" : "断开";
+  return `${verb} ${portLabel(change.portA, hardware)} → ${portLabel(change.portB, hardware)}`;
 }
 
 export function pinCountText(item: { pins: PinPair[] }): string {
@@ -42,7 +42,6 @@ export function touchesHardware(connection: ProjectWiringConnection, hardwareId:
 export function sortedPair(a: string, b: string): string { return JSON.stringify(a <= b ? [a, b] : [b, a]); }
 export function taskTone(status: WiringTask["status"]): Tone {
   if (status === "confirmed") return "pass";
-  if (status === "in_progress") return "run";
   if (status === "pending") return "invalid";
   if (status === "failed" || status === "rejected") return "fail";
   return "neutral";
@@ -50,11 +49,9 @@ export function taskTone(status: WiringTask["status"]): Tone {
 
 const taskStatusLabels: Record<WiringTask["status"], string> = {
   pending: "待处理",
-  in_progress: "待处理",
   confirmed: "已完成",
   rejected: "未完成",
   cancelled: "已取消",
-  timed_out: "已过期",
   failed: "处理失败"
 };
 
@@ -63,7 +60,30 @@ export function taskStatusLabel(status: WiringTask["status"]): string {
 }
 
 export function isTaskActionable(task: WiringTask): boolean {
-  return task.status === "pending" || task.status === "in_progress";
+  return task.status === "pending";
+}
+
+/** The port pairs a `request_wiring` call asks for, in either of its input forms. */
+export function requestedPairs(args: unknown): string[] {
+  if (!args || typeof args !== "object") return [];
+  const record = args as { changes?: unknown; portA?: unknown; portB?: unknown };
+  const changes = Array.isArray(record.changes) ? record.changes as Array<Record<string, unknown>> : [record];
+  return changes.flatMap((change) =>
+    typeof change.portA === "string" && typeof change.portB === "string"
+      ? [sortedPair(change.portA, change.portB)]
+      : []);
+}
+
+/** The open task a still-waiting `request_wiring` call made: the newest pending task with all its pairs. */
+export function taskForRequest(tasks: WiringTask[], args: unknown): WiringTask | undefined {
+  const wanted = requestedPairs(args);
+  return tasks
+    .filter(isTaskActionable)
+    .filter((task) => {
+      const pairs = new Set(task.changes.map((change) => sortedPair(change.portA, change.portB)));
+      return wanted.every((pair) => pairs.has(pair));
+    })
+    .sort((a, b) => b.requestedAt.localeCompare(a.requestedAt))[0];
 }
 
 /** OpenCode hands MCP results over as the structured object or its JSON text, sometimes wrapped in `data`. */
@@ -73,7 +93,7 @@ export function extractTask(value: unknown): WiringTask | undefined {
   }
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
   const record = value as Record<string, unknown>;
-  if (typeof record.wiringTaskId === "string" && typeof record.portA === "string") {
+  if (typeof record.wiringTaskId === "string" && Array.isArray(record.changes)) {
     return record as unknown as WiringTask;
   }
   if ("data" in record) return extractTask(record.data);

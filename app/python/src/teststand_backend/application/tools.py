@@ -7,14 +7,21 @@ from typing import Any
 
 from teststand_backend.contracts.devices import hardware_schema
 from teststand_backend.contracts.errors import app_error
-from teststand_backend.contracts.operations import PLATFORM_META, WHOLE, Tool
+from teststand_backend.contracts.operations import PLATFORM_META, Tool
+from teststand_backend.contracts.signals import WIDGETS
 from teststand_backend.contracts.validation import (
     array,
+    boolean,
     custom_issue,
+    discriminated,
+    enum,
+    literal,
     number,
     obj,
+    record,
     string,
     union,
+    unknown,
 )
 from teststand_backend.contracts.wiring import (
     pin_pair_schema,
@@ -53,10 +60,6 @@ GLOSSARY = {
     "a": "Exact pinId on portA, copied from that port's pins list.",
     "b": "Exact pinId on portB, copied from that port's pins list.",
     "action": "connect or disconnect requests human work; it never moves a cable automatically.",
-    "timeoutMs": "Pending wiring task expiration in milliseconds; default 86400000 (one day), "
-    "range 1000..604800000.",
-    "wiringTaskId": "ID returned by request_wiring_task; valid only in this application session.",
-    "message": "Optional reason recorded on the task; cancellation does not undo physical wiring.",
     "status": "Filter by the exact lifecycle status; a successful program exit is not a test "
     "verdict.",
     "limit": "Maximum records in this response; use pagination or a narrower filter for more.",
@@ -130,21 +133,31 @@ _HARDWARE = _object(
     },
     ["hardwareId", "kind", "ports"],
 )
-_TASK = _object(
+_CHANGE = _object(
     {
-        "wiringTaskId": _STRING,
-        "status": {"enum": list(wiring_task_status_schema.options["values"])},
         "action": {"enum": ["connect", "disconnect"]},
         "portA": _STRING,
         "portB": _STRING,
         "pins": _array(_object({"a": _STRING, "b": _STRING}, ["a", "b"])),
+    },
+    ["action", "portA", "portB", "pins"],
+)
+_TASK = _object(
+    {
+        "wiringTaskId": _STRING,
+        "status": {"enum": list(wiring_task_status_schema.options["values"])},
+        "changes": _array(_CHANGE),
         "hardwareIds": _array(_STRING),
-        "warnings": _array(_STRING),
+        "note": _STRING,
         "requestedAt": _STRING,
-        "expiresAt": _STRING,
+        "completedAt": _STRING,
+        "operatorName": _STRING,
         "message": _STRING,
     },
-    ["wiringTaskId", "status", "portA", "portB", "pins"],
+    ["wiringTaskId", "status", "changes"],
+)
+_SIGNAL_VIEW = _object(
+    {"nodes": _array(_object({})), "links": _array(_object({}))}, ["nodes", "links"]
 )
 
 _EMPTY = obj({}, strict=True)
@@ -160,8 +173,103 @@ _ROOT = obj(
 )
 _DEVICE_ID = obj({"deviceId": string(1)}, strict=True)
 _HARDWARE_ID = obj({"hardwareId": string(1)}, strict=True)
-_WIRING_TASK_ID = obj({"wiringTaskId": string(1)}, strict=True)
 _ENDPOINT = union(string(1), obj({"hardwareId": string(1), "portId": string(1)}, strict=True))
+_LAYOUT = {
+    "x": number(finite=True).optional().describe("Left edge on the canvas, in canvas pixels."),
+    "y": number(finite=True).optional().describe("Top edge on the canvas, in canvas pixels."),
+    "width": number(positive=True, finite=True)
+    .optional()
+    .describe("Width on the canvas; default: the widget's default size."),
+    "height": number(positive=True, finite=True)
+    .optional()
+    .describe("Height on the canvas; default: the widget's default size."),
+}
+_SIGNAL_END = obj(
+    {
+        "nodeId": string(1).describe("nodeId of a node on the signal view."),
+        "handle": string(1).describe(
+            "A hardware node: the stream id (device) or signalId (passive part). A widget: "
+            "'in' for displays, 'out' for controls (switch, setpoint)."
+        ),
+        "bit": number(0, 63, integer=True)
+        .optional()
+        .describe("One line of a bits stream; omit for the whole stream."),
+    },
+    strict=True,
+)
+_NEW_NODE = string(1).optional().describe(
+    "Id for the new node, so later operations of the batch can refer to it; default: generated."
+)
+
+
+def _op(kind: str, fields: Record) -> Any:
+    return obj({"type": literal(kind).describe(f"The edit: {kind}."), **fields}, strict=True)
+
+
+_SIGNAL_OPERATION = discriminated(
+    "type",
+    {
+        "add_hardware": _op(
+            "add_hardware",
+            {
+                "hardwareId": string(1).describe("Hardware to put on the canvas."),
+                "nodeId": _NEW_NODE,
+                "x": _LAYOUT["x"],
+                "y": _LAYOUT["y"],
+            },
+        ),
+        "add_widget": _op(
+            "add_widget",
+            {
+                "widget": enum(*WIDGETS).describe(
+                    "scope (scalar/bits over time), value (one scalar), lamps (bits), terminal "
+                    "(bytes/frames a bus or serial port sends and receives), switch (writes "
+                    "bits), setpoint (writes a scalar)."
+                ),
+                "nodeId": _NEW_NODE,
+                "label": string().optional().describe("Title shown on the widget."),
+                "config": record(unknown())
+                .optional()
+                .describe("Widget settings, e.g. a scope's {spanMs}; default empty."),
+                **_LAYOUT,
+            },
+        ),
+        "link": _op(
+            "link",
+            {
+                "from": _SIGNAL_END.describe("Where the signal comes from."),
+                "to": _SIGNAL_END.describe("Where the signal goes."),
+                "linkId": string(1).optional().describe("Id for the new link; default: generated."),
+            },
+        ),
+        "remove_node": _op(
+            "remove_node", {"nodeId": string(1).describe("Node to remove, with its links.")}
+        ),
+        "remove_link": _op("remove_link", {"linkId": string(1).describe("Link to remove.")}),
+        "update_widget": _op(
+            "update_widget",
+            {
+                "nodeId": string(1).describe("Widget node to change."),
+                "label": string().optional().describe("New title."),
+                "config": record(unknown())
+                .optional()
+                .describe("Settings merged into the widget's config."),
+            },
+        ),
+        "move_node": _op(
+            "move_node", {"nodeId": string(1).describe("Node to move or resize."), **_LAYOUT}
+        ),
+        "default_panel": _op(
+            "default_panel",
+            {
+                "hardwareIds": array(string(1))
+                .optional()
+                .describe("Devices to lay out; default: every known device.")
+            },
+        ),
+        "clear": _op("clear", {}),
+    },
+)
 
 
 def _with_endpoints(hardware: Record) -> Record:
@@ -183,12 +291,16 @@ def _hardware_list(items: list[Record]) -> list[Record]:
     return [_with_endpoints(item) for item in items]
 
 
+def _endpoint(value: Any) -> str:
+    return f"{value['hardwareId']}.{value['portId']}" if isinstance(value, dict) else str(value)
+
+
 def _wiring_request(value: Record) -> Record:
-    value = dict(value)
-    for key in ("portA", "portB"):
-        if isinstance(value[key], dict):
-            value[key] = f"{value[key]['hardwareId']}.{value[key]['portId']}"
-    return {"input": value}
+    changes = [
+        {**change, "portA": _endpoint(change["portA"]), "portB": _endpoint(change["portB"])}
+        for change in value["changes"]
+    ]
+    return {"input": {**value, "changes": changes}}
 
 
 def _platform(*args: Any, **options: Any) -> Tool:
@@ -325,59 +437,72 @@ PLATFORM_TOOLS = [
         fields=("hardwareId",),
     ),
     _platform(
-        "request_wiring_task",
-        "创建人工 connect/disconnect 接线待办，返回 wiringTaskId 和状态；本调用不移动任何线缆。"
-        "端点和 pinId 必须来自目录的规范引用。确认后更新项目连接记录，待办本身属于应用会话。",
+        "request_wiring",
+        "请操作员在台架上完成一组人工接线变更（connect/disconnect），并一直等到操作员在对话中"
+        "确认或拒绝才返回。应一次给出整个工程需要的全部接线（replaceAll 还会断开未列出的已保存"
+        "连接），操作员只批准一次。confirmed：工程接线已按这些变更更新并保存；rejected：message "
+        "是操作员的理由，按理由修改后再请求。确认是人工记录，不是电气测量。",
         obj(
             {
-                "portA": _ENDPOINT,
-                "portB": _ENDPOINT,
-                "pins": array(pin_pair_schema)
-                .default([])
+                "changes": array(
+                    obj(
+                        {
+                            "action": wiring_action_schema,
+                            "portA": _ENDPOINT,
+                            "portB": _ENDPOINT,
+                            "pins": array(pin_pair_schema)
+                            .default([])
+                            .describe(
+                                "Explicit pin mapping; a belongs to portA and b to portB. Empty "
+                                "is permitted only for different ports."
+                            ),
+                        },
+                        strict=True,
+                    ),
+                    1,
+                ).describe("Every wiring change of this request; each port pair once."),
+                "replaceAll": boolean()
+                .default(False)
                 .describe(
-                    "Explicit pin mapping; a belongs to portA and b to portB. Empty is "
-                    "permitted only for different ports."
+                    "true: changes are the whole wiring the project needs; saved connections "
+                    "whose port pair is not in changes are disconnected too."
                 ),
-                "action": wiring_action_schema,
-                "timeoutMs": number(1000, 7 * 86_400_000, integer=True).default(86_400_000),
+                "note": string()
+                .optional()
+                .describe("Why this wiring is needed; shown to the operator with the changes."),
             },
             strict=True,
         ),
         _TASK,
-        operation="wiring.requestTask",
+        operation="wiring.requestWiring",
         arguments=_wiring_request,
+        waits=True,
     ),
     _platform(
-        "cancel_wiring_task",
-        "取消尚未完成的接线待办。取消待办不会撤销已经插好的线，也不会自动断开已确认连接；"
-        "检查返回的当前状态。",
-        obj({"wiringTaskId": string(1), "message": string().optional()}, strict=True),
-        _TASK,
-        operation="wiring.cancelTask",
-        fields=("wiringTaskId", "message"),
+        "get_signal_view",
+        "读取工程的信号视图：画布上的硬件节点、控件节点（scope/value/lamps/terminal/switch/"
+        "setpoint）及它们之间的信号连线。信号视图是逻辑信号，与针脚无关；物理接线见 get_project。",
+        _EMPTY,
+        _SIGNAL_VIEW,
+        operation="signals.getDocument",
     ),
     _platform(
-        "get_wiring_task",
-        "读取本应用会话中的一个接线待办。返回状态、到期时间和结果；confirmed 是人工确认记录，"
-        "不是电气测量。重启后任务可能不存在。",
-        _WIRING_TASK_ID,
-        _TASK,
-        operation="wiring.getTask",
-        fields=("wiringTaskId",),
-    ),
-    _platform(
-        "list_wiring_tasks",
-        "按状态列出当前会话最近的接线待办，limit默认100、最大500。列表为空不代表工程没有已保存"
-        "连接；已有连接应查询 get_project。",
+        "apply_signal_view_operations",
+        "按顺序对信号视图执行一组编辑并整体校验，全部生效或全部不生效：add_hardware、add_widget、"
+        "link、remove_node（连同其连线）、remove_link、update_widget、move_node、default_panel"
+        "（给每台已知设备的每个流配默认控件，同画布的“默认面板”）、clear。新节点/连线可自带 "
+        "nodeId/linkId 供同批后续操作引用。连线方向：设备流→被测对象信号或显示控件的 in；控制控件"
+        "的 out→可写的设备流。返回编辑后的信号视图；与画布编辑一样，save_project 前只在工程缓冲区。",
         obj(
             {
-                "status": wiring_task_status_schema.optional(),
-                "limit": number(1, 500, integer=True).default(100),
+                "operations": array(_SIGNAL_OPERATION, 1).describe(
+                    "Edits applied in order to the signal view."
+                )
             },
             strict=True,
         ),
-        _array(_TASK),
-        operation="wiring.listTasks",
-        fields=(WHOLE,),
+        _SIGNAL_VIEW,
+        operation="signals.applyOperations",
+        fields=("operations",),
     ),
 ]

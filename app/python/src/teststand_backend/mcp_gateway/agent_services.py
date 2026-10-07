@@ -80,19 +80,15 @@ async def _wait(app: Any, context: Json, value: Json) -> Json:
     deadline = time.monotonic() + value["timeoutMs"] / 1000
     baseline = value.get("revision")
     while True:
-        if kind == "wiring":
-            status = app.wiring.get_task(context, identifier)
-            terminal = status["status"] not in {"pending", "in_progress"}
-        else:
-            # Cached status is updated by the platform. Waiting never reconnects a device.
-            dashboard = app.system.dashboard(context)
-            if not any(instance["deviceId"] == identifier for instance in dashboard["devices"]):
-                raise app_error("not_found", f"Unknown device: {identifier}")
-            status = next(
-                (item for item in dashboard["deviceStatuses"] if item["deviceId"] == identifier),
-                {"deviceId": identifier},
-            )
-            terminal = status.get("transport", {}).get("state") in {"online", "offline", "error"}
+        # Cached status is updated by the platform. Waiting never reconnects a device.
+        dashboard = app.system.dashboard(context)
+        if not any(instance["deviceId"] == identifier for instance in dashboard["devices"]):
+            raise app_error("not_found", f"Unknown device: {identifier}")
+        status = next(
+            (item for item in dashboard["deviceStatuses"] if item["deviceId"] == identifier),
+            {"deviceId": identifier},
+        )
+        terminal = status.get("transport", {}).get("state") in {"online", "offline", "error"}
         revision = _revision(status)
         if baseline is None:
             baseline = revision
@@ -383,12 +379,13 @@ AGENT_TOOLS = [
     ),
     Tool(
         "wait_for_status",
-        "Observe an existing wiring task or service for at most 30 seconds, returning on "
-        "change/terminal state. Reuse revision to wait again. Timeout never replays an action.",
+        "Observe a device service for at most 30 seconds, returning on change/terminal state. "
+        "Reuse revision to wait again. Timeout never replays an action. (request_wiring waits "
+        "for the operator by itself.)",
         obj(
             {
-                "kind": enum("wiring", "service").describe("Existing object type."),
-                "id": string(1).describe("wiringTaskId or deviceId matching kind."),
+                "kind": enum("service").describe("Existing object type."),
+                "id": string(1).describe("deviceId of the service."),
                 "revision": string()
                 .optional()
                 .describe("Opaque revision from the preceding wait; omit for first wait."),
@@ -406,12 +403,12 @@ AGENT_TOOLS = [
                 "changed": _field(
                     "boolean", "State changed relative to supplied/initial revision."
                 ),
-                "terminal": _field("boolean", "Wiring terminal or service observation stable."),
+                "terminal": _field("boolean", "Service observation stable."),
                 "timedOut": _field(
                     "boolean", "Wait expired without change/terminal; action status is separate."
                 ),
                 "observedAt": _field("string", "UTC observation time."),
-                "status": _field("object", "Current Wiring/service status."),
+                "status": _field("object", "Current service status."),
             },
             ["kind", "id", "revision", "changed", "terminal", "timedOut", "observedAt", "status"],
         ),

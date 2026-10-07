@@ -264,14 +264,18 @@ async def test_registry_context_and_structured_endpoints(tmp_path: Path) -> None
     Draft202012Validator(schema).validate(context)
     await registry.invoke(
         CONTEXT,
-        "request_wiring_task",
+        "request_wiring",
         {
-            "portA": {"hardwareId": "H", "portId": "H.P1"},
-            "portB": "H.H.P2",
-            "action": "connect",
+            "changes": [
+                {
+                    "portA": {"hardwareId": "H", "portId": "H.P1"},
+                    "portB": "H.H.P2",
+                    "action": "connect",
+                }
+            ]
         },
     )
-    assert wiring.request_task.call_args.args[0]["portA"] == "H.H.P1"
+    assert wiring.request_task.call_args.args[0]["changes"][0]["portA"] == "H.H.P1"
 
 
 async def test_all_public_builtin_schemas_allow_recoverable_errors() -> None:

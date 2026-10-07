@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 from teststand_backend.contracts.errors import app_error
 from teststand_backend.contracts.operations import operation
 from teststand_backend.contracts.signals import parse_signal_view, parse_signal_write_input
+from teststand_backend.signals.signal_ops import apply_operations
 from teststand_backend.signals.signal_view import resolve, validate, write_call
 
 from .authorization import Authorizer, Json
@@ -31,6 +32,9 @@ class _Catalog:
 
     def __init__(self, catalog: DeviceCatalogService, devices: DeviceService) -> None:
         self.catalog, self.devices = catalog, devices
+
+    def list_hardware(self) -> list[Json]:
+        return self.catalog.list_hardware()
 
     def find_hardware(self, hardware_id: str) -> Json | None:
         return self.catalog.find_hardware(hardware_id)
@@ -98,11 +102,43 @@ class SignalsApplication:
         return document
 
     @operation(
+        "signals.getDocument",
+        capability="projects.read",
+        risk="read",
+        profiles=("plan", "explore"),
+        idempotency="natural",
+    )
+    def get_document(self, context: Json) -> Json:
+        """The project's signal view: hardware and widget nodes on the canvas and the links
+        between them."""
+        return self.projects.signals()
+
+    @operation(
+        "signals.applyOperations",
+        capability="projects.manage",
+        risk="write",
+        profiles=("plan", "explore"),
+    )
+    async def apply_operations(self, context: Json, operations: list[Json]) -> Json:
+        """Edit the signal view with a list of operations applied in order; the whole batch is
+        checked by the signal view rules and applied completely or not at all. Returns the
+        resulting view. Like a canvas edit, it stays in the project buffer until the project is
+        saved."""
+        view = apply_operations(self.projects.signals(), operations, self.signals)
+        document = await self.update_document(context, view)
+        return document["file"]["signals"]
+
+    @operation(
         "signals.write",
         capability="hardware.executeTools",
         risk="actuate",
+        profiles=("explore",),
     )
     async def write(self, context: Json, input: Json) -> Json:
+        """Write a signal the way a control widget does: ``input`` is ``{nodeId, handle, bit?,
+        action, value}`` naming a node and handle on the signal view; action is one of the
+        stream's control actions (set, setBit, setMask, sendText, sendHex, sendFrame). Refused
+        while a test runs."""
         request = parse_signal_write_input(input)
         end: Json = {key: request[key] for key in ("nodeId", "handle", "bit") if key in request}
         target = resolve(self.projects.signals(), self.signals, end)
