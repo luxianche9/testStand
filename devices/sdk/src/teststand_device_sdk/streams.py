@@ -3,9 +3,10 @@
 A stream is declared in ``/device.streams`` by :meth:`Stream.describe`:
 ``{id, type}`` plus the optional constructor metadata ``unit``, ``width``,
 ``bitLabels``, ``rateHz`` (sampled streams), ``writable`` (bytes/frames with a
-writer), ``idScheme``, ``label`` and ``kind`` (``measured`` or ``setpoint``;
+writer), ``idScheme``, ``label``, ``kind`` (``measured`` or ``setpoint``;
 a setpoint stream is the software shadow of a commanded value, never evidence
-of the physical output). Records share one :class:`RingBuffer` between the
+of the physical output) and ``control`` (the tools that write it, :mod:`.control`).
+Records share one :class:`RingBuffer` between the
 host's stream reads (:meth:`~.host.DeviceHost.read_stream`) and the stream tools, so viewers,
 recorders and AI tools see the same sequence numbers. Record payloads per type (``seq``, ``t`` and optional ``op`` are
 added by the SDK):
@@ -41,6 +42,7 @@ from collections.abc import Callable, Iterator, Mapping, Sequence
 from typing import Any, ClassVar
 
 from .clock import now_ms
+from .control import StreamControl
 from .errors import INVALID_ARGUMENT, NOT_CONFIGURED, NOT_SUPPORTED, DeviceError
 from .operation import current
 from .ringbuffer import RingBuffer
@@ -63,7 +65,8 @@ class Stream:
     type: ClassVar[str] = ""
 
     def __init__(self, stream_id: str, *, capacity: int = 4096, max_weight: int | None = None,
-                 label: str | None = None, kind: str | None = None) -> None:
+                 label: str | None = None, kind: str | None = None,
+                 control: Sequence[StreamControl] | None = None) -> None:
         if not STREAM_ID.match(stream_id):
             raise ValueError(f"Invalid streamId {stream_id!r}; use 1-64 of [A-Za-z0-9_.-]")
         if kind is not None and kind not in STREAM_KINDS:
@@ -71,6 +74,8 @@ class Stream:
         self.stream_id = stream_id
         self.label = label
         self.kind = kind
+        self.controls = list(control or ())
+        """The tools that write this stream (``/device.streams[].control``); checked when the host starts."""
         self.declaration: dict[str, Any] = {}
         """Type-specific ``describe()`` fields (``unit``, ``width``, ...); ``None`` values are omitted."""
         self.buffer = RingBuffer(capacity, max_weight=max_weight)
@@ -120,8 +125,9 @@ class Stream:
         result["watermark"] = self.buffer.watermark()
         return result
 
-    def describe(self) -> dict[str, Any]:
-        """Declaration for ``/device.streams``: ``{id, type}`` plus the metadata that is set."""
+    def describe(self, prefix: str = "") -> dict[str, Any]:
+        """Declaration for ``/device.streams``: ``{id, type}`` plus the metadata that is set; ``prefix``
+        is the device's tool prefix, so ``control`` names the tools as ``/device.tools`` does."""
         result: dict[str, Any] = {"id": self.stream_id, "type": self.type}
         for key in ("unit", "width", "bitLabels", "display", "codeLabels"):
             if self.declaration.get(key) is not None:
@@ -135,6 +141,8 @@ class Stream:
             result["label"] = self.label
         if self.kind is not None:
             result["kind"] = self.kind
+        if self.controls:
+            result["control"] = [item.describe(prefix) for item in self.controls]
         return result
 
     # --- demand ---------------------------------------------------------
@@ -169,8 +177,8 @@ class ScalarStream(Stream):
 
     def __init__(self, stream_id: str, *, sample: Callable[[], float | None] | None = None, rate_hz: float = 10.0,
                  capacity: int = 4096, unit: str | None = None, label: str | None = None,
-                 kind: str | None = None) -> None:
-        super().__init__(stream_id, capacity=capacity, label=label, kind=kind)
+                 kind: str | None = None, control: Sequence[StreamControl] | None = None) -> None:
+        super().__init__(stream_id, capacity=capacity, label=label, kind=kind, control=control)
         self.declaration["unit"] = unit
         if sample is not None:
             Sampler([self], lambda: [sample()], rate_hz=rate_hz)
@@ -204,8 +212,9 @@ class BitsStream(Stream):
                  publish_on_change: bool = False, capacity: int = 4096, width: int | None = None,
                  bit_labels: Sequence[str] | None = None, label: str | None = None,
                  kind: str | None = None, display: str | None = None,
-                 code_labels: Mapping[int, str] | None = None) -> None:
-        super().__init__(stream_id, capacity=capacity, label=label, kind=kind)
+                 code_labels: Mapping[int, str] | None = None,
+                 control: Sequence[StreamControl] | None = None) -> None:
+        super().__init__(stream_id, capacity=capacity, label=label, kind=kind, control=control)
         labels = list(bit_labels) if bit_labels is not None else None
         if width is None and labels is not None:
             width = len(labels)
@@ -248,8 +257,9 @@ class ByteStream(Stream):
 
     def __init__(self, stream_id: str, *, writer: Callable[[bytes], int | None] | None = None,
                  capacity: int = 65536, max_bytes: int = 1 << 20, label: str | None = None,
-                 kind: str | None = None) -> None:
-        super().__init__(stream_id, capacity=capacity, max_weight=max_bytes, label=label, kind=kind)
+                 kind: str | None = None, control: Sequence[StreamControl] | None = None) -> None:
+        super().__init__(stream_id, capacity=capacity, max_weight=max_bytes, label=label, kind=kind,
+                         control=control)
         self.writer = writer
         self.declaration["writable"] = writer is not None
 
@@ -296,8 +306,8 @@ class FrameStream(Stream):
 
     def __init__(self, stream_id: str, *, writer: Callable[[int, bytes], Any] | None = None,
                  capacity: int = 16384, id_scheme: str | None = None, label: str | None = None,
-                 kind: str | None = None) -> None:
-        super().__init__(stream_id, capacity=capacity, label=label, kind=kind)
+                 kind: str | None = None, control: Sequence[StreamControl] | None = None) -> None:
+        super().__init__(stream_id, capacity=capacity, label=label, kind=kind, control=control)
         if id_scheme is not None and id_scheme not in ID_SCHEMES:
             raise ValueError(f"{stream_id}: id_scheme must be one of {ID_SCHEMES}, got {id_scheme!r}")
         self.writer = writer
@@ -516,6 +526,8 @@ class StreamRegistry(Mapping[str, Stream]):
             raise TypeError(f"{stream.stream_id}: use a typed stream class, not {type(stream).__name__}")
         if stream.stream_id in self._streams:
             raise ValueError(f"Duplicate streamId {stream.stream_id}")
+        for item in stream.controls:
+            item.check(stream.stream_id, stream.type)
         self._streams[stream.stream_id] = stream
         return stream
 
@@ -549,8 +561,8 @@ class StreamRegistry(Mapping[str, Stream]):
                 seen.setdefault(id(stream.sampler), stream.sampler)
         return list(seen.values())
 
-    def describe(self) -> list[dict[str, Any]]:
-        return [stream.describe() for stream in self._streams.values()]
+    def describe(self, prefix: str = "") -> list[dict[str, Any]]:
+        return [stream.describe(prefix) for stream in self._streams.values()]
 
     def bind(self, available: Callable[[], bool], io_lock: Any) -> None:
         for stream in self._streams.values():

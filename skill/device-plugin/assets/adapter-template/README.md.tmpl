@@ -10,7 +10,7 @@ TODO(new_device)：逐条写出每个工具的通道编号、单位、范围、�
 
 ## 流
 
-TODO(new_device)：列出每个流在 `/device.streams` 里的声明（`id`、`type`、`unit`、`label`、`kind`、`width` / `bitLabels`），采样型还是写路径发布、默认采样率（`settings` 键）、前置状态（未满足时 `not_configured`）。位图写明 bit i 对应哪一路；字节流写明哪些事件写 `mark`、读线程何时调 `idle()`。流协议见 `skill/device-plugin/references/streams.md`。
+TODO(new_device)：列出每个流在 `/device.streams` 里的声明（`id`、`type`、`unit`、`label`、`kind`、`width` / `bitLabels`，可写的流还有 `control`），采样型还是写路径发布、默认采样率（`settings` 键）、前置状态（未满足时 `not_configured`）。位图写明 bit i 对应哪一路；字节流写明哪些事件写 `mark`、读线程何时调 `idle()`。流协议见 `skill/device-plugin/references/streams.md`。
 
 ## `settings`
 

@@ -1,4 +1,4 @@
-"""/device declaration (contract 2026-10-01.1)."""
+"""/device declaration (contract 2026-10-07.1)."""
 
 from __future__ import annotations
 
@@ -37,8 +37,10 @@ def test_device_declaration_shape(hh):
         {"id": "di", "type": "bits", "width": 4, "bitLabels": ["DI0", "DI1", "DI2", "DI3"], "rateHz": 50.0},
         {"id": "ai0", "type": "scalar", "unit": "V", "rateHz": 50.0, "label": "AI0"},
         {"id": "scope", "type": "block", "rateHz": 20.0},
-        {"id": "do", "type": "bits", "width": 4, "kind": "setpoint"},
-        {"id": "serial1", "type": "bytes", "writable": True},
+        {"id": "do", "type": "bits", "width": 4, "kind": "setpoint", "control": [
+            {"action": "setBit", "tool": "demo_set_level", "args": {"channel": {"$": "bit"}, "level": {"$": "value"}}}]},
+        {"id": "serial1", "type": "bytes", "writable": True, "control": [
+            {"action": "sendText", "tool": "demo_write_text", "args": {"text": {"$": "text"}}}]},
         {"id": "cam", "type": "blob"}]
     tools = {item["name"]: item["kind"] for item in document["tools"]}
     assert set(tools) == set(hh.tools)

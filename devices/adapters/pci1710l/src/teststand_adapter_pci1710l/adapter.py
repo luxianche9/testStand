@@ -12,13 +12,16 @@ import os
 from typing import Any, Literal
 
 from teststand_device_sdk import (
+    BIT,
     NOT_CONFIGURED,
+    VALUE,
     BitsStream,
     Device,
     DeviceError,
     JsonLineBackend,
     Pinout,
     ScalarStream,
+    control,
     DeviceConfig,
     model,
     param,
@@ -96,7 +99,8 @@ class Pci1710l(Device):
                                               rate_hz=float(settings.get("bitRateHz", 20)),
                                               bit_labels=[f"DI{bit}" for bit in range(CHANNELS)], kind="measured"))
         self.do = self.streams.add(BitsStream("do", bit_labels=[f"DO{bit}" for bit in range(CHANNELS)],
-                                              label="DO controller readback"))
+                                              label="DO controller readback",
+                                              control=[control("setBit", "set_level", channel=BIT, level=VALUE)]))
 
     def _request(self, command: dict[str, Any]) -> Any:
         return unwrap(self.cli.call(command))

@@ -14,7 +14,7 @@
 ## 流
 
 - `di`（bits，`width: 16`，`bitLabels` IDI0–IDI15，`kind: "measured"`）：16 位输入位图，有人订阅时采样（`settings.bitRateHz`，默认 20 Hz），仅变化时发布。
-- `relay`（bits，`width: 16`，`bitLabels` R0–R15）：每次 `set_relay` / `set_bank` / `safe_state` 后立即读回线圈控制位图并发布（写失败也发布实际回读）；不是触点通断测量。
+- `relay`（bits，`width: 16`，`bitLabels` R0–R15）：每次 `set_relay` / `set_bank` / `safe_state` 后立即读回线圈控制位图并发布（写失败也发布实际回读）；不是触点通断测量。`control`：`setBit` → `set_relay`，`setMask` → `set_bank`。
 - 位图用 hwcli 的 `read_mask` 命令一次读取。继电器回读比写入晚几毫秒；另一块 DAQNavi 板卡刚打开后的约 2 秒内，写入会晚 1～3 秒才到板卡。桥接程序在每次写后等回读一致（最多 3 s）再应答，超时则该次写入报错。
 
 

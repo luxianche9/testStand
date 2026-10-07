@@ -52,7 +52,7 @@ class Pci1234(Device):
 |---|---|
 | `config: DeviceConfig` | 见下文 |
 | `hardware_id`、`dry_run` | 来自配置；`dry_run` 只在适配器测试和 `--check` 中为真 |
-| `streams: StreamRegistry` | `self.streams.add(stream)` 返回该流，重复 id 报错；`self.streams.scan(streams, fn, rate_hz=)` 建扫描组。见 `streams.md` |
+| `streams: StreamRegistry` | `self.streams.add(stream)` 返回该流，重复 id 报错；`self.streams.scan(streams, fn, rate_hz=)` 建扫描组。可写的流用 `control=[control(action, tool, **args)]` 声明写它的工具（占位符 `VALUE`、`BIT`、`TEXT`、`HEX`、`FRAME_ID`）。见 `streams.md` |
 | `io_lock: threading.RLock` | SDK 采样线程持有它调用 `sample()`；适配器自己的后台线程（串口读线程）和字节流写入器访问驱动时也必须持有。工具调用之间已由 SDK 的操作锁串行 |
 | `select_driver(real, simulated)` | 模拟模式时构造模拟器，否则构造真实驱动；两者都是无参可调用对象 |
 | `tool_name(name)` | `f"{prefix}_{name}"` |
@@ -188,4 +188,4 @@ self.waveform = SoftwareWaveform(self._waveform_write, lock=self.io_lock,
 
 命令行等价物：`uv run python -m teststand_device_sdk --adapter <adapter> --check`，输出一行 JSON `{adapter, ok, failures, warnings}`；有失败时退出码 1，警告不影响退出码。它只用模拟器，从不访问硬件。
 
-`--check` 检查：工具元数据（描述长度、注解、`operationSemantics`、`actuate` 不可重试、参数描述）、`list_hardware` 恰好一项且 `open`、`/device` 的形状、修订号与身份、`safe` 工具连续两次成功、`operationId` 回传与 `streamRefs`、每条流的记录格式、`seq`/`t` 递增与水位推进、事件流的 `idle()`、有界数值参数越界被拒绝。
+`--check` 检查：工具元数据（描述长度、注解、`operationSemantics`、`actuate` 不可重试、参数描述）、`list_hardware` 恰好一项且 `open`、`/device` 的形状、修订号与身份、流 `control` 指向 `actuate` 工具、`safe` 工具连续两次成功、`operationId` 回传与 `streamRefs`、每条流的记录格式、`seq`/`t` 递增与水位推进、事件流的 `idle()`、有界数值参数越界被拒绝。

@@ -16,7 +16,7 @@
 
 - `ai0`–`ai15`（scalar，`unit: "V"`，`kind: "measured"`）：一个扫描组，一次扫描读全部已配置通道并共享时间戳（`settings.aiRateHz`，默认 20 Hz）；未配置通道 `status: not_configured`。`read_voltage` 的读数也发布到对应流并带调用的 `op`。
 - `di`（bits，`width: 16`，`bitLabels` DI0–DI15）：16 位输入位图，仅变化时发布（`settings.bitRateHz`，默认 20 Hz）。
-- `do`（bits，`width: 16`，`bitLabels` DO0–DO15）：每次 `set_level` / `safe_state` 后立即读回控制位图并发布。
+- `do`（bits，`width: 16`，`bitLabels` DO0–DO15）：每次 `set_level` / `safe_state` 后立即读回控制位图并发布。`control`：`setBit` → `set_level`。
 - 采样只在有订阅时进行，与工具调用共用设备锁。位图用 hwcli 的 `read_mask` 命令一次读取。
 - dry-run 下 AI 默认读 0.0 V；`HARDWARE_DRY_RUN_AI_NOISE=1` 时返回带噪声的演示值。
 

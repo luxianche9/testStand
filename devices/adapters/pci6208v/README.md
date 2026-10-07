@@ -15,7 +15,7 @@
 
 ## 流
 
-- `ao0`–`ao7`（scalar，`unit: "V"`，`kind: "setpoint"`）：每次成功写入（含 `safe_state` 和每个软件波形点）即发布软件影子，记录带调用的 `op`；不访问硬件，也不是测量值。
+- `ao0`–`ao7`（scalar，`unit: "V"`，`kind: "setpoint"`）：每次成功写入（含 `safe_state` 和每个软件波形点）即发布软件影子，记录带调用的 `op`；不访问硬件，也不是测量值。`control`：`set` → `set_voltage`。
 
 
 ## 构建与测试

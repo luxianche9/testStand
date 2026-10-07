@@ -1,6 +1,6 @@
 # 插件契约
 
-后端、测试引擎、AI 网关和桌面端都只依赖这份契约。SDK 已经实现了除设备工具以外的全部内容；适配器保证设备工具和设备声明真实。契约版本 `contractRevision` 为 `2026-10-01.1`，出现在 `get_device_info`、`capabilityDetails`、`/device` 和每个设备工具的 `_meta.teststand` 里。
+后端、测试引擎、AI 网关和桌面端都只依赖这份契约。SDK 已经实现了除设备工具以外的全部内容；适配器保证设备工具和设备声明真实。契约版本 `contractRevision` 为 `2026-10-07.1`，出现在 `get_device_info`、`capabilityDetails`、`/device` 和每个设备工具的 `_meta.teststand` 里。
 
 ## 加载与进程
 
@@ -47,7 +47,7 @@
 `DeviceHost.manifest()` 生成，`describe()` 里的 `device` 就是它：
 
 ```json
-{"manifestRevision": "sha256:<hex>", "contractRevision": "2026-10-01.1",
+{"manifestRevision": "sha256:<hex>", "contractRevision": "2026-10-07.1",
  "identity": {"deviceId": "...", "hardwareId": "...", "manufacturer": "ADLINK", "model": "PCI-6208V",
               "hardwareRevision": "...", "adapter": {"name": "teststand_adapter_pci6208v", "version": "0.2.0"},
               "sdkVersion": "0.2.0", "dryRun": false},
@@ -61,7 +61,7 @@
 - 声明只读软件状态，从不访问驱动；设备不可达时也能生成。
 - `identity.hardwareRevision` 来自 `Device.hardware_revision`，未设置时省略；`dryRun` 表示实际使用了模拟驱动。
 - `pinout` 是适配器 `pinout()` 的结果（`not_supported` 时为 `null`），`None` 字段省略。
-- `streams` 是每个流的 `describe()`，见 `streams.md`。
+- `streams` 是每个流的 `describe()`，见 `streams.md`。可写的流带 `control: [{action, tool, args}]`，`tool` 是 `tools[]` 里的完整工具名且必须是 `actuate`。
 - `tools[].kind` 为 `read` / `configure` / `actuate` / `safe` / `internal`。
 - `manifestRevision` 是规范化 JSON 声明的 sha256。它变了（声明变了，或 `capability_details()` 的生效设置、模拟模式变了），后端更新缓存的声明。
 

@@ -21,13 +21,16 @@ from typing import Any, Literal
 
 from teststand_device_sdk import (
     DEVICE_UNREACHABLE,
+    HEX,
     INVALID_ARGUMENT,
     NOT_CONFIGURED,
+    TEXT,
     ByteStream,
     Device,
     DeviceError,
     Pinout,
     DeviceConfig,
+    control,
     model,
     param,
     tool,
@@ -164,7 +167,9 @@ class Cp118uI(Device):
         self._reader: threading.Thread | None = None
         for channel in self.port_map:
             self.streams.add(ByteStream(f"serial{channel}", writer=lambda data, ch=channel: self._send(ch, data),
-                                        max_bytes=self.rx_buffer_bytes))
+                                        max_bytes=self.rx_buffer_bytes,
+                                        control=[control("sendText", "write_text", channel=channel, text=TEXT),
+                                                 control("sendHex", "write_hex", channel=channel, hex_data=HEX)]))
 
     def _stream(self, channel: int) -> ByteStream:
         stream = self.streams[f"serial{channel}"]

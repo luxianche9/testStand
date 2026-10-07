@@ -81,7 +81,9 @@ def test_write_publishes_to_stream_and_read_last(hh):
 
 def test_streams_are_ao_setpoints(hh):
     assert hh.device()["streams"] == [
-        {"id": f"ao{n}", "type": "scalar", "unit": "V", "label": f"AO{n}", "kind": "setpoint"} for n in range(8)]
+        {"id": f"ao{n}", "type": "scalar", "unit": "V", "label": f"AO{n}", "kind": "setpoint", "control": [
+            {"action": "set", "tool": "pci6208v_set_voltage", "args": {"channel": n, "volts": {"$": "value"}}}]}
+        for n in range(8)]
 
 
 def test_device_declaration(hh):
