@@ -37,7 +37,8 @@ test.describe.serial("manual control and Agent hardware calls", () => {
         settings: {}, enabled: true
       } });
       const status = await window.teststand.devices.refreshDevice({ deviceId: "E2E_RELAY" });
-      await window.teststand.wiring.updateDocument({ wiring: { nodes: [{ hardwareId, x: 20, y: 20, portPositions: {} }], connections: [] } });
+      await window.teststand.signals.updateDocument({ signals: {
+        nodes: [{ nodeId: "card", kind: "hardware", hardwareId, x: 20, y: 20 }], links: [] } });
       await window.teststand.projects.saveProject();
       await window.teststand.projects.leaveProject();
       return status;

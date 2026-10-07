@@ -96,10 +96,6 @@ test.describe.serial("testStand folder project desktop", () => {
           ]
         } });
       }
-      await window.teststand.wiring.updateDocument({ wiring: { nodes: [
-        { hardwareId: "DUT_A", x: 10, y: 10, portPositions: {} },
-        { hardwareId: "DUT_B", x: 200, y: 10, portPositions: {} }
-      ], connections: [] } });
       const pending = await window.teststand.wiring.requestTask({ input: { portA: "DUT_A.J1", portB: "DUT_B.J1", pins: [{ a: "1", b: "1" }, { a: "2", b: "2" }], action: "connect" } });
       await window.teststand.wiring.startTask({ taskId: pending.wiringTaskId, operatorName: "e2e" });
       await window.teststand.wiring.completeTask({ taskId: pending.wiringTaskId, outcome: "confirmed" });
@@ -268,7 +264,9 @@ test.describe.serial("testStand folder project desktop", () => {
     await page.evaluate(async () => {
       const current = await window.teststand.projects.document();
       if (!current) throw new Error("project missing");
-      await window.teststand.wiring.updateDocument({ wiring: { ...current.file.wiring, nodes: [...current.file.wiring.nodes, { hardwareId: "EXTRA", x: 300, y: 20, portPositions: {} }] } });
+      const signals = current.file.signals;
+      await window.teststand.signals.updateDocument({ signals: { ...signals, nodes: [...signals.nodes,
+        { nodeId: "extra", kind: "widget", widget: "value", label: "", config: {}, x: 300, y: 20 }] } });
     });
     await requestLeaveProject(page);
     const dialog = page.getByRole("dialog", { name: "保存项目修改" });

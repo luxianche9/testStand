@@ -4,7 +4,7 @@ import { BoxIcon, CheckIcon, CpuIcon } from "lucide-react";
 import { hardwareStatus } from "../../lib/hardware-status.js";
 import { useDashboard } from "../../lib/queries.js";
 import { Panel, PanelBody, StatusLamp, cn, type Tone } from "../../ui/index.js";
-import { HARDWARE_MIME } from "../wiring/WiringCanvas.js";
+import { HARDWARE_MIME } from "../signals/dnd.js";
 
 const statusTone: Record<ReturnType<typeof hardwareStatus>["tone"], Tone> = {
   ok: "pass",
@@ -14,7 +14,7 @@ const statusTone: Record<ReturnType<typeof hardwareStatus>["tone"], Tone> = {
 };
 
 /** 设备 column of 测试台架: devices (plugin instances) and passive parts. Clicking a row opens its
- *  information; dragging it onto the canvas places it on the bench. */
+ *  information; dragging it onto the signal view places it there. */
 export function DeviceList({ hardware, placed, header, footer, onOpen, ...props }: {
   hardware: Hardware[];
   placed: Set<string>;
@@ -38,7 +38,7 @@ export function DeviceList({ hardware, placed, header, footer, onOpen, ...props 
   const groups = [
     { key: "managed", title: "设备", empty: "还没有设备。点上方「+」→「添加设备…」，选择设备的设备包（.tsdev）。",
       items: hardware.filter((item) => item.kind === "managed") },
-    { key: "passive", title: "被测件 / 夹具", empty: "被测板、转接箱等不受控的硬件，用于接线。",
+    { key: "passive", title: "被测件 / 夹具", empty: "被测板、转接箱等不受控的硬件：声明针脚用于接线，声明信号用于信号视图。",
       items: hardware.filter((item) => item.kind !== "managed") }
   ];
   return (
@@ -61,13 +61,13 @@ export function DeviceList({ hardware, placed, header, footer, onOpen, ...props 
                     draggable
                     onDragStart={(event) => {
                       event.dataTransfer.setData(HARDWARE_MIME, item.hardwareId);
-                      event.dataTransfer.effectAllowed = "move";
+                      event.dataTransfer.effectAllowed = "copy";
                     }}
                   >
                     <button
                       type="button"
                       onClick={() => onOpen(item)}
-                      title={onCanvas ? `${item.label}（已在画布上）` : `${item.label}：单击查看信息，拖到画布上放置`}
+                      title={onCanvas ? `${item.label}（已在信号视图上）` : `${item.label}：单击查看信息，拖到信号视图上放置`}
                       className={cn(
                         "flex h-8 w-full cursor-grab items-center gap-2 pr-3 pl-3 text-left outline-none",
                         "transition-colors duration-120 hover:bg-surface-2 active:bg-surface-3",
@@ -82,7 +82,7 @@ export function DeviceList({ hardware, placed, header, footer, onOpen, ...props 
                         {item.kind === "managed" ? <CpuIcon className="size-3" /> : <BoxIcon className="size-3" />}
                       </span>
                       <span className="min-w-0 flex-1 truncate text-sm text-fg">{item.label}</span>
-                      {onCanvas && <CheckIcon aria-label="已在画布上" className="size-3 shrink-0 text-fg-3" />}
+                      {onCanvas && <CheckIcon aria-label="已在信号视图上" className="size-3 shrink-0 text-fg-3" />}
                       {status && (
                         <span title={status.title} className="flex shrink-0 items-center gap-1.5 text-2xs text-fg-2">
                           <StatusLamp tone={status.tone} pulse={status.pulse} />{status.label}

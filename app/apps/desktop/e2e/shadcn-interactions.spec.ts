@@ -47,16 +47,16 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
           ports: [{ portId: "J1", name: "信号接口", pins: [{ pinId: "1", position: 1, label: "信号" }] }]
         } });
       }
-      await window.teststand.wiring.updateDocument({ wiring: { nodes: [
-        { hardwareId: "DUT_A", x: 20, y: 20, width: 220, height: 140, portPositions: { J1: { side: "right", offset: 0.5 } } },
-        { hardwareId: "DUT_B", x: 360, y: 60, width: 160, height: 48, portPositions: { J1: { side: "left", offset: 0.5 } } }
-      ], connections: [] } });
+      await window.teststand.signals.updateDocument({ signals: { nodes: [
+        { nodeId: "dut", kind: "hardware", hardwareId: "DUT_A", x: 20, y: 20 },
+        { nodeId: "scope", kind: "widget", widget: "scope", label: "", config: {}, x: 360, y: 20, width: 420, height: 240 }
+      ], links: [] } });
       await window.teststand.projects.saveProject();
       await window.teststand.projects.leaveProject();
     }, projectRoot);
     await reloadAfterLeave(page);
     await page.getByText("interaction-fixture", { exact: true }).first().click();
-    await expect(page.locator('[data-hardware-id="DUT_A"]')).toBeVisible();
+    await expect(page.locator('.react-flow__node[data-id="dut"]')).toBeVisible();
   });
 
   test.afterAll(async () => {
@@ -64,45 +64,26 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
     if (userData && dirname(userData) === resolve(tmpdir())) await rm(userData, { recursive: true, force: true });
   });
 
-  test("drags a canvas port and node without changing card geometry", async () => {
-    const node = page.locator('[data-hardware-id="DUT_A"]');
-    const wrapper = page.locator('.react-flow__node[data-id="DUT_A"]');
-    await expect(wrapper).toHaveCSS("width", "220px");
-    await expect(wrapper).toHaveCSS("height", "140px");
-    await expect(page.locator('.react-flow__node[data-id="DUT_B"]')).toHaveCSS("height", "48px");
-    await node.click({ button: "right" });
-    await page.getByRole("menuitem", { name: "改变端口位置", exact: true }).click();
-    await expect(node).toHaveAttribute("data-connector-editing", "true");
-    const card = (await node.boundingBox())!;
-    const port = (await node.getByRole("button", { name: "拖动端口 信号接口", exact: true }).boundingBox())!;
-    await page.mouse.move(port.x + port.width / 2, port.y + port.height / 2);
+  test("drags a widget by its header and keeps its size", async () => {
+    const wrapper = page.locator('.react-flow__node[data-id="scope"]');
+    await expect(wrapper).toHaveCSS("width", "420px");
+    await expect(wrapper).toHaveCSS("height", "240px");
+    const header = (await wrapper.locator("header").boundingBox())!;
+    const card = (await wrapper.boundingBox())!;
+    const zoom = card.width / 420;
+    await page.mouse.move(header.x + 40, header.y + header.height / 2);
     await page.mouse.down();
-    await page.mouse.move(card.x + card.width / 4, card.y, { steps: 12 });
+    await page.mouse.move(header.x + 40 + 36, header.y + header.height / 2 + 24, { steps: 12 });
     await page.mouse.up();
-    await expect.poll(() => readNode(page, "DUT_A").then((item) => item.portPositions.J1?.side)).toBe("top");
-    const afterPort = await readNode(page, "DUT_A");
-    expect(afterPort.portPositions.J1?.offset).toBeCloseTo(0.25, 1);
-    expect(afterPort).toMatchObject({ x: 20, y: 20, width: 220, height: 140 });
-    await page.keyboard.press("Escape");
-    await expect(node).toHaveAttribute("data-connector-editing", "false");
-
-    const caption = (await node.locator(".flow-node-caption").boundingBox())!;
-    const zoom = card.width / 220;
-    await page.mouse.move(caption.x + caption.width / 2, caption.y + caption.height / 2);
-    await page.mouse.down();
-    await page.mouse.move(caption.x + caption.width / 2 + 36, caption.y + caption.height / 2 + 24, { steps: 12 });
-    await page.mouse.up();
-    await expect.poll(() => readNode(page, "DUT_A").then((item) => item.x)).toBeGreaterThan(20);
-    const afterMove = await readNode(page, "DUT_A");
+    await expect.poll(() => readNode(page, "scope").then((item) => item.x)).toBeGreaterThan(360);
+    const afterMove = await readNode(page, "scope");
     // ReactFlow begins moving only after its pointer activation threshold.
-    expect(Math.abs((afterMove.x - 20) * zoom - 36)).toBeLessThanOrEqual(4);
+    expect(Math.abs((afterMove.x - 360) * zoom - 36)).toBeLessThanOrEqual(4);
     expect(Math.abs((afterMove.y - 20) * zoom - 24)).toBeLessThanOrEqual(4);
-    const movedCard = (await node.boundingBox())!;
-    expect(movedCard.x - card.x).toBeCloseTo((afterMove.x - 20) * zoom, 0);
-    expect(movedCard.y - card.y).toBeCloseTo((afterMove.y - 20) * zoom, 0);
-    expect(afterMove).toMatchObject({ width: 220, height: 140, portPositions: afterPort.portPositions });
-    await expect(wrapper).toHaveCSS("width", "220px");
-    await expect(wrapper).toHaveCSS("height", "140px");
+    expect(afterMove).toMatchObject({ width: 420, height: 240 });
+    await expect(wrapper).toHaveCSS("width", "420px");
+    // Moving a node is saved at once: the project stays clean and reopens with the new place.
+    expect(await page.evaluate(async () => (await window.teststand.projects.document())?.dirty)).toBe(false);
     const rootPath = await page.evaluate(async () => {
       const current = (await window.teststand.projects.document())!;
       await window.teststand.projects.leaveProject();
@@ -113,7 +94,7 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
     await page.reload();
     await page.getByText("interaction-fixture", { exact: true }).first().click();
     await expect(page.getByRole("tab", { name: "测试台架", exact: true })).toBeVisible();
-    expect(await readNode(page, "DUT_A")).toEqual(afterMove);
+    expect(await readNode(page, "scope")).toEqual(afterMove);
   });
 
   test("restores each panel width after navigating and reloading", async () => {
@@ -171,7 +152,7 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
   });
 
   test("keeps empty native Select options and keyboard selection with same-port support", async () => {
-    await page.getByRole("group", { name: "接线视图" }).getByRole("button", { name: "列表", exact: true }).click();
+    await page.getByRole("group", { name: "台架视图" }).getByRole("button", { name: "针脚列表", exact: true }).click();
     await page.getByRole("button", { name: "新建接线", exact: true }).click();
     const dialog = page.getByRole("dialog", { name: "新建接线", exact: true });
     const source = dialog.getByLabel("起点端口");
@@ -242,7 +223,7 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
   });
 
   test("restores the window and saved layout after restarting the desktop", async () => {
-    const node = await readNode(page, "DUT_A");
+    const node = await readNode(page, "scope");
     const savedWidths = await page.evaluate(() => Object.fromEntries(
       Object.keys(localStorage).filter((key) => key.endsWith("-width") || key.endsWith(".width"))
         .map((key) => [key, localStorage.getItem(key)])
@@ -277,17 +258,17 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
     expect(await page.evaluate((keys) => Object.fromEntries(keys.map((key) => [key, localStorage.getItem(key)])), Object.keys(savedWidths))).toEqual(savedWidths);
     await page.getByText("interaction-fixture", { exact: true }).first().click();
     await expect(page.getByRole("tab", { name: "测试台架", exact: true })).toBeVisible();
-    expect(await readNode(page, "DUT_A")).toEqual(node);
+    expect(await readNode(page, "scope")).toEqual(node);
     await page.getByRole("tab", { name: "测试台架", exact: true }).click();
     const separator = page.getByRole("separator", { name: "调整侧栏宽度", exact: true });
     await expect.poll(() => separator.evaluate((element) => parseFloat((element.parentElement as HTMLElement).style.gridTemplateColumns))).toBe(Number(savedWidths["teststand.bench-devices-width"]));
   });
 });
 
-async function readNode(page: Page, hardwareId: string) {
+async function readNode(page: Page, nodeId: string) {
   return await page.evaluate(async (id) => {
-    const node = (await window.teststand.projects.document())?.file.wiring.nodes.find((item) => item.hardwareId === id);
-    if (!node) throw new Error(`Missing canvas node: ${id}`);
+    const node = (await window.teststand.projects.document())?.file.signals.nodes.find((item) => item.nodeId === id);
+    if (!node) throw new Error(`Missing signal view node: ${id}`);
     return node;
-  }, hardwareId);
+  }, nodeId);
 }

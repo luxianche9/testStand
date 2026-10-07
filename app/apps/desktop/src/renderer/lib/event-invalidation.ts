@@ -19,13 +19,15 @@ export interface Invalidation {
  */
 export const eventInvalidations: Record<TestStandEventName, readonly Invalidation[]> = {
   // The backend's periodic device check saw a device change state.
-  availability: [{ key: queryKeys.dashboard }, { key: queryKeys.agentTools }],
+  // A device that came online may have declared its streams for the first time.
+  availability: [{ key: queryKeys.dashboard }, { key: queryKeys.agentTools }, { key: queryKeys.signalCatalog }],
   // A catalog write: hardware, device instances, adapter records, a device's cached declaration,
   // or an installed device package.
   devices: [
     { key: queryKeys.deviceTypes },
     { key: queryKeys.devicePackages },
     { key: queryKeys.deviceCatalog },
+    { key: queryKeys.signalCatalog },
     { key: queryKeys.dashboard },
     { key: queryKeys.deviceDefinitionAll },
     { key: queryKeys.deviceStreamsAll },
@@ -38,7 +40,7 @@ export const eventInvalidations: Record<TestStandEventName, readonly Invalidatio
   project: [
     { key: queryKeys.projectDocument },
     { key: queryKeys.wiringTasks },
-    // Canvas edits are logged by the backend as they are applied.
+    // Pin list edits are logged by the backend as they are applied.
     { key: queryKeys.wiringChanges }
   ],
   wiringTask: [{ key: queryKeys.wiringTasks, delayMs: 100 }, { key: queryKeys.projectDocument, delayMs: 100 }],

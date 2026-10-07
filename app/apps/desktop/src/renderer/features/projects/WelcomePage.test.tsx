@@ -7,18 +7,12 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { WelcomePage } from "./WelcomePage";
 
-vi.mock("../wiring/TopologyPreview.js", () => ({
-  TopologyPreview: ({ project }: { project: RecentProjectSummary }) => (
-    <div role="img" aria-label={`${project.name} 测试台架缩略图`} />
-  )
-}));
-
 const project = (name: string, status: RecentProjectSummary["status"] = "available"): RecentProjectSummary => ({
   rootPath: `C:\\work\\${name}`,
   name,
   openedAt: "2026-09-01T08:00:00.000Z",
   status,
-  preview: { nodes: [], connections: [] }
+  preview: { connections: 0, nodes: 0 }
 });
 
 function setup({ recent = [project("project-a"), project("project-b", "missing")], chosen }: {
@@ -57,7 +51,7 @@ describe("WelcomePage", () => {
     await userEvent.click(await screen.findByText("project-a", { exact: true }));
     await waitFor(() => expect(api.projects.openFolder).toHaveBeenCalledWith({ rootPath: "C:\\work\\project-a" }));
     await waitFor(() => expect(onOpened).toHaveBeenCalledWith("C:\\work\\project-a"));
-    expect(screen.getByRole("img", { name: "project-a 测试台架缩略图" })).toBeTruthy();
+    expect(screen.getByRole("img", { name: "project-a：0 条接线，信号视图 0 个节点" })).toBeTruthy();
     expect(screen.getByText("项目文件夹不存在")).toBeTruthy();
   });
 

@@ -1,25 +1,18 @@
-import { lazy, Suspense } from "react";
-import type { Hardware } from "@teststand/contracts/devices";
 import type { RecentProjectSummary } from "@teststand/contracts/projects";
 import type { WelcomeLayout } from "@teststand/contracts/storage";
-import { EllipsisIcon, Trash2Icon } from "lucide-react";
+import { CableIcon, EllipsisIcon, Trash2Icon, WorkflowIcon } from "lucide-react";
 import { Button, Menu, MenuContent, MenuItem, MenuTrigger, StatusLamp, cn } from "../../ui";
-
-const TopologyPreview = lazy(() => import("../wiring/TopologyPreview.js")
-  .then((module) => ({ default: module.TopologyPreview })));
 
 type ItemProps = {
   project: RecentProjectSummary;
-  hardware: Hardware[];
   disabled: boolean;
   onOpen: () => void;
   onForget: () => void;
 };
 
 /** Recent projects as a dense table (list) or thumbnail cards (grid). */
-export function RecentProjectList({ projects, hardware, layout, disabled, onOpen, onForget }: {
+export function RecentProjectList({ projects, layout, disabled, onOpen, onForget }: {
   projects: RecentProjectSummary[];
-  hardware: Hardware[];
   layout: WelcomeLayout;
   disabled: boolean;
   onOpen: (rootPath: string) => void;
@@ -27,7 +20,6 @@ export function RecentProjectList({ projects, hardware, layout, disabled, onOpen
 }) {
   const itemProps = (project: RecentProjectSummary): ItemProps => ({
     project,
-    hardware,
     disabled,
     onOpen: () => onOpen(project.rootPath),
     onForget: () => onForget(project.rootPath)
@@ -61,7 +53,7 @@ export function RecentProjectList({ projects, hardware, layout, disabled, onOpen
   );
 }
 
-function ProjectRow({ project, hardware, disabled, onOpen, onForget }: ItemProps) {
+function ProjectRow({ project, disabled, onOpen, onForget }: ItemProps) {
   const unavailable = project.status !== "available";
   return (
     <li
@@ -84,11 +76,10 @@ function ProjectRow({ project, hardware, disabled, onOpen, onForget }: ItemProps
       >
         <span
           className={cn(
-            "block h-12 w-[104px] overflow-hidden rounded-sm border border-line",
-            "[&_.topology-preview]:h-12!"
+            "block h-12 w-[104px] overflow-hidden rounded-sm border border-line"
           )}
         >
-          <ProjectPreview project={project} hardware={hardware} compact />
+          <ProjectPreview project={project} compact />
         </span>
         <ProjectCaption project={project} />
         <span className={cn("tf-num truncate text-right text-xs", unavailable ? "text-invalid" : "text-fg-3")}>
@@ -100,7 +91,7 @@ function ProjectRow({ project, hardware, disabled, onOpen, onForget }: ItemProps
   );
 }
 
-function ProjectCard({ project, hardware, disabled, onOpen, onForget }: ItemProps) {
+function ProjectCard({ project, disabled, onOpen, onForget }: ItemProps) {
   const unavailable = project.status !== "available";
   return (
     <li
@@ -116,7 +107,7 @@ function ProjectCard({ project, hardware, disabled, onOpen, onForget }: ItemProp
         disabled={disabled || unavailable}
         onClick={onOpen}
       >
-        <ProjectPreview project={project} hardware={hardware} compact={false} />
+        <ProjectPreview project={project} compact={false} />
         <span className="grid min-w-0 gap-1 border-t border-line py-2 pr-10 pl-3">
           <ProjectCaption project={project} />
           <span className={cn("tf-num truncate text-2xs", unavailable ? "text-invalid" : "text-fg-3")}>
@@ -167,22 +158,21 @@ function ProjectMenu({ project, onForget, className }: {
   );
 }
 
-function ProjectPreview({ project, hardware, compact }: {
-  project: RecentProjectSummary;
-  hardware: Hardware[];
-  compact: boolean;
-}) {
-  const placeholder = (
-    <span
-      className={cn("topology-preview", compact && "compact")}
-      role="img"
-      aria-label={`${project.name} 测试台架缩略图`}
-    />
-  );
+/** What the project holds: its physical connections and the nodes of its signal view. */
+function ProjectPreview({ project, compact }: { project: RecentProjectSummary; compact: boolean }) {
+  const { connections, nodes } = project.preview;
   return (
-    <Suspense fallback={placeholder}>
-      <TopologyPreview project={project} hardware={hardware} compact={compact} />
-    </Suspense>
+    <span
+      role="img"
+      aria-label={`${project.name}：${connections} 条接线，信号视图 ${nodes} 个节点`}
+      className={cn(
+        "flex w-full items-center justify-center gap-4 bg-canvas font-mono text-fg-3",
+        compact ? "h-12 gap-2 text-2xs" : "h-[132px] text-xs"
+      )}
+    >
+      <span className="flex items-center gap-1"><CableIcon aria-hidden className="size-3.5" />{connections}</span>
+      <span className="flex items-center gap-1"><WorkflowIcon aria-hidden className="size-3.5" />{nodes}</span>
+    </span>
   );
 }
 

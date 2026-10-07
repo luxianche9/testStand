@@ -7,7 +7,7 @@ import { CircleAlertIcon, FolderOpenIcon, Grid2X2Icon, ListIcon, ServerIcon } fr
 import { InitializeDialog } from "../../app/InitializeDialog.js";
 import { errorMessage } from "../../lib/errors.js";
 import { chooseProjectFolder } from "../../lib/projects.js";
-import { useDeviceCatalog, useRecentProjects } from "../../lib/queries.js";
+import { useRecentProjects } from "../../lib/queries.js";
 import { queryKeys } from "../../lib/query-keys.js";
 import {
   Button,
@@ -29,7 +29,6 @@ const layoutOptions = [
 export function WelcomePage({ onOpened }: { onOpened: (rootPath: string) => Promise<void> | void }) {
   const client = useQueryClient();
   const recent = useRecentProjects();
-  const catalog = useDeviceCatalog();
   const [layout, setLayout] = useState<WelcomeLayout>("grid");
   const [selection, setSelection] = useState<ProjectFolderSelection>();
   const [error, setError] = useState<string>();
@@ -130,7 +129,6 @@ export function WelcomePage({ onOpened }: { onOpened: (rootPath: string) => Prom
           ) : (
             <RecentProjectList
               projects={projects}
-              hardware={catalog.data?.hardware ?? []}
               layout={layout}
               disabled={busy}
               onOpen={(rootPath) => openRecent.mutate(rootPath)}

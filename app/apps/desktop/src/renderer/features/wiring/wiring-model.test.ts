@@ -1,54 +1,19 @@
-import type { Hardware } from "@teststand/contracts/devices";
 import { describe, expect, it } from "vitest";
-import { fallbackHardware, toFlowEdges } from "./flow-elements.js";
-import { connectionSignal, portSignal } from "./wiring-model.js";
+import { pinCountText, sortedPair, touchesHardware } from "./wiring-model.js";
 
-const port = (name: string, portId = name) => ({ portId, name });
-
-describe("signal classification", () => {
-  it.each([
-    ["UART1", "bus"],
-    ["CAN1", "bus"],
-    ["调试串口", "bus"],
-    ["USB-C", "link"],
-    ["ETH0", "link"],
-    ["VCC", "power"],
-    ["12V", "power"],
-    ["GND1", "ground"],
-    ["J1", undefined]
-  ] as const)("classifies %s as %s", (name, kind) => {
-    expect(portSignal(port(name))).toBe(kind);
-  });
-
-  it("agrees when one end is unknown and stays neutral when ends disagree", () => {
-    expect(connectionSignal(port("UART0"), port("J3"))).toBe("bus");
-    expect(connectionSignal(port("UART0"), port("USB"))).toBeUndefined();
-    expect(connectionSignal(undefined, undefined)).toBeUndefined();
-  });
+const connection = (portA: string, portB: string) => ({
+  connectionId: "c", portA, portB, pins: [], confirmedAt: "2026-10-07T00:00:00.000Z", confirmedBy: "user"
 });
 
-describe("toFlowEdges", () => {
-  const hardware: Hardware[] = [
-    { ...fallbackHardware("A", ["UART0", "J1"]) },
-    { ...fallbackHardware("B", ["UART1", "J1"]) }
-  ];
-
-  it("tags edges with their signal and drops same-port or unresolved connections", () => {
-    const edges = toFlowEdges([
-      { connectionId: "c1", portA: "A.UART0", portB: "B.UART1" },
-      { connectionId: "c2", portA: "A.J1", portB: "A.J1" },
-      { connectionId: "c3", portA: "A.J1", portB: "Z.J1" },
-      { connectionId: "c4", portA: "A.J1", portB: "B.J1" }
-    ], hardware, true);
-    expect(edges.map((edge) => edge.id)).toEqual(["c1", "c4"]);
-    expect(edges[0]?.className).toBe("wiring-flow-edge signal-bus");
-    expect(edges[0]?.data?.signal).toBe("bus");
-    expect(edges[1]?.className).toBe("wiring-flow-edge");
+describe("wiring model", () => {
+  it("matches hardware by id prefix, not by substring", () => {
+    expect(touchesHardware(connection("DUT_1.J1", "CARD.CN1"), "DUT_1")).toBe(true);
+    expect(touchesHardware(connection("DUT_10.J1", "CARD.CN1"), "DUT_1")).toBe(false);
   });
 
-  it("makes read-only edges unselectable", () => {
-    const [edge] = toFlowEdges([{ connectionId: "c1", portA: "A.J1", portB: "B.J1" }], hardware, false);
-    expect(edge?.selectable).toBe(false);
-    expect(edge?.focusable).toBe(false);
+  it("describes pinless cables and orders pairs", () => {
+    expect(pinCountText({ pins: [] })).toBe("整体连接，无针脚");
+    expect(pinCountText({ pins: [{ a: "1", b: "2" }] })).toBe("1 对针脚");
+    expect(sortedPair("b", "a")).toBe(sortedPair("a", "b"));
   });
 });

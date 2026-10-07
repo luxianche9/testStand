@@ -184,7 +184,8 @@ function Shell() {
       />
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <main className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <ErrorBoundary key={`content-${page}`}>
+          {/* One boundary per open project: switching its pages must not remount them. */}
+          <ErrorBoundary key={isProjectView(page) ? `project-${currentProject?.rootPath}` : `content-${page}`}>
             <Suspense fallback={<FeatureFallback />}>
               {page === "settings"
                 ? <SettingsPage

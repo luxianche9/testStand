@@ -7,13 +7,12 @@ import { useDashboard, useDeviceDefinition } from "../../lib/queries.js";
 import { Badge, Button, Dialog, DialogBody, DialogContent, DialogFooter, Section, cn, useConfirm } from "../../ui";
 import { hardwareRowStatus } from "../devices/device-labels.js";
 import { ErrorStrip, HardwareSections, Meta } from "../devices/inspector-parts.js";
-import { LiveStreams } from "../devices/LiveStreams.js";
 
 /** Who the dialog is about: a device (plugin instance) or a passive part (DUT, fixture). */
 export type InfoTarget = { hardware: Hardware; instance?: DeviceInstance | undefined };
 
-/** 设备信息: opened by clicking a device in the list. Identity, status, connector pins and live
- *  data, plus edit / delete. Placing it on the canvas is done by dragging the list row. */
+/** 设备信息: opened by clicking a device in the list or on the signal view. Identity, status and
+ *  connector pins, plus edit / delete. Its live data is shown by widgets on the signal view. */
 export function DeviceInfoDialog({ target, onClose, onEdit, onChanged }: {
   target: InfoTarget | undefined;
   onClose: () => void;
@@ -97,7 +96,6 @@ function DeviceInfo({ target, instance, onClose, onEdit, onChanged }: InfoProps 
           </p>}
         </Section>
         <HardwareSections hardware={target.hardware} />
-        <LiveStreams hardwareId={instance.hardwareId} running={deviceStatus?.transport.state === "online"} />
       </DialogBody>
       <DialogFooter>
         <Button className="mr-auto" variant="danger" disabled={remove.isPending} onClick={() => void requestRemove()}>

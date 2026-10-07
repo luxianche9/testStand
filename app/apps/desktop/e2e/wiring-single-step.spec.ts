@@ -6,6 +6,8 @@ import { reloadAfterLeave, rendererReady } from "./renderer.js";
 
 const desktopDir = resolve(import.meta.dirname, "..");
 const artifacts = resolve(desktopDir, "../../output/playwright/wiring-single-step");
+/** One row group per cable in the pin list. */
+const cables = (page: Page) => page.getByRole("table", { name: "针脚连接" }).getByRole("rowgroup");
 
 test.describe.serial("single-step wiring tasks", () => {
   let app: ElectronApplication;
@@ -40,16 +42,13 @@ test.describe.serial("single-step wiring tasks", () => {
           ] }]
         } });
       }
-      await window.teststand.wiring.updateDocument({ wiring: { nodes: [
-        { hardwareId: "DUT_A", x: 20, y: 20, width: 220, height: 140, portPositions: { J1: { side: "right", offset: 0.5 } } },
-        { hardwareId: "DUT_B", x: 380, y: 20, width: 220, height: 140, portPositions: { J1: { side: "left", offset: 0.5 } } }
-      ], connections: [] } });
       await window.teststand.projects.saveProject();
       await window.teststand.projects.leaveProject();
     }, projectRoot);
     await reloadAfterLeave(page);
     await page.getByText("wiring-fixture", { exact: true }).first().click();
-    await expect(page.locator('.react-flow__node[data-id="DUT_A"]')).toBeVisible();
+    await page.getByRole("button", { name: "针脚列表", exact: true }).click();
+    await expect(page.getByRole("region", { name: "针脚列表" })).toBeVisible();
   });
   test.afterAll(async () => {
     await app?.close().catch(() => undefined);
@@ -83,7 +82,7 @@ test.describe.serial("single-step wiring tasks", () => {
     await expect(history.getByRole("region", { name: "接线任务", exact: true }).getByText("已完成", { exact: true })).toBeVisible();
     await page.screenshot({ animations: "disabled", path: join(artifacts, "task-log.png") });
     await entry.click();
-    await expect(page.locator(".react-flow__edge")).toHaveCount(1);
+    await expect(cables(page)).toHaveCount(1);
 
     const rejectedId = await page.evaluate(async () => (await window.teststand.wiring.requestTask({ input: {
       portA: "DUT_A.J1", portB: "DUT_B.J1", action: "disconnect", pins: [{ a: "1", b: "2" }]
@@ -92,11 +91,10 @@ test.describe.serial("single-step wiring tasks", () => {
     await expect(open).toHaveCount(0);
     await expect(history.getByRole("listitem")).toHaveCount(2);
     expect(await page.evaluate((taskId) => window.teststand.wiring.getTask({ taskId }).then((task) => task.status), rejectedId)).toBe("rejected");
-    await expect(page.locator(".react-flow__edge")).toHaveCount(1);
+    await expect(cables(page)).toHaveCount(1);
   });
 
-  test("retains same-port connections in the list but hides them in React Flow", async () => {
-    await page.getByRole("button", { name: "列表", exact: true }).click();
+  test("lists same-port connections with the others", async () => {
     await page.getByRole("button", { name: "新建接线", exact: true }).click();
     const editor = page.getByRole("dialog", { name: "新建接线", exact: true });
     await editor.getByLabel("起点端口", { exact: true }).selectOption("DUT_A.J1");
@@ -106,11 +104,9 @@ test.describe.serial("single-step wiring tasks", () => {
     await expect(editor.getByRole("button", { name: "创建接线" })).toBeDisabled();
     await editor.getByLabel("终点针脚", { exact: true }).selectOption("2");
     await editor.getByRole("button", { name: "创建接线" }).click();
-    await expect(page.getByRole("button", { name: /DUT_A.*↔.*DUT_A/ })).toBeVisible();
-    await page.getByRole("button", { name: /DUT_A.*↔.*DUT_A/ }).click();
+    await expect(cables(page)).toHaveCount(2);
+    await expect(page.getByRole("region", { name: "针脚列表" })).toContainText("同端口接线");
     await page.screenshot({ animations: "disabled", path: join(artifacts, "same-port-list.png") });
-    await page.getByRole("button", { name: "画布", exact: true }).click();
-    await expect(page.locator(".react-flow__edge")).toHaveCount(1);
     expect(await page.evaluate(async () => (await window.teststand.projects.document())?.file.wiring.connections.length)).toBe(2);
     const taskId = await page.evaluate(async () => (await window.teststand.wiring.requestTask({ input: {
       portA: "DUT_A.J1", portB: "DUT_A.J1", pins: [{ a: "1", b: "2" }], action: "disconnect"

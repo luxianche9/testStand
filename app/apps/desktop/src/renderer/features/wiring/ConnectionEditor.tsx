@@ -3,59 +3,13 @@ import type { Hardware } from "@teststand/contracts/devices";
 import type { PinPair, ProjectWiringConnection } from "@teststand/contracts/wiring";
 import { resolvePortRef } from "../../lib/hardware.js";
 import { Button, Dialog, DialogBody, DialogContent, DialogFooter, Select } from "../../ui/index.js";
-import { sortedPair, straightThrough, type ManualPair } from "./wiring-model.js";
+import { sortedPair, straightThrough } from "./wiring-model.js";
 import { ConnectionHead, DialogNote, FormAlert, PHYSICAL_NOTE, PinPairEditor } from "./PinPairEditor.js";
 
 type CreateHandler = (portA: string, portB: string, pins: PinPair[]) => void;
 
 const isDuplicate = (existing: ProjectWiringConnection[], portA: string, portB: string) =>
   existing.some((item) => sortedPair(item.portA, item.portB) === sortedPair(portA, portB));
-
-/**
- * Confirming a cable that is already physically connected. The pin mapping is editable because a
- * crossover cable and a partly-populated harness are both normal; it starts as a straight-through
- * pairing because that is the common case.
- */
-export function ManualConnectionModal({ pair, hardware, existing, onClose, onCreate }: {
-  pair?: ManualPair | undefined; hardware: Hardware[];
-  existing: ProjectWiringConnection[]; onClose: () => void; onCreate: CreateHandler;
-}) {
-  const [pins, setPins] = useState<PinPair[]>([]);
-  const a = pair ? resolvePortRef(pair.portA, hardware) : undefined;
-  const b = pair ? resolvePortRef(pair.portB, hardware) : undefined;
-
-  useEffect(() => {
-    setPins(pair ? straightThrough(a?.port, b?.port) : []);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pair]);
-
-  const duplicate = Boolean(pair) && isDuplicate(existing, pair!.portA, pair!.portB);
-  const invalid = pins.some((pin) => !pin.a || !pin.b);
-
-  return (
-    <Dialog open={Boolean(pair)} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent title="确认端口接线" size="lg">
-        <DialogBody>
-          <ConnectionHead a={a} b={b} refA={pair?.portA} refB={pair?.portB} />
-          <PinPairEditor a={a} b={b} pins={pins} onChange={setPins} />
-          <DialogNote>{PHYSICAL_NOTE}</DialogNote>
-          {duplicate && <FormAlert>这两个端口已经连接。</FormAlert>}
-          {invalid && <FormAlert>每一对针脚的两端都要选定。</FormAlert>}
-        </DialogBody>
-        <DialogFooter>
-          <Button variant="ghost" onClick={onClose}>取消</Button>
-          <Button
-            variant="primary"
-            disabled={!pair || duplicate || invalid}
-            onClick={() => onCreate(pair!.portA, pair!.portB, pins)}
-          >
-            创建接线
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 /** Editing the pin mapping of a connection that already exists, without deleting and recreating
  *  the cable. The port pair itself is fixed; only the pins between them change. */

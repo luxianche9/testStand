@@ -18,6 +18,11 @@ export function useDeviceCatalog() {
   });
 }
 
+/** Every hardware's signals (a device's declared streams, a passive part's own signals); `devices` events. */
+export function useSignalCatalog() {
+  return useQuery({ queryKey: queryKeys.signalCatalog, queryFn: () => window.teststand.signals.catalog() });
+}
+
 /** Refetched on `availability`, `devices`, `gateway`, `execution` and `testRun` events. */
 export function useDashboard() {
   return useQuery({

@@ -13,7 +13,7 @@ import { extractTask } from "./wiring-model";
 
 const hardware: Hardware[] = ["A", "B"].map((hardwareId) => ({
   formatVersion: 2, hardwareId, label: hardwareId, kind: "passive",
-  ports: [{ portId: "J1", name: "J1", pins: [{ pinId: "1", position: 1, label: "PIN 1" }] }]
+  ports: [{ portId: "J1", name: "J1", pins: [{ pinId: "1", position: 1, label: "PIN 1" }] }], signals: []
 }));
 const baseTask: WiringTask = {
   wiringTaskId: "task-1", action: "connect", portA: "A.J1", portB: "B.J1",

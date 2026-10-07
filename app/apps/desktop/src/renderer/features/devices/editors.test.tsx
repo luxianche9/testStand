@@ -54,7 +54,8 @@ describe("device and hardware editors", () => {
         hardwareId: "DUT_MAIN",
         label: "主被测对象",
         kind: "passive",
-        ports: []
+        ports: [],
+        signals: []
       }
     }));
     expect(onChanged).toHaveBeenCalledOnce();
