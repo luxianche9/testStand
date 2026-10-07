@@ -61,12 +61,26 @@ hardware_port_schema = obj(
         "pins": array(hardware_pin_schema).default([]),
     }
 )
+# A signal a passive part (a unit under test, a fixture) declares: its logical interface, never a
+# pin. A device's signals are the streams its plugin declares, so only passive parts store them.
+hardware_signal_schema = obj(
+    {
+        "signalId": string(1, regex=r"^[A-Za-z0-9_.-]{1,64}$"),
+        "label": string().default(""),
+        "type": enum("scalar", "bits", "bytes", "frames"),
+        "direction": enum("input", "output", "bidirectional"),
+        "unit": string(1).optional(),
+        "width": number(1, 64, integer=True).optional(),
+        "bitLabels": array(string()).optional(),
+    }
+)
 stored_hardware_definition_schema = obj(
     {
         "formatVersion": literal(2).default(2),
         "hardwareId": string(1),
         "label": string(1),
         "ports": array(hardware_port_schema).default([]),
+        "signals": array(hardware_signal_schema).default([]),
     }
 )
 
@@ -89,6 +103,28 @@ def _hardware_issues(value: Any) -> list[Record]:
                     custom_issue(f"Duplicate pinId {pin['pinId']} in port {port['portId']}")
                 )
             pins.add(pin["pinId"])
+    if value["kind"] == "managed" and value["signals"]:
+        issues.append(
+            custom_issue(
+                "A device's signals are its plugin's streams; only passive parts declare signals"
+            )
+        )
+    signals: set[str] = set()
+    for signal in value["signals"]:
+        if signal["signalId"] in signals:
+            issues.append(custom_issue(f"Duplicate signalId: {signal['signalId']}"))
+        signals.add(signal["signalId"])
+        labels = signal.get("bitLabels")
+        if labels is not None and len(labels) != signal.get("width", 1):
+            issues.append(
+                custom_issue(f"Signal {signal['signalId']}: bitLabels needs one label per bit")
+            )
+        if signal["type"] != "bits" and ("width" in signal or labels is not None):
+            issues.append(
+                custom_issue(
+                    f"Signal {signal['signalId']}: width and bitLabels are for bits signals"
+                )
+            )
     return issues
 
 
@@ -100,6 +136,7 @@ hardware_schema = obj(
         "kind": enum("managed", "passive"),
         "deviceId": string(1).optional(),
         "ports": array(hardware_port_schema).default([]),
+        "signals": array(hardware_signal_schema).default([]),
     }
 ).refine(_hardware_issues)
 device_bundle_kind_schema = literal("hardware")

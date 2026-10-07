@@ -54,16 +54,9 @@ _CASES: list[tuple[str, dict[str, Any], str, str, list[Any]]] = [
         {"hardware": _HARDWARE},
         "devices",
         "save_hardware",
-        [{"formatVersion": 2, **_HARDWARE, "ports": []}],
+        [{"formatVersion": 2, **_HARDWARE, "ports": [], "signals": []}],
     ),
     ("remove_hardware_definition", {"hardwareId": "H"}, "devices", "remove_hardware", ["H"]),
-    (
-        "add_hardware_to_canvas",
-        {"hardwareId": "H"},
-        "wiring",
-        "add_hardware_to_canvas",
-        ["H"],
-    ),
     (
         "request_wiring_task",
         {"portA": "A.J", "portB": "B.J", "action": "connect"},

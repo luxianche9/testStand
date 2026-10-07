@@ -4,7 +4,8 @@ from os import stat
 from pathlib import Path
 
 from teststand_backend.contracts.errors import app_error
-from teststand_backend.contracts.projects import parse_project_file
+from teststand_backend.contracts.projects import PROJECT_FORMAT_VERSION, parse_project_file
+from teststand_backend.contracts.signals import parse_signal_view
 from teststand_backend.contracts.wiring import parse_project_wiring
 from teststand_backend.storage import SettingsStore, atomic_json, read_json
 from teststand_backend.util import UNDEFINED, Record, clone, new_uuid, utc_now_iso
@@ -47,6 +48,10 @@ class ProjectService:
         result: Record = clone(self._require_file()["wiring"])
         return result
 
+    def signals(self) -> Record:
+        result: Record = clone(self._require_file()["signals"])
+        return result
+
     async def inspect_folder(self, root_path: str | Path) -> Record:
         root = await _canonical_directory(root_path)
         name = os.path.basename(root) or root
@@ -54,7 +59,7 @@ class ProjectService:
             raw = await read_json(project_path(root))
             if raw is UNDEFINED:
                 return {"rootPath": root, "state": "uninitialized", "name": name}
-            file = parse_project_file(raw)
+            file = read_project_file(raw)
             return {"rootPath": root, "state": "ready", "name": file["name"]}
         except Exception as error:
             return {"rootPath": root, "state": "invalid", "name": name, "message": str(error)}
@@ -82,7 +87,7 @@ class ProjectService:
         if selection["state"] == "invalid":
             raise app_error("invalid_project", selection.get("message", "invalid_project"))
         path = project_path(selection["rootPath"])
-        file = parse_project_file(await read_json(path))
+        file = read_project_file(await read_json(path))
         self._root_path = selection["rootPath"]
         self._path = path
         self._file = file
@@ -113,7 +118,7 @@ class ProjectService:
                 "rootPath": root,
                 "name": item["name"],
                 "openedAt": item["openedAt"],
-                "preview": {"nodes": [], "connections": []},
+                "preview": {"connections": 0, "nodes": 0},
             }
             try:
                 await asyncio.to_thread(stat, root)
@@ -125,7 +130,7 @@ class ProjectService:
                 raw = await read_json(project_path(root))
                 if raw is UNDEFINED:
                     return {**fallback, "status": "invalid", "message": "project_manifest_missing"}
-                file = parse_project_file(raw)
+                file = read_project_file(raw)
                 return {
                     "rootPath": root,
                     "name": file["name"],
@@ -133,11 +138,8 @@ class ProjectService:
                     "updatedAt": file["updatedAt"],
                     "status": "available",
                     "preview": {
-                        "nodes": clone(file["wiring"]["nodes"]),
-                        "connections": [
-                            {key: connection[key] for key in ("connectionId", "portA", "portB")}
-                            for connection in file["wiring"]["connections"]
-                        ],
+                        "connections": len(file["wiring"]["connections"]),
+                        "nodes": len(file["signals"]["nodes"]),
                     },
                 }
             except Exception as error:
@@ -167,36 +169,42 @@ class ProjectService:
         self._dirty = True
         return self._require_document()
 
-    async def update_wiring_with_layout(self, wiring: Record) -> Record:
-        """Save changed geometry on existing disk nodes without committing structural edits."""
+    def update_signals(self, signals: Record) -> Record:
+        file = self._require_file()
+        self._file = {**file, "signals": parse_signal_view(signals), "updatedAt": utc_now_iso()}
+        self._dirty = True
+        return self._require_document()
+
+    async def update_signals_with_layout(self, signals: Record) -> Record:
+        """Save moved or resized nodes of the signal view at once; structural edits (nodes added or
+        removed, links, widget settings) stay in the buffer until the project is saved."""
         async with self._write_lock:
             current = self._require_document()
-            next_wiring = parse_project_wiring(wiring)
-            previous = {node["hardwareId"]: node for node in current["file"]["wiring"]["nodes"]}
-            layout_keys = ("x", "y", "width", "height", "portPositions")
+            next_view = parse_signal_view(signals)
+            previous = {node["nodeId"]: node for node in current["file"]["signals"]["nodes"]}
             changes = {
-                node["hardwareId"]: {
+                node["nodeId"]: {
                     key: node[key]
-                    for key in layout_keys
-                    if key in node and node.get(key) != previous[node["hardwareId"]].get(key)
+                    for key in LAYOUT_KEYS
+                    if key in node and node.get(key) != previous[node["nodeId"]].get(key)
                 }
-                for node in next_wiring["nodes"]
-                if node["hardwareId"] in previous
+                for node in next_view["nodes"]
+                if node["nodeId"] in previous
             }
             changes = {identifier: patch for identifier, patch in changes.items() if patch}
             if not changes:
-                return self.update_wiring(next_wiring)
-            saved = parse_project_file(await read_json(current["path"]))
+                return self.update_signals(next_view)
+            saved = read_project_file(await read_json(current["path"]))
             if saved["projectId"] != current["file"]["projectId"]:
                 raise app_error("conflict", "Project changed on disk; reopen it before editing.")
             saved_nodes = [
-                {**node, **changes.get(node["hardwareId"], {})} for node in saved["wiring"]["nodes"]
+                {**node, **changes.get(node["nodeId"], {})} for node in saved["signals"]["nodes"]
             ]
-            if saved_nodes != saved["wiring"]["nodes"]:
+            if saved_nodes != saved["signals"]["nodes"]:
                 saved = parse_project_file(
                     {
                         **saved,
-                        "wiring": {**saved["wiring"], "nodes": saved_nodes},
+                        "signals": {**saved["signals"], "nodes": saved_nodes},
                         "updatedAt": utc_now_iso(),
                     }
                 )
@@ -206,8 +214,9 @@ class ProjectService:
                 raise app_error(
                     "conflict", "Project changed while saving its layout; retry the edit."
                 )
-            self.update_wiring(next_wiring)
-            self._dirty = next_wiring != saved["wiring"]
+            self.update_signals(next_view)
+            file = self._require_file()
+            self._dirty = file["signals"] != saved["signals"] or file["wiring"] != saved["wiring"]
             return self._require_document()
 
     async def close(self) -> None:
@@ -253,14 +262,34 @@ class ProjectService:
         await self._settings.update({"recentProjects": next_value})
 
 
+LAYOUT_KEYS = ("x", "y", "width", "height")
+"""Node geometry of the signal view, saved as soon as it changes."""
+
+
+def read_project_file(raw: object) -> Record:
+    """Parse a project file read from disk; files of an earlier format are refused by name."""
+    version = raw.get("formatVersion") if isinstance(raw, dict) else None
+    if (
+        isinstance(version, int)
+        and not isinstance(version, bool)
+        and version < PROJECT_FORMAT_VERSION
+    ):
+        raise app_error(
+            "invalid_project",
+            f"项目格式版本 {version} 已不再支持（当前为 {PROJECT_FORMAT_VERSION}），请新建项目。",
+        )
+    return parse_project_file(raw)
+
+
 def empty_project_file(name: str = "Untitled project") -> Record:
     now = utc_now_iso()
     return parse_project_file(
         {
-            "formatVersion": 4,
+            "formatVersion": PROJECT_FORMAT_VERSION,
             "projectId": new_uuid(),
             "name": name,
-            "wiring": {"nodes": [], "connections": []},
+            "wiring": {"connections": []},
+            "signals": {"nodes": [], "links": []},
             "createdAt": now,
             "updatedAt": now,
         }

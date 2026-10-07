@@ -1,7 +1,6 @@
 import asyncio
 import hashlib
 import json
-import math
 from collections.abc import Callable
 from typing import Protocol
 
@@ -67,40 +66,6 @@ class ProjectWiringService:
         self._tasks.clear()
         self._last_changes.clear()
 
-    async def add_hardware_to_canvas(self, hardware_id: str) -> Record:
-        async with self._lock("canvas:nodes"):
-            identifier = hardware_id.strip()
-            if not identifier:
-                raise app_error("invalid_argument", "hardwareId is required")
-            hardware = self.catalog.get_hardware(identifier)
-            wiring = self.projects.wiring()
-            existing = next(
-                (node for node in wiring["nodes"] if node["hardwareId"] == identifier), None
-            )
-            if existing is not None:
-                return {
-                    "added": False,
-                    "node": existing,
-                    "dirty": self.projects.document()["dirty"],
-                }
-            index = len(wiring["nodes"])
-            node = {
-                "hardwareId": identifier,
-                "x": 80 + (index % 3) * 330,
-                "y": 80 + math.floor(index / 3) * 240,
-                "width": 220,
-                "height": 168,
-                "portPositions": default_port_positions(
-                    [port["portId"] for port in hardware["ports"]]
-                ),
-            }
-            document = self.projects.update_wiring(
-                {"nodes": [*wiring["nodes"], node], "connections": wiring["connections"]}
-            )
-            if self._project_notifier:
-                self._project_notifier()
-            return {"added": True, "node": node, "dirty": document["dirty"]}
-
     async def request_task(self, input: Record) -> Record:
         references = [input[key].strip() for key in ("portA", "portB")]
         if not all(references):
@@ -151,7 +116,7 @@ class ProjectWiringService:
         return clone(task)
 
     def validate_document_connections(self, wiring: Record) -> None:
-        """Validate edited same-port pins while allowing layout edits of unresolved hardware."""
+        """Validate edited same-port pins; untouched connections of unresolved hardware pass."""
         previous = {item["connectionId"]: item for item in self.projects.wiring()["connections"]}
         for connection in wiring["connections"]:
             if connection["portA"] != connection["portB"]:
@@ -234,7 +199,7 @@ class ProjectWiringService:
         return [clone(task) for task in items[: int(limit)]]
 
     def record_manual_changes(self, previous: list[Record], current: list[Record]) -> list[Record]:
-        """Log the operator's canvas edits to connections; layout-only edits leave no entry."""
+        """Log the operator's edits of the pin list; a no-op edit leaves no entry."""
         session = getattr(self.projects, "session", lambda: None)()
         if not session:
             return []
@@ -421,24 +386,3 @@ def canonical_ports(left: str, right: str, pins: list[Record]) -> tuple[str, str
     if a <= b:
         return a, b, [{"a": pin["a"], "b": pin["b"]} for pin in pins]
     return b, a, [{"a": pin["b"], "b": pin["a"]} for pin in pins]
-
-
-def default_port_positions(port_ids: list[str]) -> Record:
-    if not port_ids:
-        return {}
-    if len(port_ids) == 1:
-        return {port_ids[0]: {"side": "right", "offset": 0.5}}
-    if len(port_ids) == 2:
-        return {
-            port_ids[0]: {"side": "left", "offset": 0.5},
-            port_ids[1]: {"side": "right", "offset": 0.5},
-        }
-    sides = ("top", "right", "bottom", "left")
-    by_side: dict[str, list[str]] = {side: [] for side in sides}
-    for index, port_id in enumerate(port_ids):
-        by_side[sides[index % 4]].append(port_id)
-    return {
-        port_id: {"side": side, "offset": (index + 1) / (len(ids) + 1)}
-        for side, ids in by_side.items()
-        for index, port_id in enumerate(ids)
-    }

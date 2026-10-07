@@ -31,7 +31,6 @@ def restore(value: Any) -> Any:
 CASES = restore(
     json.loads(Path(__file__).with_name("desktop-facade-calls.json").read_text("utf-8"))
 )
-CASES.append({"operation": "wiring.addHardwareToCanvas", "body": {"hardwareId": "H"}})
 
 
 def registry() -> tuple[TestStandApplication, OperationRegistry]:

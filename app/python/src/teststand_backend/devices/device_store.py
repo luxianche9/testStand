@@ -153,6 +153,7 @@ class DeviceStore:
                 "hardwareId": parsed["hardwareId"],
                 "label": parsed["label"],
                 "ports": parsed["ports"],
+                "signals": parsed["signals"],
             }
         )
         await self._save_stored_hardware(stored)
@@ -372,6 +373,7 @@ def _parse_stored(value: Any) -> Record:
             "hardwareId": raw.get("hardwareId", UNDEFINED),
             "label": raw.get("label", UNDEFINED),
             "ports": raw.get("ports") if raw.get("ports") is not None else [],
+            "signals": raw.get("signals") if raw.get("signals") is not None else [],
         }
     )
 

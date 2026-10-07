@@ -763,6 +763,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ops/signals.catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Every hardware with its signals: a device's declared streams (``known`` is false until
+         *     the device was connected once), a passive part's declared signals.
+         */
+        post: operations["signals.catalog"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ops/signals.updateDocument": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** signals.updateDocument */
+        post: operations["signals.updateDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ops/signals.write": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** signals.write */
+        post: operations["signals.write"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ops/streams.expect": {
         parameters: {
             query?: never;
@@ -1582,23 +1636,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/ops/wiring.addHardwareToCanvas": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** wiring.addHardwareToCanvas */
-        post: operations["wiring.addHardwareToCanvas"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/ops/wiring.cancelTask": {
         parameters: {
             query?: never;
@@ -1975,6 +2012,18 @@ export interface components {
              */
             welcomeLayout?: ("grid" | "list") | null;
         };
+        /** SignalsCatalogRequest */
+        SignalsCatalogRequest: Record<string, never>;
+        /** SignalsUpdateDocumentRequest */
+        SignalsUpdateDocumentRequest: {
+            /** Signals */
+            signals: object;
+        };
+        /** SignalsWriteRequest */
+        SignalsWriteRequest: {
+            /** Input */
+            input: object;
+        };
         /** StreamsExpectRequest */
         StreamsExpectRequest: {
             /** Hardwareid */
@@ -2286,11 +2335,6 @@ export interface components {
             category: string;
             details?: unknown;
             message: string;
-        };
-        /** WiringAddHardwareToCanvasRequest */
-        WiringAddHardwareToCanvasRequest: {
-            /** Hardwareid */
-            hardwareId: string;
         };
         /** WiringCancelTaskRequest */
         WiringCancelTaskRequest: {
@@ -3793,6 +3837,105 @@ export interface operations {
         requestBody?: {
             content: {
                 "application/json": components["schemas"]["SettingsUpdateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": object;
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: components["schemas"]["WireError"];
+                    };
+                };
+            };
+        };
+    };
+    "signals.catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SignalsCatalogRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": object[];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: components["schemas"]["WireError"];
+                    };
+                };
+            };
+        };
+    };
+    "signals.updateDocument": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignalsUpdateDocumentRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": object;
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: components["schemas"]["WireError"];
+                    };
+                };
+            };
+        };
+    };
+    "signals.write": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignalsWriteRequest"];
             };
         };
         responses: {
@@ -5377,39 +5520,6 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["TestingWaitForRunRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": object;
-                };
-            };
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        error: components["schemas"]["WireError"];
-                    };
-                };
-            };
-        };
-    };
-    "wiring.addHardwareToCanvas": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["WiringAddHardwareToCanvasRequest"];
             };
         };
         responses: {

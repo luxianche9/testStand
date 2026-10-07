@@ -9,6 +9,18 @@ from teststand_backend.storage import SettingsStore
 from teststand_backend.util import json_dumps, json_loads
 
 PREFIX = "packages/projects/src/project-service.test.ts::ProjectService folder projects::"
+CONNECTION = {
+    "connectionId": "C",
+    "portA": "A.J1",
+    "portB": "B.J1",
+    "pins": [],
+    "confirmedAt": "2026-09-15T00:00:00.000Z",
+    "confirmedBy": "user",
+}
+
+
+def hardware_node(node_id: str = "n1", **layout: Any) -> dict[str, Any]:
+    return {"nodeId": node_id, "kind": "hardware", "hardwareId": "A", "x": 0, "y": 0, **layout}
 
 
 async def fixture(root: Path) -> tuple[ProjectService, SettingsStore]:
@@ -57,14 +69,9 @@ async def test_save_damage(tmp_path: Path) -> None:
     folder = tmp_path / "bench-b"
     folder.mkdir()
     await service.initialize_folder(folder)
-    service.update_wiring(
-        {
-            "nodes": [{"hardwareId": "DUT", "x": 10, "y": 20, "portPositions": {}}],
-            "connections": [],
-        }
-    )
+    service.update_signals({"nodes": [hardware_node()], "links": []})
     await service.save()
-    assert len(json_loads(Path(project_path(folder)).read_text())["wiring"]["nodes"]) == 1
+    assert len(json_loads(Path(project_path(folder)).read_text())["signals"]["nodes"]) == 1
     await service.leave()
     Path(project_path(folder)).write_text("{ broken")
     assert (await service.inspect_folder(folder))["state"] == "invalid"
@@ -101,39 +108,8 @@ async def test_recent(tmp_path: Path) -> None:
     first.mkdir()
     second.mkdir()
     await service.initialize_folder(first)
-    nodes: list[dict[str, Any]] = [
-        {
-            "hardwareId": "A",
-            "x": 0,
-            "y": 0,
-            "width": 260,
-            "height": 190,
-            "portPositions": {"J1": {"side": "right", "offset": 0.35}},
-        },
-        {
-            "hardwareId": "B",
-            "x": 200,
-            "y": 100,
-            "width": 150,
-            "height": 40,
-            "portPositions": {"J1": {"side": "left", "offset": 0.65}},
-        },
-    ]
-    service.update_wiring(
-        {
-            "nodes": nodes,
-            "connections": [
-                {
-                    "connectionId": "C",
-                    "portA": "A.J1",
-                    "portB": "B.J1",
-                    "pins": [],
-                    "confirmedAt": "2026-09-10T00:00:00.000Z",
-                    "confirmedBy": "operator",
-                }
-            ],
-        }
-    )
+    service.update_wiring({"connections": [CONNECTION]})
+    service.update_signals({"nodes": [hardware_node("n1"), hardware_node("n2")], "links": []})
     await service.save()
     await service.initialize_folder(second)
     await service.open_folder(first)
@@ -144,10 +120,7 @@ async def test_recent(tmp_path: Path) -> None:
     Path(project_path(second)).rename(project_path(second) + ".broken")
     recent = await service.list_recent()
     assert recent[0]["status"] == "available"
-    assert recent[0]["preview"]["nodes"] == nodes
-    assert recent[0]["preview"]["connections"] == [
-        {"connectionId": "C", "portA": "A.J1", "portB": "B.J1"}
-    ]
+    assert recent[0]["preview"] == {"connections": 1, "nodes": 2}
     assert recent[1]["status"] == "invalid"
     await service.forget_recent(second)
     assert [item["rootPath"] for item in await service.list_recent()] == [str(first)]
@@ -157,20 +130,20 @@ async def test_recent(tmp_path: Path) -> None:
 async def test_open_current_bytes_and_explicit_save(tmp_path: Path) -> None:
     service, _ = await fixture(tmp_path)
     created = await service.initialize_folder(tmp_path)
-    assert created["file"]["formatVersion"] == 4 and "task" not in created["file"]
+    assert created["file"]["formatVersion"] == 5 and "task" not in created["file"]
     path = Path(created["path"])
     raw = json_dumps({**created["file"], "ignored": True})
     path.write_text(raw, encoding="utf-8")
     opened = await service.open_folder(tmp_path)
     assert "ignored" not in opened["file"]
     assert path.read_text(encoding="utf-8") == raw
-    opened["file"]["wiring"]["nodes"].append({"hardwareId": "outside"})
-    assert service.wiring()["nodes"] == []
-    service.update_wiring({"nodes": [{"hardwareId": "A", "x": 0, "y": 0}], "connections": []})
+    opened["file"]["signals"]["nodes"].append({"nodeId": "outside"})
+    assert service.signals()["nodes"] == []
+    service.update_signals({"nodes": [hardware_node()], "links": []})
     await service.close()
     await service.leave()
     assert path.read_text(encoding="utf-8") == raw
-    assert (await service.open_folder(tmp_path))["file"]["wiring"]["nodes"] == []
+    assert (await service.open_folder(tmp_path))["file"]["signals"]["nodes"] == []
 
 
 @pytest.mark.asyncio
@@ -261,57 +234,52 @@ async def test_project_directory_occupied_by_file_is_rejected(tmp_path: Path) ->
         await service.initialize_folder(tmp_path)
 
 
-async def test_layout_survives_restart_without_saving_pending_connections(tmp_path: Path) -> None:
+async def test_layout_survives_restart_without_saving_pending_edits(tmp_path: Path) -> None:
     service, _ = await fixture(tmp_path)
     await service.initialize_folder(tmp_path)
-    service.update_wiring({"nodes": [{"hardwareId": "A", "x": 0, "y": 0}], "connections": []})
+    service.update_signals({"nodes": [hardware_node()], "links": []})
     await service.save()
-    pending = service.wiring()
-    pending["connections"].append(
-        {
-            "connectionId": "C",
-            "portA": "A.J1",
-            "portB": "B.J1",
-            "pins": [],
-            "confirmedAt": "2026-09-15T00:00:00.000Z",
-            "confirmedBy": "user",
-        }
-    )
-    service.update_wiring(pending)
-    next_wiring = service.wiring()
-    next_wiring["nodes"][0].update(
-        {
-            "x": 42,
-            "y": 64,
-            "width": 300,
-            "height": 180,
-            "portPositions": {"J1": {"side": "top", "offset": 0.25}},
-        }
-    )
-    updated = await service.update_wiring_with_layout(next_wiring)
+    service.update_wiring({"connections": [CONNECTION]})
+    pending = service.signals()
+    pending["nodes"].append(hardware_node("n2"))
+    service.update_signals(pending)
+    moved = service.signals()
+    moved["nodes"][0].update({"x": 42, "y": 64, "width": 300, "height": 180})
+    updated = await service.update_signals_with_layout(moved)
     assert updated["dirty"] is True
-    assert len(updated["file"]["wiring"]["connections"]) == 1
+    assert len(updated["file"]["signals"]["nodes"]) == 2
     restarted, _ = await fixture(tmp_path)
     restored = await restarted.open_folder(tmp_path)
-    assert restored["file"]["wiring"]["nodes"] == next_wiring["nodes"]
+    assert restored["file"]["signals"]["nodes"] == [moved["nodes"][0]]
     assert restored["file"]["wiring"]["connections"] == []
     assert restored["dirty"] is False
-    layout_only = restarted.wiring()
-    layout_only["nodes"][0]["portPositions"]["J1"] = {"side": "left", "offset": 0.7}
-    assert (await restarted.update_wiring_with_layout(layout_only))["dirty"] is False
+    layout_only = restarted.signals()
+    layout_only["nodes"][0]["x"] = 7
+    assert (await restarted.update_signals_with_layout(layout_only))["dirty"] is False
     await restarted.leave()
-    assert (await restarted.open_folder(tmp_path))["file"]["wiring"] == layout_only
+    assert (await restarted.open_folder(tmp_path))["file"]["signals"] == layout_only
 
 
 async def test_layout_does_not_replace_a_damaged_project(tmp_path: Path) -> None:
     service, _ = await fixture(tmp_path)
     created = await service.initialize_folder(tmp_path)
-    service.update_wiring({"nodes": [{"hardwareId": "A", "x": 0, "y": 0}], "connections": []})
+    service.update_signals({"nodes": [hardware_node()], "links": []})
     await service.save()
-    next_wiring = service.wiring()
-    next_wiring["nodes"][0]["width"] = 350
+    moved = service.signals()
+    moved["nodes"][0]["width"] = 350
     Path(created["path"]).write_text("{ broken", encoding="utf-8")
     with pytest.raises(ValueError):
-        await service.update_wiring_with_layout(next_wiring)
-    assert "width" not in service.wiring()["nodes"][0]
+        await service.update_signals_with_layout(moved)
+    assert "width" not in service.signals()["nodes"][0]
     assert Path(created["path"]).read_text(encoding="utf-8") == "{ broken"
+
+
+async def test_earlier_format_is_refused_by_name(tmp_path: Path) -> None:
+    service, _ = await fixture(tmp_path)
+    path = Path(project_path(tmp_path))
+    path.parent.mkdir(parents=True)
+    raw = json_dumps({"formatVersion": 4, "projectId": "OLD"})
+    path.write_text(raw)
+    selection = await service.inspect_folder(tmp_path)
+    assert selection["state"] == "invalid" and "格式版本 4" in selection["message"]
+    assert path.read_text() == raw

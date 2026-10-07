@@ -471,19 +471,10 @@ class WiringApplication:
     async def update_document(self, context: Json, wiring: Json) -> Json:
         self.wiring.validate_document_connections(wiring)
         previous = self.projects.wiring()["connections"]
-        document = await self.projects.update_wiring_with_layout(wiring)
+        document = self.projects.update_wiring(wiring)
         self.wiring.record_manual_changes(previous, document["file"]["wiring"]["connections"])
         self.wiring.notify_project_changed()
         return document
-
-    @operation(
-        "wiring.addHardwareToCanvas",
-        capability="projects.manage",
-        risk="write",
-        profiles=("plan",),
-    )
-    async def add_hardware_to_canvas(self, context: Json, hardware_id: str) -> Json:
-        return await self.wiring.add_hardware_to_canvas(hardware_id)
 
     @operation("wiring.requestTask", capability="wiring.request", risk="write", profiles=("plan",))
     async def request_task(self, context: Json, input: Json) -> Json:

@@ -6,7 +6,7 @@ import pytest
 from teststand_backend.contracts.errors import AppError
 from teststand_backend.projects import ProjectService
 from teststand_backend.storage import SettingsStore
-from teststand_backend.util import clone, iso_from_ms
+from teststand_backend.util import iso_from_ms
 from teststand_backend.wiring import ProjectWiringService
 
 PREFIX = "packages/wiring/src/project-wiring-agent.test.ts::Agent canvas permissions::"
@@ -53,7 +53,6 @@ async def fixture(root: Path) -> tuple[ProjectWiringService, ProjectService, lis
     await projects.initialize_folder(root)
     projects.update_wiring(
         {
-            "nodes": [{"hardwareId": "DUT_A", "x": 10, "y": 20, "portPositions": {}}],
             "connections": [
                 {
                     "connectionId": "C1",
@@ -72,45 +71,13 @@ async def fixture(root: Path) -> tuple[ProjectWiringService, ProjectService, lis
     return service, projects, notifications
 
 
-@pytest.mark.ts_case(PREFIX + "adds a managed node without changing physical connections")
-@pytest.mark.asyncio
-async def test_canvas(tmp_path: Path) -> None:
-    service, projects, notifications = await fixture(tmp_path)
-    before = clone(projects.wiring()["connections"])
-    added = await service.add_hardware_to_canvas("CARD_A")
-    assert added["added"] is True and added["dirty"] is True
-    assert added["node"]["x"] == 410 and added["node"]["y"] == 80
-    assert added["node"]["portPositions"] == {
-        "P1": {"side": "left", "offset": 0.5},
-        "P2": {"side": "right", "offset": 0.5},
-    }
-    assert projects.wiring()["connections"] == before
-    assert len(notifications) == 1
-
-
-@pytest.mark.ts_case(PREFIX + "is idempotent and also places passive hardware")
-@pytest.mark.asyncio
-async def test_canvas_idempotence(tmp_path: Path) -> None:
-    service, projects, notifications = await fixture(tmp_path)
-    first = await service.add_hardware_to_canvas("CARD_A")
-    assert await service.add_hardware_to_canvas("CARD_A") == {
-        "added": False,
-        "dirty": True,
-        "node": first["node"],
-    }
-    assert sum(node["hardwareId"] == "CARD_A" for node in projects.wiring()["nodes"]) == 1
-    assert len(notifications) == 1
-    # Passive parts (the unit under test, fixtures) go on the canvas the same way.
-    assert (await service.add_hardware_to_canvas("DUT_B"))["added"] is True
-
-
 @pytest.mark.ts_case(
     APP_PREFIX + "keeps the wiring canvas documentary while the operator processes a task"
 )
 @pytest.mark.asyncio
 async def test_task_cable(tmp_path: Path) -> None:
     service, projects, _ = await fixture(tmp_path)
-    projects.update_wiring({"nodes": [], "connections": []})
+    projects.update_wiring({"connections": []})
     pins = [{"a": "1", "b": "1"}, {"a": "2", "b": "2"}]
     task = await service.request_task(
         {"portA": "DUT_A.P1", "portB": "DUT_B.P1", "pins": pins, "action": "connect"}
@@ -128,7 +95,7 @@ async def test_task_cable(tmp_path: Path) -> None:
 @pytest.mark.asyncio
 async def test_pinless(tmp_path: Path) -> None:
     service, projects, _ = await fixture(tmp_path)
-    projects.update_wiring({"nodes": [], "connections": []})
+    projects.update_wiring({"connections": []})
     task = await service.request_task(
         {"portA": "DUT_A.P2", "portB": "DUT_B.P2", "action": "connect"}
     )

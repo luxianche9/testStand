@@ -102,7 +102,6 @@ async def test_invalid_same_port_pins_rejected_in_tasks_and_document(
     with pytest.raises(AppError):
         service.validate_document_connections(
             {
-                "nodes": [],
                 "connections": [
                     {
                         "connectionId": "self",

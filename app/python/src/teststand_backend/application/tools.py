@@ -60,6 +60,15 @@ GLOSSARY = {
     "status": "Filter by the exact lifecycle status; a successful program exit is not a test "
     "verdict.",
     "limit": "Maximum records in this response; use pagination or a narrower filter for more.",
+    "signals": "Logical signals a passive part (unit under test, fixture) offers; never tied to "
+    "pins. Devices get their signals from their plugin's streams and must leave this empty.",
+    "signalId": "Stable signal id, 1-64 of [A-Za-z0-9_.-]; the signal view links to it.",
+    "type": "Signal type: scalar, bits, bytes or frames, as the device stream that carries it.",
+    "direction": "From the part's side: input (driven by a device), output (measured by a device) "
+    "or bidirectional (a bus).",
+    "unit": "Physical unit of a scalar signal, e.g. V.",
+    "width": "Number of bit lines of a bits signal, 1-64 (default 1).",
+    "bitLabels": "One name per bit line of a bits signal.",
 }
 
 
@@ -81,9 +90,8 @@ _PROJECT = _object(
             {
                 "projectId": _STRING,
                 "name": _STRING,
-                "wiring": _object(
-                    {"nodes": _array(_object({})), "connections": _array(_object({}))}
-                ),
+                "wiring": _object({"connections": _array(_object({}))}),
+                "signals": _object({"nodes": _array(_object({})), "links": _array(_object({}))}),
             }
         ),
     },
@@ -191,7 +199,7 @@ PLATFORM_TOOLS = [
     _platform(
         "get_project",
         "读取当前打开工程的根目录、持久化文档、接线连接与未保存状态。用于确定工作区和已有连接；"
-        "无工程时按返回状态先打开或初始化工程。画布记录不证明物理导通。",
+        "无工程时按返回状态先打开或初始化工程。接线列表和信号视图都不证明物理导通。",
         _EMPTY,
         {"anyOf": [_PROJECT, {"type": "null"}]},
         operation="projects.document",
@@ -218,7 +226,8 @@ PLATFORM_TOOLS = [
     ),
     _platform(
         "save_project",
-        "通过项目服务保存当前工程及画布文档。检查返回的 dirty 状态；保存记录不执行物理接线。"
+        "通过项目服务保存当前工程（接线列表与信号视图）。检查返回的 dirty 状态；"
+        "保存记录不执行物理接线。"
         "Python 源文件的写入状态与工程文档的保存状态分别核对。",
         _EMPTY,
         _PROJECT,
@@ -300,7 +309,7 @@ PLATFORM_TOOLS = [
     ),
     _platform(
         "save_hardware_definition",
-        "创建或更新一份本地硬件定义。影响目录和画布引用，不操作实物。必须按硬件定义 schema "
+        "创建或更新一份本地硬件定义。影响目录和信号视图引用，不操作实物。必须按硬件定义 schema "
         "提交；修改已有端口/引脚 ID 前检查关联接线。",
         obj({"hardware": hardware_schema}, strict=True),
         _HARDWARE,
@@ -313,18 +322,6 @@ PLATFORM_TOOLS = [
         _HARDWARE_ID,
         _object({"hardwareId": _STRING}, ["hardwareId"]),
         operation="devices.removeHardware",
-        fields=("hardwareId",),
-    ),
-    _platform(
-        "add_hardware_to_canvas",
-        "幂等地将已登记硬件（设备或被测件/夹具）加入当前工程画布，已存在时返回 added=false。"
-        "会改变工程未保存状态；不创建物理接线或测量结果。",
-        _HARDWARE_ID,
-        _object(
-            {"added": _BOOLEAN, "node": _object({}), "dirty": _BOOLEAN},
-            ["added", "node", "dirty"],
-        ),
-        operation="wiring.addHardwareToCanvas",
         fields=("hardwareId",),
     ),
     _platform(

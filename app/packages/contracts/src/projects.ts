@@ -1,17 +1,19 @@
 import { z } from "zod";
 
 export const projectRootPathInputSchema = z.object({ id: z.string().min(1) }).strict();
-import { projectWiringSchema, type ProjectCanvasNode, type ProjectWiringConnection } from "./wiring.js";
+import { signalViewSchema } from "./signals.js";
+import { projectWiringSchema } from "./wiring.js";
 
 const projectMetadataFields = {
   projectId: z.string().min(1),
   name: z.string().min(1),
   wiring: projectWiringSchema,
+  signals: signalViewSchema,
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime()
 };
 
-export const projectFileSchema = z.object({ formatVersion: z.literal(4), ...projectMetadataFields });
+export const projectFileSchema = z.object({ formatVersion: z.literal(5), ...projectMetadataFields });
 export type ProjectFile = z.infer<typeof projectFileSchema>;
 
 export interface ProjectDocument {
@@ -37,8 +39,6 @@ export interface RecentProjectSummary {
   updatedAt?: string;
   status: RecentProjectStatus;
   message?: string;
-  preview: {
-    nodes: ProjectCanvasNode[];
-    connections: Array<Pick<ProjectWiringConnection, "connectionId" | "portA" | "portB">>;
-  };
+  /** How much the project holds: physical connections and signal view nodes. */
+  preview: { connections: number; nodes: number };
 }

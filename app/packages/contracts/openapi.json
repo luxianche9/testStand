@@ -581,6 +581,42 @@
         "title": "SettingsUpdateRequest",
         "type": "object"
       },
+      "SignalsCatalogRequest": {
+        "additionalProperties": false,
+        "properties": {},
+        "title": "SignalsCatalogRequest",
+        "type": "object"
+      },
+      "SignalsUpdateDocumentRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "signals": {
+            "additionalProperties": true,
+            "title": "Signals",
+            "type": "object"
+          }
+        },
+        "required": [
+          "signals"
+        ],
+        "title": "SignalsUpdateDocumentRequest",
+        "type": "object"
+      },
+      "SignalsWriteRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "input": {
+            "additionalProperties": true,
+            "title": "Input",
+            "type": "object"
+          }
+        },
+        "required": [
+          "input"
+        ],
+        "title": "SignalsWriteRequest",
+        "type": "object"
+      },
       "StreamsExpectRequest": {
         "additionalProperties": false,
         "properties": {
@@ -1373,20 +1409,6 @@
           "category",
           "message"
         ]
-      },
-      "WiringAddHardwareToCanvasRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "hardwareId": {
-            "title": "Hardwareid",
-            "type": "string"
-          }
-        },
-        "required": [
-          "hardwareId"
-        ],
-        "title": "WiringAddHardwareToCanvasRequest",
-        "type": "object"
       },
       "WiringCancelTaskRequest": {
         "additionalProperties": false,
@@ -3980,6 +4002,171 @@
         },
         "x-risk": "write",
         "x-capability": "system.manage",
+        "x-profiles": [],
+        "x-idempotency": "none",
+        "x-confirm": false
+      }
+    },
+    "/api/ops/signals.catalog": {
+      "post": {
+        "operationId": "signals.catalog",
+        "summary": "Every hardware with its signals: a device's declared streams (``known`` is false until\nthe device was connected once), a passive part's declared signals.",
+        "tags": [
+          "signals"
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignalsCatalogRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/WireError"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-risk": "read",
+        "x-capability": "hardware.read",
+        "x-profiles": [
+          "explore",
+          "plan"
+        ],
+        "x-idempotency": "natural",
+        "x-confirm": false
+      }
+    },
+    "/api/ops/signals.updateDocument": {
+      "post": {
+        "operationId": "signals.updateDocument",
+        "summary": "signals.updateDocument",
+        "tags": [
+          "signals"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignalsUpdateDocumentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/WireError"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-risk": "write",
+        "x-capability": "projects.manage",
+        "x-profiles": [],
+        "x-idempotency": "natural",
+        "x-confirm": false
+      }
+    },
+    "/api/ops/signals.write": {
+      "post": {
+        "operationId": "signals.write",
+        "summary": "signals.write",
+        "tags": [
+          "signals"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignalsWriteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/WireError"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-risk": "actuate",
+        "x-capability": "hardware.executeTools",
         "x-profiles": [],
         "x-idempotency": "none",
         "x-confirm": false
@@ -6647,61 +6834,6 @@
           "run"
         ],
         "x-idempotency": "natural",
-        "x-confirm": false
-      }
-    },
-    "/api/ops/wiring.addHardwareToCanvas": {
-      "post": {
-        "operationId": "wiring.addHardwareToCanvas",
-        "summary": "wiring.addHardwareToCanvas",
-        "tags": [
-          "wiring"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/WiringAddHardwareToCanvasRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "write",
-        "x-capability": "projects.manage",
-        "x-profiles": [
-          "plan"
-        ],
-        "x-idempotency": "none",
         "x-confirm": false
       }
     },

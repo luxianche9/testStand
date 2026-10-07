@@ -42,6 +42,7 @@ from .services import (
 from .services import (
     WiringApplication as WiringApplication,
 )
+from .signals import SignalsApplication as SignalsApplication
 from .streams import StreamsApplication as StreamsApplication
 
 NAMESPACES: dict[str, type] = {
@@ -49,6 +50,7 @@ NAMESPACES: dict[str, type] = {
     "streams": StreamsApplication,
     "projects": ProjectsApplication,
     "wiring": WiringApplication,
+    "signals": SignalsApplication,
     "manual": ManualControlApplication,
     "testing": TestingApplication,
     "system": SystemApplication,
@@ -100,6 +102,14 @@ class TestStandApplication:
         )
         self.manual = ManualControlApplication(
             self.authorizer, dependencies["devices"], dependencies["catalog"], execution
+        )
+        self.signals = SignalsApplication(
+            self.authorizer,
+            dependencies["projects"],
+            dependencies["wiring"],
+            dependencies["catalog"],
+            dependencies["devices"],
+            self.manual,
         )
         self.testing = TestingApplication(
             self.authorizer,
