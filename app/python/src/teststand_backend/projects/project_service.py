@@ -4,8 +4,8 @@ from os import stat
 from pathlib import Path
 
 from teststand_backend.contracts.errors import app_error
+from teststand_backend.contracts.monitor import parse_monitor
 from teststand_backend.contracts.projects import PROJECT_FORMAT_VERSION, parse_project_file
-from teststand_backend.contracts.signals import parse_signal_view
 from teststand_backend.contracts.wiring import parse_project_wiring
 from teststand_backend.storage import SettingsStore, atomic_json, read_json
 from teststand_backend.util import UNDEFINED, Record, clone, new_uuid, utc_now_iso
@@ -48,8 +48,8 @@ class ProjectService:
         result: Record = clone(self._require_file()["wiring"])
         return result
 
-    def signals(self) -> Record:
-        result: Record = clone(self._require_file()["signals"])
+    def monitor(self) -> Record:
+        result: Record = clone(self._require_file()["monitor"])
         return result
 
     async def inspect_folder(self, root_path: str | Path) -> Record:
@@ -118,7 +118,7 @@ class ProjectService:
                 "rootPath": root,
                 "name": item["name"],
                 "openedAt": item["openedAt"],
-                "preview": {"connections": 0, "nodes": 0},
+                "preview": {"connections": 0, "channels": 0},
             }
             try:
                 await asyncio.to_thread(stat, root)
@@ -139,7 +139,7 @@ class ProjectService:
                     "status": "available",
                     "preview": {
                         "connections": len(file["wiring"]["connections"]),
-                        "nodes": len(file["signals"]["nodes"]),
+                        "channels": len(file["monitor"]["channels"]),
                     },
                 }
             except Exception as error:
@@ -169,55 +169,11 @@ class ProjectService:
         self._dirty = True
         return self._require_document()
 
-    def update_signals(self, signals: Record) -> Record:
+    def update_monitor(self, monitor: Record) -> Record:
         file = self._require_file()
-        self._file = {**file, "signals": parse_signal_view(signals), "updatedAt": utc_now_iso()}
+        self._file = {**file, "monitor": parse_monitor(monitor), "updatedAt": utc_now_iso()}
         self._dirty = True
         return self._require_document()
-
-    async def update_signals_with_layout(self, signals: Record) -> Record:
-        """Save moved or resized nodes of the signal view at once; structural edits (nodes added or
-        removed, links, widget settings) stay in the buffer until the project is saved."""
-        async with self._write_lock:
-            current = self._require_document()
-            next_view = parse_signal_view(signals)
-            previous = {node["nodeId"]: node for node in current["file"]["signals"]["nodes"]}
-            changes = {
-                node["nodeId"]: {
-                    key: node[key]
-                    for key in LAYOUT_KEYS
-                    if key in node and node.get(key) != previous[node["nodeId"]].get(key)
-                }
-                for node in next_view["nodes"]
-                if node["nodeId"] in previous
-            }
-            changes = {identifier: patch for identifier, patch in changes.items() if patch}
-            if not changes:
-                return self.update_signals(next_view)
-            saved = read_project_file(await read_json(current["path"]))
-            if saved["projectId"] != current["file"]["projectId"]:
-                raise app_error("conflict", "Project changed on disk; reopen it before editing.")
-            saved_nodes = [
-                {**node, **changes.get(node["nodeId"], {})} for node in saved["signals"]["nodes"]
-            ]
-            if saved_nodes != saved["signals"]["nodes"]:
-                saved = parse_project_file(
-                    {
-                        **saved,
-                        "signals": {**saved["signals"], "nodes": saved_nodes},
-                        "updatedAt": utc_now_iso(),
-                    }
-                )
-                await atomic_json(current["path"], saved)
-            # A project switch during disk I/O must not update the newly opened project.
-            if self.current() != current:
-                raise app_error(
-                    "conflict", "Project changed while saving its layout; retry the edit."
-                )
-            self.update_signals(next_view)
-            file = self._require_file()
-            self._dirty = file["signals"] != saved["signals"] or file["wiring"] != saved["wiring"]
-            return self._require_document()
 
     async def close(self) -> None:
         """Structural edits are written only by explicit save."""
@@ -262,10 +218,6 @@ class ProjectService:
         await self._settings.update({"recentProjects": next_value})
 
 
-LAYOUT_KEYS = ("x", "y", "width", "height")
-"""Node geometry of the signal view, saved as soon as it changes."""
-
-
 def read_project_file(raw: object) -> Record:
     """Parse a project file read from disk; files of an earlier format are refused by name."""
     version = raw.get("formatVersion") if isinstance(raw, dict) else None
@@ -289,7 +241,7 @@ def empty_project_file(name: str = "Untitled project") -> Record:
             "projectId": new_uuid(),
             "name": name,
             "wiring": {"connections": []},
-            "signals": {"nodes": [], "links": []},
+            "monitor": {"channels": []},
             "createdAt": now,
             "updatedAt": now,
         }

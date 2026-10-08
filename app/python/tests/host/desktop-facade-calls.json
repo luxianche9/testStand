@@ -155,13 +155,16 @@
     }
   },
   {
-    "operation": "signals.applyOperations",
+    "operation": "monitor.update",
     "body": {
-      "operations": [
-        {
-          "type": "default_panel"
-        }
-      ]
+      "input": {
+        "add": [
+          {
+            "hardwareId": "H",
+            "streamId": "ai0"
+          }
+        ]
+      }
     }
   },
   {

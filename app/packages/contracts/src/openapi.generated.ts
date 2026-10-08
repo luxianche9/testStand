@@ -556,6 +556,65 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ops/monitor.get": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The channels the monitor panel shows, in order. */
+        post: operations["monitor.get"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ops/monitor.streams": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Every device with the streams it declares (``known`` is false until the device was
+         *     connected once; the cached declaration is used while it is offline).
+         */
+        post: operations["monitor.streams"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ops/monitor.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Change the panel's channels: ``channels`` replaces the list, then ``remove`` and
+         *     ``add`` (appended when not yet shown) apply. A stream must belong to a registered device
+         *     and, once the device's streams are known, be one it declares. Stays in the project buffer
+         *     until the project is saved. Returns the panel.
+         */
+        post: operations["monitor.update"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ops/projects.document": {
         parameters: {
             query?: never;
@@ -757,107 +816,6 @@ export interface paths {
         put?: never;
         /** settings.update */
         post: operations["settings.update"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/ops/signals.applyOperations": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Edit the signal view with a list of operations applied in order; the whole batch is
-         *     checked by the signal view rules and applied completely or not at all. Returns the
-         *     resulting view. Like a canvas edit, it stays in the project buffer until the project is
-         *     saved.
-         */
-        post: operations["signals.applyOperations"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/ops/signals.catalog": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Every hardware with its signals: a device's declared streams (``known`` is false until
-         *     the device was connected once), a passive part's declared signals.
-         */
-        post: operations["signals.catalog"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/ops/signals.getDocument": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * The project's signal view: hardware and widget nodes on the canvas and the links
-         *     between them.
-         */
-        post: operations["signals.getDocument"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/ops/signals.updateDocument": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** signals.updateDocument */
-        post: operations["signals.updateDocument"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/ops/signals.write": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Write a signal the way a control widget does: ``input`` is ``{nodeId, handle, bit?,
-         *     action, value}`` naming a node and handle on the signal view; action is one of the
-         *     stream's control actions (set, setBit, setMask, sendText, sendHex, sendFrame). Refused
-         *     while a test runs.
-         */
-        post: operations["signals.write"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1833,6 +1791,15 @@ export interface components {
             /** Raw */
             raw: object;
         };
+        /** MonitorGetRequest */
+        MonitorGetRequest: Record<string, never>;
+        /** MonitorStreamsRequest */
+        MonitorStreamsRequest: Record<string, never>;
+        /** MonitorUpdateRequest */
+        MonitorUpdateRequest: {
+            /** Input */
+            input: object;
+        };
         /** ProjectsDocumentRequest */
         ProjectsDocumentRequest: Record<string, never>;
         /** ProjectsForgetRecentRequest */
@@ -1905,25 +1872,6 @@ export interface components {
              * @default null
              */
             welcomeLayout?: ("grid" | "list") | null;
-        };
-        /** SignalsApplyOperationsRequest */
-        SignalsApplyOperationsRequest: {
-            /** Operations */
-            operations: object[];
-        };
-        /** SignalsCatalogRequest */
-        SignalsCatalogRequest: Record<string, never>;
-        /** SignalsGetDocumentRequest */
-        SignalsGetDocumentRequest: Record<string, never>;
-        /** SignalsUpdateDocumentRequest */
-        SignalsUpdateDocumentRequest: {
-            /** Signals */
-            signals: object;
-        };
-        /** SignalsWriteRequest */
-        SignalsWriteRequest: {
-            /** Input */
-            input: object;
         };
         /** StreamsExpectRequest */
         StreamsExpectRequest: {
@@ -3325,6 +3273,105 @@ export interface operations {
             };
         };
     };
+    "monitor.get": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["MonitorGetRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": object;
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: components["schemas"]["WireError"];
+                    };
+                };
+            };
+        };
+    };
+    "monitor.streams": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["MonitorStreamsRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": object[];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: components["schemas"]["WireError"];
+                    };
+                };
+            };
+        };
+    };
+    "monitor.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MonitorUpdateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": object;
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: components["schemas"]["WireError"];
+                    };
+                };
+            };
+        };
+    };
     "projects.document": {
         parameters: {
             query?: never;
@@ -3698,171 +3745,6 @@ export interface operations {
         requestBody?: {
             content: {
                 "application/json": components["schemas"]["SettingsUpdateRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": object;
-                };
-            };
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        error: components["schemas"]["WireError"];
-                    };
-                };
-            };
-        };
-    };
-    "signals.applyOperations": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SignalsApplyOperationsRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": object;
-                };
-            };
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        error: components["schemas"]["WireError"];
-                    };
-                };
-            };
-        };
-    };
-    "signals.catalog": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["SignalsCatalogRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": object[];
-                };
-            };
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        error: components["schemas"]["WireError"];
-                    };
-                };
-            };
-        };
-    };
-    "signals.getDocument": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["SignalsGetDocumentRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": object;
-                };
-            };
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        error: components["schemas"]["WireError"];
-                    };
-                };
-            };
-        };
-    };
-    "signals.updateDocument": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SignalsUpdateDocumentRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": object;
-                };
-            };
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        error: components["schemas"]["WireError"];
-                    };
-                };
-            };
-        };
-    };
-    "signals.write": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SignalsWriteRequest"];
             };
         };
         responses: {

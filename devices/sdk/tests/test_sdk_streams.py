@@ -4,6 +4,7 @@ import threading
 import time
 
 import pytest
+
 from teststand_device_sdk import (
     BitsStream,
     BlockStream,
@@ -251,13 +252,7 @@ def test_failed_attempt_counts_error_and_still_advances_watermark():
 
 
 def test_describe_declares_metadata():
-    from teststand_device_sdk import (
-        BitsStream,
-        BlockStream,
-        ByteStream,
-        FrameStream,
-        ScalarStream,
-    )
+    from teststand_device_sdk import BitsStream, BlockStream, ByteStream, FrameStream, ScalarStream
 
     assert ScalarStream("ao0", unit="V", label="AO0", kind="setpoint").describe() == {
         "id": "ao0", "type": "scalar", "unit": "V", "label": "AO0", "kind": "setpoint"}
@@ -278,45 +273,6 @@ def test_describe_declares_metadata():
         FrameStream("x", id_scheme="nope")
 
 
-def test_control_is_declared_with_the_device_prefix():
-    from teststand_device_sdk import (
-        BIT,
-        HEX,
-        TEXT,
-        VALUE,
-        BitsStream,
-        ByteStream,
-        ScalarStream,
-        control,
-    )
-
-    relay = BitsStream("relay", width=2, control=[control("setBit", "set_relay", channel=BIT, closed=VALUE),
-                                                  control("setMask", "set_bank", mask=VALUE)])
-    assert relay.describe("pci1762")["control"] == [
-        {"action": "setBit", "tool": "pci1762_set_relay", "args": {"channel": {"$": "bit"}, "closed": {"$": "value"}}},
-        {"action": "setMask", "tool": "pci1762_set_bank", "args": {"mask": {"$": "value"}}}]
-    assert ScalarStream("ao0", control=[control("set", "set_voltage", channel=0, volts=VALUE)]).describe()[
-        "control"] == [{"action": "set", "tool": "set_voltage", "args": {"channel": 0, "volts": {"$": "value"}}}]
-    serial = ByteStream("serial1", control=[control("sendText", "write_text", channel=1, text=TEXT),
-                                            control("sendHex", "write_hex", channel=1, hex_data=HEX)])
-    assert [item["action"] for item in serial.describe()["control"]] == ["sendText", "sendHex"]
-    assert "control" not in ScalarStream("ai0").describe()
-
-
-@pytest.mark.parametrize("bad", [
-    lambda c, P: c("set", "x", value=P.VALUE),        # set writes scalar streams, not bits
-    lambda c, P: c("setBit", "x", channel=P.BIT),      # value missing
-    lambda c, P: c("setMask", "x", a=P.VALUE, b=P.VALUE),  # value twice
-    lambda c, P: c("toggle", "x", value=P.VALUE),      # unknown action
-])
-def test_control_must_fit_the_stream_type(bad):
-    import teststand_device_sdk as sdk
-    from teststand_device_sdk import BitsStream, StreamRegistry, control
-
-    with pytest.raises(ValueError):
-        StreamRegistry().add(BitsStream("do", width=4, control=[bad(control, sdk)]))
-
-
 def test_idle_advances_event_stream_watermark():
     from teststand_device_sdk import ByteStream, FrameStream
 
@@ -331,8 +287,9 @@ def test_idle_advances_event_stream_watermark():
 
 
 def _reader_device(period: float | None):
-    from sdk_demo import DemoDevice
     from teststand_device_sdk import ByteStream
+
+    from sdk_demo import DemoDevice
 
     class Reader(DemoDevice):
         def __init__(self, config):

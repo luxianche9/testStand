@@ -155,7 +155,7 @@ async def test_real_child_settings_project_and_credentials(client: Client, tmp_p
     project = tmp_path / "中文 project"
     project.mkdir()
     result = await client.invoke("projects.initializeFolder", {"rootPath": str(project)})
-    assert result["file"]["formatVersion"] == 5
+    assert result["file"]["formatVersion"] == 6
     opencode = await client.invoke("agents.openCodeStatus")
     assert opencode["workspace"] == str(project) and opencode["state"] == "stopped"
     saved = await client.invoke(

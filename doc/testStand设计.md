@@ -215,7 +215,7 @@ testStand 是一套通用的智能测试软件。目标是用**一套平台 + �
 ```jsonc
 {
   "manifestRevision": "sha256:9f2c…",        // 对下面全部内容求哈希，任何变化都会改变
-  "contractRevision": "2026-10-07.1",
+  "contractRevision": "2026-10-08.1",
   "identity": {
     "deviceId": "PCI1710L_1",
     "hardwareId": "PCI1710L_CARD_0",
@@ -332,7 +332,7 @@ AI 通过网关读取声明（第 8.3 节的 `get_hardware_definition`），而�
 | `internal` | 插件内部错误 |
 
 - `retryable` 只是建议，永远不授权重放物理动作。
-- 插件以 `CONTRACT_REVISION` 标识契约版本，当前为 `2026-10-07.1`。
+- 插件以 `CONTRACT_REVISION` 标识契约版本，当前为 `2026-10-08.1`。
 
 ### 4.5 隔离子进程
 

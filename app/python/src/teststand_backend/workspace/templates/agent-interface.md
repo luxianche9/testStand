@@ -15,14 +15,18 @@ Physical actions and hardware I/O still obey execution conflicts; metadata is no
 these checks. Do not stop an active hardware call just to read the public status or contract.
 Physical wiring confirmation and driver success have separate meanings from measured electrical facts.
 
-## Wiring and the signal view
+## Wiring and the monitor panel
 
 `request_wiring` submits every pin change a task needs as one batch (`changes`, each a connect or
 disconnect of `portA`/`portB` with `pins`; `replaceAll` also disconnects every saved connection the
 batch does not name). The call blocks until the operator confirms or rejects the whole batch in the
 conversation; a confirmed batch is applied, logged and saved. The wiring is never edited directly.
-`get_signal_view` returns the signal view (nodes and links); `apply_signal_view_operations` changes
-it with the same rules as the operator's canvas.
+`monitor_streams` lists every device with the streams it declares. `get_monitor` returns the
+monitor panel's channels (`{hardwareId, streamId}`, in order); `update_monitor` replaces
+(`channels`), removes (`remove`) or appends (`add`) them. Sampled streams are drawn on the scope,
+record streams are listed in the terminal. The panel only watches: devices are controlled by
+their tools. Wiring, the monitor panel and the test flow never refer to each other; before every
+run, check that every channel the flow uses is wired and shown on the panel.
 
 ## Read documentation
 

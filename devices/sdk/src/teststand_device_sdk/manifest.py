@@ -75,7 +75,7 @@ def build_manifest(service: DeviceHost) -> Manifest:
         "identity": identity,
         "description": description,
         "pinout": _pinout(service, manifest),
-        "streams": device.streams.describe(device.prefix),
+        "streams": device.streams.describe(),
         "capabilities": service.capability_details(),
         "tools": [{"name": name, "kind": kind} for name, kind in service.tool_kinds.items()],
     }

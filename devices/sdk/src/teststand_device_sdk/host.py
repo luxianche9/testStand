@@ -254,26 +254,6 @@ class DeviceHost:
             action = spec.semantics(prefix).get("safetyAction")
             if action is not None and action["toolName"] not in self.tool_specs:
                 raise RuntimeError(f"{name} declares unknown safety_action {action['toolName']}")
-        self._check_stream_controls()
-
-    def _check_stream_controls(self) -> None:
-        """Every ``control`` of a stream names an ``actuate`` tool of this device and fills exactly its
-        parameters (fixed values plus placeholders; ``hardwareId`` is added by the caller)."""
-        prefix = self.device.prefix
-        for stream in self.device.streams.values():
-            for item in stream.controls:
-                name = f"{prefix}_{item.tool}" if prefix else item.tool
-                spec = self.tool_specs.get(name)
-                if spec is None or spec.kind != "actuate":
-                    raise RuntimeError(f"stream {stream.stream_id}: control {item.action} needs an actuate tool, "
-                                       f"{item.tool!r} is {'unknown' if spec is None else spec.kind}")
-                params = {param.name: param for param in method_parameters(getattr(self.device, spec.attr))}
-                unknown = sorted(set(item.args) - set(params))
-                missing = sorted(key for key, param in params.items()
-                                 if param.default is inspect.Parameter.empty and key not in item.args)
-                if unknown or missing:
-                    raise RuntimeError(f"stream {stream.stream_id}: control {item.action} via {item.tool} "
-                                       f"has unknown arguments {unknown} or misses {missing}")
 
     # --- calling ------------------------------------------------------
     def describe_tools(self) -> list[dict[str, Any]]:

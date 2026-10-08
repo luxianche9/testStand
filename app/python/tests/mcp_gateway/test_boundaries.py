@@ -54,7 +54,7 @@ _CASES: list[tuple[str, dict[str, Any], str, str, list[Any]]] = [
         {"hardware": _HARDWARE},
         "devices",
         "save_hardware",
-        [{"formatVersion": 2, **_HARDWARE, "ports": [], "signals": []}],
+        [{"formatVersion": 2, **_HARDWARE, "ports": []}],
     ),
     ("remove_hardware_definition", {"hardwareId": "H"}, "devices", "remove_hardware", ["H"]),
     (
@@ -69,13 +69,13 @@ _CASES: list[tuple[str, dict[str, Any], str, str, list[Any]]] = [
             }
         ],
     ),
-    ("get_signal_view", {}, "signals", "get_document", []),
+    ("get_monitor", {}, "monitor", "get", []),
     (
-        "apply_signal_view_operations",
-        {"operations": [{"type": "clear"}]},
-        "signals",
-        "apply_operations",
-        [[{"type": "clear"}]],
+        "update_monitor",
+        {"add": [{"hardwareId": "H", "streamId": "ai0"}]},
+        "monitor",
+        "update",
+        [{"add": [{"hardwareId": "H", "streamId": "ai0"}]}],
     ),
 ]
 
@@ -208,7 +208,7 @@ def result_body(response: httpx.Response) -> Any:
 
 async def test_http_routes_and_tool_errors() -> None:
     gateway, app = make_gateway()
-    app.signals.get_document.return_value = _TASK
+    app.monitor.get.return_value = _TASK
     await gateway.start()
     try:
         async with httpx.AsyncClient(headers=_HEADERS) as client:
@@ -240,7 +240,7 @@ async def test_http_routes_and_tool_errors() -> None:
                     "jsonrpc": "2.0",
                     "id": 4,
                     "method": "tools/call",
-                    "params": {"name": "get_signal_view", "arguments": {}},
+                    "params": {"name": "get_monitor", "arguments": {}},
                 },
             )
             assert result_body(success) == {
@@ -260,14 +260,14 @@ async def test_http_routes_and_tool_errors() -> None:
                     "jsonrpc": "2.0",
                     "id": 2,
                     "method": "tools/call",
-                    "params": {"name": "apply_signal_view_operations", "arguments": {}},
+                    "params": {"name": "update_monitor", "arguments": {"add": [{}]}},
                 },
             )
             result = result_body(response)
             assert result["isError"] is True
             error = result["structuredContent"]["error"]
             assert error["category"] == "invalid_argument"
-            assert error["validationIssues"][0]["path"] == ["operations"]
+            assert error["validationIssues"][0]["path"][0] == "add"
             assert json.loads(result["content"][0]["text"]) == result["structuredContent"]
             response = await client.post(
                 url,

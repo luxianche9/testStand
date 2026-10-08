@@ -184,7 +184,7 @@ async def test_stateful_session() -> None:
             headers,
             json.dumps({"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}),
         )
-        for name in ["request_wiring", "apply_signal_view_operations", "save_hardware_definition"]:
+        for name in ["request_wiring", "update_monitor", "save_hardware_definition"]:
             assert name in tools.text
         for name in [
             "save_remote_computer",

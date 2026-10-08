@@ -15,7 +15,6 @@
 | `rateHz` | `rate_hz=` | 采样型 | SDK 自动填生效的采样率 |
 | `writable` | `writer=` | `bytes`、`frames` | 有写入器（可 `send` / `transact`） |
 | `idScheme` | `id_scheme=` | `frames` | `can` / `a429` / `m1553` / `ieee1394` / `raw` |
-| `control` | `control=` | `scalar`、`bits`、`bytes`、`frames` | 写这个流的 `actuate` 工具：`[{action, tool, args}]`，见下文“可写的流” |
 
 ```python
 self.streams.add(ScalarStream(f"ao{ch}", unit="V", label=f"AO{ch}", kind="setpoint"))
@@ -23,7 +22,7 @@ self.streams.add(BitsStream("di", sample=self._read_di, publish_on_change=True, 
                             bit_labels=[f"IDI{n}" for n in range(16)], rate_hz=20.0))
 ```
 
-流就是信号。除了 `control`，元数据只是声明；流和工具都不与针脚关联。AI 靠 id、`label` 和工具描述理解它，所以 id 要和工具参数里的通道号对得上（`ai3` 对应 `channel=3`，`serial2` 对应 `channel=2`）。id 为 1–64 个 `[A-Za-z0-9_.-]`。只写手册能证实的单位；`kind` 不确定就不写。
+元数据只是声明：程序里不把流和工具、针脚关联。AI 靠 id、`label` 和工具描述理解它，所以 id 要和工具参数里的通道号对得上（`ai3` 对应 `channel=3`，`serial2` 对应 `channel=2`）。id 为 1–64 个 `[A-Za-z0-9_.-]`。只写手册能证实的单位；`kind` 不确定就不写。
 
 ## 六种类型
 
@@ -79,37 +78,6 @@ def _scan_ai(self) -> list[float | None]:
 | 波形 | 不要用高采样率的 `ScalarStream`；有硬件定时采集就用 `BlockStream(read_block=...)`，`read_block()` 返回 `(samples, dt_ms)` 或 `(samples, dt_ms, t0_ms)`，没有新块返回 `None` |
 
 驱动一次调用的耗时 × 频率应远小于 1 s，否则采样会挤占工具调用。
-
-## 可写的流（`control`）
-
-可写的流声明驱动它的工具和参数模板。testStand 的信号视图把开关、设定值、发送框接到这些流上，按模板调用工具；流本身不变，显示的仍是回读或设定值影子。
-
-```python
-from teststand_device_sdk import BIT, HEX, TEXT, VALUE, control
-
-self.relay = self.streams.add(BitsStream("relay", bit_labels=[f"R{n}" for n in range(16)], display="switches",
-                                         control=[control("setBit", "set_relay", channel=BIT, closed=VALUE),
-                                                  control("setMask", "set_bank", mask=VALUE)]))
-self.streams.add(ScalarStream(f"ao{ch}", unit="V", kind="setpoint",
-                              control=[control("set", "set_voltage", channel=ch, volts=VALUE)]))
-self.streams.add(ByteStream(f"serial{ch}", writer=..., control=[
-    control("sendText", "write_text", channel=ch, text=TEXT),
-    control("sendHex", "write_hex", channel=ch, hex_data=HEX)]))
-```
-
-| `action` | 流类型 | 占位符 | 含义 |
-|---|---|---|---|
-| `set` | `scalar` | `VALUE` | 设定一个数值 |
-| `setBit` | `bits` | `BIT`、`VALUE` | 把一位设为 `true` / `false` |
-| `setMask` | `bits` | `VALUE` | 一次写整个掩码 |
-| `sendText` | `bytes` | `TEXT` | 发送 UTF-8 文本 |
-| `sendHex` | `bytes` | `HEX` | 发送十六进制字节（小写、无分隔） |
-| `sendFrame` | `frames` | `FRAME_ID`、`HEX` | 发送一帧 |
-
-- `tool` 写适配器里的工具名（不带前缀），`/device` 里自动换成完整名；必须是 `kind="actuate"`。
-- 其余参数是固定值（如 `channel=ch`）；固定值加占位符必须恰好覆盖工具的必填参数，不能出现工具没有的参数。`hardwareId` 由调用方加。
-- 每个占位符恰好出现一次。注册流时检查类型与占位符，主机启动时检查工具和参数，`--check` 再核对 `/device`。
-- 读流（`ai*`、`di`）不写 `control`。
 
 ## 写即发布
 

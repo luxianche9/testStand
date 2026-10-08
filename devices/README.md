@@ -98,7 +98,7 @@ the declaration and `hh.subscribe(streamId)` reads a stream as `hello`, `batch`,
 
 ## Device contract
 
-Contract revision `2026-10-07.1`. Builtin tools: `get_device_info`, `list_hardware`,
+Contract revision `2026-10-08.1`. Builtin tools: `get_device_info`, `list_hardware`,
 `get_hardware_info`, `<prefix>_stream_read`, plus `<prefix>_transact` when a byte
 stream has a writer and `<prefix>_blob_read` when a blob stream exists, and
 `teststand_prepare_shutdown`. The declaration `{manifestRevision,
@@ -122,19 +122,16 @@ level streams the one still in force); sampled streams only sample while watched
 
 Each stream declares its metadata in `/device.streams`: `unit`, `label`, `kind`
 (`measured` or `setpoint`), `width`/`bitLabels` for bits, `rateHz` for sampled
-streams, `writable` for byte streams, and `control` for the `actuate` tools that
-write it (`[{action, tool, args}]`, placeholders `{"$": "value" | "bit" | "text" |
-"hex" | "id"}`). A stream is a signal: the signal view binds controls to it. Streams
-and tools are never related to pins. Byte and frame streams are idle-driven: the
+streams, `writable` for byte streams. Byte and frame streams are idle-driven: the
 reader thread calls `idle()` after every read return, so the watermark trails the
 clock by at most one poll interval (`--check` verifies it).
 
 | Adapter | Streams |
 |---|---|
-| `pci1710l` | `ai0..15` scalar scan group in V, `measured` (one scan, shared `t`; need `configure_ai`), `di` 16-bit `measured` published on change, `do` 16-bit read back after every write (control `setBit` → `set_level`) |
-| `pci1762` | `di` 16-bit (`IDI0..15`) `measured` published on change, `relay` 16-bit (`R0..15`) coil command read back after every write (control `setBit` → `set_relay`, `setMask` → `set_bank`) |
-| `pci6208v` (`isolation = "subprocess"`: PCIS-DASK writes to stdout when it loads) | `ao0..7` scalar in V, `setpoint`: the accepted value published on write and every point of a software waveform (`set_waveform`/`stop_waveform`, at most 200 updates/s; `safe_state` stops it) (control `set` → `set_voltage`) |
-| `cp118u_i` | `serial1..8` bytes: RX from a 10 ms reader thread that calls `idle()` after every read, TX via the stream writer, `mark` on configure/clear/flush (control `sendText` → `write_text`, `sendHex` → `write_hex`) |
+| `pci1710l` | `ai0..15` scalar scan group in V, `measured` (one scan, shared `t`; need `configure_ai`), `di` 16-bit `measured` published on change, `do` 16-bit read back after every write |
+| `pci1762` | `di` 16-bit (`IDI0..15`) `measured` published on change, `relay` 16-bit (`R0..15`) coil command read back after every write |
+| `pci6208v` (`isolation = "subprocess"`: PCIS-DASK writes to stdout when it loads) | `ao0..7` scalar in V, `setpoint`: the accepted value published on write and every point of a software waveform (`set_waveform`/`stop_waveform`, at most 200 updates/s; `safe_state` stops it) |
+| `cp118u_i` | `serial1..8` bytes: RX from a 10 ms reader thread that calls `idle()` after every read, TX via the stream writer, `mark` on configure/clear/flush |
 
 The native vendor CLIs of `pci1710l` and `pci1762` are found through
 `settings.hwcliPath` or the `<ADAPTER>_HWCLI_PATH` / `HWCLI_PATH` environment variables.

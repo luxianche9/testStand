@@ -27,6 +27,7 @@ from .control import (
 )
 from .execution import ExecutionCoordinator as ExecutionCoordinator
 from .execution import ExecutionHandle as ExecutionHandle
+from .monitor import MonitorApplication as MonitorApplication
 from .services import (
     ApplicationSystemPort as ApplicationSystemPort,
 )
@@ -42,7 +43,6 @@ from .services import (
 from .services import (
     WiringApplication as WiringApplication,
 )
-from .signals import SignalsApplication as SignalsApplication
 from .streams import StreamsApplication as StreamsApplication
 
 NAMESPACES: dict[str, type] = {
@@ -50,7 +50,7 @@ NAMESPACES: dict[str, type] = {
     "streams": StreamsApplication,
     "projects": ProjectsApplication,
     "wiring": WiringApplication,
-    "signals": SignalsApplication,
+    "monitor": MonitorApplication,
     "manual": ManualControlApplication,
     "testing": TestingApplication,
     "system": SystemApplication,
@@ -103,13 +103,12 @@ class TestStandApplication:
         self.manual = ManualControlApplication(
             self.authorizer, dependencies["devices"], dependencies["catalog"], execution
         )
-        self.signals = SignalsApplication(
+        self.monitor = MonitorApplication(
             self.authorizer,
             dependencies["projects"],
             dependencies["wiring"],
             dependencies["catalog"],
             dependencies["devices"],
-            self.manual,
         )
         self.testing = TestingApplication(
             self.authorizer,

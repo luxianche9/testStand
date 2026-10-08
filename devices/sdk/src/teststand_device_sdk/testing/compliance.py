@@ -443,17 +443,12 @@ def _check_manifest(hh: Harness, failures: list[str], warnings: list[str]) -> No
         failures.append(f"/device identity mismatch {wrong or identity}; expected {expected} plus adapter "
                         "{name, version} and sdkVersion")
     streams = document["streams"]
-    if streams != device.streams.describe(device.prefix) or any(not {"id", "type"} <= set(item) for item in streams):
+    if streams != device.streams.describe() or any(not {"id", "type"} <= set(item) for item in streams):
         failures.append(f"/device streams must be Stream.describe() per stream, got {streams}")
     for item in streams:
         if "kind" in item and item["kind"] not in STREAM_KINDS:
             failures.append(f"/device stream {item.get('id')}: kind must be one of {STREAM_KINDS}")
     tools = {item.get("name"): item.get("kind") for item in document["tools"]}
-    for item in streams:
-        for entry in item.get("control") or []:
-            if tools.get(entry.get("tool")) != "actuate":
-                failures.append(f"/device stream {item.get('id')}: control {entry.get('action')} must name an "
-                                f"actuate tool of /device.tools, got {entry.get('tool')!r}")
     if set(tools) != set(hh.tools):
         failures.append(f"/device tools must list every tool; differs by {sorted(set(tools) ^ set(hh.tools))}")
     for name, kind in tools.items():

@@ -29,12 +29,12 @@ describe("public contracts", () => {
   it("accepts current project metadata without node tasks", () => {
     const timestamp = "2026-08-15T00:00:00.000Z";
     const project = {
-      formatVersion: 5, projectId: "PROJECT", name: "Bench", wiring: { connections: [] },
-      signals: { nodes: [], links: [] }, createdAt: timestamp, updatedAt: timestamp
+      formatVersion: 6, projectId: "PROJECT", name: "Bench", wiring: { connections: [] },
+      monitor: { channels: [] }, createdAt: timestamp, updatedAt: timestamp
     };
     expect(projectFileSchema.parse(project)).toEqual(project);
     expect(projectFileSchema.parse({ ...project, task: {}, ignored: true })).toEqual(project);
-    expect(projectFileSchema.safeParse({ ...project, formatVersion: 4 }).success).toBe(false);
+    expect(projectFileSchema.safeParse({ ...project, formatVersion: 5 }).success).toBe(false);
   });
 
   it("uses strict named id inputs for IPC procedures", () => {

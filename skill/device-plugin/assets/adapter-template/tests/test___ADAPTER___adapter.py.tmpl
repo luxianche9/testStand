@@ -46,8 +46,7 @@ def test_out_of_range_channel_never_reaches_driver(hh):
 def test_stream_declarations(hh):
     assert hh.device()["streams"] == [
         {"id": "do", "type": "bits", "width": 8, "bitLabels": [f"DO{n}" for n in range(8)],
-         "label": "Accepted output mask", "kind": "setpoint", "control": [
-             {"action": "setBit", "tool": "__PREFIX___set_output", "args": {"channel": {"$": "bit"}, "level": {"$": "value"}}}]},
+         "label": "Accepted output mask", "kind": "setpoint"},
         {"id": "di", "type": "bits", "width": 8, "bitLabels": [f"DI{n}" for n in range(8)], "rateHz": 20.0,
          "kind": "measured"}]
 

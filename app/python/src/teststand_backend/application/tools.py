@@ -8,20 +8,13 @@ from typing import Any
 from teststand_backend.contracts.devices import hardware_schema
 from teststand_backend.contracts.errors import app_error
 from teststand_backend.contracts.operations import PLATFORM_META, Tool
-from teststand_backend.contracts.signals import WIDGETS
 from teststand_backend.contracts.validation import (
     array,
     boolean,
     custom_issue,
-    discriminated,
-    enum,
-    literal,
-    number,
     obj,
-    record,
     string,
     union,
-    unknown,
 )
 from teststand_backend.contracts.wiring import (
     pin_pair_schema,
@@ -63,15 +56,6 @@ GLOSSARY = {
     "status": "Filter by the exact lifecycle status; a successful program exit is not a test "
     "verdict.",
     "limit": "Maximum records in this response; use pagination or a narrower filter for more.",
-    "signals": "Logical signals a passive part (unit under test, fixture) offers; never tied to "
-    "pins. Devices get their signals from their plugin's streams and must leave this empty.",
-    "signalId": "Stable signal id, 1-64 of [A-Za-z0-9_.-]; the signal view links to it.",
-    "type": "Signal type: scalar, bits, bytes or frames, as the device stream that carries it.",
-    "direction": "From the part's side: input (driven by a device), output (measured by a device) "
-    "or bidirectional (a bus).",
-    "unit": "Physical unit of a scalar signal, e.g. V.",
-    "width": "Number of bit lines of a bits signal, 1-64 (default 1).",
-    "bitLabels": "One name per bit line of a bits signal.",
 }
 
 
@@ -94,7 +78,7 @@ _PROJECT = _object(
                 "projectId": _STRING,
                 "name": _STRING,
                 "wiring": _object({"connections": _array(_object({}))}),
-                "signals": _object({"nodes": _array(_object({})), "links": _array(_object({}))}),
+                "monitor": _object({"channels": _array(_object({}))}),
             }
         ),
     },
@@ -156,8 +140,15 @@ _TASK = _object(
     },
     ["wiringTaskId", "status", "changes"],
 )
-_SIGNAL_VIEW = _object(
-    {"nodes": _array(_object({})), "links": _array(_object({}))}, ["nodes", "links"]
+_STREAM_REF = obj(
+    {
+        "hardwareId": string(1).describe("Device hardwareId, from monitor_streams."),
+        "streamId": string(1).describe("Stream id the device declares, from monitor_streams."),
+    },
+    strict=True,
+)
+_MONITOR = _object(
+    {"channels": _array(_object({"hardwareId": _STRING, "streamId": _STRING}))}, ["channels"]
 )
 
 _EMPTY = obj({}, strict=True)
@@ -174,106 +165,6 @@ _ROOT = obj(
 _DEVICE_ID = obj({"deviceId": string(1)}, strict=True)
 _HARDWARE_ID = obj({"hardwareId": string(1)}, strict=True)
 _ENDPOINT = union(string(1), obj({"hardwareId": string(1), "portId": string(1)}, strict=True))
-_LAYOUT = {
-    "x": number(finite=True).optional().describe("Left edge on the canvas, in canvas pixels."),
-    "y": number(finite=True).optional().describe("Top edge on the canvas, in canvas pixels."),
-    "width": number(positive=True, finite=True)
-    .optional()
-    .describe("Width on the canvas; default: the widget's default size."),
-    "height": number(positive=True, finite=True)
-    .optional()
-    .describe("Height on the canvas; default: the widget's default size."),
-}
-_SIGNAL_END = obj(
-    {
-        "nodeId": string(1).describe("nodeId of a node on the signal view."),
-        "handle": string(1).describe(
-            "A hardware node: the stream id (device) or signalId (passive part). A widget: "
-            "'in' for displays, 'out' for controls (switch, setpoint)."
-        ),
-        "bit": number(0, 63, integer=True)
-        .optional()
-        .describe("One line of a bits stream; omit for the whole stream."),
-    },
-    strict=True,
-)
-_NEW_NODE = (
-    string(1)
-    .optional()
-    .describe(
-        "Id for the new node, so later operations of the batch can refer to it; default: generated."
-    )
-)
-
-
-def _op(kind: str, fields: Record) -> Any:
-    return obj({"type": literal(kind).describe(f"The edit: {kind}."), **fields}, strict=True)
-
-
-_SIGNAL_OPERATION = discriminated(
-    "type",
-    {
-        "add_hardware": _op(
-            "add_hardware",
-            {
-                "hardwareId": string(1).describe("Hardware to put on the canvas."),
-                "nodeId": _NEW_NODE,
-                "x": _LAYOUT["x"],
-                "y": _LAYOUT["y"],
-            },
-        ),
-        "add_widget": _op(
-            "add_widget",
-            {
-                "widget": enum(*WIDGETS).describe(
-                    "scope (scalar/bits over time), value (one scalar), lamps (bits), terminal "
-                    "(bytes/frames a bus or serial port sends and receives), switch (writes "
-                    "bits), setpoint (writes a scalar)."
-                ),
-                "nodeId": _NEW_NODE,
-                "label": string().optional().describe("Title shown on the widget."),
-                "config": record(unknown())
-                .optional()
-                .describe("Widget settings, e.g. a scope's {spanMs}; default empty."),
-                **_LAYOUT,
-            },
-        ),
-        "link": _op(
-            "link",
-            {
-                "from": _SIGNAL_END.describe("Where the signal comes from."),
-                "to": _SIGNAL_END.describe("Where the signal goes."),
-                "linkId": string(1).optional().describe("Id for the new link; default: generated."),
-            },
-        ),
-        "remove_node": _op(
-            "remove_node", {"nodeId": string(1).describe("Node to remove, with its links.")}
-        ),
-        "remove_link": _op("remove_link", {"linkId": string(1).describe("Link to remove.")}),
-        "update_widget": _op(
-            "update_widget",
-            {
-                "nodeId": string(1).describe("Widget node to change."),
-                "label": string().optional().describe("New title."),
-                "config": record(unknown())
-                .optional()
-                .describe("Settings merged into the widget's config."),
-            },
-        ),
-        "move_node": _op(
-            "move_node", {"nodeId": string(1).describe("Node to move or resize."), **_LAYOUT}
-        ),
-        "default_panel": _op(
-            "default_panel",
-            {
-                "hardwareIds": array(string(1))
-                .optional()
-                .describe("Devices to lay out; default: every known device.")
-            },
-        ),
-        "clear": _op("clear", {}),
-    },
-)
 
 
 def _with_endpoints(hardware: Record) -> Record:
@@ -315,7 +206,7 @@ PLATFORM_TOOLS = [
     _platform(
         "get_project",
         "读取当前打开工程的根目录、持久化文档、接线连接与未保存状态。用于确定工作区和已有连接；"
-        "无工程时按返回状态先打开或初始化工程。接线列表和信号视图都不证明物理导通。",
+        "无工程时按返回状态先打开或初始化工程。接线列表和监控面板都不证明物理导通。",
         _EMPTY,
         {"anyOf": [_PROJECT, {"type": "null"}]},
         operation="projects.document",
@@ -342,7 +233,7 @@ PLATFORM_TOOLS = [
     ),
     _platform(
         "save_project",
-        "通过项目服务保存当前工程（接线列表与信号视图）。检查返回的 dirty 状态；"
+        "通过项目服务保存当前工程（接线列表与监控面板）。检查返回的 dirty 状态；"
         "保存记录不执行物理接线。"
         "Python 源文件的写入状态与工程文档的保存状态分别核对。",
         _EMPTY,
@@ -425,7 +316,7 @@ PLATFORM_TOOLS = [
     ),
     _platform(
         "save_hardware_definition",
-        "创建或更新一份本地硬件定义。影响目录和信号视图引用，不操作实物。必须按硬件定义 schema "
+        "创建或更新一份本地硬件定义。影响目录和接线引用，不操作实物。必须按硬件定义 schema "
         "提交；修改已有端口/引脚 ID 前检查关联接线。",
         obj({"hardware": hardware_schema}, strict=True),
         _HARDWARE,
@@ -483,31 +374,29 @@ PLATFORM_TOOLS = [
         waits=True,
     ),
     _platform(
-        "get_signal_view",
-        "读取工程的信号视图：画布上的硬件节点、控件节点（scope/value/lamps/terminal/switch/"
-        "setpoint）及它们之间的信号连线。信号视图是逻辑信号，与针脚无关；物理接线见 get_project。",
+        "get_monitor",
+        "读取监控面板显示的通道（设备流），按顺序。采样流（scalar/bits/block）画在示波器上，"
+        "记录流（bytes/frames）显示在终端里。监控面板只看不控；设备由它的动作弹窗、测试步骤或"
+        "你调用设备工具来控制。",
         _EMPTY,
-        _SIGNAL_VIEW,
-        operation="signals.getDocument",
+        _MONITOR,
+        operation="monitor.get",
     ),
     _platform(
-        "apply_signal_view_operations",
-        "按顺序对信号视图执行一组编辑并整体校验，全部生效或全部不生效：add_hardware、add_widget、"
-        "link、remove_node（连同其连线）、remove_link、update_widget、move_node、default_panel"
-        "（给每台已知设备的每个流配默认控件，同画布的“默认面板”）、clear。新节点/连线可自带 "
-        "nodeId/linkId 供同批后续操作引用。连线方向：设备流→被测对象信号或显示控件的 in；控制控件"
-        "的 out→可写的设备流。返回编辑后的信号视图；与画布编辑一样，save_project 前只在"
-        "工程缓冲区。",
+        "update_monitor",
+        "修改监控面板的通道：channels 整体替换，remove 去掉，add 追加（已显示的跳过）。每个通道是"
+        "设备声明的一条流（hardwareId + streamId，从 monitor_streams 取）。返回修改后的面板；"
+        "save_project 前只在工程缓冲区。",
         obj(
             {
-                "operations": array(_SIGNAL_OPERATION, 1).describe(
-                    "Edits applied in order to the signal view."
-                )
+                "channels": array(_STREAM_REF).optional().describe("Replaces every channel."),
+                "add": array(_STREAM_REF).optional().describe("Channels to append."),
+                "remove": array(_STREAM_REF).optional().describe("Channels to remove."),
             },
             strict=True,
         ),
-        _SIGNAL_VIEW,
-        operation="signals.applyOperations",
-        fields=("operations",),
+        _MONITOR,
+        operation="monitor.update",
+        arguments=lambda value: {"input": value},
     ),
 ]

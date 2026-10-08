@@ -23,8 +23,6 @@ HUMAN_ONLY = {
     "wiring.cancelTask",
     "wiring.getTask",
     "wiring.listTasks",
-    # The canvas saves whole documents; the Agent edits by apply_signal_view_operations.
-    "signals.updateDocument",
     # Manual device calls are the remote device tools themselves for the Agent.
     "manual.invokeTool",
     # A person judges a manual check and answers confirmations.

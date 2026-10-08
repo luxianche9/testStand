@@ -95,25 +95,10 @@ export const hardwarePortSchema = z.object({
 });
 export type HardwarePort = z.infer<typeof hardwarePortSchema>;
 
-/** A signal a passive part (a unit under test, a fixture) declares: its logical interface, never a
- *  pin. A device's signals are the streams its plugin declares, so only passive parts store them. */
-export const hardwareSignalSchema = z.object({
-  signalId: z.string().regex(/^[A-Za-z0-9_.-]{1,64}$/),
-  label: z.string().default(""),
-  type: z.enum(["scalar", "bits", "bytes", "frames"]),
-  /** From the part's side: input (driven by a device), output (measured), bidirectional (a bus). */
-  direction: z.enum(["input", "output", "bidirectional"]),
-  unit: z.string().min(1).optional(),
-  width: z.number().int().min(1).max(64).optional(),
-  bitLabels: z.array(z.string()).optional()
-});
-export type HardwareSignal = z.infer<typeof hardwareSignalSchema>;
-
 const hardwareFields = {
   hardwareId: z.string().min(1),
   label: z.string().min(1),
-  ports: z.array(hardwarePortSchema).default([]),
-  signals: z.array(hardwareSignalSchema).default([])
+  ports: z.array(hardwarePortSchema).default([])
 };
 export const storedHardwareDefinitionSchema = z.object({ formatVersion: z.literal(2).default(2), ...hardwareFields });
 export type StoredHardwareDefinition = z.infer<typeof storedHardwareDefinitionSchema>;
@@ -124,17 +109,8 @@ export const hardwareSchema = z.object({
   label: z.string().min(1),
   kind: z.enum(["managed", "passive"]),
   deviceId: z.string().min(1).optional(),
-  ports: z.array(hardwarePortSchema).default([]),
-  signals: z.array(hardwareSignalSchema).default([])
+  ports: z.array(hardwarePortSchema).default([])
 }).superRefine((value, context) => {
-  if (value.kind === "managed" && value.signals.length) context.addIssue({ code: z.ZodIssueCode.custom, message: "A device's signals are its plugin's streams; only passive parts declare signals" });
-  const signalIds = new Set<string>();
-  for (const signal of value.signals) {
-    if (signalIds.has(signal.signalId)) context.addIssue({ code: z.ZodIssueCode.custom, message: `Duplicate signalId: ${signal.signalId}` });
-    signalIds.add(signal.signalId);
-    if (signal.bitLabels && signal.bitLabels.length !== (signal.width ?? 1)) context.addIssue({ code: z.ZodIssueCode.custom, message: `Signal ${signal.signalId}: bitLabels needs one label per bit` });
-    if (signal.type !== "bits" && (signal.width !== undefined || signal.bitLabels)) context.addIssue({ code: z.ZodIssueCode.custom, message: `Signal ${signal.signalId}: width and bitLabels are for bits signals` });
-  }
   if (value.kind === "managed" && !value.deviceId) context.addIssue({ code: z.ZodIssueCode.custom, message: "Managed hardware requires deviceId" });
   if (value.kind === "passive" && value.deviceId) context.addIssue({ code: z.ZodIssueCode.custom, message: "Passive hardware cannot reference a device instance" });
   const portIds = new Set<string>();

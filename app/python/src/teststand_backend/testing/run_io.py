@@ -45,8 +45,11 @@ class RunIO:
         run_dir: Path,
         run_id: str,
         emit: Emit,
+        watched: list[str] | None = None,
     ) -> None:
         self.devices, self.sources = devices, sources
+        # Devices on the monitor panel: recorded too, so the panel shows them through the run.
+        self.watched = list(watched or [])
         self.run_dir, self.run_id, self.emit = run_dir, run_id, emit
         self._locks: dict[str, asyncio.Lock] = {}
         self.anchors: dict[str, Anchor] = {}
@@ -59,12 +62,13 @@ class RunIO:
     # -- lifecycle -----------------------------------------------------------------------------
 
     async def start(self, hardware_ids: list[str], protocols: PlanProtocols | None = None) -> None:
-        """Start recording the streams of ``hardware_ids``."""
+        """Start recording the streams of ``hardware_ids`` and of the watched devices."""
         if protocols is not None:
             self.protocols = protocols
+        recorded = list(dict.fromkeys([*hardware_ids, *self.watched]))
         try:
             if self.sources is not None:
-                await self._record(hardware_ids)
+                await self._record(recorded)
         except BaseException:
             await self.stop()
             raise

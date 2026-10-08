@@ -509,7 +509,11 @@ class TestEngine:
         return RunJournal(self._run_path(run_id), wiring if callable(wiring) else None)
 
     def _streams(self, run_id: str, emit: Callable[[str, Record], None]) -> RunIO:
-        io = RunIO(self.devices, self.stream_sources, self._run_path(run_id), run_id, emit)
+        monitor = getattr(self.projects, "monitor", None)
+        watched = (
+            [item["hardwareId"] for item in monitor()["channels"]] if callable(monitor) else []
+        )
+        io = RunIO(self.devices, self.stream_sources, self._run_path(run_id), run_id, emit, watched)
         self.recordings[run_id] = io
         return io
 
