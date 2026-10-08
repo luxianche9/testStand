@@ -40,6 +40,8 @@ CONTEXT_RECORDS = 16
 """Records before a judged window: the held ``bits`` state and the sample interval."""
 
 _COLUMNS = ("i", "key", "seq", "t", "tEnd", "tb", "op", "data")
+_IDENTITY = {"i", "seq", "t", "tb", "op"}
+"""Columns of their own: never stored in, nor read back from, a record's payload."""
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta(k TEXT PRIMARY KEY, v TEXT);
 CREATE TABLE IF NOT EXISTS streams(
@@ -47,8 +49,8 @@ CREATE TABLE IF NOT EXISTS streams(
   count INTEGER NOT NULL DEFAULT 0, watermark REAL, watermarkTb REAL,
   maxSpan REAL NOT NULL DEFAULT 0, declaration TEXT);
 CREATE TABLE IF NOT EXISTS records(
-  i INTEGER PRIMARY KEY, key TEXT NOT NULL, seq INTEGER, t REAL NOT NULL, tEnd REAL NOT NULL,
-  tb REAL NOT NULL, op TEXT, data TEXT NOT NULL);
+  i INTEGER PRIMARY KEY AUTOINCREMENT, key TEXT NOT NULL, seq INTEGER, t REAL NOT NULL,
+  tEnd REAL NOT NULL, tb REAL NOT NULL, op TEXT, data TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS records_key_t ON records(key, t);
 CREATE INDEX IF NOT EXISTS records_key_tb ON records(key, tb);
 CREATE TABLE IF NOT EXISTS gaps(
@@ -188,7 +190,7 @@ class StreamStore:
         for record in records:
             t, end = float(record["t"]), record_end(record)
             span = max(span, end - t)
-            payload = {k: v for k, v in record.items() if k not in {"seq", "t", "tb", "op"}}
+            payload = {k: v for k, v in record.items() if k not in _IDENTITY}
             rows.append(
                 (
                     key,
@@ -437,7 +439,13 @@ class StreamStore:
             gaps=self.gaps(key),
             watermark=info["watermark"],
             clock=info["clock"] or {},
+            descriptor=self.declaration(key),
         )
+
+    def declaration(self, key: str) -> Record:
+        """What the plugin declared for the stream (``kind``, ``unit`` ...), ``{}`` when unknown."""
+        row = self.db.execute("SELECT * FROM streams WHERE key = ?", (key,)).fetchone()
+        return dict(_declaration(row).get("declaration") or {}) if row is not None else {}
 
     def read(
         self,
@@ -710,7 +718,8 @@ def _row(row: sqlite3.Row) -> Record:
     record: Record = {"i": row["i"], "seq": row["seq"], "t": row["t"], "tb": row["tb"]}
     if row["op"] is not None:
         record["op"] = row["op"]
-    record.update(json.loads(row["data"]))
+    payload = json.loads(row["data"])
+    record.update({k: v for k, v in payload.items() if k not in _IDENTITY})
     return record
 
 

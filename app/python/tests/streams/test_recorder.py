@@ -5,7 +5,10 @@ import base64
 from pathlib import Path
 from typing import Any
 
+from teststand_device_sdk.ringbuffer import RingBuffer
+
 from teststand_backend.streams.recorder import StreamRecorder
+from teststand_backend.streams.source import StreamSources
 from teststand_backend.streams.store import StreamStore
 
 from .fake_service import FakeStreamService
@@ -162,3 +165,59 @@ async def test_listeners_receive_batches_and_end(tmp_path: Path) -> None:
         while frame["type"] != "end":
             frame = await asyncio.wait_for(queue.get(), 2.0)
     store.close()
+
+
+class RingDevice:
+    """The stream side of an in-process SDK device: reads hand out the ring buffer's own dicts."""
+
+    def __init__(self) -> None:
+        self.buffer = RingBuffer()
+
+    async def watch(self, stream_id: str) -> None:
+        return None
+
+    async def unwatch(self, stream_id: str) -> None:
+        return None
+
+    async def seek(self, stream_id: str, since: float) -> int:
+        return self.buffer.seek(since, hold=True)
+
+    async def read_stream(
+        self, stream_id: str, cursor: int | None, limit: int, epoch: str | None = None
+    ) -> dict[str, Any]:
+        result = self.buffer.read(cursor, limit, epoch=epoch)
+        status = {"state": "live", "watermark": result.watermark}
+        return {
+            "streamType": "scalar",
+            "epoch": self.buffer.epoch,
+            "records": result.records,
+            "next": result.next,
+            "watermark": result.watermark,
+            "status": status,
+        }
+
+
+async def test_two_recorders_of_shared_sdk_records_keep_their_own_ids(tmp_path: Path) -> None:
+    device = RingDevice()
+    sources = StreamSources(lambda _hardware_id: device)
+    first = StreamStore(tmp_path / "first.sqlite")
+    first.add_stream("daq", "other")
+    first.append("daq__other", [{"seq": n, "t": n, "tb": n, "v": 0.0} for n in range(5)])
+    second = StreamStore(tmp_path / "second.sqlite")
+    recorders = [
+        StreamRecorder(sources, store, [("daq", "v")], preroll_ms=0, tail_ms=0)
+        for store in (first, second)
+    ]
+    for recorder in recorders:
+        await recorder.start()
+    last: dict[str, Any] = {}
+    for value in (1.0, 2.0, 3.0):
+        last = device.buffer.append({"v": value})
+    for recorder in recorders:
+        assert await recorder.wait_watermark("daq", "v", last["t"], 2.0)
+        await recorder.stop(tail=False)
+    assert not any("i" in record for record in device.buffer.read(0).records)
+    assert [r["i"] for r in first.records("daq__v")] == [6, 7, 8]
+    assert [r["i"] for r in second.records("daq__v")] == [1, 2, 3] and second.last_i("daq__v") == 3
+    first.close()
+    second.close()

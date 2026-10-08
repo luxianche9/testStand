@@ -451,10 +451,12 @@ def read_data(
     if not (math.isfinite(window.t0) and math.isfinite(window.t1)):
         info = store.stream(source_key)
         stream_type = derived.stream.stream_type if derived else str(info["type"] or "")
+        if derived is None:
+            descriptor = {**store.declaration(source_key), **descriptor}
         return StreamData(stream_type, [], clock=info["clock"] or {}, descriptor=descriptor)
     source = store.stream_data(source_key, window.t0, window.t1)
     if derived is None:
-        source.descriptor = descriptor
+        source.descriptor = {**source.descriptor, **descriptor}
         return source
     raw = store.records(source_key, hi=window.t1)
     return derived_data(derived, raw, source, window.t0, window.t1)

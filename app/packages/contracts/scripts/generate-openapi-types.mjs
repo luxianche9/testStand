@@ -23,7 +23,7 @@ function transform(schema) {
 const document = JSON.parse(await readFile(source, "utf8"));
 const output = header + astToString(await openapiTS(document, { transform, alphabetize: true, defaultNonNullable: false }));
 if (!process.argv.includes("--check")) await writeFile(target, output);
-else if (output !== await readFile(target, "utf8").catch(() => "")) {
+else if (output !== (await readFile(target, "utf8").catch(() => "")).replace(/\r\n/g, "\n")) {
   console.error(`${fileURLToPath(target)} is stale; run python/scripts/generate_operations.py`);
   process.exit(1);
 }

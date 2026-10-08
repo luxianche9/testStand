@@ -74,7 +74,9 @@ class _Track:
             self.note_state("connected")
         elif kind == "batch":
             watermark_tb = self._to_backend(event.get("watermark"))
-            records: list[Record] = event["records"]
+            # The device's records may be its ring buffer's own dicts, shared with every other
+            # reader: number private copies.
+            records: list[Record] = [dict(record) for record in event["records"]]
             if records:
                 ids = self.store.append(
                     self.key, records, watermark=event.get("watermark"), watermark_tb=watermark_tb
