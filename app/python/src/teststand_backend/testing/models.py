@@ -59,22 +59,29 @@ def schema_hash(schema: Any) -> str:
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
 
+def iter_subtree(step: Any, path: str = "") -> list[tuple[str, Record]]:
+    """``step`` and every step nested under it, in document order, with their paths."""
+    if not isinstance(step, dict):
+        return []
+    output: list[tuple[str, Record]] = [(path, step)]
+    for branch in ("children", "elseChildren"):
+        children = step.get(branch, [])
+        if not isinstance(children, list):
+            continue
+        for index, child in enumerate(children):
+            output.extend(iter_subtree(child, f"{path}/{branch}/{index}"))
+    return output
+
+
 def iter_steps(plan: Record) -> list[tuple[str, Record]]:
     output: list[tuple[str, Record]] = []
-
-    def visit(steps: Any, path: str) -> None:
-        if not isinstance(steps, list):
-            return
-        for index, step in enumerate(steps):
-            current = f"{path}/{index}"
-            if isinstance(step, dict):
-                output.append((current, step))
-                visit(step.get("children", []), current + "/children")
-                visit(step.get("elseChildren", []), current + "/elseChildren")
-
     regions = plan.get("regions", {})
     for region in ("prepare", "test", "cleanup"):
-        visit(regions.get(region, []), f"/regions/{region}")
+        steps = regions.get(region, [])
+        if not isinstance(steps, list):
+            continue
+        for index, step in enumerate(steps):
+            output.extend(iter_subtree(step, f"/regions/{region}/{index}"))
     return output
 
 

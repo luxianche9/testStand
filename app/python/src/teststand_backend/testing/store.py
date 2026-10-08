@@ -17,7 +17,7 @@ from teststand_backend.contracts.errors import app_error
 from teststand_backend.util import clone, new_uuid, utc_now_iso
 
 from .compiler import analyze_plan_draft, compile_plan
-from .models import FLOW_ID, STEP_ID, empty_plan, iter_steps
+from .models import FLOW_ID, STEP_ID, empty_plan, iter_steps, iter_subtree
 from .runtime_state import RuntimeStateStore
 from .validation import validate_plan
 
@@ -372,7 +372,7 @@ def _apply_operation(plan: Record, operation: Record, resolver: Any | None = Non
         # A container is inserted with its children (a Feature with its steps, say): bind every
         # InvokeTool in the subtree, not just the root, or the nested ones carry no
         # bindingRevision and the plan only fails later, in validation.
-        for step in _subtree(inserted):
+        for _, step in iter_subtree(inserted):
             if step.get("type") == "InvokeTool" and step.get("hardwareId") and step.get("toolName"):
                 _bind_step(step, str(step["hardwareId"]), str(step["toolName"]), resolver)
         target.insert(max(0, min(index, len(target))), inserted)
@@ -452,22 +452,6 @@ def _reject_settings_wrapper(step: Any) -> None:
             "object (the catalog's settingsSchema lists those root fields)",
             {"field": "settings"},
         )
-
-
-def _subtree(step: Record) -> list[Record]:
-    """``step`` and every step nested under it, in document order."""
-    output: list[Record] = []
-
-    def visit(current: Any) -> None:
-        if not isinstance(current, dict):
-            return
-        output.append(current)
-        for branch in ("children", "elseChildren"):
-            for child in current.get(branch, []) or []:
-                visit(child)
-
-    visit(step)
-    return output
 
 
 def _bind_step(step: Record, hardware_id: str, tool_name: str, resolver: Any | None) -> None:

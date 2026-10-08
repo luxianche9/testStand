@@ -32,9 +32,8 @@ def managed(hardware_id: str, label: str) -> Json:
     }
 
 
-async def fixture(
-    root: Path, streams: dict[str, list[Json] | None] | None = None
-) -> tuple[MonitorApplication, ProjectService]:
+async def fixture(root: Path, *, known: bool = True) -> tuple[MonitorApplication, ProjectService]:
+    """The monitor over one managed card (``known``: its streams were listed) and a passive DUT."""
     settings = SettingsStore(str(root / "settings.json"))
     await settings.initialize()
     projects = ProjectService(settings)
@@ -55,10 +54,12 @@ async def fixture(
             "ports": [],
         }
     )
+    # The monitor only calls notify_project_changed, which needs no initialize().
     wiring = ProjectWiringService(projects, catalog)
-    await wiring.initialize()
-    known = {"CARD": [{"id": "ai0"}, {"id": "ai1"}]} if streams is None else streams
-    devices = Mock(known_streams=lambda hardware_id: known.get(hardware_id))
+    streams = [{"id": "ai0"}, {"id": "ai1"}]
+    devices = Mock(
+        known_streams=lambda hardware_id: streams if known and hardware_id == "CARD" else None
+    )
     monitor = MonitorApplication(DefaultAuthorizer(), projects, wiring, catalog, devices)
     return monitor, projects
 
@@ -76,7 +77,7 @@ async def test_streams_lists_managed_devices_only(tmp_path: Path) -> None:
 
 
 async def test_streams_marks_a_device_never_connected_as_unknown(tmp_path: Path) -> None:
-    monitor, _ = await fixture(tmp_path, {"CARD": None})
+    monitor, _ = await fixture(tmp_path, known=False)
     assert monitor.streams(HUMAN) == [
         {"hardwareId": "CARD", "label": "采集卡", "known": False, "streams": []}
     ]
@@ -147,7 +148,7 @@ async def test_a_stream_the_device_does_not_declare_is_rejected(tmp_path: Path) 
 
 
 async def test_any_stream_is_accepted_while_the_device_is_unknown(tmp_path: Path) -> None:
-    monitor, _ = await fixture(tmp_path, {"CARD": None})
+    monitor, _ = await fixture(tmp_path, known=False)
     assert await monitor.update(HUMAN, {"add": [{"hardwareId": "CARD", "streamId": "ai9"}]}) == {
         "channels": [{"hardwareId": "CARD", "streamId": "ai9"}]
     }

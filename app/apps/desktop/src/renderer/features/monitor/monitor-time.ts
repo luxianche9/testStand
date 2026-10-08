@@ -71,24 +71,32 @@ export function useLiveHub(): NonNullable<StreamSource["live"]> {
   return hub;
 }
 
-/** Window the keepalive asks for: enough backlog to be useful, small enough to cost nothing. */
+/**
+ * What the keepalive asks for when it is the only consumer. The columns are sized so one holds
+ * about one frame: the backend floors each frame's read to a column boundary, so coarse columns
+ * make it re-read and re-encode records it already sent.
+ */
 const KEEPALIVE_WINDOW_MS = 1000;
+const KEEPALIVE_WIDTH = 20;
 
 /**
- * Keeps the shared live subscription open for `keys` while the bench is mounted, whatever the panel
- * currently draws (§9.6.5: the panel is always watching; a run only switches the data source).
- * A run takes the scope and the terminal onto its recording, so without this the last live consumer
- * would leave, the backend would drop the feed after its linger and rebuild it on the way back —
- * leaving the scope blank for seconds after 返回实时. Frames are dropped here; the views subscribe
- * for the ones they draw.
+ * Keeps the shared live subscription open for `keys` while the bench is mounted (§9.6.5: the panel
+ * is always watching; a run only switches the data source). A run moves the scope and the terminal
+ * onto its recording, so without this the last live consumer leaves, the backend drops the feed
+ * after its linger and has to rebuild it — the scope stays blank for seconds after 返回实时.
+ *
+ * This only pins the feed: the hub subscribes for the union of its consumers at the widest window
+ * and column count asked for, so these two values apply only while nothing else is subscribed.
  */
 export function useLiveKeepalive(
   hub: NonNullable<StreamSource["live"]>, keys: readonly string[]
 ): void {
   const keyList = keys.join("\n");
   useEffect(() => {
-    const wanted = keyList ? keyList.split("\n") : [];
-    if (!wanted.length) return undefined;
-    return hub({ keys: wanted, width: 1, windowMs: KEEPALIVE_WINDOW_MS }, () => undefined);
+    if (!keyList) return undefined;
+    return hub(
+      { keys: keyList.split("\n"), width: KEEPALIVE_WIDTH, windowMs: KEEPALIVE_WINDOW_MS },
+      () => undefined
+    );
   }, [hub, keyList]);
 }
