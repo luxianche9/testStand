@@ -81,6 +81,24 @@ test.describe.serial("signal view and pin list", () => {
     await page.screenshot({ path: join(artifacts, "signal-view.png") });
   });
 
+  test("keeps the view switch and the view's tools in one title row", async () => {
+    const row = page.getByRole("toolbar", { name: "台架工具栏" });
+    const tools = row.getByRole("group", { name: "信号视图工具" });
+    for (const name of ["生成默认面板", "缩小", "放大", "适应画布", "停止跟随", "复位时间轴"]) {
+      await expect(tools.getByRole("button", { name, exact: true })).toBeVisible();
+    }
+    await expect(tools).toContainText("实时数据");
+    // The canvas has no zoom overlay or toolbar of its own.
+    const canvas = page.getByRole("region", { name: "信号视图" });
+    await expect(canvas.getByRole("toolbar")).toHaveCount(0);
+    await expect(canvas.locator(".react-flow__controls")).toHaveCount(0);
+    const viewport = canvas.locator(".react-flow__viewport");
+    const before = await viewport.getAttribute("style");
+    await tools.getByRole("button", { name: "放大", exact: true }).click();
+    await expect.poll(() => viewport.getAttribute("style")).not.toBe(before);
+    await tools.getByRole("button", { name: "适应画布", exact: true }).click();
+  });
+
   test("adds a widget from the palette and keeps it after a save", async () => {
     await page.getByRole("button", { name: "添加数值" }).click();
     await expect(page.locator('.react-flow__node-widget')).toHaveCount(3);
@@ -101,7 +119,7 @@ test.describe.serial("signal view and pin list", () => {
         ]
       } });
     });
-    await showPanel(page, "测试");
+    await showPanel(page, "测试编排");
     await page.getByRole("toolbar", { name: "测试流程操作" }).getByRole("button", { name: "运行", exact: true }).click();
     // The bench is shown at once, with the run docked under the canvas.
     await expect(page.getByRole("region", { name: "信号视图" })).toBeVisible();
@@ -122,6 +140,10 @@ test.describe.serial("signal view and pin list", () => {
     await page.getByRole("button", { name: "针脚列表", exact: true }).click();
     const list = page.getByRole("region", { name: "针脚列表" });
     await expect(list).toContainText("被测板");
+    // Its filter and 新建接线 take the signal view's place in the title row.
+    const row = page.getByRole("toolbar", { name: "台架工具栏" });
+    await expect(row.getByRole("group", { name: "针脚列表工具" }).getByRole("button", { name: "新建接线" })).toBeVisible();
+    await expect(row.getByRole("group", { name: "信号视图工具" })).toBeHidden();
     await expect(list).toContainText("1 (EN)");
     await page.screenshot({ path: join(artifacts, "pin-list.png") });
     expect(errors).toEqual([]);

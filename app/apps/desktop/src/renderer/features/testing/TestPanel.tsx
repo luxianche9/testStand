@@ -4,6 +4,7 @@ import { CheckCircle2Icon, PencilRulerIcon, SlidersHorizontalIcon } from "lucide
 import { useProjectDocument, useTestRuns, useTestStepCatalog } from "../../lib/queries.js";
 import { queryKeys } from "../../lib/query-keys.js";
 import { focusRunStep, openRunMonitor } from "../../lib/run-focus.js";
+import { SIDE_PANEL_LABELS } from "../../lib/side-panel.js";
 import { Badge, Button, PanelHeader, Spinner, useConfirm } from "../../ui";
 import type { BenchRun } from "../signals/use-bench-run.js";
 import { IssuesButton, RunControls } from "./EditorToolbar.js";
@@ -20,7 +21,7 @@ import { useRunLog } from "./useRunLog.js";
 type PanelDialog = "editor" | "parameters" | "issues" | "recovery";
 
 /**
- * 测试 panel of the bench sidebar: the project's test flow with its state in the run shown on the
+ * 测试编排 panel of the bench sidebar: the project's test flow with its state in the run shown on the
  * signal view (or the flow's latest run), the 功能组 picked for the next run, and 编辑 / 校验 / 运行.
  * The flow is edited in a dialog; a run started here (or anywhere else) is followed by the signal view.
  */
@@ -84,8 +85,11 @@ export function TestPanel({ bench }: { bench: BenchRun }) {
   };
 
   return (
-    <section aria-label="测试" className="flex h-full min-h-0 min-w-0 flex-col bg-surface-1">
-      <PanelHeader title="测试" meta={features.total ? `已选 ${features.chosen.length}/${features.total} 功能组` : undefined}>
+    <section aria-label={SIDE_PANEL_LABELS.testing} className="flex h-full min-h-0 min-w-0 flex-col bg-surface-1">
+      <PanelHeader
+        title={SIDE_PANEL_LABELS.testing}
+        meta={features.total ? `已选 ${features.chosen.length}/${features.total} 功能组` : undefined}
+      >
         {dirty && <Badge tone="invalid">未保存</Badge>}
         {editor.conflict && <Badge tone="fail">冲突</Badge>}
       </PanelHeader>

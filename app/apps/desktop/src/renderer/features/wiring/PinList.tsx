@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import type { Hardware } from "@teststand/contracts/devices";
 import type { ProjectWiringConnection } from "@teststand/contracts/wiring";
 import { CableIcon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
@@ -11,12 +12,14 @@ const columns = "grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,1fr)_minmax(0
 
 /**
  * 针脚列表: the physical wiring as it is on the bench, one row per joined pin pair, grouped by
- * cable. It says which pins are joined and nothing about signals.
+ * cable. It says which pins are joined and nothing about signals. Its filter, counts and 新建接线
+ * sit in the bench's title row (`toolbar`), or in a row of their own without one.
  */
-export function PinList({ connections, hardware, busy, onCreate, onEdit, onRemove }: {
+export function PinList({ connections, hardware, busy, toolbar, onCreate, onEdit, onRemove }: {
   connections: ProjectWiringConnection[];
   hardware: Hardware[];
   busy: boolean;
+  toolbar?: HTMLElement | null | undefined;
   onCreate: () => void;
   onEdit: (connectionId: string) => void;
   onRemove: (connectionId: string) => void;
@@ -27,27 +30,35 @@ export function PinList({ connections, hardware, busy, onCreate, onEdit, onRemov
     [connections, filter]
   );
   const pinCount = shown.reduce((sum, item) => sum + Math.max(1, item.pins.length), 0);
+  const tools = (
+    <>
+      <label className="flex items-center gap-1.5 text-xs whitespace-nowrap text-fg-3">
+        硬件
+        <Select
+          aria-label="按硬件筛选"
+          className="h-7 w-48 text-xs"
+          value={filter}
+          onChange={(event) => setFilter(event.target.value)}
+        >
+          <option value={ALL}>全部</option>
+          {hardware.map((item) => <option key={item.hardwareId} value={item.hardwareId}>{item.label}</option>)}
+        </Select>
+      </label>
+      <span className="tf-label ml-2 text-fg-3">接线</span>
+      <span className="tf-num text-xs text-fg">{shown.length}</span>
+      <span className="tf-label ml-2 text-fg-3">针脚对</span>
+      <span className="tf-num text-xs text-fg">{pinCount}</span>
+      <Button variant="primary" size="xs" className="ml-auto" onClick={onCreate}><PlusIcon />新建接线</Button>
+    </>
+  );
   return (
-    <section aria-label="针脚列表" className="grid h-full min-h-0 grid-rows-[auto_auto_minmax(0,1fr)] bg-surface-0">
-      <div className="flex h-10 items-center gap-2 border-b border-line px-3">
-        <label className="flex items-center gap-1.5 text-xs text-fg-3">
-          硬件
-          <Select
-            aria-label="按硬件筛选"
-            className="h-7 w-48 text-xs"
-            value={filter}
-            onChange={(event) => setFilter(event.target.value)}
-          >
-            <option value={ALL}>全部</option>
-            {hardware.map((item) => <option key={item.hardwareId} value={item.hardwareId}>{item.label}</option>)}
-          </Select>
-        </label>
-        <span className="tf-label ml-2 text-fg-3">接线</span>
-        <span className="tf-num text-xs text-fg">{shown.length}</span>
-        <span className="tf-label ml-2 text-fg-3">针脚对</span>
-        <span className="tf-num text-xs text-fg">{pinCount}</span>
-        <Button variant="primary" size="xs" className="ml-auto" onClick={onCreate}><PlusIcon />新建接线</Button>
-      </div>
+    <section aria-label="针脚列表" className={cn(
+      "grid h-full min-h-0 bg-surface-0",
+      toolbar === undefined ? "grid-rows-[auto_auto_minmax(0,1fr)]" : "grid-rows-[auto_minmax(0,1fr)]"
+    )}>
+      {toolbar === undefined
+        ? <div className="flex h-10 items-center gap-2 border-b border-line px-3">{tools}</div>
+        : toolbar && createPortal(tools, toolbar)}
       <div role="row" className={cn("grid gap-2 border-b border-line bg-surface-1 px-3 py-1.5 text-fg-3", columns)}>
         {["硬件 A", "端口", "针脚", "硬件 B", "端口", "针脚"].map((label, index) => (
           <span key={index} role="columnheader" className="tf-label truncate">{label}</span>

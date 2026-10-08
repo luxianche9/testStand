@@ -57,11 +57,11 @@ test.describe.serial("testStand folder project desktop", () => {
     await expect(page.getByRole("heading", { name: "最近项目" })).toBeVisible();
     await expect(page.getByRole("button", { name: "打开项目文件夹" })).toBeVisible();
     await expect(page.getByRole("button", { name: "设置", exact: true })).toBeVisible();
-    await expect(activityBar(page).getByRole("button", { name: "设备", exact: true })).toHaveCount(0);
+    await expect(activityBar(page).getByRole("button", { name: "设备管理", exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "打开 AI 侧栏" })).toHaveCount(0);
     await page.getByRole("button", { name: "设置", exact: true }).click();
     await expect(page.getByRole("heading", { name: "外观" })).toBeVisible();
-    await expect(activityBar(page).getByRole("button", { name: "设备", exact: true })).toHaveCount(0);
+    await expect(activityBar(page).getByRole("button", { name: "设备管理", exact: true })).toHaveCount(0);
     await page.getByRole("button", { name: "返回", exact: true }).click();
     await expect(page.getByRole("heading", { name: "最近项目" })).toBeVisible();
     await page.screenshot({ path: resolve(artifactDir, "welcome-light.png"), fullPage: true });
@@ -78,7 +78,7 @@ test.describe.serial("testStand folder project desktop", () => {
     await expect(page.getByRole("heading", { name: "最近项目" })).toBeVisible();
     await page.getByText("project-a", { exact: true }).first().click();
     // One screen: the activity bar switches the sidebar's panels; runs are watched on the signal view.
-    for (const label of ["设备", "测试", "运行记录", "接线日志"]) {
+    for (const label of ["设备管理", "接线日志", "测试编排", "运行历史"]) {
       await expect(activityBar(page).getByRole("button", { name: label, exact: true })).toBeVisible();
     }
     await expect(page.getByRole("tab", { name: "测试编排", exact: true })).toHaveCount(0);
@@ -110,7 +110,7 @@ test.describe.serial("testStand folder project desktop", () => {
     expect(result.afterSave.dirty).toBe(false);
     expect(result.beforeSave?.file.wiring.connections[0]?.pins).toEqual([{ a: "1", b: "1" }, { a: "2", b: "2" }]);
 
-    await showPanel(page, "设备");
+    await showPanel(page, "设备管理");
     const list = page.getByRole("complementary", { name: "设备列表" });
     await list.getByRole("button", { name: /DUT_A/ }).click();
     await expect(page.getByRole("dialog", { name: "DUT_A" }).getByText("光纤口")).toBeVisible();
@@ -162,7 +162,7 @@ test.describe.serial("testStand folder project desktop", () => {
     await expect(page.getByText("MCP Gateway", { exact: false }).first()).toBeVisible();
     await expect(page.getByText("Codex", { exact: true }).first()).toBeVisible();
 
-    await activityBar(page).getByRole("button", { name: "设备", exact: true }).click();
+    await activityBar(page).getByRole("button", { name: "设备管理", exact: true }).click();
     const openAssistant = page.getByRole("button", { name: "打开 AI 侧栏" });
     if (await openAssistant.isVisible()) await openAssistant.click();
     await expect(page.getByRole("button", { name: "关闭 AI 侧栏" })).toBeVisible();
@@ -254,7 +254,7 @@ test.describe.serial("testStand folder project desktop", () => {
       expect(results.results).not.toEqual(expect.arrayContaining([expect.objectContaining({ name: "通信结果" })]));
 
       // The 测试 panel shows both groups of the flow: the one left out of the run and the aborted one.
-      await showPanel(page, "测试");
+      await showPanel(page, "测试编排");
       const tree = page.getByRole("tree", { name: "测试流程" });
       await expect(tree.getByRole("treeitem", { name: /通信功能/ })).toContainText("未选");
       await expect(tree.getByRole("treeitem", { name: /供电功能/ })).toContainText("终止");
@@ -277,7 +277,7 @@ test.describe.serial("testStand folder project desktop", () => {
     await expect(dialog.getByRole("button", { name: "保存并继续" })).toBeVisible();
     await expect(dialog.getByRole("button", { name: "放弃修改" })).toBeVisible();
     await dialog.getByRole("button", { name: "取消" }).click();
-    await expect(activityBar(page).getByRole("button", { name: "设备", exact: true })).toBeVisible();
+    await expect(activityBar(page).getByRole("button", { name: "设备管理", exact: true })).toBeVisible();
     await requestLeaveProject(page);
     await dialog.getByRole("button", { name: "放弃修改" }).click();
     await expect(page.getByRole("heading", { name: "最近项目" })).toBeVisible();

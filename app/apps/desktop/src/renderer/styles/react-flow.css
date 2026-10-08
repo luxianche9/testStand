@@ -1,31 +1,7 @@
 /* React Flow overrides for the signal view. Colors reference the semantic --tf-* tokens only. */
 
 /* ---- Canvas chrome --------------------------------------------------------------------------- */
-.react-flow {
-  background: var(--tf-canvas);
-  --xy-controls-button-background-color: var(--tf-surface-2);
-  --xy-controls-button-background-color-hover: var(--tf-surface-3);
-  --xy-controls-button-color: var(--tf-fg-2);
-  --xy-controls-button-color-hover: var(--tf-fg);
-  --xy-controls-button-border-color: var(--tf-line);
-  --xy-controls-box-shadow: var(--tf-shadow-overlay);
-}
-.react-flow__controls {
-  overflow: hidden;
-  border: 1px solid var(--tf-line-strong);
-  border-radius: var(--tf-radius-control);
-  background: var(--tf-surface-2);
-  box-shadow: var(--tf-shadow-overlay);
-}
-.react-flow__controls-button {
-  width: 24px;
-  height: 24px;
-  border-bottom-color: var(--tf-line);
-  background: var(--tf-surface-2);
-  fill: var(--tf-fg-2);
-}
-.react-flow__controls-button:hover { background: var(--tf-surface-3); fill: var(--tf-fg); }
-.react-flow__controls-button svg { max-width: 10px; max-height: 10px; }
+.react-flow { background: var(--tf-canvas); }
 .react-flow__edge-text { fill: var(--tf-fg); font-family: var(--tf-font-mono); font-size: 10px; }
 .react-flow__edge-textbg { fill: var(--tf-surface-2); stroke: var(--tf-line); stroke-width: 1; }
 

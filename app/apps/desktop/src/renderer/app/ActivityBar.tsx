@@ -1,14 +1,14 @@
 import type { ReactNode } from "react";
 import { CableIcon, CpuIcon, HistoryIcon, ListTreeIcon, MoonIcon, SettingsIcon, SunIcon } from "lucide-react";
-import { SIDE_PANEL_LABELS, type SidePanel } from "../lib/side-panel.js";
+import { SIDE_PANEL_LABELS, SIDE_PANELS, type SidePanel } from "../lib/side-panel.js";
 import { Tooltip, cn } from "../ui";
 
-const PANELS: { panel: SidePanel; icon: ReactNode }[] = [
-  { panel: "devices", icon: <CpuIcon /> },
-  { panel: "testing", icon: <ListTreeIcon /> },
-  { panel: "history", icon: <HistoryIcon /> },
-  { panel: "log", icon: <CableIcon /> }
-];
+const ICONS: Record<SidePanel, ReactNode> = {
+  devices: <CpuIcon />,
+  log: <CableIcon />,
+  testing: <ListTreeIcon />,
+  history: <HistoryIcon />
+};
 
 /**
  * The column of icons at the window's left edge: each switches the bench's sidebar to a panel (a
@@ -29,14 +29,14 @@ export function ActivityBar({ panel, inProject, settingsOpen, theme, onPanel, on
       aria-label="活动栏"
       className="flex w-11 shrink-0 flex-col items-center gap-1 border-r border-line bg-surface-1 py-1.5"
     >
-      {inProject && PANELS.map((item) => (
+      {inProject && SIDE_PANELS.map((item) => (
         <BarButton
-          key={item.panel}
-          label={SIDE_PANEL_LABELS[item.panel]}
-          active={!settingsOpen && panel === item.panel}
-          onClick={() => onPanel(item.panel)}
+          key={item}
+          label={SIDE_PANEL_LABELS[item]}
+          active={!settingsOpen && panel === item}
+          onClick={() => onPanel(item)}
         >
-          {item.icon}
+          {ICONS[item]}
         </BarButton>
       ))}
       <span className="flex-1" />
