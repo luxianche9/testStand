@@ -986,23 +986,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/ops/testing.abortBatch": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** testing.abortBatch */
-        post: operations["testing.abortBatch"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/ops/testing.abortRun": {
         parameters: {
             query?: never;
@@ -1088,40 +1071,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/ops/testing.createPlan": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** testing.createPlan */
-        post: operations["testing.createPlan"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/ops/testing.currentBatch": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** The active or latest batch run of several test items, or null. */
-        post: operations["testing.currentBatch"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/ops/testing.currentRun": {
         parameters: {
             query?: never;
@@ -1150,43 +1099,6 @@ export interface paths {
         put?: never;
         /** The current unit under test (serial number and attributes) runs are recorded for. */
         post: operations["testing.currentUnit"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/ops/testing.deletePlan": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Delete a saved test plan and its file; the operator confirms it first. A running plan
-         *     cannot be deleted.
-         */
-        post: operations["testing.deletePlan"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/ops/testing.getBatch": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** One batch run with the state and verdict of each of its items. */
-        post: operations["testing.getBatch"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1255,40 +1167,6 @@ export interface paths {
         put?: never;
         /** testing.listIcds */
         post: operations["testing.listIcds"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/ops/testing.listItemStatus": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** testing.listItemStatus */
-        post: operations["testing.listItemStatus"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/ops/testing.listPlans": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** testing.listPlans */
-        post: operations["testing.listPlans"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1372,7 +1250,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** testing.loadPlan */
+        /** The project's test flow (a project has one: ``flow``). */
         post: operations["testing.loadPlan"];
         delete?: never;
         options?: never;
@@ -1536,26 +1414,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/ops/testing.reorderItems": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Set the order of the test plans in the test tree (and of a batch run): ``planIds``
-         *     first, in this order; returns the item statuses.
-         */
-        post: operations["testing.reorderItems"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/ops/testing.resumeRun": {
         parameters: {
             query?: never;
@@ -1610,23 +1468,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/ops/testing.startBatch": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** testing.startBatch */
-        post: operations["testing.startBatch"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/ops/testing.startRun": {
         parameters: {
             query?: never;
@@ -1655,23 +1496,6 @@ export interface paths {
         put?: never;
         /** testing.validatePlan */
         post: operations["testing.validatePlan"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/ops/testing.waitForBatch": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** testing.waitForBatch */
-        post: operations["testing.waitForBatch"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2160,11 +1984,6 @@ export interface components {
         SystemDashboardRequest: Record<string, never>;
         /** SystemListConfirmationsRequest */
         SystemListConfirmationsRequest: Record<string, never>;
-        /** TestingAbortBatchRequest */
-        TestingAbortBatchRequest: {
-            /** Batchid */
-            batchId: string;
-        };
         /** TestingAbortRunRequest */
         TestingAbortRunRequest: {
             /** Runid */
@@ -2190,27 +2009,10 @@ export interface components {
             /** Input */
             input: object;
         };
-        /** TestingCreatePlanRequest */
-        TestingCreatePlanRequest: {
-            /** Input */
-            input: object;
-        };
-        /** TestingCurrentBatchRequest */
-        TestingCurrentBatchRequest: Record<string, never>;
         /** TestingCurrentRunRequest */
         TestingCurrentRunRequest: Record<string, never>;
         /** TestingCurrentUnitRequest */
         TestingCurrentUnitRequest: Record<string, never>;
-        /** TestingDeletePlanRequest */
-        TestingDeletePlanRequest: {
-            /** Planid */
-            planId: string;
-        };
-        /** TestingGetBatchRequest */
-        TestingGetBatchRequest: {
-            /** Batchid */
-            batchId: string;
-        };
         /** TestingGetRunRequest */
         TestingGetRunRequest: {
             /** Runid */
@@ -2228,10 +2030,6 @@ export interface components {
         };
         /** TestingListIcdsRequest */
         TestingListIcdsRequest: Record<string, never>;
-        /** TestingListItemStatusRequest */
-        TestingListItemStatusRequest: Record<string, never>;
-        /** TestingListPlansRequest */
-        TestingListPlansRequest: Record<string, never>;
         /** TestingListRecoveryItemsRequest */
         TestingListRecoveryItemsRequest: Record<string, never>;
         /** TestingListRunsRequest */
@@ -2251,8 +2049,11 @@ export interface components {
         TestingListStepCatalogRequest: Record<string, never>;
         /** TestingLoadPlanRequest */
         TestingLoadPlanRequest: {
-            /** Planid */
-            planId: string;
+            /**
+             * Planid
+             * @default flow
+             */
+            planId?: string;
         };
         /** TestingPauseRunRequest */
         TestingPauseRunRequest: {
@@ -2346,11 +2147,6 @@ export interface components {
             /** Runid */
             runId: string;
         };
-        /** TestingReorderItemsRequest */
-        TestingReorderItemsRequest: {
-            /** Input */
-            input: object;
-        };
         /** TestingResumeRunRequest */
         TestingResumeRunRequest: {
             /** Runid */
@@ -2368,11 +2164,6 @@ export interface components {
             /** Plan */
             plan: object;
         };
-        /** TestingStartBatchRequest */
-        TestingStartBatchRequest: {
-            /** Input */
-            input: object;
-        };
         /** TestingStartRunRequest */
         TestingStartRunRequest: {
             /** Input */
@@ -2380,18 +2171,11 @@ export interface components {
         };
         /** TestingValidatePlanRequest */
         TestingValidatePlanRequest: {
-            /** Planid */
-            planId: string;
-        };
-        /** TestingWaitForBatchRequest */
-        TestingWaitForBatchRequest: {
-            /** Batchid */
-            batchId: string;
             /**
-             * Timeoutms
-             * @default 30000
+             * Planid
+             * @default flow
              */
-            timeoutMs?: number;
+            planId?: string;
         };
         /** TestingWaitForRunRequest */
         TestingWaitForRunRequest: {
@@ -4333,39 +4117,6 @@ export interface operations {
             };
         };
     };
-    "testing.abortBatch": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TestingAbortBatchRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": object;
-                };
-            };
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        error: components["schemas"]["WireError"];
-                    };
-                };
-            };
-        };
-    };
     "testing.abortRun": {
         parameters: {
             query?: never;
@@ -4531,72 +4282,6 @@ export interface operations {
             };
         };
     };
-    "testing.createPlan": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TestingCreatePlanRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": object;
-                };
-            };
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        error: components["schemas"]["WireError"];
-                    };
-                };
-            };
-        };
-    };
-    "testing.currentBatch": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["TestingCurrentBatchRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": object | null;
-                };
-            };
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        error: components["schemas"]["WireError"];
-                    };
-                };
-            };
-        };
-    };
     "testing.currentRun": {
         parameters: {
             query?: never;
@@ -4640,72 +4325,6 @@ export interface operations {
         requestBody?: {
             content: {
                 "application/json": components["schemas"]["TestingCurrentUnitRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": object;
-                };
-            };
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        error: components["schemas"]["WireError"];
-                    };
-                };
-            };
-        };
-    };
-    "testing.deletePlan": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TestingDeletePlanRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": object;
-                };
-            };
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        error: components["schemas"]["WireError"];
-                    };
-                };
-            };
-        };
-    };
-    "testing.getBatch": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TestingGetBatchRequest"];
             };
         };
         responses: {
@@ -4838,72 +4457,6 @@ export interface operations {
         requestBody?: {
             content: {
                 "application/json": components["schemas"]["TestingListIcdsRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": object[];
-                };
-            };
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        error: components["schemas"]["WireError"];
-                    };
-                };
-            };
-        };
-    };
-    "testing.listItemStatus": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["TestingListItemStatusRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": object;
-                };
-            };
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        error: components["schemas"]["WireError"];
-                    };
-                };
-            };
-        };
-    };
-    "testing.listPlans": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["TestingListPlansRequest"];
             };
         };
         responses: {
@@ -5066,7 +4619,7 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
                 "application/json": components["schemas"]["TestingLoadPlanRequest"];
             };
@@ -5389,39 +4942,6 @@ export interface operations {
             };
         };
     };
-    "testing.reorderItems": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TestingReorderItemsRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": object;
-                };
-            };
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        error: components["schemas"]["WireError"];
-                    };
-                };
-            };
-        };
-    };
     "testing.resumeRun": {
         parameters: {
             query?: never;
@@ -5521,39 +5041,6 @@ export interface operations {
             };
         };
     };
-    "testing.startBatch": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TestingStartBatchRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": object;
-                };
-            };
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        error: components["schemas"]["WireError"];
-                    };
-                };
-            };
-        };
-    };
     "testing.startRun": {
         parameters: {
             query?: never;
@@ -5594,42 +5081,9 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
                 "application/json": components["schemas"]["TestingValidatePlanRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": object;
-                };
-            };
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        error: components["schemas"]["WireError"];
-                    };
-                };
-            };
-        };
-    };
-    "testing.waitForBatch": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TestingWaitForBatchRequest"];
             };
         };
         responses: {

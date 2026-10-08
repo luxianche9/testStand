@@ -14,17 +14,14 @@ const runStateLabels: Record<TestRunSummary["state"], string> = {
 
 type Filters = Omit<TestRunListInput, "cursor" | "limit">;
 
-/** 运行日志 tab: paginated run history, by default for the open 功能测试项. */
-export function RunHistory({ planId, plans, selectedRunId, onOpenRun }: {
-  planId: string | undefined;
-  plans: Array<{ id: string; name: string }>;
+/** 运行记录 panel: paginated run history of the project, filtered by verdict, state and date. */
+export function RunHistory({ selectedRunId, onOpenRun }: {
   selectedRunId: string | undefined;
   onOpenRun: (runId: string) => void;
 }) {
-  const [filters, setFilters] = useState<Filters>({ planId });
+  const [filters, setFilters] = useState<Filters>({});
   const [cursor, setCursor] = useState<string>();
   const [items, setItems] = useState<TestRunSummary[]>([]);
-  useEffect(() => { setFilters((current) => ({ ...current, planId })); }, [planId]);
   const filterKey = JSON.stringify(filters);
   useEffect(() => { setCursor(undefined); setItems([]); }, [filterKey]);
   const input = useMemo<TestRunListInput>(
@@ -43,14 +40,6 @@ export function RunHistory({ planId, plans, selectedRunId, onOpenRun }: {
     <div className="flex min-h-0 flex-col">
       <div className="grid grid-cols-2 gap-1.5 border-b border-line p-2">
         <Select
-          aria-label="按计划筛选"
-          value={filters.planId ?? ""}
-          onChange={(event) => change({ planId: event.target.value || undefined })}
-        >
-          <option value="">全部计划</option>
-          {plans.map((plan) => <option key={plan.id} value={plan.id}>{plan.name}</option>)}
-        </Select>
-        <Select
           aria-label="按判定筛选"
           value={filters.verdict ?? ""}
           onChange={(event) => change({ verdict: (event.target.value || undefined) as Filters["verdict"] })}
@@ -68,6 +57,7 @@ export function RunHistory({ planId, plans, selectedRunId, onOpenRun }: {
         </Select>
         <Input
           aria-label="起始日期"
+          className="col-span-2"
           type="date"
           value={filters.from?.slice(0, 10) ?? ""}
           onChange={(event) => change({ from: event.target.value ? `${event.target.value}T00:00:00` : undefined })}
@@ -77,7 +67,7 @@ export function RunHistory({ planId, plans, selectedRunId, onOpenRun }: {
         {runs.isLoading && !items.length ? (
           <div className="grid min-h-24 place-items-center"><Spinner label="正在读取运行记录…" /></div>
         ) : !items.length ? (
-          <EmptyState compact title="没有运行记录" description="运行功能测试项后，历史记录会出现在这里。" />
+          <EmptyState compact title="没有运行记录" description="运行测试流程后，历史记录会出现在这里。" />
         ) : (
           <ul aria-label="运行记录">
             {items.map((run) => (
@@ -122,6 +112,9 @@ function RunRow({ run, selected, onOpen }: { run: TestRunSummary; selected: bool
       >
         <span className="flex items-center gap-2 text-xs">
           <span className="min-w-0 flex-1 truncate text-fg">{run.planName}</span>
+          {run.features && run.features.length > 0 && (
+            <span className="shrink-0 text-2xs text-fg-3">{run.features.length} 个功能组</span>
+          )}
           <span className={cn("font-mono text-2xs font-medium", toneText[tone])}>{verdictLabels[run.verdict]}</span>
         </span>
         <span className="flex justify-between gap-2 text-2xs text-fg-3">

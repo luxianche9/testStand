@@ -56,11 +56,6 @@ export function useWiringChanges() {
   });
 }
 
-/** 功能测试项（已保存的测试计划）。刷新由 testPlan 事件驱动。 */
-function useTestPlans() {
-  return useQuery({ queryKey: queryKeys.testPlans, queryFn: () => window.teststand.testing.listPlans() });
-}
-
 export function useTestStepCatalog() {
   return useQuery({
     queryKey: queryKeys.testStepCatalog,
@@ -72,14 +67,6 @@ export function useTestStepCatalog() {
 /** Refetched on `testRun` events; a dropped event arrives as `gap`, which refetches everything. */
 export function useCurrentTestRun() {
   return useQuery({ queryKey: queryKeys.testRun, queryFn: () => window.teststand.testing.currentRun() });
-}
-
-/** Current unit + per-item latest result + active batch. Refetched on testPlan/testRun/testBatch events. */
-export function useTestItemStatus() {
-  return useQuery({
-    queryKey: queryKeys.testItemStatus,
-    queryFn: () => window.teststand.testing.listItemStatus()
-  });
 }
 
 export function useTestRuns(filters: TestRunListInput, enabled = true) {

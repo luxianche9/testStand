@@ -4,7 +4,15 @@ import type {
 import { findStep, moveStep, type TestRegion } from "./plan-model.js";
 
 /** Step types that own a child list (drop targets that nest instead of inserting before). */
-export const containerTypes = new Set(["Sequence", "Group", "If", "Repeat", "ForEach", "Parallel", "Retry", "Guard"]);
+export const containerTypes = new Set([
+  "Sequence", "Group", "Feature", "If", "Repeat", "ForEach", "Parallel", "Retry", "Guard"
+]);
+/** The project's one test flow. */
+export const FLOW_ID = "flow";
+/** 功能组: a `Feature` step at the top of the test region, picked per run. */
+export function featureSteps(plan: TestPlan | undefined): TestStep[] {
+  return (plan?.regions.test ?? []).filter((step) => step.type === "Feature");
+}
 /** Catalog categories as the backend names them; 硬件 lists managed hardware (InvokeTool per device). */
 export const categoryOrder = ["流程", "数据", "硬件", "判定"] as const;
 export const regionOrder: readonly TestRegion[] = ["prepare", "test", "cleanup"];

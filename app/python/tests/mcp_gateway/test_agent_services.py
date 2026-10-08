@@ -48,6 +48,38 @@ async def test_context_without_project_and_document_reads_use_only_bundled_contr
     assert page["lines"]
 
 
+async def test_context_summarises_the_flow_and_its_feature_groups(tmp_path: Any) -> None:
+    flow = {
+        "id": "flow",
+        "name": "Bench",
+        "revision": 4,
+        "regions": {
+            "test": [
+                {"id": "power", "type": "Feature", "name": "供电"},
+                {"id": "loose", "type": "Delay"},
+                {"id": "comm", "type": "Feature"},
+            ]
+        },
+    }
+    testing = SimpleNamespace(load_plan=lambda context: flow, current_run=lambda context: None)
+    app = SimpleNamespace(
+        projects=SimpleNamespace(document=lambda context: {"rootPath": str(tmp_path)}),
+        authorizer=DefaultAuthorizer(),
+        testing=testing,
+    )
+    context = await invoke(app, "get_agent_context")
+    assert context["testing"]["flow"] == {
+        "planId": "flow",
+        "name": "Bench",
+        "revision": 4,
+        "features": [{"stepId": "power", "name": "供电"}, {"stepId": "comm", "name": "comm"}],
+    }
+    assert context["testing"]["activeRun"] is None
+
+    app.testing = SimpleNamespace()
+    assert (await invoke(app, "get_agent_context"))["testing"]["flow"] is None
+
+
 async def test_effective_availability_accounts_for_holders_and_disabled_device() -> None:
     dashboard: dict[str, Any] = {
         "execution": {"state": "manual", "toolName": "write", "hardwareId": "H"},

@@ -27,6 +27,7 @@ from .expression import evaluate
 from .manual import manual_options
 from .models import (
     aggregate_verdict,
+    feature_ids,
     finite,
     plan_hardware_ids,
     step_verdict,
@@ -169,6 +170,9 @@ class RunInterpreter:
         self.ports, self.plan, self.parameters = ports, clone(plan), clone(parameters)
         self._protocols: PlanProtocols | None = None
         self.tags = {key: value for key, value in (tags or {}).items() if value is not None}
+        # The feature groups this run covers; the others are skipped (every group by default).
+        selected = self.tags.get("features")
+        self._features = set(selected if isinstance(selected, list) else feature_ids(self.plan))
         self.run_id = new_uuid()
         self.state = "starting"
         self.verdict = "NotSet"
@@ -444,13 +448,20 @@ class RunInterpreter:
                 attempt_index=attempt_index,
                 attempt_count=attempt_count,
             )
-            if not step.get("enabled", True):
+            skipped = (
+                "disabled"
+                if not step.get("enabled", True)
+                else "notSelected"
+                if step.get("type") == "Feature" and step.get("id") not in self._features
+                else None
+            )
+            if skipped:
                 self.emit(
                     "step.skipped",
                     {
                         "stepId": step.get("id"),
                         "stepType": step.get("type"),
-                        "reason": "disabled",
+                        "reason": skipped,
                         **execution_fields,
                     },
                 )
@@ -537,7 +548,7 @@ class RunInterpreter:
         self, step: Record, cleanup: bool, execution_id: str
     ) -> tuple[Any, str]:
         kind = step["type"]
-        if kind in {"Sequence", "Group"}:
+        if kind in {"Sequence", "Group", "Feature"}:
             return None, await self._steps(
                 step.get("children", []),
                 cleanup,

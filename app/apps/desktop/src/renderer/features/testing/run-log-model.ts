@@ -2,7 +2,8 @@ import type {
   TestOperationSnapshot, TestPlan, TestResult, TestRunEvent, TestStep
 } from "@teststand/contracts/testing";
 
-type StepRunState = "waiting" | "running" | "Pass" | "Fail" | "Error" | "skipped" | "Aborted";
+/** `notSelected`: a 功能组 the run was not asked to run (a skip with reason `notSelected`). */
+type StepRunState = "waiting" | "running" | "Pass" | "Fail" | "Error" | "skipped" | "notSelected" | "Aborted";
 export interface StepProjection { state: StepRunState; durationMs?: number; startedAt?: string; completedAt?: string }
 export interface MeasurementPoint { at: string; value: number; sequence: number }
 export interface MeasurementSeries {
@@ -122,7 +123,7 @@ export function projectStepStates(plan: TestPlan, events: TestRunEvent[]): Recor
     const stepId = typeof event.stepId === "string" ? event.stepId : undefined;
     if (!stepId) continue;
     if (event.type === "step.started") output[stepId] = { state: "running", startedAt: event.at };
-    if (event.type === "step.skipped") output[stepId] = { state: "skipped", completedAt: event.at };
+    if (event.type === "step.skipped") output[stepId] = { state: skipState(event), completedAt: event.at };
     if (event.type === "step.completed") output[stepId] = projectionFromCompletion(event);
   }
   return output;
@@ -182,8 +183,12 @@ function createNode(step: TestStep, event: TestRunEvent): ExecutionTraceNode {
 
 function applyStepEvent(node: ExecutionTraceNode, event: TestRunEvent): void {
   if (event.type === "step.started") { node.state = "running"; node.startedAt = event.at; }
-  if (event.type === "step.skipped") { node.state = "skipped"; node.completedAt = event.at; }
+  if (event.type === "step.skipped") { node.state = skipState(event); node.completedAt = event.at; }
   if (event.type === "step.completed") Object.assign(node, projectionFromCompletion(event));
+}
+
+function skipState(event: TestRunEvent): StepRunState {
+  return event.reason === "notSelected" ? "notSelected" : "skipped";
 }
 
 function projectionFromCompletion(event: TestRunEvent): StepProjection {
@@ -235,7 +240,7 @@ function appendPendingRegionSteps(plan: TestPlan, regions: ExecutionTrace["regio
 }
 
 function appendPendingContainerChildren(node: ExecutionTraceNode): void {
-  if (!["Sequence", "Group", "Parallel", "If"].includes(node.step.type)) return;
+  if (!["Sequence", "Group", "Feature", "Parallel", "If"].includes(node.step.type)) return;
   const represented = new Set(node.children.map((child) => child.stepId));
   const expected = node.step.type === "If" && node.selectedBranch
     ? node.step[node.selectedBranch] ?? []

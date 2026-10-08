@@ -11,12 +11,10 @@ from teststand_backend.mcp_gateway.tool_registry import ToolRegistry
 from teststand_backend.testing.tools import TESTING_TOOLS
 
 AGENT = {"actor": "agent", "source": "mcp"}
-BATCH = {"batchId": "batch", "state": "running", "items": []}
 
 
 def application() -> SimpleNamespace:
     testing = SimpleNamespace(
-        list_plans=Mock(return_value=[]),
         load_plan=Mock(return_value={"id": "plan", "revision": 1}),
         list_step_catalog=Mock(return_value=[]),
         list_device_tools=Mock(return_value={"hardwareId": "dev", "tools": [], "issues": []}),
@@ -45,7 +43,6 @@ def application() -> SimpleNamespace:
         ),
         read_run_results=Mock(return_value={"runId": "run", "results": [], "nextSequence": 0}),
         wait_for_run=AsyncMock(return_value={"run": {"runId": "run"}, "events": []}),
-        create_plan=AsyncMock(return_value={"plan": {"id": "plan", "revision": 1}, "issues": []}),
         apply_plan_operations=AsyncMock(
             return_value={
                 "plan": {"id": "plan", "revision": 2},
@@ -59,10 +56,6 @@ def application() -> SimpleNamespace:
         abort_run=AsyncMock(return_value={"runId": "run", "state": "cleaning"}),
         list_recovery_items=Mock(return_value=[]),
         reconcile_operation=AsyncMock(return_value={"operationId": "op", "state": "succeeded"}),
-        list_item_status=Mock(return_value={"unit": {"unitId": "u"}, "items": []}),
-        start_batch=AsyncMock(return_value=BATCH),
-        wait_for_batch=AsyncMock(return_value={**BATCH, "state": "completed"}),
-        abort_batch=AsyncMock(return_value={**BATCH, "state": "aborted"}),
         read_run_messages=Mock(
             return_value={
                 "runId": "run",
@@ -81,13 +74,13 @@ def test_testing_tools_are_visible_with_precise_permissions() -> None:
     registry = ToolRegistry(application())
     capabilities = {name: entry.capability for name, entry in registry._entries.items()}
     definitions = {item.name: item.definition() for item in TESTING_TOOLS}
-    assert capabilities["list_test_plans"] == "testing.read"
+    assert capabilities["get_test_plan"] == "testing.read"
+    assert not {"list_test_plans", "create_test_plan", "start_test_batch"} & set(capabilities)
     assert capabilities["list_test_runs"] == "testing.read"
     assert capabilities["read_test_run_events"] == "testing.read"
     assert capabilities["apply_test_plan_operations"] == "testing.manage"
     assert capabilities["start_test_run"] == "testing.execute"
     assert definitions["start_test_run"]["inputSchema"]["required"] == [
-        "planId",
         "revision",
         "executionRevision",
         "requestId",
@@ -184,27 +177,15 @@ async def test_testing_tool_schemas_reject_missing_request_id() -> None:
         )
 
 
-async def test_batch_tools_dispatch_to_item_status_and_batches() -> None:
+async def test_the_flow_is_the_default_plan_and_runs_take_feature_groups() -> None:
     app = application()
     registry = ToolRegistry(app)
-    capabilities = {name: entry.capability for name, entry in registry._entries.items()}
-    assert capabilities["get_test_item_status"] == "testing.read"
-    assert capabilities["start_test_batch"] == "testing.execute"
-    status = await registry.invoke(AGENT, "get_test_item_status", {})
-    assert status["data"]["items"] == []
-    started = await registry.invoke(
-        AGENT, "start_test_batch", {"requestId": "r", "planIds": ["a", "b"], "stopOnFail": True}
+    await registry.invoke(AGENT, "get_test_plan", {})
+    app.testing.load_plan.assert_called_once_with(AGENT, plan_id="flow")
+    run = {"revision": 1, "executionRevision": "exec", "requestId": "r", "features": ["power"]}
+    await registry.invoke(AGENT, "start_test_run", run)
+    app.testing.start_run.assert_awaited_once_with(
+        AGENT, input={**run, "planId": "flow", "parameters": {}}
     )
-    assert started["data"]["batchId"] == "batch"
-    app.testing.start_batch.assert_awaited_once_with(
-        AGENT, input={"requestId": "r", "planIds": ["a", "b"], "stopOnFail": True}
-    )
-    waited = await registry.invoke(
-        AGENT, "wait_for_test_batch", {"batchId": "batch", "timeoutMs": 5000}
-    )
-    assert waited["data"]["state"] == "completed"
-    app.testing.wait_for_batch.assert_awaited_once_with(AGENT, batch_id="batch", timeout_ms=5000)
-    aborted = await registry.invoke(AGENT, "abort_test_batch", {"batchId": "batch"})
-    assert aborted["data"]["state"] == "aborted"
     with pytest.raises(ValidationError):
-        await registry.invoke(AGENT, "start_test_batch", {"requestId": "r", "planIds": []})
+        await registry.invoke(AGENT, "start_test_run", {**run, "features": [""]})

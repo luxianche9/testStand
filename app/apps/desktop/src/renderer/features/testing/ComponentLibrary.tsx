@@ -16,7 +16,7 @@ export type DragDescriptor =
 
 /** 组件库 tab: step catalog by category plus managed hardware; drag into a region or click to append. */
 export function ComponentLibrary({ enabled, onAdd, onAddDevice }: {
-  /** False when no 功能测试项 is open; rows are then inert. */
+  /** False while the test flow is not loaded; rows are then inert. */
   enabled: boolean;
   onAdd: (item: TestStepCatalogItem) => void;
   onAddDevice: (hardware: Hardware) => void;
@@ -28,7 +28,7 @@ export function ComponentLibrary({ enabled, onAdd, onAddDevice }: {
   const managed = (devices.data?.hardware ?? []).filter((item) => item.kind === "managed");
   return (
     <div className="grid gap-4 p-3">
-      {!enabled && <p className="text-2xs text-fg-3">先选择一个功能测试项，再添加组件。</p>}
+      {!enabled && <p className="text-2xs text-fg-3">测试流程读取后才能添加组件。</p>}
       {categoryOrder.map((category) => (
         <Section key={category} title={category}>
           <div className="grid gap-1">

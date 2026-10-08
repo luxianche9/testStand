@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import getpass
-from datetime import datetime
 from typing import Any, cast
 
 from teststand_backend.contracts.errors import AppError, app_error
@@ -11,14 +9,12 @@ from teststand_backend.contracts.operations import operation
 from teststand_backend.protocol import load_icd
 from teststand_backend.util import clone, new_uuid, utc_now_iso
 
-from .batch import BatchCoordinator
 from .catalog import step_catalog
-from .models import plan_hardware_ids
+from .models import FLOW_ID, feature_ids, plan_hardware_ids
 from .protocols import describe_icd, trial_decode
 
 Record = dict[str, Any]
 _UNIT_KEY = "currentUnit"
-_ORDER_KEY = "testItemOrder"
 
 
 class TestingApplication:
@@ -44,27 +40,9 @@ class TestingApplication:
         self._requests: dict[tuple[str, str], Record] = {}
         self._request_locks: dict[tuple[str, str], asyncio.Lock] = {}
         self._plan_notifier: Any = None
-        self.batches = BatchCoordinator(self)
 
     def set_plan_notifier(self, notifier: Any) -> None:
         self._plan_notifier = notifier
-
-    def set_batch_notifier(self, notifier: Any) -> None:
-        self.batches.set_notifier(notifier)
-
-    def _notify_items(self, event: Record) -> None:
-        if self.batches.notifier:
-            self.batches.notifier(event)
-
-    @operation(
-        "testing.listPlans",
-        capability="testing.read",
-        risk="read",
-        profiles=("plan", "run"),
-        idempotency="natural",
-    )
-    def list_plans(self, context: Record) -> list[Record]:
-        return cast(list[Record], self.store.list())
 
     @operation(
         "testing.loadPlan",
@@ -73,30 +51,9 @@ class TestingApplication:
         profiles=("plan", "run"),
         idempotency="natural",
     )
-    def load_plan(self, context: Record, plan_id: str) -> Record:
+    def load_plan(self, context: Record, plan_id: str = FLOW_ID) -> Record:
+        """The project's test flow (a project has one: ``flow``)."""
         return cast(Record, self.store.load(plan_id))
-
-    @operation(
-        "testing.createPlan",
-        capability="testing.manage",
-        risk="write",
-        profiles=("plan",),
-        idempotency="request-id",
-    )
-    async def create_plan(self, context: Record, input: Record) -> Record:
-        request_id = _request_id(input)
-        async with self._lock_for("create", request_id):
-            cached = await self._claim_request("create", request_id, input)
-            if cached:
-                return cached
-            try:
-                result = cast(Record, await self.store.create(input))
-            except BaseException:
-                await self.store.release_request("create", request_id)
-                raise
-            await self._complete_request("create", request_id, result)
-            self._notify_plan(result["plan"], "created")
-            return result
 
     @operation(
         "testing.savePlan",
@@ -110,23 +67,6 @@ class TestingApplication:
         apply_test_plan_operations for edits; this is for the operator's editor."""
         result = cast(Record, await self.store.save(plan, base_revision))
         self._notify_plan(result["plan"], "saved")
-        return result
-
-    @operation(
-        "testing.deletePlan",
-        capability="testing.manage",
-        risk="destructive",
-        profiles=("plan",),
-        idempotency="natural",
-        confirm=True,
-    )
-    async def delete_plan(self, context: Record, plan_id: str) -> Record:
-        """Delete a saved test plan and its file; the operator confirms it first. A running plan
-        cannot be deleted."""
-        if self.engine.active and self.engine.active.plan["id"] == plan_id:
-            raise app_error("conflict", "Cannot delete the active test plan")
-        result = cast(Record, await self.store.delete(plan_id))
-        self._notify_plan({"id": plan_id}, "deleted")
         return result
 
     @operation(
@@ -146,7 +86,7 @@ class TestingApplication:
                 result = cast(
                     Record,
                     await self.store.apply_operations(
-                        str(input["planId"]),
+                        str(input.get("planId") or FLOW_ID),
                         int(input["baseRevision"]),
                         list(input.get("operations", [])),
                     ),
@@ -165,7 +105,7 @@ class TestingApplication:
         profiles=("plan",),
         idempotency="natural",
     )
-    def validate_plan(self, context: Record, plan_id: str) -> Record:
+    def validate_plan(self, context: Record, plan_id: str = FLOW_ID) -> Record:
         return cast(Record, self.store.validate(plan_id))
 
     @operation(
@@ -288,7 +228,7 @@ class TestingApplication:
             if cached:
                 return cached
             try:
-                plan = self.store.load(str(input["planId"]))
+                plan = self.store.load(str(input.get("planId") or FLOW_ID))
                 if plan["revision"] != int(input["revision"]):
                     raise app_error(
                         "conflict",
@@ -296,9 +236,8 @@ class TestingApplication:
                         {"currentRevision": plan["revision"]},
                     )
                 parameters = _parameters(plan, input.get("parameters", {}))
+                features = _features(plan, input.get("features"))
                 compiled = self.store.compile(plan["id"], parameters)
-                if self.batches.running:
-                    raise app_error("conflict", "A batch run is in progress")
                 if compiled["executionRevision"] != str(input.get("executionRevision", "")):
                     raise app_error(
                         "conflict",
@@ -308,30 +247,15 @@ class TestingApplication:
                             "revision": plan["revision"],
                         },
                     )
-                result = await self._start_compiled(plan, compiled, parameters)
+                result = await self._start_compiled(plan, compiled, parameters, features)
             except BaseException:
                 await self.store.release_request("start", request_id)
                 raise
             await self._complete_request("start", request_id, result)
             return result
 
-    async def start_item(
-        self, plan_id: str, batch_id: str, station: Record | None = None
-    ) -> Record:
-        """Start one batch item at its latest saved revision; ``station`` overrides defaults."""
-        plan, parameters, compiled = self.compile_item(plan_id, station)
-        return await self._start_compiled(plan, compiled, parameters, batch_id)
-
-    def compile_item(
-        self, plan_id: str, station: Record | None = None
-    ) -> tuple[Record, Record, Record]:
-        """The saved plan, its run parameters for ``station`` and the plan compiled for them."""
-        plan = self.store.load(plan_id)
-        parameters = _parameters(plan, station or {})
-        return plan, parameters, self.store.compile(plan_id, parameters)
-
     async def _start_compiled(
-        self, plan: Record, compiled: Record, parameters: Record, batch_id: str | None = None
+        self, plan: Record, compiled: Record, parameters: Record, features: list[str]
     ) -> Record:
         if not compiled["valid"]:
             raise app_error(
@@ -340,7 +264,7 @@ class TestingApplication:
                 {"issues": compiled["issues"], "revision": plan["revision"]},
             )
         self.check_wiring_gate(compiled["compiledPlan"])
-        tags = {"unitId": self.ensure_unit()["unitId"], "batchId": batch_id}
+        tags = {"unitId": self.ensure_unit()["unitId"], "features": features}
         return cast(
             Record,
             await self.engine.start(
@@ -381,7 +305,6 @@ class TestingApplication:
             return cast(Record, unit)
         unit = {"unitId": new_uuid(), "serialNumber": "", "startedAt": utc_now_iso()}
         self.store.runtime.set_metadata(_UNIT_KEY, unit)
-        self._notify_items({"kind": "unit", "unit": unit})
         return unit
 
     @operation(
@@ -394,120 +317,6 @@ class TestingApplication:
     def current_unit(self, context: Record) -> Record:
         """The current unit under test (serial number and attributes) runs are recorded for."""
         return self.ensure_unit()
-
-    # Functional test items: one saved plan per item, ordered per project.
-
-    @operation(
-        "testing.listItemStatus",
-        capability="testing.read",
-        risk="read",
-        profiles=("run",),
-        idempotency="natural",
-    )
-    def list_item_status(self, context: Record) -> Record:
-        unit = self.ensure_unit()
-        plans = cast(list[Record], self.store.list())
-        latest: dict[str, Record] = {}
-        for run in self.store.runtime.run_snapshots():
-            if run.get("unitId") != unit["unitId"]:
-                continue
-            plan_id = str(run.get("planId"))
-            previous = latest.get(plan_id)
-            if not previous or str(run.get("startedAt", "")) > str(previous.get("startedAt", "")):
-                latest[plan_id] = run
-        active = self.engine.active if self.engine.active and not self.engine.active.done else None
-        batch = self.batches.snapshot() if self.batches.running else None
-        queued = {
-            item["planId"] for item in (batch or {}).get("items", []) if item["state"] == "queued"
-        }
-        items = []
-        for plan in _ordered(plans, self.store.runtime.get_metadata(_ORDER_KEY)):
-            run = latest.get(plan["id"])
-            if active and active.plan["id"] == plan["id"]:
-                run = active.snapshot()
-            items.append(_item_status(plan, run, plan["id"] in queued))
-        return {"unit": unit, "items": items, **({"batch": batch} if batch else {})}
-
-    @operation(
-        "testing.reorderItems",
-        capability="testing.manage",
-        risk="write",
-        profiles=("plan",),
-        idempotency="natural",
-    )
-    def reorder_items(self, context: Record, input: Record) -> Record:
-        """Set the order of the test plans in the test tree (and of a batch run): ``planIds``
-        first, in this order; returns the item statuses."""
-        self.store.runtime.set_metadata(_ORDER_KEY, list(dict.fromkeys(_plan_ids(input))))
-        self._notify_items({"kind": "order"})
-        return self.list_item_status(context)
-
-    # Batch runs execute selected items one after another.
-
-    @operation(
-        "testing.startBatch",
-        capability="testing.execute",
-        risk="actuate",
-        profiles=("run",),
-        idempotency="request-id",
-    )
-    async def start_batch(self, context: Record, input: Record) -> Record:
-        request_id = _request_id(input)
-        async with self._lock_for("batch", request_id):
-            cached = await self._claim_request("batch", request_id, input)
-            if cached:
-                return cached
-            try:
-                stop_on_fail = bool(input.get("stopOnFail", False))
-                result = await self.batches.start(_plan_ids(input), stop_on_fail, _stations(input))
-            except BaseException:
-                await self.store.release_request("batch", request_id)
-                raise
-            await self._complete_request("batch", request_id, result)
-            return result
-
-    @operation(
-        "testing.abortBatch",
-        capability="testing.execute",
-        risk="actuate",
-        profiles=("run",),
-    )
-    async def abort_batch(self, context: Record, batch_id: str) -> Record:
-        return await self.batches.abort(batch_id)
-
-    @operation(
-        "testing.currentBatch",
-        capability="testing.read",
-        risk="read",
-        profiles=("run",),
-        idempotency="natural",
-    )
-    def current_batch(self, context: Record) -> Record | None:
-        """The active or latest batch run of several test items, or null."""
-        return self.batches.current()
-
-    @operation(
-        "testing.getBatch",
-        capability="testing.read",
-        risk="read",
-        profiles=("run",),
-        idempotency="natural",
-    )
-    def get_batch(self, context: Record, batch_id: str) -> Record:
-        """One batch run with the state and verdict of each of its items."""
-        return self.batches.get(batch_id)
-
-    @operation(
-        "testing.waitForBatch",
-        capability="testing.read",
-        risk="read",
-        profiles=("run",),
-        idempotency="natural",
-    )
-    async def wait_for_batch(
-        self, context: Record, batch_id: str, timeout_ms: int = 30_000
-    ) -> Record:
-        return await self.batches.wait(batch_id, min(max(int(timeout_ms), 1), 30_000))
 
     @operation("testing.pauseRun", capability="testing.execute", risk="actuate", profiles=("run",))
     async def pause_run(self, context: Record, run_id: str) -> Record:
@@ -752,7 +561,6 @@ class TestingApplication:
         return {"operation": reconciled, "run": run}
 
     async def close(self) -> None:
-        await self.batches.close()
         if self.engine.active and not self.engine.active.done:
             await self.engine.abort(self.engine.active.run_id)
             if self.engine.active.task:
@@ -787,66 +595,19 @@ class TestingApplication:
         self._requests[(scope, request_id)] = clone(result)
 
 
-def _plan_ids(input: Record) -> list[str]:
-    plan_ids = input.get("planIds")
-    if not isinstance(plan_ids, list) or not all(isinstance(item, str) for item in plan_ids):
-        raise app_error("invalid_argument", "planIds must be a list of plan ids")
-    return cast(list[str], plan_ids)
-
-
-def _stations(input: Record) -> list[Record] | None:
-    stations = input.get("stations")
-    if stations is None:
-        return None
-    if (
-        not isinstance(stations, list)
-        or not stations
-        or not all(isinstance(item, dict) for item in stations)
-    ):
-        raise app_error("invalid_argument", "stations must be a non-empty list of objects")
-    return cast(list[Record], stations)
-
-
-def _ordered(plans: list[Record], order: Any) -> list[Record]:
-    rank = {
-        plan_id: index for index, plan_id in enumerate(order if isinstance(order, list) else [])
-    }
-    return sorted(
-        plans,
-        key=lambda plan: (rank.get(plan["id"], len(rank)), str(plan.get("name", "")).lower()),
-    )
-
-
-def _item_status(plan: Record, run: Record | None, queued: bool) -> Record:
-    item: Record = {
-        "planId": plan["id"],
-        "name": plan.get("name", plan["id"]),
-        "revision": plan.get("revision", 0),
-        "invalid": bool(plan.get("invalid", False)),
-        "queued": queued,
-        "stale": False,
-    }
-    if not run:
-        return item
-    item.update(
-        {
-            "runId": run["runId"],
-            "state": run.get("state"),
-            "verdict": run.get("verdict", "NotSet"),
-            "startedAt": run.get("startedAt"),
-            "stale": run.get("revision") != plan.get("revision"),
-        }
-    )
-    if run.get("completedAt"):
-        item["completedAt"] = run["completedAt"]
-        with contextlib.suppress(ValueError, TypeError):
-            started = datetime.fromisoformat(str(run["startedAt"]).replace("Z", "+00:00"))
-            completed = datetime.fromisoformat(str(run["completedAt"]).replace("Z", "+00:00"))
-            item["durationMs"] = max(0, int((completed - started).total_seconds() * 1000))
-    error = run.get("primaryError")
-    if isinstance(error, dict) and error.get("message"):
-        item["message"] = str(error["message"])
-    return item
+def _features(plan: Record, selected: Any) -> list[str]:
+    """The feature groups a run covers: ``selected`` in flow order, or every group."""
+    groups = feature_ids(plan)
+    if selected is None:
+        return groups
+    if not isinstance(selected, list) or not all(isinstance(item, str) for item in selected):
+        raise app_error("invalid_argument", "features must be a list of feature group step ids")
+    unknown = set(selected) - set(groups)
+    if unknown:
+        raise app_error(
+            "invalid_argument", f"Not a feature group of the flow: {', '.join(sorted(unknown))}"
+        )
+    return [item for item in groups if item in selected]
 
 
 def _touches_hardware(task: Record, hardware_ids: list[str]) -> bool:

@@ -30,8 +30,9 @@ test("settings returns to the page that opened it", async () => {
     await openSettingsAndReturn(page, () => expect(devices).toBeVisible());
 
     await showPanel(page, "测试");
-    await expect(page.getByRole("button", { name: "新建功能测试项" })).toBeVisible();
-    await openSettingsAndReturn(page, () => expect(page.getByRole("button", { name: "新建功能测试项" })).toBeVisible());
+    const editFlow = page.getByRole("toolbar", { name: "测试流程操作" }).getByRole("button", { name: "编辑" });
+    await expect(editFlow).toBeEnabled();
+    await openSettingsAndReturn(page, () => expect(editFlow).toBeEnabled());
 
   } finally {
     await application.close().catch(() => undefined);

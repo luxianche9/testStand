@@ -75,10 +75,6 @@ export const testPlanSchema = z.object({
 }).strict();
 export type TestPlan = z.infer<typeof testPlanSchema>;
 
-export interface TestPlanSummary {
-  id: string; name: string; description: string; revision: number; updatedAt?: string;
-  valid?: boolean; invalid?: boolean; message?: string; stepCount?: number;
-}
 export interface TestPlanIssue { severity: "error" | "warning"; code: string; message: string; path: string }
 export interface RequirementCoverage { requirementId: string; name: string; status: "Passed" | "Failed" | "NotRun" | "InsufficientEvidence"; assertionCount?: number; evidenceCount?: number }
 export interface TestPlanValidation { planId: string; revision: number; valid: boolean; issues: TestPlanIssue[]; executionRevision: string; wiringRevision: string; coverage: { requirements: RequirementCoverage[]; total: number; linked?: number } }
@@ -154,6 +150,9 @@ export interface TestRunSnapshot {
   operations: TestOperationSnapshot[];
   /** ManualCheck steps waiting for the operator (design §7.2). */
   manualChecks?: ManualCheckRequest[];
+  /** Step ids of the feature groups (功能组) this run covers; the others were skipped. */
+  features?: string[];
+  unitId?: string;
 }
 export type ManualVerdict = "pass" | "fail" | "inconclusive";
 export interface ManualCheckOption { label: string; verdict: ManualVerdict }
@@ -191,7 +190,7 @@ export interface TestRunSummary {
   runId: string; planId: string; planName: string; revision: number; state: TestRunState; verdict: TestVerdict;
   startedAt: string; completedAt?: string; executionStatus: TestExecutionStatus; cleanupStatus: TestCleanupStatus; safetyStatus: TestSafetyStatus;
   outcomeKnown: boolean; recoveryRequired: boolean;
- 
+  features?: string[];
 }
 export interface TestRunPage { items: TestRunSummary[]; nextCursor?: string }
 export interface TestRunLog {
@@ -203,27 +202,3 @@ export interface TestRunLog {
 
 /** The physical unit under test; each project tests one product, one unit at a time. */
 export interface TestUnit { unitId: string; serialNumber: string; startedAt: string }
-/** Latest result of one functional test item (one saved plan) for the current unit. */
-export interface TestItemStatus {
-  planId: string; name: string; revision: number; invalid: boolean; queued: boolean; stale: boolean;
-  runId?: string; state?: TestRunState; verdict?: TestVerdict;
-  startedAt?: string; completedAt?: string; durationMs?: number; message?: string;
-}
-export type TestBatchState = "running" | "completed" | "aborted" | "error" | "interrupted";
-export interface TestBatchItem {
-  planId: string; planName: string; state: "queued" | "running" | "done" | "skipped";
-  runId?: string; verdict?: TestVerdict; message?: string;
-  /** Run parameters of this item's station (design §7.6). */
-  station?: Record<string, unknown>;
-}
-export interface TestBatch {
-  batchId: string; state: TestBatchState; stopOnFail: boolean; unitId: string;
-  startedAt: string; completedAt?: string; currentPlanId?: string; stopReason?: string;
-  items: TestBatchItem[];
-}
-export interface TestItemStatusList { unit: TestUnit; items: TestItemStatus[]; batch?: TestBatch }
-export interface TestBatchStartInput {
-  requestId: string; planIds: string[]; stopOnFail: boolean;
-  /** Each item runs once per station with these run parameters. */
-  stations?: Record<string, unknown>[];
-}

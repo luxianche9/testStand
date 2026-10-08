@@ -1,9 +1,9 @@
 import { useState, type ReactNode } from "react";
 import {
   ChevronDownIcon, ChevronRightIcon, CircleAlertIcon, CircleCheckIcon, CircleDashedIcon, CircleIcon,
-  CircleMinusIcon, CircleStopIcon, CircleXIcon, LoaderCircleIcon
+  CircleMinusIcon, CircleStopIcon, CircleXIcon, LayersIcon, LoaderCircleIcon
 } from "lucide-react";
-import { cn } from "../../ui";
+import { Checkbox, cn } from "../../ui";
 import { regionLabels, regionOrder } from "./plan-helpers.js";
 import { durationText, flowChildren } from "./run-format.js";
 import type { ExecutionTrace, ExecutionTraceNode } from "./run-log-model.js";
@@ -15,18 +15,37 @@ const STATES: Record<ExecutionTraceNode["state"], { icon: ReactNode; label: stri
   Fail: { icon: <CircleXIcon />, label: "失败", className: "text-fail" },
   Error: { icon: <CircleAlertIcon />, label: "错误", className: "text-fail" },
   skipped: { icon: <CircleMinusIcon />, label: "跳过", className: "text-fg-3" },
+  notSelected: { icon: <CircleMinusIcon />, label: "未选", className: "text-fg-3" },
   Aborted: { icon: <CircleStopIcon />, label: "已终止", className: "text-invalid" }
 };
 
+/** The result a 功能组 row shows on its right. */
+const FEATURE_RESULTS: Partial<Record<ExecutionTraceNode["state"], { label: string; className: string }>> = {
+  waiting: { label: "未测", className: "text-fg-3" },
+  Pass: { label: "PASS", className: "text-pass" },
+  Fail: { label: "FAIL", className: "text-fail" },
+  Error: { label: "ERROR", className: "text-fail" },
+  skipped: { label: "跳过", className: "text-fg-3" },
+  notSelected: { label: "未选", className: "text-fg-3" },
+  Aborted: { label: "终止", className: "text-invalid" }
+};
+
+/** Which 功能组 the next run runs; a group's checkbox sits on its flow row. */
+export interface FeatureSelection {
+  selected: (stepId: string) => boolean;
+  onChange: (stepId: string, selected: boolean) => void;
+}
+
 /**
- * 测试流程 of the open plan as an outliner: every step of every region as a tree, with the state
- * it has in the run shown (or 未执行 without one). A step that ran picks its time on the signal
- * view; a double click edits the step.
+ * 测试流程 as an outliner: every step of every region as a tree, with the state it has in the run
+ * shown (or 未执行 without one). 功能组 carry the checkbox that picks them for the next run and their
+ * result. A step that ran picks its time on the signal view; a double click edits the step.
  */
-export function PlanFlow({ trace, selectedStepId, typeLabel, onSelect, onEdit }: {
+export function PlanFlow({ trace, selectedStepId, typeLabel, selection, onSelect, onEdit }: {
   trace: ExecutionTrace;
   selectedStepId: string | undefined;
   typeLabel: (type: string) => string;
+  selection?: FeatureSelection | undefined;
   onSelect: (node: ExecutionTraceNode) => void;
   onEdit: (stepId: string) => void;
 }) {
@@ -48,6 +67,7 @@ export function PlanFlow({ trace, selectedStepId, typeLabel, onSelect, onEdit }:
           open={children.length ? open : undefined}
           selected={node.stepId === selectedStepId}
           typeLabel={typeLabel}
+          selection={selection}
           onToggle={() => toggle(node.executionId)}
           onSelect={() => onSelect(node)}
           onEdit={() => onEdit(node.stepId)}
@@ -74,12 +94,13 @@ export function PlanFlow({ trace, selectedStepId, typeLabel, onSelect, onEdit }:
   );
 }
 
-function FlowRow({ node, depth, open, selected, typeLabel, onToggle, onSelect, onEdit }: {
+function FlowRow({ node, depth, open, selected, typeLabel, selection, onToggle, onSelect, onEdit }: {
   node: ExecutionTraceNode;
   depth: number;
   open: boolean | undefined;
   selected: boolean;
   typeLabel: (type: string) => string;
+  selection: FeatureSelection | undefined;
   onToggle: () => void;
   onSelect: () => void;
   onEdit: () => void;
@@ -93,6 +114,8 @@ function FlowRow({ node, depth, open, selected, typeLabel, onToggle, onSelect, o
     : "";
   const name = node.step.name ?? typeLabel(node.step.type);
   const disabled = node.step.enabled === false;
+  const feature = node.step.type === "Feature";
+  const result = feature && node.state !== "running" ? FEATURE_RESULTS[node.state] : undefined;
   return (
     <div
       data-flow-step={node.stepId}
@@ -120,11 +143,22 @@ function FlowRow({ node, depth, open, selected, typeLabel, onToggle, onSelect, o
         className={cn("grid shrink-0 place-items-center [&_svg]:size-3.5", state.className)}>
         {disabled ? <CircleDashedIcon /> : state.icon}
       </span>
-      <span className="min-w-0 flex-1 truncate">{name}</span>
+      {feature && selection && (
+        <Checkbox
+          aria-label={`选择 ${name}`}
+          checked={selection.selected(node.stepId)}
+          onClick={(event) => event.stopPropagation()}
+          onDoubleClick={(event) => event.stopPropagation()}
+          onCheckedChange={(checked) => selection.onChange(node.stepId, checked === true)}
+        />
+      )}
+      {feature && <LayersIcon aria-hidden className="size-3.5 shrink-0 text-signal" />}
+      <span className={cn("min-w-0 flex-1 truncate", feature && "font-medium text-fg")}>{name}</span>
       {scope && <span className="tf-num shrink-0 text-2xs text-fg-3">{scope}</span>}
       {node.durationMs != null && node.state !== "running" && (
         <span className="tf-num shrink-0 text-2xs text-fg-3">{durationText(node.durationMs)}</span>
       )}
+      {result && <span className={cn("tf-num shrink-0 text-2xs font-semibold", result.className)}>{result.label}</span>}
     </div>
   );
 }

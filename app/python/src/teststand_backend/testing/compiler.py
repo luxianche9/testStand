@@ -21,7 +21,7 @@ def compile_plan(
     wiring: Any | None = None,
     values: Record | None = None,
 ) -> Record:
-    """Compile ``plan`` for the run parameters ``values`` (one station of a batch, §7.6)."""
+    """Compile ``plan`` for the run parameters ``values`` (§7.6)."""
     source = plan
     plan, binding_issues = expand_bindings(source, values)
     issues, protocols = validate_with_protocols(plan, resolver, plugins)
@@ -87,6 +87,14 @@ def compile_plan(
             kind = step.get("type")
             if kind in {"Sequence", "Group", "Guard"}:  # Guard runs its children in order
                 current, current_state = compile_steps(
+                    step.get("children", []),
+                    step_path + "/children",
+                    current,
+                    current_state,
+                )
+            elif kind == "Feature":
+                # A run may leave out any group: what one establishes is not there for the next.
+                compile_steps(
                     step.get("children", []),
                     step_path + "/children",
                     current,
@@ -314,7 +322,7 @@ def analyze_plan_draft(
                 seen |= yes[1] | no[1]
                 current_variables |= yes[2] & no[2]
                 seen_vars |= yes[3] | no[3]
-            elif kind in {"Repeat", "ForEach", "Retry"}:
+            elif kind in {"Repeat", "ForEach", "Retry", "Feature"}:
                 child = walk(step.get("children", []), current, seen, current_variables, seen_vars)
                 seen |= child[1] | child[0]
                 seen_vars |= child[3] | child[2]

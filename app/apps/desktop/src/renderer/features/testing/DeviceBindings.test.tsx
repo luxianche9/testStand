@@ -2,7 +2,6 @@
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { stationLabel } from "./BatchFooter.js";
 import { DeviceBindingsEditor, nextBindingName } from "./DeviceBindings.js";
 
 afterEach(cleanup);
@@ -27,9 +26,7 @@ describe("DeviceBindingsEditor", () => {
     expect(onChange).toHaveBeenLastCalledWith({ ...value, dev1: { hardwareId: "" } });
   });
 
-  it("names new bindings and labels batch stations", () => {
+  it("names new bindings", () => {
     expect(nextBindingName({ dev1: { hardwareId: "a" } })).toBe("dev2");
-    expect(stationLabel({ station: 2 })).toBe(" · station=2");
-    expect(stationLabel(undefined)).toBe("");
   });
 });

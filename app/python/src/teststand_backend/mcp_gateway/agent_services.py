@@ -115,23 +115,30 @@ def _testing_context(app: Any, context: Json, root: str | None) -> Json:
         if capability.startswith("testing.")
     ]
     if not root:
-        return {
-            "planDirectory": None,
-            "plans": [],
-            "activeRun": None,
-            "capabilities": capabilities,
-        }
+        return {"flow": None, "activeRun": None, "capabilities": capabilities}
     try:
-        plans = app.testing.list_plans(context)
+        plan = app.testing.load_plan(context)
         active_run = app.testing.current_run(context)
     except (TypeError, AttributeError):
         # Lightweight application test doubles may expose a project document without a session.
-        plans, active_run = [], None
+        plan, active_run = None, None
+    return {"flow": _flow_summary(plan), "activeRun": active_run, "capabilities": capabilities}
+
+
+def _flow_summary(plan: Any) -> Json | None:
+    """The project's one test flow: id, revision and its feature groups (功能组)."""
+    if not isinstance(plan, dict):
+        return None
+    test = plan.get("regions", {}).get("test", [])
     return {
-        "planDirectory": f"{root}/.teststand/plans",
-        "plans": plans,
-        "activeRun": active_run,
-        "capabilities": capabilities,
+        "planId": plan.get("id"),
+        "name": plan.get("name"),
+        "revision": plan.get("revision"),
+        "features": [
+            {"stepId": step.get("id"), "name": step.get("name") or step.get("id")}
+            for step in test
+            if isinstance(step, dict) and step.get("type") == "Feature"
+        ],
     }
 
 

@@ -17,13 +17,10 @@ export async function invalidateWiringData(client: QueryClient): Promise<void> {
   ]);
 }
 
-/** After a 功能测试 mutation (plan saved/created/deleted, run or batch started, unit changed). */
+/** After a 测试流程 mutation (flow saved, run started, unit changed). */
 export async function invalidateTestingData(client: QueryClient): Promise<void> {
   await Promise.all([
-    client.invalidateQueries({ queryKey: queryKeys.testPlans }),
-    client.invalidateQueries({ queryKey: queryKeys.testItemStatus }),
     client.invalidateQueries({ queryKey: queryKeys.testRun }),
-    client.invalidateQueries({ queryKey: queryKeys.testBatch }),
     client.invalidateQueries({ queryKey: queryKeys.testRunsAll })
   ]);
 }

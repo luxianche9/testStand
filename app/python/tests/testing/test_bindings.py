@@ -7,7 +7,7 @@ from teststand_backend.testing.bindings import expand_bindings
 from teststand_backend.testing.compiler import compile_plan
 from teststand_backend.testing.validation import validate_plan
 
-from .test_batch import make_app, run_batch
+from .test_features import make_app, run_flow
 from .test_testing import HUMAN, Resolver, plan_with
 
 REVISION = Resolver().resolve("any", "read")[0]["bindingRevision"]
@@ -67,23 +67,24 @@ def test_compile_resolves_the_station_hardware_and_keeps_one_execution_revision(
     assert first["executionRevision"] == second["executionRevision"]
 
 
-async def test_batch_runs_each_item_once_per_station(tmp_path: Path) -> None:
+async def test_a_run_uses_the_hardware_of_its_station(tmp_path: Path) -> None:
     app = make_app(tmp_path)
     plan = station_plan(READ)
-    await app.create_plan(
+    flow = app.load_plan(HUMAN)
+    await app.apply_plan_operations(
         HUMAN,
         {
-            "requestId": "create-power",
-            "id": "power",
-            "name": "Power",
-            "parameters": plan["parameters"],
-            "bindings": plan["bindings"],
-            "regions": plan["regions"],
+            "baseRevision": flow["revision"],
+            "requestId": "bind",
+            "operations": [
+                {"type": "set_plan_fields", "patch": {"bindings": plan["bindings"]}},
+                {"type": "set_parameters", "parameters": plan["parameters"]},
+                {"type": "insert_step", "region": "test", "step": READ},
+            ],
         },
     )
-    stations = [{"station": number} for number in (1, 2, 3)]
-    batch = await run_batch(app, "batch-stations", "power", stations=stations)
-    assert batch["state"] == "completed"
-    assert [item["station"] for item in batch["items"]] == stations
-    hardware = [app.engine.get(item["runId"])["hardwareIds"] for item in batch["items"]]
-    assert hardware == [["PC1.PSU_1"], ["PC1.PSU_2"], ["PC1.PSU_3"]]
+    hardware = [
+        (await run_flow(app, f"run-{number}", parameters={"station": number}))["hardwareIds"]
+        for number in (1, 2)
+    ]
+    assert hardware == [["PC1.PSU_1"], ["PC1.PSU_2"]]

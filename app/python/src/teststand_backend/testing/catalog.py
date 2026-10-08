@@ -10,6 +10,8 @@ def step_catalog(plugin_steps: list[Any] | None = None) -> list[Record]:
     items: list[Record] = [
         _item("Sequence", "流程", "顺序", common, container=True),
         _item("Group", "流程", "分组", common, container=True),
+        # One function of the unit under test; a run takes the groups to run (``features``).
+        _item("Feature", "流程", "功能组", common, container=True),
         _item(
             "If",
             "流程",

@@ -8,7 +8,7 @@ import type { ThemeChoice } from "./storage.js";
  * version, or nothing (design §9.4); `window-state` comes from the main process, `gap` from the event stream.
  */
 export const TESTSTAND_EVENT_NAMES = [
-  "availability", "devices", "gateway", "execution", "wiringTask", "project", "testPlan", "testRun", "testBatch",
+  "availability", "devices", "gateway", "execution", "wiringTask", "project", "testPlan", "testRun",
   "opencode", "confirmation", "window-state", "gap"
 ] as const;
 export type TestStandEventName = (typeof TESTSTAND_EVENT_NAMES)[number];

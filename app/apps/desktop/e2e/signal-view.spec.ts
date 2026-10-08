@@ -89,19 +89,19 @@ test.describe.serial("signal view and pin list", () => {
       .toEqual(["scope", "switch", "value"]);
   });
 
-  test("shows a run started in the plan editor on the signal view from its first step", async () => {
+  test("shows a run started from the test panel on the signal view from its first step", async () => {
     await page.evaluate(async () => {
-      const created = await window.teststand.testing.createPlan({ input: { requestId: crypto.randomUUID(), name: "信号视图运行" } });
+      const flow = await window.teststand.testing.loadPlan({ planId: "flow" });
       await window.teststand.testing.applyPlanOperations({ input: {
-        planId: created.plan.id, baseRevision: created.plan.revision, requestId: crypto.randomUUID(),
+        planId: flow.id, baseRevision: flow.revision, requestId: crypto.randomUUID(),
         operations: [
+          { type: "set_plan_fields", patch: { name: "信号视图运行" } },
           { type: "insert_step", region: "test", step: { id: "first", type: "PublishResult", name: "第一步", value: "ok" } },
           { type: "insert_step", region: "test", step: { id: "wait", type: "Delay", name: "等待", durationMs: 1_500 } }
         ]
       } });
     });
     await showPanel(page, "测试");
-    await page.getByRole("list", { name: "功能测试项" }).getByRole("button", { name: /信号视图运行/ }).first().click();
     await page.getByRole("toolbar", { name: "测试流程操作" }).getByRole("button", { name: "运行", exact: true }).click();
     // The bench is shown at once, with the run docked under the canvas.
     await expect(page.getByRole("region", { name: "信号视图" })).toBeVisible();

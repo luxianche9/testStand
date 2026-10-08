@@ -1,7 +1,7 @@
 """Plan bindings (design §7.6): logical device names mapped to real hardware and streams.
 
 Steps name a binding (``psu_main``) where they would name a ``hardwareId``. ``${name}`` in a
-binding takes the run parameter ``name``; a batch supplies one set of values per station.
+binding takes the run parameter ``name``.
 The compiler expands bindings before anything resolves tools or streams, so the device,
 tool and stream checks run against the hardware a station really uses.
 """

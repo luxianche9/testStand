@@ -4,7 +4,7 @@ import type { TestPlan, TestPlanDraftAnalysis, TestPlanIssue } from "@teststand/
 import { invalidateTestingData } from "../../lib/mutations.js";
 import { queryKeys } from "../../lib/query-keys.js";
 import { useKeyboardShortcut } from "../../lib/hooks/useKeyboardShortcut.js";
-import { defaultRunParameters } from "./plan-helpers.js";
+import { FLOW_ID, defaultRunParameters } from "./plan-helpers.js";
 import { clonePlan, findStep } from "./plan-model.js";
 
 type Confirm = (options: { title: string; message: React.ReactNode; confirmLabel?: string; danger?: boolean })
@@ -17,8 +17,8 @@ function errorText(error: unknown): string {
 }
 
 /**
- * Draft editing of one 功能测试项 (saved plan): undo/redo, save with conflict detection, validation,
- * debounced draft analysis, AI-revision conflict handling and run start.
+ * Draft editing of the project's test flow: undo/redo, save with conflict detection, validation,
+ * debounced draft analysis, AI-revision conflict handling and run start with the chosen 功能组.
  */
 export function usePlanEditor({ confirm, onRunStarted }: {
   confirm: Confirm;
@@ -52,7 +52,7 @@ export function usePlanEditor({ confirm, onRunStarted }: {
     setRunParameters(defaultRunParameters(plan));
   }, []);
 
-  const loadPlan = useCallback(async (id: string, keepStep = false) => {
+  const loadPlan = useCallback(async (id: string = FLOW_ID, keepStep = false) => {
     const token = ++loadToken.current;
     setSelectedPlanId(id);
     try {
@@ -62,29 +62,6 @@ export function usePlanEditor({ confirm, onRunStarted }: {
       if (token === loadToken.current) setMessage(errorText(error));
     }
   }, [adopt]);
-
-  /** Switches the editor to another item, asking before a dirty draft is dropped. */
-  const selectPlan = useCallback(async (id: string) => {
-    if (id === selectedPlanId && draft?.id === id) return true;
-    if (dirty && !await confirm({
-      title: "放弃未保存的修改？",
-      message: "当前测试项有未保存修改，确定放弃并切换吗？",
-      confirmLabel: "放弃并切换",
-      danger: true
-    })) return false;
-    await loadPlan(id);
-    return true;
-  }, [confirm, dirty, draft?.id, loadPlan, selectedPlanId]);
-
-  const closePlan = useCallback(() => {
-    loadToken.current += 1;
-    setSelectedPlanId(undefined);
-    setDraft(undefined);
-    setDirty(false);
-    setConflict(false);
-    setPast([]);
-    setFuture([]);
-  }, []);
 
   useEffect(() => window.teststand.events.subscribe("testPlan", (payload) => {
     const event = payload as { planId?: string; revision?: number };
@@ -171,7 +148,8 @@ export function usePlanEditor({ confirm, onRunStarted }: {
     }
   };
 
-  const start = async () => {
+  /** Starts a run of the flow; `features` are the 功能组 to run (all of them when omitted). */
+  const start = async (features?: string[]) => {
     if (!draft || conflict) { setMessage("请先解决计划冲突再启动运行。"); return; }
     try {
       if (dirty && !await save()) return;
@@ -185,7 +163,8 @@ export function usePlanEditor({ confirm, onRunStarted }: {
           revision: validation.revision,
           executionRevision: validation.executionRevision,
           requestId: crypto.randomUUID(),
-          parameters: runParameters
+          parameters: runParameters,
+          ...features ? { features } : {}
         }
       });
       // The signal view is live as soon as it knows the run is the current one: tell it first.
@@ -198,29 +177,20 @@ export function usePlanEditor({ confirm, onRunStarted }: {
     }
   };
 
-  /** Copies the local draft into a new item so a conflicting AI revision can be reloaded safely. */
-  const saveAs = async () => {
+  /** Keeps the local draft over a conflicting revision: saves it on top of the stored one. */
+  const overwrite = async () => {
     if (!draft) return;
     try {
-      const created = await window.teststand.testing.createPlan({
-        input: {
-          requestId: crypto.randomUUID(),
-          name: `${draft.name} - 本地副本`,
-          description: draft.description,
-          parameters: draft.parameters
-        }
+      const latest = await window.teststand.testing.loadPlan({ planId: draft.id });
+      const result = await window.teststand.testing.savePlan({
+        plan: { ...draft, revision: latest.revision }, baseRevision: latest.revision
       });
-      const copy: TestPlan = {
-        ...clonePlan(draft),
-        id: created.plan.id,
-        name: created.plan.name,
-        revision: created.plan.revision,
-        createdAt: created.plan.createdAt,
-        updatedAt: created.plan.updatedAt
-      };
-      const saved = await window.teststand.testing.savePlan({ plan: copy, baseRevision: copy.revision });
+      setDraft(result.plan);
+      setIssues(result.issues);
+      setDirty(false);
+      setConflict(false);
+      setMessage("已用本地草稿覆盖");
       await invalidateTestingData(client);
-      adopt(saved.plan);
     } catch (error) {
       setMessage(errorText(error));
     }
@@ -258,7 +228,7 @@ export function usePlanEditor({ confirm, onRunStarted }: {
   return {
     selectedPlanId, draft, selectedStepId, setSelectedStepId, past: past.length, future: future.length,
     dirty, conflict, issues, draftAnalysis, message, setMessage, runParameters, setRunParameters,
-    adopt, loadPlan, selectPlan, closePlan, discard, mutate, undo, redo, save, validate, start, saveAs, applyBinding
+    adopt, loadPlan, discard, mutate, undo, redo, save, validate, start, overwrite, applyBinding
   };
 }
 

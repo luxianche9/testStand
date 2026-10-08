@@ -4,7 +4,7 @@ import type { DeviceInstance, Hardware, ToolCatalogItem } from "@teststand/contr
 import { PlusIcon, RefreshCwIcon, TriangleAlertIcon } from "lucide-react";
 import { errorMessage } from "../../lib/errors.js";
 import { invalidateDeviceData, invalidateWiringData } from "../../lib/mutations.js";
-import { useDashboard, useProjectDocument, useTestItemStatus } from "../../lib/queries.js";
+import { useDashboard, useProjectDocument } from "../../lib/queries.js";
 import { useResizableWidth } from "../../lib/resizable.js";
 import { onRunRequested } from "../../lib/run-focus.js";
 import {
@@ -80,7 +80,6 @@ function Bench({ panel, view, onView }: {
   const document = useProjectDocument();
   const { project, catalog, save, wiring, hardware, edits } = useWiringDocument();
   const bench = useBenchRun();
-  const status = useTestItemStatus();
   const library = useResizableWidth({
     storageKey: "teststand.bench-devices-width", defaultWidth: 300, min: 220, max: 520, direction: "right"
   });
@@ -146,7 +145,6 @@ function Bench({ panel, view, onView }: {
   }
 
   const editingConnection = connections.find((item) => item.connectionId === editingConnectionId);
-  const plans = (status.data?.items ?? []).map((item) => ({ id: item.planId, name: item.name }));
   const controlled = controlMenu && hardware.find((item) => item.hardwareId === controlMenu.hardwareId);
   const actionHardware = action && hardware.find((item) => item.hardwareId === action.hardwareId);
   const devicesHeader = (
@@ -204,8 +202,6 @@ function Bench({ panel, view, onView }: {
           className={shown("history", "flex flex-col bg-surface-1")}>
           <PanelHeader title={SIDE_PANEL_LABELS.history} />
           <RunHistory
-            planId={undefined}
-            plans={plans}
             selectedRunId={bench.runId}
             onOpenRun={(runId) => { bench.setRunId(runId); onView("signals"); }}
           />

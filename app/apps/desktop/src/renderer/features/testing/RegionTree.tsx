@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ChevronDownIcon, ChevronRightIcon, CopyIcon, GripVerticalIcon, Trash2Icon } from "lucide-react";
+import { ChevronDownIcon, ChevronRightIcon, CopyIcon, GripVerticalIcon, LayersIcon, Trash2Icon } from "lucide-react";
 import type { TestStep } from "@teststand/contracts/testing";
 import { Badge, Checkbox, cn, IconButton } from "../../ui";
 import { containerTypes, regionLabels } from "./plan-helpers.js";
@@ -110,6 +110,7 @@ function SortableStep({ step, region, parentId, actions }: {
             {open ? <ChevronDownIcon className="size-3.5" /> : <ChevronRightIcon className="size-3.5" />}
           </button>
         ) : <span className="w-4" />}
+        {step.type === "Feature" && <LayersIcon aria-hidden className="size-3.5 shrink-0 text-signal" />}
         <span className={cn("min-w-0 flex-1 truncate text-xs", selected ? "font-medium text-fg" : "text-fg-2")}>
           {name}
         </span>

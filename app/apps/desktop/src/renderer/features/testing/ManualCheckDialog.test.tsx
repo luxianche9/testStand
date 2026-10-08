@@ -30,7 +30,7 @@ const request = {
 
 beforeEach(() => {
   localStorage.clear();
-  api = installTestingApi([plan], []);
+  api = installTestingApi([plan]);
 });
 
 afterEach(() => {

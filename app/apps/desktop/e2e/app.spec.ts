@@ -174,57 +174,63 @@ test.describe.serial("testStand folder project desktop", () => {
     await page.screenshot({ path: resolve(artifactDir, "assistant-sidebar-dark.png") });
   });
 
-  test("lets the Agent MCP create, edit, validate and control a test plan", async () => {
+  test("lets the Agent MCP edit, validate and control the test flow with its 功能组", async () => {
     const client = await connectGateway();
     try {
       const names = (await client.listTools()).tools.map((tool) => tool.name);
       expect(names).toEqual(expect.arrayContaining([
-        "create_test_plan", "apply_test_plan_operations", "validate_test_plan",
+        "get_test_plan", "apply_test_plan_operations", "validate_test_plan",
         "start_test_run", "pause_test_run", "resume_test_run", "abort_test_run",
         "wait_for_test_run", "read_test_run_results"
       ]));
-      const created = mcpData(await client.callTool({
-        name: "create_test_plan",
-        arguments: { requestId: "e2e-create-plan", id: "agent-e2e", name: "Agent 编排计划" }
-      }));
-      expect(created.plan.revision).toBe(1);
+      expect(names).not.toContain("create_test_plan");
+      const flow = mcpData(await client.callTool({ name: "get_test_plan", arguments: {} }));
+      expect(flow.id).toBe("flow");
       const added = mcpData(await client.callTool({
         name: "apply_test_plan_operations",
         arguments: {
-          planId: "agent-e2e", baseRevision: 1, requestId: "e2e-add-steps",
+          baseRevision: flow.revision, requestId: "e2e-add-steps",
           operations: [
-            { type: "insert_step", region: "test", step: { id: "sequence", type: "Sequence", name: "测试序列", children: [] } },
-            { type: "insert_step", region: "test", step: { id: "delay", type: "Delay", name: "等待终止", durationMs: 10_000 } },
+            { type: "set_plan_fields", patch: { name: "Agent 编排流程" } },
+            { type: "insert_step", region: "test", step: { id: "comm", type: "Feature", name: "通信功能", children: [
+              { id: "comm_result", type: "PublishResult", name: "通信结果", value: "ok" }
+            ] } },
+            { type: "insert_step", region: "test", step: { id: "power", type: "Feature", name: "供电功能", children: [
+              { id: "sequence", type: "Sequence", name: "测试序列", children: [] }
+            ] } },
+            { type: "insert_step", region: "test", parentId: "power", step: { id: "delay", type: "Delay", name: "等待终止", durationMs: 10_000 } },
             { type: "insert_step", region: "cleanup", step: { id: "cleanup_result", type: "PublishResult", name: "安全清理", value: "done" } }
           ]
         }
       }));
-      expect(added.appliedOperations).toBe(3);
+      expect(added.appliedOperations).toBe(5);
       const moved = mcpData(await client.callTool({
         name: "apply_test_plan_operations",
         arguments: {
-          planId: "agent-e2e", baseRevision: 2, requestId: "e2e-move-step",
+          baseRevision: added.plan.revision, requestId: "e2e-move-step",
           operations: [{ type: "move_step", stepId: "delay", region: "test", parentId: "sequence", index: 0 }]
         }
       }));
-      expect(moved.plan.revision).toBe(3);
-      const validation = mcpData(await client.callTool({ name: "validate_test_plan", arguments: { planId: "agent-e2e" } }));
-      expect(validation).toMatchObject({ valid: true, revision: 3 });
+      const revision = moved.plan.revision;
+      expect(revision).toBe(added.plan.revision + 1);
+      const validation = mcpData(await client.callTool({ name: "validate_test_plan", arguments: {} }));
+      expect(validation).toMatchObject({ valid: true, revision });
       const started = mcpData(await client.callTool({
         name: "start_test_run",
         arguments: {
-          planId: "agent-e2e", revision: 3, executionRevision: validation.executionRevision,
-          requestId: "e2e-start-run", parameters: {}
+          revision, executionRevision: validation.executionRevision,
+          requestId: "e2e-start-run", parameters: {}, features: ["power"]
         }
       }));
       const duplicate = mcpData(await client.callTool({
         name: "start_test_run",
         arguments: {
-          planId: "agent-e2e", revision: 3, executionRevision: validation.executionRevision,
-          requestId: "e2e-start-run", parameters: {}
+          revision, executionRevision: validation.executionRevision,
+          requestId: "e2e-start-run", parameters: {}, features: ["power"]
         }
       }));
       expect(duplicate.runId).toBe(started.runId);
+      expect(started.features).toEqual(["power"]);
       await client.callTool({ name: "pause_test_run", arguments: { runId: started.runId } });
       let sequence = 0;
       let snapshot = started;
@@ -245,10 +251,13 @@ test.describe.serial("testStand folder project desktop", () => {
       const results = mcpData(await client.callTool({ name: "read_test_run_results", arguments: { runId: started.runId, afterSequence: 0 } }));
       expect(results.results).toEqual(expect.arrayContaining([expect.objectContaining({ name: "安全清理", value: "done" })]));
 
+      expect(results.results).not.toEqual(expect.arrayContaining([expect.objectContaining({ name: "通信结果" })]));
+
+      // The 测试 panel shows both groups of the flow: the one left out of the run and the aborted one.
       await showPanel(page, "测试");
-      await expect(page.getByRole("list", { name: "功能测试项" }).getByText("Agent 编排计划", { exact: true }).first())
-        .toBeVisible();
-      await expect(page.getByRole("list", { name: "功能测试项" }).getByText("中止", { exact: true }).first()).toBeVisible();
+      const tree = page.getByRole("tree", { name: "测试流程" });
+      await expect(tree.getByRole("treeitem", { name: /通信功能/ })).toContainText("未选");
+      await expect(tree.getByRole("treeitem", { name: /供电功能/ })).toContainText("终止");
     } finally {
       await client.close();
     }

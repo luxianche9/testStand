@@ -19,6 +19,8 @@ from teststand_backend.contracts.validation import (
     unknown,
 )
 
+from .models import FLOW_ID
+
 Json = dict[str, Any]
 
 
@@ -154,9 +156,17 @@ _RUN_OUTPUT = _open_object(
 # Descriptions of the plan operation fields, which the schemas below leave undescribed.
 GLOSSARY = {
     "type": "Operation kind.",
-    "patch": "Fields to set: plan fields for set_plan_fields, step root fields for update_step.",
+    "patch": (
+        "Fields to set: plan fields for set_plan_fields (name, description, stopOnFail, "
+        "bindings {name: {hardwareId, streamId?}} where ${param} takes a run parameter, "
+        "protocolBindings [{icd, alias, source: {hardwareId, streamId}}]), step root fields "
+        "for update_step."
+    ),
     "parameters": "Complete list of typed run parameter definitions.",
-    "region": "Plan region: prepare, test (default) or cleanup.",
+    "region": (
+        "Plan region: prepare, test (default) or cleanup. Feature steps (功能组) sit at the "
+        "top of the test region; what one group sets up is not visible to the next."
+    ),
     "parentId": "Container step that receives the step; omit for the region's top level.",
     "branch": "children (default) or elseChildren (the If step's else branch).",
     "index": "Position among the siblings; omit to append.",
@@ -203,20 +213,10 @@ _OPERATION = discriminated(
     },
 )
 _EMPTY = obj({}, strict=True)
-_SAVED_PLAN_ID = obj({"planId": string(1).describe("Saved plan id.")}, strict=True)
+_PLAN_ID = string(1).default(FLOW_ID).describe("Plan id; the project's one test flow is flow.")
+_SAVED_PLAN_ID = obj({"planId": _PLAN_ID}, strict=True)
 _RUN_ID = obj({"runId": string(1).describe("Run id.")}, strict=True)
 _ICD_NAME = obj({"name": string(1).describe("ICD name (file icd/<name>.icd.yaml).")}, strict=True)
-_BATCH_OUTPUT = _open_object(
-    {
-        "batchId": {"type": "string"},
-        "state": {
-            "type": "string",
-            "enum": ["running", "completed", "aborted", "error", "interrupted"],
-        },
-        "items": _ANY_LIST,
-    },
-    ["batchId", "state", "items"],
-)
 
 
 def _testing(*args: Any, **options: Any) -> Tool:
@@ -225,15 +225,10 @@ def _testing(*args: Any, **options: Any) -> Tool:
 
 TESTING_TOOLS = [
     _testing(
-        "list_test_plans",
-        "List saved test plans with revision, validity and step count.",
-        _EMPTY,
-        _ANY_LIST,
-        operation="testing.listPlans",
-    ),
-    _testing(
         "get_test_plan",
-        "Read one complete saved test plan. Re-read before generating revisioned operations.",
+        "Read the project's test flow. Its test region holds Feature steps (功能组): each "
+        "tests one function of the unit and a run chooses which groups run. Re-read before "
+        "generating revisioned operations.",
         _SAVED_PLAN_ID,
         _PLAN_OUTPUT,
         operation="testing.loadPlan",
@@ -457,44 +452,12 @@ TESTING_TOOLS = [
         fields=("runId", "afterSequence", "timeoutMs"),
     ),
     _testing(
-        "create_test_plan",
-        "Create a YAML test plan. requestId makes retries idempotent.",
-        obj(
-            {
-                "requestId": string(1).describe("Unique idempotency key."),
-                "id": string(1).optional().describe("Optional stable plan id."),
-                "name": string(1).describe("Plan name."),
-                "description": string().default("").describe("Plan description."),
-                "parameters": array(record(unknown()))
-                .default([])
-                .describe("Typed run parameter definitions."),
-                "protocolBindings": array(record(unknown()))
-                .optional()
-                .describe(
-                    "ICD bindings {icd, alias, source: {hardwareId, streamId}}; steps name "
-                    "the derived streams as <alias>.<message>[.<field>]."
-                ),
-                "bindings": record(record(unknown()))
-                .optional()
-                .describe(
-                    "Logical device names {name: {hardwareId, streamId?}}; a step's hardwareId "
-                    "may name a binding. ${param} in a binding takes that run parameter, so a "
-                    "batch can run the plan once per station."
-                ),
-            },
-            strict=True,
-        ),
-        _object({"plan": _PLAN_OUTPUT, "issues": _ISSUES}, ["plan", "issues"]),
-        operation="testing.createPlan",
-        fields=(WHOLE,),
-    ),
-    _testing(
         "apply_test_plan_operations",
         "Atomically apply structured incremental operations to a saved revision. "
         "Never replace whole YAML.",
         obj(
             {
-                "planId": string(1).describe("Plan id."),
+                "planId": _PLAN_ID,
                 "baseRevision": number(1, integer=True).describe(
                     "Revision returned by the latest read."
                 ),
@@ -520,13 +483,19 @@ TESTING_TOOLS = [
         "requestId prevents duplicate physical runs.",
         obj(
             {
-                "planId": string(1).describe("Plan id."),
+                "planId": _PLAN_ID,
                 "revision": number(1, integer=True).describe("Exactly the validated revision."),
                 "executionRevision": string(1).describe(
                     "Opaque revision returned by validate_test_plan."
                 ),
                 "requestId": string(1).describe("Unique physical-run idempotency key."),
                 "parameters": record(unknown()).default({}).describe("Typed runtime values."),
+                "features": array(string(1))
+                .optional()
+                .describe(
+                    "Step ids of the Feature groups to run; omit to run every group. The "
+                    "others are skipped (reason notSelected)."
+                ),
             },
             strict=True,
         ),
@@ -643,59 +612,5 @@ TESTING_TOOLS = [
         _open_object({}, []),
         operation="testing.reconcileOperation",
         fields=(WHOLE,),
-    ),
-    _testing(
-        "get_test_item_status",
-        "Read every functional test item (one plan each) with its latest verdict for the "
-        "current unit under test. stale=true means the plan changed after that run.",
-        _EMPTY,
-        _open_object({"unit": _open_object({}, []), "items": _ANY_LIST}, ["unit", "items"]),
-        operation="testing.listItemStatus",
-    ),
-    _testing(
-        "start_test_batch",
-        "Run several functional test items one after another with default parameters. "
-        "With stations, every item runs once per station with those run parameters (they "
-        "fill ${param} in plan bindings). All items are prechecked first. "
-        "Fail continues unless stopOnFail; Error or Aborted "
-        "always stops the batch. requestId makes retries idempotent.",
-        obj(
-            {
-                "requestId": string(1).describe("Unique physical-run idempotency key."),
-                "planIds": array(string(1), 1).describe("Ordered test item plan ids."),
-                "stopOnFail": boolean().default(False).describe("Stop after the first Fail."),
-                "stations": array(record(unknown()), 1)
-                .optional()
-                .describe("Run parameters per station, for example [{station: 1}, {station: 2}]."),
-            },
-            strict=True,
-        ),
-        _BATCH_OUTPUT,
-        operation="testing.startBatch",
-        fields=(WHOLE,),
-    ),
-    _testing(
-        "wait_for_test_batch",
-        "Wait at most 30 seconds for a batch to finish and return its current state.",
-        obj(
-            {
-                "batchId": string(1).describe("Batch id."),
-                "timeoutMs": number(1, 30000, integer=True)
-                .default(30000)
-                .describe("Long-poll timeout capped at 30000 ms."),
-            },
-            strict=True,
-        ),
-        _BATCH_OUTPUT,
-        operation="testing.waitForBatch",
-        fields=("batchId", "timeoutMs"),
-    ),
-    _testing(
-        "abort_test_batch",
-        "Abort the active run of a batch and skip its remaining items.",
-        obj({"batchId": string(1).describe("Batch id.")}, strict=True),
-        _BATCH_OUTPUT,
-        operation="testing.abortBatch",
-        fields=("batchId",),
     ),
 ]

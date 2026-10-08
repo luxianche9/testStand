@@ -55,10 +55,7 @@ export function RunDock({ view, run, live, replay, time, height, onBackToLive }:
     time.pick(tb);
     if (scroll) setJump((current) => ({ tb, seq: (current?.seq ?? 0) + 1 }));
   };
-  const refreshRun = () => {
-    void client.invalidateQueries({ queryKey: queryKeys.testRun });
-    void client.invalidateQueries({ queryKey: queryKeys.testItemStatus });
-  };
+  const refreshRun = () => { void client.invalidateQueries({ queryKey: queryKeys.testRun }); };
   const rejudge = async () => {
     if (!runId) return;
     setRejudging(true);
