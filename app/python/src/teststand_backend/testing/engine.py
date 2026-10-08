@@ -84,11 +84,35 @@ class TestEngine:
         self.listeners = listeners or []
         self.runtime = runtime_state or RuntimeStateStore(projects)
         self.step_plugins = {plugin.type_name: plugin for plugin in (step_plugins or [])}
-        self.runs: dict[str, RunInterpreter] = {}
+        self._runs: dict[str, RunInterpreter] = {}
         self.active: RunInterpreter | None = None
-        self.recordings: dict[str, RunIO] = {}
+        self._recordings: dict[str, RunIO] = {}
+        self._project: tuple[str, str] | None = None
         self.derived_views = DerivedViews()
         self.notifier: Any = None
+
+    @property
+    def runs(self) -> dict[str, RunInterpreter]:
+        """The current project's runs in memory."""
+        self._follow_project()
+        return self._runs
+
+    @property
+    def recordings(self) -> dict[str, RunIO]:
+        self._follow_project()
+        return self._recordings
+
+    def _follow_project(self) -> None:
+        """Forget the previous project's runs once another project is open (a run still going
+        keeps them until it ends)."""
+        session = self.projects.session()
+        project = (str(session["rootPath"]), str(session["projectId"])) if session else None
+        if project == self._project or (self.active is not None and not self.active.done):
+            return
+        self._project = project
+        self._runs, self._recordings = {}, {}
+        self.active = None
+        self.derived_views = DerivedViews()
 
     def set_notifier(self, notifier: Any) -> None:
         self.notifier = notifier
@@ -125,12 +149,14 @@ class TestEngine:
         return run.snapshot()
 
     def get(self, run_id: str | None = None) -> Record | None:
-        run = self.runs.get(run_id) if run_id else self.active
+        runs = self.runs
+        run = runs.get(run_id) if run_id else self.active
         if run:
             return run.snapshot()
         return self.runtime.load_run(run_id) if run_id else None
 
     def current(self) -> Record | None:
+        self._follow_project()
         if self.active:
             return self.active.snapshot()
         latest = next(reversed(self.runs.values()), None) if self.runs else None

@@ -140,6 +140,24 @@ async def finish(engine: TestEngine, snapshot: dict[str, Any]) -> dict[str, Any]
     return run.snapshot()
 
 
+async def test_switching_projects_forgets_the_previous_projects_runs(tmp_path: Path) -> None:
+    projects = Projects(tmp_path / "a")
+    engine = TestEngine(projects, Devices(), Resolver(), ExecutionCoordinator())
+    completed = await finish(engine, await engine.start(plan_with(), {}))
+    assert engine.current() == completed
+
+    projects.root = tmp_path / "b"
+    engine.runtime.initialize()
+    assert engine.runtime.latest_run() is None
+    assert engine.current() is None
+    assert engine.get(completed["runId"]) is None
+    assert engine.runs == {} and engine.recordings == {}
+
+    projects.root = tmp_path / "a"
+    reopened = engine.current()
+    assert reopened is not None and reopened["runId"] == completed["runId"]
+
+
 def test_restricted_cel_supports_data_access_and_rejects_calls() -> None:
     context = {"parameters": {"limit": 3}, "variables": {"value": 2}, "steps": {}}
     assert evaluate("variables.value < parameters.limit && true", context) is True

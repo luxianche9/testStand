@@ -1,0 +1,3 @@
+# Generated contracts are checked against a fresh generation (LF): keep them LF in every checkout.
+app/packages/contracts/openapi.json text eol=lf
+app/packages/contracts/src/*.generated.ts text eol=lf

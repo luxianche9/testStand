@@ -240,3 +240,11 @@ def test_validation_messages() -> None:
     assert judge.match_error("bytes", {"pattern": "x", "hex": "00"})
     assert judge.match_error("bits", {"bit": 1, "level": True}) is None
     assert judge.match_error("scalar", {"op": "within", "value": 1})
+
+
+def test_cross_correlation_peak_next_to_an_unscored_edge_lag_stays_finite() -> None:
+    # Four samples: lag +-2 leaves two pairs (unscored, -inf) next to the true peak at +1.
+    reference = [(0.0, 1.0), (10.0, 3.0), (20.0, 2.0), (30.0, 5.0)]
+    signal = [(0.0, 4.0), (10.0, 1.0), (20.0, 3.0), (30.0, 2.0)]
+    delay, peak = judge.cross_correlation_delay(signal, reference, 100.0)
+    assert delay == pytest.approx(10.0) and peak == pytest.approx(1.0)
