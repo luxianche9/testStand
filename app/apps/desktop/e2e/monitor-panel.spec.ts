@@ -1,0 +1,135 @@
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { _electron as electron, expect, test, type ElectronApplication, type Page } from "@playwright/test";
+import { reloadAfterLeave, rendererReady, showPanel } from "./renderer.js";
+
+const desktopDir = resolve(import.meta.dirname, "..");
+const artifacts = resolve(desktopDir, "../../output/playwright/monitor-panel");
+const hardwareId = "MON_RELAY_CARD";
+
+test.describe.serial("monitor panel and pin list", () => {
+  let app: ElectronApplication;
+  let page: Page;
+  let userData: string;
+  const errors: string[] = [];
+  test.beforeAll(async () => {
+    userData = await mkdtemp(join(tmpdir(), "teststand-monitor-"));
+    const projectRoot = join(userData, "monitor-fixture");
+    await mkdir(projectRoot);
+    await mkdir(artifacts, { recursive: true });
+    const env = { ...process.env, TESTSTAND_USER_DATA_DIR: userData,
+      TESTSTAND_GATEWAY_PORT: "0", TESTSTAND_AGENT_INTEGRATION_TEST_MODE: "1" };
+    delete env.ELECTRON_RUN_AS_NODE;
+    app = await electron.launch({ args: [desktopDir], cwd: desktopDir, env, timeout: 90_000 });
+    page = await rendererReady(await app.firstWindow());
+    page.on("pageerror", (error) => errors.push(error.message));
+    await app.evaluate(({ BrowserWindow }) => {
+      BrowserWindow.getAllWindows()[0]!.setMinimumSize(0, 0);
+      BrowserWindow.getAllWindows()[0]!.setContentSize(1280, 800);
+    });
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await expect(page.getByRole("heading", { name: "最近项目" })).toBeVisible();
+    await page.evaluate(async ({ root, hardwareId }) => {
+      await window.teststand.projects.initializeFolder({ rootPath: root });
+      await window.teststand.devices.saveHardware({ input: {
+        formatVersion: 2, hardwareId: "DUT", label: "被测板", kind: "passive",
+        ports: [{ portId: "J1", name: "J1", pins: [
+          { pinId: "1", position: 1, label: "EN" }, { pinId: "2", position: 2, label: "GND" }
+        ] }]
+      } });
+      await window.teststand.devices.saveHardware({ input: {
+        formatVersion: 2, hardwareId: "FIX", label: "转接箱", kind: "passive",
+        ports: [{ portId: "P1", name: "P1", pins: [{ pinId: "1", position: 1, label: "" }] }]
+      } });
+      // A device without its card: registered, its streams not known until it connects.
+      await window.teststand.devices.saveDevice({ input: {
+        deviceId: "MON_RELAY", label: "继电器卡", hardwareId, type: "pci1762", settings: {}, enabled: true
+      } });
+      await window.teststand.wiring.updateDocument({ wiring: { connections: [{
+        connectionId: "C1", portA: "DUT.J1", portB: "FIX.P1", pins: [{ a: "1", b: "1" }],
+        confirmedAt: "2026-10-07T00:00:00.000Z", confirmedBy: "user"
+      }] } });
+      await window.teststand.monitor.update({ input: { channels: [
+        { hardwareId, streamId: "relay" }, { hardwareId, streamId: "di" }
+      ] } });
+      await window.teststand.projects.saveProject();
+      await window.teststand.projects.leaveProject();
+    }, { root: projectRoot, hardwareId });
+    await reloadAfterLeave(page);
+    await page.getByText("monitor-fixture", { exact: true }).first().click();
+  });
+  test.afterAll(async () => {
+    await app?.close().catch(() => undefined);
+    if (userData && dirname(userData) === resolve(tmpdir())) await rm(userData, { recursive: true, force: true });
+  });
+
+  test("opens the bench on the monitor panel with its channels on the scope", async () => {
+    const panel = page.getByRole("region", { name: "监控面板" });
+    const channels = panel.getByRole("complementary", { name: "通道" });
+    await expect(channels.getByRole("button", { name: "relay" })).toBeVisible();
+    await expect(channels.getByRole("button", { name: "di" })).toBeVisible();
+    const tools = page.getByRole("toolbar", { name: "台架工具栏" }).getByRole("group", { name: "监控面板工具" });
+    await expect(tools).toContainText("实时数据");
+    await expect(tools.getByRole("button", { name: "停止跟随", exact: true })).toBeVisible();
+    // The panel only watches: no canvas, no control widgets.
+    await expect(panel.locator(".react-flow")).toHaveCount(0);
+    await page.screenshot({ path: join(artifacts, "monitor.png") });
+  });
+
+  test("expands a device in the devices panel and removes a channel from the scope", async () => {
+    await showPanel(page, "设备管理");
+    const list = page.getByRole("complementary", { name: "设备列表" });
+    await list.getByRole("button", { name: "展开 继电器卡 的数据流" }).click();
+    // Without its card the device has not declared its streams yet.
+    await expect(list).toContainText("设备连接后显示它声明的数据流");
+    await expect(list.getByRole("button", { name: "控制 继电器卡" })).toBeVisible();
+    const panel = page.getByRole("region", { name: "监控面板" });
+    const channels = panel.getByRole("complementary", { name: "通道" });
+    await channels.getByRole("button", { name: "di" }).hover();
+    await channels.getByRole("button", { name: "从监控面板移除 di" }).click();
+    await expect(channels.getByRole("button", { name: "di" })).toHaveCount(0);
+    const monitor = await page.evaluate(async () => (await window.teststand.projects.document())?.file.monitor);
+    expect(monitor?.channels).toEqual([{ hardwareId, streamId: "relay" }]);
+  });
+
+  test("shows a run started from the test panel with its event timeline from the first step", async () => {
+    await page.evaluate(async () => {
+      const flow = await window.teststand.testing.loadPlan({ planId: "flow" });
+      await window.teststand.testing.applyPlanOperations({ input: {
+        planId: flow.id, baseRevision: flow.revision, requestId: crypto.randomUUID(),
+        operations: [
+          { type: "set_plan_fields", patch: { name: "监控面板运行" } },
+          { type: "insert_step", region: "test", step: { id: "first", type: "PublishResult", name: "第一步", value: "ok" } },
+          { type: "insert_step", region: "test", step: { id: "wait", type: "Delay", name: "等待", durationMs: 1_500 } }
+        ]
+      } });
+    });
+    await showPanel(page, "测试编排");
+    await page.getByRole("toolbar", { name: "测试流程操作" }).getByRole("button", { name: "运行", exact: true }).click();
+    const panel = page.getByRole("region", { name: "监控面板" });
+    await expect(panel).toContainText("监控面板运行");
+    // The event timeline: regions, steps, verdicts and calls on the run's time axis.
+    const overview = panel.getByRole("region", { name: "运行概览" });
+    await expect(overview).toBeVisible();
+    await expect(overview.getByText("第一步").first()).toBeVisible();
+    await page.screenshot({ path: join(artifacts, "run.png") });
+    // Finished, the run stays on the panel as a replay until the operator returns to live data.
+    await expect(panel.getByRole("button", { name: "返回实时" })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole("toolbar", { name: "台架工具栏" })).toContainText("历史回放");
+    await panel.getByRole("button", { name: "返回实时" }).click();
+    await expect(overview).toHaveCount(0);
+  });
+
+  test("shows the physical wiring as a pin list", async () => {
+    await page.getByRole("button", { name: "针脚列表", exact: true }).click();
+    const list = page.getByRole("region", { name: "针脚列表" });
+    await expect(list).toContainText("被测板");
+    const row = page.getByRole("toolbar", { name: "台架工具栏" });
+    await expect(row.getByRole("group", { name: "针脚列表工具" }).getByRole("button", { name: "新建接线" })).toBeVisible();
+    await expect(row.getByRole("group", { name: "监控面板工具" })).toBeHidden();
+    await expect(list).toContainText("1 (EN)");
+    await page.screenshot({ path: join(artifacts, "pin-list.png") });
+    expect(errors).toEqual([]);
+  });
+});

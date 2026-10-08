@@ -20,14 +20,14 @@ export interface Invalidation {
 export const eventInvalidations: Record<TestStandEventName, readonly Invalidation[]> = {
   // The backend's periodic device check saw a device change state.
   // A device that came online may have declared its streams for the first time.
-  availability: [{ key: queryKeys.dashboard }, { key: queryKeys.agentTools }, { key: queryKeys.signalCatalog }],
+  availability: [{ key: queryKeys.dashboard }, { key: queryKeys.agentTools }, { key: queryKeys.monitorStreams }],
   // A catalog write: hardware, device instances, adapter records, a device's cached declaration,
   // or an installed device package.
   devices: [
     { key: queryKeys.deviceTypes },
     { key: queryKeys.devicePackages },
     { key: queryKeys.deviceCatalog },
-    { key: queryKeys.signalCatalog },
+    { key: queryKeys.monitorStreams },
     { key: queryKeys.dashboard },
     { key: queryKeys.deviceDefinitionAll },
     { key: queryKeys.deviceStreamsAll },

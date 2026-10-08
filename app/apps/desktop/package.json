@@ -25,7 +25,6 @@
     "@tanstack/react-query": "^5.76.1",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/xterm": "^6.0.0",
-    "@xyflow/react": "^12.11.2",
     "ajv": "^8.17.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -42,11 +41,11 @@
     "zod": "^3.24.4"
   },
   "devDependencies": {
-    "@teststand/contracts": "workspace:*",
     "@playwright/test": "^1.62.1",
     "@tailwindcss/vite": "^4.3.3",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.3",
+    "@teststand/contracts": "workspace:*",
     "@types/react": "^19.1.4",
     "@types/react-dom": "^19.1.5",
     "@vitejs/plugin-react": "^4.4.1",

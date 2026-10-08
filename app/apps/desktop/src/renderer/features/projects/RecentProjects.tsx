@@ -1,6 +1,6 @@
 import type { RecentProjectSummary } from "@teststand/contracts/projects";
 import type { WelcomeLayout } from "@teststand/contracts/storage";
-import { CableIcon, EllipsisIcon, Trash2Icon, WorkflowIcon } from "lucide-react";
+import { ActivityIcon, CableIcon, EllipsisIcon, Trash2Icon } from "lucide-react";
 import { Button, Menu, MenuContent, MenuItem, MenuTrigger, StatusLamp, cn } from "../../ui";
 
 type ItemProps = {
@@ -158,20 +158,20 @@ function ProjectMenu({ project, onForget, className }: {
   );
 }
 
-/** What the project holds: its physical connections and the nodes of its signal view. */
+/** What the project holds: its physical connections and the channels of its monitor panel. */
 function ProjectPreview({ project, compact }: { project: RecentProjectSummary; compact: boolean }) {
-  const { connections, nodes } = project.preview;
+  const { connections, channels } = project.preview;
   return (
     <span
       role="img"
-      aria-label={`${project.name}：${connections} 条接线，信号视图 ${nodes} 个节点`}
+      aria-label={`${project.name}：${connections} 条接线，监控 ${channels} 路数据流`}
       className={cn(
         "flex w-full items-center justify-center gap-4 bg-canvas font-mono text-fg-3",
         compact ? "h-12 gap-2 text-2xs" : "h-[132px] text-xs"
       )}
     >
       <span className="flex items-center gap-1"><CableIcon aria-hidden className="size-3.5" />{connections}</span>
-      <span className="flex items-center gap-1"><WorkflowIcon aria-hidden className="size-3.5" />{nodes}</span>
+      <span className="flex items-center gap-1"><ActivityIcon aria-hidden className="size-3.5" />{channels}</span>
     </span>
   );
 }

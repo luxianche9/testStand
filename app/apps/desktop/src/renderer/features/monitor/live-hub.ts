@@ -27,28 +27,35 @@ const RESTART_MS = 30;
  */
 export function createLiveHub(upstream: Live): Live & { close: () => void } {
   const consumers = new Set<Consumer>();
-  let stop: (() => void) | undefined;
+  let stops: (() => void)[] = [];
   let timer: number | undefined;
 
+  const stopAll = () => {
+    for (const stop of stops) stop();
+    stops = [];
+  };
   const restart = () => {
     timer = undefined;
-    stop?.();
-    stop = undefined;
+    stopAll();
     if (!consumers.size) return;
-    const keys = [...new Set([...consumers].flatMap((item) => item.query.keys))].slice(0, MAX_LIVE_KEYS);
+    const keys = [...new Set([...consumers].flatMap((item) => item.query.keys))];
     const width = Math.max(...[...consumers].map((item) => item.query.width));
     const windowMs = Math.max(...[...consumers].map((item) => item.query.windowMs));
     for (const consumer of consumers) {
       if (!consumer.fresh) consumer.onGap?.();
       consumer.fresh = false;
     }
-    stop = upstream({ keys, width, windowMs }, (frame) => {
-      for (const consumer of consumers) {
-        const streams = Object.fromEntries(Object.entries(frame.streams)
-          .filter(([key]) => consumer.query.keys.includes(key)));
-        if (Object.keys(streams).length) consumer.onFrame({ ...frame, streams });
-      }
-    }, () => { for (const consumer of consumers) consumer.onGap?.(); });
+    // The backend serves a bounded number of keys per subscription: more keys take more of them.
+    for (let start = 0; start < keys.length; start += MAX_LIVE_KEYS) {
+      const shard = keys.slice(start, start + MAX_LIVE_KEYS);
+      stops.push(upstream({ keys: shard, width, windowMs }, (frame) => {
+        for (const consumer of consumers) {
+          const streams = Object.fromEntries(Object.entries(frame.streams)
+            .filter(([key]) => consumer.query.keys.includes(key)));
+          if (Object.keys(streams).length) consumer.onFrame({ ...frame, streams });
+        }
+      }, () => { for (const consumer of consumers) consumer.onGap?.(); }));
+    }
   };
   const schedule = () => {
     if (timer === undefined) timer = window.setTimeout(restart, RESTART_MS);
@@ -69,8 +76,7 @@ export function createLiveHub(upstream: Live): Live & { close: () => void } {
       consumers.clear();
       if (timer !== undefined) window.clearTimeout(timer);
       timer = undefined;
-      stop?.();
-      stop = undefined;
+      stopAll();
     }
   });
 }

@@ -4,7 +4,7 @@ import type { DeviceInstance, Hardware, ToolCatalogItem } from "@teststand/contr
 import { PlusIcon, RefreshCwIcon, TriangleAlertIcon } from "lucide-react";
 import { errorMessage } from "../../lib/errors.js";
 import { invalidateDeviceData, invalidateWiringData } from "../../lib/mutations.js";
-import { useDashboard, useProjectDocument } from "../../lib/queries.js";
+import { useDashboard } from "../../lib/queries.js";
 import { useResizableWidth } from "../../lib/resizable.js";
 import { onRunRequested } from "../../lib/run-focus.js";
 import {
@@ -14,9 +14,9 @@ import {
 import { AddDeviceDialog, pickDevicePackage, type StagedPackage } from "../devices/AddDeviceDialog.js";
 import { DeviceEditor } from "../devices/editors/DeviceEditor.js";
 import { HardwareEditor } from "../devices/editors/HardwareEditor.js";
-import { SignalViewPane } from "../signals/SignalViewPane.js";
-import { useBenchRun } from "../signals/use-bench-run.js";
-import { WidgetPalette } from "../signals/WidgetPalette.js";
+import { MonitorPane } from "../monitor/MonitorPane.js";
+import { useBenchRun } from "../monitor/use-bench-run.js";
+import { streamKey, useMonitorChannels } from "../monitor/use-monitor-channels.js";
 import { RunHistory } from "../testing/RunHistory.js";
 import { TestPanel } from "../testing/TestPanel.js";
 import { EditPinsModal, ListCreateConnectionModal } from "../wiring/ConnectionEditor.js";
@@ -31,27 +31,27 @@ import { actionName, deviceActions } from "./device-actions.js";
 import { SIDE_PANEL_LABELS, type SidePanel } from "../../lib/side-panel.js";
 
 const BANNER = "absolute top-2 right-3 left-3 z-20 shadow-overlay";
-export type BenchView = "signals" | "pins";
+export type BenchView = "monitor" | "pins";
 
 const viewOptions = [
-  { value: "signals", label: "信号视图", title: "逻辑信号、它们之间的连接，以及显示和控制控件" },
+  { value: "monitor", label: "监控面板", title: "设备数据流的示波器和控制台，运行时附带事件时间轴" },
   { value: "pins", label: "针脚列表", title: "实物接线：哪些针脚连在一起" }
 ] as const;
 
 /**
- * 测试台架, the project's one screen: the sidebar panel the activity bar picks (设备管理 with 控件,
- * 接线日志, 测试编排, 运行历史) beside the signal view, where signals feed displays and controls drive
- * signals, or the physical wiring as a pin list. The physical and the logical view never refer to
- * each other. One title row above them holds the view switch and the shown view's tools.
+ * 测试台架, the project's one screen: the sidebar panel the activity bar picks (设备管理, 接线日志,
+ * 测试编排, 运行历史) beside the monitor panel, which watches device streams and runs, or the
+ * physical wiring as a pin list. The two never refer to each other. One title row above them holds
+ * the view switch and the shown view's tools.
  */
 export function BenchPage({ panel, view, onView }: {
   panel?: SidePanel | undefined;
   view?: BenchView;
   onView?: (view: BenchView) => void;
 }) {
-  const [own, setOwn] = useState<BenchView>("signals");
-  // A run asked for is shown on the signal view.
-  useEffect(() => onRunRequested(() => (onView ?? setOwn)("signals")), [onView]);
+  const [own, setOwn] = useState<BenchView>("monitor");
+  // A run asked for is shown on the monitor panel.
+  useEffect(() => onRunRequested(() => (onView ?? setOwn)("monitor")), [onView]);
   return <Bench panel={panel} view={view ?? own} onView={onView ?? setOwn} />;
 }
 
@@ -79,9 +79,9 @@ function Bench({ panel, view, onView }: {
 }) {
   const client = useQueryClient();
   const dashboard = useDashboard();
-  const document = useProjectDocument();
   const { project, catalog, save, wiring, hardware, edits } = useWiringDocument();
   const bench = useBenchRun();
+  const monitor = useMonitorChannels(undefined);
   const library = useResizableWidth({
     storageKey: "teststand.bench-devices-width", defaultWidth: 300, min: 220, max: 520, direction: "right"
   });
@@ -96,14 +96,13 @@ function Bench({ panel, view, onView }: {
   const [partEditor, setPartEditor] = useState<{ open: boolean; hardware?: Hardware }>({ open: false });
   const [checking, setChecking] = useState(false);
   // Each view renders its tools into its own slot of the title row.
-  const [signalTools, setSignalTools] = useState<HTMLElement | null>(null);
+  const [monitorTools, setMonitorTools] = useState<HTMLElement | null>(null);
   const [pinTools, setPinTools] = useState<HTMLElement | null>(null);
 
   const connections = useMemo(() => wiring?.connections ?? [], [wiring?.connections]);
   const online = useMemo(() => new Map((dashboard.data?.availability ?? [])
     .map((item) => [item.hardwareId, item.state === "available"])), [dashboard.data]);
-  const placed = useMemo(() => new Set((document.data?.file.signals.nodes ?? [])
-    .flatMap((node) => node.kind === "hardware" ? [node.hardwareId] : [])), [document.data]);
+  const shown = useMemo(() => new Set(monitor.channels.map(streamKey)), [monitor.channels]);
 
   const refreshAll = async () => {
     await Promise.all([invalidateDeviceData(client), invalidateWiringData(client)]);
@@ -175,7 +174,8 @@ function Bench({ panel, view, onView }: {
     />
   );
   // `hidden` comes last: merged after a display class such as `flex`, it would lose.
-  const shown = (side: SidePanel, className?: string) => cn("min-h-0 min-w-0", className, panel !== side && "hidden");
+  const panelClass = (side: SidePanel, className?: string) =>
+    cn("min-h-0 min-w-0", className, panel !== side && "hidden");
 
   return (
     <main className="h-full min-h-0 min-w-0 overflow-hidden bg-surface-0">
@@ -184,32 +184,29 @@ function Bench({ panel, view, onView }: {
         style={{ gridTemplateColumns: panel ? `${library.width}px 1px minmax(0, 1fr)` : "minmax(0, 1fr)" }}
       >
         {/* Every panel stays mounted: the test panel keeps the open plan's draft while another is shown. */}
-        <div id="bench-side-devices" className={shown("devices")}>
+        <div id="bench-side-devices" className={panelClass("devices")}>
           <DeviceList
             header={devicesHeader}
             hardware={hardware}
-            placed={placed}
+            shown={shown}
             onOpen={(item) => openInfo(item.hardwareId)}
-            footer={(
-              <>
-                {hardware.length > 0 && (
-                  <p className="shrink-0 border-t border-line px-3 py-1.5 text-2xs text-fg-3">
-                    单击查看信息，拖到信号视图上放置
-                  </p>
-                )}
-                <WidgetPalette onPlace={() => onView("signals")} />
-              </>
+            onControl={openControl}
+            onAddStream={(ref) => { monitor.add(ref); onView("monitor"); }}
+            footer={hardware.length > 0 && (
+              <p className="shrink-0 border-t border-line px-3 py-1.5 text-2xs text-fg-3">
+                展开设备，把数据流拖到监控面板查看
+              </p>
             )}
           />
         </div>
-        <div id="bench-side-log" className={shown("log")}><WiringLogPanel hardware={hardware} /></div>
-        <div id="bench-side-testing" className={shown("testing")}><TestPanel bench={bench} /></div>
+        <div id="bench-side-log" className={panelClass("log")}><WiringLogPanel hardware={hardware} /></div>
+        <div id="bench-side-testing" className={panelClass("testing")}><TestPanel bench={bench} /></div>
         <section id="bench-side-history" aria-label={SIDE_PANEL_LABELS.history}
-          className={shown("history", "flex flex-col bg-surface-1")}>
+          className={panelClass("history", "flex flex-col bg-surface-1")}>
           <PanelHeader title={SIDE_PANEL_LABELS.history} />
           <RunHistory
             selectedRunId={bench.runId}
-            onOpenRun={(runId) => { bench.setRunId(runId); onView("signals"); }}
+            onOpenRun={(runId) => { bench.setRunId(runId); onView("monitor"); }}
           />
         </section>
         {panel && <Splitter label="调整侧栏宽度" {...library.separatorProps} />}
@@ -219,8 +216,8 @@ function Bench({ panel, view, onView }: {
             <SegmentedControl<BenchView> label="台架视图" value={view} options={viewOptions} onChange={onView} />
             {save.isPending && <span className="text-2xs whitespace-nowrap text-fg-3">正在保存…</span>}
             <ToolbarDivider />
-            <div ref={setSignalTools} role="group" aria-label="信号视图工具"
-              className={cn("flex min-w-0 flex-1 items-center gap-1", view !== "signals" && "hidden")} />
+            <div ref={setMonitorTools} role="group" aria-label="监控面板工具"
+              className={cn("flex min-w-0 flex-1 items-center gap-1", view !== "monitor" && "hidden")} />
             <div ref={setPinTools} role="group" aria-label="针脚列表工具"
               className={cn("flex min-w-0 flex-1 items-center gap-1.5", view !== "pins" && "hidden")} />
           </div>
@@ -229,10 +226,9 @@ function Bench({ panel, view, onView }: {
             {save.isError && (
               <ErrorBanner className={BANNER} message={errorMessage(save.error)} />
             )}
-            {/* Both stay mounted: the signal view keeps its live data while the pin list is shown. */}
-            <div className={cn("min-h-0", view !== "signals" && "hidden")}>
-              <SignalViewPane bench={bench} online={online} onInfo={openInfo} onControl={openControl}
-                toolbar={signalTools} />
+            {/* Both stay mounted: the monitor panel keeps its live data while the pin list is shown. */}
+            <div className={cn("min-h-0", view !== "monitor" && "hidden")}>
+              <MonitorPane bench={bench} toolbar={monitorTools} />
             </div>
             <div className={cn("min-h-0", view !== "pins" && "hidden")}>
               <PinList

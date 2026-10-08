@@ -1,6 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import "@xyflow/react/dist/style.css";
 import type { ProjectFolderSelection } from "@teststand/contracts/projects";
 import type { WelcomeLayout } from "@teststand/contracts/storage";
 import { CircleAlertIcon, FolderOpenIcon, Grid2X2Icon, ListIcon, ServerIcon } from "lucide-react";

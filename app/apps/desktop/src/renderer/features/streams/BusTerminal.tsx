@@ -39,7 +39,11 @@ export interface ConsoleJump {
  * run start. Lines can be filtered by kind and by device. A click on an outline step zooms to it,
  * a click on any other line picks its instant; `jump` scrolls to an instant picked elsewhere.
  */
-export function BusTerminal({ timeline, source, live, origin, jump, stepNames, outline, extra, onPick, onStep }: {
+export function BusTerminal({
+  streams, timeline, source, live, origin, jump, stepNames, outline, extra, onPick, onStep
+}: {
+  /** Record streams to show; default: every record stream of the run. */
+  streams?: StreamInfo[] | undefined;
   timeline: RunTimeline | undefined;
   source: StreamSource;
   live: boolean;
@@ -72,9 +76,9 @@ export function BusTerminal({ timeline, source, live, origin, jump, stepNames, o
   const [counts, setCounts] = useState<Readonly<Record<EntryKind, number>>>(emptyCounts);
   const theme = useThemeVersion();
 
-  const buses = useMemo(() => (timeline?.streams ?? []).filter((stream) =>
+  const buses = useMemo(() => (streams ?? timeline?.streams ?? []).filter((stream) =>
     !isSampled(String(stream.type)) && (stream.count > 0 || (live && !stream.states.includes("not_configured")))),
-  [timeline?.streams, live]);
+  [streams, timeline?.streams, live]);
 
   const devices = useMemo(() => consoleDevices(timeline, buses), [timeline, buses]);
 

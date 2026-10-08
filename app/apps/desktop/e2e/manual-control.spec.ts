@@ -29,7 +29,7 @@ test.describe.serial("manual control and Agent hardware calls", () => {
     if (userDataDir?.startsWith(tmpdir())) await rm(userDataDir, { recursive: true, force: true });
   });
 
-  test("controls the real PCI-1762 from its canvas card", async () => {
+  test("controls the real PCI-1762 from its device row", async () => {
     const status = await page.evaluate(async ({ projectRoot, hardwareId }) => {
       await window.teststand.projects.initializeFolder({ rootPath: projectRoot });
       await window.teststand.devices.saveDevice({ input: {
@@ -37,8 +37,7 @@ test.describe.serial("manual control and Agent hardware calls", () => {
         settings: {}, enabled: true
       } });
       const status = await window.teststand.devices.refreshDevice({ deviceId: "E2E_RELAY" });
-      await window.teststand.signals.updateDocument({ signals: {
-        nodes: [{ nodeId: "card", kind: "hardware", hardwareId, x: 20, y: 20 }], links: [] } });
+      await window.teststand.monitor.update({ input: { add: [{ hardwareId, streamId: "relay" }] } });
       await window.teststand.projects.saveProject();
       await window.teststand.projects.leaveProject();
       return status;
@@ -49,7 +48,7 @@ test.describe.serial("manual control and Agent hardware calls", () => {
     await showPanel(page, "设备管理");
 
     // Clicking the device in the list shows its information; the card on the canvas controls it.
-    await page.getByRole("complementary", { name: "设备列表" }).getByRole("button", { name: /PCI-1762 e2e/ }).click();
+    await page.getByRole("complementary", { name: "设备列表" }).getByRole("button", { name: /^PCI-1762 e2e/ }).click();
     const info = page.getByRole("dialog", { name: "PCI-1762 e2e" });
     await expect(info.getByText("CN1", { exact: true })).toBeVisible();
     await page.keyboard.press("Escape");

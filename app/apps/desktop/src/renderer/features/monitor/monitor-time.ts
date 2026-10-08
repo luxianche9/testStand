@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { StreamSource, TimeRange } from "../streams/index.js";
 import { createLiveHub } from "./live-hub.js";
 
@@ -9,14 +9,15 @@ export const SPANS = [
 ] as const;
 export type Span = (typeof SPANS)[number]["value"];
 
-/** Where the widgets' data comes from: the devices now, a run as it records, or a finished run. */
-export type SignalMode = "live" | "run" | "replay";
+/** Where the panel's data comes from: the devices now, a run as it records, or a finished run. */
+export type MonitorMode = "live" | "run" | "replay";
 
 /**
- * One time axis for every widget of the canvas: following the newest data over `spanMs` (from
- * `from` when the run start must stay in view), or a fixed `range` picked by dragging on a scope.
+ * One time axis for the scope, the terminal and the event timeline: following the newest data over
+ * `spanMs` (from `from` when the run start must stay in view), or a fixed `range` picked by dragging
+ * on the scope or the timeline. `marker` is the instant picked last.
  */
-export interface SignalTime {
+export interface MonitorTime {
   follow: boolean;
   spanMs: number;
   from: number | undefined;
@@ -29,36 +30,11 @@ export interface SignalTime {
   reset: () => void;
 }
 
-export interface SignalData {
-  mode: SignalMode;
-  source: StreamSource;
-  /** Data is still arriving (live devices or a run in progress). */
-  live: boolean;
-  syncKey: string;
-  /** Time axis origin (run start) for relative times; undefined shows clock time. */
-  origin: number | undefined;
-  time: SignalTime;
-  /** Why control widgets cannot write now (undefined: they can). */
-  writeBlocked: string | undefined;
-}
-
-const Context = createContext<SignalData | undefined>(undefined);
-
-export function useSignalData(): SignalData {
-  const value = useContext(Context);
-  if (!value) throw new Error("useSignalData outside a SignalDataProvider");
-  return value;
-}
-
-export function SignalDataProvider({ value, children }: { value: SignalData; children: ReactNode }) {
-  return <Context.Provider value={value}>{children}</Context.Provider>;
-}
-
 /**
  * Follow / zoom state of one time axis. `start` keeps a run's start in view while it follows;
  * `whole` is shown when nothing is zoomed and the data no longer arrives (a finished run).
  */
-export function useSignalTime(live: boolean, start?: number, whole?: TimeRange): SignalTime {
+export function useMonitorTime(live: boolean, start?: number, whole?: TimeRange): MonitorTime {
   const [follow, setFollow] = useState(live);
   const [zoom, setZoom] = useState<TimeRange>();
   const [span, setSpan] = useState<Span>("10000");
@@ -88,7 +64,7 @@ export function useSignalTime(live: boolean, start?: number, whole?: TimeRange):
   }), [following, spanMs, from, zoom, whole, marker, span, live]);
 }
 
-/** The devices' live frames through one shared subscription, as long as the canvas is mounted. */
+/** The devices' live frames through one shared subscription, as long as the bench is mounted. */
 export function useLiveHub(): NonNullable<StreamSource["live"]> {
   const hub = useMemo(() => createLiveHub(window.teststand.streams.live), []);
   useEffect(() => () => hub.close(), [hub]);

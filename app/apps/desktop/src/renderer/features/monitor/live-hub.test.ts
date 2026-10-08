@@ -45,4 +45,15 @@ describe("live hub", () => {
     hub.close();
     expect(stops[1]).toHaveBeenCalled();
   });
+
+  it("spreads more keys than one subscription takes over several", () => {
+    const queries: LiveQuery[] = [];
+    const hub = createLiveHub((query) => { queries.push(query); return () => undefined; });
+    const keys = Array.from({ length: 70 }, (_, index) => `H__s${index}`);
+    hub({ keys, width: 10, windowMs: 1000 }, vi.fn());
+    vi.advanceTimersByTime(50);
+    expect(queries.map((query) => query.keys.length)).toEqual([64, 6]);
+    expect(queries.flatMap((query) => query.keys)).toEqual(keys);
+    hub.close();
+  });
 });

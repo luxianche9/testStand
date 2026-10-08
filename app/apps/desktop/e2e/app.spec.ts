@@ -77,7 +77,7 @@ test.describe.serial("testStand folder project desktop", () => {
     // Every launch still returns to the welcome page even when recent projects exist.
     await expect(page.getByRole("heading", { name: "最近项目" })).toBeVisible();
     await page.getByText("project-a", { exact: true }).first().click();
-    // One screen: the activity bar switches the sidebar's panels; runs are watched on the signal view.
+    // One screen: the activity bar switches the sidebar's panels; runs are watched on the monitor panel.
     for (const label of ["设备管理", "接线日志", "测试编排", "运行历史"]) {
       await expect(activityBar(page).getByRole("button", { name: label, exact: true })).toBeVisible();
     }
@@ -267,9 +267,11 @@ test.describe.serial("testStand folder project desktop", () => {
     await page.evaluate(async () => {
       const current = await window.teststand.projects.document();
       if (!current) throw new Error("project missing");
-      const signals = current.file.signals;
-      await window.teststand.signals.updateDocument({ signals: { ...signals, nodes: [...signals.nodes,
-        { nodeId: "extra", kind: "widget", widget: "value", label: "", config: {}, x: 300, y: 20 }] } });
+      await window.teststand.wiring.updateDocument({ wiring: { connections: [
+        ...current.file.wiring.connections,
+        { connectionId: "extra", portA: "DUT_A.J1", portB: "DUT_B.J1", pins: [],
+          confirmedAt: "2026-10-08T00:00:00.000Z", confirmedBy: "e2e" }
+      ] } });
     });
     await requestLeaveProject(page);
     const dialog = page.getByRole("dialog", { name: "保存项目修改" });
@@ -289,7 +291,7 @@ test.describe.serial("testStand folder project desktop", () => {
     const transport = new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${gatewayPort}/mcp`), { requestInit: { headers: { Authorization: `Bearer ${gatewayTestToken}` } } });
     await client.connect(transport);
     const names = (await client.listTools()).tools.map((tool) => tool.name);
-    expect(names).toEqual(expect.arrayContaining(["request_wiring", "get_signal_view", "apply_signal_view_operations"]));
+    expect(names).toEqual(expect.arrayContaining(["request_wiring", "get_monitor", "update_monitor"]));
     expect(names).not.toContain("list_test_flows");
     expect(names).not.toContain("start_python_run");
     const task = await client.callTool({

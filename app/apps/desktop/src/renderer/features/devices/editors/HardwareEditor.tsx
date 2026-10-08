@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
-import type { Hardware, HardwarePort, HardwareSignal } from "@teststand/contracts/devices";
+import type { Hardware, HardwarePort } from "@teststand/contracts/devices";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { errorMessage } from "../../../lib/errors.js";
 import { Button, Dialog, DialogBody, DialogContent, DialogFooter, Input } from "../../../ui";
 import { PortEditor } from "../PortEditor.js";
-import { SignalEditor } from "../SignalEditor.js";
 import { BundleActions } from "../BundleActions.js";
 import { EditorAlert, EditorField, EditorNote, EditorPanel, editorGrid } from "./EditorField.js";
 
@@ -28,7 +27,6 @@ export function HardwareEditor({ open, hardware, onClose, onChanged }: {
   onChanged: () => Promise<void>;
 }) {
   const [ports, setPorts] = useState<HardwarePort[]>([]);
-  const [signals, setSignals] = useState<HardwareSignal[]>([]);
   const { register, reset, watch, handleSubmit, formState } = useForm<HardwareEditorValues>({
     resolver: zodResolver(hardwareEditorSchema),
     mode: "onChange",
@@ -41,7 +39,6 @@ export function HardwareEditor({ open, hardware, onClose, onChanged }: {
     if (!open) return;
     reset(hardware ? { hardwareId: hardware.hardwareId, label: hardware.label } : blankHardware);
     setPorts(hardware ? structuredClone(hardware.ports) : []);
-    setSignals(hardware ? structuredClone(hardware.signals) : []);
   }, [hardware, open, reset]);
 
   const save = useMutation({
@@ -53,8 +50,7 @@ export function HardwareEditor({ open, hardware, onClose, onChanged }: {
           hardwareId: normalizedId,
           label: values.label.trim() || normalizedId,
           kind: "passive",
-          ports,
-          signals
+          ports
         }
       });
     },
@@ -81,12 +77,9 @@ export function HardwareEditor({ open, hardware, onClose, onChanged }: {
             <EditorField label="显示名称" required error={errors.label?.message}>
               <Input {...register("label")} />
             </EditorField>
-            <EditorNote>被动硬件不由设备插件控制：端口与针脚用于接线列表，信号用于信号视图，两者互不关联。</EditorNote>
+            <EditorNote>被动硬件不由设备插件控制，只登记端口与针脚，用于接线列表。</EditorNote>
             <EditorPanel>
               <PortEditor ports={ports} onChange={setPorts} />
-            </EditorPanel>
-            <EditorPanel>
-              <SignalEditor signals={signals} onChange={setSignals} />
             </EditorPanel>
             {save.isError && <EditorAlert message={errorMessage(save.error)} />}
           </form>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from "react";
-import { ActivityIcon, ChevronRightIcon, GaugeIcon } from "lucide-react";
+import { ActivityIcon, ChevronRightIcon, GaugeIcon, XIcon } from "lucide-react";
 import type { RunTimeline, StreamInfo, StreamWindow } from "@teststand/contracts/observability";
 import { cn, EmptyState, IconButton, SegmentedControl } from "../../ui";
 import { DisplayMenu, useChannelDisplays, type ChannelDisplay } from "./channel-display.js";
@@ -7,12 +7,10 @@ import { StatePanel } from "./StatePanel.js";
 import { StreamScope, type SeriesStyle } from "./StreamScope.js";
 import {
   analogData, bitsWidth, CHANNEL_COLORS, clockTime, codeText, combinedOverlays, deviceName, isSampled, logicData,
-  NO_OVERLAYS, pointAt, pointMask, pointText, relativeTime, relevantStreams, streamUnit, type TimeRange
+  NO_OVERLAYS, pointAt, pointMask, pointText, relativeTime, streamUnit, type TimeRange
 } from "./stream-model.js";
 import { useStreamsPoints, type StreamSource } from "./useStreamReader.js";
 
-/** Channels shown when the run has not addressed any (a live watch, an empty plan). */
-const DEFAULT_CHANNELS = 8;
 const LANE_PX = 18;
 /** Value-axis width of every plot, so analog and logic traces line up on one time axis. */
 const AXIS_PX = 56;
@@ -36,17 +34,21 @@ interface Channel {
 }
 
 /**
- * Multi-channel oscilloscope of a run: a status panel of every shown channel at the cursor (lamps,
- * relay contacts, codes, numbers), one strip per analog channel (or all overlaid) on one time
- * axis, bit streams as a logic analyser underneath — a lane per bit or one bus lane of values —
- * and the judged windows as a verdict strip along the top of each plot. The channel list reads
- * every visible channel at the cursor (or the view's end), toggles channels on click and picks
- * how each bits channel is shown.
+ * Multi-channel oscilloscope of the monitor panel's sampled streams: a status panel of every
+ * shown channel at the cursor (lamps, relay contacts, codes, numbers), one strip per analog
+ * channel (or all overlaid) on one time axis, bit streams as a logic analyser underneath — a lane
+ * per bit or one bus lane of values —
+ * and, during or after a run, its judged windows as a verdict strip along the top of each plot.
+ * The channel list reads every channel at the cursor (or the view's end), hides a channel on
+ * click, picks how each bits channel is shown and removes a channel from the panel.
  */
 export function SignalScope({
-  timeline, source, live, follow, spanMs, from, range, origin, marker, syncKey, controls, emptyText,
-  onPick, onSelectRange, onReset
+  streams, timeline, source, live, follow, spanMs, from, range, origin, marker, syncKey, controls, emptyText,
+  onPick, onSelectRange, onReset, onRemove
 }: {
+  /** The channels, in panel order; record streams among them are left to the terminal. */
+  streams: StreamInfo[];
+  /** The run shown, for its verdict windows. */
   timeline: RunTimeline | undefined;
   source: StreamSource;
   live: boolean;
@@ -62,6 +64,7 @@ export function SignalScope({
   onPick: (tb: number) => void;
   onSelectRange: (range: TimeRange) => void;
   onReset: () => void;
+  onRemove?: (stream: StreamInfo) => void;
 }) {
   const [chosen, setChosen] = useState<ReadonlySet<string>>();
   const [layout, setLayout] = useState<Layout>("split");
@@ -84,18 +87,12 @@ export function SignalScope({
   const [panelOpen, setPanelOpen] = useState(storedPanelOpen);
   const { displayOf, setDisplay } = useChannelDisplays();
 
-  const channels = useMemo<Channel[]>(() => (timeline?.streams ?? [])
+  const channels = useMemo<Channel[]>(() => streams
     .filter((stream) => isSampled(String(stream.type)))
     .map((stream, index) => ({
       stream, color: CHANNEL_COLORS[index % CHANNEL_COLORS.length] ?? "", logic: stream.type === "bits"
-    })), [timeline?.streams]);
-  const defaults = useMemo(() => {
-    const relevant = relevantStreams(timeline);
-    const keys = channels.filter((channel) => relevant.has(channel.stream.key)).map((channel) => channel.stream.key);
-    if (keys.length) return new Set(keys);
-    return new Set(channels.filter((channel) => channel.stream.count > 0).slice(0, DEFAULT_CHANNELS)
-      .map((channel) => channel.stream.key));
-  }, [channels, timeline]);
+    })), [streams]);
+  const defaults = useMemo(() => new Set(channels.map((channel) => channel.stream.key)), [channels]);
   const visible = chosen ?? defaults;
   const shown = channels.filter((channel) => visible.has(channel.stream.key));
   const analog = shown.filter((channel) => !channel.logic);
@@ -213,6 +210,7 @@ export function SignalScope({
             onToggle={toggle}
             displayOf={displayOf}
             onDisplay={setDisplay}
+            onRemove={onRemove}
           />
           {hiddenCount > 0 && (
             <>
@@ -223,7 +221,7 @@ export function SignalScope({
                 className="flex h-6 w-full items-center gap-1 px-2 text-2xs text-fg-3 hover:text-fg-2"
               >
                 <ChevronRightIcon className={cn("size-3 transition-transform", othersOpen && "rotate-90")} />
-                其他 {hiddenCount} 路
+                已隐藏 {hiddenCount} 路
               </button>
               {othersOpen && (
                 <ChannelGroups
@@ -234,6 +232,7 @@ export function SignalScope({
                   onToggle={toggle}
                   displayOf={displayOf}
                   onDisplay={setDisplay}
+                  onRemove={onRemove}
                 />
               )}
             </>
@@ -346,7 +345,7 @@ export function SignalScope({
   );
 }
 
-function ChannelGroups({ channels, reads, at, visible, onToggle, displayOf, onDisplay }: {
+function ChannelGroups({ channels, reads, at, visible, onToggle, displayOf, onDisplay, onRemove }: {
   channels: Channel[];
   reads: Readonly<Record<string, StreamWindow>>;
   at: number | undefined;
@@ -354,6 +353,7 @@ function ChannelGroups({ channels, reads, at, visible, onToggle, displayOf, onDi
   onToggle: (key: string) => void;
   displayOf: (stream: StreamInfo) => ChannelDisplay;
   onDisplay: (stream: StreamInfo, next: Partial<ChannelDisplay>) => void;
+  onRemove: ((stream: StreamInfo) => void) | undefined;
 }) {
   const groups = new Map<string, Channel[]>();
   for (const channel of channels) {
@@ -382,7 +382,7 @@ function ChannelGroups({ channels, reads, at, visible, onToggle, displayOf, onDi
               title={[
                 `${stream.hardwareId}/${stream.streamId}`,
                 stream.declaration?.label ?? stream.type,
-                `${stream.count} 个样本`
+                on ? "单击隐藏" : "单击显示"
               ].join(" · ")}
               onClick={() => onToggle(stream.key)}
               className={cn(
@@ -393,7 +393,6 @@ function ChannelGroups({ channels, reads, at, visible, onToggle, displayOf, onDi
             >
               <span aria-hidden className="h-0.5 w-3 shrink-0" style={{ background: color, opacity: on ? 1 : 0.35 }} />
               <span className="min-w-0 flex-1 truncate">{stream.streamId}</span>
-              {stream.count === 0 && <span className="text-fg-3">空</span>}
               {on && (
                 <span className="tf-num shrink-0 text-fg">
                   {reading}
@@ -409,6 +408,12 @@ function ChannelGroups({ channels, reads, at, visible, onToggle, displayOf, onDi
                   onChange={(next) => onDisplay(stream, next)}
                 />
               </span>
+            )}
+            {onRemove && (
+              <IconButton label={`从监控面板移除 ${stream.streamId}`} size="icon-xs" variant="ghost"
+                className="invisible group-hover:visible" onClick={() => onRemove(stream)}>
+                <XIcon />
+              </IconButton>
             )}
           </div>
         );
