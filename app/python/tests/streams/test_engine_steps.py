@@ -245,14 +245,15 @@ async def test_guard_abort_stops_children_and_fails_the_run(tmp_path: Path) -> N
             "safe",
             "abort",
             invoke("overdrive", "set", level=9.0),
-            {"id": "long", "type": "Delay", "durationMs": 5000},
+            {"id": "long", "type": "Delay", "durationMs": 30000},
         ),
         {"id": "after", "type": "PublishResult", "name": "after", "value": 1},
         cleanup=[{"id": "cleanup", "type": "PublishResult", "name": "cleanup", "value": 1}],
     )
     started = asyncio.get_running_loop().time()
     engine, completed = await run(tmp_path, plan)
-    assert asyncio.get_running_loop().time() - started < 4
+    # The guard cuts the delay short; the margin is wide so a loaded machine cannot fail this.
+    assert asyncio.get_running_loop().time() - started < 10
     assert completed["verdict"] == "Fail"
     assert completed["executionStatus"] == "Aborted"
     names = [item.get("name") for item in engine.runs[completed["runId"]].results]

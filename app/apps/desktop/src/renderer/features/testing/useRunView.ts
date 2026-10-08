@@ -69,8 +69,6 @@ export function useRunView(runId: string | undefined, live: boolean, liveFrames?
   };
 }
 
-export type RunView = ReturnType<typeof useRunView>;
-
 /** The time a step ran, padded a little, for zooming to it. */
 export function stepRange(timeline: RunTimeline | undefined, executionId: string | undefined): TimeRange | undefined {
   const step = timeline?.steps.find((item) => item.executionId === executionId);

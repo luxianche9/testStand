@@ -9,10 +9,6 @@ export function isSampled(type: string): boolean {
   return SAMPLED.has(type);
 }
 
-export function streamLabel(stream: Pick<StreamInfo, "hardwareId" | "streamId">): string {
-  return `${stream.hardwareId}/${stream.streamId}`;
-}
-
 /** Short device name: the hardware id after its host prefix, without a `_CARD_n` suffix. */
 export function deviceName(hardwareId: string): string {
   return hardwareId.slice(hardwareId.lastIndexOf(".") + 1).replace(/_CARD(_\d+)?$/i, "");
@@ -440,7 +436,7 @@ export function stepAt(timeline: RunTimeline | undefined, tb: number): string | 
 }
 
 /** Context the recorder keeps before a run starts and after it ends. */
-export const PRE_ROLL_MS = 1_000;
+const PRE_ROLL_MS = 1_000;
 const TAIL_MS = 500;
 
 /**

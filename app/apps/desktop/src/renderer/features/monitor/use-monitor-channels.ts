@@ -27,7 +27,7 @@ export function readDraggedStream(data: DataTransfer): StreamRef | undefined {
 }
 
 /** What the scope and the terminal need of a stream the device declares; live frames carry the rest. */
-export function declaredStreamInfo(hardwareId: string, stream: DeviceStream | undefined, streamId: string): StreamInfo {
+function declaredStreamInfo(hardwareId: string, stream: DeviceStream | undefined, streamId: string): StreamInfo {
   const declaration = (stream ?? {}) as StreamDeclaration & { rateHz?: number };
   return {
     key: `${hardwareId}__${streamId}`,
