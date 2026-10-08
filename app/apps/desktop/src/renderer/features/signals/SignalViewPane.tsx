@@ -1,12 +1,15 @@
 import { useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { SignalWidget } from "@teststand/contracts/signals";
-import { CrosshairIcon, GaugeIcon, LayoutGridIcon, ZoomOutIcon } from "lucide-react";
+import {
+  CrosshairIcon, GaugeIcon, LayoutGridIcon, ScanIcon, TimerResetIcon, ZoomInIcon, ZoomOutIcon
+} from "lucide-react";
 import { useSignalCatalog } from "../../lib/queries.js";
 import { queryKeys } from "../../lib/query-keys.js";
 import { useResizableWidth } from "../../lib/resizable.js";
-import { IconButton, SegmentedControl, Splitter, Toolbar, Tooltip } from "../../ui/index.js";
+import { IconButton, SegmentedControl, Splitter, ToolbarDivider, Tooltip } from "../../ui/index.js";
 import type { StreamSource } from "../streams/index.js";
 import { isActiveRun } from "../testing/plan-helpers.js";
 import { RunDock } from "./RunDock.js";
@@ -22,19 +25,22 @@ type PaneProps = {
   online: ReadonlyMap<string, boolean>;
   onInfo: (hardwareId: string) => void;
   onControl: (hardwareId: string, anchor: DOMRect) => void;
+  /** Where the bench's one title row keeps this view's tools. */
+  toolbar: HTMLElement | null;
 };
 
 /**
  * 信号视图 of 测试台架: the canvas, the time axis every widget shares, and the run dock. Without a
  * run the widgets show the devices' live data; a run that starts (from the test panel or by the
  * Agent) takes over at once, since the widgets are already watching; a finished run picked from
- * the history is replayed on the same canvas. Widgets come from the devices panel's palette.
+ * the history is replayed on the same canvas. Widgets come from the devices panel's palette. Its
+ * tools (default panel, canvas zoom, data mode and time axis) sit in the bench's title row.
  */
 export function SignalViewPane(props: PaneProps) {
   return <ReactFlowProvider><Pane {...props} /></ReactFlowProvider>;
 }
 
-function Pane({ bench, online, onInfo, onControl }: PaneProps) {
+function Pane({ bench, online, onInfo, onControl, toolbar }: PaneProps) {
   const flow = useReactFlow();
   const signals = useSignalCatalog();
   const catalog = useMemo(() => catalogOf(signals.data), [signals.data]);
@@ -81,34 +87,49 @@ function Pane({ bench, online, onInfo, onControl }: PaneProps) {
   return (
     <SignalDataProvider value={data}>
       <section aria-label="信号视图" className="flex h-full min-h-0 min-w-0 flex-col">
-        <Toolbar aria-label="信号视图工具栏" className="gap-1">
-          <Tooltip content="每台已连接的设备放一个节点，每个流配一个默认控件">
-            <IconButton label="生成默认面板" size="icon-sm" variant="ghost"
-              disabled={defaultPanel.isPending} onClick={() => defaultPanel.mutate()}>
-              <LayoutGridIcon />
-            </IconButton>
-          </Tooltip>
-          <span className="ml-auto flex items-center gap-1">
-            <span className="mr-1 text-2xs text-fg-3">
-              {mode === "live" ? "实时数据" : mode === "run" ? "本次运行" : "历史回放"}
-            </span>
-            <GaugeIcon aria-hidden className="size-3.5 text-fg-3" />
-            <SegmentedControl<Span> label="时间跨度" size="xs" value={time.span} options={SPANS} onChange={time.setSpan} />
-            <IconButton
-              label={time.follow ? "停止跟随" : "跟随最新数据"}
-              size="icon-sm"
-              variant="ghost"
-              aria-pressed={time.follow}
-              disabled={mode === "replay"}
-              onClick={() => (time.follow ? time.select([Date.now() - time.spanMs, Date.now()]) : time.reset())}
-            >
-              <CrosshairIcon />
-            </IconButton>
-            <IconButton label="复位缩放" size="icon-sm" disabled={time.follow} onClick={time.reset}>
+        {toolbar && createPortal(
+          <>
+            <Tooltip content="每台已连接的设备放一个节点，每个流配一个默认控件">
+              <IconButton label="生成默认面板" size="icon-sm" variant="ghost"
+                disabled={defaultPanel.isPending} onClick={() => defaultPanel.mutate()}>
+                <LayoutGridIcon />
+              </IconButton>
+            </Tooltip>
+            <ToolbarDivider />
+            <IconButton label="缩小" size="icon-sm" variant="ghost" onClick={() => void flow.zoomOut({ duration: 150 })}>
               <ZoomOutIcon />
             </IconButton>
-          </span>
-        </Toolbar>
+            <IconButton label="放大" size="icon-sm" variant="ghost" onClick={() => void flow.zoomIn({ duration: 150 })}>
+              <ZoomInIcon />
+            </IconButton>
+            <IconButton label="适应画布" size="icon-sm" variant="ghost"
+              onClick={() => void flow.fitView({ padding: 0.15, maxZoom: 1, duration: 150 })}>
+              <ScanIcon />
+            </IconButton>
+            <span className="ml-auto flex items-center gap-1">
+              <span className="mr-1 text-2xs whitespace-nowrap text-fg-3">
+                {mode === "live" ? "实时数据" : mode === "run" ? "本次运行" : "历史回放"}
+              </span>
+              <GaugeIcon aria-hidden className="size-3.5 text-fg-3" />
+              <SegmentedControl<Span> label="时间跨度" size="xs" value={time.span} options={SPANS}
+                onChange={time.setSpan} />
+              <IconButton
+                label={time.follow ? "停止跟随" : "跟随最新数据"}
+                size="icon-sm"
+                variant="ghost"
+                aria-pressed={time.follow}
+                disabled={mode === "replay"}
+                onClick={() => (time.follow ? time.select([Date.now() - time.spanMs, Date.now()]) : time.reset())}
+              >
+                <CrosshairIcon />
+              </IconButton>
+              <IconButton label="复位时间轴" size="icon-sm" variant="ghost" disabled={time.follow} onClick={time.reset}>
+                <TimerResetIcon />
+              </IconButton>
+            </span>
+          </>,
+          toolbar
+        )}
         <div className="relative flex min-h-0 flex-1">
           <div className="min-h-0 min-w-0 flex-1">
             <SignalCanvas

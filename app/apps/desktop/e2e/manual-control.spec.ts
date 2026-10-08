@@ -46,7 +46,7 @@ test.describe.serial("manual control and Agent hardware calls", () => {
     expect(status.transport.state, status.transport.message).toBe("online");
     await reloadAfterLeave(page);
     await page.getByText("manual-control-project", { exact: true }).first().click();
-    await showPanel(page, "设备");
+    await showPanel(page, "设备管理");
 
     // Clicking the device in the list shows its information; the card on the canvas controls it.
     await page.getByRole("complementary", { name: "设备列表" }).getByRole("button", { name: /PCI-1762 e2e/ }).click();

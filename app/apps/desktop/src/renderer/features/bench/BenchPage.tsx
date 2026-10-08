@@ -8,7 +8,8 @@ import { useDashboard, useProjectDocument } from "../../lib/queries.js";
 import { useResizableWidth } from "../../lib/resizable.js";
 import { onRunRequested } from "../../lib/run-focus.js";
 import {
-  IconButton, Menu, MenuContent, MenuItem, MenuTrigger, PanelHeader, SegmentedControl, Spinner, Splitter, cn
+  IconButton, Menu, MenuContent, MenuItem, MenuTrigger, PanelHeader, SegmentedControl, Spinner, Splitter,
+  ToolbarDivider, cn
 } from "../../ui/index.js";
 import { AddDeviceDialog, pickDevicePackage, type StagedPackage } from "../devices/AddDeviceDialog.js";
 import { DeviceEditor } from "../devices/editors/DeviceEditor.js";
@@ -38,9 +39,10 @@ const viewOptions = [
 ] as const;
 
 /**
- * 测试台架, the project's one screen: the sidebar panel the activity bar picks (设备 and 控件, 测试,
- * 运行记录, 接线日志) beside the signal view, where signals feed displays and controls drive signals,
- * or the physical wiring as a pin list. The physical and the logical view never refer to each other.
+ * 测试台架, the project's one screen: the sidebar panel the activity bar picks (设备管理 with 控件,
+ * 接线日志, 测试编排, 运行历史) beside the signal view, where signals feed displays and controls drive
+ * signals, or the physical wiring as a pin list. The physical and the logical view never refer to
+ * each other. One title row above them holds the view switch and the shown view's tools.
  */
 export function BenchPage({ panel, view, onView }: {
   panel?: SidePanel | undefined;
@@ -93,6 +95,9 @@ function Bench({ panel, view, onView }: {
   const [pickError, setPickError] = useState<string>();
   const [partEditor, setPartEditor] = useState<{ open: boolean; hardware?: Hardware }>({ open: false });
   const [checking, setChecking] = useState(false);
+  // Each view renders its tools into its own slot of the title row.
+  const [signalTools, setSignalTools] = useState<HTMLElement | null>(null);
+  const [pinTools, setPinTools] = useState<HTMLElement | null>(null);
 
   const connections = useMemo(() => wiring?.connections ?? [], [wiring?.connections]);
   const online = useMemo(() => new Map((dashboard.data?.availability ?? [])
@@ -197,6 +202,7 @@ function Bench({ panel, view, onView }: {
             )}
           />
         </div>
+        <div id="bench-side-log" className={shown("log")}><WiringLogPanel hardware={hardware} /></div>
         <div id="bench-side-testing" className={shown("testing")}><TestPanel bench={bench} /></div>
         <section id="bench-side-history" aria-label={SIDE_PANEL_LABELS.history}
           className={shown("history", "flex flex-col bg-surface-1")}>
@@ -206,12 +212,17 @@ function Bench({ panel, view, onView }: {
             onOpenRun={(runId) => { bench.setRunId(runId); onView("signals"); }}
           />
         </section>
-        <div id="bench-side-log" className={shown("log")}><WiringLogPanel hardware={hardware} /></div>
         {panel && <Splitter label="调整侧栏宽度" {...library.separatorProps} />}
         <section className="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)]">
-          <div className="flex h-9 items-center gap-2 border-b border-line bg-surface-1 px-2">
+          <div role="toolbar" aria-label="台架工具栏"
+            className="flex h-9 min-w-0 items-center gap-1.5 border-b border-line bg-surface-1 px-2">
             <SegmentedControl<BenchView> label="台架视图" value={view} options={viewOptions} onChange={onView} />
-            {save.isPending && <span className="text-2xs text-fg-3">正在保存…</span>}
+            {save.isPending && <span className="text-2xs whitespace-nowrap text-fg-3">正在保存…</span>}
+            <ToolbarDivider />
+            <div ref={setSignalTools} role="group" aria-label="信号视图工具"
+              className={cn("flex min-w-0 flex-1 items-center gap-1", view !== "signals" && "hidden")} />
+            <div ref={setPinTools} role="group" aria-label="针脚列表工具"
+              className={cn("flex min-w-0 flex-1 items-center gap-1.5", view !== "pins" && "hidden")} />
           </div>
           <div className="relative grid min-h-0 min-w-0 grid-cols-[minmax(0,1fr)]">
             {pickError && <ErrorBanner className={BANNER} message={pickError} />}
@@ -220,13 +231,15 @@ function Bench({ panel, view, onView }: {
             )}
             {/* Both stay mounted: the signal view keeps its live data while the pin list is shown. */}
             <div className={cn("min-h-0", view !== "signals" && "hidden")}>
-              <SignalViewPane bench={bench} online={online} onInfo={openInfo} onControl={openControl} />
+              <SignalViewPane bench={bench} online={online} onInfo={openInfo} onControl={openControl}
+                toolbar={signalTools} />
             </div>
             <div className={cn("min-h-0", view !== "pins" && "hidden")}>
               <PinList
                 connections={connections}
                 hardware={hardware}
                 busy={save.isPending}
+                toolbar={pinTools}
                 onCreate={() => setListCreateOpen(true)}
                 onEdit={setEditingConnectionId}
                 onRemove={edits.removeConnection}

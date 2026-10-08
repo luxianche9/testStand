@@ -93,7 +93,7 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
     await page.evaluate((root) => window.teststand.projects.openFolder({ rootPath: root }), rootPath);
     await page.reload();
     await page.getByText("interaction-fixture", { exact: true }).first().click();
-    await expect(activityBar(page).getByRole("button", { name: "设备", exact: true })).toBeVisible();
+    await expect(activityBar(page).getByRole("button", { name: "设备管理", exact: true })).toBeVisible();
     expect(await readNode(page, "scope")).toEqual(afterMove);
   });
 
@@ -101,7 +101,7 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
     const sidebar = page.getByRole("separator", { name: "调整侧栏宽度", exact: true });
     const sidebarWidth = () => sidebar.evaluate((element) =>
       parseFloat((element.parentElement as HTMLElement).style.gridTemplateColumns));
-    await showPanel(page, "设备");
+    await showPanel(page, "设备管理");
     const bounds = (await sidebar.boundingBox())!;
     await page.mouse.move(bounds.x + 2, bounds.y + bounds.height / 2);
     await page.mouse.down();
@@ -109,13 +109,13 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
     await page.mouse.up();
     const width = await sidebarWidth();
     // The panels share the sidebar and its width.
-    await showPanel(page, "测试");
+    await showPanel(page, "测试编排");
     expect(await sidebarWidth()).toBe(width);
     await page.reload();
     await page.getByText("interaction-fixture", { exact: true }).first().click();
-    await showPanel(page, "测试");
+    await showPanel(page, "测试编排");
     await expect.poll(sidebarWidth).toBe(width);
-    await showPanel(page, "设备");
+    await showPanel(page, "设备管理");
   });
 
   test("resizes the sidebar from the keyboard and retains its bounded width", async () => {
@@ -186,7 +186,7 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
       deviceId: "KEYBOARD_DEV", label: "Keyboard device", hardwareId: "KEYBOARD_DEV_CARD", type: "pci1762",
       settings: {}, enabled: true
     } }));
-    await showPanel(page, "设备");
+    await showPanel(page, "设备管理");
     const row = page.getByRole("complementary", { name: "设备列表" }).getByRole("button", { name: /Keyboard device/ });
     await row.click();
     await page.getByRole("dialog", { name: "Keyboard device" }).getByRole("button", { name: "编辑", exact: true }).click();
@@ -205,7 +205,7 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
   });
 
   test("discards unsaved hardware editor changes on Escape", async () => {
-    await showPanel(page, "设备");
+    await showPanel(page, "设备管理");
     const hardware = page.getByRole("complementary", { name: "设备列表" }).getByRole("button", { name: /^DUT_A/ });
     await hardware.click();
     await page.getByRole("dialog", { name: "DUT_A" }).getByRole("button", { name: "编辑", exact: true }).click();
@@ -252,9 +252,9 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
     }).toBeLessThanOrEqual(1);
     expect(await page.evaluate((keys) => Object.fromEntries(keys.map((key) => [key, localStorage.getItem(key)])), Object.keys(savedWidths))).toEqual(savedWidths);
     await page.getByText("interaction-fixture", { exact: true }).first().click();
-    await expect(activityBar(page).getByRole("button", { name: "设备", exact: true })).toBeVisible();
+    await expect(activityBar(page).getByRole("button", { name: "设备管理", exact: true })).toBeVisible();
     expect(await readNode(page, "scope")).toEqual(node);
-    await showPanel(page, "设备");
+    await showPanel(page, "设备管理");
     const separator = page.getByRole("separator", { name: "调整侧栏宽度", exact: true });
     await expect.poll(() => separator.evaluate((element) => parseFloat((element.parentElement as HTMLElement).style.gridTemplateColumns))).toBe(Number(savedWidths["teststand.bench-devices-width"]));
   });

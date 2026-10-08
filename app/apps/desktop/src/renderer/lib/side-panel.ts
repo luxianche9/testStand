@@ -1,11 +1,14 @@
 /** Panels of the bench's left sidebar, switched from the activity bar. */
-export type SidePanel = "devices" | "testing" | "history" | "log";
+export type SidePanel = "devices" | "log" | "testing" | "history";
+
+/** The panels in activity-bar order, top to bottom. */
+export const SIDE_PANELS: readonly SidePanel[] = ["devices", "log", "testing", "history"];
 
 export const SIDE_PANEL_LABELS: Record<SidePanel, string> = {
-  devices: "设备",
-  testing: "测试",
-  history: "运行记录",
-  log: "接线日志"
+  devices: "设备管理",
+  log: "接线日志",
+  testing: "测试编排",
+  history: "运行历史"
 };
 
 const OPEN_PANEL = "teststand:open-panel";

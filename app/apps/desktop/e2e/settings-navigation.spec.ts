@@ -29,7 +29,7 @@ test("settings returns to the page that opened it", async () => {
     await expect(devices).toBeVisible();
     await openSettingsAndReturn(page, () => expect(devices).toBeVisible());
 
-    await showPanel(page, "测试");
+    await showPanel(page, "测试编排");
     const editFlow = page.getByRole("toolbar", { name: "测试流程操作" }).getByRole("button", { name: "编辑" });
     await expect(editFlow).toBeEnabled();
     await openSettingsAndReturn(page, () => expect(editFlow).toBeEnabled());

@@ -11,7 +11,7 @@ export function activityBar(page: Page) {
   return page.getByRole("navigation", { name: "活动栏" });
 }
 
-/** Show a sidebar panel (设备, 测试, 运行记录, 接线日志); a click on the shown one would fold it away. */
+/** Show a sidebar panel (设备管理, 接线日志, 测试编排, 运行历史); a click on the shown one would fold it away. */
 export async function showPanel(page: Page, label: string): Promise<void> {
   const button = activityBar(page).getByRole("button", { name: label, exact: true });
   if (await button.getAttribute("aria-pressed") !== "true") await button.click();

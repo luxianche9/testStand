@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, type DragEvent } from "react";
 import {
-  Background, BackgroundVariant, ConnectionLineType, Controls, ReactFlow, useEdgesState, useNodesInitialized,
+  Background, BackgroundVariant, ConnectionLineType, ReactFlow, useEdgesState, useNodesInitialized,
   useNodesState, useReactFlow, type Connection, type Edge, type NodeTypes
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
@@ -174,7 +174,6 @@ export function SignalCanvas({ view, catalog, online, edits, onInfo, onControl }
       >
         <Background variant={BackgroundVariant.Dots} gap={16} size={1.2} color="var(--tf-canvas-grid)"
           bgColor="var(--tf-canvas)" />
-        <Controls position="bottom-right" showInteractive={false} />
       </ReactFlow>
       {!view.nodes.length && (
         <div className={cn("pointer-events-none absolute inset-0 z-[1] grid place-content-center",
@@ -184,7 +183,7 @@ export function SignalCanvas({ view, catalog, online, edits, onInfo, onControl }
           </div>
           <strong className="text-sm font-medium text-fg">把设备和被测对象从左侧拖到画布</strong>
           <span className="max-w-[340px] text-center text-xs text-fg-3">
-            再从工具栏拖入示波器、终端、开关等控件，从信号拖线到控件；也可以「生成默认面板」。
+            再从左侧控件列表拖入示波器、终端、开关等控件，从信号拖线到控件；也可以「生成默认面板」。
           </span>
         </div>
       )}
