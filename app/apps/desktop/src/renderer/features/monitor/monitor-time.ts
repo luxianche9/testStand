@@ -70,3 +70,25 @@ export function useLiveHub(): NonNullable<StreamSource["live"]> {
   useEffect(() => () => hub.close(), [hub]);
   return hub;
 }
+
+/** Window the keepalive asks for: enough backlog to be useful, small enough to cost nothing. */
+const KEEPALIVE_WINDOW_MS = 1000;
+
+/**
+ * Keeps the shared live subscription open for `keys` while the bench is mounted, whatever the panel
+ * currently draws (§9.6.5: the panel is always watching; a run only switches the data source).
+ * A run takes the scope and the terminal onto its recording, so without this the last live consumer
+ * would leave, the backend would drop the feed after its linger and rebuild it on the way back —
+ * leaving the scope blank for seconds after 返回实时. Frames are dropped here; the views subscribe
+ * for the ones they draw.
+ */
+export function useLiveKeepalive(
+  hub: NonNullable<StreamSource["live"]>, keys: readonly string[]
+): void {
+  const keyList = keys.join("\n");
+  useEffect(() => {
+    const wanted = keyList ? keyList.split("\n") : [];
+    if (!wanted.length) return undefined;
+    return hub({ keys: wanted, width: 1, windowMs: KEEPALIVE_WINDOW_MS }, () => undefined);
+  }, [hub, keyList]);
+}

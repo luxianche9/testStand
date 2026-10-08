@@ -369,12 +369,12 @@ def _apply_operation(plan: Record, operation: Record, resolver: Any | None = Non
         index = int(operation.get("index", len(target)))
         inserted = clone(operation.get("step", {}))
         _reject_settings_wrapper(inserted)
-        if (
-            inserted.get("type") == "InvokeTool"
-            and inserted.get("hardwareId")
-            and inserted.get("toolName")
-        ):
-            _bind_step(inserted, str(inserted["hardwareId"]), str(inserted["toolName"]), resolver)
+        # A container is inserted with its children (a Feature with its steps, say): bind every
+        # InvokeTool in the subtree, not just the root, or the nested ones carry no
+        # bindingRevision and the plan only fails later, in validation.
+        for step in _subtree(inserted):
+            if step.get("type") == "InvokeTool" and step.get("hardwareId") and step.get("toolName"):
+                _bind_step(step, str(step["hardwareId"]), str(step["toolName"]), resolver)
         target.insert(max(0, min(index, len(target))), inserted)
         return
     if kind == "update_step":
@@ -452,6 +452,22 @@ def _reject_settings_wrapper(step: Any) -> None:
             "object (the catalog's settingsSchema lists those root fields)",
             {"field": "settings"},
         )
+
+
+def _subtree(step: Record) -> list[Record]:
+    """``step`` and every step nested under it, in document order."""
+    output: list[Record] = []
+
+    def visit(current: Any) -> None:
+        if not isinstance(current, dict):
+            return
+        output.append(current)
+        for branch in ("children", "elseChildren"):
+            for child in current.get(branch, []) or []:
+                visit(child)
+
+    visit(step)
+    return output
 
 
 def _bind_step(step: Record, hardware_id: str, tool_name: str, resolver: Any | None) -> None:

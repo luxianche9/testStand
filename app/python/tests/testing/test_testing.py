@@ -1069,6 +1069,37 @@ async def test_binding_keeps_arguments_already_set(tmp_path: Path) -> None:
     assert rebound["plan"]["regions"]["test"][0]["arguments"] == {"channel": 1, "volts": 2.5}
 
 
+async def test_insert_step_binds_invoke_tools_nested_in_a_container(tmp_path: Path) -> None:
+    """A Feature arrives with its children; every InvokeTool inside is bound, not just the root."""
+    from teststand_backend.testing.validation import validate_plan
+
+    store = TestPlanStore(Projects(tmp_path), SchemaResolver())
+    await store.create({"id": "nest", "name": "Nest"})
+    feature = {
+        "id": "feat",
+        "type": "Feature",
+        "name": "继电器",
+        "children": [
+            {"id": "set", "type": "InvokeTool", "hardwareId": "ao", "toolName": "write"},
+            {"id": "wait", "type": "Delay", "durationMs": 10},
+            {
+                "id": "guard",
+                "type": "Guard",
+                "children": [
+                    {"id": "deep", "type": "InvokeTool", "hardwareId": "ao", "toolName": "read"}
+                ],
+            },
+        ],
+    }
+    result = await store.apply_operations("nest", 1, [{"type": "insert_step", "step": feature}])
+    children = result["plan"]["regions"]["test"][0]["children"]
+    assert children[0]["bindingRevision"]
+    assert children[2]["children"][0]["bindingRevision"]
+    # Validation has nothing to complain about, so no repair operation is needed.
+    codes = [item["code"] for item in validate_plan(result["plan"], SchemaResolver(), [])]
+    assert "invoke.binding" not in codes
+
+
 async def test_step_fields_wrapped_in_settings_are_rejected(tmp_path: Path) -> None:
     from teststand_backend.testing.validation import validate_plan
 

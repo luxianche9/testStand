@@ -16,7 +16,7 @@ import { RunControls } from "../testing/EditorToolbar.js";
 import { RunHeader } from "../testing/RunHeader.js";
 import { RunMessages } from "../testing/RunMessages.js";
 import { stepRange } from "../testing/useRunView.js";
-import { SPANS, useMonitorTime, type Span } from "./monitor-time.js";
+import { SPANS, useLiveKeepalive, useMonitorTime, type Span } from "./monitor-time.js";
 import type { BenchRun } from "./use-bench-run.js";
 import { readDraggedStream, STREAM_MIME, useMonitorChannels } from "./use-monitor-channels.js";
 
@@ -48,6 +48,8 @@ export function MonitorPane({ bench, toolbar }: {
     () => (mode === "live" || !view.source ? { live: hub } : view.source),
     [mode, hub, view.source]
   );
+  // The devices stay subscribed while a run draws its recording, so 返回实时 has data at once.
+  useLiveKeepalive(hub, monitor.streams.map((stream) => stream.key));
   const scopeSize = useResizableWidth({
     storageKey: "teststand.monitor-scope-height",
     defaultWidth: 380,
