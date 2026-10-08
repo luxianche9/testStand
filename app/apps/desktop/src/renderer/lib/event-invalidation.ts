@@ -44,15 +44,14 @@ export const eventInvalidations: Record<TestStandEventName, readonly Invalidatio
     { key: queryKeys.wiringChanges }
   ],
   wiringTask: [{ key: queryKeys.wiringTasks, delayMs: 100 }, { key: queryKeys.projectDocument, delayMs: 100 }],
-  testPlan: [{ key: queryKeys.testPlans }, { key: queryKeys.testItemStatus }],
+  // The test panel's editor reloads the flow itself; no query holds it.
+  testPlan: [],
   testRun: [
     { key: queryKeys.testRun },
     { key: queryKeys.dashboard },
-    { key: queryKeys.testItemStatus },
     { key: queryKeys.testRunsAll, delayMs: 500 },
     { key: queryKeys.testRecovery, delayMs: 500 }
   ],
-  testBatch: [{ key: queryKeys.testBatch }, { key: queryKeys.testItemStatus }],
   // An Agent's high-risk operation started or stopped waiting for the operator.
   confirmation: [{ key: queryKeys.agentConfirmations }],
   opencode: [{ key: queryKeys.openCodeStatus }],

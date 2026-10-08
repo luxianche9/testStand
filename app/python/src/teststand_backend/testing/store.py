@@ -17,7 +17,7 @@ from teststand_backend.contracts.errors import app_error
 from teststand_backend.util import clone, new_uuid, utc_now_iso
 
 from .compiler import analyze_plan_draft, compile_plan
-from .models import STEP_ID, empty_plan, iter_steps
+from .models import FLOW_ID, STEP_ID, empty_plan, iter_steps
 from .runtime_state import RuntimeStateStore
 from .validation import validate_plan
 
@@ -81,27 +81,6 @@ class TestPlanStore:
         async with self._request_lock:
             await asyncio.to_thread(self.runtime.initialize)
             await asyncio.to_thread(self.runtime.release_request, scope, request_id)
-
-    def list(self) -> list[Record]:
-        directory = self.directory()
-        if not directory.exists():
-            return []
-        output = []
-        for path in sorted(directory.glob("*.hhplan.yaml"), key=lambda item: item.name.lower()):
-            try:
-                plan = self._read(path)
-                output.append(self._summary(plan))
-            except Exception as error:
-                output.append(
-                    {
-                        "id": path.name.removesuffix(".hhplan.yaml"),
-                        "name": path.name,
-                        "revision": 0,
-                        "invalid": True,
-                        "message": str(error),
-                    }
-                )
-        return output
 
     def load(self, plan_id: str) -> Record:
         path = self._path(plan_id)
@@ -186,14 +165,6 @@ class TestPlanStore:
                 "appliedOperations": len(operations),
             }
 
-    async def delete(self, plan_id: str) -> Record:
-        async with self._lock:
-            path = self._path(plan_id)
-            if not path.exists():
-                raise app_error("not_found", f"Test plan not found: {plan_id}")
-            await asyncio.to_thread(path.unlink)
-            return {"planId": plan_id}
-
     def validate(self, plan_id: str) -> Record:
         plan = self.load(plan_id)
         compiled = compile_plan(plan, self.resolver, self.plugins, self.wiring)
@@ -222,10 +193,31 @@ class TestPlanStore:
         self._validate_structure(clone(plan))
         return analyze_plan_draft(clone(plan), self.resolver, self.plugins, self.wiring)
 
+    def _create_flow(self, path: Path) -> None:
+        """Create the project's test flow. Plans of an older project, one per functional test
+        item, each become one feature group of it; their files move to ``.migrated``."""
+        flow = empty_plan("测试流程", FLOW_ID)
+        merged: builtins.list[Path] = []
+        for source in sorted(self.directory().glob("*.hhplan.yaml"), key=lambda item: item.name):
+            try:
+                _merge_as_feature(flow, self._read(source))
+            except Exception:  # an unreadable plan stays where it is
+                continue
+            merged.append(source)
+        self._validate_structure(flow)
+        self._write(path, flow)
+        for source in merged:
+            moved = source.parent / ".migrated" / source.name
+            moved.parent.mkdir(exist_ok=True)
+            os.replace(source, moved)
+
     def _path(self, plan_id: str) -> Path:
         if not PLAN_ID.fullmatch(plan_id):
             raise app_error("invalid_argument", "Invalid test plan id")
-        return self.directory() / f"{plan_id}.hhplan.yaml"
+        path = self.directory() / f"{plan_id}.hhplan.yaml"
+        if plan_id == FLOW_ID and not path.exists():
+            self._create_flow(path)
+        return path
 
     def _read(self, path: Path) -> Record:
         return cast(Record, clone(self._read_document(path)))
@@ -304,17 +296,56 @@ class TestPlanStore:
         ) != len(set(ids)):
             raise app_error("invalid_argument", "Test step ids must be valid and unique")
 
-    def _summary(self, plan: Record) -> Record:
-        issues = validate_plan(plan, self.resolver, self.plugins)
-        return {
-            "id": plan["id"],
-            "name": plan["name"],
-            "description": plan.get("description", ""),
-            "revision": plan["revision"],
-            "updatedAt": plan.get("updatedAt"),
-            "valid": not any(item["severity"] == "error" for item in issues),
-            "stepCount": len(iter_steps(plan)),
-        }
+
+def _merge_as_feature(flow: Record, plan: Record) -> None:
+    """Add ``plan`` to ``flow`` as one feature group: its prepare and test steps in the group, its
+    cleanup steps in the flow's cleanup. Taken step ids get a suffix; parameters, bindings and
+    requirements the flow lacks are added."""
+    taken = {str(step.get("id")) for _, step in iter_steps(flow)}
+
+    def unique(base: str) -> str:
+        value, index = base, 2
+        while value in taken:
+            value = f"{base[:60]}_{index}"
+            index += 1
+        taken.add(value)
+        return value
+
+    def renamed(steps: Any) -> builtins.list[Record]:
+        output = []
+        for step in steps if isinstance(steps, list) else []:
+            step = clone(step)
+            step["id"] = unique(str(step.get("id") or "step"))
+            for branch in ("children", "elseChildren"):
+                if branch in step:
+                    step[branch] = renamed(step[branch])
+            output.append(step)
+        return output
+
+    regions = plan.get("regions", {})
+    base = re.sub(r"[^A-Za-z0-9_-]", "_", str(plan.get("id", "")))[:60]
+    feature: Record = {
+        "id": unique(base if base[:1].isalpha() else f"f_{base}"[:60]),
+        "type": "Feature",
+        "name": str(plan.get("name") or plan.get("id")),
+        "stopOnFail": bool(plan.get("stopOnFail")),
+        "children": renamed([*regions.get("prepare", []), *regions.get("test", [])]),
+    }
+    flow["regions"]["test"].append(feature)
+    flow["regions"]["cleanup"].extend(renamed(regions.get("cleanup", [])))
+    names = {item.get("name") for item in flow["parameters"]}
+    flow["parameters"].extend(
+        clone(item) for item in plan.get("parameters", []) if item.get("name") not in names
+    )
+    flow["requirements"].extend(
+        clone(item) for item in plan.get("requirements", []) if item not in flow["requirements"]
+    )
+    if isinstance(plan.get("bindings"), dict):
+        bindings = flow.setdefault("bindings", {})
+        for name, value in plan["bindings"].items():
+            bindings.setdefault(name, clone(value))
+    if isinstance(plan.get("protocolBindings"), list):
+        flow.setdefault("protocolBindings", []).extend(clone(plan["protocolBindings"]))
 
 
 def _apply_operation(plan: Record, operation: Record, resolver: Any | None = None) -> None:

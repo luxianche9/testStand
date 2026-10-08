@@ -1,14 +1,14 @@
 import { vi } from "vitest";
 import type { RunMessages } from "@teststand/contracts/observability";
 import type {
-  IcdCheck, IcdDocument, IcdSummary, TestBatch, TestItemStatus, TestPlan, TestRunSnapshot, TestRunSummary
+  IcdCheck, IcdDocument, IcdSummary, TestPlan, TestRunSnapshot, TestRunSummary
 } from "@teststand/contracts/testing";
 
-/** Test-only fake of `window.teststand` for the 功能测试 page tests. */
+/** Test-only fake of `window.teststand` for the 测试 panel tests. */
 
 const startedAt = "2026-09-17T00:00:00.000Z";
 
-export function makePlan(id = "plan", name = "台架冒烟测试"): TestPlan {
+export function makePlan(id = "flow", name = "台架冒烟测试"): TestPlan {
   return {
     schemaVersion: 2,
     id,
@@ -22,10 +22,6 @@ export function makePlan(id = "plan", name = "台架冒烟测试"): TestPlan {
     createdAt: startedAt,
     updatedAt: startedAt
   };
-}
-
-export function makeItem(planId: string, name: string, extra: Partial<TestItemStatus> = {}): TestItemStatus {
-  return { planId, name, revision: 1, invalid: false, queued: false, stale: false, ...extra };
 }
 
 export function makeRun(plan: TestPlan, extra: Partial<TestRunSnapshot> = {}): TestRunSnapshot {
@@ -56,7 +52,7 @@ export function makeRun(plan: TestPlan, extra: Partial<TestRunSnapshot> = {}): T
 export function makeSummary(runId: string, planName: string, at: string): TestRunSummary {
   return {
     runId,
-    planId: "plan",
+    planId: "flow",
     planName,
     revision: 1,
     state: "completed",
@@ -70,36 +66,18 @@ export function makeSummary(runId: string, planName: string, at: string): TestRu
   };
 }
 
-function makeBatch(planIds: string[], stopOnFail: boolean): TestBatch {
-  return {
-    batchId: "batch",
-    state: "running",
-    stopOnFail,
-    unitId: "unit",
-    startedAt,
-    ...(planIds[0] ? { currentPlanId: planIds[0] } : {}),
-    items: planIds.map((planId) => ({ planId, planName: planId, state: "queued" as const }))
-  };
-}
-
 export type Subscriber = (payload: unknown) => void;
 
 /** Installs the fake API; returns the testing mocks and the last subscriber per event name. */
-export function installTestingApi(plans: TestPlan[], items: TestItemStatus[]) {
+export function installTestingApi(plans: TestPlan[]) {
   const subscribers = new Map<string, Subscriber>();
   const byId = new Map(plans.map((plan) => [plan.id, plan]));
   const first = plans[0] ?? makePlan();
-  let batch: TestBatch | undefined;
   const testing = {
-    listPlans: vi.fn(async () => plans.map((plan) => ({
-      id: plan.id, name: plan.name, revision: plan.revision, stepCount: 0
-    }))),
     loadPlan: vi.fn(async ({ planId }: { planId: string }) => structuredClone(byId.get(planId) ?? first)),
     savePlan: vi.fn(async ({ plan }: { plan: TestPlan; baseRevision?: number }) => ({
       plan: { ...structuredClone(plan), revision: plan.revision + 1 }, issues: []
     })),
-    createPlan: vi.fn(),
-    deletePlan: vi.fn(),
     applyPlanOperations: vi.fn(),
     validatePlan: vi.fn(async ({ planId }: { planId: string }) => ({
       planId, revision: 1, valid: true, issues: [], executionRevision: "exec", wiringRevision: "wiring",
@@ -123,19 +101,7 @@ export function installTestingApi(plans: TestPlan[], items: TestItemStatus[]) {
       hasMoreEvents: false, hasMoreResults: false
     })),
     readRunResults: vi.fn(),
-    listItemStatus: vi.fn(async () => ({
-      unit: { unitId: "unit", serialNumber: "SN-0001", startedAt }, items: structuredClone(items),
-      ...(batch ? { batch } : {})
-    })),
     currentUnit: vi.fn(),
-    reorderItems: vi.fn(),
-    startBatch: vi.fn(async ({ input }: { input: { planIds: string[]; stopOnFail: boolean } }) => {
-      batch = makeBatch(input.planIds, input.stopOnFail);
-      return batch;
-    }),
-    abortBatch: vi.fn(),
-    currentBatch: vi.fn(async () => null),
-    getBatch: vi.fn(),
     listRecoveryItems: vi.fn(async () => []),
     reconcileOperation: vi.fn(),
     listRunStreams: vi.fn(async ({ runId }: { runId: string }) => ({ runId, recording: false, streams: [] })),
@@ -168,6 +134,7 @@ export function installTestingApi(plans: TestPlan[], items: TestItemStatus[]) {
         }))
       },
       dialogs: { exportText: vi.fn() },
+      projects: { document: vi.fn(async () => ({ rootPath: "C:/bench" })) },
       devices: { listHardware: vi.fn(async () => []) },
       testing,
       streams: {

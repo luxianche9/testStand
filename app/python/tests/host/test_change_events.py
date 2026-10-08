@@ -16,18 +16,12 @@ def test_project_event_carries_the_key_and_version_only() -> None:
     assert change_summary("project", None) == {"projectId": None}
 
 
-def test_wiring_batch_and_confirmation_events_drop_the_resource_body() -> None:
+def test_wiring_and_confirmation_events_drop_the_resource_body() -> None:
     task = {"wiringTaskId": "W", "status": "pending", "operations": [{"kind": "connect"}]}
     assert change_summary("wiringTask", task) == {"wiringTaskId": "W", "status": "pending"}
-    batch = {"kind": "batch", "batch": {"batchId": "B", "state": "running", "items": [1, 2]}}
-    assert change_summary("testBatch", batch) == {
-        "kind": "batch",
-        "batchId": "B",
-        "state": "running",
-    }
-    unit = {"kind": "unit", "unit": {"unitId": "U", "serialNumber": "SN"}}
-    assert change_summary("testBatch", unit) == {"kind": "unit", "unitId": "U"}
     assert change_summary("confirmation", [{"confirmationId": "C"}]) == {"pending": 1}
+    execution = {"state": "manual", "activityId": "A", "holders": [{"hardwareId": "H"}]}
+    assert change_summary("execution", execution) == {"state": "manual", "activityId": "A"}
 
 
 def test_already_small_events_keep_their_scalar_fields() -> None:

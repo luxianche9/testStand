@@ -226,7 +226,6 @@ class HostRuntime:
         execution.set_notifier(self._emit("execution"))
         application.testing.set_plan_notifier(self._emit("testPlan"))
         test_engine.set_notifier(self._emit("testRun"))
-        application.testing.set_batch_notifier(self._emit("testBatch"))
         store.set_notifier(self._signal("devices"))
         test_token = options.gateway_test_token
         if options.integration_test_mode and test_token and test_token.strip():

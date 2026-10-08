@@ -13,7 +13,18 @@ Record = dict[str, Any]
 STEP_ID = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,63}$")
 VERDICTS = ("NotSet", "Pass", "Inconclusive", "Fail", "Aborted", "Error")
 VERDICT_RANK = {value: index for index, value in enumerate(VERDICTS)}
-CONTAINER_STEPS = {"Sequence", "Group", "If", "Repeat", "ForEach", "Parallel", "Retry", "Guard"}
+CONTAINER_STEPS = {
+    "Sequence",
+    "Group",
+    "Feature",
+    "If",
+    "Repeat",
+    "ForEach",
+    "Parallel",
+    "Retry",
+    "Guard",
+}
+FLOW_ID = "flow"  # a project has one test flow
 HARDWARE_STEPS = {"InvokeTool", "Observe", "Expect", "Guard"}
 STREAM_STEPS = {"Observe", "Expect", "Guard"}
 BUILTIN_STEPS = {
@@ -75,6 +86,15 @@ def plan_hardware_ids(plan: Record) -> list[str]:
             if step.get("type") in HARDWARE_STEPS and isinstance(step.get("hardwareId"), str)
         }
     )
+
+
+def feature_ids(plan: Record) -> list[str]:
+    """The flow's feature groups, in order: ``Feature`` steps at the top of the test region."""
+    return [
+        str(step["id"])
+        for step in plan.get("regions", {}).get("test", [])
+        if isinstance(step, dict) and step.get("type") == "Feature"
+    ]
 
 
 def aggregate_verdict(current: str, incoming: str) -> str:

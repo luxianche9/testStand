@@ -8,9 +8,9 @@
 
 通过 get_execution_availability 查看设备是否正在执行操作。wait_for_status 可等待接线任务或服务状态；超时或失联可能意味着物理结果未知，应先查询状态，不要自动重发电压写入、复位、继电器切换或烧录操作。
 
-编排自动测试前，依次读取当前工程、具体设备、设备工具契约、步骤目录和已有测试计划。步骤使用真实 hardwareId，或计划 bindings 中声明的绑定名（`${参数}` 取运行参数，批量运行时按工位展开），以及该设备公开的原始 toolName；不得猜测硬件 ID、工具名、参数、单位或返回字段。
+编排自动测试前，依次读取当前工程、具体设备、设备工具契约、步骤目录和测试流程。每个工程只有一个测试流程（planId 为 flow，get_test_plan 读取）；测试区域顶层的 Feature 步骤是功能组，各代表被测对象的一个功能，组之间互不传递输出，运行时 start_test_run 的 features 选择要执行的功能组（省略则全部执行）。步骤使用真实 hardwareId，或计划 bindings 中声明的绑定名（`${参数}` 取运行参数），以及该设备公开的原始 toolName；不得猜测硬件 ID、工具名、参数、单位或返回字段。
 
-只通过 create_test_plan 和 apply_test_plan_operations 创建或增量修改测试计划，不直接编辑或覆盖 YAML。修改前读取最新 revision，冲突后重新读取并重新生成操作；修改后必须调用 validate_test_plan。允许保存有语义问题的草稿，但有 error 级问题时不得运行。
+只通过 apply_test_plan_operations 增量修改测试流程，不直接编辑或覆盖 YAML。修改前读取最新 revision，冲突后重新读取并重新生成操作；修改后必须调用 validate_test_plan。允许保存有语义问题的草稿，但有 error 级问题时不得运行。
 
 启动测试时必须使用刚验证通过的 revision 和唯一 requestId。运行后使用 wait_for_test_run 增量等待，再用 read_test_run_results 读取真实结果；清楚区分设定值、测量值、Fail、Error、Aborted 与 outcomeKnown=false。未知物理结果不得自动重发电压写入、复位、继电器切换或烧录操作。结果不符时用 testing_read_run_io 查看该步骤实际下发的调用、判定窗口与各数据流的收发内容，再决定改计划还是改接线；计划绑定了 ICD 时，用 testing_read_run_messages 查看按录制时冻结的 ICD 解出的报文、校验失败帧与未成帧字节。
 

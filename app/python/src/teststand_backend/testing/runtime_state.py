@@ -6,7 +6,7 @@ import hashlib
 import json
 import sqlite3
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 from teststand_backend.contracts.errors import app_error
 from teststand_backend.util import clone, utc_now_iso
@@ -82,10 +82,7 @@ class RuntimeStateStore:
                     entry_json TEXT NOT NULL, at TEXT NOT NULL
                 );
                 CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);
-                CREATE TABLE IF NOT EXISTS batches (
-                    batch_id TEXT PRIMARY KEY, state TEXT NOT NULL, batch_json TEXT NOT NULL,
-                    updated_at TEXT NOT NULL
-                );
+                DROP TABLE IF EXISTS batches;
                 """
             )
             self._recover_interrupted(database)
@@ -338,38 +335,6 @@ class RuntimeStateStore:
                 (key, json.dumps(value, ensure_ascii=False)),
             )
 
-    def save_batch(self, batch: Record) -> None:
-        self.initialize()
-        with self._connect() as database:
-            database.execute(
-                "INSERT INTO batches VALUES (?,?,?,?) ON CONFLICT(batch_id) DO UPDATE SET "
-                "state=excluded.state,batch_json=excluded.batch_json,updated_at=excluded.updated_at",
-                (
-                    batch["batchId"],
-                    batch["state"],
-                    json.dumps(batch, ensure_ascii=False),
-                    utc_now_iso(),
-                ),
-            )
-
-    def load_batch(self, batch_id: str) -> Record | None:
-        self.initialize()
-        with self._connect() as database:
-            row = database.execute(
-                "SELECT batch_json FROM batches WHERE batch_id=?", (batch_id,)
-            ).fetchone()
-        return cast(Record, json.loads(row[0])) if row else None
-
-    def latest_batch(self) -> Record | None:
-        if not self.projects.session():
-            return None
-        self.initialize()
-        with self._connect() as database:
-            row = database.execute(
-                "SELECT batch_json FROM batches ORDER BY updated_at DESC LIMIT 1"
-            ).fetchone()
-        return cast(Record, json.loads(row[0])) if row else None
-
     def save_wiring_task(self, project_id: str, task: Record) -> None:
         with self._connect() as database:
             database.execute(
@@ -469,7 +434,7 @@ class RuntimeStateStore:
             "outcomeKnown",
             "recoveryRequired",
             "unitId",
-            "batchId",
+            "features",
         )
         result = {key: clone(snapshot[key]) for key in keys if key in snapshot}
         result.setdefault("planName", str(snapshot.get("planId", "历史计划")))
@@ -532,18 +497,6 @@ class RuntimeStateStore:
         database.execute(
             "UPDATE operations SET state='failed',updated_at=? WHERE state='accepted'", (now,)
         )
-        for batch_id, raw in database.execute(
-            "SELECT batch_id,batch_json FROM batches WHERE state='running'"
-        ).fetchall():
-            batch = json.loads(raw)
-            batch.update({"state": "interrupted", "completedAt": now})
-            for item in batch.get("items", []):
-                if item.get("state") in {"queued", "running"}:
-                    item["state"] = "skipped"
-            database.execute(
-                "UPDATE batches SET state='interrupted',batch_json=?,updated_at=? WHERE batch_id=?",
-                (json.dumps(batch, ensure_ascii=False), now, batch_id),
-            )
         rows = database.execute(
             "SELECT run_id,snapshot_json FROM runs "
             "WHERE state IN ('starting','running','paused','cleaning')"

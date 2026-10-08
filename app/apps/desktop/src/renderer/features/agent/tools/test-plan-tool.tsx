@@ -29,7 +29,7 @@ export const TestPlanTool: ToolCallMessagePartComponent = ({ toolName, argsText,
           <div className="flex min-w-0 items-center gap-2">
             <ListTreeIcon aria-hidden className="size-3.5 shrink-0 text-signal" />
             <strong className="min-w-0 flex-1 truncate text-sm font-medium text-fg">
-              {planName || "testStand 测试计划"}
+              {planName || "测试流程"}
             </strong>
             {revision !== undefined && <Badge className="tf-num">rev {revision}</Badge>}
           </div>
@@ -55,7 +55,7 @@ export const TestPlanTool: ToolCallMessagePartComponent = ({ toolName, argsText,
             size="xs"
             variant="outline"
             className="w-fit"
-            onClick={() => openSidePanel("testing", stringValue(plan?.id))}
+            onClick={() => openSidePanel("testing")}
           >
             在测试面板查看
           </Button>
@@ -68,9 +68,8 @@ export const TestPlanTool: ToolCallMessagePartComponent = ({ toolName, argsText,
 };
 
 function friendlyName(name: string): string {
-  if (name.includes("validate")) return "校验测试计划";
-  if (name.includes("operations")) return "修改测试计划";
-  if (name.includes("create")) return "创建测试计划";
+  if (name.includes("validate")) return "校验测试流程";
+  if (name.includes("operations")) return "修改测试流程";
   if (name.includes("start")) return "启动测试运行";
   if (name.includes("pause")) return "暂停测试运行";
   if (name.includes("resume")) return "继续测试运行";

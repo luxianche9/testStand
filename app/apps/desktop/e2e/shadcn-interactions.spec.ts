@@ -97,15 +97,12 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
     expect(await readNode(page, "scope")).toEqual(afterMove);
   });
 
-  test("restores the sidebar width and the test list height after switching panels and reloading", async () => {
+  test("restores the sidebar width after switching panels and reloading", async () => {
     const sidebar = page.getByRole("separator", { name: "调整侧栏宽度", exact: true });
-    const listSplit = page.getByRole("separator", { name: "拖拽调整测试项列表高度", exact: true });
     const sidebarWidth = () => sidebar.evaluate((element) =>
       parseFloat((element.parentElement as HTMLElement).style.gridTemplateColumns));
-    const listHeight = () => listSplit.evaluate((element) =>
-      parseFloat((element.parentElement as HTMLElement).style.gridTemplateRows.split(" ")[1]!));
     await showPanel(page, "设备");
-    let bounds = (await sidebar.boundingBox())!;
+    const bounds = (await sidebar.boundingBox())!;
     await page.mouse.move(bounds.x + 2, bounds.y + bounds.height / 2);
     await page.mouse.down();
     await page.mouse.move(bounds.x + 62, bounds.y + bounds.height / 2, { steps: 8 });
@@ -114,17 +111,10 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
     // The panels share the sidebar and its width.
     await showPanel(page, "测试");
     expect(await sidebarWidth()).toBe(width);
-    bounds = (await listSplit.boundingBox())!;
-    await page.mouse.move(bounds.x + bounds.width / 2, bounds.y);
-    await page.mouse.down();
-    await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + 40, { steps: 8 });
-    await page.mouse.up();
-    const height = await listHeight();
     await page.reload();
     await page.getByText("interaction-fixture", { exact: true }).first().click();
     await showPanel(page, "测试");
     await expect.poll(sidebarWidth).toBe(width);
-    await expect.poll(listHeight).toBe(height);
     await showPanel(page, "设备");
   });
 

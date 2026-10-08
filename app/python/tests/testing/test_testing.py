@@ -467,7 +467,7 @@ async def test_abort_cleans_up_and_unknown_timeout_is_not_retried(tmp_path: Path
     assert engine.runs[started["runId"]].results[-1]["name"] == "cleanup"
 
 
-async def test_application_request_id_deduplicates_create_and_start(tmp_path: Path) -> None:
+async def test_application_request_id_deduplicates_start(tmp_path: Path) -> None:
     projects = Projects(tmp_path)
     resolver = Resolver()
     devices = Devices()
@@ -476,9 +476,7 @@ async def test_application_request_id_deduplicates_create_and_start(tmp_path: Pa
     engine = TestEngine(projects, devices, resolver, execution)
     wiring = SimpleNamespace(list_tasks=lambda _query: [])
     app = TestingApplication(DefaultAuthorizer(), store, engine, resolver, wiring)
-    first = await app.create_plan(HUMAN, {"requestId": "create-1", "id": "dedup", "name": "Dedup"})
-    second = await app.create_plan(HUMAN, {"requestId": "create-1", "id": "dedup", "name": "Dedup"})
-    assert first == second
+    await store.create({"id": "dedup", "name": "Dedup"})
     validation = app.validate_plan(HUMAN, "dedup")
     start_input = {
         "planId": "dedup",
@@ -497,11 +495,7 @@ async def test_application_request_id_deduplicates_create_and_start(tmp_path: Pa
     restarted = TestingApplication(
         DefaultAuthorizer(), restarted_store, restarted_engine, resolver, wiring
     )
-    persisted_create = await restarted.create_plan(
-        HUMAN, {"requestId": "create-1", "id": "dedup", "name": "Dedup"}
-    )
     persisted_run = await restarted.start_run(HUMAN, start_input)
-    assert persisted_create == first
     assert persisted_run["runId"] == run["runId"]
     assert devices.calls == 0
 
@@ -563,14 +557,12 @@ async def test_start_gate_only_blocks_wiring_tasks_for_plan_hardware(tmp_path: P
         "timeoutMs": 1000,
         "bindingRevision": resolver.resolve("dev", "read")[0]["bindingRevision"],
     }
-    await app.create_plan(
-        HUMAN,
+    await store.create(
         {
-            "requestId": "create-gate",
             "id": "gate",
             "name": "Gate",
             "regions": {"prepare": [], "test": [invoke], "cleanup": []},
-        },
+        }
     )
     validation = app.validate_plan(HUMAN, "gate")
     start_input = {
@@ -999,14 +991,13 @@ def test_read_run_log_restores_plan_and_incremental_artifacts(tmp_path: Path) ->
     assert first_page["latestResultSequence"] == 2
 
 
-def test_latest_run_and_batch_are_none_without_an_open_project() -> None:
+def test_latest_run_is_none_without_an_open_project() -> None:
     class Closed:
         def session(self) -> None:
             return None
 
     state = RuntimeStateStore(Closed())
     assert state.latest_run() is None
-    assert state.latest_batch() is None
 
 
 def test_binding_a_tool_fills_only_declared_defaults() -> None:

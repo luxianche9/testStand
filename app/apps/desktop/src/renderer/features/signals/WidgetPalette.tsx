@@ -37,7 +37,7 @@ export function WidgetPalette({ onPlace }: { onPlace?: () => void }) {
   return (
     <section aria-label="控件" className="shrink-0 border-t border-line">
       <h3 className="tf-label flex h-6 items-center px-3 text-fg-3">控件</h3>
-      <ul className="grid grid-cols-3 gap-1 px-2 pb-2">
+      <ul className="grid grid-cols-[minmax(0,1fr)] pb-1">
         {PALETTE.map(({ widget, icon, hint }) => (
           <li key={widget}>
             <button
@@ -51,13 +51,20 @@ export function WidgetPalette({ onPlace }: { onPlace?: () => void }) {
               }}
               onClick={() => { onPlace?.(); requestWidget(widget); }}
               className={cn(
-                "grid h-12 w-full cursor-grab place-items-center content-center gap-1 rounded-sm border border-line",
-                "bg-surface-0 text-2xs text-fg-2 transition-colors duration-120 hover:border-signal/50",
-                "hover:text-fg active:bg-surface-2 [&_svg]:size-4 [&_svg]:text-fg-3"
+                "flex h-8 w-full cursor-grab items-center gap-2 pr-3 pl-3 text-left outline-none",
+                "transition-colors duration-120 hover:bg-surface-2 active:bg-surface-3",
+                "focus-visible:bg-surface-2 focus-visible:outline-1 focus-visible:-outline-offset-1",
+                "focus-visible:outline-signal"
               )}
             >
-              {icon}
-              <span className="truncate">{WIDGET_LABELS[widget]}</span>
+              <span className={cn(
+                "grid size-5 shrink-0 place-items-center rounded-sm border border-line bg-surface-0",
+                "text-fg-3 [&_svg]:size-3"
+              )}>
+                {icon}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-sm text-fg">{WIDGET_LABELS[widget]}</span>
+              <span className="shrink-0 text-2xs text-fg-3">{hint}</span>
             </button>
           </li>
         ))}

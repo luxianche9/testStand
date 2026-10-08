@@ -10,15 +10,15 @@ export const SIDE_PANEL_LABELS: Record<SidePanel, string> = {
 
 const OPEN_PANEL = "teststand:open-panel";
 
-/** Asks the shell to show a sidebar panel (`planId` also opens that 功能测试项 in the test panel). */
-export function openSidePanel(panel: SidePanel, planId?: string) {
-  window.dispatchEvent(new CustomEvent(OPEN_PANEL, { detail: { panel, planId } }));
+/** Asks the shell to show a sidebar panel. */
+export function openSidePanel(panel: SidePanel) {
+  window.dispatchEvent(new CustomEvent(OPEN_PANEL, { detail: { panel } }));
 }
 
-export function onSidePanelRequested(listener: (panel: SidePanel, planId?: string) => void): () => void {
+export function onSidePanelRequested(listener: (panel: SidePanel) => void): () => void {
   const handler = (event: Event) => {
-    const detail = (event as CustomEvent<{ panel?: SidePanel; planId?: string }>).detail;
-    if (detail?.panel) listener(detail.panel, detail.planId);
+    const detail = (event as CustomEvent<{ panel?: SidePanel }>).detail;
+    if (detail?.panel) listener(detail.panel);
   };
   window.addEventListener(OPEN_PANEL, handler);
   return () => window.removeEventListener(OPEN_PANEL, handler);

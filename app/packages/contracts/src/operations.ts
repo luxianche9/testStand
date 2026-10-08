@@ -6,7 +6,7 @@ import type { operations } from "./openapi.generated.js";
 import type { OperationName } from "./operations.generated.js";
 import type { ProjectDocument, ProjectFolderSelection, RecentProjectSummary } from "./projects.js";
 import type { LlmSettings, UserSettings } from "./storage.js";
-import type { IcdCheck, IcdDocument, IcdSaveResult, IcdSummary, TestBatch, TestDeviceTools, TestItemStatusList, TestOperationSnapshot, TestPlan, TestPlanDraftAnalysis, TestPlanMutationResult, TestPlanSummary, TestPlanValidation, TestRunLog, TestRunPage, TestRunSnapshot, TestStepCatalogItem, TestUnit } from "./testing.js";
+import type { IcdCheck, IcdDocument, IcdSaveResult, IcdSummary, TestDeviceTools, TestOperationSnapshot, TestPlan, TestPlanDraftAnalysis, TestPlanMutationResult, TestPlanValidation, TestRunLog, TestRunPage, TestRunSnapshot, TestStepCatalogItem, TestUnit } from "./testing.js";
 import type { HardwareSignals, SignalView } from "./signals.js";
 import type { WiringChange, WiringTask } from "./wiring.js";
 
@@ -90,11 +90,8 @@ export interface OperationResults {
   "signals.applyOperations": SignalView;
   "signals.write": ManualToolInvocationResult;
   "manual.invokeTool": ManualToolInvocationResult;
-  "testing.listPlans": TestPlanSummary[];
   "testing.loadPlan": TestPlan;
-  "testing.createPlan": TestPlanMutationResult;
   "testing.savePlan": TestPlanMutationResult;
-  "testing.deletePlan": { planId: string };
   "testing.applyPlanOperations": TestPlanMutationResult;
   "testing.validatePlan": TestPlanValidation;
   "testing.analyzePlanDraft": TestPlanDraftAnalysis;
@@ -106,13 +103,6 @@ export interface OperationResults {
   "testing.checkIcd": IcdCheck;
   "testing.startRun": TestRunSnapshot;
   "testing.currentUnit": TestUnit;
-  "testing.listItemStatus": TestItemStatusList;
-  "testing.reorderItems": TestItemStatusList;
-  "testing.startBatch": TestBatch;
-  "testing.abortBatch": TestBatch;
-  "testing.currentBatch": TestBatch | null;
-  "testing.getBatch": TestBatch;
-  "testing.waitForBatch": TestBatch;
   "testing.pauseRun": TestRunSnapshot;
   "testing.resumeRun": TestRunSnapshot;
   "testing.abortRun": TestRunSnapshot;

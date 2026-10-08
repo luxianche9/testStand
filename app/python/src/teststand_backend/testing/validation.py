@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from jsonschema import Draft202012Validator
@@ -15,6 +16,7 @@ from .protocols import PlanProtocols, encode_target
 from .protocols import resolve as resolve_protocols
 
 Record = dict[str, Any]
+_FEATURE_PATH = re.compile(r"/regions/test/\d+")
 
 
 def issue(severity: str, code: str, message: str, path: str = "") -> Record:
@@ -141,6 +143,16 @@ def _validate(
                     "step.children",
                     "Container children must be an array",
                     path + "/children",
+                )
+            )
+        if step_type == "Feature" and not _FEATURE_PATH.fullmatch(path):
+            issues.append(
+                issue(
+                    "error",
+                    "feature.placement",
+                    "A feature group sits directly in the test region, not inside another step "
+                    "or in prepare/cleanup",
+                    path,
                 )
             )
         if step_type == "ManualCheck":

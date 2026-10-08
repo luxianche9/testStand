@@ -83,7 +83,7 @@ function IssueList({ issues, onSelect }: {
   );
 }
 
-export function ConflictBanner({ onReload, onSaveAs }: { onReload: () => void; onSaveAs: () => void }) {
+export function ConflictBanner({ onReload, onOverwrite }: { onReload: () => void; onOverwrite: () => void }) {
   return (
     <div
       role="alert"
@@ -93,9 +93,9 @@ export function ConflictBanner({ onReload, onSaveAs }: { onReload: () => void; o
       )}
     >
       <AlertTriangleIcon className="size-4 shrink-0" />
-      <span className="flex-1 text-fg">AI 或磁盘已修改当前计划。为保护本地草稿，直接保存已禁用。</span>
+      <span className="flex-1 text-fg">AI 或磁盘已修改测试流程。为保护本地草稿，直接保存已禁用。</span>
       <Button size="xs" variant="outline" onClick={onReload}>重载 AI 版本</Button>
-      <Button size="xs" variant="outline" onClick={onSaveAs}>另存本地草稿</Button>
+      <Button size="xs" variant="outline" onClick={onOverwrite}>保留本地草稿</Button>
     </div>
   );
 }

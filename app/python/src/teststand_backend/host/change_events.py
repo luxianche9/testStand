@@ -34,20 +34,6 @@ def change_summary(event: str, payload: Any) -> Record:
         return _present(state=data.get("state"), activityId=data.get("activityId"))
     if event == "confirmation":
         return {"pending": len(payload) if isinstance(payload, list) else 0}
-    if event == "testBatch":
-        kind = data.get("kind")
-        if kind == "batch":
-            batch = _record(data.get("batch"))
-            return _present(
-                kind=kind,
-                batchId=batch.get("batchId"),
-                state=batch.get("state"),
-                updatedAt=batch.get("updatedAt"),
-            )
-        if kind == "unit":
-            unit = _record(data.get("unit"))
-            return _present(kind=kind, unitId=unit.get("unitId"))
-        return _present(kind=kind)
     # testPlan {planId, revision} and testRun {runId, sequences, state} are already key and
     # version; keep only scalar fields in case they ever grow.
     return {key: value for key, value in data.items() if _scalar(value)}

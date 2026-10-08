@@ -798,20 +798,6 @@
         "title": "SystemListConfirmationsRequest",
         "type": "object"
       },
-      "TestingAbortBatchRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "batchId": {
-            "title": "Batchid",
-            "type": "string"
-          }
-        },
-        "required": [
-          "batchId"
-        ],
-        "title": "TestingAbortBatchRequest",
-        "type": "object"
-      },
       "TestingAbortRunRequest": {
         "additionalProperties": false,
         "properties": {
@@ -886,27 +872,6 @@
         "title": "TestingCheckIcdRequest",
         "type": "object"
       },
-      "TestingCreatePlanRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "input": {
-            "additionalProperties": true,
-            "title": "Input",
-            "type": "object"
-          }
-        },
-        "required": [
-          "input"
-        ],
-        "title": "TestingCreatePlanRequest",
-        "type": "object"
-      },
-      "TestingCurrentBatchRequest": {
-        "additionalProperties": false,
-        "properties": {},
-        "title": "TestingCurrentBatchRequest",
-        "type": "object"
-      },
       "TestingCurrentRunRequest": {
         "additionalProperties": false,
         "properties": {},
@@ -917,34 +882,6 @@
         "additionalProperties": false,
         "properties": {},
         "title": "TestingCurrentUnitRequest",
-        "type": "object"
-      },
-      "TestingDeletePlanRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "planId": {
-            "title": "Planid",
-            "type": "string"
-          }
-        },
-        "required": [
-          "planId"
-        ],
-        "title": "TestingDeletePlanRequest",
-        "type": "object"
-      },
-      "TestingGetBatchRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "batchId": {
-            "title": "Batchid",
-            "type": "string"
-          }
-        },
-        "required": [
-          "batchId"
-        ],
-        "title": "TestingGetBatchRequest",
         "type": "object"
       },
       "TestingGetRunRequest": {
@@ -993,18 +930,6 @@
         "additionalProperties": false,
         "properties": {},
         "title": "TestingListIcdsRequest",
-        "type": "object"
-      },
-      "TestingListItemStatusRequest": {
-        "additionalProperties": false,
-        "properties": {},
-        "title": "TestingListItemStatusRequest",
-        "type": "object"
-      },
-      "TestingListPlansRequest": {
-        "additionalProperties": false,
-        "properties": {},
-        "title": "TestingListPlansRequest",
         "type": "object"
       },
       "TestingListRecoveryItemsRequest": {
@@ -1057,13 +982,11 @@
         "additionalProperties": false,
         "properties": {
           "planId": {
+            "default": "flow",
             "title": "Planid",
             "type": "string"
           }
         },
-        "required": [
-          "planId"
-        ],
         "title": "TestingLoadPlanRequest",
         "type": "object"
       },
@@ -1267,21 +1190,6 @@
         "title": "TestingRejudgeRunRequest",
         "type": "object"
       },
-      "TestingReorderItemsRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "input": {
-            "additionalProperties": true,
-            "title": "Input",
-            "type": "object"
-          }
-        },
-        "required": [
-          "input"
-        ],
-        "title": "TestingReorderItemsRequest",
-        "type": "object"
-      },
       "TestingResumeRunRequest": {
         "additionalProperties": false,
         "properties": {
@@ -1331,21 +1239,6 @@
         "title": "TestingSavePlanRequest",
         "type": "object"
       },
-      "TestingStartBatchRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "input": {
-            "additionalProperties": true,
-            "title": "Input",
-            "type": "object"
-          }
-        },
-        "required": [
-          "input"
-        ],
-        "title": "TestingStartBatchRequest",
-        "type": "object"
-      },
       "TestingStartRunRequest": {
         "additionalProperties": false,
         "properties": {
@@ -1365,33 +1258,12 @@
         "additionalProperties": false,
         "properties": {
           "planId": {
+            "default": "flow",
             "title": "Planid",
             "type": "string"
           }
         },
-        "required": [
-          "planId"
-        ],
         "title": "TestingValidatePlanRequest",
-        "type": "object"
-      },
-      "TestingWaitForBatchRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "batchId": {
-            "title": "Batchid",
-            "type": "string"
-          },
-          "timeoutMs": {
-            "default": 30000,
-            "title": "Timeoutms",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "batchId"
-        ],
-        "title": "TestingWaitForBatchRequest",
         "type": "object"
       },
       "TestingWaitForRunRequest": {
@@ -4695,61 +4567,6 @@
         "x-confirm": false
       }
     },
-    "/api/ops/testing.abortBatch": {
-      "post": {
-        "operationId": "testing.abortBatch",
-        "summary": "testing.abortBatch",
-        "tags": [
-          "testing"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TestingAbortBatchRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "actuate",
-        "x-capability": "testing.execute",
-        "x-profiles": [
-          "run"
-        ],
-        "x-idempotency": "none",
-        "x-confirm": false
-      }
-    },
     "/api/ops/testing.abortRun": {
       "post": {
         "operationId": "testing.abortRun",
@@ -5023,123 +4840,6 @@
         "x-confirm": false
       }
     },
-    "/api/ops/testing.createPlan": {
-      "post": {
-        "operationId": "testing.createPlan",
-        "summary": "testing.createPlan",
-        "tags": [
-          "testing"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TestingCreatePlanRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "write",
-        "x-capability": "testing.manage",
-        "x-profiles": [
-          "plan"
-        ],
-        "x-idempotency": "request-id",
-        "x-confirm": false
-      }
-    },
-    "/api/ops/testing.currentBatch": {
-      "post": {
-        "operationId": "testing.currentBatch",
-        "summary": "The active or latest batch run of several test items, or null.",
-        "tags": [
-          "testing"
-        ],
-        "requestBody": {
-          "required": false,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TestingCurrentBatchRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "anyOf": [
-                    {
-                      "additionalProperties": true,
-                      "type": "object"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "read",
-        "x-capability": "testing.read",
-        "x-profiles": [
-          "run"
-        ],
-        "x-idempotency": "natural",
-        "x-confirm": false
-      }
-    },
     "/api/ops/testing.currentRun": {
       "post": {
         "operationId": "testing.currentRun",
@@ -5215,116 +4915,6 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/TestingCurrentUnitRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "read",
-        "x-capability": "testing.read",
-        "x-profiles": [
-          "run"
-        ],
-        "x-idempotency": "natural",
-        "x-confirm": false
-      }
-    },
-    "/api/ops/testing.deletePlan": {
-      "post": {
-        "operationId": "testing.deletePlan",
-        "summary": "Delete a saved test plan and its file; the operator confirms it first. A running plan\ncannot be deleted.",
-        "tags": [
-          "testing"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TestingDeletePlanRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "destructive",
-        "x-capability": "testing.manage",
-        "x-profiles": [
-          "plan"
-        ],
-        "x-idempotency": "natural",
-        "x-confirm": true
-      }
-    },
-    "/api/ops/testing.getBatch": {
-      "post": {
-        "operationId": "testing.getBatch",
-        "summary": "One batch run with the state and verdict of each of its items.",
-        "tags": [
-          "testing"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TestingGetBatchRequest"
               }
             }
           }
@@ -5590,120 +5180,6 @@
         "x-confirm": false
       }
     },
-    "/api/ops/testing.listItemStatus": {
-      "post": {
-        "operationId": "testing.listItemStatus",
-        "summary": "testing.listItemStatus",
-        "tags": [
-          "testing"
-        ],
-        "requestBody": {
-          "required": false,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TestingListItemStatusRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "read",
-        "x-capability": "testing.read",
-        "x-profiles": [
-          "run"
-        ],
-        "x-idempotency": "natural",
-        "x-confirm": false
-      }
-    },
-    "/api/ops/testing.listPlans": {
-      "post": {
-        "operationId": "testing.listPlans",
-        "summary": "testing.listPlans",
-        "tags": [
-          "testing"
-        ],
-        "requestBody": {
-          "required": false,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TestingListPlansRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "additionalProperties": true,
-                    "type": "object"
-                  },
-                  "type": "array"
-                }
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "read",
-        "x-capability": "testing.read",
-        "x-profiles": [
-          "plan",
-          "run"
-        ],
-        "x-idempotency": "natural",
-        "x-confirm": false
-      }
-    },
     "/api/ops/testing.listRecoveryItems": {
       "post": {
         "operationId": "testing.listRecoveryItems",
@@ -5933,12 +5409,12 @@
     "/api/ops/testing.loadPlan": {
       "post": {
         "operationId": "testing.loadPlan",
-        "summary": "testing.loadPlan",
+        "summary": "The project's test flow (a project has one: ``flow``).",
         "tags": [
           "testing"
         ],
         "requestBody": {
-          "required": true,
+          "required": false,
           "content": {
             "application/json": {
               "schema": {
@@ -6481,61 +5957,6 @@
         "x-confirm": false
       }
     },
-    "/api/ops/testing.reorderItems": {
-      "post": {
-        "operationId": "testing.reorderItems",
-        "summary": "Set the order of the test plans in the test tree (and of a batch run): ``planIds``\nfirst, in this order; returns the item statuses.",
-        "tags": [
-          "testing"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TestingReorderItemsRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "write",
-        "x-capability": "testing.manage",
-        "x-profiles": [
-          "plan"
-        ],
-        "x-idempotency": "natural",
-        "x-confirm": false
-      }
-    },
     "/api/ops/testing.resumeRun": {
       "post": {
         "operationId": "testing.resumeRun",
@@ -6701,61 +6122,6 @@
         "x-confirm": false
       }
     },
-    "/api/ops/testing.startBatch": {
-      "post": {
-        "operationId": "testing.startBatch",
-        "summary": "testing.startBatch",
-        "tags": [
-          "testing"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TestingStartBatchRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "actuate",
-        "x-capability": "testing.execute",
-        "x-profiles": [
-          "run"
-        ],
-        "x-idempotency": "request-id",
-        "x-confirm": false
-      }
-    },
     "/api/ops/testing.startRun": {
       "post": {
         "operationId": "testing.startRun",
@@ -6819,7 +6185,7 @@
           "testing"
         ],
         "requestBody": {
-          "required": true,
+          "required": false,
           "content": {
             "application/json": {
               "schema": {
@@ -6861,61 +6227,6 @@
         "x-capability": "testing.read",
         "x-profiles": [
           "plan"
-        ],
-        "x-idempotency": "natural",
-        "x-confirm": false
-      }
-    },
-    "/api/ops/testing.waitForBatch": {
-      "post": {
-        "operationId": "testing.waitForBatch",
-        "summary": "testing.waitForBatch",
-        "tags": [
-          "testing"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TestingWaitForBatchRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "read",
-        "x-capability": "testing.read",
-        "x-profiles": [
-          "run"
         ],
         "x-idempotency": "natural",
         "x-confirm": false

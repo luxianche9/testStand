@@ -57,7 +57,7 @@ describe("OpenCode interaction cards", () => {
       .toEqual({ files: ["a.ts"], added: 1, removed: 1 });
   });
 
-  it("renders test plan revisions and opens the plan in the test panel", async () => {
+  it("renders test plan revisions and opens the test panel", async () => {
     const navigate = vi.fn();
     const stop = onSidePanelRequested(navigate);
     render(
@@ -74,12 +74,12 @@ describe("OpenCode interaction cards", () => {
         respondToApproval={vi.fn()}
       />
     );
-    await userEvent.click(screen.getByRole("button", { name: /修改测试计划/ }));
+    await userEvent.click(screen.getByRole("button", { name: /修改测试流程/ }));
     expect(screen.getByText("台架测试")).toBeTruthy();
     expect(screen.getByText("rev 4")).toBeTruthy();
     expect(screen.getByText("修改 2 个节点")).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: "在测试面板查看" }));
-    expect(navigate).toHaveBeenCalledWith("testing", "plan-1");
+    expect(navigate).toHaveBeenCalledWith("testing");
     stop();
   });
 });

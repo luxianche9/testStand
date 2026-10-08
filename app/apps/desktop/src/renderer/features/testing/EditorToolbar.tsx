@@ -33,7 +33,7 @@ export function EditorToolbar({ draft, dirty, conflict, issues, past, future, me
     <Toolbar aria-label="测试流程工具栏" className="gap-2">
       <div className="mr-auto min-w-0">
         <div className="flex min-w-0 items-center gap-1.5">
-          <strong className="truncate text-sm font-semibold text-fg">{draft?.name ?? "功能测试项"}</strong>
+          <strong className="truncate text-sm font-semibold text-fg">{draft?.name ?? "测试流程"}</strong>
           {dirty && <Badge tone="invalid">未保存</Badge>}
           {conflict && <Badge tone="fail">冲突</Badge>}
         </div>

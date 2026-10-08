@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
-import { FileTextIcon } from "lucide-react";
 import { useTestStepCatalog } from "../../lib/queries.js";
-import { EmptyState, Spinner } from "../../ui";
+import { Spinner } from "../../ui";
 import { EditorToolbar } from "./EditorToolbar.js";
 import { ConflictBanner } from "./PlanDialogs.js";
 import { collectReferenceCounts, duplicateStep, regionOrder } from "./plan-helpers.js";
@@ -60,7 +59,7 @@ export function PlanEditorPane({ editor, onIssues }: { editor: PlanEditor; onIss
           <div className="mx-auto mb-3 max-w-4xl">
             <ConflictBanner
               onReload={() => void editor.discard()}
-              onSaveAs={() => void editor.saveAs()}
+              onOverwrite={() => void editor.overwrite()}
             />
           </div>
         )}
@@ -78,10 +77,8 @@ export function PlanEditorPane({ editor, onIssues }: { editor: PlanEditor; onIss
               <RegionTree key={region} region={region} steps={draft.regions[region]} actions={actions} />
             ))}
           </div>
-        ) : editor.selectedPlanId ? (
-          <div className="grid h-full place-items-center"><Spinner label="正在读取功能测试项…" /></div>
         ) : (
-          <EmptyState icon={<FileTextIcon />} title="未选择功能测试项" description="在测试面板中选择一项。" />
+          <div className="grid h-full place-items-center"><Spinner label="正在读取测试流程…" /></div>
         )}
       </div>
     </main>

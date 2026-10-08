@@ -35,6 +35,32 @@ describe("run log projection", () => {
     expect(projectStepStates(plan, events).prepare?.state).toBe("waiting");
   });
 
+  it("marks a 功能组 left out of the run as not selected rather than skipped", () => {
+    const flow: TestPlan = {
+      ...plan,
+      regions: {
+        prepare: [],
+        test: [
+          { id: "power", type: "Feature", children: [{ id: "measure", type: "InvokeTool" }] },
+          { id: "comm", type: "Feature", children: [] }
+        ],
+        cleanup: []
+      }
+    };
+    const events: TestRunEvent[] = [
+      event(1, { stepId: "power", executionId: "e-power" }),
+      event(2, { type: "step.completed", stepId: "power", executionId: "e-power", verdict: "Pass" }, 1),
+      event(3, { type: "step.skipped", stepId: "comm", executionId: "e-comm", reason: "notSelected" }, 2)
+    ];
+    expect(projectStepStates(flow, events).comm?.state).toBe("notSelected");
+    const trace = buildExecutionTrace(flow, events, [], []);
+    expect(trace.regions.test.map((node) => [node.stepId, node.state])).toEqual([
+      ["power", "Pass"], ["comm", "notSelected"]
+    ]);
+    // Steps inside the group that ran but never started still show as pending children.
+    expect(trace.regions.test[0]?.children.map((node) => [node.stepId, node.pending])).toEqual([["measure", true]]);
+  });
+
   it("groups numeric measurement fields by source, field and unit", () => {
     const results: TestResult[] = [
       measurement(1, { unit: "V", value: { ai1: 1, ai2: 2 } }),

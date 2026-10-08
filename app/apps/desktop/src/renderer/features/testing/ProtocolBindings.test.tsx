@@ -17,7 +17,7 @@ function Wrapper({ children }: { children: ReactNode }) {
 }
 
 beforeEach(() => {
-  api = installTestingApi([makePlan()], []);
+  api = installTestingApi([makePlan()]);
   api.testing.listIcds.mockResolvedValue([
     { name: "dut_ack", file: "icd/dut_ack.icd.yaml", valid: true },
     { name: "broken", file: "icd/broken.icd.yaml", valid: false, error: "bad" }
