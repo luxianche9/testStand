@@ -47,7 +47,7 @@ test.describe.serial("single-step wiring tasks", () => {
     }, projectRoot);
     await reloadAfterLeave(page);
     await page.getByText("wiring-fixture", { exact: true }).first().click();
-    await page.getByRole("button", { name: "针脚列表", exact: true }).click();
+    await page.getByRole("button", { name: "工位接线", exact: true }).click();
     await expect(page.getByRole("region", { name: "针脚列表" })).toBeVisible();
   });
   test.afterAll(async () => {
@@ -112,6 +112,51 @@ test.describe.serial("single-step wiring tasks", () => {
     await page.screenshot({ animations: "disabled", path: join(artifacts, "same-port-dark-960.png") });
     expect(await page.evaluate((id) => window.teststand.wiring.getTask({ taskId: id }).then((task) => task.status), taskId)).toBe("confirmed");
     expect(await page.evaluate(async () => (await window.teststand.projects.document())?.file.wiring.connections.length)).toBe(1);
+    expect(errors).toEqual([]);
+  });
+
+  test("draws a cable on the port canvas and keeps the card layout across a reopen", async () => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    // Cards normally arrive by dragging a device off the list; placing them here keeps the test
+    // about the canvas itself. Starting from no cables, the drag below has to create one.
+    await page.evaluate(() => window.teststand.wiring.updateDocument({ wiring: {
+      connections: [],
+      nodes: [
+        { hardwareId: "DUT_A", x: 0, y: 0, width: 220, height: 168,
+          portPositions: { J1: { side: "right", offset: 0.5 } } },
+        { hardwareId: "DUT_B", x: 420, y: 0, width: 220, height: 168,
+          portPositions: { J1: { side: "left", offset: 0.5 } } }
+      ]
+    } }));
+    await page.getByRole("group", { name: "台架视图" }).getByRole("button", { name: "工位接线", exact: true }).click();
+    await page.getByRole("group", { name: "接线视图" }).getByRole("button", { name: "端口连线", exact: true }).click();
+    const handle = (hardwareId: string) =>
+      page.locator(`.react-flow__handle[data-nodeid="${hardwareId}"][data-handleid="J1"]`);
+    await expect(handle("DUT_A")).toBeVisible();
+    const from = (await handle("DUT_A").boundingBox())!;
+    const to = (await handle("DUT_B").boundingBox())!;
+    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 12 });
+    await page.mouse.up();
+
+    // The drag confirms the cable straight through and opens its pin editor for corrections.
+    const editor = page.getByRole("dialog", { name: "编辑针脚", exact: true });
+    await expect(editor).toBeVisible();
+    await editor.getByRole("button", { name: "取消" }).click();
+    await page.screenshot({ animations: "disabled", path: join(artifacts, "port-canvas.png") });
+
+    // The two views are one document: the canvas cable is a row in the pin list.
+    await page.getByRole("group", { name: "接线视图" }).getByRole("button", { name: "针脚列表", exact: true }).click();
+    await expect(cables(page)).toHaveCount(1);
+    await expect(page.getByRole("region", { name: "针脚列表" })).toContainText("DUT_B");
+
+    // Card and connector placement is part of the project file (format v7), not renderer state.
+    await page.evaluate(() => window.teststand.projects.saveProject());
+    const wiring = await page.evaluate(async () => (await window.teststand.projects.document())?.file.wiring);
+    expect(wiring?.nodes.map((node) => node.hardwareId)).toEqual(["DUT_A", "DUT_B"]);
+    expect(wiring?.nodes[1]).toMatchObject({ x: 420, portPositions: { J1: { side: "left", offset: 0.5 } } });
+    expect(wiring?.connections).toHaveLength(1);
     expect(errors).toEqual([]);
   });
 });

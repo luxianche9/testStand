@@ -23,7 +23,7 @@ import { readDraggedStream, STREAM_MIME, useMonitorChannels } from "./use-monito
 type Lower = "console" | "messages";
 
 /**
- * 监控面板 of 测试台架: the device streams the project shows — sampled ones on the oscilloscope,
+ * 运行监控 of 测试台架: the device streams the project shows — sampled ones on the oscilloscope,
  * record ones (serial, bus) in the console — on one time axis. Streams are dragged here from the
  * devices panel. Without a run it shows the devices' live data; a run that starts (from the test
  * panel or by the Agent) takes over at once, with its event timeline (steps, verdicts, device
@@ -150,7 +150,7 @@ export function MonitorPane({ bench, toolbar }: {
 
   return (
     <section
-      aria-label="监控面板"
+      aria-label="运行监控"
       className={cn(
         "relative flex h-full min-h-0 min-w-0 flex-col",
         dropping && "outline-2 -outline-offset-2 outline-signal"
@@ -258,7 +258,7 @@ export function MonitorPane({ bench, toolbar }: {
         <EmptyState
           className="min-h-0 flex-1"
           icon={<ActivityIcon />}
-          title="监控面板还没有数据流"
+          title="运行监控还没有数据流"
           description="在左侧「设备管理」里展开一台设备，把它的数据流拖到这里：采样流显示在示波器上，串口和总线的收发显示在控制台里。"
         />
       )}

@@ -13,7 +13,7 @@ const projectMetadataFields = {
   updatedAt: z.string().datetime()
 };
 
-export const projectFileSchema = z.object({ formatVersion: z.literal(6), ...projectMetadataFields });
+export const projectFileSchema = z.object({ formatVersion: z.literal(7), ...projectMetadataFields });
 export type ProjectFile = z.infer<typeof projectFileSchema>;
 
 export interface ProjectDocument {

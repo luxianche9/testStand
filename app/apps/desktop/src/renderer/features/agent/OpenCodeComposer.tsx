@@ -9,6 +9,7 @@ import {
 import { ArrowUpIcon, PaperclipIcon, SquareIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { cn, IconButton } from "../../ui";
+import { onAssistantRequested, takeAssistantDraft } from "../../lib/assistant.js";
 import { ComposerAttachments } from "./Attachment";
 import { AgentPicker, CommandPicker, FilePicker, ModelPicker } from "./ComposerPickers";
 import {
@@ -117,6 +118,17 @@ export function OpenCodeComposer({
   const commandFromText = useCallback((text: string) => {
     return parseOpenCodeCommand(text, catalog.commands);
   }, [catalog.commands]);
+
+  // A shortcut elsewhere in the app can hand us a draft. It may have arrived before this composer
+  // mounted (the same click opened the sidebar), so drain on mount as well as on later requests.
+  useEffect(() => {
+    const fill = () => {
+      const draft = takeAssistantDraft();
+      if (draft) appendText(draft);
+    };
+    fill();
+    return onAssistantRequested(fill);
+  }, [appendText]);
 
   const { agent, model: { providerID, modelID } } = selection;
   const runCommand = useCallback(async () => {

@@ -11,7 +11,7 @@ from teststand_backend.contracts.validation import (
 from teststand_backend.contracts.wiring import project_wiring_schema
 from teststand_backend.util import Record
 
-PROJECT_FORMAT_VERSION = 6
+PROJECT_FORMAT_VERSION = 7
 
 project_file_schema = obj(
     {

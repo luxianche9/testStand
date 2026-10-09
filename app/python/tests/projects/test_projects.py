@@ -108,7 +108,7 @@ async def test_recent(tmp_path: Path) -> None:
     first.mkdir()
     second.mkdir()
     await service.initialize_folder(first)
-    service.update_wiring({"connections": [CONNECTION]})
+    service.update_wiring({"nodes": [], "connections": [CONNECTION]})
     service.update_monitor({"channels": [channel("ai0"), channel("ai1")]})
     await service.save()
     await service.initialize_folder(second)
@@ -130,7 +130,7 @@ async def test_recent(tmp_path: Path) -> None:
 async def test_open_current_bytes_and_explicit_save(tmp_path: Path) -> None:
     service, _ = await fixture(tmp_path)
     created = await service.initialize_folder(tmp_path)
-    assert created["file"]["formatVersion"] == 6 and "task" not in created["file"]
+    assert created["file"]["formatVersion"] == 7 and "task" not in created["file"]
     path = Path(created["path"])
     raw = json_dumps({**created["file"], "ignored": True})
     path.write_text(raw, encoding="utf-8")

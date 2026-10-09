@@ -7,6 +7,7 @@ import { hardwareStatus } from "../../lib/hardware-status.js";
 import { useDashboard, useMonitorStreams } from "../../lib/queries.js";
 import { IconButton, Panel, PanelBody, StatusLamp, cn, type Tone } from "../../ui/index.js";
 import { STREAM_MIME, streamKey } from "../monitor/use-monitor-channels.js";
+import { HARDWARE_MIME } from "../wiring/WiringCanvas.js";
 
 const statusTone: Record<ReturnType<typeof hardwareStatus>["tone"], Tone> = {
   ok: "pass",
@@ -27,13 +28,16 @@ const rowClass = cn(
 
 /**
  * 设备管理 of 测试台架: devices (plugin instances) and passive parts. A click opens a device's
- * information; a device expands to the data streams it declares, which are dragged (or added
- * with +) onto the monitor panel. A device's actions open from its control button.
+ * information; a row is dragged onto the 端口连线 canvas to place its card. A device expands to the
+ * data streams it declares, which are dragged (or added with +) onto 运行监控. A device's actions
+ * open from its control button.
  */
-export function DeviceList({ hardware, shown, header, footer, onOpen, onControl, onAddStream, ...props }: {
+export function DeviceList({ hardware, shown, placed, header, footer, onOpen, onControl, onAddStream, ...props }: {
   hardware: Hardware[];
-  /** Streams on the monitor panel, by `<hardwareId>__<streamId>`. */
+  /** Streams on 运行监控, by `<hardwareId>__<streamId>`. */
   shown: ReadonlySet<string>;
+  /** Hardware already carded on the 端口连线 canvas. */
+  placed: ReadonlySet<string>;
   header: ReactNode;
   footer?: ReactNode;
   onOpen: (hardware: Hardware) => void;
@@ -88,7 +92,14 @@ export function DeviceList({ hardware, shown, header, footer, onOpen, onControl,
                 const entry = streamsOf.get(item.hardwareId);
                 return (
                   <li key={item.hardwareId}>
-                    <div className="group flex items-center">
+                    <div
+                      className="group flex items-center"
+                      draggable
+                      onDragStart={(event) => {
+                        event.dataTransfer.setData(HARDWARE_MIME, item.hardwareId);
+                        event.dataTransfer.effectAllowed = "move";
+                      }}
+                    >
                       {managed ? (
                         <IconButton
                           label={`${expanded ? "收起" : "展开"} ${item.label} 的数据流`}
@@ -104,14 +115,19 @@ export function DeviceList({ hardware, shown, header, footer, onOpen, onControl,
                       <button
                         type="button"
                         onClick={() => onOpen(item)}
-                        title={`${item.label}：单击查看信息`}
-                        className={cn(rowClass, "min-w-0 flex-1")}
+                        title={placed.has(item.hardwareId)
+                          ? `${item.label}（已在端口连线画布上）：单击查看信息`
+                          : `${item.label}：单击查看信息，拖到端口连线画布上放置`}
+                        className={cn(rowClass, "min-w-0 flex-1 cursor-grab")}
                       >
                         <span className={cn("grid size-5 shrink-0 place-items-center rounded-sm border",
                           "border-line bg-surface-0 text-fg-3")}>
                           {managed ? <CpuIcon className="size-3" /> : <BoxIcon className="size-3" />}
                         </span>
                         <span className="min-w-0 flex-1 truncate text-sm text-fg">{item.label}</span>
+                        {placed.has(item.hardwareId) && (
+                          <CheckIcon aria-label="已在画布上" className="size-3 shrink-0 text-fg-3" />
+                        )}
                         {status && (
                           <span title={status.title} className="flex shrink-0 items-center gap-1.5 text-2xs text-fg-2">
                             <StatusLamp tone={status.tone} pulse={status.pulse} />{status.label}
@@ -179,7 +195,7 @@ function StreamRows({ hardwareId, label, known, streams, shown, onAdd }: {
               event.dataTransfer.setData(STREAM_MIME, JSON.stringify(ref));
               event.dataTransfer.effectAllowed = "copy";
             }}
-            title={`${hardwareId}/${stream.id}：拖到监控面板查看`}
+            title={`${hardwareId}/${stream.id}：拖到运行监控查看`}
             className="group/stream flex h-6 cursor-grab items-center gap-2 pr-2 pl-10 text-2xs hover:bg-surface-2"
           >
             <span className="min-w-0 flex-1 truncate text-fg">{name}</span>
@@ -188,9 +204,9 @@ function StreamRows({ hardwareId, label, known, streams, shown, onAdd }: {
               {TYPE_LABELS[stream.type] ?? stream.type}{width}{unit && ` ${unit}`}
             </span>
             {on ? (
-              <CheckIcon aria-label="已在监控面板上" className="size-3 shrink-0 text-pass" />
+              <CheckIcon aria-label="已在运行监控上" className="size-3 shrink-0 text-pass" />
             ) : (
-              <IconButton label={`把 ${stream.id} 加到监控面板`} size="icon-xs" variant="ghost"
+              <IconButton label={`把 ${stream.id} 加到运行监控`} size="icon-xs" variant="ghost"
                 className="invisible group-hover/stream:visible" onClick={() => onAdd(ref)}>
                 <PlusIcon />
               </IconButton>

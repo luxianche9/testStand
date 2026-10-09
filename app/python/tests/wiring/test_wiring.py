@@ -53,6 +53,7 @@ async def fixture(root: Path) -> tuple[ProjectWiringService, ProjectService, lis
     await projects.initialize_folder(root)
     projects.update_wiring(
         {
+            "nodes": [],
             "connections": [
                 {
                     "connectionId": "C1",
@@ -77,7 +78,7 @@ async def fixture(root: Path) -> tuple[ProjectWiringService, ProjectService, lis
 @pytest.mark.asyncio
 async def test_task_cable(tmp_path: Path) -> None:
     service, projects, _ = await fixture(tmp_path)
-    projects.update_wiring({"connections": []})
+    projects.update_wiring({"nodes": [], "connections": []})
     pins = [{"a": "1", "b": "1"}, {"a": "2", "b": "2"}]
     task = await service.request_task(
         {"portA": "DUT_A.P1", "portB": "DUT_B.P1", "pins": pins, "action": "connect"}
@@ -101,7 +102,7 @@ async def test_task_cable(tmp_path: Path) -> None:
 @pytest.mark.asyncio
 async def test_pinless(tmp_path: Path) -> None:
     service, projects, _ = await fixture(tmp_path)
-    projects.update_wiring({"connections": []})
+    projects.update_wiring({"nodes": [], "connections": []})
     task = await service.request_task(
         {"portA": "DUT_A.P2", "portB": "DUT_B.P2", "action": "connect"}
     )

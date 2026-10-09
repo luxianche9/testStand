@@ -52,7 +52,7 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
     }, projectRoot);
     await reloadAfterLeave(page);
     await page.getByText("interaction-fixture", { exact: true }).first().click();
-    await expect(page.getByRole("region", { name: "监控面板" })).toBeVisible();
+    await expect(page.getByRole("region", { name: "运行监控" })).toBeVisible();
   });
 
   test.afterAll(async () => {
@@ -110,7 +110,8 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
   });
 
   test("keeps empty native Select options and keyboard selection with same-port support", async () => {
-    await page.getByRole("group", { name: "台架视图" }).getByRole("button", { name: "针脚列表", exact: true }).click();
+    await page.getByRole("group", { name: "台架视图" }).getByRole("button", { name: "工位接线", exact: true }).click();
+    await page.getByRole("group", { name: "接线视图" }).getByRole("button", { name: "针脚列表", exact: true }).click();
     await page.getByRole("button", { name: "新建接线", exact: true }).click();
     const dialog = page.getByRole("dialog", { name: "新建接线", exact: true });
     const source = dialog.getByLabel("起点端口");

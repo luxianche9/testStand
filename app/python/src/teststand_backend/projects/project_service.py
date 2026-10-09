@@ -240,7 +240,7 @@ def empty_project_file(name: str = "Untitled project") -> Record:
             "formatVersion": PROJECT_FORMAT_VERSION,
             "projectId": new_uuid(),
             "name": name,
-            "wiring": {"connections": []},
+            "wiring": {"nodes": [], "connections": []},
             "monitor": {"channels": []},
             "createdAt": now,
             "updatedAt": now,

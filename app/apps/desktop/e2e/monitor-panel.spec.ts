@@ -46,7 +46,7 @@ test.describe.serial("monitor panel and pin list", () => {
       await window.teststand.devices.saveDevice({ input: {
         deviceId: "MON_RELAY", label: "继电器卡", hardwareId, type: "pci1762", settings: {}, enabled: true
       } });
-      await window.teststand.wiring.updateDocument({ wiring: { connections: [{
+      await window.teststand.wiring.updateDocument({ wiring: { nodes: [], connections: [{
         connectionId: "C1", portA: "DUT.J1", portB: "FIX.P1", pins: [{ a: "1", b: "1" }],
         confirmedAt: "2026-10-07T00:00:00.000Z", confirmedBy: "user"
       }] } });
@@ -65,11 +65,11 @@ test.describe.serial("monitor panel and pin list", () => {
   });
 
   test("opens the bench on the monitor panel with its channels on the scope", async () => {
-    const panel = page.getByRole("region", { name: "监控面板" });
+    const panel = page.getByRole("region", { name: "运行监控" });
     const channels = panel.getByRole("complementary", { name: "通道" });
     await expect(channels.getByRole("button", { name: "relay" })).toBeVisible();
     await expect(channels.getByRole("button", { name: "di" })).toBeVisible();
-    const tools = page.getByRole("toolbar", { name: "台架工具栏" }).getByRole("group", { name: "监控面板工具" });
+    const tools = page.getByRole("toolbar", { name: "台架工具栏" }).getByRole("group", { name: "运行监控工具" });
     await expect(tools).toContainText("实时数据");
     await expect(tools.getByRole("button", { name: "停止跟随", exact: true })).toBeVisible();
     // The panel only watches: no canvas, no control widgets.
@@ -84,10 +84,10 @@ test.describe.serial("monitor panel and pin list", () => {
     // Without its card the device has not declared its streams yet.
     await expect(list).toContainText("设备连接后显示它声明的数据流");
     await expect(list.getByRole("button", { name: "控制 继电器卡" })).toBeVisible();
-    const panel = page.getByRole("region", { name: "监控面板" });
+    const panel = page.getByRole("region", { name: "运行监控" });
     const channels = panel.getByRole("complementary", { name: "通道" });
     await channels.getByRole("button", { name: "di" }).hover();
-    await channels.getByRole("button", { name: "从监控面板移除 di" }).click();
+    await channels.getByRole("button", { name: "从运行监控移除 di" }).click();
     await expect(channels.getByRole("button", { name: "di" })).toHaveCount(0);
     const monitor = await page.evaluate(async () => (await window.teststand.projects.document())?.file.monitor);
     expect(monitor?.channels).toEqual([{ hardwareId, streamId: "relay" }]);
@@ -99,7 +99,7 @@ test.describe.serial("monitor panel and pin list", () => {
       await window.teststand.testing.applyPlanOperations({ input: {
         planId: flow.id, baseRevision: flow.revision, requestId: crypto.randomUUID(),
         operations: [
-          { type: "set_plan_fields", patch: { name: "监控面板运行" } },
+          { type: "set_plan_fields", patch: { name: "运行监控运行" } },
           { type: "insert_step", region: "test", step: { id: "first", type: "PublishResult", name: "第一步", value: "ok" } },
           { type: "insert_step", region: "test", step: { id: "wait", type: "Delay", name: "等待", durationMs: 1_500 } }
         ]
@@ -107,8 +107,8 @@ test.describe.serial("monitor panel and pin list", () => {
     });
     await showPanel(page, "测试编排");
     await page.getByRole("toolbar", { name: "测试流程操作" }).getByRole("button", { name: "运行", exact: true }).click();
-    const panel = page.getByRole("region", { name: "监控面板" });
-    await expect(panel).toContainText("监控面板运行");
+    const panel = page.getByRole("region", { name: "运行监控" });
+    await expect(panel).toContainText("运行监控运行");
     // The event timeline: regions, steps, verdicts and calls on the run's time axis.
     const overview = panel.getByRole("region", { name: "运行概览" });
     await expect(overview).toBeVisible();
@@ -122,14 +122,19 @@ test.describe.serial("monitor panel and pin list", () => {
   });
 
   test("shows the physical wiring as a pin list", async () => {
-    await page.getByRole("button", { name: "针脚列表", exact: true }).click();
+    await page.getByRole("group", { name: "台架视图" }).getByRole("button", { name: "工位接线", exact: true }).click();
     const list = page.getByRole("region", { name: "针脚列表" });
     await expect(list).toContainText("被测板");
     const row = page.getByRole("toolbar", { name: "台架工具栏" });
     await expect(row.getByRole("group", { name: "针脚列表工具" }).getByRole("button", { name: "新建接线" })).toBeVisible();
-    await expect(row.getByRole("group", { name: "监控面板工具" })).toBeHidden();
+    await expect(row.getByRole("group", { name: "运行监控工具" })).toBeHidden();
     await expect(list).toContainText("1 (EN)");
     await page.screenshot({ path: join(artifacts, "pin-list.png") });
+
+    // 端口连线 is the other half of 工位接线: the same cables, on a canvas with nothing placed yet.
+    await page.getByRole("group", { name: "接线视图" }).getByRole("button", { name: "端口连线", exact: true }).click();
+    await expect(page.getByText("把设备从左侧拖到画布")).toBeVisible();
+    await expect(row.getByRole("group", { name: "端口连线工具" })).toContainText("画布设备");
     expect(errors).toEqual([]);
   });
 });

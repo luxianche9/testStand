@@ -77,7 +77,9 @@ _PROJECT = _object(
             {
                 "projectId": _STRING,
                 "name": _STRING,
-                "wiring": _object({"connections": _array(_object({}))}),
+                "wiring": _object(
+                    {"nodes": _array(_object({})), "connections": _array(_object({}))}
+                ),
                 "monitor": _object({"channels": _array(_object({}))}),
             }
         ),
@@ -206,7 +208,7 @@ PLATFORM_TOOLS = [
     _platform(
         "get_project",
         "读取当前打开工程的根目录、持久化文档、接线连接与未保存状态。用于确定工作区和已有连接；"
-        "无工程时按返回状态先打开或初始化工程。接线列表和监控面板都不证明物理导通。",
+        "无工程时按返回状态先打开或初始化工程。接线列表和运行监控都不证明物理导通。",
         _EMPTY,
         {"anyOf": [_PROJECT, {"type": "null"}]},
         operation="projects.document",
@@ -233,7 +235,7 @@ PLATFORM_TOOLS = [
     ),
     _platform(
         "save_project",
-        "通过项目服务保存当前工程（接线列表与监控面板）。检查返回的 dirty 状态；"
+        "通过项目服务保存当前工程（接线列表与运行监控）。检查返回的 dirty 状态；"
         "保存记录不执行物理接线。"
         "Python 源文件的写入状态与工程文档的保存状态分别核对。",
         _EMPTY,
@@ -375,8 +377,8 @@ PLATFORM_TOOLS = [
     ),
     _platform(
         "get_monitor",
-        "读取监控面板显示的通道（设备流），按顺序。采样流（scalar/bits/block）画在示波器上，"
-        "记录流（bytes/frames）显示在终端里。监控面板只看不控；设备由它的动作弹窗、测试步骤或"
+        "读取运行监控显示的通道（设备流），按顺序。采样流（scalar/bits/block）画在示波器上，"
+        "记录流（bytes/frames）显示在终端里。运行监控只看不控；设备由它的动作弹窗、测试步骤或"
         "你调用设备工具来控制。",
         _EMPTY,
         _MONITOR,
@@ -384,7 +386,7 @@ PLATFORM_TOOLS = [
     ),
     _platform(
         "update_monitor",
-        "修改监控面板的通道：channels 整体替换，remove 去掉，add 追加（已显示的跳过）。每个通道是"
+        "修改运行监控的通道：channels 整体替换，remove 去掉，add 追加（已显示的跳过）。每个通道是"
         "设备声明的一条流（hardwareId + streamId，从 monitor_streams 取）。返回修改后的面板；"
         "save_project 前只在工程缓冲区。",
         obj(

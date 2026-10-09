@@ -8,11 +8,25 @@ from teststand_backend.contracts.validation import (
     obj,
     parse_id_input,
     parse_record,
+    record,
     string,
 )
 from teststand_backend.util import Record
 
 wiring_action_schema = enum("connect", "disconnect")
+# Where a port's handle sits on its card: which edge, and how far along it.
+port_position_schema = obj({"side": enum("top", "right", "bottom", "left"), "offset": number(0, 1)})
+# One hardware card on the 端口连线 canvas: where the operator put it, and how big it is.
+project_canvas_node_schema = obj(
+    {
+        "hardwareId": string(1),
+        "x": number(finite=True),
+        "y": number(finite=True),
+        "width": number(positive=True, finite=True).optional(),
+        "height": number(positive=True, finite=True).optional(),
+        "portPositions": record(port_position_schema).default({}),
+    }
+)
 pin_pair_schema = obj({"a": string(1), "b": string(1)})
 project_wiring_connection_schema = obj(
     {
@@ -24,8 +38,13 @@ project_wiring_connection_schema = obj(
         "confirmedBy": string(1),
     }
 )
-# The physical wiring: which pins are joined. Signals and their links are the signal view.
-project_wiring_schema = obj({"connections": array(project_wiring_connection_schema)})
+# The physical wiring: which pins are joined, and where their cards sit on the canvas.
+project_wiring_schema = obj(
+    {
+        "nodes": array(project_canvas_node_schema),
+        "connections": array(project_wiring_connection_schema),
+    }
+)
 wiring_task_status_schema = enum("pending", "confirmed", "rejected", "cancelled", "failed")
 wiring_outcome_schema = enum("confirmed", "rejected")
 wiring_change_schema = obj(

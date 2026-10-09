@@ -410,7 +410,7 @@ function ChannelGroups({ channels, reads, at, visible, onToggle, displayOf, onDi
               </span>
             )}
             {onRemove && (
-              <IconButton label={`从监控面板移除 ${stream.streamId}`} size="icon-xs" variant="ghost"
+              <IconButton label={`从运行监控移除 ${stream.streamId}`} size="icon-xs" variant="ghost"
                 className="invisible group-hover:visible" onClick={() => onRemove(stream)}>
                 <XIcon />
               </IconButton>

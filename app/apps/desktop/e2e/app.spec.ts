@@ -267,11 +267,14 @@ test.describe.serial("testStand folder project desktop", () => {
     await page.evaluate(async () => {
       const current = await window.teststand.projects.document();
       if (!current) throw new Error("project missing");
-      await window.teststand.wiring.updateDocument({ wiring: { connections: [
-        ...current.file.wiring.connections,
-        { connectionId: "extra", portA: "DUT_A.J1", portB: "DUT_B.J1", pins: [],
-          confirmedAt: "2026-10-08T00:00:00.000Z", confirmedBy: "e2e" }
-      ] } });
+      await window.teststand.wiring.updateDocument({ wiring: {
+        nodes: current.file.wiring.nodes,
+        connections: [
+          ...current.file.wiring.connections,
+          { connectionId: "extra", portA: "DUT_A.J1", portB: "DUT_B.J1", pins: [],
+            confirmedAt: "2026-10-08T00:00:00.000Z", confirmedBy: "e2e" }
+        ]
+      } });
     });
     await requestLeaveProject(page);
     const dialog = page.getByRole("dialog", { name: "保存项目修改" });

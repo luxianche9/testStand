@@ -1,13 +1,22 @@
 import { useCallback, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { PinPair, ProjectWiring } from "@teststand/contracts/wiring";
+import type { PinPair, PortSide, ProjectWiring } from "@teststand/contracts/wiring";
 import { useDeviceCatalog, useProjectDocument } from "../../lib/queries.js";
 import { queryKeys } from "../../lib/query-keys.js";
-import { touchesHardware } from "./wiring-model.js";
+import {
+  DEFAULT_CARD_HEIGHT,
+  DEFAULT_CARD_WIDTH,
+  clampCardHeight,
+  clampCardWidth,
+  clampOffset,
+  defaultPortPositions,
+  touchesHardware
+} from "./wiring-model.js";
 
 /**
- * The physical wiring of the shared project document (pin connections) plus every edit the pin
- * list can make. Edits go to the project buffer through `wiring.updateDocument`.
+ * The physical wiring of the shared project document — pin connections plus the cards of the
+ * 端口连线 canvas — and every edit the two 工位接线 views can make. Edits go to the project buffer
+ * through `wiring.updateDocument`; the main process decides what marks the project dirty.
  */
 export function useWiringDocument() {
   const client = useQueryClient();
@@ -25,26 +34,77 @@ export function useWiringDocument() {
   // Depending on the object here would churn every memo below it and loop `setNodes`.
   const persist = save.mutate;
 
-  /** Drops every cable that touches the hardware (before the hardware itself is removed). */
-  const removeHardwareConnections = useCallback((hardwareId: string) => {
+  const mapNodes = useCallback((
+    hardwareId: string,
+    update: (node: ProjectWiring["nodes"][number]) => ProjectWiring["nodes"][number]
+  ) => {
     if (!wiring) return;
-    persist({ ...wiring, connections: wiring.connections.filter((entry) => !touchesHardware(entry, hardwareId)) });
+    persist({ ...wiring, nodes: wiring.nodes.map((node) => node.hardwareId === hardwareId ? update(node) : node) });
   }, [persist, wiring]);
+
+  const addNode = useCallback((hardwareId: string, position?: { x: number; y: number }) => {
+    if (!wiring || wiring.nodes.some((item) => item.hardwareId === hardwareId)) return;
+    const index = wiring.nodes.length;
+    const ports = hardware.find((item) => item.hardwareId === hardwareId)?.ports.map((item) => item.portId) ?? [];
+    persist({
+      ...wiring,
+      nodes: [...wiring.nodes, {
+        hardwareId,
+        x: position?.x ?? 80 + (index % 3) * 330,
+        y: position?.y ?? 80 + Math.floor(index / 3) * 240,
+        width: DEFAULT_CARD_WIDTH,
+        height: DEFAULT_CARD_HEIGHT,
+        portPositions: defaultPortPositions(ports)
+      }]
+    });
+  }, [hardware, persist, wiring]);
+
+  /** Takes the card off the canvas and drops every cable that touches the hardware. */
+  const removeNode = useCallback((hardwareId: string) => {
+    if (!wiring) return;
+    persist({
+      ...wiring,
+      nodes: wiring.nodes.filter((entry) => entry.hardwareId !== hardwareId),
+      connections: wiring.connections.filter((entry) => !touchesHardware(entry, hardwareId))
+    });
+  }, [persist, wiring]);
+
+  const moveNode = useCallback((hardwareId: string, x: number, y: number) => {
+    mapNodes(hardwareId, (node) => ({ ...node, x, y }));
+  }, [mapNodes]);
+
+  const movePort = useCallback((hardwareId: string, portId: string, side: PortSide, offset: number) => {
+    mapNodes(hardwareId, (node) => ({
+      ...node,
+      portPositions: { ...node.portPositions, [portId]: { side, offset: clampOffset(offset) } }
+    }));
+  }, [mapNodes]);
+
+  const resizeNode = useCallback((hardwareId: string, width: number, height: number) => {
+    mapNodes(hardwareId, (node) => ({
+      ...node,
+      width: clampCardWidth(width),
+      height: clampCardHeight(height)
+    }));
+  }, [mapNodes]);
 
   const removeConnection = useCallback((connectionId: string) => {
     if (!wiring) return;
     persist({ ...wiring, connections: wiring.connections.filter((item) => item.connectionId !== connectionId) });
   }, [persist, wiring]);
 
+  /** Returns the new cable's id so a canvas drag can open its pin editor straight away. */
   const createConnection = useCallback((portA: string, portB: string, pins: PinPair[]) => {
-    if (!wiring) return;
+    if (!wiring) return undefined;
+    const connectionId = crypto.randomUUID();
     persist({
       ...wiring,
       connections: [...wiring.connections, {
-        connectionId: crypto.randomUUID(), portA, portB, pins,
+        connectionId, portA, portB, pins,
         confirmedAt: new Date().toISOString(), confirmedBy: "user"
       }]
     });
+    return connectionId;
   }, [persist, wiring]);
 
   const updateConnectionPins = useCallback((connectionId: string, pins: PinPair[]) => {
@@ -62,9 +122,8 @@ export function useWiringDocument() {
     wiring,
     hardware,
     edits: {
-      removeHardwareConnections, removeConnection, createConnection, updateConnectionPins
+      addNode, removeNode, moveNode, movePort, resizeNode,
+      removeConnection, createConnection, updateConnectionPins
     }
   };
 }
-
-type WiringEdits = ReturnType<typeof useWiringDocument>["edits"];
