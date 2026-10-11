@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "teststand-adapter-art-pxi2604"
+version = "1.0.0"
+description = "testStand device plugin for the ART Technology PXI2604"
+requires-python = ">=3.11"
+dependencies = ["teststand-device-sdk>=0.2,<0.3"]
+
+[project.entry-points."teststand.devices"]
+art_pxi2604 = "teststand_adapter_art_pxi2604:DEVICE"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+teststand_adapter_art_pxi2604 = ["py.typed"]
+
+# Read by devices/pack.py into the .tsdev manifest: vendor drivers the bench must have installed,
+# and package files that must be in the wheel (e.g. "bin/<bridge>.exe").
+[tool.teststand.package]
+vendorDrivers = ["ART-SWITCH (artSwitch_64.dll)"]
+requiredFiles = []

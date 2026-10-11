@@ -3,7 +3,7 @@ name = "teststand-devices"
 version = "0"
 description = "Workspace root for the testStand device SDK and hardware adapters."
 requires-python = ">=3.11"
-dependencies = ["teststand-device-sdk", "teststand-adapter-pci6208v", "teststand-adapter-pci1710l", "teststand-adapter-pci1762", "teststand-adapter-cp118u-i", "teststand-adapter-jcxd-da6401", "teststand-adapter-jcxd-mads3210", "teststand-adapter-jcxd-sds48", "teststand-adapter-art-pxi2355l"]
+dependencies = ["teststand-device-sdk", "teststand-adapter-pci6208v", "teststand-adapter-pci1710l", "teststand-adapter-pci1762", "teststand-adapter-cp118u-i", "teststand-adapter-jcxd-da6401", "teststand-adapter-jcxd-mads3210", "teststand-adapter-jcxd-sds48", "teststand-adapter-art-pxi2355l", "teststand-adapter-art-pxi2604"]
 
 [dependency-groups]
 dev = ["pytest>=8", "pytest-asyncio>=0.23", "jsonschema>=4"]
@@ -24,6 +24,7 @@ teststand-adapter-jcxd-da6401 = { workspace = true }
 teststand-adapter-jcxd-mads3210 = { workspace = true }
 teststand-adapter-jcxd-sds48 = { workspace = true }
 teststand-adapter-art-pxi2355l = { workspace = true }
+teststand-adapter-art-pxi2604 = { workspace = true }
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
