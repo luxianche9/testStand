@@ -254,8 +254,8 @@ def record_errors(stream_type: str, record: Mapping[str, Any]) -> list[str]:
         if stream_type == "frames" and not isinstance(record.get("id"), int):
             problems.append("frames record needs an integer id")
     elif stream_type == "block":
-        if not _number(record.get("dt")) or record["dt"] <= 0 or record.get("t0") != record.get("t"):
-            problems.append("block record needs a positive dt and t0 equal to t")
+        if not _number(record.get("dt")) or record["dt"] <= 0 or not _number(record.get("t0"))                 or record["t0"] > record.get("t", 0):
+            problems.append("block record needs a positive dt and a t0 no later than t")
         if not isinstance(record.get("samples"), list) or not all(_number(v) for v in record["samples"]):
             problems.append("block record samples must be numbers")
     elif stream_type == "blob" and not isinstance(record.get("ref"), str):

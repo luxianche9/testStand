@@ -204,6 +204,15 @@ def test_block_record_starts_at_t0():
     assert record["t"] == record["t0"] == 1000.0 and record["samples"] == [1.0, 2.0, 3.0]
 
 
+def test_block_keeps_t0_when_the_watermark_passed_it():
+    stream = BlockStream("ai")
+    stream.buffer.advance(2000.0)
+    record = stream.publish([1, 2], 1.0, t0=1990.0)
+    assert record["t0"] == 1990.0 and record["t"] > 2000.0
+    following = stream.publish([3, 4], 1.0, t0=1992.0)
+    assert following["t0"] == 1992.0 and following["t"] > record["t"]
+
+
 def test_operation_tags_records_and_collects_refs():
     stream = ScalarStream("v")
     stream.publish(1)

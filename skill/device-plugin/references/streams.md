@@ -32,7 +32,7 @@ self.streams.add(BitsStream("di", sample=self._read_di, publish_on_change=True, 
 | `BitsStream` | `bits` | `{mask}` 非负整数，bit i = 第 i 路 | DI、DO / 继电器回读 |
 | `ByteStream` | `bytes` | `{dir: tx\|rx\|mark, data: 小写 hex, note?}` | 串口、TCP 透传 |
 | `FrameStream` | `frames` | `{dir, id, data, note?}` | CAN、LIN、SPI 事务 |
-| `BlockStream` | `block` | `{t0, dt, samples[]}`，第 i 个样本时刻 `t0 + i*dt` | 示波器波形、硬件定时采集 |
+| `BlockStream` | `block` | `{t0, dt, samples[]}`，第 i 个样本时刻 `t0 + i*dt`；`t` 只用于排序，水位已越过 `t0` 时会略晚于 `t0` | 示波器波形、硬件定时采集 |
 | `BlobStream` | `blob` | `{ref}`，内容用 `<prefix>_blob_read` 取 | 截图、照片、日志文件 |
 
 SDK 给每条记录加 `seq`（缓冲序号，从 0 递增）、`t`（SDK 时钟 `now_ms()`，Unix 毫秒，单调锚定，同一流内严格递增；与后端是同一个时钟）和 `op`（产生它的工具调用的操作号，没有则省略）。适配器从不自己写时间戳和操作号。

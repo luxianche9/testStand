@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "teststand-adapter-jcxd-mads3210"
+version = "1.0.0"
+description = "testStand device plugin for the Devices-JC JCXD-MADS-CPCI-3210"
+requires-python = ">=3.11"
+dependencies = ["teststand-device-sdk>=0.2,<0.3"]
+
+[project.entry-points."teststand.devices"]
+jcxd_mads3210 = "teststand_adapter_jcxd_mads3210:DEVICE"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+teststand_adapter_jcxd_mads3210 = ["py.typed", "bin/*.dll"]
+
+# Read by devices/pack.py into the .tsdev manifest: vendor drivers the bench must have installed,
+# and package files that must be in the wheel (e.g. "bin/<bridge>.exe").
+[tool.teststand.package]
+vendorDrivers = ["Devices-JC UMADX3210 kernel driver"]
+requiredFiles = ["bin/UMADX3210_x64.dll"]

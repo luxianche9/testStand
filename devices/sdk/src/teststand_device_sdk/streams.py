@@ -15,7 +15,8 @@ scalar    ``{v}`` number
 bits      ``{mask}`` non-negative integer
 bytes     ``{dir: tx|rx|mark, data: lowercase hex, note?}``
 frames    ``{dir: tx|rx|mark, id, data: lowercase hex, note?}``
-block     ``{t0, dt, samples[]}``; ``t0`` equals ``t``, sample i is at ``t0 + i*dt``
+block     ``{t0, dt, samples[]}``; sample i is at ``t0 + i*dt``; ``t`` orders the record and is
+          ``t0`` unless the watermark had already passed ``t0`` (then just after the watermark)
 blob      ``{ref}``; content through ``<prefix>_blob_read``
 ========  =========================================================
 
@@ -83,14 +84,11 @@ class Stream:
         """An event stream whose reader calls ``idle()``; its watermark stops when the reader stops."""
 
     # --- records --------------------------------------------------------
-    def _append(self, fields: dict[str, Any], *, weight: int = 0, t: float | None = None,
-                stamp_key: str | None = None) -> dict[str, Any]:
+    def _append(self, fields: dict[str, Any], *, weight: int = 0, t: float | None = None) -> dict[str, Any]:
         op = current()
         if op is not None:
             fields["op"] = op.operation_id
         entry = self.buffer.append(fields, weight=weight, t=t)
-        if stamp_key is not None:
-            entry[stamp_key] = entry["t"]
         if op is not None:
             op.record(self.stream_id, entry["seq"])
         return entry
@@ -352,7 +350,8 @@ class BlockStream(Stream):
             raise ValueError(f"{self.stream_id}: dt must be positive")
         values = [float(value) for value in samples]
         start = now_ms() - len(values) * dt if t0 is None else t0
-        return self._append({"dt": float(dt), "samples": values}, t=start, weight=len(values), stamp_key="t0")
+        # ``t`` may be lifted past the watermark to keep the ring ordered; ``t0`` keeps the hardware timing.
+        return self._append({"t0": round(start, 3), "dt": float(dt), "samples": values}, t=start, weight=len(values))
 
     def _sampled(self, value: Any, t: float) -> None:
         if value is None:
