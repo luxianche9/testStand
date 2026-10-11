@@ -13,6 +13,7 @@ members = [
     "teststand-adapter-art-pxi2355l",
     "teststand-adapter-art-pxi2604",
     "teststand-adapter-cp118u-i",
+    "teststand-adapter-htlt-lvdt8",
     "teststand-adapter-jcxd-da6401",
     "teststand-adapter-jcxd-mads3210",
     "teststand-adapter-jcxd-sds48",
@@ -430,6 +431,17 @@ dependencies = [
 requires-dist = [{ name = "teststand-device-sdk", editable = "sdk" }]
 
 [[package]]
+name = "teststand-adapter-htlt-lvdt8"
+version = "1.0.0"
+source = { editable = "adapters/htlt_lvdt8" }
+dependencies = [
+    { name = "teststand-device-sdk" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "teststand-device-sdk", editable = "sdk" }]
+
+[[package]]
 name = "teststand-adapter-jcxd-da6401"
 version = "1.0.0"
 source = { editable = "adapters/jcxd_da6401" }
@@ -527,6 +539,7 @@ dependencies = [
     { name = "teststand-adapter-art-pxi2355l" },
     { name = "teststand-adapter-art-pxi2604" },
     { name = "teststand-adapter-cp118u-i" },
+    { name = "teststand-adapter-htlt-lvdt8" },
     { name = "teststand-adapter-jcxd-da6401" },
     { name = "teststand-adapter-jcxd-mads3210" },
     { name = "teststand-adapter-jcxd-sds48" },
@@ -548,6 +561,7 @@ requires-dist = [
     { name = "teststand-adapter-art-pxi2355l", editable = "adapters/art_pxi2355l" },
     { name = "teststand-adapter-art-pxi2604", editable = "adapters/art_pxi2604" },
     { name = "teststand-adapter-cp118u-i", editable = "adapters/cp118u_i" },
+    { name = "teststand-adapter-htlt-lvdt8", editable = "adapters/htlt_lvdt8" },
     { name = "teststand-adapter-jcxd-da6401", editable = "adapters/jcxd_da6401" },
     { name = "teststand-adapter-jcxd-mads3210", editable = "adapters/jcxd_mads3210" },
     { name = "teststand-adapter-jcxd-sds48", editable = "adapters/jcxd_sds48" },
