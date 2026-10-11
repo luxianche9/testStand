@@ -39,6 +39,8 @@ import { DeviceControlMenu, type ControlMenuState } from "./DeviceControlMenu.js
 import { DeviceInfoDialog, type InfoTarget } from "./DeviceInfoDialog.js";
 import { DeviceList } from "./DeviceList.js";
 import { actionName, deviceActions } from "./device-actions.js";
+import { SelfTestDialog } from "./SelfTestDialog.js";
+import { selfTestTool } from "./self-test.js";
 import { SIDE_PANEL_LABELS, type SidePanel } from "../../lib/side-panel.js";
 
 const BANNER = "absolute top-2 right-3 left-3 z-20 shadow-overlay";
@@ -118,6 +120,7 @@ function Bench({ panel, view, onView }: {
   const [editingPortHardwareId, setEditingPortHardwareId] = useState<string>();
   const [controlMenu, setControlMenu] = useState<ControlMenuState>();
   const [action, setAction] = useState<{ tool: ToolCatalogItem; hardwareId: string }>();
+  const [selfTest, setSelfTest] = useState<{ tool: ToolCatalogItem; hardwareId: string }>();
   const [info, setInfo] = useState<InfoTarget>();
   const [editingDevice, setEditingDevice] = useState<DeviceInstance>();
   const [staged, setStaged] = useState<StagedPackage>();
@@ -232,6 +235,10 @@ function Bench({ panel, view, onView }: {
     dashboard.data?.tools ?? [],
     devices?.find((item) => item.hardwareId === hardwareId)?.deviceId
   );
+  const selfTestOf = (hardwareId: string) => selfTestTool(
+    dashboard.data?.tools ?? [],
+    devices?.find((item) => item.hardwareId === hardwareId)?.deviceId
+  );
 
   if (project.isError) {
     return <Centered><ErrorBanner className="max-w-[560px]" message={errorMessage(project.error)} /></Centered>;
@@ -245,6 +252,8 @@ function Bench({ panel, view, onView }: {
   const inspecting = view === "wiring" && wiringView === "ports" && selectedConnection;
   const controlled = controlMenu && hardware.find((item) => item.hardwareId === controlMenu.hardwareId);
   const actionHardware = action && hardware.find((item) => item.hardwareId === action.hardwareId);
+  const selfTestHardware = selfTest && hardware.find((item) => item.hardwareId === selfTest.hardwareId);
+  const controlSelfTest = controlMenu && selfTestOf(controlMenu.hardwareId);
   const devicesHeader = (
     <PanelHeader
       title={SIDE_PANEL_LABELS.devices}
@@ -400,6 +409,10 @@ function Bench({ panel, view, onView }: {
           label={controlled.label}
           actions={actionsOf(controlMenu.hardwareId)}
           onPick={(tool) => { setAction({ tool, hardwareId: controlMenu.hardwareId }); setControlMenu(undefined); }}
+          onSelfTest={controlSelfTest ? () => {
+            setSelfTest({ tool: controlSelfTest, hardwareId: controlMenu.hardwareId });
+            setControlMenu(undefined);
+          } : undefined}
           onClose={closeControl}
         />
       )}
@@ -410,6 +423,13 @@ function Bench({ panel, view, onView }: {
         hardwareId={action?.hardwareId ?? ""}
         available={action ? online.get(action.hardwareId) === true : false}
         onClose={() => setAction(undefined)}
+      />
+      <SelfTestDialog
+        tool={selfTest?.tool}
+        hardwareId={selfTest?.hardwareId ?? ""}
+        deviceLabel={selfTestHardware?.label ?? ""}
+        available={selfTest ? online.get(selfTest.hardwareId) === true : false}
+        onClose={() => setSelfTest(undefined)}
       />
       <DeviceInfoDialog
         target={info && {
