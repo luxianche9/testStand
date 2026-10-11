@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "teststand-adapter-jcxd-rsx8"
+version = "1.0.0"
+description = "testStand device plugin for the Devices-JC JCXD-RS-CPCI-8MI"
+requires-python = ">=3.11"
+dependencies = ["teststand-device-sdk>=0.2,<0.3"]
+
+[project.entry-points."teststand.devices"]
+jcxd_rsx8 = "teststand_adapter_jcxd_rsx8:DEVICE"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+teststand_adapter_jcxd_rsx8 = ["py.typed"]
+
+# Read by devices/pack.py into the .tsdev manifest: vendor drivers the bench must have installed,
+# and package files that must be in the wheel (e.g. "bin/<bridge>.exe").
+[tool.teststand.package]
+vendorDrivers = ["Devices-JC RSX8_JC virtual COM port driver (DriverSetup/ports)"]
+requiredFiles = []
