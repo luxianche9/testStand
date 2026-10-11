@@ -31,6 +31,19 @@ SDK range, vendor drivers, SHA-256 of every wheel) and `wheels/*.whl`. List the
 vendor drivers the bench needs and the files that must be in the wheel under
 `[tool.teststand.package]` in the adapter's `pyproject.toml`.
 
+Vendor DLLs shipped inside a package live in `src/<package>/bin/`, which git ignores;
+copy them from the vendor delivery before `pack.py` (it refuses to build without them):
+
+| Adapter | `bin/` file | From the vendor delivery |
+|---|---|---|
+| `jcxd_da6401` | `DA6401_JC.dll` | `JCXD-DA-X-6401-V1.0/Lib/x64/` |
+| `jcxd_mads3210` | `UMADX3210_x64.dll` | `JCXD-MADS-CPCI-3210-2S/Lib/x64/` |
+| `jcxd_sds48` | `JC_SDS48.dll` | `JCXD-SDS48-X-V2.0.0/Lib/x64/` |
+| `htlt_lvdt8` | `htlt_api_x64.dll` | `htlt 2.x kit/htlt/sdk/lib/x64/` |
+
+`art_pxi2355l`, `art_pxi2604` and `jcxd_rsx8` ship no DLL: they use the installed
+ART-DAQ, ART-SWITCH and the RSX8_JC virtual COM port driver.
+
 ## Device plugins
 
 An adapter package registers its `Device` subclass under the entry point group
@@ -100,8 +113,8 @@ the declaration and `hh.subscribe(streamId)` reads a stream as `hello`, `batch`,
 
 Contract revision `2026-10-08.1`. Builtin tools: `get_device_info`, `list_hardware`,
 `get_hardware_info`, `<prefix>_stream_read`, plus `<prefix>_transact` when a byte
-stream has a writer and `<prefix>_blob_read` when a blob stream exists, and
-`teststand_prepare_shutdown`. The declaration `{manifestRevision,
+stream has a writer, `<prefix>_blob_read` when a blob stream exists, `self_test` when
+the device overrides `Device.self_test()`, and `teststand_prepare_shutdown`. The declaration `{manifestRevision,
 contractRevision, identity, description, pinout, streams, capabilities, tools[{name,
 kind}]}` carries the pinout and the stream declarations; `manifestRevision` (sha256
 over the canonical declaration) says when to read it again.
@@ -132,6 +145,24 @@ clock by at most one poll interval (`--check` verifies it).
 | `pci1762` | `di` 16-bit (`IDI0..15`) `measured` published on change, `relay` 16-bit (`R0..15`) coil command read back after every write |
 | `pci6208v` (`isolation = "subprocess"`: PCIS-DASK writes to stdout when it loads) | `ao0..7` scalar in V, `setpoint`: the accepted value published on write and every point of a software waveform (`set_waveform`/`stop_waveform`, at most 200 updates/s; `safe_state` stops it) |
 | `cp118u_i` | `serial1..8` bytes: RX from a 10 ms reader thread that calls `idle()` after every read, TX via the stream writer, `mark` on configure/clear/flush |
+| `jcxd_da6401` | `ao0..63` scalar in V, `setpoint` |
+| `jcxd_mads3210` | `ai0..31` block in V, `measured`: hardware-clocked continuous acquisition, every sample at the card rate; `ao0..7` setpoint; `di`/`do` 48-bit; `freq0..1` Hz |
+| `jcxd_sds48` | `relays` 48-bit drive register (`switches`) |
+| `art_pxi2355l` | `di` 32-bit `measured` on change, `do` 32-bit driver readback |
+| `art_pxi2604` | `relays` 40-bit positions (`switches`) |
+| `htlt_lvdt8` | `pos0..7` setpoint, `exc0..7` measured excitation in Vrms |
+| `jcxd_rsx8` | `serial0..7` bytes like `cp118u_i` |
+
+### Self-test and acceptance
+
+Users cannot read a plugin's code, so every delivered plugin proves itself in two steps.
+`self_test` (builtin, reads only, never drives an external output) returns `{passed,
+checks[{name, measured, expected, passed, detail}], durationMs, dryRun}`: identity,
+driver version, channel counts, register readback, the sample rate a stream really
+reaches, readings that must be in range. It shows that the plugin and the card agree.
+What only wiring can show (an output voltage, a contact, a serial line) is the
+"现场验收" section of each adapter README: a loopback or meter procedure the user runs
+once on site, with the expected readings.
 
 The native vendor CLIs of `pci1710l` and `pci1762` are found through
 `settings.hwcliPath` or the `<ADAPTER>_HWCLI_PATH` / `HWCLI_PATH` environment variables.

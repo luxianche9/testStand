@@ -60,6 +60,7 @@ class Pci1234(Device):
 | `close()` | 阻塞：释放句柄、停止后台线程 |
 | `safe_state()` | 默认什么都不做；有输出的设备必须用 `@tool(kind="safe")` 覆盖 |
 | `capability_details()` | 非秘密的限值和生效设置；**不能访问驱动**，设备不可达时也要能返回 |
+| `self_test()` | 覆盖后 SDK 提供内置工具 `self_test`：返回 `Check` 列表（`check_equal`、`check_range` 或直接构造 `Check(name, passed, measured, expected, detail)`），在 `io_lock` 下、设备已打开时运行。**只读**：身份、版本、通道数、寄存器回读、流的实际采样率、读数范围；不得驱动任何外部输出（继电器、DO、AO 都不行），需要接线才能证明的放进 README 的现场验收步骤 |
 | `pinout()` | 默认抛 `NOT_SUPPORTED` |
 | `description`、`hardware_revision` | 类属性，进入 `/device` |
 | `isolation` | 类属性，`inproc`（默认）或 `subprocess`，由插件决定，后端和上层无感 |
