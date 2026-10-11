@@ -10,6 +10,7 @@ resolution-markers = [
 
 [manifest]
 members = [
+    "teststand-adapter-art-pxi2355l",
     "teststand-adapter-cp118u-i",
     "teststand-adapter-jcxd-da6401",
     "teststand-adapter-jcxd-mads3210",
@@ -395,6 +396,17 @@ wheels = [
 ]
 
 [[package]]
+name = "teststand-adapter-art-pxi2355l"
+version = "1.0.0"
+source = { editable = "adapters/art_pxi2355l" }
+dependencies = [
+    { name = "teststand-device-sdk" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "teststand-device-sdk", editable = "sdk" }]
+
+[[package]]
 name = "teststand-adapter-cp118u-i"
 version = "0.2.0"
 source = { editable = "adapters/cp118u_i" }
@@ -500,6 +512,7 @@ name = "teststand-devices"
 version = "0"
 source = { virtual = "." }
 dependencies = [
+    { name = "teststand-adapter-art-pxi2355l" },
     { name = "teststand-adapter-cp118u-i" },
     { name = "teststand-adapter-jcxd-da6401" },
     { name = "teststand-adapter-jcxd-mads3210" },
@@ -519,6 +532,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "teststand-adapter-art-pxi2355l", editable = "adapters/art_pxi2355l" },
     { name = "teststand-adapter-cp118u-i", editable = "adapters/cp118u_i" },
     { name = "teststand-adapter-jcxd-da6401", editable = "adapters/jcxd_da6401" },
     { name = "teststand-adapter-jcxd-mads3210", editable = "adapters/jcxd_mads3210" },
