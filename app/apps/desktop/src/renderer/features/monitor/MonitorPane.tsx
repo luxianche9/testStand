@@ -202,7 +202,6 @@ export function MonitorPane({ bench, toolbar }: {
                 streams={sampled}
                 timeline={runId ? timeline : undefined}
                 source={source}
-                live={mode !== "replay"}
                 follow={time.follow}
                 spanMs={time.spanMs}
                 from={time.from}
@@ -241,7 +240,6 @@ export function MonitorPane({ bench, toolbar }: {
                 origin={mode === "live" ? undefined : origin}
                 jump={jump}
                 stepNames={runId ? view.stepNames : undefined}
-                outline={runId ? view.outline : undefined}
                 extra={runId ? view.results : undefined}
                 onPick={(tb) => pick(tb, false)}
                 onStep={zoomStep}

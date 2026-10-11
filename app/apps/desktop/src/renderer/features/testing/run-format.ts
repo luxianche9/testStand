@@ -204,70 +204,6 @@ export function resultConsoleEntries(results: TestResult[], timeline: RunTimelin
   });
 }
 
-const OUTLINE_REGIONS = [["prepare", "准备"], ["test", "测试"], ["cleanup", "清理"]] as const;
-/** Outline marks of a step state and their ANSI colours. */
-const OUTLINE_STATE: Record<string, { mark: string; color: string; label: string }> = {
-  waiting: { mark: "○", color: "2;37", label: "" },
-  running: { mark: "▶", color: "1;33", label: "执行中" },
-  Pass: { mark: "✓", color: "32", label: "" },
-  Fail: { mark: "✗", color: "1;31", label: "失败" },
-  Error: { mark: "!", color: "1;31", label: "错误" },
-  skipped: { mark: "–", color: "2;37", label: "跳过" },
-  Aborted: { mark: "■", color: "33", label: "已终止" }
-};
-
-/**
- * The whole plan as console lines on top of the run console: every step of every region as a
- * tree, with its state, duration, loop or attempt count and its first result. Steps not reached
- * yet are listed too (dim), so the run is never a black box.
- */
-export function planOutlineEntries(
-  trace: ExecutionTrace | undefined,
-  typeLabel: (type: string) => string = (type) => type
-): ConsoleEntry[] {
-  if (!trace) return [];
-  const entries: ConsoleEntry[] = [];
-  const line = (id: string, text: string, color: string, tag: string, executionId?: string) => {
-    entries.push({
-      id: `plan:${id}`, tb: Number.NEGATIVE_INFINITY, kind: "plan", outline: entries.length, source: "计划",
-      tag, color, text, ...(executionId ? { executionId } : {})
-    });
-  };
-  const walk = (nodes: ExecutionTraceNode[], prefix: string, path: string) => {
-    nodes.forEach((node, index) => {
-      const last = index === nodes.length - 1;
-      const state = OUTLINE_STATE[node.state] ?? OUTLINE_STATE.waiting!;
-      const scopes = node.iterations.length ? node.iterations : node.attempts;
-      const current = scopes.at(-1);
-      const count = current?.count ?? node.iterationCount ?? node.attemptCount;
-      const scope = current
-        ? node.iterations.length ? `第 ${current.index + 1}${count ? `/${count}` : ""} 次` : `第 ${current.index + 1} 次尝试`
-        : "";
-      const result = node.results[0];
-      const details = [
-        typeLabel(node.step.type),
-        state.label,
-        scope,
-        node.durationMs != null && node.state !== "running" ? durationText(node.durationMs) : "",
-        result ? clipText(`${resultSummary(result)}${typeof result.unit === "string" ? ` ${result.unit}` : ""}`, 60)
-          : ""
-      ].filter(Boolean).join(" · ");
-      const name = node.step.name ?? node.stepId;
-      line(`${path}/${index}`, `${prefix}${last ? "└─" : "├─"} ${name}  \x1b[2m${details}\x1b[0m`, state.color,
-        `${state.mark} `, node.pending ? undefined : node.executionId);
-      const children = current ? current.children : node.children.length ? node.children : pendingChildren(node);
-      walk(children, `${prefix}${last ? "   " : "│  "}`, `${path}/${index}`);
-    });
-  };
-  for (const [region, label] of OUTLINE_REGIONS) {
-    const nodes = trace.regions[region];
-    if (!nodes.length) continue;
-    line(region, `${label}区（${nodes.length} 项）`, "1;37", "  ");
-    walk(nodes, "", region);
-  }
-  return entries;
-}
-
 /**
  * The children of a step as the flow shows them: those of its current loop iteration or retry
  * attempt, or the ones it ran; a step not reached yet still lists what it contains.
@@ -289,8 +225,4 @@ function pendingChildren(node: ExecutionTraceNode): ExecutionTraceNode[] {
 
 export function durationText(ms: number): string {
   return ms >= 1000 ? `${(ms / 1000).toFixed(2)} s` : `${Math.round(ms)} ms`;
-}
-
-function clipText(text: string, max: number): string {
-  return text.length > max ? `${text.slice(0, max - 1)}…` : text;
 }

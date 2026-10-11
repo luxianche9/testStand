@@ -1,13 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from "react";
-import { ActivityIcon, ChevronRightIcon, GaugeIcon, XIcon } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { ActivityIcon, ChevronRightIcon, XIcon } from "lucide-react";
 import type { RunTimeline, StreamInfo, StreamWindow } from "@teststand/contracts/observability";
-import { cn, EmptyState, IconButton, SegmentedControl } from "../../ui";
+import { cn, EmptyState, IconButton } from "../../ui";
 import { DisplayMenu, useChannelDisplays, type ChannelDisplay } from "./channel-display.js";
-import { StatePanel } from "./StatePanel.js";
 import { StreamScope, type SeriesStyle } from "./StreamScope.js";
 import {
   analogData, bitsWidth, CHANNEL_COLORS, clockTime, codeText, combinedOverlays, deviceName, isSampled, logicData,
-  NO_OVERLAYS, pointAt, pointMask, pointText, relativeTime, streamUnit, type TimeRange
+  pointAt, pointMask, pointText, relativeTime, streamUnit, type TimeRange
 } from "./stream-model.js";
 import { useStreamsPoints, type StreamSource } from "./useStreamReader.js";
 
@@ -19,14 +18,6 @@ const LOGIC_AXIS_PX = 104;
 /** The logic analyser never takes more than this from the analog traces. */
 const LOGIC_MAX_PX = 180;
 
-type Layout = "overlay" | "split";
-
-const PANEL_KEY = "teststand.scope-state-panel";
-
-function storedPanelOpen(): boolean {
-  try { return localStorage.getItem(PANEL_KEY) !== "false"; } catch { return true; }
-}
-
 interface Channel {
   stream: StreamInfo;
   color: string;
@@ -34,16 +25,15 @@ interface Channel {
 }
 
 /**
- * Multi-channel oscilloscope of the monitor panel's sampled streams: a status panel of every
- * shown channel at the cursor (lamps, relay contacts, codes, numbers), one strip per analog
- * channel (or all overlaid) on one time axis, bit streams as a logic analyser underneath — a lane
- * per bit or one bus lane of values —
- * and, during or after a run, its judged windows as a verdict strip along the top of each plot.
- * The channel list reads every channel at the cursor (or the view's end), hides a channel on
- * click, picks how each bits channel is shown and removes a channel from the panel.
+ * Multi-channel oscilloscope of the monitor panel's sampled streams: every analog channel overlaid
+ * on one plot (one time axis, one value axis, colour per channel), bit streams as a logic analyser
+ * underneath — a lane per bit or one bus lane of values — and, during or after a run, its judged
+ * windows as a verdict strip along the top. The channel list is the one place readings are shown:
+ * it reads every channel at the cursor (or the view's end), hides a channel on click, picks how
+ * each bits channel is shown and removes a channel from the panel.
  */
 export function SignalScope({
-  streams, timeline, source, live, follow, spanMs, from, range, origin, marker, syncKey, controls, emptyText,
+  streams, timeline, source, follow, spanMs, from, range, origin, marker, syncKey, controls, emptyText,
   onPick, onSelectRange, onReset, onRemove
 }: {
   /** The channels, in panel order; record streams among them are left to the terminal. */
@@ -51,7 +41,6 @@ export function SignalScope({
   /** The run shown, for its verdict windows. */
   timeline: RunTimeline | undefined;
   source: StreamSource;
-  live: boolean;
   follow: boolean;
   spanMs: number;
   from?: number | undefined;
@@ -67,7 +56,6 @@ export function SignalScope({
   onRemove?: (stream: StreamInfo) => void;
 }) {
   const [chosen, setChosen] = useState<ReadonlySet<string>>();
-  const [layout, setLayout] = useState<Layout>("split");
   const [cursor, setCursor] = useState<number>();
   // The cursor moves with every mouse event; the readings follow it once per frame.
   const cursorFrame = useRef(0);
@@ -84,7 +72,6 @@ export function SignalScope({
   /** While following, a bit keeps its lane once it has changed, so lanes don't come and go. */
   const keptBits = useRef(new Map<string, number>());
   const [othersOpen, setOthersOpen] = useState(false);
-  const [panelOpen, setPanelOpen] = useState(storedPanelOpen);
   const { displayOf, setDisplay } = useChannelDisplays();
 
   const channels = useMemo<Channel[]>(() => streams
@@ -105,9 +92,7 @@ export function SignalScope({
   const holdUntil = (item: StreamWindow | undefined) =>
     view ? Math.min(view[1], item?.watermarkTb ?? view[1]) : undefined;
 
-  const overlaid = layout === "overlay";
   const analogPlot = useMemo(() => {
-    if (!overlaid) return undefined;
     const inputs = analog.flatMap((channel) => {
       const item = points.reads[channel.stream.key];
       return item ? [{
@@ -120,7 +105,7 @@ export function SignalScope({
     return inputs.length ? analogData(inputs) : undefined;
   // `holdUntil` only reads `view`.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [overlaid, analog.map((channel) => channel.stream.key).join(), points.reads, view]);
+  }, [analog.map((channel) => channel.stream.key).join(), points.reads, view]);
   const analogStyles = useMemo<SeriesStyle[]>(() => analog
     .filter((channel) => points.reads[channel.stream.key])
     .map((channel) => ({ color: channel.color, stepped: !channel.stream.states.includes("sampling") })),
@@ -240,42 +225,10 @@ export function SignalScope({
         </div>
       </aside>
       <div className="flex min-h-0 min-w-0 flex-col">
-        <div className="flex h-8 shrink-0 items-center gap-1.5 border-b border-line px-2">
-          <span className="text-xs font-semibold text-fg-2">示波器</span>
-          {live && <span className="text-2xs text-run">● 实时</span>}
-          <div className="ml-auto flex items-center gap-1">
-            {controls}
-            <IconButton
-              label={panelOpen ? "隐藏状态面板" : "显示状态面板"}
-              size="icon-sm"
-              variant="ghost"
-              aria-pressed={panelOpen}
-              onClick={() => setPanelOpen((open) => {
-                try { localStorage.setItem(PANEL_KEY, String(!open)); } catch { /* Storage may be unavailable. */ }
-                return !open;
-              })}
-            >
-              <GaugeIcon />
-            </IconButton>
-            <SegmentedControl<Layout>
-              label="通道布局"
-              size="xs"
-              value={layout}
-              onChange={setLayout}
-              options={[{ value: "split", label: "分通道" }, { value: "overlay", label: "叠加" }]}
-            />
-          </div>
-        </div>
-        {panelOpen && (
-          <StatePanel
-            channels={shown}
-            reads={points.reads}
-            at={cursor ?? (follow ? undefined : marker ?? view?.[1])}
-            displayOf={displayOf}
-            onDisplay={setDisplay}
-          />
+        {controls && (
+          <div className="flex h-8 shrink-0 items-center justify-end gap-1 border-b border-line px-2">{controls}</div>
         )}
-        {analog.length > 0 && layout === "overlay" && (
+        {analog.length > 0 && (
           <div className="min-h-0 flex-1 px-1 pt-1">
             <StreamScope
               data={analogPlot}
@@ -286,21 +239,6 @@ export function SignalScope({
               timeAxis={!lanes}
               {...scopeProps}
             />
-          </div>
-        )}
-        {analog.length > 0 && layout === "split" && (
-          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto" style={{ scrollbarGutter: "stable" }}>
-            {analog.map((channel, index) => (
-              <SplitTrace
-                key={channel.stream.key}
-                channel={channel}
-                read={points.reads[channel.stream.key]}
-                holdUntil={holdUntil(points.reads[channel.stream.key])}
-                timeline={timeline}
-                timeAxis={!lanes && index === analog.length - 1}
-                scopeProps={scopeProps}
-              />
-            ))}
           </div>
         )}
         {!analog.length && (
@@ -420,45 +358,4 @@ function ChannelGroups({ channels, reads, at, visible, onToggle, displayOf, onDi
       })}
     </div>
   ));
-}
-
-/** One channel's strip: name, unit and cursor reading above its own trace. */
-function SplitTrace({ channel, read, holdUntil, timeline, timeAxis, scopeProps }: {
-  channel: Channel;
-  read: StreamWindow | undefined;
-  holdUntil: number | undefined;
-  timeline: RunTimeline | undefined;
-  timeAxis: boolean;
-  scopeProps: Omit<ComponentProps<typeof StreamScope>, "data" | "overlays">;
-}) {
-  const { stream, color } = channel;
-  const level = !stream.states.includes("sampling");
-  const data = useMemo(
-    () => read ? analogData([{ label: stream.streamId, points: read.points ?? [], level, holdUntil }]) : undefined,
-    [read, stream.streamId, level, holdUntil]
-  );
-  const series = useMemo(() => [{ color, stepped: level }], [color, level]);
-  const overlays = useMemo(() => timeline ? combinedOverlays(timeline, [stream]) : NO_OVERLAYS, [timeline, stream]);
-  const unit = streamUnit(stream);
-  return (
-    <div className="flex min-h-[88px] flex-1 flex-col border-b border-line px-1 pt-0.5 last:border-b-0">
-      <StreamScope
-        label={(
-          <>
-            <span aria-hidden className="h-0.5 w-3 shrink-0" style={{ background: color }} />
-            <span className="truncate font-medium text-fg">{stream.streamId}</span>
-            <span className="truncate text-fg-3">{deviceName(stream.hardwareId)}{unit && ` · ${unit}`}</span>
-          </>
-        )}
-        unit={unit}
-        data={data}
-        series={series}
-        overlays={overlays}
-        height="fill"
-        timeAxis={timeAxis}
-        readoutTime={false}
-        {...scopeProps}
-      />
-    </div>
-  );
 }

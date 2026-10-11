@@ -3,9 +3,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { TestStandLiveApi } from "@teststand/contracts/desktop";
 import type { RunMessages, RunTimeline } from "@teststand/contracts/observability";
 import { queryKeys } from "../../lib/query-keys.js";
-import { useTestStepCatalog } from "../../lib/queries.js";
 import { runRange, type StreamSource, type TimeRange } from "../streams/index.js";
-import { activeExecutions, firstProblemExecution, planOutlineEntries, resultConsoleEntries } from "./run-format.js";
+import { activeExecutions, firstProblemExecution, resultConsoleEntries } from "./run-format.js";
 import { buildExecutionTrace } from "./run-log-model.js";
 import { useRunLog } from "./useRunLog.js";
 
@@ -28,11 +27,6 @@ export function useRunView(runId: string | undefined, live: boolean, liveFrames?
     () => (log && trace ? firstProblemExecution(log, trace) : undefined),
     [log, trace]
   );
-  const catalog = useTestStepCatalog().data;
-  const outline = useMemo(() => planOutlineEntries(
-    trace,
-    (type) => catalog?.find((item) => item.type === type)?.label ?? type
-  ), [trace, catalog]);
   const stepNames = useMemo(() => new Map([...(trace?.byExecutionId.values() ?? [])].flatMap(
     (node): [string, string][] => node.step.name ? [[node.executionId, node.step.name]] : []
   )), [trace]);
@@ -64,7 +58,7 @@ export function useRunView(runId: string | undefined, live: boolean, liveFrames?
   const decoded: RunMessages | undefined = messages.data?.bindings.length ? messages.data : undefined;
   const results = useMemo(() => resultConsoleEntries(log?.results ?? [], data), [log?.results, data]);
   return {
-    runLog, trace, activeExecutionIds, problemExecutionId, outline, stepNames,
+    runLog, trace, activeExecutionIds, problemExecutionId, stepNames,
     timeline: data, origin: data?.tb0 ?? undefined, range, decoded, results, source
   };
 }

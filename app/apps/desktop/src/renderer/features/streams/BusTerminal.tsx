@@ -18,7 +18,6 @@ const ENTRY_CAP = RECORD_CAP;
 const REDRAW_MS = 250;
 
 const KINDS: { kind: EntryKind; label: string }[] = [
-  { kind: "plan", label: "计划" },
   { kind: "bus", label: "总线" },
   { kind: "call", label: "操作" },
   { kind: "step", label: "步骤" },
@@ -33,14 +32,14 @@ export interface ConsoleJump {
 }
 
 /**
- * Run console: the plan outline (every step with its state) on top, then every bus/serial record
- * of the run merged with the tool calls and what the devices returned, step boundaries, verdicts
- * and run events, in backend-time order, nested under their step, with the time relative to the
- * run start. Lines can be filtered by kind and by device. A click on an outline step zooms to it,
- * a click on any other line picks its instant; `jump` scrolls to an instant picked elsewhere.
+ * Run console: every bus/serial record of the run merged with the tool calls and what the devices
+ * returned, step boundaries, verdicts and run events, in backend-time order, nested under their
+ * step, with the time relative to the run start. Lines can be filtered by kind and by device. A
+ * click on a line picks its instant (a step line also zooms to the step); `jump` scrolls to an
+ * instant picked elsewhere. The plan with each step's state is the test panel's flow, not here.
  */
 export function BusTerminal({
-  streams, timeline, source, live, origin, jump, stepNames, outline, extra, onPick, onStep
+  streams, timeline, source, live, origin, jump, stepNames, extra, onPick, onStep
 }: {
   /** Record streams to show; default: every record stream of the run. */
   streams?: StreamInfo[] | undefined;
@@ -51,8 +50,6 @@ export function BusTerminal({
   jump?: ConsoleJump | undefined;
   /** Step names by execution id, so step lines read as the plan does. */
   stepNames?: ReadonlyMap<string, string> | undefined;
-  /** The plan outline; each new outline replaces the previous one. */
-  outline?: readonly ConsoleEntry[] | undefined;
   /** Further lines from outside the timeline (published results). */
   extra?: readonly ConsoleEntry[] | undefined;
   onPick?: (tb: number) => void;
@@ -136,9 +133,8 @@ export function BusTerminal({
     list.push(...fresh);
     if (!inOrder) list.sort(compareEntries);
     if (list.length > ENTRY_CAP) {
-      // The oldest log lines go; the plan outline on top stays.
-      const head = Math.max(0, list.findIndex((entry) => entry.outline === undefined));
-      for (const entry of list.splice(head, list.length - ENTRY_CAP)) ids.current.delete(entry.id);
+      // The oldest lines go.
+      for (const entry of list.splice(0, list.length - ENTRY_CAP)) ids.current.delete(entry.id);
       scheduleRedraw();
     } else if (inOrder && redrawTimer.current === undefined) {
       render(fresh);
@@ -153,21 +149,6 @@ export function BusTerminal({
   // Timeline-derived lines (steps, calls, verdicts, events) grow as the run goes on.
   useEffect(() => { addRef.current(timelineEntries(timeline, stepNames)); }, [timeline, stepNames]);
   useEffect(() => { if (extra) addRef.current(extra); }, [extra]);
-  useEffect(() => {
-    const known = ids.current;
-    const previous = entries.current.filter((entry) => entry.outline !== undefined);
-    const next = outline ?? [];
-    const same = previous.length === next.length
-      && previous.every((entry, index) => entry.id === next[index]?.id && entry.text === next[index]?.text);
-    if (same) return;
-    for (const entry of previous) known.delete(entry.id);
-    for (const entry of next) known.set(entry.id, entry);
-    entries.current = [...next, ...entries.current.filter((entry) => entry.outline === undefined)];
-    setCounts(countKinds(entries.current));
-    if (terminal.current) scheduleRedraw();
-  // `scheduleRedraw` only reads refs.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [outline]);
 
   const onRecords = useCallback((stream: StreamInfo, records: StreamRecord[]) => {
     addRef.current(records.map((record) => recordEntry(stream, record)));
@@ -227,12 +208,10 @@ export function BusTerminal({
         const entry = index === undefined ? undefined : written.current[index];
         if (!entry) return;
         instance.selectLines(lineStart(instance, bufferRow), lineEnd(instance, bufferRow));
-        if (entry.outline !== undefined) {
-          if (entry.executionId && !entry.executionId.startsWith("pending:")) onStepRef.current?.(entry.executionId);
-          return;
-        }
         picked.current = entry.tb;
         onPickRef.current?.(entry.tb);
+        // A step's start line also zooms to the step, as a click on it in the test panel does.
+        if (entry.kind === "step" && entry.executionId) onStepRef.current?.(entry.executionId);
       };
       element.addEventListener("mousedown", onDown);
       element.addEventListener("mouseup", onUp);
@@ -347,7 +326,7 @@ export function BusTerminal({
           </span>
         )}
         {truncated && <span className="truncate">仅保留最近 {ENTRY_CAP} 条</span>}
-        <span className="ml-auto">点击一行定位到该时刻，点击计划中的步骤缩放到该步骤</span>
+        <span className="ml-auto">点击一行定位到该时刻，点击步骤行缩放到该步骤</span>
       </div>
     </div>
   );
@@ -413,7 +392,7 @@ function consoleDevices(
 }
 
 function emptyCounts(): Record<EntryKind, number> {
-  return { plan: 0, bus: 0, call: 0, step: 0, judge: 0, event: 0 };
+  return { bus: 0, call: 0, step: 0, judge: 0, event: 0 };
 }
 
 function countKinds(entries: ConsoleEntry[]): Record<EntryKind, number> {

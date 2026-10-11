@@ -33,10 +33,10 @@ describe("digital channel display", () => {
   });
 
   it("takes the plugin's suggestion for how a bits stream reads", () => {
-    expect(defaultDisplay({ declaration: { display: "switches" } })).toEqual({ trace: "logic", state: "switches" });
-    expect(defaultDisplay({ declaration: { display: "code" } })).toEqual({ trace: "bus", state: "code" });
-    expect(defaultDisplay({ declaration: { bitLabels: ["DI0"] } })).toEqual({ trace: "logic", state: "lamps" });
-    expect(defaultDisplay({} as Pick<StreamInfo, "declaration">)).toEqual({ trace: "bus", state: "code" });
+    expect(defaultDisplay({ declaration: { display: "switches" } })).toEqual({ trace: "logic" });
+    expect(defaultDisplay({ declaration: { display: "code" } })).toEqual({ trace: "bus" });
+    expect(defaultDisplay({ declaration: { bitLabels: ["DI0"] } })).toEqual({ trace: "logic" });
+    expect(defaultDisplay({} as Pick<StreamInfo, "declaration">)).toEqual({ trace: "bus" });
   });
 });
 
@@ -61,12 +61,4 @@ describe("run console nesting", () => {
     expect(consoleLine(entries.find((entry) => entry.id === "call:op")!, "text", 0)).toContain("    \x1b[34m→ ");
   });
 
-  it("keeps the plan outline on top, in its own order and without a time", () => {
-    const outline: ConsoleEntry[] = [1, 0].map((index) => ({
-      id: `plan:${index}`, tb: Number.NEGATIVE_INFINITY, kind: "plan", outline: index, source: "计划", text: `${index}`
-    }));
-    const sorted = [...timelineEntries(timeline), ...outline].sort(compareEntries);
-    expect(sorted.slice(0, 2).map((entry) => entry.id)).toEqual(["plan:0", "plan:1"]);
-    expect(consoleLine(outline[1]!, "text", 0).startsWith(`\x1b[2m${" ".repeat(9)}\x1b[0m`)).toBe(true);
-  });
 });

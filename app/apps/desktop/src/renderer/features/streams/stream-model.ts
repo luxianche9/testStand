@@ -390,7 +390,7 @@ export interface ScopeOverlays {
   marks: { tb: number; tone: OverlayTone; label: string }[];
 }
 
-export const NO_OVERLAYS: ScopeOverlays = { windows: [], marks: [] };
+const NO_OVERLAYS: ScopeOverlays = { windows: [], marks: [] };
 
 export function verdictTone(verdict: string | null | undefined): OverlayTone {
   const value = (verdict ?? "").toLowerCase();
@@ -521,21 +521,16 @@ export function relativeTime(tb: number, origin: number, digits = 3): string {
 
 // -- run console ---------------------------------------------------------------------------------
 
-export type EntryKind = "plan" | "bus" | "call" | "step" | "judge" | "event";
+export type EntryKind = "bus" | "call" | "step" | "judge" | "event";
 
-/**
- * One console line: a step of the plan outline, bus traffic, a tool call, a step boundary, a
- * verdict or a run event.
- */
+/** One console line: bus traffic, a tool call, a step boundary, a verdict or a run event. */
 export interface ConsoleEntry {
   id: string;
   tb: number;
   kind: EntryKind;
-  /** Plan outline lines come first, in this order, without a time. */
-  outline?: number;
   /** Nesting under the step it belongs to, as indentation. */
   depth?: number;
-  /** The step execution a line is about; clicking an outline line zooms to it. */
+  /** The step execution a line is about. */
   executionId?: string;
   /** Where it happened: `CP118U_I/serial1`, `PCI1710L`, `step`, `run`. */
   source: string;
@@ -730,8 +725,7 @@ export function consoleLine(entry: ConsoleEntry, mode: TerminalMode, origin?: nu
   }
   const source = entry.source.length > SOURCE_WIDTH ? `${entry.source.slice(0, SOURCE_WIDTH - 1)}…` : entry.source;
   const body = entry.kind === "bus" || entry.kind === "event" ? text : `\x1b[${color}m${text}\x1b[0m`;
-  const time = entry.outline !== undefined ? " ".repeat(TIME_WIDTH)
-    : origin === undefined ? clockTime(entry.tb) : relativeTime(entry.tb, origin).padStart(TIME_WIDTH);
+  const time = origin === undefined ? clockTime(entry.tb) : relativeTime(entry.tb, origin).padStart(TIME_WIDTH);
   const indent = "  ".repeat(Math.min(entry.depth ?? 0, 12));
   return `\x1b[2m${time}\x1b[0m \x1b[2;36m${source.padEnd(SOURCE_WIDTH)}\x1b[0m `
     + `${indent}\x1b[${color}m${tag}\x1b[0m ${body}`;
@@ -739,14 +733,8 @@ export function consoleLine(entry: ConsoleEntry, mode: TerminalMode, origin?: nu
 
 const TIME_WIDTH = 9;
 
-/**
- * Console order: the plan outline first, then time; at one instant events, steps, calls, bus
- * traffic and verdicts.
- */
-const KIND_ORDER: Record<EntryKind, number> = { plan: -1, event: 0, step: 1, call: 2, bus: 3, judge: 4 };
+/** Console order: time; at one instant events, steps, calls, bus traffic and verdicts. */
+const KIND_ORDER: Record<EntryKind, number> = { event: 0, step: 1, call: 2, bus: 3, judge: 4 };
 export function compareEntries(a: ConsoleEntry, b: ConsoleEntry): number {
-  if (a.outline !== undefined || b.outline !== undefined) {
-    return (a.outline ?? Infinity) - (b.outline ?? Infinity);
-  }
   return a.tb - b.tb || KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 }
