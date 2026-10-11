@@ -34,7 +34,6 @@ from teststand_backend.contracts.mcp import (
     with_error_schema,
 )
 from teststand_backend.contracts.operations import OperationDefinition, Tool
-from teststand_backend.devkit import DEVKIT_TOOLS
 from teststand_backend.testing.tools import TESTING_TOOLS
 from teststand_backend.util import clone
 
@@ -47,7 +46,6 @@ Run = Callable[[Record, Record], Awaitable[Any]]
 BUILTIN_TOOLS: list[Tool] = [
     *PLATFORM_TOOLS,
     *AGENT_TOOLS,
-    *DEVKIT_TOOLS,
     *CONTRACT_TOOLS,
     *STREAM_TOOLS,
     *TESTING_TOOLS,

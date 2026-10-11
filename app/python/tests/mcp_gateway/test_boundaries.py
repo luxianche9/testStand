@@ -501,4 +501,3 @@ def test_operations_the_operator_confirms_wait_for_a_person() -> None:
     for name in ("devices_addDeviceFromFile", "devices_updatePackageFromFile", "request_wiring"):
         assert gateway.registry.waits(name), name
     assert not gateway.registry.waits("list_devices")
-    assert not gateway.registry.waits("devkit_check_adapter")

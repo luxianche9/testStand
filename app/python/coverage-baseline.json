@@ -1,7 +1,6 @@
 {
   "application": { "lines": [751, 768], "branches": [138, 154] },
   "contracts": { "lines": [744, 825], "branches": [251, 310] },
-  "devkit": { "lines": [683, 780], "branches": [188, 244] },
   "devices": { "lines": [970, 1054], "branches": [271, 334] },
   "host": { "lines": [921, 1159], "branches": [187, 256] },
   "mcp_gateway": { "lines": [619, 648], "branches": [165, 190] },

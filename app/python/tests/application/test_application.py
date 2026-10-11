@@ -25,7 +25,6 @@ AGENT_ALLOWED = {
     "system.read",
     "devices.read",
     "devices.manageDevices",  # each such operation asks the operator to confirm
-    "devices.develop",  # adapters in the project (devkit); installing still needs the operator
     "hardware.read",
     "hardware.manage",
     "hardware.executeTools",

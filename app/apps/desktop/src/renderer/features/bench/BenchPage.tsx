@@ -3,7 +3,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ReactFlowProvider, useEdgesState, useNodesState } from "@xyflow/react";
 import type { DeviceInstance, Hardware, ToolCatalogItem } from "@teststand/contracts/devices";
 import { PlusIcon, RefreshCwIcon, TriangleAlertIcon } from "lucide-react";
-import { openAssistant } from "../../lib/assistant.js";
 import { errorMessage } from "../../lib/errors.js";
 import { resolvePortRef } from "../../lib/hardware.js";
 import { invalidateDeviceData, invalidateWiringData } from "../../lib/mutations.js";
@@ -56,24 +55,6 @@ const wiringViewOptions = [
   { value: "pins", label: "针脚列表", title: "按端口列出所有接线，含同端口跳线" },
   { value: "ports", label: "端口连线", title: "在画布上摆放设备并拖线" }
 ] as const;
-
-/**
- * Handed to the assistant's composer unsent: a brief pointing the agent at the bundled plugin guide
- * and the devkit tools (design doc 8.5), with the blanks the operator fills in. The agent reads the
- * manuals itself with import_document, so the brief asks where they are rather than for an upload.
- */
-const NEW_ADAPTER_DRAFT = [
-  "按设备插件开发指南（read_reference ts-device-plugin）的流程，在本项目里给我写一个新的设备适配器。",
-  "",
-  "设备型号 / 厂商：",
-  "资料位置（手册、头文件、DLL 所在的文件夹）：",
-  "它在这台电脑上的样子（设备管理器里的名称、COM 口号、卡号）：",
-  "要用到的动作和要看的数据流：",
-  "",
-  "用 import_document 读手册，devkit 工具生成、检查、打包，devices_addDeviceFromFile 添加；",
-  "手册里没有的事实（引脚、量程、安全值、上电状态）不要编，写成 TODO(new_device) 并问我。",
-  "在真实硬件上只做只读操作，会改变输出的动作先问我。"
-].join("\n");
 
 /**
  * 测试台架, the project's one screen: the sidebar panel the activity bar picks (设备管理, 接线日志,
@@ -282,7 +263,6 @@ function Bench({ panel, view, onView }: {
               <MenuItem onSelect={() => setPartEditor({ open: true })}>添加被测件 / 夹具</MenuItem>
               <MenuSeparator />
               <MenuItem onSelect={() => void importPart()}>导入被测件 / 夹具（.tshw）…</MenuItem>
-              <MenuItem onSelect={() => openAssistant(NEW_ADAPTER_DRAFT)}>让 Agent 照着手册写新适配器</MenuItem>
             </MenuContent>
           </Menu>
         </>

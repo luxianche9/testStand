@@ -5,7 +5,7 @@
 ## 适配器目录
 
 ```
-plugins/<adapter>/            （testStand 项目里；devkit_create_adapter 生成）
+devices/adapters/<adapter>/
   pyproject.toml              依赖 teststand-device-sdk>=0.2,<0.3；入口点 teststand.devices
   README.md                   设备语义、流、settings、构建与测试
   src/teststand_adapter_<adapter>/
@@ -27,27 +27,25 @@ pci1234 = "teststand_adapter_pci1234:DEVICE"
 
 - 入口点名就是设备类型（实例记录里的 `type`），用适配器 id，小写、唯一。
 - `device_types()` 返回 `{类型: "module:attr"}`；`load_device(spec)` 先按入口点名查找，找不到再把 `spec` 当作模块（取 `DEVICE`）或 `module:ClassName`。所以 `--check` 既能写 `--adapter pci1234`，也能写 `--adapter teststand_adapter_pci1234`。
-- 入口点元数据在打包时写进 wheel：`devkit_package_adapter` 读 `pyproject.toml` 的入口点。testStand 不带任何适配器，设备类型都由 `.tsdev` 设备包安装。
+- 入口点元数据在安装时生成：改了 `pyproject.toml` 的入口点要重新 `uv sync`（`devices/` 下）或 `pnpm python:setup`（`app/` 下，开发环境把四个现有适配器作为内置类型装在 dev 组里）。发布版不带任何适配器，设备类型都由 `.tsdev` 设备包安装。
 
 ## `Device`
 
 ```python
 class Pci1234(Device):
-    manufacturer = "Acme"  # 厂商原文
-    model = "PCI-1234"  # 型号原文
-    prefix = "pci1234"  # 工具前缀：pci1234_set_output
+    manufacturer = "Acme"          # 厂商原文
+    model = "PCI-1234"             # 型号原文
+    prefix = "pci1234"             # 工具前缀：pci1234_set_output
     capabilities = ("digital_output",)
-    version = "0.1.0"  # 适配器版本
+    version = "0.1.0"              # 适配器版本
     instructions = "给 AI 的两三句说明：设备做什么、先调哪个工具、每个输出的物理效果。"
     description = "给人和 AI 的一段设备描述：接口、通道、连接器、限制。出现在 /device.description。"
-    hardware_revision = None  # 已知的硬件版本；None 时 /device 省略
-    isolation = "inproc"  # 或 "subprocess"：驱动写 stdout、可能崩溃、必须独占进程时
+    hardware_revision = None       # 已知的硬件版本；None 时 /device 省略
+    isolation = "inproc"           # 或 "subprocess"：驱动写 stdout、可能崩溃、必须独占进程时
 
     def __init__(self, config: DeviceConfig) -> None:
-        super().__init__(config)  # 必须先调用：建立 self.streams 和 self.io_lock
-        self.driver = self.select_driver(
-            lambda: VendorDriver(config.settings.get("dllPath")), SimulatedDriver
-        )
+        super().__init__(config)                 # 必须先调用：建立 self.streams 和 self.io_lock
+        self.driver = self.select_driver(lambda: VendorDriver(config.settings.get("dllPath")), SimulatedDriver)
 ```
 
 | 成员 | 说明 |
@@ -82,13 +80,8 @@ class Pci1234(Device):
 ## `@tool`
 
 ```python
-@tool(
-    kind="actuate",
-    output=Voltage,
-    safety_action="safe_state",
-    effects=("voltage_output_active",),
-    description="Set one AO channel ... Never re-send after a timeout: read the ao<n> stream first.",
-)
+@tool(kind="actuate", output=Voltage, safety_action="safe_state", effects=("voltage_output_active",),
+      description="Set one AO channel ... Never re-send after a timeout: read the ao<n> stream first.")
 def set_voltage(self, channel: AoChannel, volts: Volts) -> dict[str, Any]:
     ...
     return {"channel": channel, "volts": volts}
@@ -112,18 +105,14 @@ def set_voltage(self, channel: AoChannel, volts: Volts) -> dict[str, Any]:
 
 ```python
 AoChannel = param(int, "Zero-based AO channel 0..7.", ge=0, le=7)
-Volts = param(
-    float, "Output in volts, -10.0..10.0 V (bipolar range).", ge=-10.0, le=10.0, allow_inf_nan=False
-)
+Volts = param(float, "Output in volts, -10.0..10.0 V (bipolar range).", ge=-10.0, le=10.0, allow_inf_nan=False)
 Parity = param(Literal["N", "E", "O"], "Parity: N none, E even, O odd.")
 Note = param(str | None, "Optional operator note, at most 200 characters.", max_length=200)
 
-Voltage = model(
-    "VoltageResult",
-    channel=(int, "Zero-based AO channel."),
-    volts=(float, "Value accepted by the driver in V; not a measurement."),
-    warning=(str, "Driver warning text.", None),
-)  # 第三项为默认值；None 表示可空可省略
+Voltage = model("VoltageResult",
+                channel=(int, "Zero-based AO channel."),
+                volts=(float, "Value accepted by the driver in V; not a measurement."),
+                warning=(str, "Driver warning text.", None))    # 第三项为默认值；None 表示可空可省略
 ```
 
 `param(type, description, **constraints)` 的约束就是 pydantic `Field` 的参数（`ge/le/gt/lt/min_length/max_length/pattern/allow_inf_nan`），会进入 `inputSchema`。描述里写单位和范围，约束和描述保持一致。
@@ -135,11 +124,8 @@ Voltage = model(
 ## 错误
 
 ```python
-raise DeviceError(
-    f"AO_VWriteChannel failed rc={rc}",
-    category=DEVICE_ERROR,
-    details={"rc": rc, "requested": volts, "last_accepted": self.last[channel]},
-)
+raise DeviceError(f"AO_VWriteChannel failed rc={rc}", category=DEVICE_ERROR,
+                  details={"rc": rc, "requested": volts, "last_accepted": self.last[channel]})
 ```
 
 类别常量见 `contract.md`。越界检查在调用驱动之前做（schema 已经拒绝，但直接调用方法的代码路径也要挡住）。
@@ -163,14 +149,9 @@ raise DeviceError(
 没有 FIFO 或硬件时钟的静态输出（如 AO 卡）用 `SoftwareWaveform` 出低频波形：
 
 ```python
-self.waveform = SoftwareWaveform(
-    self._waveform_write,
-    lock=self.io_lock,
-    streams={ch: self.ao[ch] for ch in CHANNELS},  # kind="setpoint" 的 scalar 流
-    limits=(-10.0, 10.0),
-    max_update_hz=200.0,
-    max_frequency_hz=20.0,
-)
+self.waveform = SoftwareWaveform(self._waveform_write, lock=self.io_lock,
+                                 streams={ch: self.ao[ch] for ch in CHANNELS},   # kind="setpoint" 的 scalar 流
+                                 limits=(-10.0, 10.0), max_update_hz=200.0, max_frequency_hz=20.0)
 ```
 
 - `write(channel, value)` 是一次阻塞的驱动写，由生成线程持 `lock` 调用；每个写出的值发布到对应的流。相位按 `now_ms()` 相对 `startAt` 计算，不累积漂移，迟到的点跳过。
@@ -205,6 +186,6 @@ self.waveform = SoftwareWaveform(
 | `receive_until(events, predicate)` | 读事件直到谓词成立 |
 | `dry_run_config(cls, **overrides)` | 构造模拟模式的 `DeviceConfig`，可直接构造设备做单元测试 |
 
-在 testStand 里由 `devkit_check_adapter` 运行（同时跑适配器自己的测试）；命令行等价物 `python -m teststand_device_sdk --adapter <adapter> --check` 输出一行 JSON `{adapter, ok, failures, warnings}`。它只用模拟器，从不访问硬件。
+命令行等价物：`uv run python -m teststand_device_sdk --adapter <adapter> --check`，输出一行 JSON `{adapter, ok, failures, warnings}`；有失败时退出码 1，警告不影响退出码。它只用模拟器，从不访问硬件。
 
 `--check` 检查：工具元数据（描述长度、注解、`operationSemantics`、`actuate` 不可重试、参数描述）、`list_hardware` 恰好一项且 `open`、`/device` 的形状、修订号与身份、`safe` 工具连续两次成功、`operationId` 回传与 `streamRefs`、每条流的记录格式、`seq`/`t` 递增与水位推进、事件流的 `idle()`、有界数值参数越界被拒绝。

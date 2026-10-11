@@ -17,7 +17,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
-from teststand_backend import __version__, devkit
+from teststand_backend import __version__
 from teststand_backend.application import (
     NAMESPACES,
     ExecutionCoordinator,
@@ -210,7 +210,6 @@ class HostRuntime:
             }
         )
         protected = installation_folders(root, options.opencode)
-        devkit.configure(protected)
         opencode = OpenCodeRuntime(
             [str(options.opencode)] if options.opencode and options.opencode.is_file() else None,
             root / "opencode",

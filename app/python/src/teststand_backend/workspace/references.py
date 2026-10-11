@@ -20,15 +20,6 @@ Json = dict[str, Any]
 _ID = re.compile(r"[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}\Z")
 _BUNDLED = {
     "ts-agent-interface": ("testStand public interface and recovery", "agent-interface.md"),
-    "ts-device-plugin": ("Device plugin development guide (start here)", "plugin-guide.md"),
-    "ts-plugin-sdk-api": ("Device plugin SDK API", "plugin-sdk-api.md"),
-    "ts-plugin-streams": ("Device plugin streams (signals)", "plugin-streams.md"),
-    "ts-plugin-vendor-bindings": (
-        "Vendor driver bindings (ctypes, COM ports)",
-        "plugin-vendor-bindings.md",
-    ),
-    "ts-plugin-contract": ("Device plugin contract", "plugin-contract.md"),
-    "ts-plugin-checklist": ("Device plugin delivery checklist", "plugin-checklist.md"),
 }
 
 

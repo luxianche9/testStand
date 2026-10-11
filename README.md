@@ -98,5 +98,3 @@ python pack.py --all     # 测试 + 检查 + 打包 -> dist/*.tsdev
 ```
 
 编写新的设备适配器见 [devices/README.md](devices/README.md) 和 [skill/device-plugin](skill/device-plugin/SKILL.md)。
-
-也可以让内置 AI 在项目里完成：打开项目，在 AI 助手里说明资料位置和设备（例如“D:\资料 里是这台电脑接的设备资料，请把八路串口卡做成插件加到台架上”）。AI 读手册（PDF/Word/Excel/图片，图里的针脚表用离线 OCR）、在项目 `plugins/` 下写适配器、在模拟器上检查、打包到 `dist/`，再请你确认添加。过程见设计文档第 8.5 节。

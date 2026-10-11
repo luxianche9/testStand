@@ -2,11 +2,9 @@
 
 ## 未发布
 
-- **内置 AI 开发设备插件**：在项目里一句话让 AI 把一台新的测试资源做成插件并接入，不需要 testStand 源码或网络。AI 用新的 MCP 工具在项目 `plugins/` 下生成适配器（`devkit_create_adapter`）、放入厂商 DLL（`devkit_add_vendor_file`）、在模拟器上跑测试和合规检查（`devkit_check_adapter`）、打包 `.tsdev`（`devkit_package_adapter`），查 SDK 签名（`devkit_describe_sdk`）；插件开发指南随包提供（参考 `ts-device-plugin` 等）。新生成的适配器默认在子进程里运行。
-- **读手册**：`import_document` 把 PDF、Word、Excel、图片转成项目 `docs/` 下的文本参考；手册里画成图的针脚表和扫描页用 Windows 自带的离线 OCR 读出（标明需核对）。
 - **更新插件**：`devices.updatePackageFromFile` 更新已在台架上的设备类型的驱动（不再多加一台设备）；驱动更新后设备列表上方提示“重启”，重启后回到原项目。
 - SDK：`SerialPort` / `SimulatedSerialPort` / `list_ports`（Windows COM 口），`multi_connector_pinout`（多连接器针脚表），针脚 API 有了文档。
-- 内置 AI 沙箱：不能联网（无网页工具，shell 联网命令被拒绝），不能读 testStand 安装目录、源码和用户数据；LLM 密钥和网关令牌不再出现在 AI 的 shell 环境里；项目里的 `opencode.json` 不生效。模型流 3 分钟无数据即报错，不再无限等待。
+- 内置 AI 不再编写设备插件（插件由提供方开发、验收后以设备包交付）。内置 AI 沙箱：不能联网（无网页工具，shell 联网命令被拒绝），不能读 testStand 安装目录、源码和用户数据；LLM 密钥和网关令牌不再出现在 AI 的 shell 环境里；项目里的 `opencode.json` 不生效。模型流 3 分钟无数据即报错，不再无限等待。
 - 需要操作员确认的 AI 操作在 AI 放弃等待时撤回，不会在之后被批准执行；不属于任何工具调用的授权请求（如重复调用保护）显示在输入框上方。
 - 参考资料搜索：没有一节同时含全部关键词时，按命中词数排序返回最接近的几节。
 - 针脚列表里设备针脚只显示针号（`30 (VIN6)`），不再显示带连接器前缀的完整 id。

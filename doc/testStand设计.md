@@ -41,7 +41,7 @@
 | 2026-10-08 | 测试台架中间栏只留一行标题栏：视图切换、生成默认面板、画布缩放、数据来源与时间轴都在这一行，画布右下角的缩放控件删除；活动栏面板自上而下为设备管理、接线日志、测试编排、运行历史（第 9.6.2 节） |
 | 2026-10-08 | 信号视图改为只读监控面板（第 9.6.5 节）：删除 React Flow 画布、控制控件、被测件信号和流的 `control`（契约 `2026-10-08.1`）；项目文件 v6 以 `monitor.channels` 取代 `signals`；恢复事件时间轴与运行控制台；接线、监控面板、测试流程互不引用，Agent 每次运行前检查一致性 |
 | 2026-10-09 | 台架顶层视图改为**运行监控 / 工位接线**（第 9.6.2、9.6.5 节）；工位接线下分**针脚列表 / 端口连线**两个子视图，端口连线恢复 React Flow 画布（端口无电气类型，连线一律中性色），与针脚列表共用同一份 `wiring.connections`；项目文件升到 v7，新增 `wiring.nodes` 保存卡片与端口位置，v6 项目不再打开；设备面板“+”菜单补两个快捷入口：导入 `.tshw` 包、让 Agent 照着 `skill/device-plugin` 写新适配器（预填草稿，不自动发送）。设备契约 `2026-10-08.1` 不变 |
-| 2026-10-11 | 内置 AI 在项目里开发设备插件（第 8.5 节）：`devkit_*` 工具在项目 `plugins/` 下生成、检查（子进程里跑适配器测试和合规检查）、打包 `.tsdev`，不需要 testStand 源码、`uv` 或网络；插件开发参考资料随包提供（`ts-device-plugin` 等）；`import_document` 把 PDF/Word/Excel/图片转成项目参考，图里的文字用 Windows 离线 OCR 读出；SDK 新增 `SerialPort`、`multi_connector_pinout`。新增 `devices.updatePackageFromFile`（更新已装类型的驱动，不加设备）与只读的 `devices.listPackages`（界面据此提示重启；用户仍看不到“类型”）。OpenCode 沙箱：禁止联网与读取 testStand 自身目录，密钥不再放进环境变量（第 8.4 节）；需要操作员确认的操作在 Agent 放弃等待时撤回确认；设备面板“+”菜单的“让 Agent 写新适配器”草稿改为指向随包指南与 devkit 工具（Agent 读不到仓库里的 `skill/device-plugin`）|
+| 2026-10-11 | SDK 新增 `SerialPort`、`multi_connector_pinout`。新增 `devices.updatePackageFromFile`（更新已装类型的驱动，不加设备）与只读的 `devices.listPackages`（界面据此提示重启；用户仍看不到“类型”）。OpenCode 沙箱：禁止联网与读取 testStand 自身目录，密钥不再放进环境变量（第 8.4 节）；需要操作员确认的操作在 Agent 放弃等待时撤回确认；设备面板“+”菜单的“让 Agent 写新适配器”草稿改为指向随包指南与 devkit 工具（Agent 读不到仓库里的 `skill/device-plugin`）|
 
 ---
 
@@ -902,20 +902,9 @@ encoders:                         # 可选：用于组帧发送
 | 密钥不进环境 | LLM 密钥和网关令牌写在 OpenCode 私有配置文件里（用户数据目录下），不放进环境变量——Agent 的 shell 命令继承 OpenCode 的环境 |
 | 确认随请求撤回 | 需要操作员确认的操作按“等人”处理：等待期间向 Agent 发进度保活；Agent 放弃（超时、停止）时撤回确认，不会在之后被批准执行 |
 
-### 8.5 Agent 开发设备插件
+### 8.5 设备插件不由 Agent 编写
 
-目标：用户在新电脑上接了一台 testStand 没见过的测试资源，用一句话让内置 AI 把它做成插件并接入，全程不需要 testStand 的源码、仓库脚本或网络。
-
-| 环节 | 实现 |
-|---|---|
-| 资料 | `import_document`（能力 `references.manage`）把 PDF、DOCX、XLSX、图片和文本/源码（UTF-8 或 GBK）转成项目 `docs/<名>.md` 并登记为参考。PDF 里主要是图的页（连接器针脚图、扫描页）由 PDFium 渲染、Windows 自带 OCR 识别，按字的位置重建成行，标明“OCR，需核对”，页面图像留在 `docs/<名>/`。旧版 `.doc`、`.xls` 不支持 |
-| 参考 | 随包参考 `ts-device-plugin`（流程与规则，入口）、`ts-plugin-sdk-api`、`ts-plugin-streams`、`ts-plugin-vendor-bindings`、`ts-plugin-contract`、`ts-plugin-checklist`；仓库技能 `skill/device-plugin` 引用同一份文件。`devkit_describe_sdk` 从已安装的 SDK 给出公开名称的签名与文档 |
-| 生成 | `devkit_create_adapter` 把随包模板渲染到项目 `plugins/<adapter>/`：数字 I/O 骨架，带驱动、模拟器、针脚、测试，开箱通过合规检查，默认 `isolation = "subprocess"` |
-| 厂商文件 | `devkit_add_vendor_file` 把 DLL、桥接程序复制进包的 `bin/` 并登记 `requiredFiles`；testStand 自身目录不能作为来源 |
-| 检查 | `devkit_check_adapter` 在子进程（开发环境 `python -m teststand_backend.devkit.runner`，发布版 `teststand-backend.exe --devkit`）里用模拟器跑适配器自己的 pytest 测试和合规检查，再做静态检查（入口点、只依赖 SDK、`requiredFiles` 存在、不 `print`）和 `TODO(new_device)` 扫描。超时 300 s。从不访问硬件 |
-| 打包 | `devkit_package_adapter` 检查通过后自己构建 `py3-none-any` wheel（不需要构建后端），写出 `dist/<类型>-<版本>.tsdev`。适配器只能依赖标准库和 SDK：安装是离线的 |
-| 接入 | 新类型用 `devices.addDeviceFromFile`；已在台架上的类型用 `devices.updatePackageFromFile`（不加设备，重启后生效，设备列表上方提示“重启”，重启后回到原项目）。两者都要操作员确认 |
-| 安全 | 第 8.4 节的离线与源码隔离；插件代码只在操作员确认安装后才在 testStand 里运行；检查只在模拟器上进行 |
+设备插件由 testStand 的提供方按 `skill/device-plugin` 开发，在真实硬件上验收后以 `.tsdev` 交付（第 4.8 节）；内置 Agent 不编写、不修改插件，也读不到插件源码与安装目录（第 8.4 节）。曾尝试让 Agent 照手册在项目里写插件（2026-10-11），结果在真机上的正确性无法由用户核实，故撤销。
 
 ---
 
