@@ -1,8 +1,7 @@
 """SDK for testStand device plugins.
 
 An adapter subclasses :class:`Device`, marks blocking methods with :func:`tool`
-and registers typed read-only streams in ``self.streams`` (a writable stream names the
-tool that drives it, :mod:`.control`); its package registers
+and registers typed read-only streams in ``self.streams``; its package registers
 the class under the ``teststand.devices`` entry point group. The backend
 loads it with :func:`open_device`: a :class:`DeviceHost` runs the tools, the
 operations, the generated ``/device`` declaration, the streams and the
@@ -13,7 +12,6 @@ lifecycle, in the backend process or in an isolated child process.
 from ._version import __version__
 from .clock import now_ms
 from .config import DeviceConfig, env_flag
-from .control import ACTIONS, BIT, FRAME_ID, HEX, TEXT, VALUE, Placeholder, StreamControl, control
 from .device import Device
 from .device_types import (ENTRY_POINT_GROUP, INSTALLED_FILE, PLUGINS_ENV, activate_plugins, device_types,
                            load_device, plugin_sites)
@@ -67,7 +65,6 @@ from .waveform import SHAPES, SoftwareWaveform, WaveformParams, sample_value, wa
 
 __all__ = [
     "SerialBackend", "SerialPort", "SimulatedSerialPort", "list_ports",
-    "ACTIONS", "BIT", "FRAME_ID", "HEX", "TEXT", "VALUE", "Placeholder", "StreamControl", "control",
     "CONTRACT_REVISION", "DEVICE_ERROR", "DEVICE_UNREACHABLE", "ID_SCHEMES",
     "INTERNAL", "INVALID_ARGUMENT", "INVALID_RESPONSE",
     "NOT_CONFIGURED", "NOT_SUPPORTED", "SERVICE_UNAVAILABLE", "SHAPES", "STREAM_KINDS", "STREAM_TYPES",

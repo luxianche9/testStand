@@ -6,7 +6,7 @@ import { agentKindInputSchema } from "./agents.js";
 import { appError, toWireError } from "./errors.js";
 import { deviceBundleIdInputSchema, hardwareIdInputSchema, hardwareSchema, managedHardwareSchema, deviceInstanceSchema, deviceIdInputSchema } from "./devices.js";
 import { projectFileSchema, projectRootPathInputSchema } from "./projects.js";
-import { wiringTaskIdInputSchema } from "./wiring.js";
+import { projectWiringSchema, wiringTaskIdInputSchema } from "./wiring.js";
 
 describe("public contracts", () => {
   it("rejects passive hardware that references remote infrastructure", () => {
@@ -29,12 +29,27 @@ describe("public contracts", () => {
   it("accepts current project metadata without node tasks", () => {
     const timestamp = "2026-08-15T00:00:00.000Z";
     const project = {
-      formatVersion: 5, projectId: "PROJECT", name: "Bench", wiring: { connections: [] },
-      signals: { nodes: [], links: [] }, createdAt: timestamp, updatedAt: timestamp
+      formatVersion: 7, projectId: "PROJECT", name: "Bench", wiring: { nodes: [], connections: [] },
+      monitor: { channels: [] }, createdAt: timestamp, updatedAt: timestamp
     };
     expect(projectFileSchema.parse(project)).toEqual(project);
     expect(projectFileSchema.parse({ ...project, task: {}, ignored: true })).toEqual(project);
-    expect(projectFileSchema.safeParse({ ...project, formatVersion: 4 }).success).toBe(false);
+    expect(projectFileSchema.safeParse({ ...project, formatVersion: 6 }).success).toBe(false);
+  });
+
+  it("keeps a canvas card's size and port placement", () => {
+    const node = {
+      hardwareId: "DUT", x: 40, y: 80, width: 260, height: 180,
+      portPositions: { J1: { side: "left", offset: 0.25 } }
+    };
+    expect(projectWiringSchema.parse({ nodes: [node], connections: [] }).nodes[0]).toEqual(node);
+    // A card without an explicit placement still parses: the canvas falls back to even spacing.
+    expect(projectWiringSchema.parse({ nodes: [{ hardwareId: "DUT", x: 0, y: 0 }], connections: [] })
+      .nodes[0]?.portPositions).toEqual({});
+    expect(projectWiringSchema.safeParse({
+      nodes: [{ hardwareId: "DUT", x: 0, y: 0, portPositions: { J1: { side: "left", offset: 2 } } }],
+      connections: []
+    }).success).toBe(false);
   });
 
   it("uses strict named id inputs for IPC procedures", () => {

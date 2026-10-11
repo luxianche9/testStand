@@ -1,5 +1,7 @@
+import type { RunTimeline } from "@teststand/contracts/observability";
 import type { TestResult, TestRunEvent, TestRunLog } from "@teststand/contracts/testing";
 import type { TestStep } from "@teststand/contracts/testing";
+import { deviceName, stepDepths, type ConsoleEntry } from "../streams/index.js";
 import type { ExecutionTrace, ExecutionTraceNode } from "./run-log-model.js";
 
 export type SyncLabel = "实时" | "同步中" | "正在补齐日志" | "历史快照";
@@ -168,6 +170,105 @@ export function resultsAsCsv(log: TestRunLog): string {
 }
 
 /**
+ * Published results as run-console lines: measured values, assertions (actual against limits) and
+ * verdicts that have no stream window (those are already lines of the timeline). A result sits at
+ * the end of the step that published it.
+ */
+export function resultConsoleEntries(results: TestResult[], timeline: RunTimeline | undefined): ConsoleEntry[] {
+  if (!timeline) return [];
+  const stepEnd = new Map(timeline.steps.map((step) => [step.executionId, step.tb1 ?? step.tb0]));
+  const depths = stepDepths(timeline);
+  const windowed = new Set(timeline.windows.map((item) => item.sequence));
+  return results.flatMap((result): ConsoleEntry[] => {
+    if (windowed.has(result.sequence)) return [];
+    const tb = (result.executionId ? stepEnd.get(result.executionId) : undefined) ?? Date.parse(result.at);
+    if (!Number.isFinite(tb)) return [];
+    const kind = typeof result.kind === "string" ? result.kind : "note";
+    const unit = typeof result.unit === "string" && result.unit && kind !== "assertion" && kind !== "verdict"
+      ? ` ${result.unit}` : "";
+    const failed = result.passed === false || result.verdict === "Fail" || result.verdict === "Error";
+    const passed = result.passed === true || result.verdict === "Pass";
+    return [{
+      id: `result:${result.sequence}`,
+      tb: tb as number,
+      kind: "judge",
+      source: typeof result.hardwareId === "string" ? deviceName(result.hardwareId) : "result",
+      ...(typeof result.hardwareId === "string" ? { hardwareId: result.hardwareId } : {}),
+      ...(result.executionId && depths.has(result.executionId)
+        ? { depth: (depths.get(result.executionId) ?? 0) + 1, executionId: result.executionId }
+        : {}),
+      tag: kind === "assertion" || kind === "verdict" ? "JG" : "= ",
+      color: failed ? "31" : passed ? "32" : "37",
+      text: `${result.name} · ${resultKindLabel(kind)} · ${resultSummary(result)}${unit}`
+    }];
+  });
+}
+
+const OUTLINE_REGIONS = [["prepare", "准备"], ["test", "测试"], ["cleanup", "清理"]] as const;
+/** Outline marks of a step state and their ANSI colours. */
+const OUTLINE_STATE: Record<string, { mark: string; color: string; label: string }> = {
+  waiting: { mark: "○", color: "2;37", label: "" },
+  running: { mark: "▶", color: "1;33", label: "执行中" },
+  Pass: { mark: "✓", color: "32", label: "" },
+  Fail: { mark: "✗", color: "1;31", label: "失败" },
+  Error: { mark: "!", color: "1;31", label: "错误" },
+  skipped: { mark: "–", color: "2;37", label: "跳过" },
+  Aborted: { mark: "■", color: "33", label: "已终止" }
+};
+
+/**
+ * The whole plan as console lines on top of the run console: every step of every region as a
+ * tree, with its state, duration, loop or attempt count and its first result. Steps not reached
+ * yet are listed too (dim), so the run is never a black box.
+ */
+export function planOutlineEntries(
+  trace: ExecutionTrace | undefined,
+  typeLabel: (type: string) => string = (type) => type
+): ConsoleEntry[] {
+  if (!trace) return [];
+  const entries: ConsoleEntry[] = [];
+  const line = (id: string, text: string, color: string, tag: string, executionId?: string) => {
+    entries.push({
+      id: `plan:${id}`, tb: Number.NEGATIVE_INFINITY, kind: "plan", outline: entries.length, source: "计划",
+      tag, color, text, ...(executionId ? { executionId } : {})
+    });
+  };
+  const walk = (nodes: ExecutionTraceNode[], prefix: string, path: string) => {
+    nodes.forEach((node, index) => {
+      const last = index === nodes.length - 1;
+      const state = OUTLINE_STATE[node.state] ?? OUTLINE_STATE.waiting!;
+      const scopes = node.iterations.length ? node.iterations : node.attempts;
+      const current = scopes.at(-1);
+      const count = current?.count ?? node.iterationCount ?? node.attemptCount;
+      const scope = current
+        ? node.iterations.length ? `第 ${current.index + 1}${count ? `/${count}` : ""} 次` : `第 ${current.index + 1} 次尝试`
+        : "";
+      const result = node.results[0];
+      const details = [
+        typeLabel(node.step.type),
+        state.label,
+        scope,
+        node.durationMs != null && node.state !== "running" ? durationText(node.durationMs) : "",
+        result ? clipText(`${resultSummary(result)}${typeof result.unit === "string" ? ` ${result.unit}` : ""}`, 60)
+          : ""
+      ].filter(Boolean).join(" · ");
+      const name = node.step.name ?? node.stepId;
+      line(`${path}/${index}`, `${prefix}${last ? "└─" : "├─"} ${name}  \x1b[2m${details}\x1b[0m`, state.color,
+        `${state.mark} `, node.pending ? undefined : node.executionId);
+      const children = current ? current.children : node.children.length ? node.children : pendingChildren(node);
+      walk(children, `${prefix}${last ? "   " : "│  "}`, `${path}/${index}`);
+    });
+  };
+  for (const [region, label] of OUTLINE_REGIONS) {
+    const nodes = trace.regions[region];
+    if (!nodes.length) continue;
+    line(region, `${label}区（${nodes.length} 项）`, "1;37", "  ");
+    walk(nodes, "", region);
+  }
+  return entries;
+}
+
+/**
  * The children of a step as the flow shows them: those of its current loop iteration or retry
  * attempt, or the ones it ran; a step not reached yet still lists what it contains.
  */
@@ -188,4 +289,8 @@ function pendingChildren(node: ExecutionTraceNode): ExecutionTraceNode[] {
 
 export function durationText(ms: number): string {
   return ms >= 1000 ? `${(ms / 1000).toFixed(2)} s` : `${Math.round(ms)} ms`;
+}
+
+function clipText(text: string, max: number): string {
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text;
 }

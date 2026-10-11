@@ -171,28 +171,6 @@ def test_unknown_safety_action_is_rejected(config):
         DeviceHost(Broken, config)
 
 
-@pytest.mark.parametrize(("entry", "match"), [
-    (("setBit", "read_level", {"channel": "BIT", "level": "VALUE"}), "needs an actuate tool"),
-    (("setBit", "nope", {"channel": "BIT", "level": "VALUE"}), "unknown"),
-    (("setBit", "set_level", {"channel": "BIT", "level": "VALUE", "extra": 1}), "unknown arguments"),
-    (("setMask", "set_level", {"level": "VALUE"}), "misses"),
-])
-def test_stream_control_must_match_an_actuate_tool(config, entry, match):
-    import teststand_device_sdk as sdk
-    from teststand_device_sdk import BitsStream, control
-
-    action, tool_name, args = entry
-    filled = {key: getattr(sdk, value) if value in {"BIT", "VALUE"} else value for key, value in args.items()}
-
-    class Broken(DemoDevice):
-        def __init__(self, cfg):
-            super().__init__(cfg)
-            self.streams.add(BitsStream("extra", width=1, control=[control(action, tool_name, **filled)]))
-
-    with pytest.raises(RuntimeError, match=match):
-        DeviceHost(Broken, config)
-
-
 def test_compliance_flags_unvalidated_ranges_and_streams(config):
     from teststand_device_sdk import ScalarStream, tool
 

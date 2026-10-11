@@ -7,7 +7,7 @@ import type { OperationName } from "./operations.generated.js";
 import type { ProjectDocument, ProjectFolderSelection, RecentProjectSummary } from "./projects.js";
 import type { LlmSettings, UserSettings } from "./storage.js";
 import type { IcdCheck, IcdDocument, IcdSaveResult, IcdSummary, TestDeviceTools, TestOperationSnapshot, TestPlan, TestPlanDraftAnalysis, TestPlanMutationResult, TestPlanValidation, TestRunLog, TestRunPage, TestRunSnapshot, TestStepCatalogItem, TestUnit } from "./testing.js";
-import type { HardwareSignals, SignalView } from "./signals.js";
+import type { DeviceStreams, Monitor } from "./monitor.js";
 import type { WiringChange, WiringTask } from "./wiring.js";
 
 export { BYTES_RESULT_OPERATIONS, OPERATION_NAMES, type OperationName } from "./operations.generated.js";
@@ -86,11 +86,9 @@ export interface OperationResults {
   "wiring.getTask": WiringTask;
   "wiring.listChanges": WiringChange[];
   "wiring.listTasks": WiringTask[];
-  "signals.catalog": HardwareSignals[];
-  "signals.updateDocument": ProjectDocument;
-  "signals.getDocument": SignalView;
-  "signals.applyOperations": SignalView;
-  "signals.write": ManualToolInvocationResult;
+  "monitor.streams": DeviceStreams[];
+  "monitor.get": Monitor;
+  "monitor.update": Monitor;
   "manual.invokeTool": ManualToolInvocationResult;
   "testing.loadPlan": TestPlan;
   "testing.savePlan": TestPlanMutationResult;

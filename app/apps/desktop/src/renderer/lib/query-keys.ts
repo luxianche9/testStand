@@ -1,7 +1,7 @@
 export const queryKeys = {
   dashboard: ["dashboard"] as const,
   deviceCatalog: ["device-catalog"] as const,
-  signalCatalog: ["signal-catalog"] as const,
+  monitorStreams: ["monitor-streams"] as const,
   deviceTypes: ["device-types"] as const,
   devicePackages: ["device-packages"] as const,
   projectDocument: ["project-document"] as const,

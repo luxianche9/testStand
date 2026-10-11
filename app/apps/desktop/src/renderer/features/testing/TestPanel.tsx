@@ -6,7 +6,7 @@ import { queryKeys } from "../../lib/query-keys.js";
 import { focusRunStep, openRunMonitor } from "../../lib/run-focus.js";
 import { SIDE_PANEL_LABELS } from "../../lib/side-panel.js";
 import { Badge, Button, PanelHeader, Spinner, useConfirm } from "../../ui";
-import type { BenchRun } from "../signals/use-bench-run.js";
+import type { BenchRun } from "../monitor/use-bench-run.js";
 import { IssuesButton, RunControls } from "./EditorToolbar.js";
 import { IssuesDialog, RunParametersDialog } from "./PlanDialogs.js";
 import { PlanEditorDialog } from "./PlanEditorDialog.js";

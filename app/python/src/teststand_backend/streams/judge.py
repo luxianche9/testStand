@@ -886,7 +886,8 @@ def cross_correlation_delay(
     if best - 1 in scores and best + 1 in scores:
         left, right = scores[best - 1], scores[best + 1]
         curvature = left - 2 * peak + right
-        if curvature < 0:
+        # An edge lag too short to score is -inf: keep the integer peak then.
+        if math.isfinite(left) and math.isfinite(right) and curvature < 0:
             shift = 0.5 * (left - right) / curvature
     return (best + shift) * dt, peak
 

@@ -35,6 +35,19 @@ bool succeeded(ErrorCode code) { return BioFailed(code) == false; }
 
 std::string error_text(const char *what, ErrorCode code) { return std::string(what) + " failed " + hwcli::hex(code); }
 
+// setSelectedDevice fails for very different reasons; name the one that happened, so the operator
+// knows whether to check the card list or to close whatever already holds the board. DAQNavi hands
+// out write privilege exclusively, so a second testStand instance gets ErrorPrivilegeNotAvailable.
+std::string select_error(const std::string &description, const char *what, ErrorCode code) {
+    const char *reason = "cannot be selected";
+    if (code == ErrorPrivilegeNotAvailable) {
+        reason = "is already open in another process; close the other testStand instance and retry";
+    } else if (code == ErrorDeviceNotExist || code == ErrorDeviceUnrecognized) {
+        reason = "is not in the DAQNavi list";
+    }
+    return "Device '" + description + "' " + reason + ": " + error_text(what, code);
+}
+
 std::string signal_name(long type) { return type >= 0 && type <= 2 ? signal_names[type] : "SingleEnded"; }
 
 void release() {
@@ -93,18 +106,18 @@ void open(const Request &request) {
     ErrorCode code = outputs->setSelectedDevice(DeviceInformation(wide.c_str(), ModeWrite));
     if (!succeeded(code)) {
         release();
-        return hwcli::fail("Device '" + description + "' not in DAQNavi list: " + error_text("DO setSelectedDevice", code));
+        return hwcli::fail(select_error(description, "DO setSelectedDevice", code));
     }
     code = inputs->setSelectedDevice(DeviceInformation(wide.c_str(), ModeRead));
     if (!succeeded(code)) {
         release();
-        return hwcli::fail(error_text("DI setSelectedDevice", code));
+        return hwcli::fail(select_error(description, "DI setSelectedDevice", code));
     }
     // AI channel properties (signal type, range) are only writable in ModeWrite.
     code = analog->setSelectedDevice(DeviceInformation(wide.c_str(), ModeWrite));
     if (!succeeded(code)) {
         release();
-        return hwcli::fail(error_text("AI setSelectedDevice", code));
+        return hwcli::fail(select_error(description, "AI setSelectedDevice", code));
     }
     safe_do_mask = static_cast<unsigned>(mask);
     code = write_safe_mask();

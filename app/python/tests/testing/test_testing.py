@@ -140,6 +140,24 @@ async def finish(engine: TestEngine, snapshot: dict[str, Any]) -> dict[str, Any]
     return run.snapshot()
 
 
+async def test_switching_projects_forgets_the_previous_projects_runs(tmp_path: Path) -> None:
+    projects = Projects(tmp_path / "a")
+    engine = TestEngine(projects, Devices(), Resolver(), ExecutionCoordinator())
+    completed = await finish(engine, await engine.start(plan_with(), {}))
+    assert engine.current() == completed
+
+    projects.root = tmp_path / "b"
+    engine.runtime.initialize()
+    assert engine.runtime.latest_run() is None
+    assert engine.current() is None
+    assert engine.get(completed["runId"]) is None
+    assert engine.runs == {} and engine.recordings == {}
+
+    projects.root = tmp_path / "a"
+    reopened = engine.current()
+    assert reopened is not None and reopened["runId"] == completed["runId"]
+
+
 def test_restricted_cel_supports_data_access_and_rejects_calls() -> None:
     context = {"parameters": {"limit": 3}, "variables": {"value": 2}, "steps": {}}
     assert evaluate("variables.value < parameters.limit && true", context) is True
@@ -1049,6 +1067,37 @@ async def test_binding_keeps_arguments_already_set(tmp_path: Path) -> None:
         [{"type": "bind_invoke_tool", "stepId": "set", "hardwareId": "ao", "toolName": "read"}],
     )
     assert rebound["plan"]["regions"]["test"][0]["arguments"] == {"channel": 1, "volts": 2.5}
+
+
+async def test_insert_step_binds_invoke_tools_nested_in_a_container(tmp_path: Path) -> None:
+    """A Feature arrives with its children; every InvokeTool inside is bound, not just the root."""
+    from teststand_backend.testing.validation import validate_plan
+
+    store = TestPlanStore(Projects(tmp_path), SchemaResolver())
+    await store.create({"id": "nest", "name": "Nest"})
+    feature = {
+        "id": "feat",
+        "type": "Feature",
+        "name": "继电器",
+        "children": [
+            {"id": "set", "type": "InvokeTool", "hardwareId": "ao", "toolName": "write"},
+            {"id": "wait", "type": "Delay", "durationMs": 10},
+            {
+                "id": "guard",
+                "type": "Guard",
+                "children": [
+                    {"id": "deep", "type": "InvokeTool", "hardwareId": "ao", "toolName": "read"}
+                ],
+            },
+        ],
+    }
+    result = await store.apply_operations("nest", 1, [{"type": "insert_step", "step": feature}])
+    children = result["plan"]["regions"]["test"][0]["children"]
+    assert children[0]["bindingRevision"]
+    assert children[2]["children"][0]["bindingRevision"]
+    # Validation has nothing to complain about, so no repair operation is needed.
+    codes = [item["code"] for item in validate_plan(result["plan"], SchemaResolver(), [])]
+    assert "invoke.binding" not in codes
 
 
 async def test_step_fields_wrapped_in_settings_are_rejected(tmp_path: Path) -> None:

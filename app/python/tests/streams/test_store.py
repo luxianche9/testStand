@@ -258,3 +258,37 @@ def test_run_stream_window_checks_the_recording(tmp_path: Path) -> None:
             TestEngine.stream_window(engine, run_id, keys, 900.0, 1000.0, 10)  # type: ignore[arg-type]
         assert error.value.category == "not_found"
     store.close()
+
+
+def test_record_ids_keep_increasing_after_the_cache_is_emptied(tmp_path: Path) -> None:
+    store = StreamStore(tmp_path / "s.sqlite")
+    key = store.add_stream("dut", "uart")
+    store.update_stream(key, stream_type="bytes")
+    store.append(
+        key, [{"seq": n, "t": 1000.0 + n, "tb": 1000.0 + n, "data": "00"} for n in range(5)]
+    )
+    after = store.read(key, after=None)["records"][-1]["i"]
+    store.prune(10_000.0)
+    assert store.records(key) == []
+    store.append(key, [{"seq": 5, "t": 20_000.0, "tb": 20_000.0, "data": "4f4b"}])
+    assert [r["data"] for r in store.read(key, after=after)["records"]] == ["4f4b"]
+    store.close()
+
+
+def test_payload_never_overrides_the_record_identity(tmp_path: Path) -> None:
+    store = StreamStore(tmp_path / "s.sqlite")
+    key = store.add_stream("daq", "ai0")
+    store.update_stream(key, stream_type="scalar")
+    [i] = store.append(key, [{"i": 6, "seq": 0, "t": 1.0, "tb": 1.0, "v": 1.0}])
+    [record] = store.records(key)
+    assert record["i"] == i == store.last_i(key) == 1
+    store.close()
+
+
+def test_stream_data_carries_the_stored_declaration(tmp_path: Path) -> None:
+    store = scalar_store(tmp_path / "s.sqlite")
+    store.update_stream("daq__ai0", declaration={"kind": "setpoint", "unit": "V"})
+    data = store.stream_data("daq__ai0", 1000.0, 1090.0)
+    assert data.descriptor == {"kind": "setpoint", "unit": "V"}
+    assert judge.evidence_type(data.stream_type, data.descriptor) == "S"
+    store.close()

@@ -12,7 +12,7 @@ const project = (name: string, status: RecentProjectSummary["status"] = "availab
   name,
   openedAt: "2026-09-01T08:00:00.000Z",
   status,
-  preview: { connections: 0, nodes: 0 }
+  preview: { connections: 0, channels: 0 }
 });
 
 function setup({ recent = [project("project-a"), project("project-b", "missing")], chosen }: {
@@ -51,7 +51,7 @@ describe("WelcomePage", () => {
     await userEvent.click(await screen.findByText("project-a", { exact: true }));
     await waitFor(() => expect(api.projects.openFolder).toHaveBeenCalledWith({ rootPath: "C:\\work\\project-a" }));
     await waitFor(() => expect(onOpened).toHaveBeenCalledWith("C:\\work\\project-a"));
-    expect(screen.getByRole("img", { name: "project-a：0 条接线，信号视图 0 个节点" })).toBeTruthy();
+    expect(screen.getByRole("img", { name: "project-a：0 条接线，监控 0 路数据流" })).toBeTruthy();
     expect(screen.getByText("项目文件夹不存在")).toBeTruthy();
   });
 

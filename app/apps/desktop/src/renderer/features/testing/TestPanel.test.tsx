@@ -8,7 +8,7 @@ import type { ReactNode } from "react";
 import type { TestPlan, TestRunEvent } from "@teststand/contracts/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { onRunRequested } from "../../lib/run-focus.js";
-import { useBenchRun } from "../signals/use-bench-run.js";
+import { useBenchRun } from "../monitor/use-bench-run.js";
 import { TestPanel } from "./TestPanel.js";
 import { installTestingApi, makePlan, makeRun, makeSummary } from "./testing-api.fixture.js";
 

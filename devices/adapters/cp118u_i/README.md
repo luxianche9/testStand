@@ -16,7 +16,7 @@
 ## 流
 
 - `serial1`–`serial8` 为 `bytes` 流，记录 `{t, dir: rx|tx|mark, data, note?, op?}`，`data` 为小写十六进制（`cp118u_stream_read` 额外附 `text`）。所有发送都经 `stream.send` 记 `tx`；`configure_port`、`clear_rx`、`flush` 写 `mark`（如 `configure_port baud=9600 8N1 flow=0`）。
-- `configure_port` 前流状态为 `not_configured`；之后后台线程约每 `settings.rxPollMs`（默认 10 ms，上限 100 ms）读取 RX，缓冲上限 `settings.rxBufferBytes`（默认 1 MiB）；`read_rx` 超出缓冲时 `overflow=true`。RX 分块边界是轮询产物，不是帧边界。每次读返回（包括 `read_rx` 内的读取）都调用 `stream.idle()`，未配置的端口每次轮询也确认空闲，因此 watermark 最多落后当前时间一个轮询周期；`/device` 中流声明为 `{"id": "serialN", "type": "bytes", "writable": true, "control": [...]}`，`control`：`sendText` → `write_text`，`sendHex` → `write_hex`（`channel` 固定为 N）。
+- `configure_port` 前流状态为 `not_configured`；之后后台线程约每 `settings.rxPollMs`（默认 10 ms，上限 100 ms）读取 RX，缓冲上限 `settings.rxBufferBytes`（默认 1 MiB）；`read_rx` 超出缓冲时 `overflow=true`。RX 分块边界是轮询产物，不是帧边界。每次读返回（包括 `read_rx` 内的读取）都调用 `stream.idle()`，未配置的端口每次轮询也确认空闲，因此 watermark 最多落后当前时间一个轮询周期；`/device` 中流声明为 `{"id": "serialN", "type": "bytes", "writable": true}`。
 - 每个串口流都注册了写入器，因此 SDK 提供 `cp118u_transact(streamId, data, encoding, expect, timeoutMs)`：发送并在期限内等匹配应答，未配置的端口报 `not_configured`。
 - `cp118u_safe_state` 丢弃全部端口待发送 TX，保留 RX 证据；原服务没有安全工具，SDK 合规要求提供。
 - dry-run 默认不产生 RX；设置 `HARDWARE_DRY_RUN_SERIAL_LOOPBACK=1` 让 TX 回环到 RX，便于无回环插头演示。

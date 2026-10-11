@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, create_model, model_serialize
 
 from .errors import INTERNAL, RETRYABLE_CATEGORIES, DeviceError
 
-CONTRACT_REVISION = "2026-10-07.1"
+CONTRACT_REVISION = "2026-10-08.1"
 TIMEOUT_RECOVERY = (
     "Query current status/evidence before replaying any physical action; "
     "an RPC timeout does not prove non-execution."

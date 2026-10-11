@@ -18,16 +18,13 @@ from __future__ import annotations
 from typing import Any
 
 from teststand_device_sdk import (
-    BIT,
     DEVICE_UNREACHABLE,
     INVALID_ARGUMENT,
-    VALUE,
     BitsStream,
     Device,
     DeviceError,
     Pinout,
     DeviceConfig,
-    control,
     model,
     param,
     tool,
@@ -76,12 +73,10 @@ class __CLASS__(Device):
         self.shadow = 0
         self.input_rate_hz = float(config.settings.get("inputRateHz", 20))
         # Stream ids match the tool channel naming; the metadata (bit labels, label, kind) is declared in
-        # /device.streams. A writable stream names the actuate tool that writes it (control); streams and
-        # tools are never linked to pins.
+        # /device.streams and is never linked to tools or pins in code.
         # do: bit i = DO i, published by the write path (this card has no output readback): a setpoint shadow.
         self.do = self.streams.add(BitsStream("do", bit_labels=[f"DO{n}" for n in range(OUTPUT_COUNT)],
-                                              label="Accepted output mask", kind="setpoint",
-                                              control=[control("setBit", "set_output", channel=BIT, level=VALUE)]))
+                                              label="Accepted output mask", kind="setpoint"))
         # di: bit i = DI i; one register read per sample, only changes are recorded.
         self.di = self.streams.add(BitsStream("di", sample=self._sample_inputs, publish_on_change=True,
                                               rate_hz=self.input_rate_hz,

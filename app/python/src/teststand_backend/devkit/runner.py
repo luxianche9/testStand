@@ -120,7 +120,7 @@ def _declaration(device_cls: Any) -> Record:
         "streams": [
             {
                 key: stream.get(key)
-                for key in ("id", "type", "kind", "unit", "label", "writable", "control")
+                for key in ("id", "type", "kind", "unit", "label", "writable")
                 if stream.get(key) is not None
             }
             for stream in (streams if isinstance(streams, list) else [])

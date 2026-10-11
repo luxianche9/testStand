@@ -19,8 +19,8 @@ CONNECTION = {
 }
 
 
-def hardware_node(node_id: str = "n1", **layout: Any) -> dict[str, Any]:
-    return {"nodeId": node_id, "kind": "hardware", "hardwareId": "A", "x": 0, "y": 0, **layout}
+def channel(stream_id: str = "ai0") -> dict[str, Any]:
+    return {"hardwareId": "A", "streamId": stream_id}
 
 
 async def fixture(root: Path) -> tuple[ProjectService, SettingsStore]:
@@ -69,9 +69,9 @@ async def test_save_damage(tmp_path: Path) -> None:
     folder = tmp_path / "bench-b"
     folder.mkdir()
     await service.initialize_folder(folder)
-    service.update_signals({"nodes": [hardware_node()], "links": []})
+    service.update_monitor({"channels": [channel()]})
     await service.save()
-    assert len(json_loads(Path(project_path(folder)).read_text())["signals"]["nodes"]) == 1
+    assert len(json_loads(Path(project_path(folder)).read_text())["monitor"]["channels"]) == 1
     await service.leave()
     Path(project_path(folder)).write_text("{ broken")
     assert (await service.inspect_folder(folder))["state"] == "invalid"
@@ -108,8 +108,8 @@ async def test_recent(tmp_path: Path) -> None:
     first.mkdir()
     second.mkdir()
     await service.initialize_folder(first)
-    service.update_wiring({"connections": [CONNECTION]})
-    service.update_signals({"nodes": [hardware_node("n1"), hardware_node("n2")], "links": []})
+    service.update_wiring({"nodes": [], "connections": [CONNECTION]})
+    service.update_monitor({"channels": [channel("ai0"), channel("ai1")]})
     await service.save()
     await service.initialize_folder(second)
     await service.open_folder(first)
@@ -120,7 +120,7 @@ async def test_recent(tmp_path: Path) -> None:
     Path(project_path(second)).rename(project_path(second) + ".broken")
     recent = await service.list_recent()
     assert recent[0]["status"] == "available"
-    assert recent[0]["preview"] == {"connections": 1, "nodes": 2}
+    assert recent[0]["preview"] == {"connections": 1, "channels": 2}
     assert recent[1]["status"] == "invalid"
     await service.forget_recent(second)
     assert [item["rootPath"] for item in await service.list_recent()] == [str(first)]
@@ -130,20 +130,20 @@ async def test_recent(tmp_path: Path) -> None:
 async def test_open_current_bytes_and_explicit_save(tmp_path: Path) -> None:
     service, _ = await fixture(tmp_path)
     created = await service.initialize_folder(tmp_path)
-    assert created["file"]["formatVersion"] == 5 and "task" not in created["file"]
+    assert created["file"]["formatVersion"] == 7 and "task" not in created["file"]
     path = Path(created["path"])
     raw = json_dumps({**created["file"], "ignored": True})
     path.write_text(raw, encoding="utf-8")
     opened = await service.open_folder(tmp_path)
     assert "ignored" not in opened["file"]
     assert path.read_text(encoding="utf-8") == raw
-    opened["file"]["signals"]["nodes"].append({"nodeId": "outside"})
-    assert service.signals()["nodes"] == []
-    service.update_signals({"nodes": [hardware_node()], "links": []})
+    opened["file"]["monitor"]["channels"].append(channel("outside"))
+    assert service.monitor()["channels"] == []
+    service.update_monitor({"channels": [channel()]})
     await service.close()
     await service.leave()
     assert path.read_text(encoding="utf-8") == raw
-    assert (await service.open_folder(tmp_path))["file"]["signals"]["nodes"] == []
+    assert (await service.open_folder(tmp_path))["file"]["monitor"]["channels"] == []
 
 
 @pytest.mark.asyncio
@@ -234,52 +234,12 @@ async def test_project_directory_occupied_by_file_is_rejected(tmp_path: Path) ->
         await service.initialize_folder(tmp_path)
 
 
-async def test_layout_survives_restart_without_saving_pending_edits(tmp_path: Path) -> None:
-    service, _ = await fixture(tmp_path)
-    await service.initialize_folder(tmp_path)
-    service.update_signals({"nodes": [hardware_node()], "links": []})
-    await service.save()
-    service.update_wiring({"connections": [CONNECTION]})
-    pending = service.signals()
-    pending["nodes"].append(hardware_node("n2"))
-    service.update_signals(pending)
-    moved = service.signals()
-    moved["nodes"][0].update({"x": 42, "y": 64, "width": 300, "height": 180})
-    updated = await service.update_signals_with_layout(moved)
-    assert updated["dirty"] is True
-    assert len(updated["file"]["signals"]["nodes"]) == 2
-    restarted, _ = await fixture(tmp_path)
-    restored = await restarted.open_folder(tmp_path)
-    assert restored["file"]["signals"]["nodes"] == [moved["nodes"][0]]
-    assert restored["file"]["wiring"]["connections"] == []
-    assert restored["dirty"] is False
-    layout_only = restarted.signals()
-    layout_only["nodes"][0]["x"] = 7
-    assert (await restarted.update_signals_with_layout(layout_only))["dirty"] is False
-    await restarted.leave()
-    assert (await restarted.open_folder(tmp_path))["file"]["signals"] == layout_only
-
-
-async def test_layout_does_not_replace_a_damaged_project(tmp_path: Path) -> None:
-    service, _ = await fixture(tmp_path)
-    created = await service.initialize_folder(tmp_path)
-    service.update_signals({"nodes": [hardware_node()], "links": []})
-    await service.save()
-    moved = service.signals()
-    moved["nodes"][0]["width"] = 350
-    Path(created["path"]).write_text("{ broken", encoding="utf-8")
-    with pytest.raises(ValueError):
-        await service.update_signals_with_layout(moved)
-    assert "width" not in service.signals()["nodes"][0]
-    assert Path(created["path"]).read_text(encoding="utf-8") == "{ broken"
-
-
 async def test_earlier_format_is_refused_by_name(tmp_path: Path) -> None:
     service, _ = await fixture(tmp_path)
     path = Path(project_path(tmp_path))
     path.parent.mkdir(parents=True)
-    raw = json_dumps({"formatVersion": 4, "projectId": "OLD"})
+    raw = json_dumps({"formatVersion": 5, "projectId": "OLD"})
     path.write_text(raw)
     selection = await service.inspect_folder(tmp_path)
-    assert selection["state"] == "invalid" and "格式版本 4" in selection["message"]
+    assert selection["state"] == "invalid" and "格式版本 5" in selection["message"]
     assert path.read_text() == raw

@@ -4,7 +4,7 @@ import { useCurrentTestRun } from "../../lib/queries.js";
 import { onRunRequested, peekRequestedRun, takeRequestedRun } from "../../lib/run-focus.js";
 import { isActiveRun } from "../testing/plan-helpers.js";
 import { useRunView } from "../testing/useRunView.js";
-import { useLiveHub, type SignalMode } from "./signal-data.js";
+import { useLiveHub, type MonitorMode } from "./monitor-time.js";
 
 function activeRunId(run: TestRunSnapshot | null | undefined): string | undefined {
   return isActiveRun(run) ? run.runId : undefined;
@@ -12,7 +12,7 @@ function activeRunId(run: TestRunSnapshot | null | undefined): string | undefine
 
 /**
  * The run the bench shows: none (the devices' live data), the current one (followed as soon as it
- * starts, however it was started), or a finished one picked from the history. The signal view
+ * starts, however it was started), or a finished one picked from the history. The monitor panel
  * draws it; the sidebar's flow and history read it too.
  */
 export function useBenchRun() {
@@ -34,7 +34,7 @@ export function useBenchRun() {
   }, [run]);
 
   const live = Boolean(runId && run?.runId === runId && isActiveRun(run));
-  const mode: SignalMode = !runId ? "live" : live ? "run" : "replay";
+  const mode: MonitorMode = !runId ? "live" : live ? "run" : "replay";
   const view = useRunView(runId, live, hub);
   return { run, hub, runId, setRunId, live, mode, view };
 }

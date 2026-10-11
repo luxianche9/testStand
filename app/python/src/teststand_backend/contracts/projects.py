@@ -1,6 +1,6 @@
 from typing import Any
 
-from teststand_backend.contracts.signals import signal_view_schema
+from teststand_backend.contracts.monitor import monitor_schema
 from teststand_backend.contracts.validation import (
     literal,
     obj,
@@ -11,7 +11,7 @@ from teststand_backend.contracts.validation import (
 from teststand_backend.contracts.wiring import project_wiring_schema
 from teststand_backend.util import Record
 
-PROJECT_FORMAT_VERSION = 5
+PROJECT_FORMAT_VERSION = 7
 
 project_file_schema = obj(
     {
@@ -19,7 +19,7 @@ project_file_schema = obj(
         "projectId": string(1),
         "name": string(1),
         "wiring": project_wiring_schema,
-        "signals": signal_view_schema,
+        "monitor": monitor_schema,
         "createdAt": string(datetime=True),
         "updatedAt": string(datetime=True),
     }

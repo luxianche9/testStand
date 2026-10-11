@@ -19,10 +19,10 @@
       "types": "./dist/errors.d.ts",
       "default": "./dist/errors.js"
     },
-    "./signals": {
-      "teststand-source": "./src/signals.ts",
-      "types": "./dist/signals.d.ts",
-      "default": "./dist/signals.js"
+    "./monitor": {
+      "teststand-source": "./src/monitor.ts",
+      "types": "./dist/monitor.d.ts",
+      "default": "./dist/monitor.js"
     },
     "./storage": {
       "teststand-source": "./src/storage.ts",

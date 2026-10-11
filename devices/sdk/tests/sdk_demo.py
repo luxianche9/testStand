@@ -6,9 +6,6 @@ import threading
 from typing import Any, Literal
 
 from teststand_device_sdk import (
-    BIT,
-    TEXT,
-    VALUE,
     BitsStream,
     BlobStream,
     BlockStream,
@@ -16,7 +13,6 @@ from teststand_device_sdk import (
     Device,
     DeviceError,
     ScalarStream,
-    control,
     model,
     param,
     tool,
@@ -47,10 +43,8 @@ class DemoDevice(Device):
         self.ai = self.streams.add(ScalarStream("ai0", sample=lambda: self.read_ai(), rate_hz=50, unit="V",
                                                    label="AI0"))
         self.scope = self.streams.add(BlockStream("scope", read_block=lambda: ([1.0, 2.0, 3.0, 4.0], 1.0), rate_hz=20))
-        self.out = self.streams.add(BitsStream("do", width=4, kind="setpoint",
-                                              control=[control("setBit", "set_level", channel=BIT, level=VALUE)]))
-        self.serial = self.streams.add(ByteStream("serial1", writer=self._write,
-                                                  control=[control("sendText", "write_text", text=TEXT)]))
+        self.out = self.streams.add(BitsStream("do", width=4, kind="setpoint"))
+        self.serial = self.streams.add(ByteStream("serial1", writer=self._write))
         self.camera = self.streams.add(BlobStream("cam"))
 
     def read_inputs(self) -> int:

@@ -17,7 +17,7 @@ from teststand_backend.contracts.errors import app_error
 from teststand_backend.util import clone, new_uuid, utc_now_iso
 
 from .compiler import analyze_plan_draft, compile_plan
-from .models import FLOW_ID, STEP_ID, empty_plan, iter_steps
+from .models import FLOW_ID, STEP_ID, empty_plan, iter_steps, iter_subtree
 from .runtime_state import RuntimeStateStore
 from .validation import validate_plan
 
@@ -369,12 +369,12 @@ def _apply_operation(plan: Record, operation: Record, resolver: Any | None = Non
         index = int(operation.get("index", len(target)))
         inserted = clone(operation.get("step", {}))
         _reject_settings_wrapper(inserted)
-        if (
-            inserted.get("type") == "InvokeTool"
-            and inserted.get("hardwareId")
-            and inserted.get("toolName")
-        ):
-            _bind_step(inserted, str(inserted["hardwareId"]), str(inserted["toolName"]), resolver)
+        # A container is inserted with its children (a Feature with its steps, say): bind every
+        # InvokeTool in the subtree, not just the root, or the nested ones carry no
+        # bindingRevision and the plan only fails later, in validation.
+        for _, step in iter_subtree(inserted):
+            if step.get("type") == "InvokeTool" and step.get("hardwareId") and step.get("toolName"):
+                _bind_step(step, str(step["hardwareId"]), str(step["toolName"]), resolver)
         target.insert(max(0, min(index, len(target))), inserted)
         return
     if kind == "update_step":

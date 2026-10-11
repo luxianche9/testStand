@@ -47,54 +47,17 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
           ports: [{ portId: "J1", name: "信号接口", pins: [{ pinId: "1", position: 1, label: "信号" }] }]
         } });
       }
-      await window.teststand.signals.updateDocument({ signals: { nodes: [
-        { nodeId: "dut", kind: "hardware", hardwareId: "DUT_A", x: 20, y: 20 },
-        { nodeId: "scope", kind: "widget", widget: "scope", label: "", config: {}, x: 360, y: 20, width: 420, height: 240 }
-      ], links: [] } });
       await window.teststand.projects.saveProject();
       await window.teststand.projects.leaveProject();
     }, projectRoot);
     await reloadAfterLeave(page);
     await page.getByText("interaction-fixture", { exact: true }).first().click();
-    await expect(page.locator('.react-flow__node[data-id="dut"]')).toBeVisible();
+    await expect(page.getByRole("region", { name: "运行监控" })).toBeVisible();
   });
 
   test.afterAll(async () => {
     await application?.close().catch(() => undefined);
     if (userData && dirname(userData) === resolve(tmpdir())) await rm(userData, { recursive: true, force: true });
-  });
-
-  test("drags a widget by its header and keeps its size", async () => {
-    const wrapper = page.locator('.react-flow__node[data-id="scope"]');
-    await expect(wrapper).toHaveCSS("width", "420px");
-    await expect(wrapper).toHaveCSS("height", "240px");
-    const header = (await wrapper.locator("header").boundingBox())!;
-    const card = (await wrapper.boundingBox())!;
-    const zoom = card.width / 420;
-    await page.mouse.move(header.x + 40, header.y + header.height / 2);
-    await page.mouse.down();
-    await page.mouse.move(header.x + 40 + 36, header.y + header.height / 2 + 24, { steps: 12 });
-    await page.mouse.up();
-    await expect.poll(() => readNode(page, "scope").then((item) => item.x)).toBeGreaterThan(360);
-    const afterMove = await readNode(page, "scope");
-    // ReactFlow begins moving only after its pointer activation threshold.
-    expect(Math.abs((afterMove.x - 360) * zoom - 36)).toBeLessThanOrEqual(4);
-    expect(Math.abs((afterMove.y - 20) * zoom - 24)).toBeLessThanOrEqual(4);
-    expect(afterMove).toMatchObject({ width: 420, height: 240 });
-    await expect(wrapper).toHaveCSS("width", "420px");
-    // Moving a node is saved at once: the project stays clean and reopens with the new place.
-    expect(await page.evaluate(async () => (await window.teststand.projects.document())?.dirty)).toBe(false);
-    const rootPath = await page.evaluate(async () => {
-      const current = (await window.teststand.projects.document())!;
-      await window.teststand.projects.leaveProject();
-      return current.rootPath;
-    });
-    await expect(page.getByRole("heading", { name: "最近项目" })).toBeVisible();
-    await page.evaluate((root) => window.teststand.projects.openFolder({ rootPath: root }), rootPath);
-    await page.reload();
-    await page.getByText("interaction-fixture", { exact: true }).first().click();
-    await expect(activityBar(page).getByRole("button", { name: "设备管理", exact: true })).toBeVisible();
-    expect(await readNode(page, "scope")).toEqual(afterMove);
   });
 
   test("restores the sidebar width after switching panels and reloading", async () => {
@@ -147,7 +110,8 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
   });
 
   test("keeps empty native Select options and keyboard selection with same-port support", async () => {
-    await page.getByRole("group", { name: "台架视图" }).getByRole("button", { name: "针脚列表", exact: true }).click();
+    await page.getByRole("group", { name: "台架视图" }).getByRole("button", { name: "工位接线", exact: true }).click();
+    await page.getByRole("group", { name: "接线视图" }).getByRole("button", { name: "针脚列表", exact: true }).click();
     await page.getByRole("button", { name: "新建接线", exact: true }).click();
     const dialog = page.getByRole("dialog", { name: "新建接线", exact: true });
     const source = dialog.getByLabel("起点端口");
@@ -187,7 +151,7 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
       settings: {}, enabled: true
     } }));
     await showPanel(page, "设备管理");
-    const row = page.getByRole("complementary", { name: "设备列表" }).getByRole("button", { name: /Keyboard device/ });
+    const row = page.getByRole("complementary", { name: "设备列表" }).getByRole("button", { name: /^Keyboard device/ });
     await row.click();
     await page.getByRole("dialog", { name: "Keyboard device" }).getByRole("button", { name: "编辑", exact: true }).click();
     const dialog = page.getByRole("dialog", { name: "编辑设备", exact: true });
@@ -198,7 +162,7 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
     const saved = await page.evaluate(async () => (await window.teststand.system.dashboard()).devices
       .find((instance) => instance.deviceId === "KEYBOARD_DEV"));
     expect(saved).toMatchObject({ label: "Keyboard relay card", hardwareId: "KEYBOARD_DEV_CARD" });
-    await expect(page.getByRole("complementary", { name: "设备列表" }).getByRole("button", { name: /Keyboard relay card/ }))
+    await expect(page.getByRole("complementary", { name: "设备列表" }).getByRole("button", { name: /^Keyboard relay card/ }))
       .toContainText("在线");
     // Free the card for the other suites.
     await page.evaluate(() => window.teststand.devices.removeDevice({ deviceId: "KEYBOARD_DEV" }));
@@ -218,7 +182,6 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
   });
 
   test("restores the window and saved layout after restarting the desktop", async () => {
-    const node = await readNode(page, "scope");
     const savedWidths = await page.evaluate(() => Object.fromEntries(
       Object.keys(localStorage).filter((key) => key.endsWith("-width") || key.endsWith(".width"))
         .map((key) => [key, localStorage.getItem(key)])
@@ -253,17 +216,8 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
     expect(await page.evaluate((keys) => Object.fromEntries(keys.map((key) => [key, localStorage.getItem(key)])), Object.keys(savedWidths))).toEqual(savedWidths);
     await page.getByText("interaction-fixture", { exact: true }).first().click();
     await expect(activityBar(page).getByRole("button", { name: "设备管理", exact: true })).toBeVisible();
-    expect(await readNode(page, "scope")).toEqual(node);
     await showPanel(page, "设备管理");
     const separator = page.getByRole("separator", { name: "调整侧栏宽度", exact: true });
     await expect.poll(() => separator.evaluate((element) => parseFloat((element.parentElement as HTMLElement).style.gridTemplateColumns))).toBe(Number(savedWidths["teststand.bench-devices-width"]));
   });
 });
-
-async function readNode(page: Page, nodeId: string) {
-  return await page.evaluate(async (id) => {
-    const node = (await window.teststand.projects.document())?.file.signals.nodes.find((item) => item.nodeId === id);
-    if (!node) throw new Error(`Missing signal view node: ${id}`);
-    return node;
-  }, nodeId);
-}

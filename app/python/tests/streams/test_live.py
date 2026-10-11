@@ -163,3 +163,38 @@ async def test_ad_hoc_observe_and_expect(tmp_path: Path) -> None:
             await live.observe("daq", "ai0", window_ms=0)
         assert not list(tmp_path.glob("probe-*"))
         await live.close()
+
+
+class SetpointService(FakeStreamService):
+    """Declares ``sp`` a setpoint shadow, as an output card's plugin does."""
+
+    async def describe(self) -> dict[str, Any]:
+        return {"device": {"streams": [{"id": "sp", "type": "scalar", "kind": "setpoint"}]}}
+
+
+async def test_ad_hoc_verdicts_on_a_setpoint_stream_are_inconclusive(tmp_path: Path) -> None:
+    async with SetpointService({"sp": "scalar"}) as service:
+
+        async def list_streams(hardware_id: str) -> list[dict[str, str]]:
+            return [{"id": "sp", "type": "scalar"}]
+
+        live = LiveStreams(service.sources(), tmp_path, list_streams=list_streams)
+
+        async def feed() -> None:
+            for _ in range(15):
+                service.publish("sp", v=1.0)
+                await asyncio.sleep(0.02)
+
+        writer = asyncio.create_task(feed())
+        observed = await live.observe(
+            "ao", "sp", window_ms=250, assertions=[{"metric": "mean", "op": "eq", "value": 1.0}]
+        )
+        await writer
+        verdict = observed["verdict"]
+        assert verdict["verdict"] == "inconclusive" and verdict["evidenceType"] == "S", verdict
+
+        writer = asyncio.create_task(feed())
+        expected = await live.expect("ao", "sp", within_ms=250, match={"op": "ge", "value": 0.5})
+        await writer
+        assert expected["verdict"]["verdict"] == "inconclusive", expected["verdict"]
+        await live.close()

@@ -406,6 +406,33 @@
         "title": "ManualInvokeToolRequest",
         "type": "object"
       },
+      "MonitorGetRequest": {
+        "additionalProperties": false,
+        "properties": {},
+        "title": "MonitorGetRequest",
+        "type": "object"
+      },
+      "MonitorStreamsRequest": {
+        "additionalProperties": false,
+        "properties": {},
+        "title": "MonitorStreamsRequest",
+        "type": "object"
+      },
+      "MonitorUpdateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "input": {
+            "additionalProperties": true,
+            "title": "Input",
+            "type": "object"
+          }
+        },
+        "required": [
+          "input"
+        ],
+        "title": "MonitorUpdateRequest",
+        "type": "object"
+      },
       "ProjectsDocumentRequest": {
         "additionalProperties": false,
         "properties": {},
@@ -599,66 +626,6 @@
           }
         },
         "title": "SettingsUpdateRequest",
-        "type": "object"
-      },
-      "SignalsApplyOperationsRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "operations": {
-            "items": {
-              "additionalProperties": true,
-              "type": "object"
-            },
-            "title": "Operations",
-            "type": "array"
-          }
-        },
-        "required": [
-          "operations"
-        ],
-        "title": "SignalsApplyOperationsRequest",
-        "type": "object"
-      },
-      "SignalsCatalogRequest": {
-        "additionalProperties": false,
-        "properties": {},
-        "title": "SignalsCatalogRequest",
-        "type": "object"
-      },
-      "SignalsGetDocumentRequest": {
-        "additionalProperties": false,
-        "properties": {},
-        "title": "SignalsGetDocumentRequest",
-        "type": "object"
-      },
-      "SignalsUpdateDocumentRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "signals": {
-            "additionalProperties": true,
-            "title": "Signals",
-            "type": "object"
-          }
-        },
-        "required": [
-          "signals"
-        ],
-        "title": "SignalsUpdateDocumentRequest",
-        "type": "object"
-      },
-      "SignalsWriteRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "input": {
-            "additionalProperties": true,
-            "title": "Input",
-            "type": "object"
-          }
-        },
-        "required": [
-          "input"
-        ],
-        "title": "SignalsWriteRequest",
         "type": "object"
       },
       "StreamsExpectRequest": {
@@ -3377,6 +3344,177 @@
         "x-confirm": false
       }
     },
+    "/api/ops/monitor.get": {
+      "post": {
+        "operationId": "monitor.get",
+        "summary": "The channels the monitor panel shows, in order.",
+        "tags": [
+          "monitor"
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MonitorGetRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/WireError"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-risk": "read",
+        "x-capability": "projects.read",
+        "x-profiles": [
+          "explore",
+          "plan"
+        ],
+        "x-idempotency": "natural",
+        "x-confirm": false
+      }
+    },
+    "/api/ops/monitor.streams": {
+      "post": {
+        "operationId": "monitor.streams",
+        "summary": "Every device with the streams it declares (``known`` is false until the device was\nconnected once; the cached declaration is used while it is offline).",
+        "tags": [
+          "monitor"
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MonitorStreamsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/WireError"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-risk": "read",
+        "x-capability": "hardware.read",
+        "x-profiles": [
+          "explore",
+          "plan"
+        ],
+        "x-idempotency": "natural",
+        "x-confirm": false
+      }
+    },
+    "/api/ops/monitor.update": {
+      "post": {
+        "operationId": "monitor.update",
+        "summary": "Change the panel's channels: ``channels`` replaces the list, then ``remove`` and\n``add`` (appended when not yet shown) apply. A stream must belong to a registered device\nand, once the device's streams are known, be one it declares. Stays in the project buffer\nuntil the project is saved. Returns the panel.",
+        "tags": [
+          "monitor"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MonitorUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/WireError"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-risk": "write",
+        "x-capability": "projects.manage",
+        "x-profiles": [
+          "explore",
+          "plan"
+        ],
+        "x-idempotency": "natural",
+        "x-confirm": false
+      }
+    },
     "/api/ops/projects.document": {
       "post": {
         "operationId": "projects.document",
@@ -4028,285 +4166,6 @@
         "x-risk": "write",
         "x-capability": "system.manage",
         "x-profiles": [],
-        "x-idempotency": "none",
-        "x-confirm": false
-      }
-    },
-    "/api/ops/signals.applyOperations": {
-      "post": {
-        "operationId": "signals.applyOperations",
-        "summary": "Edit the signal view with a list of operations applied in order; the whole batch is\nchecked by the signal view rules and applied completely or not at all. Returns the\nresulting view. Like a canvas edit, it stays in the project buffer until the project is\nsaved.",
-        "tags": [
-          "signals"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SignalsApplyOperationsRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "write",
-        "x-capability": "projects.manage",
-        "x-profiles": [
-          "explore",
-          "plan"
-        ],
-        "x-idempotency": "none",
-        "x-confirm": false
-      }
-    },
-    "/api/ops/signals.catalog": {
-      "post": {
-        "operationId": "signals.catalog",
-        "summary": "Every hardware with its signals: a device's declared streams (``known`` is false until\nthe device was connected once), a passive part's declared signals.",
-        "tags": [
-          "signals"
-        ],
-        "requestBody": {
-          "required": false,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SignalsCatalogRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "additionalProperties": true,
-                    "type": "object"
-                  },
-                  "type": "array"
-                }
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "read",
-        "x-capability": "hardware.read",
-        "x-profiles": [
-          "explore",
-          "plan"
-        ],
-        "x-idempotency": "natural",
-        "x-confirm": false
-      }
-    },
-    "/api/ops/signals.getDocument": {
-      "post": {
-        "operationId": "signals.getDocument",
-        "summary": "The project's signal view: hardware and widget nodes on the canvas and the links\nbetween them.",
-        "tags": [
-          "signals"
-        ],
-        "requestBody": {
-          "required": false,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SignalsGetDocumentRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "read",
-        "x-capability": "projects.read",
-        "x-profiles": [
-          "explore",
-          "plan"
-        ],
-        "x-idempotency": "natural",
-        "x-confirm": false
-      }
-    },
-    "/api/ops/signals.updateDocument": {
-      "post": {
-        "operationId": "signals.updateDocument",
-        "summary": "signals.updateDocument",
-        "tags": [
-          "signals"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SignalsUpdateDocumentRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "write",
-        "x-capability": "projects.manage",
-        "x-profiles": [],
-        "x-idempotency": "natural",
-        "x-confirm": false
-      }
-    },
-    "/api/ops/signals.write": {
-      "post": {
-        "operationId": "signals.write",
-        "summary": "Write a signal the way a control widget does: ``input`` is ``{nodeId, handle, bit?,\naction, value}`` naming a node and handle on the signal view; action is one of the\nstream's control actions (set, setBit, setMask, sendText, sendHex, sendFrame). Refused\nwhile a test runs.",
-        "tags": [
-          "signals"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SignalsWriteRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/WireError"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-risk": "actuate",
-        "x-capability": "hardware.executeTools",
-        "x-profiles": [
-          "explore"
-        ],
         "x-idempotency": "none",
         "x-confirm": false
       }

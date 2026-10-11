@@ -45,4 +45,39 @@ describe("live hub", () => {
     hub.close();
     expect(stops[1]).toHaveBeenCalled();
   });
+
+  it("keeps the upstream subscription while a keepalive consumer holds the keys", () => {
+    // A run moves the scope and the terminal onto its recording: their live consumers leave. The
+    // panel's keepalive stays, so the backend keeps the feed and 返回实时 draws at once.
+    const stops: ReturnType<typeof vi.fn>[] = [];
+    const queries: LiveQuery[] = [];
+    const hub = createLiveHub((query) => {
+      queries.push(query);
+      const stop = vi.fn();
+      stops.push(stop);
+      return stop;
+    });
+    hub({ keys: ["H__ai0", "H__di"], width: 20, windowMs: 1000 }, vi.fn());
+    const stopScope = hub({ keys: ["H__ai0", "H__di"], width: 600, windowMs: 10000 }, vi.fn());
+    vi.advanceTimersByTime(50);
+    // Both joined inside one debounce: one subscription, at the widest window and column count.
+    expect(queries).toEqual([{ keys: ["H__ai0", "H__di"], width: 600, windowMs: 10000 }]);
+
+    stopScope();
+    vi.advanceTimersByTime(50);
+    // Nothing stopped: the keys stay subscribed for the keepalive.
+    expect(stops[0]).not.toHaveBeenCalled();
+    hub.close();
+  });
+
+  it("spreads more keys than one subscription takes over several", () => {
+    const queries: LiveQuery[] = [];
+    const hub = createLiveHub((query) => { queries.push(query); return () => undefined; });
+    const keys = Array.from({ length: 70 }, (_, index) => `H__s${index}`);
+    hub({ keys, width: 10, windowMs: 1000 }, vi.fn());
+    vi.advanceTimersByTime(50);
+    expect(queries.map((query) => query.keys.length)).toEqual([64, 6]);
+    expect(queries.flatMap((query) => query.keys)).toEqual(keys);
+    hub.close();
+  });
 });

@@ -19,7 +19,6 @@ from typing import Any, Literal
 
 from teststand_device_sdk import (
     DEVICE_ERROR,
-    VALUE,
     DEVICE_UNREACHABLE,
     INVALID_ARGUMENT,
     Device,
@@ -28,7 +27,6 @@ from teststand_device_sdk import (
     DeviceConfig,
     ScalarStream,
     SoftwareWaveform,
-    control,
     model,
     param,
     tool,
@@ -137,8 +135,7 @@ class Pci6208v(Device):
         self.last_volts: list[float | None] = [None] * CHANNEL_COUNT
         self.ao = [
             self.streams.add(ScalarStream(f"ao{channel}", capacity=1024, unit="V", label=f"AO{channel}",
-                                          kind="setpoint",
-                                          control=[control("set", "set_voltage", channel=channel, volts=VALUE)]))
+                                          kind="setpoint"))
             for channel in range(CHANNEL_COUNT)
         ]
         self.waveform = SoftwareWaveform(self._waveform_write, lock=self.io_lock,

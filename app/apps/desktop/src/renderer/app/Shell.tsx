@@ -12,6 +12,7 @@ import { useKeyboardShortcut } from "../lib/hooks/useKeyboardShortcut.js";
 import { useDirtyGuard } from "../lib/hooks/useDirtyGuard.js";
 import { chooseProjectFolder } from "../lib/projects.js";
 import { onRunRequested } from "../lib/run-focus.js";
+import { onAssistantRequested } from "../lib/assistant.js";
 import { onSidePanelRequested, type SidePanel } from "../lib/side-panel.js";
 import { ManualCheckDialog } from "../features/testing/ManualCheckDialog.js";
 import { ActivityBar } from "./ActivityBar.js";
@@ -99,9 +100,12 @@ function Shell() {
     });
     // The operator started a run: watch it on the bench's signal view, which is already watching.
     const stopRuns = onRunRequested(() => navigate({ type: "show-content", page: "bench" }));
+    // A shortcut wants to hand the assistant a draft; the composer fills itself in from the same event.
+    const stopAssistant = onAssistantRequested(() => setAssistantOpen(true));
     return () => {
       stopPanels();
       stopRuns();
+      stopAssistant();
     };
   }, [project.data]);
 

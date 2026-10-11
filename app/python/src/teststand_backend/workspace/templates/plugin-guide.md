@@ -56,7 +56,7 @@ SDK 的函数签名和说明用 `devkit_describe_sdk` 查（不带参数列出�
 - **模拟器**：`sim.py` 与 driver 同接口，忠实模拟控制器状态（影子寄存器），输入读成空闲值。`select_driver(real, simulated)` 在检查时自动选模拟器。
 - **工具**：每个操作一个 `@tool`，声明 `kind`（`read` 只读、`configure` 改设置、`actuate` 驱动外部信号、`safe` 安全状态）、`evidence`、`effects`；每个参数用 `param(type, "含单位和范围的说明", ge=, le=)`，越界在调驱动前拒绝。
 - **安全状态**：必须有一个 `kind="safe"` 的工具（一般叫 `safe_state`），幂等，把所有输出置为手册规定的安全值；SDK 在打开后、关闭前自动调用。
-- **流就是信号**：运行中要看到的量声明为流（`ts-plugin-streams`）：输入用采样流，输出写后发布回读或设定值，串口用字节流（后台读线程每次读返回调 `stream.idle()`）。可写的流用 `control=[control(...)]` 声明驱动它的工具，信号视图据此放开关、设定值、发送框。流只读，控制只走工具。
+- **流就是信号**：运行中要看到的量声明为流（`ts-plugin-streams`）：输入用采样流，输出写后发布回读或设定值，串口用字节流（后台读线程每次读返回调 `stream.idle()`）。流只读：它们显示在运行监控里（示波器画采样流，终端显示收发记录），也是测试步骤判定的数据来源。控制只走 `kind="actuate"` 的工具：操作员用设备的动作弹窗，测试步骤直接调用工具。
 - **端口（引脚）**：`pinout.py` 按手册连接器表写针脚：`function(signal, direction, electrical_type, channel_kind=, channel_index=, mode=)` 描述一个针脚的作用；一个连接器用 `single_connector_pinout(hardware_id, 厂商, 型号, 针数, {针号: (function(...),)}, 出处)`，多个连接器（每口一个 DB9、前后面板）用 `multi_connector_pinout(hardware_id, 厂商, 型号, [(名称, 类型, 针数, {针号: ...}), ...], 出处)`。没写的针号按 NC 发布。不知道的针脚不要编，`pinout()` 返回 `None`（不支持）或问用户。针脚用于接线（`request_wiring`）；流和工具不与针脚关联。
 - **隔离**：模板默认 `isolation = "subprocess"`：插件在独立子进程里运行，ctypes 调错（签名、缓冲区长度、未公开的函数）只会让这台设备掉线，SDK 会重开它，不会拖垮 testStand。只有纯 Python / 标准库的驱动（例如用 `SerialPort` 的 COM 口设备）才改成 `"inproc"`。
 - **stdout 不能用**：适配器和驱动不许 `print`，用 `logging`（子进程里 stdout 也被重定向到 stderr，但打印仍会被当成协议噪声）。

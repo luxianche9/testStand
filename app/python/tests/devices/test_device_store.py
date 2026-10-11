@@ -81,7 +81,6 @@ async def test_canonical(tmp_path: Path) -> None:
         "hardwareId": "CARD",
         "label": "S1",  # a device's hardware is named after the device
         "ports": hardware("CARD")["ports"],
-        "signals": [],
     }
     assert "credential" not in (store.root / "devices/S1.json").read_text()
 

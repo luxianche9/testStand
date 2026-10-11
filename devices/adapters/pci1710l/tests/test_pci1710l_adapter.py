@@ -65,9 +65,7 @@ def test_streams(hh):
     assert streams[16] == {"id": "di", "type": "bits", "width": 16, "bitLabels": [f"DI{n}" for n in range(16)],
                            "rateHz": 20.0, "kind": "measured"}
     assert streams[17] == {"id": "do", "type": "bits", "width": 16, "bitLabels": [f"DO{n}" for n in range(16)],
-                           "label": "DO controller readback", "control": [
-                               {"action": "setBit", "tool": "pci1710l_set_level",
-                                "args": {"channel": {"$": "bit"}, "level": {"$": "value"}}}]}
+                           "label": "DO controller readback"}
 
 
 def test_do_write_publishes_readback(hh):

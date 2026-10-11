@@ -107,10 +107,8 @@ def test_loopback_read_rx_is_nonconsuming_and_clearable(loopback):
 
 
 def test_streams_are_bytes(hh):
-    assert hh.device()["streams"] == [{"id": f"serial{channel}", "type": "bytes", "writable": True, "control": [
-        {"action": "sendText", "tool": "cp118u_write_text", "args": {"channel": channel, "text": {"$": "text"}}},
-        {"action": "sendHex", "tool": "cp118u_write_hex", "args": {"channel": channel, "hex_data": {"$": "hex"}}}]}
-        for channel in range(1, 9)]
+    assert hh.device()["streams"] == [{"id": f"serial{channel}", "type": "bytes", "writable": True}
+                                                   for channel in range(1, 9)]
     assert hh.call("stream_read", streamId="serial1")["data"]["status"]["state"] == "not_configured"
 
 

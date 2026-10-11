@@ -521,13 +521,7 @@ export function relativeTime(tb: number, origin: number, digits = 3): string {
 
 // -- run console ---------------------------------------------------------------------------------
 
-/** Scroll a message list to the first entry at or after `tb`; `seq` makes repeated jumps to one instant count. */
-export interface ConsoleJump {
-  tb: number;
-  seq: number;
-}
-
-type EntryKind = "plan" | "bus" | "call" | "step" | "judge" | "event";
+export type EntryKind = "plan" | "bus" | "call" | "step" | "judge" | "event";
 
 /**
  * One console line: a step of the plan outline, bus traffic, a tool call, a step boundary, a
