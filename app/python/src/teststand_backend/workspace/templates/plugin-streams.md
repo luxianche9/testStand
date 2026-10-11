@@ -19,8 +19,16 @@
 
 ```python
 self.streams.add(ScalarStream(f"ao{ch}", unit="V", label=f"AO{ch}", kind="setpoint"))
-self.streams.add(BitsStream("di", sample=self._read_di, publish_on_change=True, kind="measured",
-                            bit_labels=[f"IDI{n}" for n in range(16)], rate_hz=20.0))
+self.streams.add(
+    BitsStream(
+        "di",
+        sample=self._read_di,
+        publish_on_change=True,
+        kind="measured",
+        bit_labels=[f"IDI{n}" for n in range(16)],
+        rate_hz=20.0,
+    )
+)
 ```
 
 流就是信号。除了 `control`，元数据只是声明；流和工具都不与针脚关联。AI 靠 id、`label` 和工具描述理解它，所以 id 要和工具参数里的通道号对得上（`ai3` 对应 `channel=3`，`serial2` 对应 `channel=2`）。id 为 1–64 个 `[A-Za-z0-9_.-]`。只写手册能证实的单位；`kind` 不确定就不写。
@@ -45,8 +53,14 @@ SDK 给每条记录加 `seq`（缓冲序号，从 0 递增）、`t`（SDK 时钟
 **采样型**：给一个同步 `sample()`，SDK 在自己的线程上按 `rate_hz` 调用。
 
 ```python
-self.di = self.streams.add(BitsStream("di", sample=lambda: self._read_mask("DI"), publish_on_change=True,
-                                      rate_hz=float(settings.get("bitRateHz", 20))))
+self.di = self.streams.add(
+    BitsStream(
+        "di",
+        sample=lambda: self._read_mask("DI"),
+        publish_on_change=True,
+        rate_hz=float(settings.get("bitRateHz", 20)),
+    )
+)
 ```
 
 - 只在有人看时采样：后端 `watch` 这条流（测试运行的录制、运行监控或设备信息弹窗的实时显示）。没人看就不访问硬件。
@@ -62,6 +76,7 @@ self.di = self.streams.add(BitsStream("di", sample=lambda: self._read_mask("DI")
 ```python
 self.ai = [self.streams.add(ScalarStream(f"ai{c}")) for c in range(16)]
 self.streams.scan(self.ai, self._scan_ai, rate_hz=float(settings.get("aiRateHz", 20)))
+
 
 def _scan_ai(self) -> list[float | None]:
     # 未配置的通道返回 None；一次驱动调用读完所有配置过的通道。
@@ -87,14 +102,35 @@ def _scan_ai(self) -> list[float | None]:
 ```python
 from teststand_device_sdk import BIT, HEX, TEXT, VALUE, control
 
-self.relay = self.streams.add(BitsStream("relay", bit_labels=[f"R{n}" for n in range(16)], display="switches",
-                                         control=[control("setBit", "set_relay", channel=BIT, closed=VALUE),
-                                                  control("setMask", "set_bank", mask=VALUE)]))
-self.streams.add(ScalarStream(f"ao{ch}", unit="V", kind="setpoint",
-                              control=[control("set", "set_voltage", channel=ch, volts=VALUE)]))
-self.streams.add(ByteStream(f"serial{ch}", writer=..., control=[
-    control("sendText", "write_text", channel=ch, text=TEXT),
-    control("sendHex", "write_hex", channel=ch, hex_data=HEX)]))
+self.relay = self.streams.add(
+    BitsStream(
+        "relay",
+        bit_labels=[f"R{n}" for n in range(16)],
+        display="switches",
+        control=[
+            control("setBit", "set_relay", channel=BIT, closed=VALUE),
+            control("setMask", "set_bank", mask=VALUE),
+        ],
+    )
+)
+self.streams.add(
+    ScalarStream(
+        f"ao{ch}",
+        unit="V",
+        kind="setpoint",
+        control=[control("set", "set_voltage", channel=ch, volts=VALUE)],
+    )
+)
+self.streams.add(
+    ByteStream(
+        f"serial{ch}",
+        writer=...,
+        control=[
+            control("sendText", "write_text", channel=ch, text=TEXT),
+            control("sendHex", "write_hex", channel=ch, hex_data=HEX),
+        ],
+    )
+)
 ```
 
 | `action` | 流类型 | 占位符 | 含义 |
@@ -121,9 +157,9 @@ def _write(self, command):
         return self._request(command)
     finally:
         try:
-            self.relay.publish(self._read_mask("RELAY"))   # 控制器回读
+            self.relay.publish(self._read_mask("RELAY"))  # 控制器回读
         except DeviceError:
-            pass                                          # 写本身的错误才是要报告的
+            pass  # 写本身的错误才是要报告的
 ```
 
 没有回读能力的输出（如 AO 只有软件影子）在驱动接受后发布设定值：`self.ao[channel].publish(volts)`，这种流声明 `kind="setpoint"`。回读流是可选的，只为显示方便：判定输出以工具调用记录为准（调用参数、结果、设备端起止时间），物理输出要独立测量。
@@ -135,20 +171,25 @@ def _write(self, command):
 ## 字节流（串口配方）
 
 ```python
-self.streams.add(ByteStream(f"serial{ch}", writer=lambda data, ch=ch: self._send(ch, data),
-                            max_bytes=self.rx_buffer_bytes))
+self.streams.add(
+    ByteStream(
+        f"serial{ch}",
+        writer=lambda data, ch=ch: self._send(ch, data),
+        max_bytes=self.rx_buffer_bytes,
+    )
+)
 ```
 
 - **读线程**：`stream.rx(data)`，只记录驱动实际读到的字节；空字节被忽略。读线程访问驱动时持 `self.io_lock`。
 - **`idle()`**：读线程每次读返回（读到空、FIFO 已清空）都调 `stream.idle()`，确认"到此刻为止没有更多字节"，推进水位；未配置的端口在每轮轮询里也调 `idle()`。轮询间隔不超过 100 ms，保证水位落后时钟不超过 `IDLE_INTERVAL_MS`（200 ms）。第一次调用后水位只由 `idle()` 和新记录推进，读线程停了水位就停，判定器因此不会把"读线程卡住"当成"没有数据"。`--check` 对从不调 `idle()` 的字节 / 帧流给出警告，对水位落后超过约 350 ms 的判为失败。
 
 ```python
-def _drain(self, channel):          # 调用方持 io_lock
+def _drain(self, channel):  # 调用方持 io_lock
     port, stream = self.port_map[channel], self._stream(channel)
     while True:
         count, data = self.pcomm.sio_read(port, READ_CHUNK)
         if count <= 0 or not data:
-            stream.idle()           # 读返回：没有更多字节
+            stream.idle()  # 读返回：没有更多字节
             return
         stream.rx(data)
 ```

@@ -26,9 +26,11 @@ function findPin(port: HardwarePort | undefined, pinId: string): HardwarePin | u
   return port?.pins.find((item) => item.pinId === pinId);
 }
 
-/** `1 (TX)` when the pin carries a signal name, just `1` when it does not. */
+/** `1 (TX)` when the pin carries a signal name, just `1` when it does not. A device's pin ids are
+ *  qualified by their connector (`CARD.CN1.30`); the port is shown beside it, so only `30` is. */
 export function pinText(port: HardwarePort | undefined, pinId: string): string {
   const pin = findPin(port, pinId);
-  if (!pin) return pinId;
-  return pin.label ? `${pin.pinId} (${pin.label})` : pin.pinId;
+  if (!pin || !port) return pinId;
+  const short = pin.pinId.startsWith(`${port.portId}.`) ? pin.pinId.slice(port.portId.length + 1) : pin.pinId;
+  return pin.label ? `${short} (${pin.label})` : short;
 }

@@ -31,6 +31,14 @@ export function useDashboard() {
   });
 }
 
+/** Installed device packages; `restartRequired` when an update waits for a restart. */
+export function useDevicePackages() {
+  return useQuery({
+    queryKey: queryKeys.devicePackages,
+    queryFn: () => window.teststand.devices.listPackages()
+  });
+}
+
 /** The open project document: path, dirty flag, and the single file contents. */
 export function useProjectDocument() {
   return useQuery({ queryKey: queryKeys.projectDocument, queryFn: () => window.teststand.projects.document() });

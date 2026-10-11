@@ -75,6 +75,23 @@ function InteractionStack({ toolCallId }: { toolCallId?: string }) {
   );
 }
 
+/**
+ * Pending requests that belong to no tool call (OpenCode's repeated-call guard, `doom_loop`, has
+ * `tool: null`). Rendered above the composer: without it the agent would wait forever.
+ */
+export function UnattachedInteractions() {
+  const { permissions, questions } = useInteractions();
+  const pending = permissions.filter((item) => item.state === "pending");
+  const asking = questions.filter((item) => item.state === "pending");
+  if (!pending.length && !asking.length) return null;
+  return (
+    <div className="grid gap-2" aria-label="等待你处理的请求">
+      {pending.map((item) => <OpenCodePermissionCard key={item.request.id} request={item.request} state="pending" />)}
+      {asking.map((item) => <OpenCodeQuestionCard key={item.request.id} request={item.request} state="pending" />)}
+    </div>
+  );
+}
+
 export function withOpenCodeToolInteractions<TArgs = any, TResult = any>(
   Base: ToolCallMessagePartComponent<TArgs, TResult>
 ): ToolCallMessagePartComponent<TArgs, TResult> {

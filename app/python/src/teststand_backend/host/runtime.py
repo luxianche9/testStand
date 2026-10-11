@@ -10,13 +10,14 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import sys
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
-from teststand_backend import __version__
+from teststand_backend import __version__, devkit
 from teststand_backend.application import (
     NAMESPACES,
     ExecutionCoordinator,
@@ -102,6 +103,32 @@ class Services:
     api: LocalApi
 
 
+def installation_folders(user_data: Path, opencode: Path | None = None) -> list[Path]:
+    """testStand's own folders, which the agent may not read: the user data directory and the
+    installation (in development the source checkout that holds the backend and the SDK)."""
+    import teststand_device_sdk
+
+    import teststand_backend
+
+    folders = {user_data.resolve()}
+    for module in (teststand_backend, teststand_device_sdk):
+        package = Path(module.__file__ or "").resolve().parent
+        checkout = next(
+            (parent for parent in package.parents if (parent / "app" / "package.json").is_file()),
+            None,
+        )
+        folders.add(checkout or package)
+    if getattr(sys, "frozen", False):
+        folders.add(Path(sys.executable).resolve().parent.parent)
+    if opencode is not None:
+        folders.add(opencode.resolve().parent)
+    # Nested folders are covered by their ancestors. A redirected folder (AppData under an
+    # MSIX container) is protected under both of its names.
+    kept = {f for f in folders if not any(o != f and f.is_relative_to(o) for o in folders)}
+    kept.add(user_data.absolute())
+    return sorted(kept)
+
+
 class HostRuntime:
     def __init__(self) -> None:
         self.bus = EventBus()
@@ -182,6 +209,8 @@ class HostRuntime:
                 "live_streams": live_streams,
             }
         )
+        protected = installation_folders(root, options.opencode)
+        devkit.configure(protected)
         opencode = OpenCodeRuntime(
             [str(options.opencode)] if options.opencode and options.opencode.is_file() else None,
             root / "opencode",
@@ -191,6 +220,7 @@ class HostRuntime:
             gateway_token=lambda: agents.gateway.token(),
             cors_origins=options.renderer_origins,
             publish=self._emit("opencode"),
+            protected=protected,
         )
         settings_application = SettingsApplication(
             application.authorizer, settings, secrets, opencode

@@ -57,6 +57,10 @@ class __CLASS__(Device):
     model = "__MODEL__"
     prefix = "__PREFIX__"
     capabilities = ("digital_input", "digital_output")  # TODO(new_device)
+    # A vendor DLL called through ctypes can crash its process: run in a child process so a crash
+    # takes down this device only (the SDK reopens it), never testStand. Use "inproc" only for
+    # drivers that are pure Python or the standard library (a COM port through SerialPort).
+    isolation = "subprocess"
     version = "0.1.0"
     instructions = ("__MANUFACTURER__ __MODEL__. TODO(new_device): two sentences for the AI: what the device does, "
                     "which tool to call first, what every output does physically.")

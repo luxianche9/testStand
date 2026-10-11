@@ -16,6 +16,19 @@ dependencies = [
   "keyring==25.7.0",
   "packaging==26.3",
   "teststand-device-sdk",
+  "pypdf==6.20.0",
+  # Runs the tests of device adapters the agent writes (devkit), also in the release build.
+  "pytest==9.1.1",
+  "pypdfium2==5.14.0",
+  # Windows built-in OCR in process (devkit reads connector figures in manuals).
+  "winrt-runtime==3.2.1",
+  "winrt-windows-media-ocr==3.2.1",
+  "winrt-windows-graphics-imaging==3.2.1",
+  "winrt-windows-storage==3.2.1",
+  "winrt-windows-storage-streams==3.2.1",
+  "winrt-windows-foundation==3.2.1",
+  "winrt-windows-foundation-collections==3.2.1",
+  "winrt-windows-globalization==3.2.1",
 ]
 
 [project.entry-points."teststand.test_steps"]
@@ -47,7 +60,6 @@ dev = [
   "teststand-adapter-cp118u-i",
   "ruff",
   "mypy",
-  "pytest",
   "pytest-asyncio",
   "pytest-cov",
   "types-jsonschema",
@@ -73,6 +85,11 @@ strict = true
 files = ["src", "tests"]
 mypy_path = ["src"]
 explicit_package_bases = true
+
+[[tool.mypy.overrides]]
+# PDFium bindings ship no type information (devkit renders manual pages for OCR).
+module = ["pypdfium2", "pypdfium2.*"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

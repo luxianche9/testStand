@@ -381,3 +381,43 @@ async def test_dependencies_testStand_ships_are_left_out(tmp_path: Path, isolate
     assert (site / "extra_dep-1.dist-info").is_dir() and not (
         site / "pydantic-2.0.dist-info"
     ).exists()
+
+
+async def test_updating_a_package_keeps_the_devices_and_waits_for_a_restart(
+    tmp_path: Path, isolated: Any
+) -> None:
+    from teststand_backend.application import DefaultAuthorizer, DevicesApplication
+    from teststand_backend.application.authorization import HUMAN_REQUEST_CONTEXT as HUMAN
+    from teststand_backend.contracts.operations import operation_spec
+    from teststand_backend.devices import DeviceService, DeviceStore, PluginTransport
+
+    packages = await store_for(tmp_path)
+    devices = DeviceStore(tmp_path / "devices")
+    await devices.initialize()
+    service = DeviceService(devices, PluginTransport(), packages)
+    app = DevicesApplication(DefaultAuthorizer(), service, None)  # type: ignore[arg-type]
+    old, new = tmp_path / "fake-1.tsdev", tmp_path / "fake-2.tsdev"
+    old.write_bytes(package())
+    new.write_bytes(package(version="2.0.0"))
+    # Not installed yet: an update has nothing to update.
+    with pytest.raises(AppError, match="not installed"):
+        await app.update_package_from_file(HUMAN, str(new))
+    await app.add_device_from_file(HUMAN, str(old))
+    assert app.list_packages(HUMAN)["restartRequired"] is False
+    updated = await app.update_package_from_file(HUMAN, str(new))
+    assert updated == {
+        "type": "fake",
+        "version": "2.0.0",
+        "action": "upgrade",
+        "devices": ["FAKE"],
+        "restartRequired": True,
+    }
+    assert [item["deviceId"] for item in service.list_devices()] == ["FAKE"]
+    listing = app.list_packages(HUMAN)
+    assert listing["restartRequired"] is True
+    assert listing["packages"][0]["pending"] == {"action": "install", "version": "2.0.0"}
+    spec = operation_spec(app.update_package_from_file)
+    assert spec is not None and spec.confirm
+    for path in ("fake.tsdev", str(tmp_path / "missing.tsdev")):
+        with pytest.raises(AppError):
+            await app.update_package_from_file(HUMAN, path)

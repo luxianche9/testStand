@@ -52,6 +52,30 @@ export interface DeviceAdded {
   status: DeviceStatus;
   restartRequired: boolean;
 }
+/** `devices.updatePackageFromFile`: a newer driver for an installed device type; its devices
+ *  (`devices`) use it once testStand restarts when `restartRequired`. */
+export interface DevicePackageUpdated {
+  type: string;
+  version: string;
+  action: DevicePackageInspection["action"];
+  devices: string[];
+  restartRequired: boolean;
+}
+
+/** One installed device package (`devices.listPackages`); `pending` is applied at the next start. */
+export interface InstalledDevicePackage {
+  type: string;
+  version: string;
+  manufacturer: string;
+  model: string;
+  active: boolean;
+  pending?: { action: "install"; version: string } | { action: "uninstall" };
+}
+export interface DevicePackages {
+  packages: InstalledDevicePackage[];
+  /** A package change waits for testStand to restart. */
+  restartRequired: boolean;
+}
 export type StoredDevice = DeviceInstance;
 export const deviceIdInputSchema = z.object({ id: z.string().min(1) }).strict();
 

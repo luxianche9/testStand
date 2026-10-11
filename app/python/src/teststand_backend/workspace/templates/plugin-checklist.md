@@ -1,11 +1,11 @@
 # 交付检查表
 
-逐项核对，每一项都要能指到代码或测试。`check_adapter.ps1` 通过只是最低要求。
+逐项核对，每一项都要能指到代码或测试。`devkit_check_adapter`（仓库里是 `check_adapter.ps1`）通过只是最低要求。
 
 ## 资料与身份
 
 - [ ] `manufacturer`、`model` 与手册原文一致；`prefix` 小写、唯一，不和现有适配器冲突
-- [ ] `pyproject.toml` 声明了入口点 `[project.entry-points."teststand.devices"] <adapter> = "teststand_adapter_<adapter>:DEVICE"`，类型名与适配器目录一致；`uv run python -m teststand_device_sdk --adapter <adapter> --check` 能按类型名找到它
+- [ ] `pyproject.toml` 声明了入口点 `[project.entry-points."teststand.devices"] <adapter> = "teststand_adapter_<adapter>:DEVICE"`，类型名与适配器目录一致，类型名与 `plugins/<adapter>/` 目录名一致
 - [ ] `isolation` 有依据：驱动写 stdout、可能崩溃或要求独占进程时为 `subprocess`，否则 `inproc`；README 写明理由
 - [ ] 通道数、编号起点（0 或 1）、量程、单位都来自手册，出处写在 README
 - [ ] 手册缺失的事实写成 `TODO` 并向用户提出，没有猜测值
@@ -64,11 +64,11 @@
 
 ## 测试与接入
 
-- [ ] `check_adapter.ps1 -Adapter <adapter>` 通过（pytest、`--check` 合规、无 `TODO(new_device)`）
+- [ ] `devkit_check_adapter <adapter>` 通过（pytest、合规检查、无 `TODO(new_device)`）
 - [ ] `check_device(cls, warnings=warnings)` 无失败且 `warnings == []`
 - [ ] 测试覆盖（用 `serve()` 的进程内 harness）：公共工具集合（含内置流工具，不含 `get_pinout` / `list_streams`）、越界拒绝、未配置门槛、`safe_state` 幂等、`hh.device()` 的 `streams`（含元数据）和 `description`、写工具的 `meta.streamRefs` 与记录 `op`、采样流经 `hh.subscribe` 出值、字节流的 `idle()` 水位
 - [ ] README 写明：设备类型名、`isolation`、设备语义、流、`settings` 字段、构建原生程序的方法
 - [ ] 仓库中没有令牌、密码；`settings` 里只有非秘密配置
-- [ ] `[tool.teststand.package]` 写明 `vendorDrivers`（台架需预装的厂商驱动）和 `requiredFiles`；`python devices/pack.py <adapter>` 能生成 `.tsdev`
+- [ ] `[tool.teststand.package]` 写明 `vendorDrivers`（台架需预装的厂商驱动）和 `requiredFiles`；`devkit_package_adapter <adapter>` 能生成 `dist/<类型>-<版本>.tsdev`
 - [ ] 用户在 testStand 测试台架用“添加设备…”选这个设备包添加设备（添加前会显示清单），不改 testStand 本身
 - [ ] 首次上架由人在测试台架上对真实硬件空载验收，结束后 `safe_state`；结果记录在 README 或交付说明里

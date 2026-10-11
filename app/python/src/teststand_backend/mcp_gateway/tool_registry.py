@@ -34,6 +34,7 @@ from teststand_backend.contracts.mcp import (
     with_error_schema,
 )
 from teststand_backend.contracts.operations import OperationDefinition, Tool
+from teststand_backend.devkit import DEVKIT_TOOLS
 from teststand_backend.testing.tools import TESTING_TOOLS
 from teststand_backend.util import clone
 
@@ -46,6 +47,7 @@ Run = Callable[[Record, Record], Awaitable[Any]]
 BUILTIN_TOOLS: list[Tool] = [
     *PLATFORM_TOOLS,
     *AGENT_TOOLS,
+    *DEVKIT_TOOLS,
     *CONTRACT_TOOLS,
     *STREAM_TOOLS,
     *TESTING_TOOLS,
@@ -172,7 +174,11 @@ class ToolRegistry:
             return result if tool.result is None else tool.result(result)
 
         return _Entry(
-            definition, operation.spec.capability, operation.spec.profiles, run, tool.waits
+            definition,
+            operation.spec.capability,
+            operation.spec.profiles,
+            run,
+            tool.waits or operation.spec.confirm,
         )
 
     def _generated(self, definition: OperationDefinition) -> _Entry:
@@ -182,7 +188,15 @@ class ToolRegistry:
 
         public = generated_definition(definition)
         public["outputSchema"] = with_error_schema(public["outputSchema"])
-        return _Entry(public, definition.spec.capability, definition.spec.profiles, run)
+        # An operation the operator confirms waits for a person: a client that gives up must
+        # withdraw the question, not leave an approvable request behind (design doc 8.4).
+        return _Entry(
+            public,
+            definition.spec.capability,
+            definition.spec.profiles,
+            run,
+            definition.spec.confirm,
+        )
 
     def _gateway_call(self, tool: Tool) -> Run:
         async def run(context: Record, arguments: Record) -> Any:
@@ -277,7 +291,8 @@ class ToolRegistry:
         return remote is not None and self._in_mode(remote.spec.profiles, context)
 
     def waits(self, name: str) -> bool:
-        """Whether tool ``name`` blocks until a person answers it."""
+        """Whether tool ``name`` blocks until a person answers it: it asks the operator
+        (``request_wiring``) or its operation needs the operator's confirmation."""
         entry = self._entries.get(name)
         return entry is not None and entry.waits
 

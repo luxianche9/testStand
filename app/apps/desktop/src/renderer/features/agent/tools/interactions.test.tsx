@@ -7,16 +7,27 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { onSidePanelRequested } from "../../../lib/side-panel.js";
 import { OpenCodePermissionCard } from "./PermissionCard";
 import { OpenCodeQuestionCard } from "./QuestionCard";
+import { UnattachedInteractions } from "./interactions";
 import { getPatchInfo } from "./shared";
 import { TestPlanTool } from "./test-plan-tool";
 
 const replyToPermission = vi.fn(async () => undefined);
 const replyToQuestion = vi.fn(async () => undefined);
 const rejectQuestion = vi.fn(async () => undefined);
+const noInteractions = {
+  permissions: { pending: {}, resolved: {} },
+  questions: { pending: {}, answered: {}, rejected: {} }
+};
+let threadInteractions: unknown = noInteractions;
 
 vi.mock("@assistant-ui/react-opencode", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@assistant-ui/react-opencode")>();
-  return { ...actual, useOpenCodeRuntimeExtras: () => ({ replyToPermission, replyToQuestion, rejectQuestion }) };
+  return {
+    ...actual,
+    useOpenCodeRuntimeExtras: () => ({ replyToPermission, replyToQuestion, rejectQuestion }),
+    useOpenCodeThreadState: (select: (state: { interactions: unknown }) => unknown) =>
+      select({ interactions: threadInteractions })
+  };
 });
 
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
@@ -33,6 +44,21 @@ describe("OpenCode interaction cards", () => {
     render(<OpenCodePermissionCard request={request} state="pending" />);
     await userEvent.click(screen.getByRole("button", { name: "允许一次" }));
     expect(replyToPermission).toHaveBeenCalledWith("permission-1", "once");
+  });
+
+  it("shows a pending request that belongs to no tool call above the composer", async () => {
+    const loop = { id: "loop-1", permission: "doom_loop", patterns: ["dev__read_ai"], tool: null };
+    const attached = { id: "bash-1", permission: "bash", patterns: ["ls"], tool: { callID: "call-1" } };
+    threadInteractions = {
+      permissions: { pending: { "loop-1": loop, "bash-1": attached }, resolved: {} },
+      questions: { pending: {}, answered: {}, rejected: {} }
+    };
+    render(<UnattachedInteractions />);
+    expect(screen.getByText(/dev__read_ai，可能在原地打转/)).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: "允许一次" })).toHaveLength(1);
+    await userEvent.click(screen.getByRole("button", { name: "拒绝" }));
+    expect(replyToPermission).toHaveBeenCalledWith("loop-1", "reject");
+    threadInteractions = noInteractions;
   });
 
   it("renders and submits question answers", async () => {

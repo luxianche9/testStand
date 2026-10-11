@@ -11,6 +11,7 @@ CAPABILITIES = (
     "agents.manage",
     "devices.read",
     "devices.manageDevices",
+    "devices.develop",
     "hardware.read",
     "hardware.manage",
     "hardware.executeTools",

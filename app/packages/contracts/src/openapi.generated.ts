@@ -434,6 +434,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ops/devices.listPackages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Installed device packages, with changes that wait for a restart. */
+        post: operations["devices.listPackages"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ops/devices.listTools": {
         parameters: {
             query?: never;
@@ -533,6 +550,27 @@ export interface paths {
         put?: never;
         /** devices.saveHardware */
         post: operations["devices.saveHardware"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ops/devices.updatePackageFromFile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Update the driver of an installed device type from a newer (or rebuilt) ``.tsdev``;
+         *     its devices keep their ids, settings and wiring and use it after testStand restarts.
+         *     Adds no device. The operator confirms first.
+         */
+        post: operations["devices.updatePackageFromFile"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1801,6 +1839,8 @@ export interface components {
         DevicesListHardwareRequest: Record<string, never>;
         /** DevicesListManagedHardwareRequest */
         DevicesListManagedHardwareRequest: Record<string, never>;
+        /** DevicesListPackagesRequest */
+        DevicesListPackagesRequest: Record<string, never>;
         /** DevicesListToolsRequest */
         DevicesListToolsRequest: Record<string, never>;
         /** DevicesRefreshDeviceRequest */
@@ -1827,6 +1867,11 @@ export interface components {
         DevicesSaveHardwareRequest: {
             /** Input */
             input: object;
+        };
+        /** DevicesUpdatePackageFromFileRequest */
+        DevicesUpdatePackageFromFileRequest: {
+            /** Path */
+            path: string;
         };
         /** ManualInvokeToolRequest */
         ManualInvokeToolRequest: {
@@ -3094,6 +3139,39 @@ export interface operations {
             };
         };
     };
+    "devices.listPackages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DevicesListPackagesRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": object;
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: components["schemas"]["WireError"];
+                    };
+                };
+            };
+        };
+    };
     "devices.listTools": {
         parameters: {
             query?: never;
@@ -3269,6 +3347,39 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["DevicesSaveHardwareRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": object;
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: components["schemas"]["WireError"];
+                    };
+                };
+            };
+        };
+    };
+    "devices.updatePackageFromFile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DevicesUpdatePackageFromFileRequest"];
             };
         };
         responses: {

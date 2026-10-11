@@ -1,5 +1,5 @@
 import type { AgentConfirmation, AgentConfirmationAnswer, AgentIntegrationPreview, AgentIntegrationStatus, AgentToolInfo, McpGatewayStatus, OpenCodeRuntimeStatus } from "./agents.js";
-import type { DeviceAdded, DevicePackageInspection, Hardware, HardwareAvailability, ManagedDeviceDefinition, ManagedHardware, DeviceInstance, DeviceStatus, StoredHardwareDefinition, ToolCatalogItem } from "./devices.js";
+import type { DeviceAdded, DevicePackageInspection, DevicePackageUpdated, DevicePackages, Hardware, HardwareAvailability, ManagedDeviceDefinition, ManagedHardware, DeviceInstance, DeviceStatus, StoredHardwareDefinition, ToolCatalogItem } from "./devices.js";
 import type { ExecutionActivity, ManualToolInvocationResult } from "./execution.js";
 import type { DeviceStream, RunIo, RunMessages, RunRejudge, RunStreams, RunStreamWindow, RunTimeline, StreamProbe, StreamRead } from "./observability.js";
 import type { operations } from "./openapi.generated.js";
@@ -54,6 +54,8 @@ export interface OperationResults {
   "devices.inspectPackage": DevicePackageInspection;
   "devices.addDevice": DeviceAdded;
   "devices.addDeviceFromFile": DeviceAdded;
+  "devices.updatePackageFromFile": DevicePackageUpdated;
+  "devices.listPackages": DevicePackages;
   "devices.listHardware": Hardware[];
   "devices.getHardware": Hardware;
   "devices.getDefinition": ManagedDeviceDefinition | null;

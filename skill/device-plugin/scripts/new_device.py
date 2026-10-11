@@ -1,4 +1,4 @@
-"""Scaffold a testStand device plugin adapter from ``assets/adapter-template``.
+"""Scaffold a testStand device plugin adapter from the backend's ``devkit/template``.
 
     python skill/device-plugin/scripts/new_device.py pci1234 --prefix pci1234 --model PCI-1234 --manufacturer Acme
 
@@ -19,7 +19,7 @@ import tomllib
 from pathlib import Path
 
 SKILL = Path(__file__).resolve().parents[1]
-TEMPLATE = SKILL / "assets" / "adapter-template"
+TEMPLATE = SKILL.parents[1] / "app" / "python" / "src" / "teststand_backend" / "devkit" / "template"
 REPO = SKILL.parents[1]
 DEFAULT_ROOT = REPO / "devices"
 SUFFIX = ".tmpl"

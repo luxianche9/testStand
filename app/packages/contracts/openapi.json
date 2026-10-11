@@ -293,6 +293,12 @@
         "title": "DevicesListManagedHardwareRequest",
         "type": "object"
       },
+      "DevicesListPackagesRequest": {
+        "additionalProperties": false,
+        "properties": {},
+        "title": "DevicesListPackagesRequest",
+        "type": "object"
+      },
       "DevicesListToolsRequest": {
         "additionalProperties": false,
         "properties": {},
@@ -369,6 +375,20 @@
           "input"
         ],
         "title": "DevicesSaveHardwareRequest",
+        "type": "object"
+      },
+      "DevicesUpdatePackageFromFileRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "title": "DevicesUpdatePackageFromFileRequest",
         "type": "object"
       },
       "ManualInvokeToolRequest": {
@@ -2856,6 +2876,61 @@
         "x-confirm": false
       }
     },
+    "/api/ops/devices.listPackages": {
+      "post": {
+        "operationId": "devices.listPackages",
+        "summary": "Installed device packages, with changes that wait for a restart.",
+        "tags": [
+          "devices"
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DevicesListPackagesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/WireError"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-risk": "read",
+        "x-capability": "devices.read",
+        "x-profiles": [
+          "adapter"
+        ],
+        "x-idempotency": "natural",
+        "x-confirm": false
+      }
+    },
     "/api/ops/devices.listTools": {
       "post": {
         "operationId": "devices.listTools",
@@ -3190,6 +3265,63 @@
         ],
         "x-idempotency": "natural",
         "x-confirm": false
+      }
+    },
+    "/api/ops/devices.updatePackageFromFile": {
+      "post": {
+        "operationId": "devices.updatePackageFromFile",
+        "summary": "Update the driver of an installed device type from a newer (or rebuilt) ``.tsdev``;\nits devices keep their ids, settings and wiring and use it after testStand restarts.\nAdds no device. The operator confirms first.",
+        "tags": [
+          "devices"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DevicesUpdatePackageFromFileRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/WireError"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-risk": "write",
+        "x-capability": "devices.manageDevices",
+        "x-profiles": [
+          "adapter",
+          "explore",
+          "plan"
+        ],
+        "x-idempotency": "none",
+        "x-confirm": true
       }
     },
     "/api/ops/manual.invokeTool": {

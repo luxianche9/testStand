@@ -58,26 +58,126 @@ class LlmChoice:
 
 
 PROVIDER = "llm"
+CONFIG_FILE = ("opencode", "opencode.json")
+MCP_TIMEOUT_MS = 120_000
+LLM_STALL_TIMEOUT_MS = 180_000
+"""OpenCode's global configuration under its private ``XDG_CONFIG_HOME``."""
+HIDDEN_ENVIRONMENT = (
+    "TESTSTAND_LLM_API_KEY",
+    "TESTSTAND_MCP_TOKEN",
+    "TESTSTAND_PLUGINS_DIR",
+    "OPENCODE_CONFIG_CONTENT",
+    "OPENCODE_CONFIG",
+    "OPENCODE_CONFIG_DIR",
+)
+"""Never inherited: the agent's shell commands see OpenCode's environment."""
 """The one provider OpenCode is given: the user's OpenAI-compatible endpoint."""
 
+NETWORK_COMMANDS = (
+    "curl",
+    "wget",
+    "Invoke-WebRequest",
+    "Invoke-RestMethod",
+    "iwr",
+    "irm",
+    "Start-BitsTransfer",
+    "bitsadmin",
+    "certutil",
+    "git clone",
+    "git fetch",
+    "git pull",
+    "pip install",
+    "pip download",
+    "uv add",
+    "uv pip install",
+    "npm install",
+    "npx",
+    "pnpm add",
+    "winget",
+    "choco",
+    "scoop",
+    "ssh",
+    "scp",
+    "ftp",
+)
+"""Commands that reach the network: the agent works offline (with the model as its only remote)."""
 
-def opencode_config(endpoint: str, base_url: str, model: str, api: str = "chat") -> str:
-    """``OPENCODE_CONFIG_CONTENT``: secrets stay ``{env:...}`` references.
+AGENT_ENVIRONMENT = {
+    # Offline and self-contained: no model list or language-server downloads, no session
+    # sharing, no prompts or skills borrowed from other agent tools on this computer, and no
+    # opencode.json in the project, which the agent could write to loosen its own policy.
+    "OPENCODE_DISABLE_MODELS_FETCH": "1",
+    "OPENCODE_DISABLE_LSP_DOWNLOAD": "1",
+    "OPENCODE_DISABLE_SHARE": "1",
+    "OPENCODE_DISABLE_CLAUDE_CODE": "1",
+    "OPENCODE_DISABLE_EXTERNAL_SKILLS": "1",
+    "OPENCODE_DISABLE_PROJECT_CONFIG": "1",
+}
+
+
+def _path_patterns(path: Path) -> list[str]:
+    """Glob patterns for a folder and everything in it, in the spellings a tool may use."""
+    text = str(path).rstrip("\\/")
+    forms = {text, text.replace("\\", "/")}
+    return sorted({f"{form}{suffix}" for form in forms for suffix in ("", "/*", "\\*", "/**")})
+
+
+def permission_policy(protected: Sequence[Path] = ()) -> Record:
+    """OpenCode permissions (the last matching rule wins).
+
+    Shell commands and folders outside the project need the operator's approval; the network
+    and testStand's own folders (installation, sources, user data) are denied outright: the
+    agent develops against the public tools and bundled references only.
+    """
+    bash: Record = {"*": "ask"}
+    for command in NETWORK_COMMANDS:
+        bash[f"{command} *"] = "deny"
+        bash[f"* {command} *"] = "deny"
+    external: Record = {"*": "ask"}
+    read: Record = {"*": "allow"}
+    for path in protected:
+        for pattern in _path_patterns(path):
+            external[pattern] = "deny"
+            read[pattern] = "deny"
+            bash[f"*{pattern}*"] = "deny"
+    return {
+        "bash": bash,
+        "external_directory": external,
+        "read": read,
+        "webfetch": "deny",
+        "websearch": "deny",
+        "codesearch": "deny",
+    }
+
+
+def opencode_config(
+    endpoint: str,
+    base_url: str,
+    model: str,
+    api: str = "chat",
+    protected: Sequence[Path] = (),
+    secrets: tuple[str, str] | None = None,
+) -> str:
+    """OpenCode's configuration. ``secrets`` is ``(llm_api_key, gateway_token)``: the runtime
+    writes them into the private configuration file (``CONFIG_FILE``), never into the
+    environment, which every shell command of the agent inherits. Without ``secrets`` they stay
+    ``{env:...}`` references.
 
     ``api`` ``chat`` speaks Chat Completions (``@ai-sdk/openai-compatible``), which DeepSeek,
     Qwen, Kimi, GLM and most gateways offer; ``responses`` uses OpenAI's own provider and the
     Responses API.
-    Shell commands and anything outside the project folder need the operator's approval: the
-    agent works through the testStand tools, not through testStand's files or the hardware
-    drivers directly. Only the primary agents are enabled (see the subagent note below).
+    Permissions follow ``permission_policy``: the agent works through the testStand tools, not
+    through testStand's files, the network or the hardware drivers directly. Only the primary
+    agents are enabled (see the subagent note below).
     """
     return json.dumps(
         {
             "autoupdate": False,
+            "share": "disabled",
             "enabled_providers": [PROVIDER],
             "model": f"{PROVIDER}/{model}",
             "small_model": f"{PROVIDER}/{model}",
-            "permission": {"bash": "ask", "external_directory": "ask"},
+            "permission": permission_policy(protected),
             "default_agent": "build",
             "agent": {
                 "build": {"prompt": AGENT_INSTRUCTIONS},
@@ -93,7 +193,11 @@ def opencode_config(endpoint: str, base_url: str, model: str, api: str = "chat")
                     "name": "LLM",
                     "options": {
                         "baseURL": base_url,
-                        "apiKey": "{env:TESTSTAND_LLM_API_KEY}",
+                        "apiKey": secrets[0] if secrets else "{env:TESTSTAND_LLM_API_KEY}",
+                        # A stream that stops sending must fail (and can be retried), not
+                        # leave the conversation busy forever.
+                        "headerTimeout": LLM_STALL_TIMEOUT_MS,
+                        "chunkTimeout": LLM_STALL_TIMEOUT_MS,
                     },
                     "models": {model: {"name": model}},
                 }
@@ -102,8 +206,14 @@ def opencode_config(endpoint: str, base_url: str, model: str, api: str = "chat")
                 "teststand": {
                     "type": "remote",
                     "url": endpoint,
-                    "headers": {"Authorization": "Bearer {env:TESTSTAND_MCP_TOKEN}"},
+                    "headers": {
+                        "Authorization": "Bearer "
+                        + (secrets[1] if secrets else "{env:TESTSTAND_MCP_TOKEN}")
+                    },
                     "enabled": True,
+                    # Per request; tools that wait for the operator send progress every 20 s,
+                    # which restarts it.
+                    "timeout": MCP_TIMEOUT_MS,
                 }
             },
         },
@@ -138,13 +248,16 @@ class OpenCodeRuntime:
         gateway_token: Callable[[], str],
         cors_origins: Sequence[str] = (),
         publish: Callable[[Record], object] = lambda _status: None,
+        protected: Sequence[Path] = (),
         startup_timeout_s: float = 30.0,
         stop_timeout_s: float = 6.0,
     ) -> None:
         """``command`` starts OpenCode (its executable, without ``serve``); ``None`` when the
-        main process found no bundled binary."""
+        main process found no bundled binary. ``protected`` are testStand's own folders, which
+        the agent may not read."""
         self.command = list(command) if command else None
         self.root = root
+        self.protected = list(protected)
         self.workspace = workspace
         self.llm = llm
         self.gateway_endpoint = gateway_endpoint
@@ -251,16 +364,28 @@ class OpenCodeRuntime:
         directories = {name: self.root / name for name in ("data", "config", "state", "cache")}
         for directory in directories.values():
             directory.mkdir(parents=True, exist_ok=True)
+        config = directories["config"].joinpath(*CONFIG_FILE)
+        config.parent.mkdir(parents=True, exist_ok=True)
+        content = opencode_config(
+            self.gateway_endpoint(),
+            llm.base_url,
+            llm.model,
+            llm.api,
+            self.protected,
+            secrets=(llm.api_key, self.gateway_token()),
+        )
+        temporary = config.with_suffix(".tmp")
+        temporary.write_text(content, encoding="utf-8")
+        temporary.replace(config)
+        inherited = {
+            key: value for key, value in os.environ.items() if key.upper() not in HIDDEN_ENVIRONMENT
+        }
         environment = {
-            **os.environ,
+            **inherited,
+            **AGENT_ENVIRONMENT,
             "OPENCODE_CLIENT": "teststand",
             "OPENCODE_SERVER_USERNAME": USERNAME,
             "OPENCODE_SERVER_PASSWORD": self.password,
-            "OPENCODE_CONFIG_CONTENT": opencode_config(
-                self.gateway_endpoint(), llm.base_url, llm.model, llm.api
-            ),
-            "TESTSTAND_MCP_TOKEN": self.gateway_token(),
-            "TESTSTAND_LLM_API_KEY": llm.api_key,
             "XDG_DATA_HOME": str(directories["data"]),
             "XDG_CONFIG_HOME": str(directories["config"]),
             "XDG_STATE_HOME": str(directories["state"]),

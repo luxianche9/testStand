@@ -42,10 +42,12 @@ from .pinout import (
     PinFunction,
     Pinout,
     function,
+    multi_connector_pinout,
     nc,
     single_connector_pinout,
 )
 from .ringbuffer import ReadResult, RingBuffer
+from .serialport import SerialBackend, SerialPort, SimulatedSerialPort, list_ports
 from .streams import (
     ID_SCHEMES,
     STREAM_KINDS,
@@ -64,6 +66,7 @@ from .tool import HardwareId, ToolSpec, param, tool
 from .waveform import SHAPES, SoftwareWaveform, WaveformParams, sample_value, waveform_capability
 
 __all__ = [
+    "SerialBackend", "SerialPort", "SimulatedSerialPort", "list_ports",
     "ACTIONS", "BIT", "FRAME_ID", "HEX", "TEXT", "VALUE", "Placeholder", "StreamControl", "control",
     "CONTRACT_REVISION", "DEVICE_ERROR", "DEVICE_UNREACHABLE", "ID_SCHEMES",
     "INTERNAL", "INVALID_ARGUMENT", "INVALID_RESPONSE",
@@ -76,5 +79,5 @@ __all__ = [
     "DeviceConfig", "SoftwareWaveform", "Stream", "StreamRegistry", "ToolSpec", "WaveformParams", "__version__",
     "activate_plugins", "build_manifest", "device_types", "env_flag", "envelope", "error",
     "find_executable", "function", "iso_now", "load_device", "model", "nc", "now_ms", "ok", "open_device", "param", "plugin_sites",
-    "sample_value", "single_connector_pinout", "tool", "unwrap", "waveform_capability",
+    "sample_value", "multi_connector_pinout", "single_connector_pinout", "tool", "unwrap", "waveform_capability",
 ]

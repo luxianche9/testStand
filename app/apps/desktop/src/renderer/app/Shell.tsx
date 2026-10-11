@@ -6,6 +6,7 @@ import { useDashboard, useProjectDocument } from "../lib/queries.js";
 import { useTheme } from "../lib/theme.js";
 import { errorMessage } from "../lib/errors.js";
 import { queryKeys } from "../lib/query-keys.js";
+import { REOPEN_AFTER_RELAUNCH } from "../lib/host/api.js";
 import { useTestStandEvents } from "../lib/hooks/useTestStandEvents.js";
 import { useKeyboardShortcut } from "../lib/hooks/useKeyboardShortcut.js";
 import { useDirtyGuard } from "../lib/hooks/useDirtyGuard.js";
@@ -109,6 +110,16 @@ function Shell() {
     navigate({ type: "show-content", page: "bench" });
     setAssistantOpen(readAssistantOpen());
   }, [syncProject]);
+
+  // After 重启 testStand (a driver update), open the project the restart left.
+  useEffect(() => {
+    const rootPath = localStorage.getItem(REOPEN_AFTER_RELAUNCH);
+    if (!rootPath) return;
+    localStorage.removeItem(REOPEN_AFTER_RELAUNCH);
+    void window.teststand.projects.openFolder({ rootPath })
+      .then(() => enterProject())
+      .catch((reason: unknown) => setError(errorMessage(reason)));
+  }, [enterProject, setError]);
 
   const goWelcome = useCallback(async () => {
     await window.teststand.projects.leaveProject();

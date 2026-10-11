@@ -3,6 +3,9 @@ import type { LiveFrame, LiveQuery } from "@teststand/contracts/observability";
 import { OPERATION_NAMES, type OperationApi } from "@teststand/contracts/operations";
 import type { DesktopTransport } from "./transport.js";
 
+/** Project to open again after `window.relaunch` (same profile, so localStorage survives it). */
+export const REOPEN_AFTER_RELAUNCH = "teststand.reopenAfterRelaunch";
+
 /** `window.teststand`: one function per backend operation (named parameters), plus main's dialogs and window. */
 export function createTestStandApi(transport: DesktopTransport): TestStandApi {
   const operations = operationFunctions(transport.invoke);
@@ -29,7 +32,14 @@ export function createTestStandApi(transport: DesktopTransport): TestStandApi {
       close: () => main("window.close"),
       applyTheme: (theme) => main("window.applyTheme", theme),
       flash: () => main("window.flash"),
-      relaunch: () => main("window.relaunch")
+      relaunch: async () => {
+        // A restart (to load an updated device driver) comes back to the project it left.
+        const document = await operations.projects.document().catch(() => null);
+        if (document && typeof localStorage !== "undefined") {
+          localStorage.setItem(REOPEN_AFTER_RELAUNCH, document.rootPath);
+        }
+        return main("window.relaunch");
+      }
     },
     events: { subscribe: (event, listener) => transport.subscribe(event, listener) }
   };

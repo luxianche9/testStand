@@ -12,12 +12,17 @@ def test_bundled_docs_are_available_without_project_and_paginate() -> None:
     service = ReferenceService()
     index = service.read({"limit": 1})
     assert index["references"][0]["referenceId"] == "ts-agent-interface"
-    assert not index["hasMore"] and index["nextOffset"] is None
+    assert index["hasMore"] and index["nextOffset"] == 1
+    bundled = {item["referenceId"] for item in service.read({})["references"]}
+    assert {"ts-device-plugin", "ts-plugin-sdk-api", "ts-plugin-streams"} <= bundled
     page = service.read({"referenceId": "ts-agent-interface", "limit": 1})
     assert page["lines"][0]["line"] == 1
     assert page["sources"][0]["contractRevision"] == "2026-09-16.2"
     assert service.read({"query": "get_tool_contract"})["total"] > 0
     assert service.read({"referenceId": "ts-agent-interface", "query": "mock"})["total"] == 0
+    # No section holds every word: the sections holding most of them, best first.
+    ranked = service.read({"referenceId": "ts-device-plugin", "query": "SerialPort zzzz-absent"})
+    assert ranked["total"] > 0 and any("SerialPort" in row["text"] for row in ranked["lines"])
 
 
 def test_register_copies_evidence_requires_current_hash_and_paginates_long_lines(

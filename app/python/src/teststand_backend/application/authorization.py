@@ -14,6 +14,8 @@ _AGENT_CAPABILITIES = {
     "devices.read",
     # Adding, editing and removing devices: each such operation asks the operator first.
     "devices.manageDevices",
+    # Writing, checking and packaging device adapters inside the project (devkit).
+    "devices.develop",
     "hardware.read",
     "hardware.manage",
     "hardware.executeTools",

@@ -10,6 +10,7 @@ import { ArrowUpIcon, PaperclipIcon, SquareIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { cn, IconButton } from "../../ui";
 import { ComposerAttachments } from "./Attachment";
+import { UnattachedInteractions } from "./tools/interactions";
 import { AgentPicker, CommandPicker, FilePicker, ModelPicker } from "./ComposerPickers";
 import {
   filterOpenCodeCommands,
@@ -201,7 +202,8 @@ export function OpenCodeComposer({
     : session ? "上下文仅作用于当前会话" : "正在创建工作区会话");
 
   return (
-    <ComposerPrimitive.Root className="relative flex w-full flex-col" onSubmit={handleSubmit}>
+    <ComposerPrimitive.Root className="relative flex w-full flex-col gap-2" onSubmit={handleSubmit}>
+      <UnattachedInteractions />
       <ComposerPrimitive.AttachmentDropzone asChild>
         <div
           className={cn(

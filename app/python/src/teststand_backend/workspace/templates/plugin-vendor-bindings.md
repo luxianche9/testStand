@@ -25,11 +25,13 @@
 ### 结构
 
 ```python
-DLL_CANDIDATES = ("PCOMM.DLL", r"C:\Program Files\Moxa\...\PCOMM.DLL")   # 仅手册写明的位置
+DLL_CANDIDATES = ("PCOMM.DLL", r"C:\Program Files\Moxa\...\PCOMM.DLL")  # 仅手册写明的位置
 
-class VendorBackend(Protocol):                     # driver 和 sim 共用的接口
+
+class VendorBackend(Protocol):  # driver 和 sim 共用的接口
     def open(self, card: int) -> int: ...
     def read(self, port: int, max_len: int) -> tuple[int, bytes]: ...
+
 
 class Vendor:
     def __init__(self, dll_path: str | None = None) -> None:
@@ -37,17 +39,19 @@ class Vendor:
         self._dll: Any = None
 
     @property
-    def dll(self) -> Any:                          # 懒加载：构造对象不碰硬件，import 不失败
+    def dll(self) -> Any:  # 懒加载：构造对象不碰硬件，import 不失败
         if self._dll is None:
             path = self.resolve()
             try:
-                self._dll = ctypes.WinDLL(str(path))   # type: ignore[attr-defined]
+                self._dll = ctypes.WinDLL(str(path))  # type: ignore[attr-defined]
             except OSError as exc:
-                raise DeviceError(f"cannot load {path}: {exc}", category=DEVICE_UNREACHABLE) from exc
+                raise DeviceError(
+                    f"cannot load {path}: {exc}", category=DEVICE_UNREACHABLE
+                ) from exc
             self._declare(self._dll)
         return self._dll
 
-    def resolve(self) -> Path:                     # settings → 环境变量 → 候选位置
+    def resolve(self) -> Path:  # settings → 环境变量 → 候选位置
         for candidate in (self._dll_path, os.environ.get("VENDOR_DLL"), *DLL_CANDIDATES):
             ...
         raise DeviceError("VENDOR.DLL not found; set settings.dllPath", category=DEVICE_UNREACHABLE)
@@ -62,11 +66,12 @@ class Vendor:
 
 ```python
 SIGNATURES = {
-    "sio_open":  ([ctypes.c_int], ctypes.c_int),
+    "sio_open": ([ctypes.c_int], ctypes.c_int),
     "sio_write": ([ctypes.c_int, ctypes.c_char_p, ctypes.c_int], ctypes.c_int),
-    "sio_read":  ([ctypes.c_int, ctypes.c_char_p, ctypes.c_int], ctypes.c_int),
+    "sio_read": ([ctypes.c_int, ctypes.c_char_p, ctypes.c_int], ctypes.c_int),
     "AO_VWriteChannel": ([ctypes.c_ushort, ctypes.c_ushort, ctypes.c_double], ctypes.c_short),
 }
+
 
 def _declare(self, dll: Any) -> None:
     for name, (args, result) in SIGNATURES.items():
@@ -83,6 +88,7 @@ def ai_read(self, card: int, channel: int) -> tuple[int, float]:
     value = ctypes.c_double()
     rc = int(self.dll.AI_VReadChannel(card, channel, ctypes.byref(value)))
     return rc, value.value
+
 
 def sio_read(self, port: int, max_len: int) -> tuple[int, bytes]:
     buffer = ctypes.create_string_buffer(max_len)
@@ -119,10 +125,17 @@ from teststand_device_sdk import JsonLineBackend, JsonLineCli, find_executable, 
 
 EXECUTABLE = "hwcli_pci1710l.exe"
 
+
 def hwcli(settings: Mapping[str, Any]) -> JsonLineCli:
-    path = find_executable(EXECUTABLE, explicit=settings.get("hwcliPath"),
-                           env_names=("PCI1710L_HWCLI_PATH", "HWCLI_PATH"))
-    return JsonLineCli(path, name=EXECUTABLE, missing_hint="Build native/ or set settings.hwcliPath.")
+    path = find_executable(
+        EXECUTABLE,
+        explicit=settings.get("hwcliPath"),
+        env_names=("PCI1710L_HWCLI_PATH", "HWCLI_PATH"),
+    )
+    return JsonLineCli(
+        path, name=EXECUTABLE, missing_hint="Build native/ or set settings.hwcliPath."
+    )
+
 
 # adapter.py
 self.cli: JsonLineBackend = self.select_driver(lambda: hwcli(settings), SimulatedHwcli)

@@ -20,6 +20,15 @@ Json = dict[str, Any]
 _ID = re.compile(r"[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}\Z")
 _BUNDLED = {
     "ts-agent-interface": ("testStand public interface and recovery", "agent-interface.md"),
+    "ts-device-plugin": ("Device plugin development guide (start here)", "plugin-guide.md"),
+    "ts-plugin-sdk-api": ("Device plugin SDK API", "plugin-sdk-api.md"),
+    "ts-plugin-streams": ("Device plugin streams (signals)", "plugin-streams.md"),
+    "ts-plugin-vendor-bindings": (
+        "Vendor driver bindings (ctypes, COM ports)",
+        "plugin-vendor-bindings.md",
+    ),
+    "ts-plugin-contract": ("Device plugin contract", "plugin-contract.md"),
+    "ts-plugin-checklist": ("Device plugin delivery checklist", "plugin-checklist.md"),
 }
 
 
@@ -160,8 +169,12 @@ class ReferenceService:
         )
         rows: list[Json] = []
         terms = search_terms(query)
+        # Sections holding every term; only when there is none anywhere, the closest ones.
+        partial = bool(terms) and not any(
+            _matching_lines(reference["content"], terms) for reference in references
+        )
         for reference in references:
-            for line_number, line in _matching_lines(reference["content"], terms):
+            for line_number, line in _matching_lines(reference["content"], terms, partial):
                 # One pathological line must not expand a bounded page to several MiB.
                 for column in range(0, max(1, len(line)), 1000):
                     rows.append(
@@ -196,10 +209,13 @@ class ReferenceService:
         }
 
 
-def _matching_lines(content: str, terms: list[str]) -> list[tuple[int, str]]:
+def _matching_lines(content: str, terms: list[str], partial: bool = False) -> list[tuple[int, str]]:
     """Numbered lines answering a query: without terms every line; otherwise, in each
     section (a Markdown heading up to the next) holding all terms, its heading and every
-    line holding one of them, so a query finds words that are spread over a section."""
+    line holding one of them, so a query finds words that are spread over a section.
+
+    ``partial`` (no section anywhere holds all terms): the sections holding most of them,
+    best first, so an agent's long query of synonyms still finds the section answering it."""
     lines = list(enumerate(content.splitlines(), 1))
     if not terms:
         return lines
@@ -208,10 +224,19 @@ def _matching_lines(content: str, terms: list[str]) -> list[tuple[int, str]]:
         if numbered[1].lstrip().startswith("#") and sections[-1]:
             sections.append([])
         sections[-1].append(numbered)
+    scored = []
+    for position, section in enumerate(sections):
+        text = "\n".join(line for _, line in section)
+        score = sum(matches_terms([term], text) for term in terms)
+        if score:
+            scored.append((score, position, section))
+    chosen = (
+        sorted(scored, key=lambda item: (-item[0], item[1]))
+        if partial
+        else [item for item in scored if item[0] == len(terms)]
+    )
     output: list[tuple[int, str]] = []
-    for section in sections:
-        if not matches_terms(terms, "\n".join(line for _, line in section)):
-            continue
+    for _, _, section in chosen:
         output.extend(
             (number, line)
             for index, (number, line) in enumerate(section)

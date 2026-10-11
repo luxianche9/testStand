@@ -1,9 +1,9 @@
 import { useMemo, type ReactNode } from "react";
 import type { Hardware } from "@teststand/contracts/devices";
-import { BoxIcon, CheckIcon, CpuIcon } from "lucide-react";
+import { BoxIcon, CheckIcon, CpuIcon, RotateCwIcon } from "lucide-react";
 import { hardwareStatus } from "../../lib/hardware-status.js";
-import { useDashboard } from "../../lib/queries.js";
-import { Panel, PanelBody, StatusLamp, cn, type Tone } from "../../ui/index.js";
+import { useDashboard, useDevicePackages } from "../../lib/queries.js";
+import { Button, Panel, PanelBody, StatusLamp, cn, type Tone } from "../../ui/index.js";
 import { HARDWARE_MIME } from "../signals/dnd.js";
 
 const statusTone: Record<ReturnType<typeof hardwareStatus>["tone"], Tone> = {
@@ -25,6 +25,7 @@ export function DeviceList({ hardware, placed, header, footer, onOpen, ...props 
   role?: string;
 }) {
   const dashboard = useDashboard();
+  const packages = useDevicePackages();
   const availability = useMemo(
     () => new Map((dashboard.data?.availability ?? []).map((item) => [item.hardwareId, item])),
     [dashboard.data]
@@ -44,6 +45,20 @@ export function DeviceList({ hardware, placed, header, footer, onOpen, ...props 
   return (
     <Panel as="aside" aria-label="设备列表" className="min-h-0" {...props}>
       {header}
+      {packages.data?.restartRequired && (
+        <div
+          role="status"
+          className={cn(
+            "mx-2 mt-2 flex items-center gap-2 rounded-md border border-line bg-surface-2",
+            "px-2.5 py-1.5 text-xs leading-5 text-fg-2"
+          )}
+        >
+          <span className="min-w-0 flex-1">设备驱动已更新，重启 testStand 后生效。</span>
+          <Button size="sm" onClick={() => void window.teststand.window.relaunch()}>
+            <RotateCwIcon />重启
+          </Button>
+        </div>
+      )}
       <PanelBody className="py-1">
         {groups.map((group) => (
           <section key={group.key} aria-label={group.title} className="pb-1">

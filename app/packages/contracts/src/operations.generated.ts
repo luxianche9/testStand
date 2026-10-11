@@ -10,6 +10,8 @@ export const OPERATION_NAMES = [
   "devices.inspectPackage",
   "devices.addDevice",
   "devices.addDeviceFromFile",
+  "devices.updatePackageFromFile",
+  "devices.listPackages",
   "devices.listHardware",
   "devices.getHardware",
   "devices.getDefinition",

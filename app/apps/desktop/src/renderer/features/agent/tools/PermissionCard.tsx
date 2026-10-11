@@ -54,7 +54,9 @@ export function OpenCodePermissionCard({
       tone={pending ? "signal" : rejected ? "fail" : "pass"}
       icon={pending ? <ShieldAlertIcon /> : rejected ? <XCircleIcon /> : <CheckCircle2Icon />}
       title={pending ? "需要操作授权" : replyLabel(reply!)}
-      description={request.title ?? `OpenCode 请求执行 ${tool}。`}
+      description={request.permission === "doom_loop"
+        ? `AI 连续多次用相同参数调用 ${request.patterns[0] ?? "同一个工具"}，可能在原地打转。允许它继续，或拒绝让它换个办法。`
+        : request.title ?? `OpenCode 请求执行 ${tool}。`}
       meta={<Badge mono tone={pending ? "signal" : "neutral"} className="max-w-28 truncate normal-case">{tool}</Badge>}
       footer={pending && (
         <>

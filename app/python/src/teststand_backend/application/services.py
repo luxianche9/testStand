@@ -173,6 +173,62 @@ class DevicesApplication:
             raise app_error("not_found", f"Cannot read {path}: {error}") from error
         return await self.add_device(context, data, label)
 
+    @operation(
+        "devices.updatePackageFromFile",
+        capability="devices.manageDevices",
+        risk="write",
+        profiles=("adapter", "plan", "explore"),
+        confirm=True,
+    )
+    async def update_package_from_file(self, context: Json, path: str) -> Json:
+        """Update the driver of an installed device type from a newer (or rebuilt) ``.tsdev``;
+        its devices keep their ids, settings and wiring and use it after testStand restarts.
+        Adds no device. The operator confirms first."""
+        file = Path(path)
+        if file.suffix.lower() != ".tsdev" or not file.is_absolute():
+            raise app_error("invalid_argument", "path must be an absolute path to a .tsdev file")
+        try:
+            data = await asyncio.to_thread(file.read_bytes)
+        except OSError as error:
+            raise app_error("not_found", f"Cannot read {path}: {error}") from error
+        manifest = self._packages().inspect(data)["manifest"]
+        device_type = manifest["type"]
+        if not self._packages().installed(device_type):
+            raise app_error(
+                "failed_precondition",
+                f"Device type {device_type} is not installed; add a device with "
+                "devices.addDeviceFromFile instead",
+            )
+        installed = await self._packages().install(data)
+        devices = [
+            item["deviceId"]
+            for item in self.service.list_devices()
+            if item.get("type") == device_type
+        ]
+        self.service.store.changed()
+        return {
+            "type": device_type,
+            "version": installed["version"],
+            "action": installed["action"],
+            "devices": devices,
+            "restartRequired": installed["restartRequired"],
+        }
+
+    @operation(
+        "devices.listPackages",
+        capability="devices.read",
+        risk="read",
+        profiles=("adapter",),
+        idempotency="natural",
+    )
+    def list_packages(self, context: Json) -> Json:
+        """Installed device packages, with changes that wait for a restart."""
+        packages = self._packages().list_packages() if self.service.packages else []
+        return {
+            "packages": packages,
+            "restartRequired": any("pending" in item for item in packages),
+        }
+
     def _packages(self) -> PluginStore:
         if self.service.packages is None:
             raise app_error("unavailable", "Device packages are not available in this host")

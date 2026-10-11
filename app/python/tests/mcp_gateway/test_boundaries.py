@@ -493,3 +493,12 @@ async def test_waiting_tool_returns_the_answer() -> None:
             assert result["structuredContent"] == {"ok": True, "data": {"status": "confirmed"}}
     finally:
         await gateway.stop()
+
+
+def test_operations_the_operator_confirms_wait_for_a_person() -> None:
+    # A client that gives up must withdraw the question, not leave an approvable request behind.
+    gateway, _ = make_gateway()
+    for name in ("devices_addDeviceFromFile", "devices_updatePackageFromFile", "request_wiring"):
+        assert gateway.registry.waits(name), name
+    assert not gateway.registry.waits("list_devices")
+    assert not gateway.registry.waits("devkit_check_adapter")
