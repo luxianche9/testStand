@@ -197,3 +197,26 @@ def test_cli_check_runs_compliance_in_dry_run(capsys):
     assert main(["--adapter", "sdk_demo:DemoDevice", "--check", "--log-level", "warning"]) == 0
     report = json.loads(capsys.readouterr().out)
     assert report | {"warnings": []} == {"adapter": "sdk_demo.DemoDevice", "ok": True, "failures": [], "warnings": []}
+
+
+class SelfTestingDevice(DemoDevice):
+    def self_test(self) -> list:
+        from teststand_device_sdk import check_equal, check_range
+
+        return [check_equal("通道数", 4, 4), check_range("电平", self.level_value(), 0, 0.5, "V")]
+
+    def level_value(self) -> float:
+        return 1.0
+
+
+def test_self_test_tool_only_when_overridden(hh):
+    assert "self_test" not in hh.tools
+
+
+def test_self_test_reports_each_check_and_the_verdict():
+    with serve(SelfTestingDevice) as harness:
+        assert meta(harness.tools["self_test"])["kind"] == "management"
+        data = harness.call_raw("self_test", {"hardwareId": harness.hardware_id})["data"]
+    assert data["passed"] is False and data["dryRun"] is True
+    assert [(check["name"], check["passed"]) for check in data["checks"]] == [("通道数", True), ("电平", False)]
+    assert data["checks"][1]["expected"] == "0..0.5 V" and data["checks"][1]["measured"] == 1.0

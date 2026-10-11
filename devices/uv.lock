@@ -10,12 +10,13 @@ resolution-markers = [
 
 [manifest]
 members = [
-    "teststand-device-sdk",
-    "teststand-devices",
     "teststand-adapter-cp118u-i",
+    "teststand-adapter-jcxd-da6401",
     "teststand-adapter-pci1710l",
     "teststand-adapter-pci1762",
     "teststand-adapter-pci6208v",
+    "teststand-device-sdk",
+    "teststand-devices",
 ]
 
 [[package]]
@@ -44,109 +45,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/d8/53/6f443c9a4a8358a93
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d1/d6/3965ed04c63042e047cb6a3e6ed1a63a35087b6a609aa3a15ed8ac56c221/colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6", size = 25335, upload-time = "2022-10-25T02:36:20.889Z" },
 ]
-
-[[package]]
-name = "teststand-device-sdk"
-version = "0.2.0"
-source = { editable = "sdk" }
-dependencies = [
-    { name = "pydantic" },
-]
-
-[package.optional-dependencies]
-test = [
-    { name = "jsonschema" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "jsonschema", marker = "extra == 'test'", specifier = ">=4" },
-    { name = "pydantic", specifier = ">=2.11,<3" },
-    { name = "pytest", marker = "extra == 'test'", specifier = ">=8" },
-    { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.23" },
-]
-provides-extras = ["test"]
-
-[[package]]
-name = "teststand-devices"
-version = "0"
-source = { virtual = "." }
-dependencies = [
-    { name = "teststand-device-sdk" },
-    { name = "teststand-adapter-cp118u-i" },
-    { name = "teststand-adapter-pci1710l" },
-    { name = "teststand-adapter-pci1762" },
-    { name = "teststand-adapter-pci6208v" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "jsonschema" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "teststand-device-sdk", editable = "sdk" },
-    { name = "teststand-adapter-cp118u-i", editable = "adapters/cp118u_i" },
-    { name = "teststand-adapter-pci1710l", editable = "adapters/pci1710l" },
-    { name = "teststand-adapter-pci1762", editable = "adapters/pci1762" },
-    { name = "teststand-adapter-pci6208v", editable = "adapters/pci6208v" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "jsonschema", specifier = ">=4" },
-    { name = "pytest", specifier = ">=8" },
-    { name = "pytest-asyncio", specifier = ">=0.23" },
-]
-
-[[package]]
-name = "teststand-adapter-cp118u-i"
-version = "0.2.0"
-source = { editable = "adapters/cp118u_i" }
-dependencies = [
-    { name = "teststand-device-sdk" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "teststand-device-sdk", editable = "sdk" }]
-
-[[package]]
-name = "teststand-adapter-pci1710l"
-version = "0.2.0"
-source = { editable = "adapters/pci1710l" }
-dependencies = [
-    { name = "teststand-device-sdk" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "teststand-device-sdk", editable = "sdk" }]
-
-[[package]]
-name = "teststand-adapter-pci1762"
-version = "0.2.0"
-source = { editable = "adapters/pci1762" }
-dependencies = [
-    { name = "teststand-device-sdk" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "teststand-device-sdk", editable = "sdk" }]
-
-[[package]]
-name = "teststand-adapter-pci6208v"
-version = "0.2.0"
-source = { editable = "adapters/pci6208v" }
-dependencies = [
-    { name = "teststand-device-sdk" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "teststand-device-sdk", editable = "sdk" }]
 
 [[package]]
 name = "iniconfig"
@@ -492,6 +390,122 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/9c/97/0043896fdd7828ce09a1d9a8b06433714d0960fc4ff3fc4aa72b666b764e/rpds_py-2026.6.3-pp311-pypy311_pp73-musllinux_1_2_aarch64.whl", hash = "sha256:2bfd04c19ddbd6640de0b51894d764bd2758854d5b75bd102d2ef10cb9c293a9", size = 558118, upload-time = "2026-06-30T07:17:47.759Z" },
     { url = "https://files.pythonhosted.org/packages/f6/40/02355f0e134f783a8f9814c4680a1bd311d37671577a5964ea838573ff37/rpds_py-2026.6.3-pp311-pypy311_pp73-musllinux_1_2_i686.whl", hash = "sha256:ca6546b66be9dc4738b1b043d5ebd5488c66c578c5ff0fd0e8065313fe3afb76", size = 623138, upload-time = "2026-06-30T07:17:49.355Z" },
     { url = "https://files.pythonhosted.org/packages/10/85/48f0abdcef5cce4e034c7a5b0ceeceba0b01bf0d942824f4bb720afe2dec/rpds_py-2026.6.3-pp311-pypy311_pp73-musllinux_1_2_x86_64.whl", hash = "sha256:8e65860d238379ed982fd9ba690579b5e95af2f4840f99c772816dbe573cb826", size = 586486, upload-time = "2026-06-30T07:17:51.141Z" },
+]
+
+[[package]]
+name = "teststand-adapter-cp118u-i"
+version = "0.2.0"
+source = { editable = "adapters/cp118u_i" }
+dependencies = [
+    { name = "teststand-device-sdk" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "teststand-device-sdk", editable = "sdk" }]
+
+[[package]]
+name = "teststand-adapter-jcxd-da6401"
+version = "1.0.0"
+source = { editable = "adapters/jcxd_da6401" }
+dependencies = [
+    { name = "teststand-device-sdk" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "teststand-device-sdk", editable = "sdk" }]
+
+[[package]]
+name = "teststand-adapter-pci1710l"
+version = "0.2.0"
+source = { editable = "adapters/pci1710l" }
+dependencies = [
+    { name = "teststand-device-sdk" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "teststand-device-sdk", editable = "sdk" }]
+
+[[package]]
+name = "teststand-adapter-pci1762"
+version = "0.2.0"
+source = { editable = "adapters/pci1762" }
+dependencies = [
+    { name = "teststand-device-sdk" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "teststand-device-sdk", editable = "sdk" }]
+
+[[package]]
+name = "teststand-adapter-pci6208v"
+version = "0.2.0"
+source = { editable = "adapters/pci6208v" }
+dependencies = [
+    { name = "teststand-device-sdk" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "teststand-device-sdk", editable = "sdk" }]
+
+[[package]]
+name = "teststand-device-sdk"
+version = "0.2.0"
+source = { editable = "sdk" }
+dependencies = [
+    { name = "pydantic" },
+]
+
+[package.optional-dependencies]
+test = [
+    { name = "jsonschema" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "jsonschema", marker = "extra == 'test'", specifier = ">=4" },
+    { name = "pydantic", specifier = ">=2.11,<3" },
+    { name = "pytest", marker = "extra == 'test'", specifier = ">=8" },
+    { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.23" },
+]
+provides-extras = ["test"]
+
+[[package]]
+name = "teststand-devices"
+version = "0"
+source = { virtual = "." }
+dependencies = [
+    { name = "teststand-adapter-cp118u-i" },
+    { name = "teststand-adapter-jcxd-da6401" },
+    { name = "teststand-adapter-pci1710l" },
+    { name = "teststand-adapter-pci1762" },
+    { name = "teststand-adapter-pci6208v" },
+    { name = "teststand-device-sdk" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "jsonschema" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "teststand-adapter-cp118u-i", editable = "adapters/cp118u_i" },
+    { name = "teststand-adapter-jcxd-da6401", editable = "adapters/jcxd_da6401" },
+    { name = "teststand-adapter-pci1710l", editable = "adapters/pci1710l" },
+    { name = "teststand-adapter-pci1762", editable = "adapters/pci1762" },
+    { name = "teststand-adapter-pci6208v", editable = "adapters/pci6208v" },
+    { name = "teststand-device-sdk", editable = "sdk" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "jsonschema", specifier = ">=4" },
+    { name = "pytest", specifier = ">=8" },
+    { name = "pytest-asyncio", specifier = ">=0.23" },
 ]
 
 [[package]]

@@ -45,6 +45,7 @@ from .pinout import (
     single_connector_pinout,
 )
 from .ringbuffer import ReadResult, RingBuffer
+from .selftest import Check, check_equal, check_range
 from .serialport import SerialBackend, SerialPort, SimulatedSerialPort, list_ports
 from .streams import (
     ID_SCHEMES,
@@ -64,6 +65,7 @@ from .tool import HardwareId, ToolSpec, param, tool
 from .waveform import SHAPES, SoftwareWaveform, WaveformParams, sample_value, waveform_capability
 
 __all__ = [
+    "Check", "check_equal", "check_range",
     "SerialBackend", "SerialPort", "SimulatedSerialPort", "list_ports",
     "CONTRACT_REVISION", "DEVICE_ERROR", "DEVICE_UNREACHABLE", "ID_SCHEMES",
     "INTERNAL", "INVALID_ARGUMENT", "INVALID_RESPONSE",

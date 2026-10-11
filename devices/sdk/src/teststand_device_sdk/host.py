@@ -14,6 +14,7 @@ import base64
 import contextvars
 import inspect
 import re
+import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Any, Literal
@@ -30,6 +31,7 @@ from .lifecycle import HardwareManager
 from .manifest import Manifest, build_manifest
 from .operation import CURRENT, Operation
 from .ringbuffer import ReadResult
+from .selftest import Check
 from .sim import execution_mode
 from .streams import BlobStream, ByteStream, Stream
 from .tool import (
@@ -79,6 +81,14 @@ TransactResult = model("TransactResult", sent=(int, "Bytes accepted by the write
                        matched=(bool, "expect matched the received text (true when expect is omitted)."),
                        text=(str, "Text received after sending, until match or timeout."),
                        elapsedMs=(float, "Time from send to match or timeout."))
+SelfTestResult = model(
+    "SelfTestResult",
+    passed=(bool, "Every check passed."),
+    checks=(list[dict[str, Any]], "Checks in order: name, measured, expected, passed, detail."),
+    durationMs=(float, "Time the self-test took."),
+    adapterVersion=(str, "Plugin version that ran it."),
+    dryRun=(bool, "true when it ran on the simulator, not the card."),
+)
 StreamId = param(str, "Exact streamId from /device streams.", min_length=1, max_length=64)
 DESCRIPTIONS = {
     "get_device_info": "Read plugin version, readiness and nonsecret effective capabilities without signal actuation. One plugin instance manages exactly one active device; ready does not prove the physical experiment or wiring.",
@@ -87,6 +97,7 @@ DESCRIPTIONS = {
     "stream_read": "Read buffered records from fromSeq (omit for the latest records) without consuming them. Records carry seq, t (Unix ms) and op when a tool call produced them; bytes records add decoded text. Sampled streams only produce records while watched: status.state idle means nobody watches; testStand recordings and live views start sampling.",
     "blob_read": "Read the content of one blob record (screenshot, capture file) by its ref as base64 with its media type. Blobs are kept in memory and old ones are evicted; the ref comes from stream_read or a tool result.",
     "transact": "Send data on a byte stream and wait until the received text matches the expect regex or timeoutMs passes. Sending is a physical output and is never retried automatically; the tx/rx records are tagged with this call's operation.",
+    "self_test": "Run the plugin's bench self-test: identity, driver version, channel counts, register readback, the sample rate a stream reaches, readings that must lie in range. Reads only and never drives an external output; passing does not prove external wiring or loads. Each check returns measured, expected and passed.",
     "teststand_prepare_shutdown": "Internal shutdown hook: drive the device to its safe state, refuse new operations and exit the process shortly after. Not for AI or test steps.",
 }
 PARAMS = {
@@ -219,6 +230,8 @@ class DeviceHost:
         self._management("get_hardware_info", self._get_hardware_info, [hid], Hardware)
         self._add_tool("teststand_prepare_shutdown", self._prepare_shutdown_tool, [], dict[str, Any] | list[Any],
                        annotations=OPERATE, kind="internal")
+        if type(self.device).self_test is not Device.self_test:
+            self._management("self_test", self._self_test, [hid], SelfTestResult, evidence="measurement")
         streams = self.device.streams
         if not streams:
             return
@@ -313,6 +326,16 @@ class DeviceHost:
                    "capabilities": self.capability_details(), "sdkVersion": __version__,
                    "adapter": self.device.model,
                    "sourceRevision": self.config.build.get("sourceRevision") or self.config.build.get("gitCommit")})
+
+    async def _self_test(self, hardwareId: str) -> dict[str, Any]:  # noqa: N803
+        def run() -> dict[str, Any]:
+            started = time.perf_counter()
+            raw = self.device.self_test()
+            checks = [item.as_record() if isinstance(item, Check) else dict(item) for item in raw]
+            return {"passed": bool(checks) and all(item.get("passed") is True for item in checks),
+                    "checks": checks, "durationMs": round((time.perf_counter() - started) * 1000, 1),
+                    "adapterVersion": self.device.version, "dryRun": self.device.dry_run}
+        return await self._operate(lambda: self.manager.invoke(hardwareId, run))
 
     async def _list_hardware(self) -> dict[str, Any]:
         data = self.manager.list_hardware()

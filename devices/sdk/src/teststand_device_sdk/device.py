@@ -88,3 +88,8 @@ class Device:
     def capability_details(self) -> dict[str, Any]:
         """Nonsecret limits and effective settings; must not touch the driver."""
         return {}
+
+    def self_test(self) -> list[Any]:
+        """Bench self-test (blocking): a list of :class:`~.selftest.Check`. Override it to publish the
+        ``self_test`` tool; it runs with the hardware open and must not drive external outputs."""
+        raise NotImplementedError
