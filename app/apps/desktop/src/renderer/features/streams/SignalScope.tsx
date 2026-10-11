@@ -18,6 +18,18 @@ const LOGIC_AXIS_PX = 104;
 /** The logic analyser never takes more than this from the analog traces. */
 const LOGIC_MAX_PX = 180;
 
+/**
+ * Whether a channel holds its value until the next one (a setpoint, an output read back) rather
+ * than being sampled. The declaration decides; a run's observed states only stand in when the
+ * plugin declares neither a kind nor a rate (a channel that sampled briefly is still sampled).
+ */
+function holds(stream: StreamInfo): boolean {
+  const declared = stream.declaration;
+  if (declared?.kind === "setpoint") return true;
+  if (declared?.rateHz || declared?.kind === "measured") return false;
+  return !stream.states.includes("sampling");
+}
+
 interface Channel {
   stream: StreamInfo;
   color: string;
@@ -98,8 +110,9 @@ export function SignalScope({
       return item ? [{
         label: channel.stream.streamId,
         points: item.points ?? [],
-        level: !channel.stream.states.includes("sampling"),
-        holdUntil: holdUntil(item)
+        level: holds(channel.stream),
+        holdUntil: holdUntil(item),
+        periodMs: channel.stream.declaration?.rateHz ? 1000 / channel.stream.declaration.rateHz : undefined
       }] : [];
     });
     return inputs.length ? analogData(inputs) : undefined;
@@ -108,7 +121,7 @@ export function SignalScope({
   }, [analog.map((channel) => channel.stream.key).join(), points.reads, view]);
   const analogStyles = useMemo<SeriesStyle[]>(() => analog
     .filter((channel) => points.reads[channel.stream.key])
-    .map((channel) => ({ color: channel.color, stepped: !channel.stream.states.includes("sampling") })),
+    .map((channel) => ({ color: channel.color, stepped: holds(channel.stream) })),
   // eslint-disable-next-line react-hooks/exhaustive-deps
   [analog.map((channel) => channel.stream.key).join(), points.reads]);
   const logicPlot = useMemo(() => {

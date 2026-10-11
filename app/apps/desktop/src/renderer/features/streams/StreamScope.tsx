@@ -235,7 +235,8 @@ export function StreamScope({
   };
   const styles = series?.map((item) => `${item.color}/${item.stepped}`).join(",") ?? "";
   const shape = data
-    ? `${data.stepped}:${data.labels.join(",")}:${styles}:${origin === undefined}:${axisWidth}:${timeAxis}`
+    ? [data.stepped, data.labels.join(","), data.gaps?.join() ?? "", data.dots?.join() ?? "", styles,
+      origin === undefined, axisWidth, timeAxis].join(":")
     : "";
   const fill = height === "fill";
 
@@ -315,9 +316,10 @@ export function StreamScope({
               label: name,
               stroke: style ? resolveColor(style.color) : tokenColor(token),
               width: 1.5,
-              // Merged channels leave nulls where only another channel sampled; levels hold across them.
-              spanGaps: Boolean(style ?? lanes),
-              points: { show: false },
+              // Alignment holes are undefined and always drawn across; a sampled channel's line
+              // breaks at null (it was not sampled there), levels and lanes hold across it.
+              spanGaps: current.gaps?.[index] ? false : Boolean(style ?? lanes),
+              points: current.dots?.[index] ? { show: true, size: 5, width: 1 } : { show: false },
               ...(stepped && steps ? { paths: steps } : {})
             };
           })

@@ -10,17 +10,19 @@ import {
   Button, EmptyState, IconButton, SegmentedControl, Splitter, cn, useConfirm, useToast
 } from "../../ui/index.js";
 import {
-  BusTerminal, RunOverview, SignalScope, isSampled, type ConsoleJump, type StreamSource
+  BusTerminal, RunOverview, SignalScope, isSampled, streamUnit, type ConsoleJump, type StreamSource
 } from "../streams/index.js";
 import { RunControls } from "../testing/EditorToolbar.js";
 import { RunHeader } from "../testing/RunHeader.js";
 import { RunMessages } from "../testing/RunMessages.js";
+import { resultRows } from "../testing/result-rows.js";
+import { ResultTable } from "../testing/ResultTable.js";
 import { stepRange } from "../testing/useRunView.js";
 import { SPANS, useLiveKeepalive, useMonitorTime, type Span } from "./monitor-time.js";
 import type { BenchRun } from "./use-bench-run.js";
 import { readDraggedStream, STREAM_MIME, useMonitorChannels } from "./use-monitor-channels.js";
 
-type Lower = "console" | "messages";
+type Lower = "results" | "console" | "messages";
 
 /**
  * 运行监控 of 测试台架: the device streams the project shows — sampled ones on the oscilloscope,
@@ -56,12 +58,21 @@ export function MonitorPane({ bench, toolbar }: {
     max: () => Math.max(220, window.innerHeight - 260),
     direction: "down"
   });
-  const [lower, setLower] = useState<Lower>("console");
+  const [lower, setLower] = useState<Lower>("results");
   const [jump, setJump] = useState<ConsoleJump>();
   const [dropping, setDropping] = useState(false);
   const [rejudging, setRejudging] = useState(false);
   const decoded = runId ? view.decoded : undefined;
-  const lowerShown: Lower = decoded ? lower : "console";
+  const results = view.runLog.log?.results;
+  const rows = useMemo(() => {
+    if (!runId || !results) return [];
+    const units = new Map((timeline?.streams ?? []).map((stream) =>
+      [`${stream.hardwareId}/${stream.streamId}`, stream.declaration?.unit ?? streamUnit(stream)]));
+    return resultRows(results, (hardwareId, streamId) => units.get(`${hardwareId}/${streamId}`) ?? "");
+  }, [runId, results, timeline?.streams]);
+  // Without a run only the console has anything to show; 报文 only when the run decoded messages.
+  const lowerShown: Lower = !runId ? "console" : lower === "messages" && !decoded ? "results" : lower;
+  const problems = rows.filter((row) => row.verdict !== "Pass").length;
   const sampled = monitor.streams.filter((stream) => isSampled(String(stream.type)));
   const records = monitor.streams.filter((stream) => !isSampled(String(stream.type)));
 
@@ -219,15 +230,24 @@ export function MonitorPane({ bench, toolbar }: {
           )}
           {sampled.length > 0 && <Splitter label="拖拽调整示波器高度" {...scopeSize.separatorProps} />}
           <div className="flex min-h-0 min-w-0 flex-col">
-            {decoded && (
+            {runId && (
               <div className="flex h-8 shrink-0 items-center border-b border-line bg-surface-1 px-2">
                 <SegmentedControl<Lower>
                   label="下方面板"
                   size="xs"
                   value={lowerShown}
                   onChange={setLower}
-                  options={[{ value: "console", label: "控制台" }, { value: "messages", label: `报文 ${decoded.total}` }]}
+                  options={[
+                    { value: "results", label: problems ? `结果 ${rows.length} · 问题 ${problems}` : `结果 ${rows.length}` },
+                    { value: "console", label: "终端" },
+                    ...(decoded ? [{ value: "messages" as const, label: `报文 ${decoded.total}` }] : [])
+                  ]}
                 />
+              </div>
+            )}
+            {lowerShown === "results" && (
+              <div className="min-h-0 flex-1">
+                <ResultTable rows={rows} onStep={zoomStep} />
               </div>
             )}
             <div className={lowerShown === "console" ? "min-h-0 flex-1" : "hidden"}>
@@ -241,6 +261,7 @@ export function MonitorPane({ bench, toolbar }: {
                 jump={jump}
                 stepNames={runId ? view.stepNames : undefined}
                 extra={runId ? view.results : undefined}
+                titled={!runId}
                 onPick={(tb) => pick(tb, false)}
                 onStep={zoomStep}
               />

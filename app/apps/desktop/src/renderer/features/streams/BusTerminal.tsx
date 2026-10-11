@@ -39,7 +39,7 @@ export interface ConsoleJump {
  * instant picked elsewhere. The plan with each step's state is the test panel's flow, not here.
  */
 export function BusTerminal({
-  streams, timeline, source, live, origin, jump, stepNames, extra, onPick, onStep
+  streams, timeline, source, live, origin, jump, stepNames, extra, titled = true, onPick, onStep
 }: {
   /** Record streams to show; default: every record stream of the run. */
   streams?: StreamInfo[] | undefined;
@@ -52,6 +52,8 @@ export function BusTerminal({
   stepNames?: ReadonlyMap<string, string> | undefined;
   /** Further lines from outside the timeline (published results). */
   extra?: readonly ConsoleEntry[] | undefined;
+  /** Show its own 终端 title (false where a tab above already names it). */
+  titled?: boolean;
   onPick?: (tb: number) => void;
   onStep?: (executionId: string) => void;
 }) {
@@ -285,7 +287,7 @@ export function BusTerminal({
         />
       ))}
       <div className="flex min-h-8 shrink-0 flex-wrap items-center gap-1 border-b border-line bg-surface-1 px-2 py-1">
-        <span className="mr-1 text-xs font-semibold text-fg-2">终端</span>
+        {titled && <span className="mr-1 text-xs font-semibold text-fg-2">终端</span>}
         {KINDS.map(({ kind, label }) => (
           <FilterChip key={kind} on={kinds.has(kind)} onClick={() => toggleKind(kind)}>
             {label} <span className="tf-num text-fg-3">{counts[kind]}</span>

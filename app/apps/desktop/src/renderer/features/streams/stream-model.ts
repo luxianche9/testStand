@@ -25,7 +25,13 @@ export type TimeRange = readonly [number, number];
 /** uPlot-ready columns: x in seconds, one y column per series (null = no sample). */
 export interface ScopeData {
   x: number[];
-  ys: (number | null)[][];
+  /** `undefined`: no sample of this series at this x (another series has one), drawn across;
+   *  `null`: the series stopped sampling here, a gap in its line. */
+  ys: (number | null | undefined)[][];
+  /** Per series, whether its line breaks at `null` (sampled channels; levels and lanes hold). */
+  gaps?: boolean[];
+  /** Per series, whether it is sparse enough to draw each sample as a point. */
+  dots?: boolean[];
   labels: string[];
   stepped: boolean;
   /** For bit streams, the bit number of each series (stacked lanes). */
@@ -117,13 +123,49 @@ export interface AnalogInput {
   points: StreamPoint[];
   level: boolean;
   holdUntil?: number | undefined;
+  /** The declared sampling period (`1000 / rateHz`); without it the median interval is used. */
+  periodMs?: number | undefined;
 }
 
-/** Several scalar channels overlaid on one scope. */
+/** Samples further apart than this many periods were not taken in between: the line breaks. */
+const GAP_PERIODS = 3;
+/** A trace with at most this many samples in view draws each one as a point. */
+const DOT_LIMIT = 60;
+
+function medianInterval(points: StreamPoint[]): number | undefined {
+  if (points.length < 3) return undefined;
+  const steps = points.slice(1).map((point, index) => point.tb - (points[index]?.tb ?? point.tb)).sort((a, b) => a - b);
+  return steps[steps.length >> 1];
+}
+
+/**
+ * Where a sampled channel stopped sampling: the instants (ms) after which the next sample is more
+ * than `GAP_PERIODS` periods away. A sampled stream only samples while someone watches, and a test
+ * step may read a channel once; joining such points would draw values that were never measured.
+ */
+export function sampleGaps(points: StreamPoint[], periodMs?: number): number[] {
+  const period = periodMs && periodMs > 0 ? periodMs : medianInterval(points);
+  // Without a declared rate or enough samples to estimate one, nothing says a gap is a gap.
+  if (period === undefined) return [];
+  const limit = GAP_PERIODS * period;
+  return points.flatMap((point, index) => {
+    const next = points[index + 1];
+    return next && next.tb - point.tb > limit ? [point.tb] : [];
+  });
+}
+
+/** Several scalar channels overlaid on one scope; a sampled channel's line breaks where it was not sampled. */
 export function analogData(inputs: AnalogInput[]): ScopeData {
-  const series = inputs.map(({ points, level, holdUntil }) => {
+  /** Per series, the open intervals (s) it was not sampled in. */
+  const holes: [number, number][][] = [];
+  const series = inputs.map(({ points, level, holdUntil, periodMs }) => {
     const x = points.map((point) => point.tb / 1000);
-    const y = points.map((point) => numeric(point.v));
+    const y: (number | null)[] = points.map((point) => numeric(point.v));
+    const gaps = new Set(level ? [] : sampleGaps(points, periodMs));
+    holes.push(points.flatMap((point, index) => {
+      const next = points[index + 1];
+      return next && gaps.has(point.tb) ? [[point.tb / 1000, next.tb / 1000] as [number, number]] : [];
+    }));
     const last = points.at(-1);
     if (level && last && holdUntil !== undefined && holdUntil > last.tb) {
       x.push(holdUntil / 1000);
@@ -131,7 +173,42 @@ export function analogData(inputs: AnalogInput[]): ScopeData {
     }
     return { x, y };
   });
-  return { ...alignSeries(series), labels: inputs.map((input) => input.label), stepped: false };
+  const aligned = alignSeries(series);
+  // uPlot clips a gap between the x values next to its nulls. Every slot strictly inside a hole is
+  // null, so the gap runs from the last sample before it to the first one after; other alignment
+  // slots (another channel sampled there) are undefined and drawn across.
+  const ys = aligned.ys.map((column, index) => {
+    const own = holes[index] ?? [];
+    return column.map((value, at) => {
+      if (value !== null) return value;
+      const x = aligned.x[at] ?? 0;
+      return own.some(([from, to]) => x > from && x < to) ? null : undefined;
+    });
+  });
+  // A hole with no other channel's slot inside it still needs one null to break the line.
+  const extra = holes.flatMap((own, index) => own
+    .filter(([from, to]) => !aligned.x.some((x) => x > from && x < to))
+    .map(([from, to]) => ({ index, x: (from + to) / 2 })));
+  if (extra.length) {
+    const x = [...aligned.x];
+    const cols = ys.map((column) => [...column]);
+    for (const item of extra.sort((a, b) => a.x - b.x)) {
+      const at = x.findIndex((value) => value > item.x);
+      const insert = at < 0 ? x.length : at;
+      x.splice(insert, 0, item.x);
+      cols.forEach((column, index) => column.splice(insert, 0, index === item.index ? null : undefined));
+    }
+    return finish(x, cols, inputs);
+  }
+  return finish(aligned.x, ys, inputs);
+}
+
+function finish(x: number[], ys: (number | null | undefined)[][], inputs: AnalogInput[]): ScopeData {
+  return {
+    x, ys, labels: inputs.map((input) => input.label), stepped: false,
+    gaps: inputs.map((input) => !input.level),
+    dots: inputs.map((input) => !input.level && input.points.length <= DOT_LIMIT)
+  };
 }
 
 export interface LogicInput extends Omit<AnalogInput, "level"> {

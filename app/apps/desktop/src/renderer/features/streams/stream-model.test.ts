@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { RunTimeline, StreamInfo } from "@teststand/contracts/observability";
 import {
-  alignSeries, analogData, ansiLine, BIT_LANE, combinedOverlays, compareEntries, consoleLine, deviceName,
+  alignSeries, analogData, ansiLine, sampleGaps, BIT_LANE, combinedOverlays, compareEntries, consoleLine, deviceName,
   formatNumber, isSampled, logicData, overlaysFor, pointAt, pointText, recordEntry, relativeTime, relevantStreams,
   runRange, scopeData, shortLabel, stepAt, streamUnit, terminalLine, timelineEntries, verdictTone
 } from "./stream-model.js";
@@ -143,8 +143,34 @@ describe("stream model", () => {
       { label: "ao0", points: [{ t: 0, tb: 1_000, v: 6 }], level: true, holdUntil: 2_000 }
     ]);
     expect(data.x).toEqual([1, 1.5, 2]);
-    expect(data.ys).toEqual([[1, 2, null], [6, null, 6]]);
+    expect(data.ys).toEqual([[1, 2, undefined], [6, undefined, 6]]);
     expect(data.labels).toEqual(["ai0", "ao0"]);
+    expect(data.gaps).toEqual([true, false]);
+    expect(data.dots).toEqual([true, false]);
+  });
+
+  it("breaks a sampled channel's line where it was not sampled", () => {
+    const at = (tb: number, v: number) => ({ t: tb, tb, v });
+    // 5 Hz: 200 ms apart, then nothing for 3 s.
+    const points = [at(0, 1), at(200, 2), at(400, 3), at(3_400, 4), at(3_600, 5)];
+    expect(sampleGaps(points, 200)).toEqual([400]);
+    // Without a declared rate the median interval stands in for it.
+    expect(sampleGaps(points)).toEqual([400]);
+    expect(sampleGaps([at(0, 1), at(5_000, 2)])).toEqual([]);
+    const data = analogData([{ label: "ai6", points, level: false, periodMs: 200 }]);
+    const nulls = data.ys[0]!.flatMap((value, index) => value === null ? [data.x[index]] : []);
+    expect(nulls).toEqual([1.9]);
+    // Another channel sampling inside the hole: its slots are null for ai6, so the gap spans the hole.
+    const two = analogData([
+      { label: "ai6", points, level: false, periodMs: 200 },
+      { label: "ai7", points: [at(1_000, 0), at(2_000, 0)], level: false, periodMs: 1_000 }
+    ]);
+    expect(two.x).toEqual([0, 0.2, 0.4, 1, 2, 3.4, 3.6]);
+    expect(two.ys[0]).toEqual([1, 2, 3, null, null, 4, 5]);
+    expect(two.ys[1]).toEqual([undefined, undefined, undefined, 0, 0, undefined, undefined]);
+    // Levels hold across: no break.
+    const held = analogData([{ label: "ao0", points, level: true, periodMs: 200 }]);
+    expect(held.ys[0]!.includes(null)).toBe(false);
   });
 
   it("gives the changing bits of several streams consecutive lanes and lists the steady streams", () => {
