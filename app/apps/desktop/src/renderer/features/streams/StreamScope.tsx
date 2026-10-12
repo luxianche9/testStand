@@ -4,6 +4,7 @@ import "uplot/dist/uPlot.min.css";
 import {
   BIT_LANE, clockTime, formatNumber, relativeTime, type OverlayTone, type ScopeData, type ScopeOverlays, type TimeRange
 } from "./stream-model.js";
+import { divisionSplits, tickText, verticalRange, type VerticalScale } from "./scope-controls.js";
 import { resolveColor, tokenColor, tokenFont, useThemeVersion } from "./theme-colors.js";
 
 const TONE_TOKEN: Record<OverlayTone, string> = {
@@ -153,15 +154,30 @@ function tickDigits(increment: number): number {
   return 3;
 }
 
-/** A live view's sliding window: `[from ?? now - spanMs, now]`. */
+/**
+ * A live view's sliding window: `[from ?? end - spanMs, end]` with `end = now - lagMs`, so the
+ * window ends where the data does rather than in the stretch still on its way.
+ */
 export interface FollowWindow {
   spanMs: number;
   from?: number | undefined;
+  lagMs?: number | undefined;
 }
 
-function followRange({ spanMs, from }: FollowWindow): TimeRange {
-  const now = Date.now();
-  return [from ?? now - spanMs, now];
+function followRange({ spanMs, from, lagMs }: FollowWindow): TimeRange {
+  const end = Date.now() - (lagMs ?? 0);
+  return [from ?? end - spanMs, end];
+}
+
+/** Value-axis grid: one line per `incr` from the first multiple at or above `min`. */
+function evenSplits(min: number, max: number, incr: number): number[] {
+  if (!(incr > 0)) return [];
+  const digits = Math.max(0, -Math.floor(Math.log10(incr)) + 2);
+  const values: number[] = [];
+  for (let value = Math.ceil(min / incr - 1e-9) * incr; value <= max + incr * 1e-9; value += incr) {
+    values.push(Number(value.toFixed(digits)));
+  }
+  return values;
 }
 
 /**
@@ -193,7 +209,7 @@ export function heldRange(
  */
 export function StreamScope({
   label, unit = "", data, range, overlays, height = 120, axisWidth, timeAxis = true, readoutTime = true, syncKey,
-  series, origin, marker, follow, onPick, onSelectRange, onReset, onCursor
+  series, origin, marker, follow, yScale, xDivMs, onPick, onSelectRange, onReset, onCursor
 }: {
   label?: ReactNode;
   /** Appended to the readout values. */
@@ -213,6 +229,10 @@ export function StreamScope({
   marker?: number | undefined;
   /** Slide the time axis with the clock; `range` is ignored meanwhile. */
   follow?: FollowWindow | undefined;
+  /** A fixed value axis of eight divisions (volts/div and centre); automatic when absent. */
+  yScale?: VerticalScale | undefined;
+  /** One vertical grid line per time division (ms) when the view is a whole number of them. */
+  xDivMs?: number | undefined;
   onPick?: (tb: number) => void;
   onSelectRange?: (range: TimeRange) => void;
   onReset?: () => void;
@@ -224,10 +244,10 @@ export function StreamScope({
   const [failed, setFailed] = useState<string>();
   const theme = useThemeVersion();
   const latest = useRef({
-    data, range, overlays, origin, marker, unit, readoutTime, follow, onPick, onSelectRange, onReset, onCursor
+    data, range, overlays, origin, marker, unit, readoutTime, follow, yScale, onPick, onSelectRange, onReset, onCursor
   });
   latest.current = {
-    data, range, overlays, origin, marker, unit, readoutTime, follow, onPick, onSelectRange, onReset, onCursor
+    data, range, overlays, origin, marker, unit, readoutTime, follow, yScale, onPick, onSelectRange, onReset, onCursor
   };
   const shownRange = () => {
     const current = latest.current;
@@ -236,7 +256,7 @@ export function StreamScope({
   const styles = series?.map((item) => `${item.color}/${item.stepped}`).join(",") ?? "";
   const shape = data
     ? [data.stepped, data.labels.join(","), data.gaps?.join() ?? "", data.dots?.join() ?? "", styles,
-      origin === undefined, axisWidth, timeAxis].join(":")
+      origin === undefined, axisWidth, timeAxis, xDivMs ?? ""].join(":")
     : "";
   const fill = height === "fill";
 
@@ -272,6 +292,9 @@ export function StreamScope({
       } : {};
       // A stacked scope keeps the vertical grid but leaves the time labels to the last scope.
       const hideTime: uPlot.Axis = timeAxis ? {} : { size: 2, values: (_self, splits) => splits.map(() => "") };
+      const division = xDivMs ? xDivMs / 1000 : undefined;
+      const timeGrid: uPlot.Axis = division ? { incrs: [division, 2 * division, 5 * division, 10 * division] } : {};
+      const autoRange = heldRange(UPlot.rangeNum, () => Boolean(latest.current.follow));
       const font = tokenFont(11);
       const laneColors = current.labels.map((_, index) => {
         const style = series?.[index];
@@ -286,24 +309,38 @@ export function StreamScope({
           x: { time: !relative },
           y: lanes
             ? { auto: false, range: [-0.25, lanes.length * BIT_LANE - 0.25] }
-            : { auto: true, range: heldRange(UPlot.rangeNum, () => Boolean(latest.current.follow)) }
+            : {
+              auto: true,
+              range: (self: uPlot, min: number | null, max: number | null): uPlot.Range.MinMax => {
+                const fixed = latest.current.yScale;
+                return fixed ? verticalRange(fixed) : autoRange(self, min, max);
+              }
+            }
         },
         axes: [
           {
             stroke: colors.axis, font, grid: { stroke: colors.grid, width: 1 }, ticks: { show: false }, size: 22,
-            ...xAxis, ...hideTime
+            ...timeGrid, ...xAxis, ...hideTime
           },
           {
             stroke: colors.axis,
-            font,
+            font: lanes ? tokenFont(11, "mono") : font,
             grid: { stroke: colors.grid, width: 1 },
             ticks: { show: false },
             size: axisWidth ?? (lanes ? 96 : 56),
             ...(lanes ? {
-              font: tokenFont(11, "mono"),
               splits: () => lanes.map((_, lane) => lane * BIT_LANE),
               values: () => lanes
-            } : {})
+            } : {
+              splits: (_self: uPlot, _axis: number, min: number, max: number, increment: number) => {
+                const fixed = latest.current.yScale;
+                return fixed ? divisionSplits(fixed) : evenSplits(min, max, increment);
+              },
+              values: (_self: uPlot, splits: number[], _axis: number, _space: number, increment: number) => {
+                const step = latest.current.yScale?.perDiv ?? increment;
+                return splits.map((value) => tickText(value, step));
+              }
+            })
           }
         ],
         series: [
@@ -440,6 +477,20 @@ export function StreamScope({
   }, [following]);
 
   useEffect(() => { plot.current?.redraw(false, false); }, [overlays, marker]);
+
+  const yKey = yScale ? `${yScale.perDiv}@${yScale.center}` : "";
+  useEffect(() => {
+    const instance = plot.current;
+    if (!instance || data?.lanes) return;
+    if (yScale) {
+      const [min, max] = verticalRange(yScale);
+      instance.setScale("y", { min, max });
+    } else {
+      instance.setData(instance.data, true);
+    }
+  // `yKey` stands for `yScale`.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [yKey]);
 
   return (
     <div className={fill ? "flex h-full min-h-0 min-w-0 flex-col gap-0.5" : "grid min-w-0 gap-0.5"}>

@@ -164,3 +164,12 @@ def test_pinout_matches_the_manual_figure():
     for prefix, count in (("VIN", 32), ("VOUT", 8), ("DIO", 48)):
         assert sorted(int(name[len(prefix):]) for name in names
                       if name.startswith(prefix) and name[len(prefix):].isdigit()) == list(range(count))
+
+
+def test_stale_identity_after_a_crash_is_reset_and_read_again():
+    instance = JcxdMads3210(dry_run_config(JcxdMads3210, settings={**SETTINGS, "serialNumber": 621216518}))
+    instance.driver.stale = True
+    try:
+        assert instance.open()["identity"]["serialNumber"] == 621216518
+    finally:
+        instance.close()

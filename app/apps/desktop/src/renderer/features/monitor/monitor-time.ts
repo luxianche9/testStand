@@ -1,30 +1,33 @@
 import { useEffect, useMemo, useState } from "react";
 import type { StreamSource, TimeRange } from "../streams/index.js";
 import { createLiveHub } from "./live-hub.js";
-
-export const SPANS = [
-  { value: "2000", label: "2 s" },
-  { value: "10000", label: "10 s" },
-  { value: "60000", label: "1 min" }
-] as const;
-export type Span = (typeof SPANS)[number]["value"];
+import { DEFAULT_TIME_DIV, stepSetting, TIME_DIVISIONS, TIME_DIVS } from "../streams/scope-controls.js";
 
 /** Where the panel's data comes from: the devices now, a run as it records, or a finished run. */
 export type MonitorMode = "live" | "run" | "replay";
 
 /**
- * One time axis for the scope, the terminal and the event timeline: following the newest data over
- * `spanMs` (from `from` when the run start must stay in view), or a fixed `range` picked by dragging
- * on the scope or the timeline. `marker` is the instant picked last.
+ * One time axis for the scope, the terminal and the event timeline, set like an oscilloscope's
+ * horizontal controls: `divMs` per division over ten divisions, running (following the newest
+ * data, from `from` when the run start must stay in view) or stopped on a fixed `range` that the
+ * position buttons move a division at a time. Dragging on the scope or the timeline zooms to any
+ * range; `marker` is the instant picked last.
  */
 export interface MonitorTime {
   follow: boolean;
+  /** Whether RUN can resume following (a replayed run cannot). */
+  canRun: boolean;
+  divMs: number;
   spanMs: number;
   from: number | undefined;
   range: TimeRange | undefined;
   marker: number | undefined;
-  span: Span;
-  setSpan: (span: Span) => void;
+  /** Time/div `steps` settings coarser (positive) or finer, keeping the view's centre when stopped. */
+  stepDiv: (steps: number) => void;
+  /** Stop on the current view and move it `divisions` (positive: later). */
+  pan: (divisions: number) => void;
+  run: () => void;
+  stop: () => void;
   select: (range: TimeRange) => void;
   pick: (tb: number) => void;
   reset: () => void;
@@ -37,10 +40,10 @@ export interface MonitorTime {
 export function useMonitorTime(live: boolean, start?: number, whole?: TimeRange): MonitorTime {
   const [follow, setFollow] = useState(live);
   const [zoom, setZoom] = useState<TimeRange>();
-  const [span, setSpan] = useState<Span>("10000");
+  const [divMs, setDivMs] = useState<number>(DEFAULT_TIME_DIV);
   const [marker, setMarker] = useState<number>();
   useEffect(() => { setFollow(live); if (live) setZoom(undefined); }, [live]);
-  const spanMs = Number(span);
+  const spanMs = divMs * TIME_DIVISIONS;
   const following = live && follow;
   // A run shows from its start until its length exceeds the span; then the newest span slides.
   const [now, setNow] = useState(() => Date.now());
@@ -50,18 +53,50 @@ export function useMonitorTime(live: boolean, start?: number, whole?: TimeRange)
     return () => window.clearInterval(timer);
   }, [following, start]);
   const from = following && start !== undefined && now - start < spanMs ? start : undefined;
-  return useMemo(() => ({
-    follow: following,
-    spanMs,
-    from,
-    range: following ? undefined : zoom ?? whole,
-    marker,
-    span,
-    setSpan: (next) => { setSpan(next); setZoom(undefined); if (live) setFollow(true); },
-    select: (next) => { setFollow(false); setZoom(next); },
-    pick: setMarker,
-    reset: () => { setZoom(undefined); if (live) setFollow(true); }
-  }), [following, spanMs, from, zoom, whole, marker, span, live]);
+  return useMemo(() => {
+    const shown = (): TimeRange => {
+      if (!following) {
+        const fixed = zoom ?? whole;
+        if (fixed) return fixed;
+      }
+      const end = Date.now();
+      return [from ?? end - spanMs, from === undefined ? end : from + spanMs];
+    };
+    return {
+      follow: following,
+      canRun: live,
+      divMs,
+      spanMs,
+      from,
+      range: following ? undefined : zoom ?? whole,
+      marker,
+      stepDiv: (steps) => {
+        const next = stepSetting(TIME_DIVS, divMs, steps);
+        setDivMs(next);
+        if (!following) {
+          const [t0, t1] = shown();
+          const centre = (t0 + t1) / 2;
+          const half = (next * TIME_DIVISIONS) / 2;
+          setZoom([centre - half, centre + half]);
+        }
+      },
+      pan: (divisions) => {
+        const [t0, t1] = shown();
+        const shift = divisions * ((t1 - t0) / TIME_DIVISIONS);
+        setFollow(false);
+        setZoom([t0 + shift, t1 + shift]);
+      },
+      run: () => { setZoom(undefined); if (live) setFollow(true); },
+      stop: () => {
+        if (!following) return;
+        setFollow(false);
+        setZoom(shown());
+      },
+      select: (next) => { setFollow(false); setZoom(next); },
+      pick: setMarker,
+      reset: () => { setZoom(undefined); if (live) setFollow(true); }
+    };
+  }, [following, divMs, spanMs, from, zoom, whole, marker, live]);
 }
 
 /** The devices' live frames through one shared subscription, as long as the bench is mounted. */

@@ -311,3 +311,15 @@ describe("stream model", () => {
     expect(streamUnit({ streamId: "ai0", type: "scalar", derived })).toBe("");
   });
 });
+
+describe("masks wider than 32 bits", () => {
+  it("keeps bits 32..52 apart from bits 0..20", async () => {
+    const { hasBit, maskOr, maskXor, maskBits } = await import("./stream-model.js");
+    const relay47 = 2 ** 47;
+    expect(hasBit(relay47, 47)).toBe(true);
+    expect(hasBit(relay47, 15)).toBe(false);
+    expect(maskOr(relay47, 1)).toBe(relay47 + 1);
+    expect(maskXor(relay47 + 1, 1)).toBe(relay47);
+    expect(maskBits(2 ** 40 + 2, 48).flatMap((on, bit) => (on ? [bit] : []))).toEqual([1, 40]);
+  });
+});

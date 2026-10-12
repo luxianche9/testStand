@@ -3,8 +3,11 @@ import { CheckIcon, SlidersHorizontalIcon } from "lucide-react";
 import type { StreamInfo } from "@teststand/contracts/observability";
 import { Menu, MenuContent, MenuItem, MenuTrigger } from "../../ui";
 
-/** How a bits channel is drawn on the time axis: a lane per bit, or one lane of value segments. */
-type TraceMode = "logic" | "bus";
+/**
+ * How a bits channel is shown: a lane per bit or one lane of value segments on the time axis, or
+ * only as indicators (lamps, relay contacts) in the digital panel under the scope.
+ */
+type TraceMode = "logic" | "bus" | "panel";
 
 export interface ChannelDisplay {
   trace: TraceMode;
@@ -12,18 +15,24 @@ export interface ChannelDisplay {
 
 const TRACE_OPTIONS: { value: TraceMode; label: string; hint: string }[] = [
   { value: "logic", label: "逻辑", hint: "每位一条电平线" },
-  { value: "bus", label: "总线", hint: "整字一条，按值分段" }
+  { value: "bus", label: "总线", hint: "整字一条，按值分段" },
+  { value: "panel", label: "指示灯", hint: "只在数字量面板显示当前状态" }
 ];
 
 const STORAGE_KEY = "teststand.channel-display";
+/** Channels wider than this start on the digital panel rather than as one lane per bit. */
+const WIDE_BITS = 16;
 
 /**
  * What the plugin suggests (`display` in its stream declaration): relay contacts and independent
  * lines as a lane per bit, a control / status word as one lane of values. Without a hint, named
- * lines get a lane each and an unnamed mask one value lane.
+ * lines get a lane each and an unnamed mask one value lane. Wide channels (48 DIO lines, 40
+ * relays) go to the digital panel instead.
  */
 export function defaultDisplay(stream: Pick<StreamInfo, "declaration">): ChannelDisplay {
   const declared = stream.declaration?.display;
+  // More lines than the logic analyser can show readably are read on the panel.
+  if ((stream.declaration?.width ?? 0) > WIDE_BITS && declared !== "code") return { trace: "panel" };
   if (declared === "switches" || declared === "lamps") return { trace: "logic" };
   if (declared === "code") return { trace: "bus" };
   return { trace: stream.declaration?.bitLabels?.length ? "logic" : "bus" };

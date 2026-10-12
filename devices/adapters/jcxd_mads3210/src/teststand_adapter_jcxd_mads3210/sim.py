@@ -31,6 +31,8 @@ class SimulatedMads3210:
         self.di_levels = (1 << 48) - 1
         self.counters: dict[int, tuple[str, float, float]] = {}
         self.calls: list[tuple] = []
+        self.stale = False
+        """Identity registers read 0 until reset, as after a process died mid-acquisition."""
 
     def open(self, card_id: int) -> tuple[int, int | None]:
         if card_id != 0:
@@ -43,6 +45,7 @@ class SimulatedMads3210:
         return 0
 
     def reset(self, h: int) -> int:
+        self.stale = False
         self.ad_channels, self.ad_started = [], None
         self.da.clear()
         self.waves.clear()
@@ -52,6 +55,9 @@ class SimulatedMads3210:
         return 0
 
     def info(self, h: int) -> tuple[int, dict[str, int]]:
+        if self.stale:
+            return 0, {"cardType": 0, "hwVersion": 0x25072401, "driverVersion": 0x1000001,
+                       "libVersion": 0x1000002, "boardId": 0, "serialNumber": 0, "channelMax": 32}
         return 0, {"cardType": 0x3210, "hwVersion": 0x25072401, "driverVersion": 0x1000001,
                    "libVersion": 0x1000002, "boardId": 0, "serialNumber": SIM_SERIAL, "channelMax": 32}
 

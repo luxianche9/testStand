@@ -60,11 +60,37 @@ function maskOf(value: StreamPoint["mask"]): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+// Masks go up to 53 bits (48 DIO lines, 40 relays); JavaScript's bitwise operators only see 32,
+// so masks are split into two 32-bit halves.
+const HALF = 2 ** 32;
+const halves = (mask: number): [number, number] => [Math.floor(mask / HALF), mask % HALF];
+const join = (high: number, low: number): number => (high >>> 0) * HALF + (low >>> 0);
+
+/** Whether bit `bit` (0..52) of `mask` is set. */
+export function hasBit(mask: number, bit: number): boolean {
+  return Math.floor(mask / 2 ** bit) % 2 === 1;
+}
+
+/** Bitwise or / xor of two masks of up to 53 bits. */
+export function maskOr(a: number, b: number): number {
+  const [ah, al] = halves(a);
+  const [bh, bl] = halves(b);
+  return join(ah | bh, al | bl);
+}
+
+export function maskXor(a: number, b: number): number {
+  const [ah, al] = halves(a);
+  const [bh, bl] = halves(b);
+  return join(ah ^ bh, al ^ bl);
+}
+
+const MAX_BITS = 53;
+
 /** Bit numbers that are high in at least one mask, lowest first (bit 0 when all are low). */
 function activeBits(masks: number[]): number[] {
-  const union = masks.reduce((all, mask) => all | mask, 0);
+  const union = masks.reduce((all, mask) => maskOr(all, mask), 0);
   const bits: number[] = [];
-  for (let bit = 0; bit < 32; bit += 1) if (union & (1 << bit)) bits.push(bit);
+  for (let bit = 0; bit < MAX_BITS; bit += 1) if (hasBit(union, bit)) bits.push(bit);
   return bits.length ? bits : [0];
 }
 
@@ -86,7 +112,7 @@ export function scopeData(type: string, points: StreamPoint[], holdUntil?: numbe
   const bits = activeBits(masks);
   return {
     x,
-    ys: bits.map((bit, lane) => masks.map((mask) => (mask & (1 << bit) ? 1 : 0) + lane * BIT_LANE)),
+    ys: bits.map((bit, lane) => masks.map((mask) => (hasBit(mask, bit) ? 1 : 0) + lane * BIT_LANE)),
     labels: bits.map((bit) => `bit ${bit}`),
     stepped: true,
     bits,
@@ -277,19 +303,21 @@ export function logicData(inputs: LogicInput[]): LogicData {
       buses.push({ lane, segments });
       return;
     }
-    const toggled = masks.reduce((all, mask, index) => index ? all | (mask ^ (masks[index - 1] ?? 0)) : all, 0);
+    const toggled = masks.reduce(
+      (all, mask, index) => index ? maskOr(all, maskXor(mask, masks[index - 1] ?? 0)) : all, 0
+    );
     changedBits[owner] = toggled;
-    const changed = masks.length ? toggled | (input.keepBits ?? 0) : 0;
+    const changed = masks.length ? maskOr(toggled, input.keepBits ?? 0) : 0;
     if (!changed) {
       if (masks.length) steady.push({ label: input.label, mask: masks.at(-1) ?? 0 });
       return;
     }
-    for (let bit = 0; bit < 32; bit += 1) {
-      if (!(changed & (1 << bit))) continue;
+    for (let bit = 0; bit < MAX_BITS; bit += 1) {
+      if (!hasBit(changed, bit)) continue;
       const lane = lanes.length;
       lanes.push(`${input.label}.${input.bitLabels?.[bit] ?? bit}`);
       owners.push(owner);
-      series.push({ x, y: masks.map((mask) => (mask & (1 << bit) ? 1 : 0) + lane * BIT_LANE) });
+      series.push({ x, y: masks.map((mask) => (hasBit(mask, bit) ? 1 : 0) + lane * BIT_LANE) });
     }
   });
   return {
@@ -313,14 +341,14 @@ export function codeText(
 
 /** Bits held in a mask, by number. */
 export function maskBits(mask: number, width: number): boolean[] {
-  return Array.from({ length: width }, (_, bit) => Boolean(mask & (1 << bit)));
+  return Array.from({ length: width }, (_, bit) => hasBit(mask, bit));
 }
 
 /** A bits stream's number of lines: declared, else enough for every bit seen (at least 8). */
 export function bitsWidth(stream: Pick<StreamInfo, "declaration">, points: StreamPoint[] | undefined): number {
   const declared = stream.declaration?.width;
   if (declared) return declared;
-  const union = (points ?? []).reduce((all, point) => all | maskOf(point.mask), 0);
+  const union = (points ?? []).reduce((all, point) => maskOr(all, maskOf(point.mask)), 0);
   return Math.max(8, union ? Math.floor(Math.log2(union)) + 1 : 0);
 }
 

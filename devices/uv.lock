@@ -455,7 +455,7 @@ requires-dist = [{ name = "teststand-device-sdk", editable = "sdk" }]
 
 [[package]]
 name = "teststand-adapter-jcxd-mads3210"
-version = "1.0.0"
+version = "1.0.1"
 source = { editable = "adapters/jcxd_mads3210" }
 dependencies = [
     { name = "teststand-device-sdk" },

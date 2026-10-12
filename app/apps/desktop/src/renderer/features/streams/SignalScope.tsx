@@ -1,11 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ActivityIcon, ChevronRightIcon, XIcon } from "lucide-react";
+import {
+  ActivityIcon, ChevronDownIcon, ChevronRightIcon, ChevronUpIcon, MinusIcon, PanelLeftCloseIcon, PanelLeftOpenIcon,
+  PlusIcon, XIcon
+} from "lucide-react";
 import type { RunTimeline, StreamInfo, StreamWindow } from "@teststand/contracts/observability";
 import { cn, EmptyState, IconButton } from "../../ui";
 import { DisplayMenu, useChannelDisplays, type ChannelDisplay } from "./channel-display.js";
-import { StreamScope, type SeriesStyle } from "./StreamScope.js";
 import {
-  analogData, bitsWidth, CHANNEL_COLORS, clockTime, codeText, combinedOverlays, deviceName, isSampled, logicData,
+  autoset, stepSetting, TIME_DIVISIONS, VALUE_DIVS, valueDivText, type VerticalScale
+} from "./scope-controls.js";
+import { StreamScope, type SeriesStyle } from "./StreamScope.js";
+import { DigitalPanel } from "./DigitalPanel.js";
+import {
+  analogData, bitsWidth, CHANNEL_COLORS, clockTime, codeText, combinedOverlays, deviceName, formatNumber, isSampled,
+  logicData, maskOr,
   pointAt, pointMask, pointText, relativeTime, streamUnit, type TimeRange
 } from "./stream-model.js";
 import { useStreamsPoints, type StreamSource } from "./useStreamReader.js";
@@ -17,6 +25,17 @@ const AXIS_PX = 56;
 const LOGIC_AXIS_PX = 104;
 /** The logic analyser never takes more than this from the analog traces. */
 const LOGIC_MAX_PX = 180;
+/** The follow window never lags the clock by more than this, whatever the data does. */
+const MAX_LAG_MS = 1_000;
+const SIGNALS_KEY = "teststand.scope.signals-open";
+
+function storedOpen(): boolean {
+  try {
+    return globalThis.localStorage?.getItem(SIGNALS_KEY) !== "false";
+  } catch {
+    return true;
+  }
+}
 
 /**
  * Whether a channel holds its value until the next one (a setpoint, an output read back) rather
@@ -84,7 +103,13 @@ export function SignalScope({
   /** While following, a bit keeps its lane once it has changed, so lanes don't come and go. */
   const keptBits = useRef(new Map<string, number>());
   const [othersOpen, setOthersOpen] = useState(false);
-  const { displayOf, setDisplay } = useChannelDisplays();
+  const [signalsOpen, setSignalsOpenState] = useState(storedOpen);
+  const setSignalsOpen = (open: boolean) => {
+    setSignalsOpenState(open);
+    try { globalThis.localStorage?.setItem(SIGNALS_KEY, String(open)); } catch { /* not persisted */ }
+  };
+  /** The vertical setting: automatic (undefined) or volts/div with a centre, like a scope's knobs. */
+  const [manual, setManual] = useState<VerticalScale>();
 
   const channels = useMemo<Channel[]>(() => streams
     .filter((stream) => isSampled(String(stream.type)))
@@ -94,8 +119,10 @@ export function SignalScope({
   const defaults = useMemo(() => new Set(channels.map((channel) => channel.stream.key)), [channels]);
   const visible = chosen ?? defaults;
   const shown = channels.filter((channel) => visible.has(channel.stream.key));
+  const { displayOf, setDisplay } = useChannelDisplays();
   const analog = shown.filter((channel) => !channel.logic);
-  const logic = shown.filter((channel) => channel.logic);
+  const bits = shown.filter((channel) => channel.logic);
+  const logic = bits.filter((channel) => displayOf(channel.stream).trace !== "panel");
 
   const points = useStreamsPoints(source, shown.map((channel) => channel.stream.key), {
     follow, spanMs, from, range
@@ -136,7 +163,7 @@ export function SignalScope({
         label: `${deviceName(channel.stream.hardwareId)}/${channel.stream.streamId}`,
         points: item?.points ?? [],
         holdUntil: holdUntil(item),
-        mode: displayOf(channel.stream).trace,
+        mode: displayOf(channel.stream).trace === "bus" ? "bus" : "logic",
         bitLabels: declaration?.bitLabels,
         width: declaration?.width,
         codeLabels: declaration?.codeLabels,
@@ -146,7 +173,7 @@ export function SignalScope({
     if (follow) {
       read.forEach((channel, index) => {
         const key = channel.stream.key;
-        kept.set(key, (kept.get(key) ?? 0) | (data.changedBits[index] ?? 0));
+        kept.set(key, maskOr(kept.get(key) ?? 0, data.changedBits[index] ?? 0));
       });
     }
     // Each lane takes its channel's colour, as in the channel list.
@@ -165,6 +192,26 @@ export function SignalScope({
     [timeline, logic.map((channel) => channel.stream.key).join()]
   );
 
+  // While following, the window ends where the data does: the largest delivery lag of the last
+  // two seconds (frames arrive every 50 ms), so the right edge of the screen is not left empty.
+  const lags = useRef<{ at: number; lag: number }[]>([]);
+  const lagMs = useMemo(() => {
+    if (!follow) {
+      lags.current = [];
+      return 0;
+    }
+    const now = Date.now();
+    const newest = Math.max(...shown.map((channel) => {
+      const item = points.reads[channel.stream.key];
+      return item?.watermarkTb ?? item?.points?.at(-1)?.tb ?? Number.NEGATIVE_INFINITY;
+    }));
+    if (Number.isFinite(newest)) lags.current.push({ at: now, lag: Math.min(MAX_LAG_MS, Math.max(0, now - newest)) });
+    lags.current = lags.current.filter((item) => now - item.at < 2_000);
+    return Math.max(0, ...lags.current.map((item) => item.lag));
+  // Re-measured when data arrives.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [points.reads, follow]);
+
   if (!channels.length) {
     return <EmptyState compact icon={<ActivityIcon />} title={emptyText} />;
   }
@@ -177,121 +224,240 @@ export function SignalScope({
   });
   const errors = Object.entries(points.errors);
   const lanes = logicPlot?.data.lanes?.length ?? 0;
+  const viewWidth = view ? view[1] - view[0] : spanMs;
   const scopeProps = {
     range: view, axisWidth: lanes ? LOGIC_AXIS_PX : AXIS_PX, syncKey, origin, marker, onPick, onSelectRange,
-    onReset, onCursor, follow: follow ? { spanMs, from } : undefined
+    onReset, onCursor, follow: follow ? { spanMs, from, lagMs: from === undefined ? lagMs : 0 } : undefined,
+    xDivMs: follow || Math.abs(viewWidth - spanMs) < 1 ? spanMs / TIME_DIVISIONS : undefined
   };
   const logicHeight = Math.min(lanes * LANE_PX + 30, LOGIC_MAX_PX);
-  const steady = logicPlot?.data.steady ?? [];
   const units = new Set(analog.map((channel) => streamUnit(channel.stream)));
-  const overlayUnit = units.size === 1 ? [...units][0] : "";
+  const overlayUnit = units.size === 1 ? [...units][0] ?? "" : "";
   const hiddenCount = channels.length - shown.length;
   const timeText = readAt === undefined ? ""
     : origin === undefined ? clockTime(readAt) : `${relativeTime(readAt, origin)} s`;
 
+  /** Autoset from what the screen shows now: the analog traces' extremes over the view. */
+  const fitted = (): VerticalScale | undefined => {
+    let low = Number.POSITIVE_INFINITY;
+    let high = Number.NEGATIVE_INFINITY;
+    for (const channel of analog) {
+      for (const point of points.reads[channel.stream.key]?.points ?? []) {
+        if (typeof point.v !== "number" || (view && (point.tb < view[0] || point.tb > view[1]))) continue;
+        low = Math.min(low, point.v);
+        high = Math.max(high, point.v);
+      }
+    }
+    return Number.isFinite(low) ? autoset(low, high) : undefined;
+  };
+  const adjust = (change: (base: VerticalScale) => VerticalScale) => {
+    const base = manual ?? fitted();
+    if (base) setManual(change(base));
+  };
+
   return (
-    <div className="grid h-full min-h-0 min-w-0" style={{ gridTemplateColumns: "196px minmax(0,1fr)" }}>
-      <aside aria-label="通道" className="flex min-h-0 flex-col border-r border-line bg-surface-1">
-        <div className="flex h-8 shrink-0 items-center gap-2 border-b border-line px-2 text-2xs text-fg-3">
-          <span className="font-semibold text-fg-2">通道</span>
-          <span className="tf-num">{shown.length}/{channels.length}</span>
-          <span className="tf-num ml-auto truncate font-mono" title={cursor === undefined ? "视图末端的读数" : "光标处的读数"}>
-            {timeText}
+    <div className="flex h-full min-h-0 min-w-0 flex-col">
+      <div
+        role="toolbar"
+        aria-label="示波器控制"
+        className="flex h-8 shrink-0 items-center gap-2 overflow-x-auto border-b border-line bg-surface-1 px-2"
+      >
+        <button
+          type="button"
+          aria-expanded={signalsOpen}
+          title={signalsOpen ? "收起信号列表" : "展开信号列表，选择要显示的信号"}
+          onClick={() => setSignalsOpen(!signalsOpen)}
+          className={cn(
+            "flex h-6 shrink-0 items-center gap-1 rounded-sm border px-1.5 text-2xs text-fg-2 [&_svg]:size-3",
+            signalsOpen ? "border-line-strong bg-surface-2 text-fg" : "border-line hover:text-fg"
+          )}
+        >
+          {signalsOpen ? <PanelLeftCloseIcon /> : <PanelLeftOpenIcon />}
+          信号 <span className="tf-num">{shown.length}/{channels.length}</span>
+        </button>
+        {controls}
+        <div role="group" aria-label="垂直" className="flex shrink-0 items-center gap-0.5">
+          <span className="mr-1 text-2xs text-fg-3">垂直</span>
+          <button
+            type="button"
+            aria-pressed={!manual}
+            disabled={!analog.length}
+            title={manual ? "改为自动量程" : "自动量程：随数据缩放"}
+            onClick={() => (manual ? setManual(undefined) : adjust((base) => base))}
+            className={cn(
+              "h-6 rounded-sm border px-1.5 text-2xs disabled:opacity-50",
+              manual ? "border-line text-fg-3 hover:text-fg" : "border-signal/50 bg-signal/10 text-signal"
+            )}
+          >
+            自动
+          </button>
+          <IconButton label="垂直刻度调细" size="icon-xs" variant="ghost" disabled={!analog.length}
+            onClick={() => adjust((base) => ({ ...base, perDiv: stepSetting(VALUE_DIVS, base.perDiv, -1) }))}>
+            <MinusIcon />
+          </IconButton>
+          <span className="tf-num w-[86px] text-center font-mono text-2xs text-fg"
+            title={manual ? `中心 ${formatNumber(manual.center)} ${overlayUnit}` : "自动量程"}>
+            {manual ? valueDivText(manual.perDiv, overlayUnit) : "—/div"}
           </span>
+          <IconButton label="垂直刻度调粗" size="icon-xs" variant="ghost" disabled={!analog.length}
+            onClick={() => adjust((base) => ({ ...base, perDiv: stepSetting(VALUE_DIVS, base.perDiv, 1) }))}>
+            <PlusIcon />
+          </IconButton>
+          <IconButton label="波形上移一格" size="icon-xs" variant="ghost" disabled={!analog.length}
+            onClick={() => adjust((base) => ({ ...base, center: base.center - base.perDiv }))}>
+            <ChevronUpIcon />
+          </IconButton>
+          <IconButton label="波形下移一格" size="icon-xs" variant="ghost" disabled={!analog.length}
+            onClick={() => adjust((base) => ({ ...base, center: base.center + base.perDiv }))}>
+            <ChevronDownIcon />
+          </IconButton>
+          <button
+            type="button"
+            disabled={!analog.length}
+            title="自动设置：按屏幕上的波形选择刻度并居中"
+            onClick={() => { const next = fitted(); if (next) setManual(next); }}
+            className="ml-1 h-6 rounded-sm border border-line px-1.5 text-2xs text-fg-2 hover:text-fg disabled:opacity-50"
+          >
+            自动设置
+          </button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto py-1">
-          <ChannelGroups
-            channels={shown}
-            reads={points.reads}
-            at={readAt}
-            visible={visible}
-            onToggle={toggle}
-            displayOf={displayOf}
-            onDisplay={setDisplay}
-            onRemove={onRemove}
-          />
-          {hiddenCount > 0 && (
-            <>
-              <button
-                type="button"
-                aria-expanded={othersOpen}
-                onClick={() => setOthersOpen((open) => !open)}
-                className="flex h-6 w-full items-center gap-1 px-2 text-2xs text-fg-3 hover:text-fg-2"
-              >
-                <ChevronRightIcon className={cn("size-3 transition-transform", othersOpen && "rotate-90")} />
-                已隐藏 {hiddenCount} 路
-              </button>
-              {othersOpen && (
-                <ChannelGroups
-                  channels={channels.filter((channel) => !visible.has(channel.stream.key))}
-                  reads={points.reads}
-                  at={readAt}
-                  visible={visible}
-                  onToggle={toggle}
-                  displayOf={displayOf}
-                  onDisplay={setDisplay}
-                  onRemove={onRemove}
-                />
+        {!signalsOpen && <Legend channels={shown} reads={points.reads} at={readAt} onToggle={toggle} />}
+        <span
+          className="tf-num ml-auto shrink-0 font-mono text-2xs text-fg-3"
+          title={cursor === undefined ? "视图末端的读数" : "光标处的读数"}
+        >
+          {timeText}
+        </span>
+      </div>
+      <div
+        className="grid min-h-0 min-w-0 flex-1"
+        style={{ gridTemplateColumns: signalsOpen ? "196px minmax(0,1fr)" : "minmax(0,1fr)" }}
+      >
+        {signalsOpen && (
+          <aside aria-label="通道" className="flex min-h-0 flex-col border-r border-line bg-surface-1">
+            <div className="flex h-7 shrink-0 items-center gap-2 border-b border-line px-2 text-2xs text-fg-3">
+              <span className="font-semibold text-fg-2">选择信号</span>
+              <span className="ml-auto">单击显示 / 隐藏</span>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto py-1">
+              <ChannelGroups
+                channels={shown}
+                reads={points.reads}
+                at={readAt}
+                visible={visible}
+                onToggle={toggle}
+                displayOf={displayOf}
+                onDisplay={setDisplay}
+                onRemove={onRemove}
+              />
+              {hiddenCount > 0 && (
+                <>
+                  <button
+                    type="button"
+                    aria-expanded={othersOpen}
+                    onClick={() => setOthersOpen((open) => !open)}
+                    className="flex h-6 w-full items-center gap-1 px-2 text-2xs text-fg-3 hover:text-fg-2"
+                  >
+                    <ChevronRightIcon className={cn("size-3 transition-transform", othersOpen && "rotate-90")} />
+                    已隐藏 {hiddenCount} 路
+                  </button>
+                  {othersOpen && (
+                    <ChannelGroups
+                      channels={channels.filter((channel) => !visible.has(channel.stream.key))}
+                      reads={points.reads}
+                      at={readAt}
+                      visible={visible}
+                      onToggle={toggle}
+                      displayOf={displayOf}
+                      onDisplay={setDisplay}
+                      onRemove={onRemove}
+                    />
+                  )}
+                </>
               )}
-            </>
+            </div>
+          </aside>
+        )}
+        <div className="flex min-h-0 min-w-0 flex-col">
+          {analog.length > 0 && (
+            <div className="min-h-0 flex-1 px-1 pt-1">
+              <StreamScope
+                data={analogPlot}
+                series={analogStyles}
+                overlays={analogOverlays}
+                unit={overlayUnit}
+                height="fill"
+                timeAxis={!lanes}
+                yScale={manual}
+                {...scopeProps}
+              />
+            </div>
+          )}
+          {!analog.length && !bits.length && (
+            <div className={cn("grid place-items-center text-2xs text-fg-3", lanes ? "h-10" : "min-h-0 flex-1")}>
+              未选择模拟信号，点「信号」选择要显示的信号
+            </div>
+          )}
+          {lanes > 0 && (
+            <div className="shrink-0 border-t border-line px-1 pt-1" style={{ height: logicHeight + 6 }}>
+              <StreamScope
+                data={logicPlot?.data}
+                series={logicPlot?.styles}
+                overlays={logicOverlays}
+                height={logicHeight}
+                {...scopeProps}
+              />
+            </div>
+          )}
+          {bits.length > 0 && (
+            <div className="max-h-[45%] shrink-0 overflow-y-auto border-t border-line bg-surface-1">
+              <DigitalPanel channels={bits} reads={points.reads} at={cursor} />
+            </div>
+          )}
+          {errors.length > 0 && (
+            <p
+              className="shrink-0 truncate border-t border-line px-2 py-0.5 text-2xs text-fail"
+              title={errors.map(([key, error]) => `${key}: ${error}`).join("\n")}
+            >
+              {errors.length} 路读取失败：{errors[0]?.[1]}
+            </p>
           )}
         </div>
-      </aside>
-      <div className="flex min-h-0 min-w-0 flex-col">
-        {controls && (
-          <div className="flex h-8 shrink-0 items-center justify-end gap-1 border-b border-line px-2">{controls}</div>
-        )}
-        {analog.length > 0 && (
-          <div className="min-h-0 flex-1 px-1 pt-1">
-            <StreamScope
-              data={analogPlot}
-              series={analogStyles}
-              overlays={analogOverlays}
-              unit={overlayUnit}
-              height="fill"
-              timeAxis={!lanes}
-              {...scopeProps}
-            />
-          </div>
-        )}
-        {!analog.length && (
-          <div className={cn("grid place-items-center text-2xs text-fg-3", lanes ? "h-10" : "min-h-0 flex-1")}>
-            未选择模拟通道，在左侧点击通道以显示
-          </div>
-        )}
-        {lanes > 0 && (
-          <div className="shrink-0 border-t border-line px-1 pt-1" style={{ height: logicHeight + 6 }}>
-            <StreamScope
-              data={logicPlot?.data}
-              series={logicPlot?.styles}
-              overlays={logicOverlays}
-              height={logicHeight}
-              {...scopeProps}
-            />
-          </div>
-        )}
-        {steady.length > 0 && (
-          <p
-            className="shrink-0 truncate border-t border-line px-2 py-1 text-2xs text-fg-3"
-            title={steady.map((item) => `${item.label} = 0b${item.mask.toString(2)}`).join("\n")}
-          >
-            <span className="mr-2 font-semibold">无变化</span>
-            {steady.map((item) => (
-              <span key={item.label} className="mr-3 whitespace-nowrap">
-                {item.label} <span className="tf-num text-fg-2">0b{item.mask.toString(2)}</span>
-              </span>
-            ))}
-          </p>
-        )}
-        {errors.length > 0 && (
-          <p
-            className="shrink-0 truncate border-t border-line px-2 py-0.5 text-2xs text-fail"
-            title={errors.map(([key, error]) => `${key}: ${error}`).join("\n")}
-          >
-            {errors.length} 路读取失败：{errors[0]?.[1]}
-          </p>
-        )}
       </div>
+    </div>
+  );
+}
+
+/** The folded signal list's stand-in: each shown signal's colour, name and reading in one line. */
+function Legend({ channels, reads, at, onToggle }: {
+  channels: Channel[];
+  reads: Readonly<Record<string, StreamWindow>>;
+  at: number | undefined;
+  onToggle: (key: string) => void;
+}) {
+  return (
+    <div aria-label="显示的信号" className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden">
+      {channels.map(({ stream, color }) => {
+        const points = reads[stream.key]?.points;
+        const point = at === undefined ? undefined : pointAt(points, at);
+        const mask = pointMask(point);
+        const reading = stream.type === "bits" && mask !== undefined
+          ? codeText(mask, bitsWidth(stream, points), stream.declaration?.codeLabels).short
+          : pointText(String(stream.type), point);
+        return (
+          <button
+            key={stream.key}
+            type="button"
+            title={`${stream.hardwareId}/${stream.streamId} · 单击隐藏`}
+            onClick={() => onToggle(stream.key)}
+            className="flex shrink-0 items-center gap-1 font-mono text-2xs text-fg hover:opacity-70"
+          >
+            <span aria-hidden className="h-0.5 w-3" style={{ background: color }} />
+            {stream.streamId}
+            <span className="tf-num">{reading}{streamUnit(stream) && ` ${streamUnit(stream)}`}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }

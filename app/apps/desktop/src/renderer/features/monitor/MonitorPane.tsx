@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { ActivityIcon, CrosshairIcon, GaugeIcon, ListChecksIcon, RadioIcon, TimerResetIcon } from "lucide-react";
+import { ActivityIcon, ListChecksIcon, RadioIcon, TimerResetIcon } from "lucide-react";
 import { errorMessage } from "../../lib/errors.js";
 import { queryKeys } from "../../lib/query-keys.js";
 import { useResizableWidth } from "../../lib/resizable.js";
@@ -18,7 +18,8 @@ import { RunMessages } from "../testing/RunMessages.js";
 import { resultRows } from "../testing/result-rows.js";
 import { ResultTable } from "../testing/ResultTable.js";
 import { stepRange } from "../testing/useRunView.js";
-import { SPANS, useLiveKeepalive, useMonitorTime, type Span } from "./monitor-time.js";
+import { useLiveKeepalive, useMonitorTime } from "./monitor-time.js";
+import { TimebaseControls } from "./TimebaseControls.js";
 import type { BenchRun } from "./use-bench-run.js";
 import { readDraggedStream, STREAM_MIME, useMonitorChannels } from "./use-monitor-channels.js";
 
@@ -128,18 +129,7 @@ export function MonitorPane({ bench, toolbar }: {
       <span className="mr-1 text-2xs whitespace-nowrap text-fg-3">
         {mode === "live" ? "实时数据" : mode === "run" ? "本次运行" : "历史回放"}
       </span>
-      <GaugeIcon aria-hidden className="size-3.5 text-fg-3" />
-      <SegmentedControl<Span> label="时间跨度" size="xs" value={time.span} options={SPANS} onChange={time.setSpan} />
-      <IconButton
-        label={time.follow ? "停止跟随" : "跟随最新数据"}
-        size="icon-sm"
-        variant="ghost"
-        aria-pressed={time.follow}
-        disabled={mode === "replay"}
-        onClick={() => (time.follow ? time.select([Date.now() - time.spanMs, Date.now()]) : time.reset())}
-      >
-        <CrosshairIcon />
-      </IconButton>
+      {!sampled.length && <TimebaseControls time={time} />}
       <IconButton label="复位时间轴" size="icon-sm" variant="ghost" disabled={time.follow} onClick={time.reset}>
         <TimerResetIcon />
       </IconButton>
@@ -221,6 +211,7 @@ export function MonitorPane({ bench, toolbar }: {
                 marker={time.marker}
                 syncKey={runId ? `run:${runId}` : "monitor:live"}
                 emptyText="把数据流拖到这里"
+                controls={<TimebaseControls time={time} />}
                 onPick={(tb) => pick(tb, true)}
                 onSelectRange={time.select}
                 onReset={time.reset}

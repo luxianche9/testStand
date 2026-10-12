@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "teststand-adapter-jcxd-mads3210"
-version = "1.0.0"
+version = "1.0.1"
 description = "testStand device plugin for the Devices-JC JCXD-MADS-CPCI-3210"
 requires-python = ">=3.11"
 dependencies = ["teststand-device-sdk>=0.2,<0.3"]

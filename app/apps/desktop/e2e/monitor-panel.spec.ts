@@ -71,7 +71,17 @@ test.describe.serial("monitor panel and pin list", () => {
     await expect(channels.getByRole("button", { name: "di" })).toBeVisible();
     const tools = page.getByRole("toolbar", { name: "台架工具栏" }).getByRole("group", { name: "运行监控工具" });
     await expect(tools).toContainText("实时数据");
-    await expect(tools.getByRole("button", { name: "停止跟随", exact: true })).toBeVisible();
+    // The scope's front panel: horizontal and vertical sections, RUN/STOP, a foldable signal list.
+    const scope = panel.getByRole("toolbar", { name: "示波器控制" });
+    await expect(scope.getByRole("group", { name: "水平" })).toContainText("1 s/div");
+    await scope.getByRole("button", { name: "时基调粗" }).click();
+    await expect(scope.getByRole("group", { name: "水平" })).toContainText("2 s/div");
+    await expect(scope.getByRole("button", { name: "停止跟随", exact: true })).toBeVisible();
+    await scope.getByRole("button", { name: /^信号/ }).click();
+    await expect(channels).toHaveCount(0);
+    await expect(scope.getByLabel("显示的信号")).toContainText("relay");
+    await scope.getByRole("button", { name: /^信号/ }).click();
+    await expect(channels.getByRole("button", { name: "relay" })).toBeVisible();
     // The panel only watches: no canvas, no control widgets.
     await expect(panel.locator(".react-flow")).toHaveCount(0);
     await page.screenshot({ path: join(artifacts, "monitor.png") });

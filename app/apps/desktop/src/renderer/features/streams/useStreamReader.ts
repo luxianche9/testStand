@@ -25,6 +25,14 @@ const RETRY_MS = 1_000;
  * arriving in between are merged into the buffer. The time axis slides on its own (`StreamScope`).
  */
 const TICK_MS = 50;
+/**
+ * Live data reaches the view a little after it happened, so a following view ends where the data
+ * does (SignalScope). The subscription covers that much more than the span; the backend keeps
+ * 10 minutes and draws at most 8192 columns.
+ */
+const LIVE_MARGIN_MS = 1_000;
+const LIVE_RETAIN_MS = 600_000;
+const MAX_COLUMNS = 8_192;
 const PAGE = 1_000;
 /** A live terminal starts with the records of this window (the hub keeps 10 minutes). */
 const LIVE_RECORDS_MS = 60_000;
@@ -69,6 +77,10 @@ export function useStreamsPoints(source: StreamSource, keys: readonly string[], 
   // The live buffer outlives zooming: the tick reads the range it shows from here.
   const shown = useRef({ follow, start, end });
   shown.current = { follow, start, end };
+  // Stopped, a new time/div re-scales the frozen frame instead of starting a new subscription.
+  const liveSpan = useRef(spanMs);
+  if (follow) liveSpan.current = spanMs;
+  const subscribedSpan = liveSpan.current;
 
   useEffect(() => {
     const wanted = keyList ? keyList.split("\n") : [];
@@ -78,20 +90,26 @@ export function useStreamsPoints(source: StreamSource, keys: readonly string[], 
     // Nothing new, nothing to render: idle streams cost no re-render.
     let dirty = true;
     let fixed: TimeRange | undefined;
-    const unsubscribe = subscribe({ keys: wanted, width, windowMs: spanMs }, (frame: LiveFrame) => {
+    const windowMs = Math.min(LIVE_RETAIN_MS, subscribedSpan + LIVE_MARGIN_MS);
+    const columns = Math.min(MAX_COLUMNS, Math.round((width * windowMs) / subscribedSpan));
+    // Stopped (zoomed or panned) on live data, the view keeps the frame it stopped on, as a
+    // stopped oscilloscope does: new frames are not merged and nothing is trimmed until it runs.
+    const frozen = () => !shown.current.follow && shown.current.start !== undefined;
+    const unsubscribe = subscribe({ keys: wanted, width: columns, windowMs }, (frame: LiveFrame) => {
+      if (frozen()) return;
       buffers = mergeFrame(buffers, frame);
       dirty = true;
-    }, () => { buffers = {}; dirty = true; });
+    }, () => { if (!frozen()) { buffers = {}; dirty = true; } });
     const tick = () => {
       const now = Date.now();
       const { follow: following, start: t0, end: t1 } = shown.current;
       const sliding = following || t0 === undefined || t1 === undefined;
-      const range: TimeRange = sliding ? [now - spanMs, now] : [t0, t1];
+      const range: TimeRange = sliding ? [now - subscribedSpan, now] : [t0, t1];
       const moved = !sliding && (fixed?.[0] !== range[0] || fixed?.[1] !== range[1]);
       if (!dirty && !moved) return;
       dirty = false;
       fixed = sliding ? undefined : range;
-      buffers = trimBuffers(buffers, now - spanMs);
+      if (sliding) buffers = trimBuffers(buffers, now - windowMs);
       setState({ reads: buffers, range, errors: {} });
     };
     tick();
@@ -101,7 +119,7 @@ export function useStreamsPoints(source: StreamSource, keys: readonly string[], 
       unsubscribe();
       setState(EMPTY);
     };
-  }, [live, keyList, width, spanMs]);
+  }, [live, keyList, width, subscribedSpan]);
 
   useEffect(() => {
     const wanted = keyList ? keyList.split("\n") : [];

@@ -133,7 +133,7 @@ class JcxdMads3210(Device):
     prefix = "mads"
     capabilities = ("analog_input", "analog_output", "digital_input", "digital_output", "counter")
     isolation = "subprocess"
-    version = "1.0.0"
+    version = "1.0.1"
     instructions = ("JCXD-MADS-CPCI-3210: AI is sampled continuously by the card (ai<n> streams, read_ai for "
                     "statistics over a window); AO, DIO and counters by their tools. DIO lines are inputs until "
                     "configure_dio makes them outputs.")
@@ -198,6 +198,11 @@ class JcxdMads3210(Device):
             if rc != 0 or handle is None:
                 continue
             info_rc, info = self.driver.info(handle)
+            if info_rc == 0 and info.get("cardType") == 0:
+                # A process that died mid-acquisition leaves the identity registers reading 0
+                # until the card is reset (observed on this card); reset and read again.
+                self.driver.reset(handle)
+                info_rc, info = self.driver.info(handle)
             if self.serial is None or info.get("serialNumber") == self.serial:
                 return handle, {**info, "cardId": card_id, "infoRc": info_rc}
             seen.append(info.get("serialNumber"))
