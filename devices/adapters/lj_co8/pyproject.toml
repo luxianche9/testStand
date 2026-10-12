@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "teststand-adapter-lj-co8"
+version = "1.0.0"
+description = "testStand device plugin for the Sinoder LJ-CO-CPCI-8 (PXI-4281) 8-channel programmable capacitor"
+requires-python = ">=3.11"
+dependencies = ["teststand-device-sdk>=0.2,<0.3"]
+
+[project.entry-points."teststand.devices"]
+lj_co8 = "teststand_adapter_lj_co8:DEVICE"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+teststand_adapter_lj_co8 = ["py.typed", "bin/*.exe", "bin/*.dll"]
+
+# Read by devices/pack.py into the .tsdev manifest: vendor drivers the bench must have installed,
+# and package files that must be in the wheel (e.g. "bin/<bridge>.exe").
+[tool.teststand.package]
+vendorDrivers = ["NI-VISA 32-bit runtime", "LabWindows/CVI Runtime (32-bit cvirte.dll)", "PXI-4281 VISA INF (LJ-CO-CPCI-8 DriverForWin)"]
+requiredFiles = ["bin/hwcli_lj_co8.exe", "bin/PXI4281.dll"]

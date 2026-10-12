@@ -18,6 +18,7 @@ members = [
     "teststand-adapter-jcxd-mads3210",
     "teststand-adapter-jcxd-rsx8",
     "teststand-adapter-jcxd-sds48",
+    "teststand-adapter-lj-co8",
     "teststand-adapter-pci1710l",
     "teststand-adapter-pci1762",
     "teststand-adapter-pci6208v",
@@ -487,6 +488,17 @@ dependencies = [
 requires-dist = [{ name = "teststand-device-sdk", editable = "sdk" }]
 
 [[package]]
+name = "teststand-adapter-lj-co8"
+version = "1.0.0"
+source = { editable = "adapters/lj_co8" }
+dependencies = [
+    { name = "teststand-device-sdk" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "teststand-device-sdk", editable = "sdk" }]
+
+[[package]]
 name = "teststand-adapter-pci1710l"
 version = "0.2.0"
 source = { editable = "adapters/pci1710l" }
@@ -556,6 +568,7 @@ dependencies = [
     { name = "teststand-adapter-jcxd-mads3210" },
     { name = "teststand-adapter-jcxd-rsx8" },
     { name = "teststand-adapter-jcxd-sds48" },
+    { name = "teststand-adapter-lj-co8" },
     { name = "teststand-adapter-pci1710l" },
     { name = "teststand-adapter-pci1762" },
     { name = "teststand-adapter-pci6208v" },
@@ -579,6 +592,7 @@ requires-dist = [
     { name = "teststand-adapter-jcxd-mads3210", editable = "adapters/jcxd_mads3210" },
     { name = "teststand-adapter-jcxd-rsx8", editable = "adapters/jcxd_rsx8" },
     { name = "teststand-adapter-jcxd-sds48", editable = "adapters/jcxd_sds48" },
+    { name = "teststand-adapter-lj-co8", editable = "adapters/lj_co8" },
     { name = "teststand-adapter-pci1710l", editable = "adapters/pci1710l" },
     { name = "teststand-adapter-pci1762", editable = "adapters/pci1762" },
     { name = "teststand-adapter-pci6208v", editable = "adapters/pci6208v" },
