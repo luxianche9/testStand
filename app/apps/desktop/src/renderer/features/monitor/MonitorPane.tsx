@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -9,7 +9,7 @@ import {
   ActivityIcon, ExternalLinkIcon, LayoutDashboardIcon, ListChecksIcon, Maximize2Icon, Minimize2Icon,
   PictureInPicture2Icon, PlusIcon, RadioIcon, ShieldCheckIcon, TimerResetIcon
 } from "lucide-react";
-import { type MonitorPanel, type PanelType } from "@teststand/contracts/monitor";
+import type { Direction, MonitorPanel, PanelType } from "@teststand/contracts/monitor";
 import { errorMessage } from "../../lib/errors.js";
 import { queryKeys } from "../../lib/query-keys.js";
 import { onRunStepFocused } from "../../lib/run-focus.js";
@@ -30,8 +30,9 @@ import { MonitorContext, type MonitorContextValue, type SelectedFrame } from "./
 import { TimebaseControls } from "./TimebaseControls.js";
 import type { BenchRun } from "./use-bench-run.js";
 import { useManualControl } from "./use-manual-control.js";
+import { ComponentBar } from "./ComponentBar.js";
 import {
-  PANEL_LABELS, panelTitle, readDraggedStream, STREAM_MIME, useMonitorWorkspace, type MonitorWorkspace
+  PANEL_LABELS, PANEL_MIME, panelTitle, setFocusedPanel, useMonitorWorkspace, type MonitorWorkspace
 } from "./use-monitor-workspace.js";
 
 const THEME: DockviewTheme = { name: "teststand", className: "dockview-theme-teststand", gap: 2 };
@@ -40,15 +41,6 @@ const SETTLE_MS = 1_200;
 const SAVE_DELAY_MS = 400;
 /** The page a pop-out panel opens with; the main process allows nothing else (src/main/windows.ts). */
 const POPOUT_URL = "about:blank";
-
-/** The panel types offered by "添加面板", grouped as the menu shows them. */
-const PANEL_MENU: PanelType[][] = [
-  ["scope", "values", "gauge", "xy"],
-  ["digital", "timeline", "register"],
-  ["terminal", "trace", "detail"],
-  ["control"],
-  ["sources", "inspector", "results", "messages"]
-];
 
 /**
  * 运行监控 of 测试台架: a docking workspace of panels — oscilloscopes, values, gauges, XY plots,
@@ -81,10 +73,13 @@ export function MonitorPane({ bench, toolbar }: {
   );
   useLiveKeepalive(hub, workspace.streams.map((stream) => stream.key));
   const [jump, setJump] = useState<ConsoleJump>();
-  const [dropping, setDropping] = useState(false);
   const [rejudging, setRejudging] = useState(false);
   const [frame, selectFrame] = useState<SelectedFrame>();
   const [activePanelId, setActivePanelId] = useState<string>();
+  const focus = useCallback((id: string | undefined) => {
+    setActivePanelId(id);
+    setFocusedPanel(id);
+  }, []);
   const results = view.runLog.log?.results;
   const rows = useMemo(() => {
     if (!runId || !results) return [];
@@ -149,15 +144,6 @@ export function MonitorPane({ bench, toolbar }: {
     notify: { error: (message) => toast.error(message), success: (message) => toast.success(message) }
   };
 
-  // A stream dropped outside every panel goes to the first panel that draws it.
-  const accepts = (event: DragEvent) => event.dataTransfer.types.includes(STREAM_MIME);
-  const drop = (event: DragEvent) => {
-    setDropping(false);
-    const ref = readDraggedStream(event.dataTransfer);
-    if (!ref) return;
-    event.preventDefault();
-    workspace.add(ref);
-  };
 
   const tools = (
     <span className="ml-auto flex items-center gap-1">
@@ -170,7 +156,6 @@ export function MonitorPane({ bench, toolbar }: {
       </IconButton>
       <LayoutMenu workspace={workspace} onError={(message) => toast.error(message)}
         onDone={(message) => toast.success(message)} />
-      <AddPanelMenu onAdd={(type) => workspace.addPanel(type)} />
       <IconButton label="全部安全状态" size="icon-sm" variant="ghost" disabled={control.running}
         title={control.running ? "测试运行中，由测试流程负责安全状态" : "所有设备回到安全状态"}
         onClick={() => void safeAll()}>
@@ -193,23 +178,7 @@ export function MonitorPane({ bench, toolbar }: {
   );
 
   return (
-    <section
-      aria-label="运行监控"
-      className={cn(
-        "relative flex h-full min-h-0 min-w-0 flex-col",
-        dropping && "outline-2 -outline-offset-2 outline-signal"
-      )}
-      onDragOver={(event) => {
-        if (!accepts(event)) return;
-        event.preventDefault();
-        event.dataTransfer.dropEffect = "copy";
-        setDropping(true);
-      }}
-      onDragLeave={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropping(false);
-      }}
-      onDrop={drop}
-    >
+    <section aria-label="运行监控" className="relative flex h-full min-h-0 min-w-0 flex-col">
       {toolbar && createPortal(tools, toolbar)}
       {runId && (
         <RunHeader
@@ -223,25 +192,13 @@ export function MonitorPane({ bench, toolbar }: {
           actions={runActions}
         />
       )}
-      {workspace.monitor.panels.length ? (
-        <MonitorContext.Provider value={context}>
-          <Workspace key={workspace.projectId ?? "none"} workspace={workspace} onActive={setActivePanelId} />
-        </MonitorContext.Provider>
-      ) : (
-        <EmptyState
-          className="min-h-0 flex-1"
-          icon={<ActivityIcon />}
-          title="运行监控还没有面板"
-          description="在左侧「设备管理」里展开一台设备，把它的数据流拖到这里：采样流进示波器，串口和总线的收发进终端。也可以先加一个面板，或按数据生成一套布局。"
-          action={(
-            <span className="flex gap-1">
-              <AddPanelMenu onAdd={(type) => workspace.addPanel(type)} labelled />
-              <LayoutMenu workspace={workspace} labelled onError={(message) => toast.error(message)}
-                onDone={(message) => toast.success(message)} />
-            </span>
-          )}
-        />
-      )}
+      <ComponentBar onAdd={(type) => workspace.addPanel(type)} />
+      <MonitorContext.Provider value={context}>
+        <Workspace key={workspace.projectId ?? "none"} workspace={workspace}
+          onActive={focus}
+          empty={<LayoutMenu workspace={workspace} labelled onError={(message) => toast.error(message)}
+            onDone={(message) => toast.success(message)} />} />
+      </MonitorContext.Provider>
       {runId && timeline && view.range && origin !== undefined && (
         <RunOverview
           timeline={timeline}
@@ -256,26 +213,6 @@ export function MonitorPane({ bench, toolbar }: {
       )}
       {confirmDialog}
     </section>
-  );
-}
-
-function AddPanelMenu({ onAdd, labelled = false }: { onAdd: (type: PanelType) => void; labelled?: boolean }) {
-  return (
-    <Menu>
-      <MenuTrigger asChild>
-        {labelled
-          ? <Button size="xs" variant="outline"><PlusIcon />添加面板</Button>
-          : <IconButton label="添加面板" size="icon-sm" variant="ghost"><PlusIcon /></IconButton>}
-      </MenuTrigger>
-      <MenuContent align="end">
-        {PANEL_MENU.map((group, index) => (
-          <span key={index}>
-            {index > 0 && <MenuSeparator />}
-            {group.map((type) => <MenuItem key={type} onSelect={() => onAdd(type)}>{PANEL_LABELS[type]}</MenuItem>)}
-          </span>
-        ))}
-      </MenuContent>
-    </Menu>
   );
 }
 
@@ -412,9 +349,11 @@ function followTheme(target: Window): () => void {
  * view or the Agent) are docked by their placement, ones it lost are closed, a layout replaced
  * from outside (a preset, an import) is loaded, and the user's arrangement is saved back.
  */
-function Workspace({ workspace, onActive }: {
+function Workspace({ workspace, onActive, empty }: {
   workspace: MonitorWorkspace;
   onActive: (id: string | undefined) => void;
+  /** Offered while the workspace is empty, next to the hint. */
+  empty: ReactNode;
 }) {
   const [api, setApi] = useState<DockviewApi>();
   const { panels, layout } = workspace.monitor;
@@ -439,6 +378,10 @@ function Workspace({ workspace, onActive }: {
 
   const onReady = useCallback((event: DockviewReadyEvent) => {
     preparePopouts();
+    // Components dragged from the component bar dock where dockview shows; nothing else is taken.
+    event.api.onUnhandledDragOverEvent((drag) => {
+      if (drag.nativeEvent.dataTransfer?.types.includes(PANEL_MIME)) drag.accept();
+    });
     load(event.api, latest.current.layout);
     setApi(event.api);
   }, [load]);
@@ -499,7 +442,38 @@ function Workspace({ workspace, onActive }: {
         rightHeaderActionsComponent={GroupActions}
         onReady={onReady}
         popoutUrl={POPOUT_URL}
+        watermarkComponent={() => <Watermark action={empty} />}
+        onDidDrop={(event) => {
+          const type = event.nativeEvent.dataTransfer?.getData(PANEL_MIME) as PanelType | undefined;
+          if (!type || !PANEL_LABELS[type]) return;
+          const reference = event.group?.activePanel?.id;
+          const direction = DROP_DIRECTIONS[event.position] ?? "right";
+          latest.current.workspace.addPanel(type, [],
+            reference ? { referenceId: reference, direction } : { direction });
+        }}
       />
+    </div>
+  );
+}
+
+/** dockview's drop positions as panel placements. */
+const DROP_DIRECTIONS: Record<string, Direction> = {
+  top: "above", bottom: "below", left: "left", right: "right", center: "within"
+};
+
+/** What an empty workspace says: components first, then signals onto them. */
+function Watermark({ action }: { action: ReactNode }) {
+  return (
+    <div className="grid h-full place-items-center p-6 text-center">
+      <div className="grid max-w-md justify-items-center gap-2 text-xs text-fg-3">
+        <LayoutDashboardIcon className="size-6" />
+        <p className="text-sm text-fg-2">把上方组件栏里的组件拖到这里</p>
+        <p>
+          再从左侧「设备管理」把信号拖到组件上：模拟量拖到示波器或数值表，数字量拖到数字量组件，
+          串口拖到终端。信号只能放进能显示它的组件。
+        </p>
+        {action}
+      </div>
     </div>
   );
 }

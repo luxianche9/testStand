@@ -8,7 +8,7 @@ import {
 import { hardwareStatus } from "../../lib/hardware-status.js";
 import { useDashboard, useDevicePackages, useMonitorStreams } from "../../lib/queries.js";
 import { Button, IconButton, Panel, PanelBody, StatusLamp, cn, type Tone } from "../../ui/index.js";
-import { STREAM_MIME, streamKey } from "../monitor/use-monitor-workspace.js";
+import { startStreamDrag, streamKey } from "../monitor/use-monitor-workspace.js";
 import { HARDWARE_MIME } from "../wiring/WiringCanvas.js";
 
 const statusTone: Record<ReturnType<typeof hardwareStatus>["tone"], Tone> = {
@@ -208,11 +208,8 @@ function StreamRows({ hardwareId, label, known, streams, shown, onAdd }: {
           <li
             key={stream.id}
             draggable
-            onDragStart={(event) => {
-              event.dataTransfer.setData(STREAM_MIME, JSON.stringify(ref));
-              event.dataTransfer.effectAllowed = "copy";
-            }}
-            title={`${hardwareId}/${stream.id}：拖到运行监控查看`}
+            onDragStart={(event) => startStreamDrag(event.dataTransfer, ref, String(stream.type))}
+            title={`${hardwareId}/${stream.id}：拖到运行监控里能显示它的组件上`}
             className="group/stream flex h-6 cursor-grab items-center gap-2 pr-2 pl-10 text-2xs hover:bg-surface-2"
           >
             <span className="min-w-0 flex-1 truncate text-fg">{name}</span>
@@ -223,7 +220,7 @@ function StreamRows({ hardwareId, label, known, streams, shown, onAdd }: {
             {on ? (
               <CheckIcon aria-label="已在运行监控上" className="size-3 shrink-0 text-pass" />
             ) : (
-              <IconButton label={`把 ${stream.id} 加到运行监控`} size="icon-xs" variant="ghost"
+              <IconButton label={`把 ${stream.id} 加到当前组件`} size="icon-xs" variant="ghost"
                 className="invisible group-hover/stream:visible" onClick={() => onAdd(ref)}>
                 <PlusIcon />
               </IconButton>

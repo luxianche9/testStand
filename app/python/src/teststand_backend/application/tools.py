@@ -409,7 +409,7 @@ PLATFORM_TOOLS = [
         "加减控件（hardwareId、tool 设备工具名、widget、param、fixed 固定参数、"
         "presets）；"
         "之后 remove 把流从所有面板去掉，add 把流放到第一个能显示它的面板"
-        "（没有就新建 scope 或 terminal）。每条流是设备声明的一条流"
+        "（不会新建面板，没有合适的面板时先 addPanel）。每条流是设备声明的一条流"
         "（hardwareId + streamId，从 monitor_streams 取），且类型要适合面板。界面立即显示；"
         "save_project 前只在工程缓冲区。返回修改后的面板。",
         obj(

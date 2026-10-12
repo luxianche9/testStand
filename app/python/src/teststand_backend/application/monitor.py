@@ -24,9 +24,6 @@ if TYPE_CHECKING:
     from teststand_backend.projects.project_service import ProjectService
     from teststand_backend.wiring.project_wiring_service import ProjectWiringService
 
-DEFAULT_PANEL = (("scope", SOURCE_TYPES["scope"]), ("terminal", SOURCE_TYPES["terminal"]))
-"""Where ``add`` puts a stream: the first panel of the first kind that draws its type."""
-
 
 def _key(channel: Json) -> tuple[str, str]:
     return channel["hardwareId"], channel["streamId"]
@@ -121,7 +118,7 @@ class MonitorApplication:
         """Change the workspace: ``panels`` replaces every panel (a preset, a generated
         layout); ``operations`` then apply in order (add / remove / update a panel, add / remove
         its sources or controls); ``remove`` takes each stream off every panel and ``add`` puts
-        it on the first panel that draws its type (a new one when none does); ``layout`` replaces
+        it on the first panel that draws its type (never creating one); ``layout`` replaces
         the saved docking layout. A stream must belong to a registered device and, once the
         device's streams are known, be one it declares and one the panel can draw; a control
         must name a tool its device has, with arguments the tool takes. Stays in the project
@@ -292,14 +289,22 @@ class MonitorApplication:
         stream_type = self._check(item)
         if any(_key(item) in {_key(entry) for entry in panel["sources"]} for panel in panels):
             return
-        kind = next(
-            (kind for kind, types in DEFAULT_PANEL if stream_type is None or stream_type in types),
-            "terminal",
+        panel = next(
+            (
+                panel
+                for panel in panels
+                if SOURCE_TYPES[panel["type"]]
+                and (stream_type is None or stream_type in SOURCE_TYPES[panel["type"]])
+            ),
+            None,
         )
-        panel = next((panel for panel in panels if panel["type"] == kind), None)
         if panel is None:
-            panel = {"id": _new_id(panels, kind), "type": kind, "sources": [], "settings": {}}
-            panels.append(panel)
+            raise app_error(
+                "invalid_argument",
+                f"no panel can show {item['hardwareId']}.{item['streamId']}"
+                + (f" ({stream_type})" if stream_type else "")
+                + "; add one with addPanel (and its sources) first",
+            )
         self._add_sources(panel, [item])
 
     def _check(self, channel: Json) -> str | None:

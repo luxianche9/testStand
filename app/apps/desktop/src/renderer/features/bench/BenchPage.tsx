@@ -300,7 +300,12 @@ function Bench({ panel, view, onView }: {
             placed={placed}
             onOpen={(item) => openInfo(item.hardwareId)}
             onControl={openControl}
-            onAddStream={(ref) => { monitor.add(ref); onView("monitor"); }}
+            onAddStream={(ref) => {
+              onView("monitor");
+              const target = monitor.place(ref);
+              if (target) toast.success(`${ref.streamId} 已加到「${target}」`);
+              else toast.error(`运行监控里还没有能显示 ${ref.streamId} 的组件：先从组件栏拖一个进来`);
+            }}
             footer={hardware.length > 0 && (
               <p className="shrink-0 border-t border-line px-3 py-1.5 text-2xs text-fg-3">
                 展开设备，把数据流拖到运行监控；把设备拖到端口连线画布上放置

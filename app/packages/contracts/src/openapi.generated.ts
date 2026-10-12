@@ -644,7 +644,7 @@ export interface paths {
          * Change the workspace: ``panels`` replaces every panel (a preset, a generated
          *     layout); ``operations`` then apply in order (add / remove / update a panel, add / remove
          *     its sources or controls); ``remove`` takes each stream off every panel and ``add`` puts
-         *     it on the first panel that draws its type (a new one when none does); ``layout`` replaces
+         *     it on the first panel that draws its type (never creating one); ``layout`` replaces
          *     the saved docking layout. A stream must belong to a registered device and, once the
          *     device's streams are known, be one it declares and one the panel can draw; a control
          *     must name a tool its device has, with arguments the tool takes. Stays in the project

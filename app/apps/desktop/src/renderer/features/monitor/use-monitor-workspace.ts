@@ -10,7 +10,30 @@ import { useMonitorStreams, useProjectDocument } from "../../lib/queries.js";
 import { queryKeys } from "../../lib/query-keys.js";
 
 /** Drag payload of a device stream in the devices panel: `{hardwareId, streamId}` as JSON. */
-export const STREAM_MIME = "application/x-teststand-stream";
+const STREAM_MIME = "application/x-teststand-stream";
+/** The stream's type rides in the MIME type itself: a drop target can read it while dragging. */
+const STREAM_TYPE_MIME = "application/x-teststand-stream-type-";
+/** Drag payload of a component from the component bar: the panel type. */
+export const PANEL_MIME = "application/x-teststand-panel";
+
+/** Starts dragging a stream (from the devices panel or the data-source tree). */
+export function startStreamDrag(data: DataTransfer, ref: StreamRef, type: string): void {
+  data.setData(STREAM_MIME, JSON.stringify(ref));
+  data.setData(`${STREAM_TYPE_MIME}${type.toLowerCase()}`, type);
+  data.effectAllowed = "copy";
+}
+
+/** The type of the stream being dragged ("" when it did not say); undefined when no stream is. */
+export function draggedStreamType(types: readonly string[]): string | undefined {
+  if (!types.includes(STREAM_MIME)) return undefined;
+  return types.find((item) => item.startsWith(STREAM_TYPE_MIME))?.slice(STREAM_TYPE_MIME.length) ?? "";
+}
+
+/** The panel last focused in the workspace, where + puts a stream. */
+let focusedPanelId: string | undefined;
+export function setFocusedPanel(id: string | undefined): void {
+  focusedPanelId = id;
+}
 
 const EMPTY: Monitor = { panels: [], layout: null };
 
@@ -51,9 +74,10 @@ function declaredStreamInfo(hardwareId: string, stream: DeviceStream | undefined
   };
 }
 
-/** Whether a panel of `type` draws a stream of `streamType` (unknown types are let through). */
+/** Whether a panel of `type` draws a stream of `streamType` (an unknown type: any stream panel). */
 export function panelDraws(type: PanelType, streamType: string | undefined): boolean {
-  return streamType === undefined || PANEL_SOURCE_TYPES[type].includes(streamType);
+  const takes = PANEL_SOURCE_TYPES[type];
+  return takes.length > 0 && (!streamType || takes.includes(streamType));
 }
 
 export const PANEL_LABELS: Readonly<Record<PanelType, string>> = {
@@ -126,9 +150,21 @@ export function useMonitorWorkspace(timeline: RunTimeline | undefined) {
   }), [infos]);
   const typeOf = useCallback((ref: StreamRef) => declared.get(streamKey(ref))?.type, [declared]);
 
-  const add = useCallback((ref: StreamRef) => save({ add: [ref] }), [save]);
   const addTo = useCallback((panelId: string, ref: StreamRef) =>
     save({ operations: [{ op: "addSources", panelId, sources: [ref] }] }), [save]);
+  /**
+   * Puts a stream on the panel last focused when it draws the stream, else on the first panel that
+   * does; never creates a panel. Returns the panel's title, or undefined when none can show it.
+   */
+  const place = useCallback((ref: StreamRef): string | undefined => {
+    const type = declared.get(streamKey(ref))?.type;
+    const focused = monitor.panels.find((panel) => panel.id === focusedPanelId);
+    const target = focused && panelDraws(focused.type, type) ? focused
+      : monitor.panels.find((panel) => panelDraws(panel.type, type));
+    if (!target) return undefined;
+    addTo(target.id, ref);
+    return panelTitle(target);
+  }, [declared, monitor.panels, addTo]);
   const removeFrom = useCallback((panelId: string, ref: StreamRef) =>
     save({ operations: [{ op: "removeSources", panelId, sources: [ref] }] }), [save]);
   const addPanel = useCallback((type: PanelType, sources: StreamRef[] = [], placement?: Placement) =>
@@ -165,7 +201,7 @@ export function useMonitorWorkspace(timeline: RunTimeline | undefined) {
     streams: [...infos.values()],
     streamsOf,
     typeOf,
-    add,
+    place,
     addTo,
     removeFrom,
     addPanel,

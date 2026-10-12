@@ -121,9 +121,28 @@ async def test_an_empty_project_has_no_panels(tmp_path: Path) -> None:
 
 async def test_add_puts_each_stream_on_a_panel_that_draws_its_type(tmp_path: Path) -> None:
     monitor, projects = await fixture(tmp_path)
+    await monitor.update(
+        HUMAN,
+        {
+            "operations": [
+                {"op": "addPanel", "panel": {"type": "scope"}},
+                {"op": "addPanel", "panel": {"type": "terminal"}},
+            ]
+        },
+    )
     result = await monitor.update(HUMAN, {"add": [AI0, RX, DI, AI1]})
     assert shown(result) == [("scope", "scope", [AI0, DI, AI1]), ("terminal", "terminal", [RX])]
     assert projects.monitor() == result
+
+
+async def test_add_never_creates_a_panel(tmp_path: Path) -> None:
+    monitor, projects = await fixture(tmp_path)
+    await monitor.update(HUMAN, {"operations": [{"op": "addPanel", "panel": {"type": "control"}}]})
+    with pytest.raises(
+        Exception, match=r"no panel can show CARD.ai0 \(scalar\); add one with addPanel"
+    ):
+        await monitor.update(HUMAN, {"add": [AI0]})
+    assert shown(projects.monitor()) == [("control", "control", [])]
 
 
 async def test_add_skips_a_stream_some_panel_already_shows(tmp_path: Path) -> None:
@@ -205,7 +224,9 @@ async def test_a_duplicate_panel_id_is_rejected(tmp_path: Path) -> None:
 
 async def test_an_unknown_panel_is_rejected_with_the_existing_ids(tmp_path: Path) -> None:
     monitor, _ = await fixture(tmp_path)
-    await monitor.update(HUMAN, {"add": [AI0]})
+    await monitor.update(
+        HUMAN, {"operations": [{"op": "addPanel", "panel": {"type": "scope"}}], "add": [AI0]}
+    )
     with pytest.raises(Exception, match="no panel nope; panels: scope"):
         await monitor.update(HUMAN, {"operations": [{"op": "removePanel", "panelId": "nope"}]})
     with pytest.raises(Exception, match="no panel nope"):
@@ -241,7 +262,11 @@ async def test_layout_is_replaced_and_kept(tmp_path: Path) -> None:
     monitor, _ = await fixture(tmp_path)
     layout = {"grid": {"root": {}}, "panels": {}}
     assert (await monitor.update(HUMAN, {"layout": layout}))["layout"] == layout
-    assert (await monitor.update(HUMAN, {"add": [AI0]}))["layout"] == layout
+    assert (
+        await monitor.update(
+            HUMAN, {"operations": [{"op": "addPanel", "panel": {"type": "scope"}}], "add": [AI0]}
+        )
+    )["layout"] == layout
     assert (await monitor.update(HUMAN, {"layout": None}))["layout"] is None
 
 
@@ -267,7 +292,11 @@ async def test_a_stream_the_device_does_not_declare_is_rejected(tmp_path: Path) 
 async def test_any_stream_is_accepted_while_the_device_is_unknown(tmp_path: Path) -> None:
     monitor, _ = await fixture(tmp_path, known=False)
     ai9 = {"hardwareId": "CARD", "streamId": "ai9"}
-    assert shown(await monitor.update(HUMAN, {"add": [ai9]})) == [("scope", "scope", [ai9])]
+    assert shown(
+        await monitor.update(
+            HUMAN, {"operations": [{"op": "addPanel", "panel": {"type": "scope"}}], "add": [ai9]}
+        )
+    ) == [("scope", "scope", [ai9])]
 
 
 RELAY = {"hardwareId": "CARD", "tool": "set_relay", "widget": "toggle", "param": "energized"}
@@ -275,7 +304,7 @@ RELAY = {"hardwareId": "CARD", "tool": "set_relay", "widget": "toggle", "param":
 
 async def test_panels_replace_every_panel(tmp_path: Path) -> None:
     monitor, _ = await fixture(tmp_path)
-    await monitor.update(HUMAN, {"add": [AI0, RX]})
+    await monitor.update(HUMAN, {"panels": [{"id": "s", "type": "scope", "sources": [AI0]}]})
     result = await monitor.update(
         HUMAN,
         {

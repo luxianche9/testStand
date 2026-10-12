@@ -1,7 +1,9 @@
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { _electron as electron, expect, test, type ElectronApplication, type Page } from "@playwright/test";
+import {
+  _electron as electron, expect, test, type ElectronApplication, type Locator, type Page
+} from "@playwright/test";
 import { reloadAfterLeave, rendererReady, showPanel } from "./renderer.js";
 
 const desktopDir = resolve(import.meta.dirname, "..");
@@ -50,9 +52,10 @@ test.describe.serial("monitor panel and pin list", () => {
         connectionId: "C1", portA: "DUT.J1", portB: "FIX.P1", pins: [{ a: "1", b: "1" }],
         confirmedAt: "2026-10-07T00:00:00.000Z", confirmedBy: "user"
       }] } });
-      await window.teststand.monitor.update({ input: { add: [
-        { hardwareId, streamId: "relay" }, { hardwareId, streamId: "di" }
-      ] } });
+      await window.teststand.monitor.update({ input: { operations: [{ op: "addPanel", panel: {
+        id: "scope", type: "scope", title: "示波器",
+        sources: [{ hardwareId, streamId: "relay" }, { hardwareId, streamId: "di" }]
+      } }] } });
       await window.teststand.projects.saveProject();
       await window.teststand.projects.leaveProject();
     }, { root: projectRoot, hardwareId });
@@ -221,6 +224,50 @@ test.describe.serial("monitor panel and pin list", () => {
     await expect(page.getByRole("toolbar", { name: "台架工具栏" })).toContainText("历史回放");
     await panel.getByRole("button", { name: "返回实时" }).click();
     await expect(overview).toHaveCount(0);
+  });
+
+  test("builds the workspace by dragging components in and signals onto them", async () => {
+    const panel = page.getByRole("region", { name: "运行监控" });
+    await page.evaluate(() => window.teststand.monitor.update({ input: { panels: [], layout: null } }));
+    await expect(panel).toContainText("把上方组件栏里的组件拖到这里");
+    const bar = panel.getByRole("toolbar", { name: "组件" });
+    // The relay stream (bits) dragged as the devices panel drags it, onto `target`.
+    const dragRelay = async (target: Locator) => {
+      const data = await page.evaluateHandle((id) => {
+        const transfer = new DataTransfer();
+        transfer.setData("application/x-teststand-stream", JSON.stringify({ hardwareId: id, streamId: "relay" }));
+        transfer.setData("application/x-teststand-stream-type-bits", "bits");
+        return transfer;
+      }, hardwareId);
+      await page.locator("body").dispatchEvent("dragstart", { dataTransfer: data });
+      await page.waitForTimeout(150);
+      await target.dispatchEvent("dragenter", { dataTransfer: data });
+      await target.dispatchEvent("dragover", { dataTransfer: data });
+      await page.waitForTimeout(150);
+      await target.dispatchEvent("drop", { dataTransfer: data });
+      await page.locator("body").dispatchEvent("dragend", { dataTransfer: data });
+    };
+    // A signal dropped on the empty workspace creates nothing.
+    await dragRelay(panel.locator(".dv-dockview").first());
+    await page.waitForTimeout(500);
+    expect(await page.evaluate(async () => (await window.teststand.monitor.get()).panels.length)).toBe(0);
+
+    // A component dragged in becomes a panel; a click adds one beside it.
+    await bar.getByRole("button", { name: "组件 数值表" }).dragTo(panel.locator(".dv-dockview").first());
+    await expect(panel.locator(".dv-tab", { hasText: "数值表" })).toBeVisible();
+    await bar.getByRole("button", { name: "组件 数字量" }).click();
+    await expect(panel.locator(".dv-tab", { hasText: "数字量" })).toBeVisible();
+    const types = async () => page.evaluate(async () =>
+      (await window.teststand.monitor.get()).panels.map((item) => `${item.type}:${item.sources.length}`).join(","));
+    await expect.poll(types).toBe("values:0,digital:0");
+
+    // A bits signal goes onto the digital panel, never onto the values table.
+    await dragRelay(panel.locator("[data-panel-id^='values']"));
+    await page.waitForTimeout(500);
+    expect(await types()).toBe("values:0,digital:0");
+    await dragRelay(panel.locator("[data-panel-id^='digital']"));
+    await expect.poll(types).toBe("values:0,digital:1");
+    await page.screenshot({ path: join(artifacts, "drag-built.png") });
   });
 
   test("shows the physical wiring as a pin list", async () => {

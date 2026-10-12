@@ -37,7 +37,9 @@ test.describe.serial("manual control and Agent hardware calls", () => {
         settings: {}, enabled: true
       } });
       const status = await window.teststand.devices.refreshDevice({ deviceId: "E2E_RELAY" });
-      await window.teststand.monitor.update({ input: { add: [{ hardwareId, streamId: "relay" }] } });
+      await window.teststand.monitor.update({ input: { operations: [{ op: "addPanel", panel: {
+        type: "scope", sources: [{ hardwareId, streamId: "relay" }]
+      } }] } });
       await window.teststand.projects.saveProject();
       await window.teststand.projects.leaveProject();
       return status;

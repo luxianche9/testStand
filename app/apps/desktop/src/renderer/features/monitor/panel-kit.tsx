@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, type DragEvent, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { MonitorPanel } from "@teststand/contracts/monitor";
 import type { StreamInfo } from "@teststand/contracts/observability";
 import { cn } from "../../ui/index.js";
@@ -9,7 +9,7 @@ import type { TraceRow } from "./trace-model.js";
 import type { BenchRun } from "./use-bench-run.js";
 import type { ManualControl } from "./use-manual-control.js";
 import {
-  PANEL_LABELS, panelDraws, readDraggedStream, STREAM_MIME, type MonitorWorkspace
+  draggedStreamType, PANEL_LABELS, panelDraws, panelTitle, readDraggedStream, type MonitorWorkspace
 } from "./use-monitor-workspace.js";
 
 /** A frame picked in a trace panel, for the message detail panel. */
@@ -65,23 +65,52 @@ export function useWindow() {
   };
 }
 
-/** A panel's body: takes device streams dropped on it when its type draws them. */
+const TYPE_NAMES: Record<string, string> = {
+  scalar: "数值", block: "采样", bits: "数字量", bytes: "串口", frames: "总线", events: "事件"
+};
+
+/**
+ * The type of the stream being dragged anywhere in the window ("" when it did not say), or
+ * undefined: panels light up where it can go while the drag lasts.
+ */
+function useStreamDrag(): string | undefined {
+  const [type, setType] = useState<string>();
+  useEffect(() => {
+    const start = (event: DragEvent) => setType(draggedStreamType([...(event.dataTransfer?.types ?? [])]));
+    const stop = () => setType(undefined);
+    window.addEventListener("dragstart", start, true);
+    window.addEventListener("dragend", stop, true);
+    window.addEventListener("drop", stop, true);
+    return () => {
+      window.removeEventListener("dragstart", start, true);
+      window.removeEventListener("dragend", stop, true);
+      window.removeEventListener("drop", stop, true);
+    };
+  }, []);
+  return type;
+}
+
+/**
+ * A panel's body. While a stream is dragged it shows whether the stream can go here: panels that
+ * draw its type are outlined (and say so under the pointer), the others are dimmed with the reason.
+ * Only a panel that draws the stream takes the drop; nothing else does.
+ */
 export function PanelFrame({ panel, children, className }: {
   panel: MonitorPanel;
   children: ReactNode;
   className?: string;
 }) {
-  const { workspace, notify } = useMonitor();
+  const { workspace } = useMonitor();
+  const dragging = useStreamDrag();
   const [over, setOver] = useState(false);
-  const takes = panelDraws(panel.type, "scalar") || panelDraws(panel.type, "bits") || panelDraws(panel.type, "bytes");
-  const accepts = (event: DragEvent) => takes && event.dataTransfer.types.includes(STREAM_MIME);
+  const takes = dragging !== undefined && panelDraws(panel.type, dragging || undefined);
+  const name = TYPE_NAMES[dragging ?? ""] ?? dragging;
   return (
     <div
       data-panel-id={panel.id}
-      className={cn("h-full min-h-0 min-w-0 bg-surface-0", over && "outline-2 -outline-offset-2 outline-signal",
-        className)}
+      className={cn("relative h-full min-h-0 min-w-0 bg-surface-0", className)}
       onDragOver={(event) => {
-        if (!accepts(event)) return;
+        if (!takes || draggedStreamType([...event.dataTransfer.types]) === undefined) return;
         event.preventDefault();
         event.stopPropagation();
         event.dataTransfer.dropEffect = "copy";
@@ -92,20 +121,25 @@ export function PanelFrame({ panel, children, className }: {
       }}
       onDrop={(event) => {
         setOver(false);
-        if (!accepts(event)) return;
+        if (!takes) return;
         const ref = readDraggedStream(event.dataTransfer);
         if (!ref) return;
         event.preventDefault();
         event.stopPropagation();
-        const type = workspace.typeOf(ref);
-        if (!panelDraws(panel.type, type)) {
-          notify.error(`${ref.streamId} 是 ${type ?? "未知"} 流，${PANEL_LABELS[panel.type]}面板不能显示`);
-          return;
-        }
         workspace.addTo(panel.id, ref);
       }}
     >
       {children}
+      {dragging !== undefined && (
+        <div aria-hidden className={cn("pointer-events-none absolute inset-0 z-20 grid place-items-center",
+          takes ? cn("border-2 border-dashed", over ? "border-pass bg-pass/10" : "border-pass/50")
+            : "bg-surface-0/75")}>
+          <span className={cn("rounded-sm px-2 py-1 text-xs shadow-overlay",
+            takes ? (over ? "bg-pass text-signal-fg" : "hidden") : "bg-surface-2 text-fg-3")}>
+            {takes ? `松开：加到「${panelTitle(panel)}」` : `${PANEL_LABELS[panel.type]}不能显示${name ? `${name}信号` : "这条信号"}`}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
