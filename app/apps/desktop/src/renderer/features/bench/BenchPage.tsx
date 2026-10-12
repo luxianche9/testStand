@@ -17,6 +17,7 @@ import { AddDeviceDialog, pickDevicePackage, type StagedPackage } from "../devic
 import { importBundleFile } from "../devices/BundleActions.js";
 import { DeviceEditor } from "../devices/editors/DeviceEditor.js";
 import { HardwareEditor } from "../devices/editors/HardwareEditor.js";
+import { ComponentSidebar } from "../monitor/ComponentSidebar.js";
 import { MonitorPane } from "../monitor/MonitorPane.js";
 import { useBenchRun } from "../monitor/use-bench-run.js";
 import { streamKey, useMonitorWorkspace } from "../monitor/use-monitor-workspace.js";
@@ -304,13 +305,19 @@ function Bench({ panel, view, onView }: {
               onView("monitor");
               const target = monitor.place(ref);
               if (target) toast.success(`${ref.streamId} 已加到「${target}」`);
-              else toast.error(`运行监控里还没有能显示 ${ref.streamId} 的组件：先从组件栏拖一个进来`);
+              else toast.error(`运行监控里还没有能显示 ${ref.streamId} 的组件：先从「组件」里拖一个进来`);
             }}
             footer={hardware.length > 0 && (
               <p className="shrink-0 border-t border-line px-3 py-1.5 text-2xs text-fg-3">
                 展开设备，把数据流拖到运行监控；把设备拖到端口连线画布上放置
               </p>
             )}
+          />
+        </div>
+        <div id="bench-side-components" className={panelClass("components")}>
+          <ComponentSidebar
+            onAddPanel={(type) => { onView("monitor"); monitor.addPanel(type); }}
+            onAddControl={(widget) => { onView("monitor"); monitor.addControlWidget(widget); }}
           />
         </div>
         <div id="bench-side-log" className={panelClass("log")}><WiringLogPanel hardware={hardware} /></div>

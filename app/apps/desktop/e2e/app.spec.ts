@@ -78,7 +78,7 @@ test.describe.serial("testStand folder project desktop", () => {
     await expect(page.getByRole("heading", { name: "最近项目" })).toBeVisible();
     await page.getByText("project-a", { exact: true }).first().click();
     // One screen: the activity bar switches the sidebar's panels; runs are watched on the monitor panel.
-    for (const label of ["设备管理", "接线日志", "测试编排", "运行历史"]) {
+    for (const label of ["设备管理", "组件", "接线日志", "测试编排", "运行历史"]) {
       await expect(activityBar(page).getByRole("button", { name: label, exact: true })).toBeVisible();
     }
     await expect(page.getByRole("tab", { name: "测试编排", exact: true })).toHaveCount(0);

@@ -1,10 +1,13 @@
 import type { ReactNode } from "react";
-import { CableIcon, CpuIcon, HistoryIcon, ListTreeIcon, MoonIcon, SettingsIcon, SunIcon } from "lucide-react";
+import {
+  CableIcon, CpuIcon, HistoryIcon, LayoutGridIcon, ListTreeIcon, MoonIcon, SettingsIcon, SunIcon
+} from "lucide-react";
 import { SIDE_PANEL_LABELS, SIDE_PANELS, type SidePanel } from "../lib/side-panel.js";
 import { Tooltip, cn } from "../ui";
 
 const ICONS: Record<SidePanel, ReactNode> = {
   devices: <CpuIcon />,
+  components: <LayoutGridIcon />,
   log: <CableIcon />,
   testing: <ListTreeIcon />,
   history: <HistoryIcon />

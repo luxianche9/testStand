@@ -229,8 +229,10 @@ test.describe.serial("monitor panel and pin list", () => {
   test("builds the workspace by dragging components in and signals onto them", async () => {
     const panel = page.getByRole("region", { name: "运行监控" });
     await page.evaluate(() => window.teststand.monitor.update({ input: { panels: [], layout: null } }));
-    await expect(panel).toContainText("把左侧组件栏里的组件拖到这里");
-    const bar = panel.getByRole("complementary", { name: "组件" });
+    await expect(panel).toContainText("从最左侧活动栏打开「组件」，把组件拖到这里");
+    // The components are the activity bar's second panel.
+    await showPanel(page, "组件");
+    const bar = page.getByRole("region", { name: "组件" });
     // The relay stream (bits) dragged as the devices panel drags it, onto `target`.
     const dragRelay = async (target: Locator) => {
       const data = await page.evaluateHandle((id) => {

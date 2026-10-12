@@ -1,13 +1,14 @@
 import { useCallback, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  monitorChannels, PANEL_SOURCE_TYPES, type Monitor, type MonitorControl, type MonitorPanel, type MonitorUpdateInput,
-  type PanelType, type Placement, type StreamRef
+  monitorChannels, PANEL_SOURCE_TYPES, type ControlWidget, type Monitor, type MonitorControl, type MonitorPanel,
+  type MonitorUpdateInput, type PanelType, type Placement, type StreamRef
 } from "@teststand/contracts/monitor";
 import type { DeviceStream, RunTimeline, StreamDeclaration, StreamInfo } from "@teststand/contracts/observability";
 import type { ProjectDocument } from "@teststand/contracts/projects";
 import { useMonitorStreams, useProjectDocument } from "../../lib/queries.js";
 import { queryKeys } from "../../lib/query-keys.js";
+import { newControlPanelId, requestControl } from "./control-requests.js";
 
 /** Drag payload of a device stream in the devices panel: `{hardwareId, streamId}` as JSON. */
 const STREAM_MIME = "application/x-teststand-stream";
@@ -180,6 +181,21 @@ export function useMonitorWorkspace(timeline: RunTimeline | undefined) {
     save({ operations: [{ op: "addControl", panelId, control }] }), [save]);
   const removeControl = useCallback((panelId: string, controlId: string) =>
     save({ operations: [{ op: "removeControl", panelId, controlId }] }), [save]);
+  /**
+   * A control widget picked in the components panel: into the control panel last focused, else the
+   * first one, else a new one made for it; that panel then asks what the control is for.
+   */
+  const addControlWidget = useCallback((widget: ControlWidget) => {
+    const controls = monitor.panels.filter((panel) => panel.type === "control");
+    const target = controls.find((panel) => panel.id === focusedPanelId) ?? controls[0];
+    if (target) {
+      requestControl(target.id, widget);
+      return;
+    }
+    const id = newControlPanelId();
+    addPanel("control", [], undefined, id);
+    requestControl(id, widget);
+  }, [monitor.panels, addPanel]);
   /** Puts a panel's streams in this order (and only these). */
   const setSources = useCallback((panelId: string, sources: StreamRef[]) => {
     const current = monitor.panels.find((panel) => panel.id === panelId)?.sources ?? [];
@@ -214,6 +230,7 @@ export function useMonitorWorkspace(timeline: RunTimeline | undefined) {
     removeControl,
     replace,
     setSources,
+    addControlWidget,
     devices: devices.data ?? [],
     declarationOf: (ref: StreamRef) => declared.get(streamKey(ref)),
     error: update.error
