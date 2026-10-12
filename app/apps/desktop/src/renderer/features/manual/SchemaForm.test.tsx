@@ -30,7 +30,7 @@ describe("SchemaArgumentsForm JSON fallback", () => {
     />);
 
     expect(screen.getByRole("combobox", { name: "Schema 分支" })).toBeTruthy();
-    fireEvent.change(screen.getByRole("spinbutton"), { target: { value: "2" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "channel" }), { target: { value: "2" } });
     expect(onChange).toHaveBeenLastCalledWith({ channel: 2 });
     await waitFor(() => expect(onValidityChange).toHaveBeenLastCalledWith(true));
   });

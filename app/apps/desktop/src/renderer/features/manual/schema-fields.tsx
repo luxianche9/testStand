@@ -2,6 +2,8 @@ import { useState, type ReactNode } from "react";
 import { PlusIcon, Trash2Icon } from "lucide-react";
 import { Button, Checkbox, IconButton, Input, Select } from "../../ui";
 import { FieldShell, JsonValueEditor } from "./json-editor.js";
+import { widgetFor } from "./widget-model.js";
+import { InferredInput } from "./widgets.js";
 import {
   childSchema,
   initialSchemaValue,
@@ -118,6 +120,15 @@ function SchemaField(props: FieldProps) {
   const shell = { label, required, description };
   if (Object.hasOwn(schema, "const")) {
     return <FieldShell {...shell}><Input value={display(schema.const)} readOnly /></FieldShell>;
+  }
+  const widget = widgetFor(path.split(".").at(-1) ?? label, schema);
+  if (widget) {
+    return (
+      <FieldShell {...shell} group={widget.kind !== "text" && widget.kind !== "hex"}>
+        <InferredInput widget={widget} name={path.split(".").at(-1) ?? label} label={label} value={value}
+          onChange={onChange} />
+      </FieldShell>
+    );
   }
   if (enumValues?.length) {
     return (

@@ -6,25 +6,30 @@ import {
   type IDockviewHeaderActionsProps, type IDockviewPanelHeaderProps, type SerializedDockview
 } from "dockview-react";
 import {
-  ActivityIcon, ListChecksIcon, Maximize2Icon, Minimize2Icon, PictureInPicture2Icon, PlusIcon, RadioIcon,
-  TimerResetIcon
+  ActivityIcon, ExternalLinkIcon, LayoutDashboardIcon, ListChecksIcon, Maximize2Icon, Minimize2Icon,
+  PictureInPicture2Icon, PlusIcon, RadioIcon, ShieldCheckIcon, TimerResetIcon
 } from "lucide-react";
-import { PANEL_TYPES, type MonitorPanel, type PanelType } from "@teststand/contracts/monitor";
+import { type MonitorPanel, type PanelType } from "@teststand/contracts/monitor";
 import { errorMessage } from "../../lib/errors.js";
 import { queryKeys } from "../../lib/query-keys.js";
 import { onRunStepFocused } from "../../lib/run-focus.js";
 import {
-  Button, cn, EmptyState, IconButton, Menu, MenuContent, MenuItem, MenuTrigger, useConfirm, useToast
+  Button, cn, EmptyState, IconButton, Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger, useConfirm, useToast
 } from "../../ui/index.js";
 import { RunOverview, streamUnit, type ConsoleJump, type StreamSource } from "../streams/index.js";
 import { RunControls } from "../testing/EditorToolbar.js";
 import { RunHeader } from "../testing/RunHeader.js";
 import { resultRows } from "../testing/result-rows.js";
 import { stepRange } from "../testing/useRunView.js";
+import {
+  deletePreset, exportText, generatedLayout, importText, readPresets, savePreset, type LayoutPreset
+} from "./layout-tools.js";
 import { useLiveKeepalive, useMonitorTime } from "./monitor-time.js";
-import { MonitorContext, PANEL_COMPONENTS, type MonitorContextValue } from "./MonitorPanels.js";
+import { PANEL_COMPONENTS } from "./MonitorPanels.js";
+import { MonitorContext, type MonitorContextValue, type SelectedFrame } from "./panel-kit.js";
 import { TimebaseControls } from "./TimebaseControls.js";
 import type { BenchRun } from "./use-bench-run.js";
+import { useManualControl } from "./use-manual-control.js";
 import {
   PANEL_LABELS, panelTitle, readDraggedStream, STREAM_MIME, useMonitorWorkspace, type MonitorWorkspace
 } from "./use-monitor-workspace.js";
@@ -33,16 +38,28 @@ const THEME: DockviewTheme = { name: "teststand", className: "dockview-theme-tes
 /** Layout changes this soon after loading or a window resize are the layout settling, not edits. */
 const SETTLE_MS = 1_200;
 const SAVE_DELAY_MS = 400;
+/** The page a pop-out panel opens with; the main process allows nothing else (src/main/windows.ts). */
+const POPOUT_URL = "about:blank";
+
+/** The panel types offered by "添加面板", grouped as the menu shows them. */
+const PANEL_MENU: PanelType[][] = [
+  ["scope", "values", "gauge", "xy"],
+  ["digital", "timeline", "register"],
+  ["terminal", "trace", "detail"],
+  ["control"],
+  ["sources", "inspector", "results", "messages"]
+];
 
 /**
- * 运行监控 of 测试台架: a docking workspace of panels — oscilloscopes, digital front panels,
- * terminals, the run's results and decoded messages — each showing the device streams dropped on
- * it, all on one time axis. The panels and their layout are the project's (the Agent builds them
- * too). Without a run it shows the devices' live data; a run that starts (from the test panel or by
- * the Agent) takes over at once, with its event timeline (steps, verdicts, device calls) above the
- * panels; a finished run picked from the history is replayed the same way. Picking an instant
- * anywhere marks it everywhere. The panels only watch: devices are controlled from their action
- * dialogs and by test steps.
+ * 运行监控 of 测试台架: a docking workspace of panels — oscilloscopes, values, gauges, XY plots,
+ * digital front panels, state timelines, status words, terminals, bus traces, frame details,
+ * control panels, the data-source tree and a property panel, the run's results and decoded
+ * messages — each showing the device streams dropped on it, all on one time axis. The panels and
+ * their layout are the project's (the Agent builds them too); panels can float or pop out to a
+ * window of their own. Without a run it shows the devices' live data; a run that starts takes over
+ * at once, with its event timeline under the panels; a finished run picked from the history is
+ * replayed the same way. Picking an instant anywhere marks it everywhere. Devices can be
+ * controlled by hand from the displays and control panels, except those a running test holds.
  */
 export function MonitorPane({ bench, toolbar }: {
   bench: BenchRun;
@@ -55,6 +72,7 @@ export function MonitorPane({ bench, toolbar }: {
   const { run, hub, runId, setRunId, live, mode, view } = bench;
   const { timeline, origin } = view;
   const workspace = useMonitorWorkspace(runId ? timeline : undefined);
+  const control = useManualControl();
   const time = useMonitorTime(mode !== "replay", mode === "run" ? origin : undefined,
     mode === "replay" ? view.range : undefined);
   const source = useMemo<StreamSource>(
@@ -65,6 +83,8 @@ export function MonitorPane({ bench, toolbar }: {
   const [jump, setJump] = useState<ConsoleJump>();
   const [dropping, setDropping] = useState(false);
   const [rejudging, setRejudging] = useState(false);
+  const [frame, selectFrame] = useState<SelectedFrame>();
+  const [activePanelId, setActivePanelId] = useState<string>();
   const results = view.runLog.log?.results;
   const rows = useMemo(() => {
     if (!runId || !results) return [];
@@ -111,8 +131,22 @@ export function MonitorPane({ bench, toolbar }: {
   };
   useEffect(() => { if (workspace.error) toast.error(errorMessage(workspace.error)); }, [workspace.error, toast]);
 
+  const safeAll = async () => {
+    const ok = await confirm({
+      title: "全部回到安全状态",
+      message: "依次调用每台设备的安全状态工具：模拟输出回 0、数字输出拉低、继电器释放、波形停止。",
+      confirmLabel: "全部安全",
+      danger: true
+    });
+    if (!ok) return;
+    const failures = await control.safeAll();
+    if (failures.length) toast.error(`有设备未能回到安全状态：${failures.join("；")}`);
+    else toast.success("所有设备已回到安全状态");
+  };
+
   const context: MonitorContextValue = {
-    workspace, time, source, bench, rows, jump, pick, zoomStep, onRefused: (message) => toast.error(message)
+    workspace, time, source, bench, rows, jump, pick, zoomStep, control, frame, selectFrame, activePanelId,
+    notify: { error: (message) => toast.error(message), success: (message) => toast.success(message) }
   };
 
   // A stream dropped outside every panel goes to the first panel that draws it.
@@ -134,7 +168,14 @@ export function MonitorPane({ bench, toolbar }: {
       <IconButton label="复位时间轴" size="icon-sm" variant="ghost" disabled={time.follow} onClick={time.reset}>
         <TimerResetIcon />
       </IconButton>
+      <LayoutMenu workspace={workspace} onError={(message) => toast.error(message)}
+        onDone={(message) => toast.success(message)} />
       <AddPanelMenu onAdd={(type) => workspace.addPanel(type)} />
+      <IconButton label="全部安全状态" size="icon-sm" variant="ghost" disabled={control.running}
+        title={control.running ? "测试运行中，由测试流程负责安全状态" : "所有设备回到安全状态"}
+        onClick={() => void safeAll()}>
+        <ShieldCheckIcon />
+      </IconButton>
     </span>
   );
   const runActions = (
@@ -182,6 +223,25 @@ export function MonitorPane({ bench, toolbar }: {
           actions={runActions}
         />
       )}
+      {workspace.monitor.panels.length ? (
+        <MonitorContext.Provider value={context}>
+          <Workspace key={workspace.projectId ?? "none"} workspace={workspace} onActive={setActivePanelId} />
+        </MonitorContext.Provider>
+      ) : (
+        <EmptyState
+          className="min-h-0 flex-1"
+          icon={<ActivityIcon />}
+          title="运行监控还没有面板"
+          description="在左侧「设备管理」里展开一台设备，把它的数据流拖到这里：采样流进示波器，串口和总线的收发进终端。也可以先加一个面板，或按数据生成一套布局。"
+          action={(
+            <span className="flex gap-1">
+              <AddPanelMenu onAdd={(type) => workspace.addPanel(type)} labelled />
+              <LayoutMenu workspace={workspace} labelled onError={(message) => toast.error(message)}
+                onDone={(message) => toast.success(message)} />
+            </span>
+          )}
+        />
+      )}
       {runId && timeline && view.range && origin !== undefined && (
         <RunOverview
           timeline={timeline}
@@ -192,19 +252,6 @@ export function MonitorPane({ bench, toolbar }: {
           onSelect={time.select}
           onStep={zoomStep}
           onPick={(tb) => pick(tb, true)}
-        />
-      )}
-      {workspace.monitor.panels.length ? (
-        <MonitorContext.Provider value={context}>
-          <Workspace key={workspace.projectId ?? "none"} workspace={workspace} />
-        </MonitorContext.Provider>
-      ) : (
-        <EmptyState
-          className="min-h-0 flex-1"
-          icon={<ActivityIcon />}
-          title="运行监控还没有面板"
-          description="在左侧「设备管理」里展开一台设备，把它的数据流拖到这里：采样流进示波器，串口和总线的收发进终端。也可以先加一个面板，再把数据流拖到面板上。"
-          action={<AddPanelMenu onAdd={(type) => workspace.addPanel(type)} labelled />}
         />
       )}
       {confirmDialog}
@@ -221,46 +268,160 @@ function AddPanelMenu({ onAdd, labelled = false }: { onAdd: (type: PanelType) =>
           : <IconButton label="添加面板" size="icon-sm" variant="ghost"><PlusIcon /></IconButton>}
       </MenuTrigger>
       <MenuContent align="end">
-        {PANEL_TYPES.map((type) => (
-          <MenuItem key={type} onSelect={() => onAdd(type)}>{PANEL_LABELS[type]}</MenuItem>
+        {PANEL_MENU.map((group, index) => (
+          <span key={index}>
+            {index > 0 && <MenuSeparator />}
+            {group.map((type) => <MenuItem key={type} onSelect={() => onAdd(type)}>{PANEL_LABELS[type]}</MenuItem>)}
+          </span>
         ))}
       </MenuContent>
     </Menu>
   );
 }
 
-/** Where a panel the layout does not have yet docks: its placement hint, else right of the last. */
+/** Generated layout, saved presets, and the workspace as a file. */
+function LayoutMenu({ workspace, labelled = false, onError, onDone }: {
+  workspace: MonitorWorkspace;
+  labelled?: boolean;
+  onError: (message: string) => void;
+  onDone: (message: string) => void;
+}) {
+  const [presets, setPresets] = useState<LayoutPreset[]>([]);
+  const file = useRef<HTMLInputElement>(null);
+  const generate = () => {
+    const streams = workspace.channels.length
+      ? workspace.channels
+      : workspace.devices.flatMap((device) =>
+        device.streams.map((stream) => ({ hardwareId: device.hardwareId, streamId: stream.id })));
+    const panels = generatedLayout(streams.map((ref) => ({
+      ...ref, type: String(workspace.typeOf(ref) ?? "scalar"), declaration: workspace.declarationOf(ref) as never
+    })));
+    workspace.replace({ panels, layout: null });
+    onDone(workspace.channels.length ? "已按现有数据流重新生成布局" : "已按所有设备的数据流生成布局");
+  };
+  const save = () => {
+    const name = globalThis.prompt?.("预设名称", "台架布局")?.trim();
+    if (!name) return;
+    setPresets(savePreset(name, workspace.monitor));
+    onDone(`已保存预设「${name}」`);
+  };
+  const exportFile = () => {
+    const blob = new Blob([exportText(workspace.monitor)], { type: "application/json" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "monitor-layout.json";
+    link.click();
+    URL.revokeObjectURL(link.href);
+  };
+  return (
+    <>
+      <Menu onOpenChange={(open) => { if (open) setPresets(readPresets()); }}>
+        <MenuTrigger asChild>
+          {labelled
+            ? <Button size="xs" variant="outline"><LayoutDashboardIcon />布局</Button>
+            : <IconButton label="布局" size="icon-sm" variant="ghost"><LayoutDashboardIcon /></IconButton>}
+        </MenuTrigger>
+        <MenuContent align="end">
+          <MenuItem onSelect={generate}>按数据生成布局</MenuItem>
+          <MenuSeparator />
+          {presets.map((preset) => (
+            <MenuItem key={preset.name}
+              onSelect={() => { workspace.replace(preset.monitor); onDone(`已应用预设「${preset.name}」`); }}>
+              应用预设：{preset.name}
+            </MenuItem>
+          ))}
+          <MenuItem onSelect={save}>保存为预设…</MenuItem>
+          {presets.length > 0 && (
+            <MenuItem danger onSelect={() => {
+              const name = globalThis.prompt?.(`删除哪个预设？（${presets.map((item) => item.name).join("、")}）`)?.trim();
+              if (name) setPresets(deletePreset(name));
+            }}>删除预设…</MenuItem>
+          )}
+          <MenuSeparator />
+          <MenuItem onSelect={exportFile}>导出布局文件…</MenuItem>
+          <MenuItem onSelect={() => file.current?.click()}>导入布局文件…</MenuItem>
+        </MenuContent>
+      </Menu>
+      <input ref={file} type="file" accept="application/json,.json" hidden aria-hidden
+        onChange={async (event) => {
+          const chosen = event.target.files?.[0];
+          event.target.value = "";
+          if (!chosen) return;
+          const parsed = importText(await chosen.text());
+          if (typeof parsed === "string") onError(parsed);
+          else { workspace.replace(parsed); onDone(`已导入 ${chosen.name}`); }
+        }} />
+    </>
+  );
+}
+
+/**
+ * Where a panel the layout does not have yet docks: its placement hint, else beside the panel last
+ * focused — to its right when that group is wide, below it when it is narrow.
+ */
 function position(api: DockviewApi, panel: MonitorPanel) {
-  const reference = panel.placement?.referenceId ?? api.panels.at(-1)?.id;
-  if (!reference || !api.getPanel(reference)) return undefined;
-  return { referencePanel: reference, direction: panel.placement?.direction ?? "right" } as const;
+  const reference = panel.placement?.referenceId ?? api.activePanel?.id ?? api.panels.at(-1)?.id;
+  const target = reference ? api.getPanel(reference) : undefined;
+  if (!target) return undefined;
+  const { width, height } = target.group.api;
+  const direction = panel.placement?.direction ?? (width >= Math.max(480, height * 1.2) ? "right" : "below");
+  return { referencePanel: target.id, direction } as const;
+}
+
+/** A pop-out window takes the app's theme (and keeps it when the theme changes). */
+function followTheme(target: Window): () => void {
+  const copy = () => {
+    const theme = document.documentElement.dataset.theme;
+    if (theme) target.document.documentElement.dataset.theme = theme;
+    else delete target.document.documentElement.dataset.theme;
+  };
+  copy();
+  const observer = new MutationObserver(copy);
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  return () => observer.disconnect();
 }
 
 /**
  * The dockview grid, kept in step with the project's panels: panels the project gained (from this
- * view or the Agent) are docked by their placement, ones it lost are closed, and the user's
- * arrangement is saved back as the project's layout.
+ * view or the Agent) are docked by their placement, ones it lost are closed, a layout replaced
+ * from outside (a preset, an import) is loaded, and the user's arrangement is saved back.
  */
-function Workspace({ workspace }: { workspace: MonitorWorkspace }) {
+function Workspace({ workspace, onActive }: {
+  workspace: MonitorWorkspace;
+  onActive: (id: string | undefined) => void;
+}) {
   const [api, setApi] = useState<DockviewApi>();
   const { panels, layout } = workspace.monitor;
   const latest = useRef({ workspace, layout });
   latest.current = { workspace, layout };
+  /** The layout this view last loaded or saved, so only someone else's layout is loaded. */
+  const known = useRef<string>(JSON.stringify(layout ?? null));
   const settledAt = useRef(0);
   const settle = () => { settledAt.current = performance.now() + SETTLE_MS; };
 
-  const onReady = useCallback((event: DockviewReadyEvent) => {
+  const load = useCallback((target: DockviewApi, saved: Record<string, unknown> | null) => {
     settle();
-    const saved = latest.current.layout;
-    if (saved) {
-      try {
-        event.api.fromJSON(saved as unknown as SerializedDockview);
-      } catch {
-        event.api.clear();
-      }
+    known.current = JSON.stringify(saved ?? null);
+    target.clear();
+    if (!saved) return;
+    try {
+      target.fromJSON(saved as unknown as SerializedDockview);
+    } catch {
+      target.clear();
     }
-    setApi(event.api);
   }, []);
+
+  const onReady = useCallback((event: DockviewReadyEvent) => {
+    load(event.api, latest.current.layout);
+    setApi(event.api);
+  }, [load]);
+
+  // A layout set from outside this view (preset, import, generated layout) replaces the grid.
+  useEffect(() => {
+    if (!api) return;
+    const text = JSON.stringify(layout ?? null);
+    if (text !== known.current) load(api, layout);
+  }, [api, layout, load]);
 
   useEffect(() => {
     if (!api) return;
@@ -286,16 +447,21 @@ function Workspace({ workspace }: { workspace: MonitorWorkspace }) {
       timer = window.setTimeout(() => {
         if (performance.now() < settledAt.current) return;
         const next = api.toJSON() as unknown as Record<string, unknown>;
-        if (JSON.stringify(next) !== JSON.stringify(latest.current.layout)) latest.current.workspace.saveLayout(next);
+        const text = JSON.stringify(next);
+        if (text === known.current) return;
+        known.current = text;
+        latest.current.workspace.saveLayout(next);
       }, SAVE_DELAY_MS);
     });
+    const active = api.onDidActivePanelChange((panel) => { if (panel) onActive(panel.id); });
     window.addEventListener("resize", settle);
     return () => {
       changed.dispose();
+      active.dispose();
       window.clearTimeout(timer);
       window.removeEventListener("resize", settle);
     };
-  }, [api]);
+  }, [api, onActive]);
 
   return (
     <div className="min-h-0 flex-1">
@@ -305,7 +471,7 @@ function Workspace({ workspace }: { workspace: MonitorWorkspace }) {
         defaultTabComponent={PanelTab}
         rightHeaderActionsComponent={GroupActions}
         onReady={onReady}
-        disableFloatingGroups={false}
+        popoutUrl={POPOUT_URL}
       />
     </div>
   );
@@ -317,22 +483,34 @@ function PanelTab(props: IDockviewPanelHeaderProps) {
   return <DockviewDefaultTab {...props} closeActionOverride={() => monitor?.workspace.removePanel(props.api.id)} />;
 }
 
-/** Maximize a group or float it over the others. */
+/** Pop out to a window of its own (another screen), float over the others, or maximize. */
 function GroupActions({ containerApi, group, activePanel }: IDockviewHeaderActionsProps) {
   const [maximized, setMaximized] = useState(() => containerApi.hasMaximizedGroup());
   useEffect(() => {
     const changed = containerApi.onDidMaximizedGroupChange(() => setMaximized(containerApi.hasMaximizedGroup()));
     return () => changed.dispose();
   }, [containerApi]);
-  const floating = group.api.location.type === "floating";
+  const where = group.api.location.type;
   return (
     <div className="flex h-full items-center gap-0.5 px-1">
-      {!floating && (
+      {where !== "popout" && (
+        <IconButton label="弹出到独立窗口" size="icon-xs" variant="ghost" onClick={() => {
+          let stop: (() => void) | undefined;
+          void containerApi.addPopoutGroup(group, {
+            popoutUrl: POPOUT_URL,
+            onDidOpen: ({ window: target }) => { stop = followTheme(target); },
+            onWillClose: () => stop?.()
+          });
+        }}>
+          <ExternalLinkIcon />
+        </IconButton>
+      )}
+      {where === "grid" && (
         <IconButton label="浮动" size="icon-xs" variant="ghost" onClick={() => containerApi.addFloatingGroup(group)}>
           <PictureInPicture2Icon />
         </IconButton>
       )}
-      {!floating && activePanel && (
+      {where === "grid" && activePanel && (
         <IconButton
           label={maximized ? "还原" : "最大化"}
           size="icon-xs"

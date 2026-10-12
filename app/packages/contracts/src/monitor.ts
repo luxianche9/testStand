@@ -2,16 +2,17 @@ import { z } from "zod";
 import type { DeviceStream } from "./observability.js";
 
 /**
- * The project's monitor workspace: panels, each drawing some device streams by its type — `scope`
- * sampled streams (scalar, block, bits), `digital` bits as lamps and relay contacts, `terminal`
- * record streams (bytes, frames, events); `results` and `messages` show the run and take no
- * streams. `layout` is the docking layout as the desktop saved it. Panels only watch; devices are
- * controlled by their tools.
+ * The project's monitor workspace: panels, each drawing the device streams of the types it takes
+ * (`PANEL_SOURCE_TYPES`); a `control` panel holds controls bound to device tools instead.
+ * `layout` is the docking layout as the desktop saved it.
  */
 export const streamRefSchema = z.object({ hardwareId: z.string().min(1), streamId: z.string().min(1) }).strict();
 export type StreamRef = z.infer<typeof streamRefSchema>;
 
-export const PANEL_TYPES = ["scope", "digital", "terminal", "results", "messages"] as const;
+export const PANEL_TYPES = [
+  "scope", "digital", "terminal", "trace", "values", "gauge", "timeline", "register", "xy", "detail", "control",
+  "sources", "inspector", "results", "messages"
+] as const;
 export type PanelType = (typeof PANEL_TYPES)[number];
 export const panelTypeSchema = z.enum(PANEL_TYPES);
 
@@ -20,9 +21,37 @@ export const PANEL_SOURCE_TYPES: Readonly<Record<PanelType, readonly string[]>> 
   scope: ["scalar", "block", "bits"],
   digital: ["bits"],
   terminal: ["bytes", "frames", "events"],
+  trace: ["bytes", "frames"],
+  values: ["scalar", "block"],
+  gauge: ["scalar", "block"],
+  timeline: ["bits"],
+  register: ["bits"],
+  xy: ["scalar", "block"],
+  detail: [],
+  control: [],
+  sources: [],
+  inspector: [],
   results: [],
   messages: []
 };
+
+export const CONTROL_WIDGETS = ["button", "toggle", "slider", "presets"] as const;
+export type ControlWidget = (typeof CONTROL_WIDGETS)[number];
+
+/** A control of a `control` panel: calls `tool` of the device with `fixed` and, but for a button,
+ *  the operator's value of `param`. */
+export interface MonitorControl {
+  id: string;
+  label?: string;
+  hardwareId: string;
+  tool: string;
+  widget: ControlWidget;
+  param?: string;
+  fixed: Record<string, unknown>;
+  presets?: unknown[];
+  min?: number;
+  max?: number;
+}
 
 export const DIRECTIONS = ["right", "below", "left", "above", "within"] as const;
 export type Direction = (typeof DIRECTIONS)[number];
@@ -57,13 +86,17 @@ export type MonitorOperation =
   | { op: "removePanel"; panelId: string }
   | { op: "updatePanel"; panelId: string; title?: string; settings?: Record<string, unknown> }
   | { op: "addSources"; panelId: string; sources: StreamRef[] }
-  | { op: "removeSources"; panelId: string; sources: StreamRef[] };
+  | { op: "removeSources"; panelId: string; sources: StreamRef[] }
+  | { op: "addControl"; panelId: string; control: Omit<MonitorControl, "id" | "fixed"> & { id?: string; fixed?: Record<string, unknown> } }
+  | { op: "removeControl"; panelId: string; controlId: string };
 
 /**
- * `operations` apply in order; then `remove` takes each stream off every panel and `add` puts it
- * on the first panel that draws its type; `layout` replaces the saved docking layout.
+ * `panels` replaces every panel; `operations` then apply in order; `remove` takes each stream off
+ * every panel and `add` puts it on the first panel that draws its type; `layout` replaces the
+ * saved docking layout.
  */
 export interface MonitorUpdateInput {
+  panels?: Array<Omit<MonitorPanel, "sources" | "settings"> & { sources?: StreamRef[]; settings?: Record<string, unknown> }>;
   operations?: MonitorOperation[];
   add?: StreamRef[];
   remove?: StreamRef[];

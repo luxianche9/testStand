@@ -9,6 +9,8 @@ import { InvocationResult, type InvocationOutcome } from "../manual/InvocationRe
 import { SchemaArgumentsForm } from "../manual/SchemaForm.js";
 import { initialSchemaValue } from "../manual/schema-form-model.js";
 import { validateSchemaArguments } from "../manual/schema-validation.js";
+import { ToolFieldContext } from "../manual/widgets.js";
+import { useManualControl } from "../monitor/use-manual-control.js";
 import { actionKind } from "./device-actions.js";
 
 const TIMEOUT_MS = 30_000;
@@ -53,6 +55,7 @@ function ActionForm({ action, hardwareId, available, onClose }: {
   const started = useRef(0);
   const validation = useMemo(() => validateSchemaArguments(action.inputSchema, values), [action.inputSchema, values]);
   const kind = actionKind(action);
+  const locked = useManualControl().lockOf(hardwareId);
   const hasFields = Object.keys(asObject(action.inputSchema.properties)).length > 0;
 
   const run = useMutation({
@@ -80,8 +83,10 @@ function ActionForm({ action, hardwareId, available, onClose }: {
           {action.description && <p className="text-xs break-words text-fg-2">{action.description}</p>}
         </div>
         {hasFields ? (
-          <SchemaArgumentsForm schema={action.inputSchema} value={values} onChange={setValues}
-            onValidityChange={setFormValid} />
+          <ToolFieldContext.Provider value={{ hardwareId, tool: action.remoteName }}>
+            <SchemaArgumentsForm schema={action.inputSchema} value={values} onChange={setValues}
+              onValidityChange={setFormValid} />
+          </ToolFieldContext.Provider>
         ) : (
           <p className="text-xs text-fg-3">该动作没有参数。</p>
         )}
@@ -91,13 +96,14 @@ function ActionForm({ action, hardwareId, available, onClose }: {
           </ul>
         )}
         {!available && <p role="alert" className="text-xs text-fail">设备当前不在线，恢复在线后才能执行。</p>}
+        {locked && <p role="alert" className="text-xs text-fail">测试运行中，运行结束后才能手动控制这台设备。</p>}
         {outcome && <InvocationResult outcome={outcome} />}
       </DialogBody>
       <DialogFooter>
         <Button onClick={onClose}>关闭</Button>
         <Button
           variant="primary"
-          disabled={!available || !formValid || !validation.valid || run.isPending}
+          disabled={!available || Boolean(locked) || !formValid || !validation.valid || run.isPending}
           onClick={() => run.mutate()}
         >
           {run.isPending ? <Spinner /> : <PlayIcon />}

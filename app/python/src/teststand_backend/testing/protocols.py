@@ -416,6 +416,26 @@ def describe_icd(icd: Icd, alias: str | None = None) -> Record:
         "transport": icd.transport,
         "description": icd.description,
         "messages": [message.name for message in icd.messages],
+        "layouts": {
+            message.name: [
+                {
+                    key: value
+                    for key, value in {
+                        "name": item.name,
+                        "offset": item.offset,
+                        "size": item.size,
+                        "type": item.type,
+                        "bits": item.bits,
+                        "unit": item.unit,
+                        "description": item.description,
+                    }.items()
+                    if value is not None
+                }
+                for item in message.fields
+                if item.offset is not None
+            ]
+            for message in icd.messages
+        },
         "encoders": [encoder.name for encoder in icd.encoders],
         "streams": streams,
     }

@@ -3,16 +3,19 @@ import { Textarea } from "../../ui";
 import { isRecord, jsonEqual, pretty, type JsonValidityReporter } from "./schema-form-utils.js";
 
 /** Wrapping `<label>` so the control inside gets the field name as its accessible name. */
-export function FieldShell({ label, required, requiredText = "必填", description, error, children }: {
+export function FieldShell({ label, required, requiredText = "必填", description, error, children, group = false }: {
   label: string;
   required?: boolean;
   requiredText?: string;
   description?: string | undefined;
   error?: string | undefined;
   children: ReactNode;
+  /** The field is a group of buttons: a <label> would press the first one when its text is clicked. */
+  group?: boolean;
 }) {
+  const Shell = group ? "div" : "label";
   return (
-    <label className="grid content-start gap-1">
+    <Shell className="grid content-start gap-1">
       <span className="text-xs font-medium text-fg-2">
         {label}
         {required && <i className="tf-label ml-1.5 text-fail not-italic">{requiredText}</i>}
@@ -20,7 +23,7 @@ export function FieldShell({ label, required, requiredText = "必填", descripti
       {children}
       {description && <small className="text-xs text-fg-3">{description}</small>}
       {error && <small className="text-xs text-fail">{error}</small>}
-    </label>
+    </Shell>
   );
 }
 

@@ -86,8 +86,12 @@ describe("DesktopWindows security", () => {
       nodeIntegration: false,
       sandbox: true
     });
-    const openHandler = window.webContents.setWindowOpenHandler.mock.calls[0]?.[0] as () => { action: string };
+    const openHandler = window.webContents.setWindowOpenHandler.mock.calls[0]?.[0] as
+      (details?: { url: string }) => { action: string };
     expect(openHandler()).toEqual({ action: "deny" });
+    expect(openHandler({ url: "https://example.com" })).toEqual({ action: "deny" });
+    expect(openHandler({ url: "file:///etc/passwd" })).toEqual({ action: "deny" });
+    expect(openHandler({ url: "about:blank" }).action).toBe("allow");
 
     const navigate = window.webHandlers.get("will-navigate");
     const externalEvent = { preventDefault: vi.fn() };

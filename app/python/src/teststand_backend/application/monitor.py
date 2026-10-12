@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 from teststand_backend.contracts.errors import app_error
 from teststand_backend.contracts.monitor import (
     SOURCE_TYPES,
+    parse_control,
     parse_monitor,
     parse_monitor_update_input,
 )
@@ -39,6 +40,16 @@ def _panel(panels: list[Json], panel_id: str) -> Json:
         "invalid_argument",
         f"no panel {panel_id}; panels: {', '.join(item['id'] for item in panels) or 'none'}",
     )
+
+
+def _short(remote_name: str, siblings: list[Json]) -> str:
+    """A tool's name without the prefix every tool of the device shares (``sds48_set_relay``
+    -> ``set_relay``), as the operator sees it."""
+    prefix = remote_name.split("_", 1)[0]
+    shared = "_" in remote_name and all(
+        str(item["remoteName"]).startswith(prefix + "_") for item in siblings
+    )
+    return remote_name[len(prefix) + 1 :] if shared else remote_name
 
 
 def _new_id(panels: list[Json], kind: str) -> str:
@@ -107,15 +118,29 @@ class MonitorApplication:
         idempotency="natural",
     )
     async def update(self, context: Json, input: Json) -> Json:
-        """Change the workspace: ``operations`` apply in order (add / remove / update a panel,
-        add / remove its sources); ``remove`` then takes each stream off every panel and ``add``
-        puts it on the first panel that draws its type (a new one when none does); ``layout``
-        replaces the saved docking layout. A stream must belong to a registered device and,
-        once the device's streams are known, be one it declares and one the panel can draw.
-        Stays in the project buffer until the project is saved. Returns the workspace."""
+        """Change the workspace: ``panels`` replaces every panel (a preset, a generated
+        layout); ``operations`` then apply in order (add / remove / update a panel, add / remove
+        its sources or controls); ``remove`` takes each stream off every panel and ``add`` puts
+        it on the first panel that draws its type (a new one when none does); ``layout`` replaces
+        the saved docking layout. A stream must belong to a registered device and, once the
+        device's streams are known, be one it declares and one the panel can draw; a control
+        must name a tool its device has, with arguments the tool takes. Stays in the project
+        buffer until the project is saved. Returns the workspace."""
         request = parse_monitor_update_input(input)
         monitor = self.projects.monitor()
         panels: list[Json] = monitor["panels"]
+        if "panels" in request:
+            panels = []
+            for given in request["panels"]:
+                if any(panel["id"] == given["id"] for panel in panels):
+                    raise app_error("invalid_argument", f"panel {given['id']} already exists")
+                panel = {
+                    **given,
+                    "sources": [],
+                    "settings": self._settings(given, given["settings"]),
+                }
+                self._add_sources(panel, given["sources"])
+                panels.append(panel)
         for item in request.get("operations", []):
             self._apply(panels, item)
         removed = {_key(item) for item in request.get("remove", [])}
@@ -140,7 +165,7 @@ class MonitorApplication:
                 "id": panel_id,
                 "type": spec["type"],
                 "sources": [],
-                "settings": dict(spec.get("settings", {})),
+                "settings": self._settings(spec, spec.get("settings", {})),
             }
             if spec.get("title") is not None:
                 panel["title"] = spec["title"]
@@ -159,12 +184,94 @@ class MonitorApplication:
             if "title" in change:
                 panel["title"] = change["title"]
             if "settings" in change:
-                panel["settings"] = {**panel["settings"], **change["settings"]}
+                panel["settings"] = self._settings(
+                    panel, {**panel["settings"], **change["settings"]}
+                )
         elif op == "addSources":
             self._add_sources(panel, change["sources"])
+        elif op == "addControl":
+            if panel["type"] != "control":
+                raise app_error("invalid_argument", f"panel {panel['id']} is not a control panel")
+            controls = list(panel["settings"].get("controls", []))
+            panel["settings"] = self._settings(
+                panel, {**panel["settings"], "controls": [*controls, change["control"]]}
+            )
+        elif op == "removeControl":
+            controls = list(panel["settings"].get("controls", []))
+            kept = [item for item in controls if item.get("id") != change["controlId"]]
+            if len(kept) == len(controls):
+                raise app_error(
+                    "invalid_argument", f"panel {panel['id']} has no control {change['controlId']}"
+                )
+            panel["settings"] = {**panel["settings"], "controls": kept}
         else:
             removed = {_key(item) for item in change["sources"]}
             panel["sources"] = [item for item in panel["sources"] if _key(item) not in removed]
+
+    def _settings(self, panel: Json, settings: Json) -> Json:
+        """A control panel's controls checked against the tools of their devices, ids filled."""
+        if panel["type"] != "control" or "controls" not in settings:
+            return dict(settings)
+        given = settings["controls"]
+        if not isinstance(given, list):
+            raise app_error("invalid_argument", "settings.controls must be a list of controls")
+        controls: list[Json] = []
+        for item in given:
+            control = parse_control(item)
+            self._check_control(control)
+            if not control.get("id"):
+                taken = {entry["id"] for entry in controls} | {
+                    entry.get("id") for entry in given if isinstance(entry, dict)
+                }
+                index = len(controls) + 1
+                while f"c{index}" in taken:
+                    index += 1
+                control["id"] = f"c{index}"
+            if any(entry["id"] == control["id"] for entry in controls):
+                raise app_error("invalid_argument", f"control {control['id']} appears twice")
+            controls.append(control)
+        return {**settings, "controls": controls}
+
+    def _check_control(self, control: Json) -> None:
+        hardware = self.catalog.find_hardware(control["hardwareId"])
+        if hardware is None or hardware["kind"] != "managed":
+            raise app_error(
+                "invalid_argument", f"{control['hardwareId']} is not a registered device"
+            )
+        if control["widget"] != "button" and not control.get("param"):
+            raise app_error(
+                "invalid_argument", f"a {control['widget']} control needs the param it sets"
+            )
+        tools = [
+            item
+            for item in self.devices.list_tools()
+            if item.get("deviceId") == hardware.get("deviceId") and item.get("kind") == "hardware"
+        ]
+        if not tools:
+            return  # The device is offline: its tools are checked when it is back.
+        names = {_short(item["remoteName"], tools): item for item in tools}
+        tool = names.get(control["tool"]) or next(
+            (item for item in tools if item["remoteName"] == control["tool"]), None
+        )
+        if tool is None:
+            raise app_error(
+                "invalid_argument",
+                f"{control['hardwareId']} has no tool {control['tool']}; tools: "
+                + ", ".join(sorted(names)),
+            )
+        control["tool"] = tool["remoteName"]
+        properties = (tool.get("inputSchema") or {}).get("properties") or {}
+        unknown = [
+            name
+            for name in [*control["fixed"], control.get("param")]
+            if name and name not in properties
+        ]
+        if unknown:
+            raise app_error(
+                "invalid_argument",
+                f"{control['tool']} takes no argument {', '.join(unknown)}; it takes "
+                + (", ".join(properties) or "none"),
+            )
 
     def _add_sources(self, panel: Json, sources: list[Json]) -> None:
         accepted = SOURCE_TYPES[panel["type"]]

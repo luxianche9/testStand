@@ -64,8 +64,23 @@ async def fixture(root: Path, *, known: bool = True) -> tuple[MonitorApplication
         {"id": "di", "type": "bits"},
         {"id": "rx", "type": "bytes"},
     ]
+    tools = [
+        {
+            "deviceId": "CARD_DEVICE",
+            "kind": "hardware",
+            "remoteName": "card_set_relay",
+            "inputSchema": {"properties": {"channel": {}, "energized": {}}},
+        },
+        {
+            "deviceId": "CARD_DEVICE",
+            "kind": "hardware",
+            "remoteName": "card_safe_state",
+            "inputSchema": {"properties": {}},
+        },
+    ]
     devices = Mock(
-        known_streams=lambda hardware_id: streams if known and hardware_id == "CARD" else None
+        known_streams=lambda hardware_id: streams if known and hardware_id == "CARD" else None,
+        list_tools=lambda: tools if known else [],
     )
     monitor = MonitorApplication(DefaultAuthorizer(), projects, wiring, catalog, devices)
     return monitor, projects
@@ -253,3 +268,110 @@ async def test_any_stream_is_accepted_while_the_device_is_unknown(tmp_path: Path
     monitor, _ = await fixture(tmp_path, known=False)
     ai9 = {"hardwareId": "CARD", "streamId": "ai9"}
     assert shown(await monitor.update(HUMAN, {"add": [ai9]})) == [("scope", "scope", [ai9])]
+
+
+RELAY = {"hardwareId": "CARD", "tool": "set_relay", "widget": "toggle", "param": "energized"}
+
+
+async def test_panels_replace_every_panel(tmp_path: Path) -> None:
+    monitor, _ = await fixture(tmp_path)
+    await monitor.update(HUMAN, {"add": [AI0, RX]})
+    result = await monitor.update(
+        HUMAN,
+        {
+            "panels": [
+                {"id": "a", "type": "values", "sources": [AI0, AI1]},
+                {"id": "b", "type": "timeline", "sources": [DI], "settings": {"x": 1}},
+            ],
+            "layout": None,
+        },
+    )
+    assert shown(result) == [("a", "values", [AI0, AI1]), ("b", "timeline", [DI])]
+    assert result["panels"][1]["settings"] == {"x": 1}
+    with pytest.raises(Exception, match="a values panel draws"):
+        await monitor.update(HUMAN, {"panels": [{"id": "a", "type": "values", "sources": [DI]}]})
+
+
+async def test_controls_are_checked_against_the_device_tools(tmp_path: Path) -> None:
+    monitor, _ = await fixture(tmp_path)
+    result = await monitor.update(
+        HUMAN,
+        {
+            "operations": [
+                {
+                    "op": "addPanel",
+                    "panel": {
+                        "id": "ctl",
+                        "type": "control",
+                        "settings": {"controls": [{**RELAY, "fixed": {"channel": 3}}]},
+                    },
+                },
+                {
+                    "op": "addControl",
+                    "panelId": "ctl",
+                    "control": {
+                        "hardwareId": "CARD",
+                        "tool": "card_safe_state",
+                        "widget": "button",
+                    },
+                },
+            ]
+        },
+    )
+    controls = result["panels"][0]["settings"]["controls"]
+    assert [(item["id"], item["tool"], item["fixed"]) for item in controls] == [
+        ("c1", "card_set_relay", {"channel": 3}),
+        ("c2", "card_safe_state", {}),
+    ]
+    result = await monitor.update(
+        HUMAN, {"operations": [{"op": "removeControl", "panelId": "ctl", "controlId": "c1"}]}
+    )
+    assert [item["id"] for item in result["panels"][0]["settings"]["controls"]] == ["c2"]
+
+
+async def test_a_control_needs_an_existing_tool_and_its_arguments(tmp_path: Path) -> None:
+    monitor, _ = await fixture(tmp_path)
+    await monitor.update(HUMAN, {"operations": [{"op": "addPanel", "panel": {"type": "control"}}]})
+
+    async def add(control: Json) -> None:
+        await monitor.update(
+            HUMAN, {"operations": [{"op": "addControl", "panelId": "control", "control": control}]}
+        )
+
+    with pytest.raises(Exception, match="CARD has no tool fly; tools: safe_state, set_relay"):
+        await add({**RELAY, "tool": "fly"})
+    with pytest.raises(Exception, match="set_relay takes no argument volts"):
+        await add({**RELAY, "fixed": {"volts": 1}})
+    with pytest.raises(Exception, match="a toggle control needs the param it sets"):
+        await add({"hardwareId": "CARD", "tool": "set_relay", "widget": "toggle"})
+    with pytest.raises(Exception, match="GHOST is not a registered device"):
+        await add({**RELAY, "hardwareId": "GHOST"})
+    with pytest.raises(Exception, match="panel scope is not a control panel"):
+        await monitor.update(
+            HUMAN,
+            {
+                "operations": [
+                    {"op": "addPanel", "panel": {"type": "scope"}},
+                    {"op": "addControl", "panelId": "scope", "control": RELAY},
+                ]
+            },
+        )
+
+
+async def test_controls_of_an_offline_device_are_kept_unchecked(tmp_path: Path) -> None:
+    monitor, _ = await fixture(tmp_path, known=False)
+    result = await monitor.update(
+        HUMAN,
+        {
+            "operations": [
+                {
+                    "op": "addPanel",
+                    "panel": {
+                        "type": "control",
+                        "settings": {"controls": [{**RELAY, "tool": "x"}]},
+                    },
+                }
+            ]
+        },
+    )
+    assert result["panels"][0]["settings"]["controls"][0]["tool"] == "x"

@@ -2,6 +2,12 @@ import type { StreamInfo, StreamWindow } from "@teststand/contracts/observabilit
 import { cn } from "../../ui";
 import { bitsWidth, codeText, deviceName, hasBit, pointAt, pointMask } from "./stream-model.js";
 
+/** Clicking line `bit` asks for it `on`; `locked` says why it cannot be switched now. */
+export interface LineControl {
+  toggle: (bit: number, on: boolean) => void;
+  locked?: string | undefined;
+}
+
 export interface PanelChannel {
   stream: StreamInfo;
   color: string;
@@ -17,10 +23,12 @@ const LIT = "border-pass bg-pass shadow-[0_0_4px] shadow-pass/60";
  * its declared name when it has one. It is the place to read many lines at once; the logic
  * analyser above draws how they changed.
  */
-export function DigitalPanel({ channels, reads, at }: {
+export function DigitalPanel({ channels, reads, at, control }: {
   channels: PanelChannel[];
   reads: Readonly<Record<string, StreamWindow>>;
   at: number | undefined;
+  /** How a line of a stream the device drives is switched by clicking it (none: display only). */
+  control?: ((stream: StreamInfo) => LineControl | undefined) | undefined;
 }) {
   return (
     <div aria-label="数字量" className="grid gap-2 px-2 py-1.5">
@@ -35,6 +43,7 @@ export function DigitalPanel({ channels, reads, at }: {
         const on = mask === undefined ? 0 : Array.from({ length: width }, (_, bit) => hasBit(mask, bit))
           .filter(Boolean).length;
         const groups = Array.from({ length: Math.ceil(width / GROUP) }, (_, index) => index * GROUP);
+        const lines = mask === undefined ? undefined : control?.(stream);
         return (
           <section key={stream.key} aria-label={`${stream.streamId} 数字量`} className="grid gap-1">
             <header className="flex items-center gap-2 text-2xs">
@@ -54,8 +63,15 @@ export function DigitalPanel({ channels, reads, at }: {
                     const name = declared?.bitLabels?.[bit] ?? String(bit);
                     const level = high ? "1" : "0";
                     const state = mask === undefined ? "未知" : contacts ? (high ? "闭合" : "断开") : level;
+                    const Cell = lines ? "button" : "div";
                     return (
-                      <div key={bit} title={`${name}：${state}`} className="grid w-8 justify-items-center gap-0.5">
+                      <Cell key={bit}
+                        title={`${name}：${state}${lines ? (lines.locked ? `（${lines.locked}）` : "，点击切换") : ""}`}
+                        {...(lines ? { type: "button" as const, disabled: Boolean(lines.locked),
+                          onClick: () => lines.toggle(bit, !high) } : {})}
+                        className={cn("grid w-8 justify-items-center gap-0.5 rounded-xs",
+                          lines && !lines.locked && "cursor-pointer hover:bg-surface-2",
+                          lines?.locked && "opacity-60")}>
                         {contacts ? <Contact closed={high} known={mask !== undefined} /> : (
                           <span
                             aria-label={`${name} ${state}`}
@@ -67,7 +83,7 @@ export function DigitalPanel({ channels, reads, at }: {
                           />
                         )}
                         <span className="max-w-8 truncate font-mono text-[9px] leading-none text-fg-3">{name}</span>
-                      </div>
+                      </Cell>
                     );
                   })}
                 </div>

@@ -243,26 +243,8 @@ async def test_earlier_format_is_refused_by_name(tmp_path: Path) -> None:
     service, _ = await fixture(tmp_path)
     path = Path(project_path(tmp_path))
     path.parent.mkdir(parents=True)
-    raw = json_dumps({"formatVersion": 5, "projectId": "OLD"})
+    raw = json_dumps({"formatVersion": 7, "projectId": "OLD"})
     path.write_text(raw)
     selection = await service.inspect_folder(tmp_path)
-    assert selection["state"] == "invalid" and "格式版本 5" in selection["message"]
+    assert selection["state"] == "invalid" and "格式版本 7" in selection["message"]
     assert path.read_text() == raw
-
-
-async def test_format_7_monitor_channels_become_a_scope_and_a_terminal(tmp_path: Path) -> None:
-    service, _ = await fixture(tmp_path)
-    created = await service.initialize_folder(tmp_path)
-    path = Path(created["path"])
-    old = {**created["file"], "formatVersion": 7, "monitor": {"channels": [channel("ai0")]}}
-    path.write_text(json_dumps(old), encoding="utf-8")
-    await service.leave()
-    opened = await service.open_folder(tmp_path)
-    assert opened["file"]["formatVersion"] == 8
-    panels = opened["file"]["monitor"]["panels"]
-    assert [(panel["type"], panel["sources"]) for panel in panels] == [
-        ("scope", [channel("ai0")]),
-        ("terminal", [channel("ai0")]),
-    ]
-    assert panels[1]["placement"] == {"referenceId": "scope", "direction": "below"}
-    assert (await service.list_recent())[0]["preview"]["channels"] == 1

@@ -1,8 +1,8 @@
 import { useCallback, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  monitorChannels, PANEL_SOURCE_TYPES, type Monitor, type MonitorPanel, type MonitorUpdateInput, type PanelType,
-  type Placement, type StreamRef
+  monitorChannels, PANEL_SOURCE_TYPES, type Monitor, type MonitorControl, type MonitorPanel, type MonitorUpdateInput,
+  type PanelType, type Placement, type StreamRef
 } from "@teststand/contracts/monitor";
 import type { DeviceStream, RunTimeline, StreamDeclaration, StreamInfo } from "@teststand/contracts/observability";
 import type { ProjectDocument } from "@teststand/contracts/projects";
@@ -60,6 +60,16 @@ export const PANEL_LABELS: Readonly<Record<PanelType, string>> = {
   scope: "示波器",
   digital: "数字量",
   terminal: "终端",
+  trace: "总线跟踪",
+  values: "数值表",
+  gauge: "仪表",
+  timeline: "状态时间线",
+  register: "状态字",
+  xy: "XY 图",
+  detail: "报文详情",
+  control: "控制面板",
+  sources: "数据源",
+  inspector: "属性",
   results: "结果",
   messages: "报文"
 };
@@ -126,6 +136,27 @@ export function useMonitorWorkspace(timeline: RunTimeline | undefined) {
   const removePanel = useCallback((panelId: string) =>
     save({ operations: [{ op: "removePanel", panelId }] }), [save]);
   const saveLayout = useCallback((layout: Record<string, unknown>) => save({ layout }), [save]);
+  const updatePanel = useCallback((panelId: string, change: { title?: string; settings?: Record<string, unknown> }) =>
+    save({ operations: [{ op: "updatePanel", panelId, ...change }] }), [save]);
+  const addControl = useCallback((panelId: string, control: Omit<MonitorControl, "id">) =>
+    save({ operations: [{ op: "addControl", panelId, control }] }), [save]);
+  const removeControl = useCallback((panelId: string, controlId: string) =>
+    save({ operations: [{ op: "removeControl", panelId, controlId }] }), [save]);
+  /** Puts a panel's streams in this order (and only these). */
+  const setSources = useCallback((panelId: string, sources: StreamRef[]) => {
+    const current = monitor.panels.find((panel) => panel.id === panelId)?.sources ?? [];
+    save({ operations: [
+      ...(current.length ? [{ op: "removeSources" as const, panelId, sources: current }] : []),
+      ...(sources.length ? [{ op: "addSources" as const, panelId, sources }] : [])
+    ] });
+  }, [monitor.panels, save]);
+  /** Replaces the whole workspace (a preset, an imported file, a generated layout). */
+  const replace = useCallback((next: Pick<Monitor, "panels" | "layout">) => save({
+    panels: next.panels.map(({ id, type, title, sources, settings, placement }) => ({
+      id, type, sources, settings, ...(title !== undefined ? { title } : {}), ...(placement ? { placement } : {})
+    })),
+    layout: next.layout
+  }), [save]);
 
   return {
     projectId: project.data?.file.projectId,
@@ -140,6 +171,13 @@ export function useMonitorWorkspace(timeline: RunTimeline | undefined) {
     addPanel,
     removePanel,
     saveLayout,
+    updatePanel,
+    addControl,
+    removeControl,
+    replace,
+    setSources,
+    devices: devices.data ?? [],
+    declarationOf: (ref: StreamRef) => declared.get(streamKey(ref)),
     error: update.error
   };
 }

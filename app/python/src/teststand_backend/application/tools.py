@@ -391,19 +391,23 @@ PLATFORM_TOOLS = [
     ),
     _platform(
         "get_monitor",
-        "读取运行监控工作台的面板：id、类型、标题、显示的流（sources）和设置。"
-        "面板类型：scope 示波器（scalar/block/bits）、digital 数字量指示灯与继电器触点（bits）、"
-        "terminal 终端（bytes/frames/events）、results 结果表、messages 解码报文"
-        "（后两种不接流）。运行监控只看不控；设备由它的动作弹窗、测试步骤或你调用设备工具来控制。",
+        "读取运行监控工作台的面板：id、类型、标题、显示的流（sources）和设置（settings）。"
+        "显示类面板：scope 示波器、digital 数字量、terminal 终端、trace 总线跟踪、values 数值表、"
+        "gauge 仪表、timeline 状态时间线、register 状态字、xy XY 图、detail 报文详情、"
+        "results 结果、messages 报文；control 控制面板的 settings.controls 是绑定设备工具的按钮、"
+        "开关、滑块与预置值。测试运行期间操作员不能手动控制。",
         _EMPTY,
         _MONITOR,
         operation="monitor.get",
     ),
     _platform(
         "update_monitor",
-        "搭建运行监控工作台。operations 按顺序执行：addPanel 新建面板（类型、标题、"
-        "要显示的流，placement 放在某面板的 right/below/left/above，或 within 作为它的标签页）、"
-        "removePanel、updatePanel 改标题或设置、addSources / removeSources 给面板加减流；"
+        "按用户要求搭建运行监控工作台和控制面板。operations 按顺序执行：addPanel 新建面板"
+        "（类型、标题、要显示的流、设置，placement 放在某面板的 right/below/left/above，"
+        "或 within 作为它的标签页）、removePanel、updatePanel 改标题或设置、"
+        "addSources / removeSources 给面板加减流、addControl / removeControl 给 control 面板"
+        "加减控件（hardwareId、tool 设备工具名、widget、param、fixed 固定参数、"
+        "presets）；"
         "之后 remove 把流从所有面板去掉，add 把流放到第一个能显示它的面板"
         "（没有就新建 scope 或 terminal）。每条流是设备声明的一条流"
         "（hardwareId + streamId，从 monitor_streams 取），且类型要适合面板。界面立即显示；"

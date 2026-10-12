@@ -134,6 +134,49 @@ test.describe.serial("monitor panel and pin list", () => {
     await page.screenshot({ path: join(artifacts, "workspace.png") });
   });
 
+  test("hosts every kind of panel, a control panel, and layouts made from the data", async () => {
+    const panel = page.getByRole("region", { name: "运行监控" });
+    await page.evaluate(async (id) => {
+      const relay = { hardwareId: id, streamId: "relay" };
+      await window.teststand.monitor.update({ input: { operations: [
+        { op: "addPanel", panel: { id: "vals", type: "values", title: "数值", sources: [relay] } },
+        { op: "addPanel", panel: { id: "states", type: "timeline", title: "时间线" },
+          placement: { referenceId: "vals", direction: "within" } },
+        { op: "addPanel", panel: { id: "word", type: "register", title: "状态字", settings: {
+          fields: [{ name: "MODE", lsb: 0, width: 2 }] } }, placement: { referenceId: "vals", direction: "below" } },
+        { op: "addPanel", panel: { id: "bus", type: "trace", title: "总线", settings: { mode: "fixed" } } },
+        { op: "addPanel", panel: { id: "frame", type: "detail", title: "报文详情" },
+          placement: { referenceId: "bus", direction: "below" } },
+        { op: "addPanel", panel: { id: "panel", type: "control", title: "手动控制", settings: { controls: [
+          { label: "K0", hardwareId: id, tool: "set_relay", widget: "toggle", param: "closed", fixed: { channel: 0 } }
+        ] } } },
+        { op: "addPanel", panel: { id: "tree", type: "sources", title: "数据源" },
+          placement: { referenceId: "scope", direction: "left" } },
+        { op: "addPanel", panel: { id: "props", type: "inspector", title: "属性" },
+          placement: { referenceId: "panel", direction: "below" } }
+      ] } });
+    }, hardwareId);
+    for (const title of ["数值", "状态字", "总线", "报文详情", "手动控制", "数据源", "属性"]) {
+      await expect(panel.locator(".dv-tab", { hasText: title }).first()).toBeVisible();
+    }
+    // The device has no card: its control waits for the tool, the trace and the detail are empty.
+    await expect(panel).toContainText("设备离线或没有工具");
+    await expect(panel).toContainText("在总线跟踪里点一帧");
+    await expect(panel).toContainText("把串口或总线数据流拖到这里");
+    // The property panel shows the panel last focused.
+    await panel.locator("[data-panel-id=\"word\"]").click({ force: true });
+    await expect(panel.getByRole("textbox", { name: "面板标题" })).toHaveValue("状态字");
+    await expect(panel.getByRole("textbox", { name: "位域名称" })).toHaveValue("MODE");
+    await page.screenshot({ path: join(artifacts, "panels.png") });
+
+    // A layout made from the data: the tree on the left, the property panel on the right.
+    await page.getByRole("toolbar", { name: "台架工具栏" }).getByRole("button", { name: "布局" }).click();
+    await page.getByRole("menuitem", { name: "按数据生成布局" }).click();
+    await expect.poll(async () => page.evaluate(async () =>
+      (await window.teststand.monitor.get()).panels.map((item) => item.type).join(","))).toBe("sources,scope,values,inspector");
+    await expect(panel.locator(".dv-tab", { hasText: "数据源" })).toBeVisible();
+  });
+
   test("shows a run started from the test panel with its event timeline from the first step", async () => {
     await page.evaluate(async () => {
       const flow = await window.teststand.testing.loadPlan({ planId: "flow" });

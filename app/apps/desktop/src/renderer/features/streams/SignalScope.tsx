@@ -16,6 +16,7 @@ import {
   logicData, maskOr,
   pointAt, pointMask, pointText, relativeTime, streamUnit, type TimeRange
 } from "./stream-model.js";
+import { measure, valueAt } from "./measure.js";
 import { useStreamsPoints, type StreamSource } from "./useStreamReader.js";
 
 const LANE_PX = 18;
@@ -108,6 +109,8 @@ export function SignalScope({
     setSignalsOpenState(open);
     try { globalThis.localStorage?.setItem(SIGNALS_KEY, String(open)); } catch { /* not persisted */ }
   };
+  /** Measurement cursors: a click sets A, the next B, and so on; off when not measuring. */
+  const [cursors, setCursors] = useState<{ a?: number; b?: number; next: "a" | "b" }>();
   /** The vertical setting: automatic (undefined) or volts/div with a centre, like a scope's knobs. */
   const [manual, setManual] = useState<VerticalScale>();
 
@@ -225,8 +228,17 @@ export function SignalScope({
   const errors = Object.entries(points.errors);
   const lanes = logicPlot?.data.lanes?.length ?? 0;
   const viewWidth = view ? view[1] - view[0] : spanMs;
+  const pickOrMeasure = cursors
+    ? (tb: number) => setCursors((current) => (current?.next === "b"
+      ? { ...current, b: tb, next: "a" } : { ...current, a: tb, next: "b" }))
+    : onPick;
+  const cursorMarks = cursors ? [
+    ...(cursors.a !== undefined ? [{ tb: cursors.a, label: "A" }] : []),
+    ...(cursors.b !== undefined ? [{ tb: cursors.b, label: "B" }] : [])
+  ] : [];
   const scopeProps = {
-    range: view, axisWidth: lanes ? LOGIC_AXIS_PX : AXIS_PX, syncKey, origin, marker, onPick, onSelectRange,
+    range: view, axisWidth: lanes ? LOGIC_AXIS_PX : AXIS_PX, syncKey, origin, marker, onPick: pickOrMeasure,
+    onSelectRange,
     onReset, onCursor, follow: follow ? { spanMs, from, lagMs: from === undefined ? lagMs : 0 } : undefined,
     xDivMs: follow || Math.abs(viewWidth - spanMs) < 1 ? spanMs / TIME_DIVISIONS : undefined
   };
@@ -324,6 +336,16 @@ export function SignalScope({
           >
             自动设置
           </button>
+          <button
+            type="button"
+            aria-pressed={Boolean(cursors)}
+            title="测量：单击波形依次放置光标 A、B，显示 Δt 与每路的读数和统计"
+            onClick={() => setCursors((current) => (current ? undefined : { next: "a" }))}
+            className={cn("ml-1 h-6 rounded-sm border px-1.5 text-2xs",
+              cursors ? "border-signal bg-signal text-signal-fg" : "border-line text-fg-2 hover:text-fg")}
+          >
+            测量
+          </button>
         </div>
         {!signalsOpen && <Legend channels={shown} reads={points.reads} at={readAt} onToggle={toggle} />}
         <span
@@ -388,7 +410,7 @@ export function SignalScope({
               <StreamScope
                 data={analogPlot}
                 series={analogStyles}
-                overlays={analogOverlays}
+                overlays={cursorMarks.length ? { ...analogOverlays, cursors: cursorMarks } : analogOverlays}
                 unit={overlayUnit}
                 height="fill"
                 timeAxis={!lanes}
@@ -401,6 +423,10 @@ export function SignalScope({
             <div className={cn("grid place-items-center text-2xs text-fg-3", lanes ? "h-10" : "min-h-0 flex-1")}>
               未选择模拟信号，点「信号」选择要显示的信号
             </div>
+          )}
+          {cursors && analog.length > 0 && (
+            <MeasureTable channels={analog} reads={points.reads} a={cursors.a} b={cursors.b} view={view}
+              origin={origin} />
           )}
           {lanes > 0 && (
             <div className="shrink-0 border-t border-line px-1 pt-1" style={{ height: logicHeight + 6 }}>
@@ -541,4 +567,64 @@ function ChannelGroups({ channels, reads, at, visible, onToggle, displayOf, onDi
       })}
     </div>
   ));
+}
+
+/**
+ * A scope's measurements (cursors and statistics): cursor A and B times, Δt and 1/Δt, and per
+ * channel its reading at A and B, their difference, and min / max / mean / RMS / peak-to-peak
+ * between the cursors (over the view until both are set).
+ */
+function MeasureTable({ channels, reads, a, b, view, origin }: {
+  channels: Channel[];
+  reads: Readonly<Record<string, StreamWindow>>;
+  a: number | undefined;
+  b: number | undefined;
+  view: TimeRange | undefined;
+  origin: number | undefined;
+}) {
+  const both = a !== undefined && b !== undefined;
+  const span: TimeRange | undefined = both ? [Math.min(a, b), Math.max(a, b)] : view;
+  const at = (tb: number | undefined) => (tb === undefined ? "—"
+    : origin === undefined ? clockTime(tb) : `${relativeTime(tb, origin)} s`);
+  const dt = both ? Math.abs(b - a) : undefined;
+  return (
+    <div aria-label="测量" className="max-h-[40%] shrink-0 overflow-auto border-t border-line bg-surface-1 text-2xs">
+      <div className="tf-num flex flex-wrap gap-x-4 px-2 py-0.5 font-mono text-fg-2">
+        <span>A {at(a)}</span><span>B {at(b)}</span>
+        <span>Δt {dt === undefined ? "—" : `${formatNumber(dt)} ms`}</span>
+        <span>1/Δt {dt ? `${formatNumber(1000 / dt)} Hz` : "—"}</span>
+        <span className="text-fg-3">{both ? "统计范围：A–B" : "统计范围：当前视图（单击波形放置光标 A、B）"}</span>
+      </div>
+      <table className="w-full border-collapse">
+        <thead className="text-fg-3">
+          <tr className="text-right [&>th]:px-2 [&>th]:font-normal">
+            <th className="text-left">通道</th><th>A</th><th>B</th><th>B−A</th><th>最小</th><th>最大</th>
+            <th>平均</th><th>RMS</th><th>峰峰</th>
+          </tr>
+        </thead>
+        <tbody>
+          {channels.map(({ stream, color }) => {
+            const points = reads[stream.key]?.points;
+            const stats = measure(points, span);
+            const va = a === undefined ? undefined : valueAt(points, a);
+            const vb = b === undefined ? undefined : valueAt(points, b);
+            return (
+              <tr key={stream.key} className="tf-num border-t border-line text-right font-mono [&>td]:px-2">
+                <td className="text-left">
+                  <span className="mr-1 inline-block h-0.5 w-3 align-middle" style={{ background: color }} />
+                  {stream.streamId}
+                </td>
+                <td>{formatNumber(va)}</td><td>{formatNumber(vb)}</td>
+                <td>{va !== undefined && vb !== undefined ? formatNumber(vb - va) : "—"}</td>
+                <td>{formatNumber(stats?.min)}</td>
+                <td>{formatNumber(stats?.max)}</td>
+                <td>{formatNumber(stats?.mean)}</td>
+                <td>{formatNumber(stats?.rms)}</td><td>{formatNumber(stats?.pp)}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
 }

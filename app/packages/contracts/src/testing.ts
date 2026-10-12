@@ -119,6 +119,11 @@ export interface IcdStream { streamId: string; type: "frames" | "scalar" | "byte
 export interface IcdDescription {
   name: string; icdHash: string; transport: "bytes" | "frames"; description?: string | null;
   messages: string[]; encoders: string[]; streams: IcdStream[];
+  /** Per message, where each field sits in the frame (`offset` < 0 counts from the end). */
+  layouts?: Record<string, IcdFieldLayout[]>;
+}
+export interface IcdFieldLayout {
+  name: string; offset: number; size: number; type?: string; bits?: string; unit?: string; description?: string;
 }
 export interface IcdIssue { path: string; message: string }
 export interface IcdSummary {

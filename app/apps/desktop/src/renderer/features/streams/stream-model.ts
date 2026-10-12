@@ -493,6 +493,8 @@ export interface ScopeOverlays {
   windows: { tb0: number; tb1: number; tone: OverlayTone; label: string }[];
   /** Guard violations and match instants. */
   marks: { tb: number; tone: OverlayTone; label: string }[];
+  /** Measurement cursors (A / B), drawn as dashed lines. */
+  cursors?: { tb: number; label: string }[];
 }
 
 const NO_OVERLAYS: ScopeOverlays = { windows: [], marks: [] };

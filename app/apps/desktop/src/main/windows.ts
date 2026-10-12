@@ -114,9 +114,26 @@ export class DesktopWindows {
   }
 }
 
+/** The page a pop-out panel window opens with (see the monitor workspace). */
+const POPOUT_URL = "about:blank";
+
 function installNavigationGuards(target: BrowserWindow, rendererTarget: string): void {
   const allowed = new URL(rendererTarget);
-  target.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  // Only the monitor's pop-out panels may open a window: an empty page the renderer moves a
+  // panel into (dockview), never a URL. The child cannot open or navigate anywhere itself.
+  target.webContents.setWindowOpenHandler((details) => (details?.url === POPOUT_URL
+    ? {
+      action: "allow",
+      overrideBrowserWindowOptions: {
+        autoHideMenuBar: true,
+        webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true }
+      }
+    }
+    : { action: "deny" }));
+  target.webContents.on("did-create-window", (child) => {
+    child.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+    child.webContents.on("will-navigate", (event) => event.preventDefault());
+  });
   target.webContents.on("will-navigate", (event, url) => {
     try {
       const candidate = new URL(url);

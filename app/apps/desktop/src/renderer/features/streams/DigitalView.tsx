@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { ToggleLeftIcon } from "lucide-react";
 import type { StreamInfo } from "@teststand/contracts/observability";
 import { EmptyState } from "../../ui";
-import { DigitalPanel, type PanelChannel } from "./DigitalPanel.js";
+import { DigitalPanel, type LineControl, type PanelChannel } from "./DigitalPanel.js";
 import { CHANNEL_COLORS, type TimeRange } from "./stream-model.js";
 import { useStreamsPoints, type StreamSource } from "./useStreamReader.js";
 
@@ -11,7 +11,7 @@ import { useStreamsPoints, type StreamSource } from "./useStreamReader.js";
  * or the newest while nothing is picked. Reads the same window as the scopes, so a run replayed
  * shows each line's state at the cursor.
  */
-export function DigitalView({ streams, source, follow, spanMs, from, range, marker, emptyText }: {
+export function DigitalView({ streams, source, follow, spanMs, from, range, marker, emptyText, control }: {
   streams: StreamInfo[];
   source: StreamSource;
   follow: boolean;
@@ -20,6 +20,7 @@ export function DigitalView({ streams, source, follow, spanMs, from, range, mark
   range: TimeRange | undefined;
   marker: number | undefined;
   emptyText: string;
+  control?: ((stream: StreamInfo) => LineControl | undefined) | undefined;
 }) {
   const channels = useMemo<PanelChannel[]>(() => streams.map((stream, index) => ({
     stream, color: CHANNEL_COLORS[index % CHANNEL_COLORS.length] ?? ""
@@ -28,11 +29,11 @@ export function DigitalView({ streams, source, follow, spanMs, from, range, mark
     follow, spanMs, from, range
   });
   if (!channels.length) {
-    return <EmptyState className="h-full" icon={<ToggleLeftIcon />} title={emptyText} />;
+    return <EmptyState compact className="h-full" icon={<ToggleLeftIcon />} title={emptyText} />;
   }
   return (
     <div className="h-full overflow-y-auto">
-      <DigitalPanel channels={channels} reads={points.reads} at={follow ? undefined : marker} />
+      <DigitalPanel channels={channels} reads={points.reads} at={follow ? undefined : marker} control={control} />
     </div>
   );
 }

@@ -96,6 +96,16 @@ function drawOverlays(plot: uPlot, overlays: ScopeOverlays, marker: number | und
       vertical(at);
     }
   }
+  for (const cursor of overlays.cursors ?? []) {
+    const at = x(cursor.tb);
+    if (!inside(at, at)) continue;
+    ctx.strokeStyle = colors.label;
+    ctx.fillStyle = colors.label;
+    ctx.setLineDash([4 * ratio, 3 * ratio]);
+    vertical(at);
+    ctx.setLineDash([]);
+    ctx.fillText(cursor.label, at + 3 * ratio, top + 14 * ratio);
+  }
   ctx.restore();
 }
 
