@@ -151,7 +151,7 @@ test.describe.serial("desktop controls preserve real keyboard and pointer intera
       settings: {}, enabled: true
     } }));
     await showPanel(page, "设备管理");
-    const row = page.getByRole("complementary", { name: "设备列表" }).getByRole("button", { name: /^Keyboard device/ });
+    const row = page.getByRole("complementary", { name: "设备列表" }).getByRole("button", { name: "详细 Keyboard device" });
     await row.click();
     await page.getByRole("dialog", { name: "Keyboard device" }).getByRole("button", { name: "编辑", exact: true }).click();
     const dialog = page.getByRole("dialog", { name: "编辑设备", exact: true });

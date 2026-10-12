@@ -96,7 +96,7 @@ test.describe.serial("monitor panel and pin list", () => {
   test("expands a device in the devices panel and removes a channel from the scope", async () => {
     await showPanel(page, "设备管理");
     const list = page.getByRole("complementary", { name: "设备列表" });
-    await list.getByRole("button", { name: "展开 继电器卡 的数据流" }).click();
+    await list.getByRole("button", { name: /^继电器卡/ }).click();
     // Without its card the device has not declared its streams yet.
     await expect(list).toContainText("设备连接后显示它声明的数据流");
     await expect(list.getByRole("button", { name: "控制 继电器卡" })).toBeVisible();

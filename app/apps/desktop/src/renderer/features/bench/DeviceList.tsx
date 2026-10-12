@@ -3,7 +3,7 @@ import type { Hardware } from "@teststand/contracts/devices";
 import type { StreamRef } from "@teststand/contracts/monitor";
 import type { DeviceStream } from "@teststand/contracts/observability";
 import {
-  BoxIcon, CheckIcon, ChevronRightIcon, CpuIcon, PlusIcon, RotateCwIcon, SlidersHorizontalIcon
+  BoxIcon, CheckIcon, ChevronRightIcon, CpuIcon, PencilIcon, PlusIcon, RotateCwIcon, SlidersHorizontalIcon
 } from "lucide-react";
 import { hardwareStatus } from "../../lib/hardware-status.js";
 import { useDashboard, useDevicePackages, useMonitorStreams } from "../../lib/queries.js";
@@ -29,10 +29,11 @@ const rowClass = cn(
 );
 
 /**
- * 设备管理 of 测试台架: devices (plugin instances) and passive parts. A click opens a device's
- * information; a row is dragged onto the 端口连线 canvas to place its card. A device expands to the
- * data streams it declares, which are dragged (or added with +) onto 运行监控. A device's actions
- * open from its control button.
+ * 设备管理 of 测试台架: devices (plugin instances) and passive parts. A click on a device expands it
+ * to the data streams it declares (the chevron only shows which are open), which are dragged (or
+ * added with +) onto 运行监控; a passive part has none, so its click opens its information. The
+ * edit button opens the information of either; a device's actions open from its control button. A
+ * row is dragged onto the 端口连线 canvas to place its card.
  */
 export function DeviceList({ hardware, shown, placed, header, footer, onOpen, onControl, onAddStream, ...props }: {
   hardware: Hardware[];
@@ -117,26 +118,19 @@ export function DeviceList({ hardware, shown, placed, header, footer, onOpen, on
                         event.dataTransfer.effectAllowed = "move";
                       }}
                     >
-                      {managed ? (
-                        <IconButton
-                          label={`${expanded ? "收起" : "展开"} ${item.label} 的数据流`}
-                          size="icon-xs"
-                          variant="ghost"
-                          aria-expanded={expanded}
-                          className="ml-1"
-                          onClick={() => toggle(item.hardwareId)}
-                        >
-                          <ChevronRightIcon className={cn("transition-transform", expanded && "rotate-90")} />
-                        </IconButton>
-                      ) : <span className="ml-1 w-5 shrink-0" />}
                       <button
                         type="button"
-                        onClick={() => onOpen(item)}
-                        title={placed.has(item.hardwareId)
-                          ? `${item.label}（已在端口连线画布上）：单击查看信息`
-                          : `${item.label}：单击查看信息，拖到端口连线画布上放置`}
+                        {...(managed ? { "aria-expanded": expanded } : {})}
+                        onClick={() => (managed ? toggle(item.hardwareId) : onOpen(item))}
+                        title={`${item.label}${placed.has(item.hardwareId) ? "（已在端口连线画布上）" : ""}：`
+                          + `${managed ? "单击展开 / 收起数据流" : "单击查看信息"}，拖到端口连线画布上放置`}
                         className={cn(rowClass, "min-w-0 flex-1 cursor-grab")}
                       >
+                        {/* Only shows whether the streams are open; the whole row toggles them. */}
+                        {managed ? (
+                          <ChevronRightIcon aria-hidden className={cn("size-3.5 shrink-0 text-fg-3",
+                            "transition-transform", expanded && "rotate-90")} />
+                        ) : <span aria-hidden className="w-3.5 shrink-0" />}
                         <span className={cn("grid size-5 shrink-0 place-items-center rounded-sm border",
                           "border-line bg-surface-0 text-fg-3")}>
                           {managed ? <CpuIcon className="size-3" /> : <BoxIcon className="size-3" />}
@@ -151,6 +145,10 @@ export function DeviceList({ hardware, shown, placed, header, footer, onOpen, on
                           </span>
                         )}
                       </button>
+                      <IconButton label={`详细 ${item.label}`} title="查看和编辑设备信息" size="icon-sm"
+                        variant="ghost" className={managed ? "" : "mr-1"} onClick={() => onOpen(item)}>
+                        <PencilIcon />
+                      </IconButton>
                       {managed && (
                         <IconButton label={`控制 ${item.label}`} size="icon-sm" variant="ghost" className="mr-1"
                           onClick={(event) => onControl(item.hardwareId, event.currentTarget.getBoundingClientRect())}>

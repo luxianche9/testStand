@@ -50,7 +50,7 @@ test.describe.serial("manual control and Agent hardware calls", () => {
     await showPanel(page, "设备管理");
 
     // Clicking the device in the list shows its information; the card on the canvas controls it.
-    await page.getByRole("complementary", { name: "设备列表" }).getByRole("button", { name: /^PCI-1762 e2e/ }).click();
+    await page.getByRole("complementary", { name: "设备列表" }).getByRole("button", { name: "详细 PCI-1762 e2e" }).click();
     const info = page.getByRole("dialog", { name: "PCI-1762 e2e" });
     await expect(info.getByText("CN1", { exact: true })).toBeVisible();
     await page.keyboard.press("Escape");
