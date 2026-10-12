@@ -177,6 +177,24 @@ test.describe.serial("monitor panel and pin list", () => {
     await expect(panel.locator(".dv-tab", { hasText: "数据源" })).toBeVisible();
   });
 
+  test("pops a panel out into a window of its own that follows the theme", async () => {
+    const panel = page.getByRole("region", { name: "运行监控" });
+    const before = app.windows().length;
+    const opened = app.waitForEvent("window");
+    await panel.getByRole("button", { name: "弹出到独立窗口" }).first().click();
+    const popout = await opened;
+    expect(app.windows().length).toBe(before + 1);
+    await expect.poll(async () => popout.evaluate(() => document.querySelectorAll(".dv-groupview").length))
+      .toBeGreaterThan(0);
+    const theme = await page.evaluate(() => document.documentElement.dataset.theme ?? "");
+    expect(await popout.evaluate(() => document.documentElement.dataset.theme ?? "")).toBe(theme);
+    await popout.screenshot({ path: join(artifacts, "popout.png") });
+    // The window opens nothing and goes nowhere by itself.
+    expect(await popout.evaluate(() => window.open("https://example.com"))).toBeNull();
+    await popout.close();
+    await expect.poll(() => app.windows().length).toBe(before);
+  });
+
   test("shows a run started from the test panel with its event timeline from the first step", async () => {
     await page.evaluate(async () => {
       const flow = await window.teststand.testing.loadPlan({ planId: "flow" });

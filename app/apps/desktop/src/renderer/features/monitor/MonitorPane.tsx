@@ -368,6 +368,32 @@ function position(api: DockviewApi, panel: MonitorPanel) {
   return { referencePanel: target.id, direction } as const;
 }
 
+let popoutsReady = false;
+
+/**
+ * Makes dockview's pop-out windows work in Electron: dockview fills a new window on its `load`
+ * event, but an `about:blank` window has usually loaded by the time `window.open` returns, so it is
+ * told once more; the window also takes the app's theme. Covers pop-outs opened from a button and
+ * those a saved layout reopens.
+ */
+function preparePopouts(): void {
+  if (popoutsReady) return;
+  popoutsReady = true;
+  const open = window.open.bind(window);
+  window.open = (url, target, features) => {
+    const child = open(url, target, features);
+    if (!child || String(url) !== POPOUT_URL) return child;
+    let loaded = false;
+    child.addEventListener("load", () => { loaded = true; }, { once: true });
+    window.setTimeout(() => {
+      if (!loaded && child.document.readyState === "complete") child.dispatchEvent(new Event("load"));
+    }, 0);
+    const stop = followTheme(child);
+    child.addEventListener("beforeunload", stop, { once: true });
+    return child;
+  };
+}
+
 /** A pop-out window takes the app's theme (and keeps it when the theme changes). */
 function followTheme(target: Window): () => void {
   const copy = () => {
@@ -412,6 +438,7 @@ function Workspace({ workspace, onActive }: {
   }, []);
 
   const onReady = useCallback((event: DockviewReadyEvent) => {
+    preparePopouts();
     load(event.api, latest.current.layout);
     setApi(event.api);
   }, [load]);
@@ -494,14 +521,8 @@ function GroupActions({ containerApi, group, activePanel }: IDockviewHeaderActio
   return (
     <div className="flex h-full items-center gap-0.5 px-1">
       {where !== "popout" && (
-        <IconButton label="弹出到独立窗口" size="icon-xs" variant="ghost" onClick={() => {
-          let stop: (() => void) | undefined;
-          void containerApi.addPopoutGroup(group, {
-            popoutUrl: POPOUT_URL,
-            onDidOpen: ({ window: target }) => { stop = followTheme(target); },
-            onWillClose: () => stop?.()
-          });
-        }}>
+        <IconButton label="弹出到独立窗口" size="icon-xs" variant="ghost"
+          onClick={() => void containerApi.addPopoutGroup(group, { popoutUrl: POPOUT_URL })}>
           <ExternalLinkIcon />
         </IconButton>
       )}
