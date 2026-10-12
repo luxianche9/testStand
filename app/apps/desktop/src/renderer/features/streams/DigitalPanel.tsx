@@ -8,6 +8,7 @@ export interface PanelChannel {
 }
 
 const GROUP = 8;
+const LIT = "border-pass bg-pass shadow-[0_0_4px] shadow-pass/60";
 
 /**
  * The digital channels as a front panel: one indicator per line — a lamp for DI/DO, a contact for
@@ -51,7 +52,8 @@ export function DigitalPanel({ channels, reads, at }: {
                     const bit = first + offset;
                     const high = mask !== undefined && hasBit(mask, bit);
                     const name = declared?.bitLabels?.[bit] ?? String(bit);
-                    const state = mask === undefined ? "未知" : contacts ? (high ? "闭合" : "断开") : high ? "1" : "0";
+                    const level = high ? "1" : "0";
+                    const state = mask === undefined ? "未知" : contacts ? (high ? "闭合" : "断开") : level;
                     return (
                       <div key={bit} title={`${name}：${state}`} className="grid w-8 justify-items-center gap-0.5">
                         {contacts ? <Contact closed={high} known={mask !== undefined} /> : (
@@ -60,7 +62,7 @@ export function DigitalPanel({ channels, reads, at }: {
                             className={cn(
                               "size-2.5 rounded-full border",
                               mask === undefined ? "border-line bg-transparent"
-                                : high ? "border-pass bg-pass shadow-[0_0_4px] shadow-pass/60" : "border-line-strong bg-surface-3"
+                                : high ? LIT : "border-line-strong bg-surface-3"
                             )}
                           />
                         )}

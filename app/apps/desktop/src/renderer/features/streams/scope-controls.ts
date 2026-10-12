@@ -6,7 +6,7 @@
 /** Horizontal divisions of the graticule: the view spans ten time/div. */
 export const TIME_DIVISIONS = 10;
 /** Vertical divisions: the value axis spans eight volts/div around the centre. */
-export const VALUE_DIVISIONS = 8;
+const VALUE_DIVISIONS = 8;
 
 /** Time/div settings in ms. The shortest is the live feed's 100 ms minimum window over ten divisions. */
 export const TIME_DIVS = [10, 20, 50, 100, 200, 500, 1_000, 2_000, 5_000, 10_000, 20_000, 60_000] as const;

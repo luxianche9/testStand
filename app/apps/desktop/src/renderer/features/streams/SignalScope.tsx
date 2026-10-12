@@ -316,7 +316,8 @@ export function SignalScope({
             disabled={!analog.length}
             title="自动设置：按屏幕上的波形选择刻度并居中"
             onClick={() => { const next = fitted(); if (next) setManual(next); }}
-            className="ml-1 h-6 rounded-sm border border-line px-1.5 text-2xs text-fg-2 hover:text-fg disabled:opacity-50"
+            className={cn("ml-1 h-6 rounded-sm border border-line px-1.5 text-2xs text-fg-2",
+              "hover:text-fg disabled:opacity-50")}
           >
             自动设置
           </button>
