@@ -167,8 +167,10 @@ export function useMonitorWorkspace(timeline: RunTimeline | undefined) {
   }, [declared, monitor.panels, addTo]);
   const removeFrom = useCallback((panelId: string, ref: StreamRef) =>
     save({ operations: [{ op: "removeSources", panelId, sources: [ref] }] }), [save]);
-  const addPanel = useCallback((type: PanelType, sources: StreamRef[] = [], placement?: Placement) =>
-    save({ operations: [{ op: "addPanel", panel: { type, sources }, ...(placement ? { placement } : {}) }] }), [save]);
+  const addPanel = useCallback((type: PanelType, sources: StreamRef[] = [], placement?: Placement, id?: string) =>
+    save({ operations: [{
+      op: "addPanel", panel: { type, sources, ...(id ? { id } : {}) }, ...(placement ? { placement } : {})
+    }] }), [save]);
   const removePanel = useCallback((panelId: string) =>
     save({ operations: [{ op: "removePanel", panelId }] }), [save]);
   const saveLayout = useCallback((layout: Record<string, unknown>) => save({ layout }), [save]);

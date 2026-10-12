@@ -13,6 +13,7 @@ import { initialSchemaValue, stripSchemaProperties, type JsonSchema } from "../.
 import { widgetFor } from "../../manual/widget-model.js";
 import { NumberControl, Segmented, ToggleSwitch, ToolFieldContext } from "../../manual/widgets.js";
 import { deviceName } from "../../streams/stream-model.js";
+import { useControlRequest } from "../control-requests.js";
 import { PanelFrame, useMonitor, usePanel } from "../panel-kit.js";
 import { PanelEmpty } from "./common.js";
 
@@ -125,8 +126,20 @@ function Control({ control, onRemove }: { control: MonitorControl; onRemove: () 
 }
 
 /** Picks a device tool, the argument the operator sets, the fixed ones and the widget. */
-function AddControlDialog({ open, onClose, onAdd }: {
+/** The parameter a widget sets: a boolean for a switch, a number for a slider, none for a button. */
+function paramFor(widget: ControlWidget, props: Record<string, JsonSchema>): string | undefined {
+  const names = Object.keys(props);
+  const typed = (types: string[]) => names.find((name) => types.includes(String(props[name]?.type)));
+  if (widget === "button") return undefined;
+  if (widget === "toggle") return typed(["boolean"]) ?? typed(["integer"]);
+  if (widget === "slider") return typed(["number"]) ?? typed(["integer"]);
+  return typed(["number", "integer", "string"]);
+}
+
+function AddControlDialog({ open, widgetWanted, onClose, onAdd }: {
   open: boolean;
+  /** The widget asked for (dropped from the component sidebar); otherwise suggested by the tool. */
+  widgetWanted: ControlWidget | undefined;
   onClose: () => void;
   onAdd: (control: Omit<MonitorControl, "id">) => void;
 }) {
@@ -148,16 +161,18 @@ function AddControlDialog({ open, onClose, onAdd }: {
   const pickTool = (name: string | undefined) => {
     const next = tools.find((item) => item.remoteName === name) ?? tools[0];
     const props = propertiesOf(next);
-    const free = Object.keys(props).find((item) => ["boolean", "number"].includes(String(props[item]?.type)));
+    const free = widgetWanted ? paramFor(widgetWanted, props)
+      : Object.keys(props).find((item) => ["boolean", "number"].includes(String(props[item]?.type)));
     setToolName(next?.remoteName);
     setParam(free);
-    setWidget(suggestedWidget(free ? props[free] : undefined));
+    setWidget(widgetWanted && (widgetWanted === "button") === !free ? widgetWanted
+      : suggestedWidget(free ? props[free] : undefined));
     const initial = next ? initialSchemaValue(stripSchemaProperties(next.inputSchema, free ? [free] : [])) : {};
     setFixed(initial as Record<string, unknown>);
   };
   useEffect(() => {
-    if (open && tool && toolName !== tool.remoteName) pickTool(tool.remoteName);
-  }, [open, tool?.remoteName]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (open && tool) pickTool(tool.remoteName);
+  }, [open, tool?.remoteName, widgetWanted]); // eslint-disable-line react-hooks/exhaustive-deps
   const values = presetValues(presets);
   const add = () => {
     if (!device || !tool) return;
@@ -249,6 +264,7 @@ function AddControlDialog({ open, onClose, onAdd }: {
 export function ControlPanel({ api }: IDockviewPanelProps) {
   const [{ workspace, control }, panel] = usePanel(api.id);
   const [adding, setAdding] = useState(false);
+  const [requested, requestDone] = useControlRequest(api.id);
   if (!panel) return null;
   const controls = controlsOf(panel.settings);
   return (
@@ -281,7 +297,8 @@ export function ControlPanel({ api }: IDockviewPanelProps) {
           </ol>
         </details>
       )}
-      <AddControlDialog open={adding} onClose={() => setAdding(false)}
+      <AddControlDialog open={adding || requested !== undefined} widgetWanted={requested}
+        onClose={() => { setAdding(false); requestDone(); }}
         onAdd={(item) => workspace.addControl(panel.id, item)} />
     </PanelFrame>
   );

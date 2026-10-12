@@ -9,7 +9,7 @@ import {
   ActivityIcon, ExternalLinkIcon, LayoutDashboardIcon, ListChecksIcon, Maximize2Icon, Minimize2Icon,
   PictureInPicture2Icon, PlusIcon, RadioIcon, ShieldCheckIcon, TimerResetIcon
 } from "lucide-react";
-import type { Direction, MonitorPanel, PanelType } from "@teststand/contracts/monitor";
+import type { ControlWidget, Direction, MonitorPanel, PanelType } from "@teststand/contracts/monitor";
 import { errorMessage } from "../../lib/errors.js";
 import { queryKeys } from "../../lib/query-keys.js";
 import { onRunStepFocused } from "../../lib/run-focus.js";
@@ -30,7 +30,8 @@ import { MonitorContext, type MonitorContextValue, type SelectedFrame } from "./
 import { TimebaseControls } from "./TimebaseControls.js";
 import type { BenchRun } from "./use-bench-run.js";
 import { useManualControl } from "./use-manual-control.js";
-import { ComponentBar } from "./ComponentBar.js";
+import { ComponentSidebar } from "./ComponentSidebar.js";
+import { CONTROL_MIME, newControlPanelId, requestControl } from "./control-requests.js";
 import {
   PANEL_LABELS, PANEL_MIME, panelTitle, setFocusedPanel, useMonitorWorkspace, type MonitorWorkspace
 } from "./use-monitor-workspace.js";
@@ -76,6 +77,18 @@ export function MonitorPane({ bench, toolbar }: {
   const [rejudging, setRejudging] = useState(false);
   const [frame, selectFrame] = useState<SelectedFrame>();
   const [activePanelId, setActivePanelId] = useState<string>();
+  /** A clicked control widget goes to the control panel in use, else the first one, else a new one. */
+  const addControl = (widget: ControlWidget) => {
+    const panels = workspace.monitor.panels.filter((item) => item.type === "control");
+    const target = panels.find((item) => item.id === activePanelId) ?? panels[0];
+    if (target) {
+      requestControl(target.id, widget);
+      return;
+    }
+    const id = newControlPanelId();
+    workspace.addPanel("control", [], undefined, id);
+    requestControl(id, widget);
+  };
   const focus = useCallback((id: string | undefined) => {
     setActivePanelId(id);
     setFocusedPanel(id);
@@ -192,13 +205,15 @@ export function MonitorPane({ bench, toolbar }: {
           actions={runActions}
         />
       )}
-      <ComponentBar onAdd={(type) => workspace.addPanel(type)} />
-      <MonitorContext.Provider value={context}>
-        <Workspace key={workspace.projectId ?? "none"} workspace={workspace}
-          onActive={focus}
-          empty={<LayoutMenu workspace={workspace} labelled onError={(message) => toast.error(message)}
-            onDone={(message) => toast.success(message)} />} />
-      </MonitorContext.Provider>
+      <div className="flex min-h-0 flex-1">
+        <ComponentSidebar onAddPanel={(type) => workspace.addPanel(type)} onAddControl={addControl} />
+        <MonitorContext.Provider value={context}>
+          <Workspace key={workspace.projectId ?? "none"} workspace={workspace}
+            onActive={focus}
+            empty={<LayoutMenu workspace={workspace} labelled onError={(message) => toast.error(message)}
+              onDone={(message) => toast.success(message)} />} />
+        </MonitorContext.Provider>
+      </div>
       {runId && timeline && view.range && origin !== undefined && (
         <RunOverview
           timeline={timeline}
@@ -380,7 +395,8 @@ function Workspace({ workspace, onActive, empty }: {
     preparePopouts();
     // Components dragged from the component bar dock where dockview shows; nothing else is taken.
     event.api.onUnhandledDragOverEvent((drag) => {
-      if (drag.nativeEvent.dataTransfer?.types.includes(PANEL_MIME)) drag.accept();
+      const types = drag.nativeEvent.dataTransfer?.types ?? [];
+      if (types.includes(PANEL_MIME) || types.includes(CONTROL_MIME)) drag.accept();
     });
     load(event.api, latest.current.layout);
     setApi(event.api);
@@ -444,12 +460,25 @@ function Workspace({ workspace, onActive, empty }: {
         popoutUrl={POPOUT_URL}
         watermarkComponent={() => <Watermark action={empty} />}
         onDidDrop={(event) => {
-          const type = event.nativeEvent.dataTransfer?.getData(PANEL_MIME) as PanelType | undefined;
-          if (!type || !PANEL_LABELS[type]) return;
+          const data = event.nativeEvent.dataTransfer;
           const reference = event.group?.activePanel?.id;
           const direction = DROP_DIRECTIONS[event.position] ?? "right";
-          latest.current.workspace.addPanel(type, [],
-            reference ? { referenceId: reference, direction } : { direction });
+          const placement = reference ? { referenceId: reference, direction } : { direction };
+          const widget = data?.getData(CONTROL_MIME) as ControlWidget | undefined;
+          if (widget) {
+            // Onto a control panel: add it there; anywhere else: a control panel made for it.
+            const onto = latest.current.workspace.monitor.panels.find((item) => item.id === reference);
+            if (onto?.type === "control" && event.position === "center") {
+              requestControl(onto.id, widget);
+              return;
+            }
+            const id = newControlPanelId();
+            latest.current.workspace.addPanel("control", [], placement, id);
+            requestControl(id, widget);
+            return;
+          }
+          const type = data?.getData(PANEL_MIME) as PanelType | undefined;
+          if (type && PANEL_LABELS[type]) latest.current.workspace.addPanel(type, [], placement);
         }}
       />
     </div>
@@ -467,7 +496,7 @@ function Watermark({ action }: { action: ReactNode }) {
     <div className="grid h-full place-items-center p-6 text-center">
       <div className="grid max-w-md justify-items-center gap-2 text-xs text-fg-3">
         <LayoutDashboardIcon className="size-6" />
-        <p className="text-sm text-fg-2">把上方组件栏里的组件拖到这里</p>
+        <p className="text-sm text-fg-2">把左侧组件栏里的组件拖到这里</p>
         <p>
           再从左侧「设备管理」把信号拖到组件上：模拟量拖到示波器或数值表，数字量拖到数字量组件，
           串口拖到终端。信号只能放进能显示它的组件。
