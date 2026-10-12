@@ -19,7 +19,7 @@ import { DeviceEditor } from "../devices/editors/DeviceEditor.js";
 import { HardwareEditor } from "../devices/editors/HardwareEditor.js";
 import { MonitorPane } from "../monitor/MonitorPane.js";
 import { useBenchRun } from "../monitor/use-bench-run.js";
-import { streamKey, useMonitorChannels } from "../monitor/use-monitor-channels.js";
+import { streamKey, useMonitorWorkspace } from "../monitor/use-monitor-workspace.js";
 import { RunHistory } from "../testing/RunHistory.js";
 import { TestPanel } from "../testing/TestPanel.js";
 import { EditPinsModal, ListCreateConnectionModal } from "../wiring/ConnectionEditor.js";
@@ -106,7 +106,7 @@ function Bench({ panel, view, onView }: {
   const toast = useToast();
   const { project, catalog, save, wiring, hardware, edits } = useWiringDocument();
   const bench = useBenchRun();
-  const monitor = useMonitorChannels(undefined);
+  const monitor = useMonitorWorkspace(undefined);
   const library = useResizableWidth({
     storageKey: "teststand.bench-devices-width", defaultWidth: 300, min: 220, max: 520, direction: "right"
   });

@@ -8,7 +8,7 @@ import {
 import { hardwareStatus } from "../../lib/hardware-status.js";
 import { useDashboard, useDevicePackages, useMonitorStreams } from "../../lib/queries.js";
 import { Button, IconButton, Panel, PanelBody, StatusLamp, cn, type Tone } from "../../ui/index.js";
-import { STREAM_MIME, streamKey } from "../monitor/use-monitor-channels.js";
+import { STREAM_MIME, streamKey } from "../monitor/use-monitor-workspace.js";
 import { HARDWARE_MIME } from "../wiring/WiringCanvas.js";
 
 const statusTone: Record<ReturnType<typeof hardwareStatus>["tone"], Tone> = {

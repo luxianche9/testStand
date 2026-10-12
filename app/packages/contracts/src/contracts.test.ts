@@ -29,8 +29,8 @@ describe("public contracts", () => {
   it("accepts current project metadata without node tasks", () => {
     const timestamp = "2026-08-15T00:00:00.000Z";
     const project = {
-      formatVersion: 7, projectId: "PROJECT", name: "Bench", wiring: { nodes: [], connections: [] },
-      monitor: { channels: [] }, createdAt: timestamp, updatedAt: timestamp
+      formatVersion: 8, projectId: "PROJECT", name: "Bench", wiring: { nodes: [], connections: [] },
+      monitor: { panels: [], layout: null }, createdAt: timestamp, updatedAt: timestamp
     };
     expect(projectFileSchema.parse(project)).toEqual(project);
     expect(projectFileSchema.parse({ ...project, task: {}, ignored: true })).toEqual(project);

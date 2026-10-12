@@ -1,0 +1,147 @@
+import { useCallback, useMemo } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  monitorChannels, PANEL_SOURCE_TYPES, type Monitor, type MonitorPanel, type MonitorUpdateInput, type PanelType,
+  type Placement, type StreamRef
+} from "@teststand/contracts/monitor";
+import type { DeviceStream, RunTimeline, StreamDeclaration, StreamInfo } from "@teststand/contracts/observability";
+import type { ProjectDocument } from "@teststand/contracts/projects";
+import { useMonitorStreams, useProjectDocument } from "../../lib/queries.js";
+import { queryKeys } from "../../lib/query-keys.js";
+
+/** Drag payload of a device stream in the devices panel: `{hardwareId, streamId}` as JSON. */
+export const STREAM_MIME = "application/x-teststand-stream";
+
+const EMPTY: Monitor = { panels: [], layout: null };
+
+export function streamKey(ref: StreamRef): string {
+  return `${ref.hardwareId}__${ref.streamId}`;
+}
+
+export function readDraggedStream(data: DataTransfer): StreamRef | undefined {
+  try {
+    const value = JSON.parse(data.getData(STREAM_MIME)) as Partial<StreamRef>;
+    return typeof value.hardwareId === "string" && typeof value.streamId === "string"
+      ? { hardwareId: value.hardwareId, streamId: value.streamId }
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** What the panels need of a stream the device declares; live frames carry the rest. */
+function declaredStreamInfo(hardwareId: string, stream: DeviceStream | undefined, streamId: string): StreamInfo {
+  const declaration = (stream ?? {}) as StreamDeclaration & { rateHz?: number };
+  return {
+    key: `${hardwareId}__${streamId}`,
+    hardwareId,
+    streamId,
+    type: stream?.type ?? "scalar",
+    clock: null,
+    count: 0,
+    first: null,
+    last: null,
+    lastI: null,
+    watermark: null,
+    watermarkTb: null,
+    gaps: 0,
+    // A sampled stream is drawn as a trace; one published on write holds its level.
+    states: declaration.rateHz ? ["sampling"] : [],
+    declaration
+  };
+}
+
+/** Whether a panel of `type` draws a stream of `streamType` (unknown types are let through). */
+export function panelDraws(type: PanelType, streamType: string | undefined): boolean {
+  return streamType === undefined || PANEL_SOURCE_TYPES[type].includes(streamType);
+}
+
+export const PANEL_LABELS: Readonly<Record<PanelType, string>> = {
+  scope: "示波器",
+  digital: "数字量",
+  terminal: "终端",
+  results: "结果",
+  messages: "报文"
+};
+
+export function panelTitle(panel: Pick<MonitorPanel, "type" | "title">): string {
+  return panel.title || PANEL_LABELS[panel.type];
+}
+
+/**
+ * The project's monitor workspace — its panels, the streams every device offers, and the edits the
+ * workspace makes (add or remove a panel, drop a stream on one, save the docking layout). Edits go
+ * to the project buffer, like the Agent's.
+ */
+export function useMonitorWorkspace(timeline: RunTimeline | undefined) {
+  const client = useQueryClient();
+  const project = useProjectDocument();
+  const devices = useMonitorStreams();
+  const monitor = project.data?.file.monitor ?? EMPTY;
+  const setMonitor = useCallback((next: (current: Monitor) => Monitor) => {
+    client.setQueryData<ProjectDocument | null>(queryKeys.projectDocument, (current) => current
+      ? { ...current, dirty: true, file: { ...current.file, monitor: next(current.file.monitor) } }
+      : current);
+  }, [client]);
+  const update = useMutation({
+    mutationFn: (input: MonitorUpdateInput) => window.teststand.monitor.update({ input }),
+    onMutate: (input) => {
+      if (input.layout !== undefined) setMonitor((current) => ({ ...current, layout: input.layout ?? null }));
+    },
+    onSuccess: (result) => setMonitor(() => result),
+    onSettled: () => client.invalidateQueries({ queryKey: queryKeys.projectDocument })
+  });
+  const save = update.mutate;
+
+  const declared = useMemo(() => new Map<string, DeviceStream>((devices.data ?? []).flatMap((device) =>
+    device.streams.map((stream): [string, DeviceStream] => [`${device.hardwareId}__${stream.id}`, stream]))),
+  [devices.data]);
+  const channels = useMemo(() => monitorChannels(monitor), [monitor]);
+  const infos = useMemo(() => {
+    const recorded = new Map((timeline?.streams ?? []).map((stream) => [stream.key, stream]));
+    return new Map(channels.map((ref): [string, StreamInfo] => {
+      const key = streamKey(ref);
+      const info = declaredStreamInfo(ref.hardwareId, declared.get(key), ref.streamId);
+      const run = recorded.get(key);
+      if (!run) return [key, info];
+      const merged: StreamInfo = { ...info, ...run };
+      if (!run.declaration && info.declaration) merged.declaration = info.declaration;
+      return [key, merged];
+    }));
+  }, [channels, declared, timeline?.streams]);
+  /** The streams a panel shows, in its order, that its type can draw. */
+  const streamsOf = useCallback((panel: MonitorPanel): StreamInfo[] => panel.sources.flatMap((ref) => {
+    const info = infos.get(streamKey(ref));
+    return info && panelDraws(panel.type, String(info.type)) ? [info] : [];
+  }), [infos]);
+  const typeOf = useCallback((ref: StreamRef) => declared.get(streamKey(ref))?.type, [declared]);
+
+  const add = useCallback((ref: StreamRef) => save({ add: [ref] }), [save]);
+  const addTo = useCallback((panelId: string, ref: StreamRef) =>
+    save({ operations: [{ op: "addSources", panelId, sources: [ref] }] }), [save]);
+  const removeFrom = useCallback((panelId: string, ref: StreamRef) =>
+    save({ operations: [{ op: "removeSources", panelId, sources: [ref] }] }), [save]);
+  const addPanel = useCallback((type: PanelType, sources: StreamRef[] = [], placement?: Placement) =>
+    save({ operations: [{ op: "addPanel", panel: { type, sources }, ...(placement ? { placement } : {}) }] }), [save]);
+  const removePanel = useCallback((panelId: string) =>
+    save({ operations: [{ op: "removePanel", panelId }] }), [save]);
+  const saveLayout = useCallback((layout: Record<string, unknown>) => save({ layout }), [save]);
+
+  return {
+    projectId: project.data?.file.projectId,
+    monitor,
+    channels,
+    streams: [...infos.values()],
+    streamsOf,
+    typeOf,
+    add,
+    addTo,
+    removeFrom,
+    addPanel,
+    removePanel,
+    saveLayout,
+    error: update.error
+  };
+}
+
+export type MonitorWorkspace = ReturnType<typeof useMonitorWorkspace>;

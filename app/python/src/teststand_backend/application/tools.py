@@ -7,6 +7,7 @@ from typing import Any
 
 from teststand_backend.contracts.devices import hardware_schema
 from teststand_backend.contracts.errors import app_error
+from teststand_backend.contracts.monitor import operation_schema as monitor_operation_schema
 from teststand_backend.contracts.operations import PLATFORM_META, Tool
 from teststand_backend.contracts.validation import (
     array,
@@ -80,7 +81,7 @@ _PROJECT = _object(
                 "wiring": _object(
                     {"nodes": _array(_object({})), "connections": _array(_object({}))}
                 ),
-                "monitor": _object({"channels": _array(_object({}))}),
+                "monitor": _object({"panels": _array(_object({}))}),
             }
         ),
     },
@@ -150,7 +151,20 @@ _STREAM_REF = obj(
     strict=True,
 )
 _MONITOR = _object(
-    {"channels": _array(_object({"hardwareId": _STRING, "streamId": _STRING}))}, ["channels"]
+    {
+        "panels": _array(
+            _object(
+                {
+                    "id": _STRING,
+                    "type": _STRING,
+                    "title": _STRING,
+                    "sources": _array(_object({"hardwareId": _STRING, "streamId": _STRING})),
+                    "settings": _object({}),
+                }
+            )
+        )
+    },
+    ["panels"],
 )
 
 _EMPTY = obj({}, strict=True)
@@ -377,23 +391,34 @@ PLATFORM_TOOLS = [
     ),
     _platform(
         "get_monitor",
-        "读取运行监控显示的通道（设备流），按顺序。采样流（scalar/bits/block）画在示波器上，"
-        "记录流（bytes/frames）显示在终端里。运行监控只看不控；设备由它的动作弹窗、测试步骤或"
-        "你调用设备工具来控制。",
+        "读取运行监控工作台的面板：id、类型、标题、显示的流（sources）和设置。"
+        "面板类型：scope 示波器（scalar/block/bits）、digital 数字量指示灯与继电器触点（bits）、"
+        "terminal 终端（bytes/frames/events）、results 结果表、messages 解码报文"
+        "（后两种不接流）。运行监控只看不控；设备由它的动作弹窗、测试步骤或你调用设备工具来控制。",
         _EMPTY,
         _MONITOR,
         operation="monitor.get",
     ),
     _platform(
         "update_monitor",
-        "修改运行监控的通道：channels 整体替换，remove 去掉，add 追加（已显示的跳过）。每个通道是"
-        "设备声明的一条流（hardwareId + streamId，从 monitor_streams 取）。返回修改后的面板；"
-        "save_project 前只在工程缓冲区。",
+        "搭建运行监控工作台。operations 按顺序执行：addPanel 新建面板（类型、标题、"
+        "要显示的流，placement 放在某面板的 right/below/left/above，或 within 作为它的标签页）、"
+        "removePanel、updatePanel 改标题或设置、addSources / removeSources 给面板加减流；"
+        "之后 remove 把流从所有面板去掉，add 把流放到第一个能显示它的面板"
+        "（没有就新建 scope 或 terminal）。每条流是设备声明的一条流"
+        "（hardwareId + streamId，从 monitor_streams 取），且类型要适合面板。界面立即显示；"
+        "save_project 前只在工程缓冲区。返回修改后的面板。",
         obj(
             {
-                "channels": array(_STREAM_REF).optional().describe("Replaces every channel."),
-                "add": array(_STREAM_REF).optional().describe("Channels to append."),
-                "remove": array(_STREAM_REF).optional().describe("Channels to remove."),
+                "operations": array(monitor_operation_schema)
+                .optional()
+                .describe("Panel changes, applied in order."),
+                "add": array(_STREAM_REF)
+                .optional()
+                .describe("Streams to show on a default panel."),
+                "remove": array(_STREAM_REF)
+                .optional()
+                .describe("Streams to take off every panel."),
             },
             strict=True,
         ),

@@ -603,7 +603,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** The channels the monitor panel shows, in order. */
+        /** The monitor workspace: its panels (type, title, sources, settings) and layout. */
         post: operations["monitor.get"];
         delete?: never;
         options?: never;
@@ -641,10 +641,12 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Change the panel's channels: ``channels`` replaces the list, then ``remove`` and
-         *     ``add`` (appended when not yet shown) apply. A stream must belong to a registered device
-         *     and, once the device's streams are known, be one it declares. Stays in the project buffer
-         *     until the project is saved. Returns the panel.
+         * Change the workspace: ``operations`` apply in order (add / remove / update a panel,
+         *     add / remove its sources); ``remove`` then takes each stream off every panel and ``add``
+         *     puts it on the first panel that draws its type (a new one when none does); ``layout``
+         *     replaces the saved docking layout. A stream must belong to a registered device and,
+         *     once the device's streams are known, be one it declares and one the panel can draw.
+         *     Stays in the project buffer until the project is saved. Returns the workspace.
          */
         post: operations["monitor.update"];
         delete?: never;

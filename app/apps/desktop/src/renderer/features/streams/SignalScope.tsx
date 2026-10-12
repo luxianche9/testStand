@@ -260,7 +260,10 @@ export function SignalScope({
       <div
         role="toolbar"
         aria-label="示波器控制"
-        className="flex h-8 shrink-0 items-center gap-2 overflow-x-auto border-b border-line bg-surface-1 px-2"
+        className={cn(
+          "flex min-h-7 shrink-0 flex-wrap items-center gap-x-2 gap-y-0.5",
+          "border-b border-line bg-surface-1 px-2 py-0.5"
+        )}
       >
         <button
           type="button"

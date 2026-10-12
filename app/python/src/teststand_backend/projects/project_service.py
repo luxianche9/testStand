@@ -4,7 +4,7 @@ from os import stat
 from pathlib import Path
 
 from teststand_backend.contracts.errors import app_error
-from teststand_backend.contracts.monitor import parse_monitor
+from teststand_backend.contracts.monitor import migrate_v7, monitor_channels, parse_monitor
 from teststand_backend.contracts.projects import PROJECT_FORMAT_VERSION, parse_project_file
 from teststand_backend.contracts.wiring import parse_project_wiring
 from teststand_backend.storage import SettingsStore, atomic_json, read_json
@@ -139,7 +139,7 @@ class ProjectService:
                     "status": "available",
                     "preview": {
                         "connections": len(file["wiring"]["connections"]),
-                        "channels": len(file["monitor"]["channels"]),
+                        "channels": len(monitor_channels(file["monitor"])),
                     },
                 }
             except Exception as error:
@@ -219,8 +219,16 @@ class ProjectService:
 
 
 def read_project_file(raw: object) -> Record:
-    """Parse a project file read from disk; files of an earlier format are refused by name."""
+    """Parse a project file read from disk; format 7 is migrated (its monitor channels become
+    panels), earlier formats are refused by name."""
     version = raw.get("formatVersion") if isinstance(raw, dict) else None
+    if isinstance(raw, dict) and version == 7:
+        raw = {
+            **raw,
+            "formatVersion": PROJECT_FORMAT_VERSION,
+            "monitor": migrate_v7(raw.get("monitor")),
+        }
+        version = PROJECT_FORMAT_VERSION
     if (
         isinstance(version, int)
         and not isinstance(version, bool)
@@ -241,7 +249,7 @@ def empty_project_file(name: str = "Untitled project") -> Record:
             "projectId": new_uuid(),
             "name": name,
             "wiring": {"nodes": [], "connections": []},
-            "monitor": {"channels": []},
+            "monitor": {"panels": [], "layout": None},
             "createdAt": now,
             "updatedAt": now,
         }

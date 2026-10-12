@@ -1,0 +1,52 @@
+/* The monitor workspace's docking (dockview), drawn with the app's tokens so it follows the theme. */
+@import "dockview-react/dist/styles/dockview.css";
+
+.dockview-theme-teststand {
+  --dv-paneview-active-outline-color: var(--tf-signal);
+  --dv-tabs-and-actions-container-font-size: 11px;
+  --dv-tabs-and-actions-container-height: 24px;
+  --dv-tab-font-size: 11px;
+  --dv-tab-margin: 0;
+  --dv-border-radius: var(--tf-radius);
+  --dv-drag-over-background-color: color-mix(in oklch, var(--tf-signal) 18%, transparent);
+  --dv-drag-over-border-color: var(--tf-signal);
+  --dv-tabs-container-scrollbar-color: var(--tf-line-strong);
+  --dv-icon-hover-background-color: var(--tf-surface-3);
+  --dv-floating-box-shadow: var(--tf-shadow-overlay);
+  --dv-overlay-z-index: 50;
+  --dv-group-view-background-color: var(--tf-surface-0);
+  --dv-tabs-and-actions-container-background-color: var(--tf-surface-1);
+  --dv-activegroup-visiblepanel-tab-background-color: var(--tf-surface-0);
+  --dv-activegroup-hiddenpanel-tab-background-color: var(--tf-surface-1);
+  --dv-inactivegroup-visiblepanel-tab-background-color: var(--tf-surface-0);
+  --dv-inactivegroup-hiddenpanel-tab-background-color: var(--tf-surface-1);
+  --dv-activegroup-visiblepanel-tab-color: var(--tf-fg);
+  --dv-activegroup-hiddenpanel-tab-color: var(--tf-fg-3);
+  --dv-inactivegroup-visiblepanel-tab-color: var(--tf-fg-2);
+  --dv-inactivegroup-hiddenpanel-tab-color: var(--tf-fg-3);
+  --dv-tab-divider-color: var(--tf-line);
+  --dv-separator-border: var(--tf-line);
+  --dv-paneview-header-border-color: var(--tf-line);
+  --dv-sash-color: transparent;
+  --dv-active-sash-color: var(--tf-signal);
+  --dv-scrollbar-background-color: var(--tf-line-strong);
+  height: 100%;
+  font-family: var(--tf-font-sans);
+  background: var(--tf-line);
+}
+
+.dockview-theme-teststand .dv-tabs-and-actions-container {
+  border-bottom: 1px solid var(--tf-line);
+}
+
+.dockview-theme-teststand .dv-tab {
+  padding: 0 4px 0 8px;
+}
+
+.dockview-theme-teststand .dv-groupview.dv-active-group > .dv-tabs-and-actions-container .dv-tab.dv-active-tab {
+  box-shadow: inset 0 2px 0 var(--tf-signal);
+}
+
+.dockview-theme-teststand .dv-resize-container {
+  border: 1px solid var(--tf-line-strong);
+}

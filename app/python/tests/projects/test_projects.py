@@ -23,6 +23,10 @@ def channel(stream_id: str = "ai0") -> dict[str, Any]:
     return {"hardwareId": "A", "streamId": stream_id}
 
 
+def scope(*channels: dict[str, Any]) -> dict[str, Any]:
+    return {"panels": [{"id": "scope", "type": "scope", "sources": list(channels)}]}
+
+
 async def fixture(root: Path) -> tuple[ProjectService, SettingsStore]:
     settings = SettingsStore(root / "settings.json")
     await settings.initialize()
@@ -69,9 +73,10 @@ async def test_save_damage(tmp_path: Path) -> None:
     folder = tmp_path / "bench-b"
     folder.mkdir()
     await service.initialize_folder(folder)
-    service.update_monitor({"channels": [channel()]})
+    service.update_monitor(scope(channel()))
     await service.save()
-    assert len(json_loads(Path(project_path(folder)).read_text())["monitor"]["channels"]) == 1
+    saved = json_loads(Path(project_path(folder)).read_text())["monitor"]
+    assert len(saved["panels"][0]["sources"]) == 1
     await service.leave()
     Path(project_path(folder)).write_text("{ broken")
     assert (await service.inspect_folder(folder))["state"] == "invalid"
@@ -109,7 +114,7 @@ async def test_recent(tmp_path: Path) -> None:
     second.mkdir()
     await service.initialize_folder(first)
     service.update_wiring({"nodes": [], "connections": [CONNECTION]})
-    service.update_monitor({"channels": [channel("ai0"), channel("ai1")]})
+    service.update_monitor(scope(channel("ai0"), channel("ai1")))
     await service.save()
     await service.initialize_folder(second)
     await service.open_folder(first)
@@ -130,20 +135,20 @@ async def test_recent(tmp_path: Path) -> None:
 async def test_open_current_bytes_and_explicit_save(tmp_path: Path) -> None:
     service, _ = await fixture(tmp_path)
     created = await service.initialize_folder(tmp_path)
-    assert created["file"]["formatVersion"] == 7 and "task" not in created["file"]
+    assert created["file"]["formatVersion"] == 8 and "task" not in created["file"]
     path = Path(created["path"])
     raw = json_dumps({**created["file"], "ignored": True})
     path.write_text(raw, encoding="utf-8")
     opened = await service.open_folder(tmp_path)
     assert "ignored" not in opened["file"]
     assert path.read_text(encoding="utf-8") == raw
-    opened["file"]["monitor"]["channels"].append(channel("outside"))
-    assert service.monitor()["channels"] == []
-    service.update_monitor({"channels": [channel()]})
+    opened["file"]["monitor"]["panels"].append({"id": "outside"})
+    assert service.monitor()["panels"] == []
+    service.update_monitor(scope(channel()))
     await service.close()
     await service.leave()
     assert path.read_text(encoding="utf-8") == raw
-    assert (await service.open_folder(tmp_path))["file"]["monitor"]["channels"] == []
+    assert (await service.open_folder(tmp_path))["file"]["monitor"]["panels"] == []
 
 
 @pytest.mark.asyncio
@@ -243,3 +248,21 @@ async def test_earlier_format_is_refused_by_name(tmp_path: Path) -> None:
     selection = await service.inspect_folder(tmp_path)
     assert selection["state"] == "invalid" and "格式版本 5" in selection["message"]
     assert path.read_text() == raw
+
+
+async def test_format_7_monitor_channels_become_a_scope_and_a_terminal(tmp_path: Path) -> None:
+    service, _ = await fixture(tmp_path)
+    created = await service.initialize_folder(tmp_path)
+    path = Path(created["path"])
+    old = {**created["file"], "formatVersion": 7, "monitor": {"channels": [channel("ai0")]}}
+    path.write_text(json_dumps(old), encoding="utf-8")
+    await service.leave()
+    opened = await service.open_folder(tmp_path)
+    assert opened["file"]["formatVersion"] == 8
+    panels = opened["file"]["monitor"]["panels"]
+    assert [(panel["type"], panel["sources"]) for panel in panels] == [
+        ("scope", [channel("ai0")]),
+        ("terminal", [channel("ai0")]),
+    ]
+    assert panels[1]["placement"] == {"referenceId": "scope", "direction": "below"}
+    assert (await service.list_recent())[0]["preview"]["channels"] == 1

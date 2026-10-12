@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from teststand_backend.contracts.errors import app_error
+from teststand_backend.contracts.monitor import monitor_channels
 from teststand_backend.streams import judge
 from teststand_backend.streams.clock import backend_ms
 from teststand_backend.streams.store import (
@@ -537,7 +538,9 @@ class TestEngine:
     def _streams(self, run_id: str, emit: Callable[[str, Record], None]) -> RunIO:
         monitor = getattr(self.projects, "monitor", None)
         watched = (
-            [item["hardwareId"] for item in monitor()["channels"]] if callable(monitor) else []
+            [item["hardwareId"] for item in monitor_channels(monitor())]
+            if callable(monitor)
+            else []
         )
         io = RunIO(self.devices, self.stream_sources, self._run_path(run_id), run_id, emit, watched)
         self.recordings[run_id] = io

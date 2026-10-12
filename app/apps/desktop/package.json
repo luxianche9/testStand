@@ -29,6 +29,7 @@
     "ajv": "^8.17.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "dockview-react": "^4.13.1",
     "electron-log": "^5.4.4",
     "lucide-react": "^1.31.0",
     "opencode-windows-x64-baseline": "1.18.15",

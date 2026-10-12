@@ -50,7 +50,7 @@ test.describe.serial("monitor panel and pin list", () => {
         connectionId: "C1", portA: "DUT.J1", portB: "FIX.P1", pins: [{ a: "1", b: "1" }],
         confirmedAt: "2026-10-07T00:00:00.000Z", confirmedBy: "user"
       }] } });
-      await window.teststand.monitor.update({ input: { channels: [
+      await window.teststand.monitor.update({ input: { add: [
         { hardwareId, streamId: "relay" }, { hardwareId, streamId: "di" }
       ] } });
       await window.teststand.projects.saveProject();
@@ -64,19 +64,22 @@ test.describe.serial("monitor panel and pin list", () => {
     if (userData && dirname(userData) === resolve(tmpdir())) await rm(userData, { recursive: true, force: true });
   });
 
-  test("opens the bench on the monitor panel with its channels on the scope", async () => {
+  test("opens the bench on the monitor workspace with its channels on the scope", async () => {
     const panel = page.getByRole("region", { name: "运行监控" });
+    await expect(panel.locator(".dv-tab", { hasText: "示波器" })).toBeVisible();
     const channels = panel.getByRole("complementary", { name: "通道" });
     await expect(channels.getByRole("button", { name: "relay" })).toBeVisible();
     await expect(channels.getByRole("button", { name: "di" })).toBeVisible();
     const tools = page.getByRole("toolbar", { name: "台架工具栏" }).getByRole("group", { name: "运行监控工具" });
     await expect(tools).toContainText("实时数据");
-    // The scope's front panel: horizontal and vertical sections, RUN/STOP, a foldable signal list.
+    // One horizontal section for every panel, in the bench's title row: time/div, position, RUN/STOP.
+    await expect(tools.getByRole("group", { name: "水平" })).toContainText("1 s/div");
+    await tools.getByRole("button", { name: "时基调粗" }).click();
+    await expect(tools.getByRole("group", { name: "水平" })).toContainText("2 s/div");
+    await expect(tools.getByRole("button", { name: "停止跟随", exact: true })).toBeVisible();
+    // Each scope keeps its vertical section and a foldable signal list.
     const scope = panel.getByRole("toolbar", { name: "示波器控制" });
-    await expect(scope.getByRole("group", { name: "水平" })).toContainText("1 s/div");
-    await scope.getByRole("button", { name: "时基调粗" }).click();
-    await expect(scope.getByRole("group", { name: "水平" })).toContainText("2 s/div");
-    await expect(scope.getByRole("button", { name: "停止跟随", exact: true })).toBeVisible();
+    await expect(scope.getByRole("group", { name: "垂直" })).toBeVisible();
     await scope.getByRole("button", { name: /^信号/ }).click();
     await expect(channels).toHaveCount(0);
     await expect(scope.getByLabel("显示的信号")).toContainText("relay");
@@ -100,7 +103,35 @@ test.describe.serial("monitor panel and pin list", () => {
     await channels.getByRole("button", { name: "从运行监控移除 di" }).click();
     await expect(channels.getByRole("button", { name: "di" })).toHaveCount(0);
     const monitor = await page.evaluate(async () => (await window.teststand.projects.document())?.file.monitor);
-    expect(monitor?.channels).toEqual([{ hardwareId, streamId: "relay" }]);
+    expect(monitor?.panels.map((item) => [item.type, item.sources])).toEqual([
+      ["scope", [{ hardwareId, streamId: "relay" }]]
+    ]);
+  });
+
+  test("docks panels the Agent adds, and removes a panel closed from its tab", async () => {
+    const panel = page.getByRole("region", { name: "运行监控" });
+    await page.evaluate(async (id) => {
+      await window.teststand.monitor.update({ input: { operations: [
+        { op: "addPanel", panel: { id: "dio", type: "digital", title: "继电器", sources: [{ hardwareId: id, streamId: "di" }] },
+          placement: { referenceId: "scope", direction: "right" } },
+        { op: "addPanel", panel: { type: "results" }, placement: { referenceId: "dio", direction: "within" } }
+      ] } });
+    }, hardwareId);
+    await expect(panel.locator(".dv-tab", { hasText: "继电器" })).toBeVisible();
+    const results = panel.locator(".dv-tab", { hasText: "结果" });
+    await expect(results).toBeVisible();
+    await results.click();
+    await expect(panel).toContainText("运行测试或打开历史运行后显示判定结果");
+    await results.hover();
+    await results.locator(".dv-default-tab-action").click();
+    await expect(results).toHaveCount(0);
+    const ids = await page.evaluate(async () =>
+      (await window.teststand.monitor.get()).panels.map((item) => item.id));
+    expect(ids).toEqual(["scope", "dio"]);
+    // The arrangement is the project's: saved with it, back when it is opened again.
+    await expect.poll(async () => page.evaluate(async () =>
+      Boolean((await window.teststand.monitor.get()).layout))).toBe(true);
+    await page.screenshot({ path: join(artifacts, "workspace.png") });
   });
 
   test("shows a run started from the test panel with its event timeline from the first step", async () => {

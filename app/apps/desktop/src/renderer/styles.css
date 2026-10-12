@@ -8,6 +8,7 @@
 @import "./styles/tokens.css";
 @import "./styles/base.css";
 @import "./styles/react-flow.css";
+@import "./styles/dockview.css";
 @import "./styles/agent.css";
 
 @source "./";
