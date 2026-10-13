@@ -9,7 +9,7 @@ import { BusTerminal, DigitalView, SignalScope } from "../streams/index.js";
 import { RunMessages } from "../testing/RunMessages.js";
 import { ResultTable } from "../testing/ResultTable.js";
 import { bitBinding } from "./control-bindings.js";
-import { PanelFrame, usePanel, useRemove } from "./panel-kit.js";
+import { PanelFrame, useMonitorTimeContext, usePanel, useRemove } from "./panel-kit.js";
 import { ControlPanel } from "./panels/ControlPanel.js";
 import { DetailPanel } from "./panels/DetailPanel.js";
 import { GaugePanel } from "./panels/GaugePanel.js";
@@ -23,7 +23,8 @@ import { XyPanel } from "./panels/XyPanel.js";
 import { SendBar } from "./SendBar.js";
 
 function ScopePanel({ api }: IDockviewPanelProps) {
-  const [{ workspace, time, source, bench, pick }, panel] = usePanel(api.id);
+  const [{ workspace, source, bench, pick }, panel] = usePanel(api.id);
+  const time = useMonitorTimeContext();
   const remove = useRemove(panel);
   if (!panel) return null;
   const { runId, mode, view } = bench;
@@ -52,7 +53,8 @@ function ScopePanel({ api }: IDockviewPanelProps) {
 
 /** Lamps and relay contacts; a line the device drives switches when clicked (not during a run). */
 function DigitalPanelView({ api }: IDockviewPanelProps) {
-  const [{ workspace, time, source, control, notify }, panel] = usePanel(api.id);
+  const [{ workspace, source, control, notify }, panel] = usePanel(api.id);
+  const time = useMonitorTimeContext();
   if (!panel) return null;
   const lines = (stream: StreamInfo) => {
     const binding = bitBinding(stream, control.toolsOf(stream.hardwareId));
@@ -154,4 +156,3 @@ export const PANEL_COMPONENTS = {
   results: ResultsPanel,
   messages: MessagesPanel
 } satisfies Record<MonitorPanel["type"], (props: IDockviewPanelProps) => ReactNode>;
-

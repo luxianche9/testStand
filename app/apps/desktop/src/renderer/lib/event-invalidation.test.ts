@@ -31,6 +31,8 @@ describe("event invalidation table", () => {
 
     events.emit("testRun");
     events.emit("testRun");
+    expect(invalidate).not.toHaveBeenCalledWith(queryKeys.testRun);
+    vi.advanceTimersByTime(100);
     expect(invalidate).toHaveBeenCalledWith(queryKeys.testRun);
     expect(invalidate).not.toHaveBeenCalledWith(queryKeys.testRunsAll);
     vi.advanceTimersByTime(500);

@@ -6,7 +6,7 @@ import { Button, cn, IconButton, Input, Select } from "../../ui/index.js";
 import { formatHex, parseHex } from "../manual/widget-model.js";
 import { rememberText } from "../manual/widgets.js";
 import { sendBinding, type SendBinding } from "./control-bindings.js";
-import { useMonitor } from "./panel-kit.js";
+import { useMonitorStatic } from "./panel-kit.js";
 
 type Ending = "" | "\r" | "\n" | "\r\n";
 const ENDINGS: { value: Ending; label: string }[] = [
@@ -42,7 +42,7 @@ function presetOf(item: string): { hex: boolean; payload: string } {
  * device has a sending tool are offered; a port a test run holds is disabled.
  */
 export function SendBar({ streams }: { streams: readonly StreamInfo[] }) {
-  const { control, notify } = useMonitor();
+  const { control, notify } = useMonitorStatic();
   const targets = streams.flatMap((stream) => {
     const binding = sendBinding(stream, control.toolsOf(stream.hardwareId));
     return binding ? [{ stream, binding }] : [];

@@ -4,7 +4,7 @@ import { ArrowUpIcon, PlusIcon, Settings2Icon, XIcon } from "lucide-react";
 import type { MonitorPanel, StreamRef } from "@teststand/contracts/monitor";
 import { Button, IconButton, Input, Select } from "../../../ui/index.js";
 import { deviceName } from "../../streams/stream-model.js";
-import { isNumber, isString, PanelFrame, settingOf, useMonitor, usePanel } from "../panel-kit.js";
+import { isNumber, isString, PanelFrame, settingOf, useMonitorStatic, usePanel } from "../panel-kit.js";
 import { PANEL_LABELS, panelTitle } from "../use-monitor-workspace.js";
 import { PanelEmpty } from "./common.js";
 import { fieldsOf, type BitField } from "./RegisterPanel.js";
@@ -123,7 +123,7 @@ function FieldSettings({ panel, save }: { panel: MonitorPanel; save: (settings: 
 }
 
 function Settings({ panel }: { panel: MonitorPanel }) {
-  const { workspace } = useMonitor();
+  const { workspace } = useMonitorStatic();
   const save = (settings: Record<string, unknown>) => workspace.updatePanel(panel.id, { settings });
   return (
     <>

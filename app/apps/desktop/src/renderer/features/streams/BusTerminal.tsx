@@ -13,7 +13,8 @@ import { RECORD_CAP, useStreamRecords, type RecordsState, type StreamSource } fr
 /** Hide the cursor, clear the screen and the scrollback, home the cursor. */
 const CLEAR = "\x1b[?25l\x1b[2J\x1b[3J\x1b[H";
 /** Entries kept in the console; the oldest are dropped beyond this. */
-const ENTRY_CAP = RECORD_CAP;
+/** Keep the terminal responsive; the stream reader still retains more records for other views. */
+const ENTRY_CAP = Math.min(RECORD_CAP, 20_000);
 /** Out-of-order entries (a call reported after later bus traffic) redraw the console at most this often. */
 const REDRAW_MS = 250;
 
@@ -73,7 +74,13 @@ export function BusTerminal({
   const [mutedDevices, setMutedDevices] = useState<ReadonlySet<string>>(new Set());
   const [feeds, setFeeds] = useState<Readonly<Record<string, RecordsState>>>({});
   const [counts, setCounts] = useState<Readonly<Record<EntryKind, number>>>(emptyCounts);
+  const countsTimer = useRef<number | undefined>(undefined);
+  const pendingCounts = useRef<Readonly<Record<EntryKind, number>> | undefined>(undefined);
   const theme = useThemeVersion();
+
+  useEffect(() => () => {
+    if (countsTimer.current !== undefined) window.clearTimeout(countsTimer.current);
+  }, []);
 
   const buses = useMemo(() => (streams ?? timeline?.streams ?? []).filter((stream) =>
     !isSampled(String(stream.type)) && (stream.count > 0 || (live && !stream.states.includes("not_configured")))),
@@ -143,7 +150,15 @@ export function BusTerminal({
     } else {
       scheduleRedraw();
     }
-    setCounts(countKinds(list));
+    pendingCounts.current = countKinds(list);
+    if (countsTimer.current === undefined) {
+      countsTimer.current = window.setTimeout(() => {
+        countsTimer.current = undefined;
+        const next = pendingCounts.current;
+        pendingCounts.current = undefined;
+        if (next) setCounts(next);
+      }, 150);
+    }
   };
   const addRef = useRef(add);
   addRef.current = add;
@@ -171,7 +186,7 @@ export function BusTerminal({
         disableStdin: true,
         convertEol: false,
         cursorBlink: false,
-        scrollback: ENTRY_CAP * 2,
+        scrollback: ENTRY_CAP,
         fontFamily: fontStack("mono"),
         fontSize: 12,
         theme: {

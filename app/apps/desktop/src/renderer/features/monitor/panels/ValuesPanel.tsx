@@ -10,7 +10,7 @@ import { measure, sparkline, valueAt } from "../../streams/measure.js";
 import { CHANNEL_COLORS, formatNumber, streamUnit } from "../../streams/stream-model.js";
 import { useStreamsPoints } from "../../streams/useStreamReader.js";
 import { setpointBinding, type SetpointBinding } from "../control-bindings.js";
-import { PanelFrame, useMonitor, usePanel, useRemove, useWindow } from "../panel-kit.js";
+import { PanelFrame, useMonitorStatic, usePanel, useRemove, useWindow } from "../panel-kit.js";
 import { PanelEmpty, readingAt, Sparkline, StreamTitle } from "./common.js";
 
 export interface Limits { lo?: number; hi?: number }
@@ -41,7 +41,7 @@ function SetpointCell({ stream, binding, current }: {
   binding: SetpointBinding;
   current: number | undefined;
 }) {
-  const { control, notify } = useMonitor();
+  const { control, notify } = useMonitorStatic();
   const [draft, setDraft] = useState<number>();
   const locked = control.lockOf(stream.hardwareId);
   const send = (value: number) => {

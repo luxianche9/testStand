@@ -8,7 +8,7 @@ import { cn, IconButton, Input } from "../../../ui/index.js";
 import { valueAt } from "../../streams/measure.js";
 import { formatNumber, pointMask } from "../../streams/stream-model.js";
 import { useStreamsPoints } from "../../streams/useStreamReader.js";
-import { PanelFrame, useMonitor, usePanel } from "../panel-kit.js";
+import { PanelFrame, useMonitorStatic, usePanel } from "../panel-kit.js";
 import { startStreamDrag, streamKey } from "../use-monitor-workspace.js";
 import { PanelEmpty } from "./common.js";
 
@@ -21,7 +21,7 @@ function TypeIcon({ type }: { type: string }) {
 
 /** The newest value of each stream of an open device (sampled streams only). */
 function DeviceRows({ device, filter }: { device: DeviceStreams; filter: string }) {
-  const { workspace, source, notify } = useMonitor();
+  const { workspace, source, notify } = useMonitorStatic();
   const streams = device.streams.filter((stream) => !filter || stream.id.toLowerCase().includes(filter)
     || String(stream.label ?? "").toLowerCase().includes(filter));
   const sampled = streams.filter((stream) => ["scalar", "block", "bits"].includes(String(stream.type)));

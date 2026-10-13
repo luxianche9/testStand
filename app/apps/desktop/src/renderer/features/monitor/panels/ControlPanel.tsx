@@ -14,7 +14,7 @@ import { widgetFor } from "../../manual/widget-model.js";
 import { NumberControl, Segmented, ToggleSwitch, ToolFieldContext } from "../../manual/widgets.js";
 import { deviceName } from "../../streams/stream-model.js";
 import { useControlRequest } from "../control-requests.js";
-import { PanelFrame, useMonitor, usePanel } from "../panel-kit.js";
+import { PanelFrame, useMonitorStatic, usePanel } from "../panel-kit.js";
 import { PanelEmpty } from "./common.js";
 
 function controlsOf(settings: Record<string, unknown>): MonitorControl[] {
@@ -46,7 +46,7 @@ type Outcome = { ok: boolean; message: string } | undefined;
 
 /** One control: calls its tool with the fixed arguments and the operator's value. */
 function Control({ control, onRemove }: { control: MonitorControl; onRemove: () => void }) {
-  const { control: manual } = useMonitor();
+  const { control: manual } = useMonitorStatic();
   const [value, setValue] = useState<unknown>();
   const [busy, setBusy] = useState(false);
   const [outcome, setOutcome] = useState<Outcome>();
@@ -143,7 +143,7 @@ function AddControlDialog({ open, widgetWanted, onClose, onAdd }: {
   onClose: () => void;
   onAdd: (control: Omit<MonitorControl, "id">) => void;
 }) {
-  const { workspace, control: manual } = useMonitor();
+  const { workspace, control: manual } = useMonitorStatic();
   const devices = workspace.devices.filter((device) => manual.toolsOf(device.hardwareId).length);
   const [hardwareId, setHardwareId] = useState<string>();
   const [toolName, setToolName] = useState<string>();

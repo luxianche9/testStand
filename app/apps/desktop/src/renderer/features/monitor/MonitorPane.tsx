@@ -26,7 +26,7 @@ import {
 } from "./layout-tools.js";
 import { useLiveKeepalive, useMonitorTime } from "./monitor-time.js";
 import { PANEL_COMPONENTS } from "./MonitorPanels.js";
-import { MonitorContext, type MonitorContextValue, type SelectedFrame } from "./panel-kit.js";
+import { MonitorContext, MonitorTimeContext, type MonitorStaticContextValue, type SelectedFrame } from "./panel-kit.js";
 import { TimebaseControls } from "./TimebaseControls.js";
 import type { BenchRun } from "./use-bench-run.js";
 import { useManualControl } from "./use-manual-control.js";
@@ -88,8 +88,8 @@ export function MonitorPane({ bench, toolbar }: {
     return resultRows(results, (hardwareId, streamId) => units.get(`${hardwareId}/${streamId}`) ?? "");
   }, [runId, results, timeline?.streams]);
 
-  const scrollTo = (tb: number) => setJump((current) => ({ tb, seq: (current?.seq ?? 0) + 1 }));
-  const zoomStep = (executionId: string | undefined) => {
+  const scrollTo = useCallback((tb: number) => setJump((current) => ({ tb, seq: (current?.seq ?? 0) + 1 })), []);
+  const zoomStep = useCallback((executionId: string | undefined) => {
     const stepped = stepRange(timeline, executionId);
     if (!stepped) return;
     time.select(stepped);
@@ -98,15 +98,15 @@ export function MonitorPane({ bench, toolbar }: {
       time.pick(start);
       scrollTo(start);
     }
-  };
+  }, [scrollTo, time, timeline]);
   // A step picked in the test panel's flow.
   const zoomRef = useRef(zoomStep);
   zoomRef.current = zoomStep;
   useEffect(() => onRunStepFocused((executionId) => zoomRef.current(executionId)), []);
-  const pick = (tb: number, scroll: boolean) => {
+  const pick = useCallback((tb: number, scroll: boolean) => {
     time.pick(tb);
     if (scroll) scrollTo(tb);
-  };
+  }, [scrollTo, time]);
   const refreshRun = () => {
     void client.invalidateQueries({ queryKey: queryKeys.testRun });
   };
@@ -139,10 +139,13 @@ export function MonitorPane({ bench, toolbar }: {
     else toast.success("所有设备已回到安全状态");
   };
 
-  const context: MonitorContextValue = {
-    workspace, time, source, bench, rows, jump, pick, zoomStep, control, frame, selectFrame, activePanelId,
-    notify: { error: (message) => toast.error(message), success: (message) => toast.success(message) }
-  };
+  const notify = useMemo(() => ({
+    error: (message: string) => toast.error(message),
+    success: (message: string) => toast.success(message)
+  }), [toast]);
+  const context = useMemo<MonitorStaticContextValue>(() => ({
+    workspace, source, bench, rows, jump, pick, zoomStep, control, frame, selectFrame, activePanelId, notify
+  }), [workspace, source, bench, rows, jump, pick, zoomStep, control, frame, selectFrame, activePanelId, notify]);
 
 
   const tools = (
@@ -192,12 +195,14 @@ export function MonitorPane({ bench, toolbar }: {
           actions={runActions}
         />
       )}
-      <MonitorContext.Provider value={context}>
-        <Workspace key={workspace.projectId ?? "none"} workspace={workspace}
-          onActive={focus}
-          empty={<LayoutMenu workspace={workspace} labelled onError={(message) => toast.error(message)}
-            onDone={(message) => toast.success(message)} />} />
-      </MonitorContext.Provider>
+      <MonitorTimeContext.Provider value={time}>
+        <MonitorContext.Provider value={context}>
+          <Workspace key={workspace.projectId ?? "none"} workspace={workspace}
+            onActive={focus}
+            empty={<LayoutMenu workspace={workspace} labelled onError={(message) => toast.error(message)}
+              onDone={(message) => toast.success(message)} />} />
+        </MonitorContext.Provider>
+      </MonitorTimeContext.Provider>
       {runId && timeline && view.range && origin !== undefined && (
         <RunOverview
           timeline={timeline}

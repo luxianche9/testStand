@@ -9,7 +9,7 @@ import { errorMessage } from "../../../lib/errors.js";
 import { cn, Input, Select } from "../../../ui/index.js";
 import { clockTime, relativeTime } from "../../streams/stream-model.js";
 import { useStreamRecords, type StreamSource } from "../../streams/useStreamReader.js";
-import { isString, PanelFrame, settingOf, useMonitor, usePanel, useWindow } from "../panel-kit.js";
+import { isString, PanelFrame, settingOf, useMonitorStatic, usePanel, useWindow } from "../panel-kit.js";
 import { SendBar } from "../SendBar.js";
 import {
   changedBytes, decodedRows, decodedText, filterRows, fixedRows, previousBytes, recordRows,
@@ -20,7 +20,7 @@ import { PanelEmpty } from "./common.js";
 /** Records kept per stream, and fed to the ICD decoder at a time. */
 const KEEP = 5_000;
 const DECODE = 2_000;
-const DECODE_MS = 600;
+const DECODE_MS = 800;
 const ROW_PX = 18;
 
 type Mode = "time" | "fixed";
@@ -53,7 +53,8 @@ function useRecordStore(streams: readonly StreamInfo[]) {
   useEffect(() => () => window.clearTimeout(timer.current), []);
   const keys = streams.map((stream) => stream.key).join("\n");
   useEffect(() => {
-    for (const key of [...store.current.keys()]) if (!keys.split("\n").includes(key)) store.current.delete(key);
+    const wanted = new Set(keys ? keys.split("\n") : []);
+    for (const key of [...store.current.keys()]) if (!wanted.has(key)) store.current.delete(key);
     bump();
   }, [keys]);
   return {
@@ -61,8 +62,10 @@ function useRecordStore(streams: readonly StreamInfo[]) {
     version,
     reset: (key: string) => { store.current.set(key, []); bump(); },
     add: (key: string, records: StreamRecord[]) => {
-      const next = [...(store.current.get(key) ?? []), ...records];
-      store.current.set(key, next.length > KEEP ? next.slice(-KEEP) : next);
+      const next = store.current.get(key) ?? [];
+      next.push(...records);
+      if (next.length > KEEP) next.splice(0, next.length - KEEP);
+      store.current.set(key, next);
       bump();
     }
   };
@@ -79,9 +82,11 @@ function useDecoded(icd: string | undefined, streams: readonly StreamInfo[], sto
     if (!icd) return undefined;
     let stopped = false;
     let decoded = -1;
+    let running = false;
     const run = async () => {
-      if (stopped || decoded === latest.current) return;
+      if (stopped || running || decoded === latest.current) return;
       decoded = latest.current;
+      running = true;
       const next = new Map<string, TraceRow[]>();
       try {
         for (const stream of streams) {
@@ -99,6 +104,9 @@ function useDecoded(icd: string | undefined, streams: readonly StreamInfo[], sto
         if (!stopped) { setRows(next); setError(undefined); }
       } catch (cause) {
         if (!stopped) setError(errorMessage(cause));
+      } finally {
+        running = false;
+        if (!stopped && decoded !== latest.current) void run();
       }
     };
     void run();
@@ -169,7 +177,7 @@ function TraceTable({ panel, streams, store, version, origin, selected, onPick }
   selected: string | undefined;
   onPick: (row: TraceRow, icd: string | undefined) => void;
 }) {
-  const { workspace } = useMonitor();
+  const { workspace } = useMonitorStatic();
   const mode = settingOf(panel, "mode", "time", isMode);
   const icd = settingOf<string | undefined>(panel, "icd", undefined, isString) || undefined;
   const icds = useQuery({ queryKey: ["icds"], queryFn: () => window.teststand.testing.listIcds() });

@@ -47,8 +47,8 @@ export const eventInvalidations: Record<TestStandEventName, readonly Invalidatio
   // The test panel's editor reloads the flow itself; no query holds it.
   testPlan: [],
   testRun: [
-    { key: queryKeys.testRun },
-    { key: queryKeys.dashboard },
+    { key: queryKeys.testRun, delayMs: 100 },
+    { key: queryKeys.dashboard, delayMs: 250 },
     { key: queryKeys.testRunsAll, delayMs: 500 },
     { key: queryKeys.testRecovery, delayMs: 500 }
   ],

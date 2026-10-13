@@ -7,7 +7,7 @@ import { lastChange } from "../../streams/measure.js";
 import { bitsWidth, clockTime, codeText, hasBit, maskXor, pointAt, pointMask } from "../../streams/stream-model.js";
 import { useStreamsPoints } from "../../streams/useStreamReader.js";
 import { bitBinding } from "../control-bindings.js";
-import { PanelFrame, useMonitor, usePanel, useRemove, useWindow } from "../panel-kit.js";
+import { PanelFrame, useMonitorStatic, usePanel, useRemove, useWindow } from "../panel-kit.js";
 import { PanelEmpty, readingAt, StreamTitle } from "./common.js";
 
 /** A named run of bits of a status word: `lsb` is its lowest bit. */
@@ -37,7 +37,7 @@ function Word({ stream, read, at, fields, onRemove }: {
   fields: BitField[];
   onRemove: () => void;
 }) {
-  const { control, notify } = useMonitor();
+  const { control, notify } = useMonitorStatic();
   const point = at === undefined ? read?.at(-1) : pointAt(read, at);
   const mask = pointMask(point);
   const width = bitsWidth(stream, read);

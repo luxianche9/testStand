@@ -20,7 +20,7 @@ export interface SelectedFrame {
 }
 
 /** What every panel of the workspace shares: the streams, one time axis, the run shown, control. */
-export interface MonitorContextValue {
+interface MonitorContextValue {
   workspace: MonitorWorkspace;
   time: MonitorTime;
   source: StreamSource;
@@ -37,23 +37,33 @@ export interface MonitorContextValue {
   activePanelId: string | undefined;
 }
 
-export const MonitorContext = createContext<MonitorContextValue | undefined>(undefined);
+export type MonitorStaticContextValue = Omit<MonitorContextValue, "time">;
 
-export function useMonitor(): MonitorContextValue {
+export const MonitorContext = createContext<MonitorStaticContextValue | undefined>(undefined);
+export const MonitorTimeContext = createContext<MonitorTime | undefined>(undefined);
+
+export function useMonitorStatic(): MonitorStaticContextValue {
   const value = useContext(MonitorContext);
   if (!value) throw new Error("monitor panel outside the workspace");
   return value;
 }
 
+export function useMonitorTimeContext(): MonitorTime {
+  const value = useContext(MonitorTimeContext);
+  if (!value) throw new Error("monitor time outside the workspace");
+  return value;
+}
+
 /** The project's panel behind a dockview panel (they share the id). */
-export function usePanel(id: string): [MonitorContextValue, MonitorPanel | undefined] {
-  const monitor = useMonitor();
+export function usePanel(id: string): [MonitorStaticContextValue, MonitorPanel | undefined] {
+  const monitor = useMonitorStatic();
   return [monitor, monitor.workspace.monitor.panels.find((panel) => panel.id === id)];
 }
 
 /** The window every time-based panel reads: the shared time axis. */
 export function useWindow() {
-  const { time, source, bench } = useMonitor();
+  const { source, bench } = useMonitorStatic();
+  const time = useMonitorTimeContext();
   return {
     source,
     follow: time.follow,
@@ -100,7 +110,7 @@ export function PanelFrame({ panel, children, className }: {
   children: ReactNode;
   className?: string;
 }) {
-  const { workspace } = useMonitor();
+  const { workspace } = useMonitorStatic();
   const dragging = useStreamDrag();
   const [over, setOver] = useState(false);
   const takes = dragging !== undefined && panelDraws(panel.type, dragging || undefined);
@@ -146,7 +156,7 @@ export function PanelFrame({ panel, children, className }: {
 
 /** Takes a stream off the panel. */
 export function useRemove(panel: MonitorPanel | undefined) {
-  const { workspace } = useMonitor();
+  const { workspace } = useMonitorStatic();
   return (stream: Pick<StreamInfo, "hardwareId" | "streamId">) => {
     if (panel) workspace.removeFrom(panel.id, { hardwareId: stream.hardwareId, streamId: stream.streamId });
   };

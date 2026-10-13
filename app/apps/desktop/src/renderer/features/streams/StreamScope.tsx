@@ -11,6 +11,8 @@ const TONE_TOKEN: Record<OverlayTone, string> = {
   pass: "--tf-pass", fail: "--tf-fail", run: "--tf-run", neutral: "--tf-fg-3"
 };
 const SERIES_TOKENS = ["--tf-ch-1", "--tf-ch-2", "--tf-ch-3", "--tf-ch-4"];
+/** Keep the time axis smooth without forcing every scope to redraw at the display refresh rate. */
+const FOLLOW_TICK_MS = 33;
 
 /** Per-series look; without it every series gets a channel colour and the data's `stepped`. */
 export interface SeriesStyle {
@@ -215,7 +217,7 @@ export function heldRange(
  * selects a time window, a click picks an instant, double-click resets. With `origin` the time
  * axis reads in seconds from that instant; `height="fill"` sizes the plot to its container.
  * Stacked scopes show the time axis only under the last one (`timeAxis`). With `follow` the time
- * axis slides every animation frame, independent of how often data arrives.
+ * axis slides at a bounded 30Hz cadence, independent of how often data arrives.
  */
 export function StreamScope({
   label, unit = "", data, range, overlays, height = 120, axisWidth, timeAxis = true, readoutTime = true, syncKey,
@@ -477,13 +479,19 @@ export function StreamScope({
   const following = follow !== undefined;
   useEffect(() => {
     if (!following) return undefined;
-    let frame = requestAnimationFrame(function slide() {
+    let previous: TimeRange | undefined;
+    const slide = () => {
       const instance = plot.current;
-      const window = latest.current.follow;
-      if (instance && window) applyRange(instance, followRange(window));
-      frame = requestAnimationFrame(slide);
-    });
-    return () => cancelAnimationFrame(frame);
+      const followWindow = latest.current.follow;
+      if (!instance || !followWindow) return;
+      const next = followRange(followWindow);
+      if (previous?.[0] === next[0] && previous[1] === next[1]) return;
+      previous = next;
+      applyRange(instance, next);
+    };
+    slide();
+    const timer = window.setInterval(slide, FOLLOW_TICK_MS);
+    return () => window.clearInterval(timer);
   }, [following]);
 
   useEffect(() => { plot.current?.redraw(false, false); }, [overlays, marker]);

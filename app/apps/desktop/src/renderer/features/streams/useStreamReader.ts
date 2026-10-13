@@ -167,7 +167,8 @@ export function mergeFrame(
   for (const [key, entry] of Object.entries(frame.streams)) {
     if (entry.records) continue;
     const { reset, points, ...meta } = entry;
-    const kept = reset ? [] : (buffers[key]?.points ?? []).filter((point) => !points || point.tb < entry.t0);
+    const previous = buffers[key]?.points ?? [];
+    const kept = reset ? [] : !points ? previous : previous.slice(0, lowerBound(previous, entry.t0));
     next[key] = { ...buffers[key], ...meta, points: points ? [...kept, ...points] : kept };
   }
   return next;
@@ -180,11 +181,23 @@ export function trimBuffers(
   const next: Record<string, StreamWindow> = {};
   for (const [key, item] of Object.entries(buffers)) {
     const points: StreamPoint[] = item.points ?? [];
-    const first = points.findIndex((point) => point.tb >= cutoff);
-    const drop = first < 0 ? points.length - 1 : first - 1;
+    const first = lowerBound(points, cutoff);
+    const drop = first - 1;
     next[key] = drop > 0 ? { ...item, points: points.slice(drop) } : item;
   }
   return next;
+}
+
+/** First point whose timestamp is at least `value`; stream points are kept sorted by timestamp. */
+function lowerBound(points: readonly StreamPoint[], value: number): number {
+  let low = 0;
+  let high = points.length;
+  while (low < high) {
+    const middle = low + Math.floor((high - low) / 2);
+    if (points[middle]!.tb < value) low = middle + 1;
+    else high = middle;
+  }
+  return low;
 }
 
 function sampledOnly(streams: Readonly<Record<string, StreamWindow>>): Record<string, StreamWindow> {
