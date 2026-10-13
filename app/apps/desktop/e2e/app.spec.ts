@@ -112,7 +112,7 @@ test.describe.serial("testStand folder project desktop", () => {
 
     await showPanel(page, "设备管理");
     const list = page.getByRole("complementary", { name: "设备列表" });
-    await list.getByRole("button", { name: /DUT_A/ }).click();
+    await list.getByRole("button", { name: /^DUT_A/ }).click();
     await expect(page.getByRole("dialog", { name: "DUT_A" }).getByText("光纤口")).toBeVisible();
     await page.keyboard.press("Escape");
     await page.screenshot({ path: resolve(artifactDir, "bench-page.png"), fullPage: true });
