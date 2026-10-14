@@ -10,6 +10,7 @@ lifecycle, in the backend process or in an isolated child process.
 """
 
 from ._version import __version__
+from .claim import Claim, claim_resource
 from .clock import now_ms
 from .config import DeviceConfig, env_flag
 from .device import Device
@@ -65,7 +66,7 @@ from .tool import HardwareId, ToolSpec, param, tool
 from .waveform import SHAPES, SoftwareWaveform, WaveformParams, sample_value, waveform_capability
 
 __all__ = [
-    "Check", "check_equal", "check_range",
+    "Check", "check_equal", "check_range", "Claim", "claim_resource",
     "SerialBackend", "SerialPort", "SimulatedSerialPort", "list_ports",
     "CONTRACT_REVISION", "DEVICE_ERROR", "DEVICE_UNREACHABLE", "ID_SCHEMES",
     "INTERNAL", "INVALID_ARGUMENT", "INVALID_RESPONSE",

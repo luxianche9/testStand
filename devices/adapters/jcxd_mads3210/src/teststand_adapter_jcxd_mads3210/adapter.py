@@ -31,6 +31,7 @@ from teststand_device_sdk import (
     BitsStream,
     BlockStream,
     Check,
+    Claim,
     Device,
     DeviceConfig,
     DeviceError,
@@ -38,6 +39,7 @@ from teststand_device_sdk import (
     ScalarStream,
     check_equal,
     check_range,
+    claim_resource,
     model,
     param,
     tool,
@@ -133,7 +135,7 @@ class JcxdMads3210(Device):
     prefix = "mads"
     capabilities = ("analog_input", "analog_output", "digital_input", "digital_output", "counter")
     isolation = "subprocess"
-    version = "1.0.1"
+    version = "1.0.2"
     instructions = ("JCXD-MADS-CPCI-3210: AI is sampled continuously by the card (ai<n> streams, read_ai for "
                     "statistics over a window); AO, DIO and counters by their tools. DIO lines are inputs until "
                     "configure_dio makes them outputs.")
@@ -172,6 +174,7 @@ class JcxdMads3210(Device):
         self.ct_mode: dict[int, dict[str, Any]] = {}
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
+        self.claim: Claim | None = None
 
         self.ai = [BlockStream(f"ai{n}", unit="V", label=f"AI{n}", kind="measured") for n in range(AI_COUNT)]
         for stream in self.ai:
@@ -190,12 +193,34 @@ class JcxdMads3210(Device):
                      for n in range(CT_COUNT)]
 
     # --- lifecycle ----------------------------------------------------
+    def _claim(self, card_id: int) -> Claim | None:
+        """This process's exclusive hold on the card (none for the simulator). Another device
+        instance bound to the same card would reset it and split its AI data with this one."""
+        if self.dry_run:
+            return None
+        return claim_resource(f"jcxd_mads3210/card{card_id}",
+                              owner=f"{self.config.device_id} ({self.config.hardware_id})")
+
+    def _release_claim(self) -> None:
+        if self.claim is not None:
+            self.claim.release()
+            self.claim = None
+
     def _open_card(self) -> tuple[int, dict[str, int]]:
         ids = range(MAX_CARDS) if self.serial is not None else (self.card_index,)
-        seen = []
+        seen: list[Any] = []
+        busy: list[str] = []
         for card_id in ids:
+            # Claim before opening: opening and resetting a card another instance runs disturbs it.
+            try:
+                claim = self._claim(card_id)
+            except DeviceError as error:
+                busy.append(str(error))
+                continue
             rc, handle = self.driver.open(card_id)
             if rc != 0 or handle is None:
+                if claim is not None:
+                    claim.release()
                 continue
             info_rc, info = self.driver.info(handle)
             if info_rc == 0 and info.get("cardType") == 0:
@@ -204,17 +229,25 @@ class JcxdMads3210(Device):
                 self.driver.reset(handle)
                 info_rc, info = self.driver.info(handle)
             if self.serial is None or info.get("serialNumber") == self.serial:
+                self.claim = claim
                 return handle, {**info, "cardId": card_id, "infoRc": info_rc}
             seen.append(info.get("serialNumber"))
             self.driver.close(handle)
+            if claim is not None:
+                claim.release()
         wanted = f"serial number {self.serial}" if self.serial is not None else f"card id {self.card_index}"
+        if busy and not seen:
+            raise DeviceError(f"JCXD-MADS-CPCI-3210 with {wanted} is already used by another device instance: "
+                              f"{'; '.join(busy)}. Remove the duplicate device, or give each instance its card's "
+                              "serialNumber.", category=DEVICE_UNREACHABLE, details={"busy": busy})
         raise DeviceError(f"JCXD-MADS-CPCI-3210 with {wanted} not found (cards seen: {seen})",
-                          category=DEVICE_UNREACHABLE, details={"seen": seen})
+                          category=DEVICE_UNREACHABLE, details={"seen": seen, "busy": busy})
 
     def open(self) -> dict[str, Any]:
         handle, identity = self._open_card()
         if self.driver.reset(handle) != 0:
             self.driver.close(handle)
+            self._release_claim()
             raise DeviceError("UMADX3210_ResetDev failed", category=DEVICE_UNREACHABLE)
         self.handle, self.identity = handle, identity
         self.lut = [self.driver.convert(code) * self.scale for code in range(1 << 16)]
@@ -240,6 +273,7 @@ class JcxdMads3210(Device):
             self.driver.ad_stop(handle)
             self.driver.reset(handle)
             self.driver.close(handle)
+        self._release_claim()
         self.acq = None
         return {"closed": handle is not None}
 

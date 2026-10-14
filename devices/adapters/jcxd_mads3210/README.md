@@ -38,6 +38,8 @@
 | `doSafeLevel` | `0` | `safe_state` 和 `configure_dio` 写入 DIO 输出的电平 |
 | `dllPath` | 包内 `bin/UMADX3210_x64.dll` | 也可用环境变量 `UMADX3210_DLL` |
 
+**一张卡只能对应一个设备实例**（1.0.2 起）：打开时插件先独占这张卡（跨进程的系统文件锁，进程退出自动释放），再读身份、复位。同一张卡再加一个设备实例，第二个会打不开并报“already used by another device instance”，而不是和第一个互相复位、各分走一半采样（表现为示波器上波形一段一段地断开、日志里反复出现 `AI clock re-anchored`）。有多张卡时给每个实例填各自的 `serialNumber`。
+
 ## 现场验收（需要接线，由用户执行）
 
 `self_test` 证明插件和板卡对得上、采集按配置速率在跑，但不证明信号路径。断开被测设备后，用短线做以下回环（引脚见 `/device.pinout`，C0/C1 = Connector 0/1）：

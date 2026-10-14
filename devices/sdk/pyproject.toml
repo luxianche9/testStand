@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "teststand-device-sdk"
-version = "0.2.0"
+version = "0.2.1"
 description = "SDK for testStand device plugins: tools, streams, lifecycle and the compliance suite."
 requires-python = ">=3.11"
 dependencies = ["pydantic>=2.11,<3"]
