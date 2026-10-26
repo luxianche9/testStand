@@ -14,7 +14,10 @@ export function SegmentedControl<T extends string>({ label, value, options, onCh
     <div
       role="group"
       aria-label={label}
-      className={cn("inline-flex items-center gap-px rounded-md border border-line bg-surface-0 p-px", className)}
+      className={cn(
+        "inline-flex shrink-0 items-center gap-px rounded-md border border-line bg-surface-0 p-px",
+        className
+      )}
     >
       {options.map((option) => (
         <button
@@ -25,7 +28,8 @@ export function SegmentedControl<T extends string>({ label, value, options, onCh
           disabled={option.disabled}
           onClick={() => onChange(option.value)}
           className={cn(
-            "inline-flex items-center gap-1 rounded-[3px] px-2 text-fg-2 transition-colors duration-120",
+            "inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-[3px] px-2 text-fg-2",
+            "transition-colors duration-120",
             "hover:text-fg disabled:opacity-45 aria-pressed:bg-surface-3 aria-pressed:text-fg",
             "[&_svg]:size-3.5",
             size === "xs" ? "h-5 text-xs" : "h-6 text-sm"

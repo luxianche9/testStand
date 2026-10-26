@@ -4,7 +4,7 @@ import type { WiringChange } from "@teststand/contracts/wiring";
 import { BotIcon, UserIcon } from "lucide-react";
 import { portLabel } from "../../lib/hardware.js";
 import { useWiringChanges } from "../../lib/queries.js";
-import { SegmentedControl } from "../../ui/index.js";
+import { cn, SegmentedControl } from "../../ui/index.js";
 import { pinCountText } from "./wiring-model.js";
 
 type Filter = "all" | "ai" | "manual";
@@ -43,7 +43,7 @@ export function WiringLogPanel({ hardware, header, ...props }: {
     <section aria-label="接线日志" className="flex h-full min-h-0 min-w-0 flex-col bg-surface-1" {...props}>
       {header ?? (
         <header className="flex h-9 shrink-0 items-center gap-2 border-b border-line px-3">
-          <h2 className="tf-label text-fg-2">接线日志</h2>
+          <h2 className="tf-label whitespace-nowrap text-fg-2">接线日志</h2>
           <span className="tf-num text-xs text-fg-3">{entries.length}</span>
         </header>
       )}
@@ -85,8 +85,11 @@ function LogGroup({ label, count, actions, children }: {
 }) {
   return (
     <section aria-label={label}>
-      <h3 className="sticky top-0 z-[1] flex h-8 items-center gap-2 border-b border-line bg-surface-1 px-3">
-        <span className="tf-label text-fg-3">{label}</span>
+      <h3 className={cn(
+        "sticky top-0 z-[1] flex min-h-8 flex-wrap items-center gap-x-2 gap-y-1",
+        "border-b border-line bg-surface-1 px-3 py-1"
+      )}>
+        <span className="tf-label whitespace-nowrap text-fg-3">{label}</span>
         <span className="tf-num text-2xs text-fg-3">{count}</span>
         {actions}
       </h3>
