@@ -146,8 +146,17 @@ function BindingRow({ binding, hardware, icds, issue, onChange, onRemove, onEdit
   );
 }
 
+/** The `name:` a YAML ICD declares at its top level, when it is a valid name. */
+function declaredName(text: string): string | undefined {
+  return /^name:\s*["']?([A-Za-z_][A-Za-z0-9_]*)["']?\s*(?:#.*)?$/m.exec(text)?.[1];
+}
+
 /** Edit an ICD file's YAML, check it and trial-decode sample bytes before saving. */
-export function IcdEditorDialog({ name, alias, onClose }: Editing & { onClose: () => void }) {
+export function IcdEditorDialog({ name, alias, onClose, onSaved }: Editing & {
+  onClose: () => void;
+  /** Called with the saved ICD's name, e.g. to select an ICD just created. */
+  onSaved?: (name: string) => void;
+}) {
   const client = useQueryClient();
   const toast = useToast();
   const creating = !name;
@@ -156,12 +165,13 @@ export function IcdEditorDialog({ name, alias, onClose }: Editing & { onClose: (
     queryFn: () => window.teststand.testing.readIcd({ name: name ?? "" }),
     enabled: !creating
   });
-  const [fileName, setFileName] = useState(name ?? "");
   const [text, setText] = useState(creating ? icdTemplate("") : "");
   const [samplesText, setSamplesText] = useState("");
   const [check, setCheck] = useState<IcdCheck>();
   useEffect(() => { if (document.data) setText(document.data.text); }, [document.data]);
 
+  // The file is named after the ICD's own `name` (the backend requires them to match).
+  const fileName = creating ? declaredName(text) ?? "" : name;
   const samples = parseSamples(samplesText);
   const badSample = sampleIssue(samples);
   const run = useMutation({
@@ -172,27 +182,31 @@ export function IcdEditorDialog({ name, alias, onClose }: Editing & { onClose: (
     onError: (error) => toast.error(errorMessage(error))
   });
   const save = useMutation({
-    mutationFn: () => window.teststand.testing.saveIcd({ input: { name: fileName.trim(), text } }),
+    mutationFn: () => window.teststand.testing.saveIcd({ input: { name: fileName, text } }),
     onSuccess: async (result) => {
       toast.success(`已保存 ICD ${result.name}`);
       await client.invalidateQueries({ queryKey: queryKeys.icds });
+      onSaved?.(result.name);
       onClose();
     },
     onError: (error) => toast.error(errorMessage(error))
   });
-  const rows = trialRows(check?.decoded);
+  const units = new Map((check?.icd?.streams ?? []).flatMap((stream) =>
+    stream.unit ? [[stream.streamId, stream.unit] as const] : []));
+  const rows = trialRows(check?.decoded, units);
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent title={creating ? "新建 ICD" : `编辑 ICD ${name}`} size="xl">
         <DialogBody className="grid gap-3">
           {creating && (
-            <Field label="文件名" required hint="保存为项目 icd 目录下的 <文件名>.icd.yaml">
-              <Input value={fileName} onChange={(event) => setFileName(event.target.value)} />
-            </Field>
+            <p className={cn("text-xs", fileName ? "text-fg-2" : "text-fail")}>
+              {fileName ? <>保存为项目的 <code className="font-mono">icd/{fileName}.icd.yaml</code>（文件名取 ICD 的 name）</>
+                : "在 YAML 里写上 name（字母、数字、下划线，不以数字开头），文件以它命名"}
+            </p>
           )}
           <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] gap-3">
-            <Field label="ICD（YAML）">
+            <Field label="ICD（YAML）" className="content-start">
               <Textarea
                 aria-label="ICD 内容"
                 className="h-80 font-mono text-xs"
@@ -221,7 +235,7 @@ export function IcdEditorDialog({ name, alias, onClose }: Editing & { onClose: (
           </Button>
           <Button
             variant="primary"
-            disabled={!fileName.trim() || !text.trim() || save.isPending || check?.valid === false}
+            disabled={!fileName || !text.trim() || save.isPending || check?.valid === false}
             onClick={() => save.mutate()}
           >
             保存
@@ -261,18 +275,20 @@ function IcdCheckResult({ check, rows }: { check: IcdCheck | undefined; rows: Re
         </div>
       )}
       {rows.length > 0 && (
-        <div aria-label="试解码结果" role="list" className="max-h-40 overflow-auto rounded-sm border border-line">
+        <div aria-label="试解码结果" role="list" className="max-h-56 overflow-auto rounded-sm border border-line">
           {rows.map((row, index) => (
             <div
               role="listitem"
               key={index}
+              title={row.raw ? row.raw.toUpperCase().replace(/(..)(?=.)/g, "$1 ") : undefined}
               className={cn(
-                "grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-2 border-b border-line px-2 py-0.5",
+                "grid grid-cols-[2.25rem_6.5rem_minmax(0,1fr)] gap-2 border-b border-line px-2 py-0.5",
                 "font-mono text-2xs"
               )}
             >
-              <span className="truncate text-fg-3">{row.streamId}</span>
-              <span className={cn("truncate", row.failed ? "text-fail" : "text-fg")} title={row.text}>{row.text}</span>
+              <span className="text-fg-3">{row.sample === undefined ? "" : `#${row.sample}`}</span>
+              <span className={cn("truncate", row.failed ? "text-fail" : "text-fg-2")}>{row.label}</span>
+              <span className={cn("truncate", row.failed ? "text-fail" : "text-fg")}>{row.text}</span>
             </div>
           ))}
         </div>

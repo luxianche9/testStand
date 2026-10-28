@@ -121,9 +121,15 @@ export interface IcdDescription {
   messages: string[]; encoders: string[]; streams: IcdStream[];
   /** Per message, where each field sits in the frame (`offset` < 0 counts from the end). */
   layouts?: Record<string, IcdFieldLayout[]>;
+  /** Per encoder, the fields a step fills to build its frame. */
+  encoderLayouts?: Record<string, IcdFieldLayout[]>;
 }
 export interface IcdFieldLayout {
   name: string; offset: number; size: number; type?: string; bits?: string; unit?: string; description?: string;
+  scale?: number; bias?: number;
+  /** Raw value (as a decimal string) → label. */
+  enum?: Record<string, string>;
+  default?: number | string;
 }
 export interface IcdIssue { path: string; message: string }
 export interface IcdSummary {
@@ -131,9 +137,18 @@ export interface IcdSummary {
   description?: string | null; messages?: string[]; encoders?: string[];
 }
 export interface IcdDocument { name: string; text: string; valid: boolean; icd?: IcdDescription; error?: string; issues?: IcdIssue[] }
-export interface IcdCheckInput { text?: string; name?: string; alias?: string; samples?: Array<string | Record<string, unknown>> }
+export interface IcdCheckInput {
+  text?: string; name?: string; alias?: string; samples?: Array<string | Record<string, unknown>>;
+  /** Also build the frame this encoder sends with these field values. */
+  encode?: { message: string; fields?: Record<string, unknown> };
+}
 /** ``decoded`` maps derived stream ids to the records the samples produced. */
-export interface IcdCheck { valid: boolean; icd?: IcdDescription; decoded?: Record<string, Record<string, unknown>[]>; error?: string; issues?: IcdIssue[] }
+export interface IcdCheck {
+  valid: boolean; icd?: IcdDescription; decoded?: Record<string, Record<string, unknown>[]>; error?: string;
+  issues?: IcdIssue[];
+  /** The encoded frame (hex as sent, and the frame id for frames ICDs), or why it could not be built. */
+  encoded?: { hex: string; id?: number }; encodeError?: string;
+}
 export interface IcdSaveResult { name: string; icd: IcdDescription }
 export interface TestDeviceTools { hardwareId: string; tools: TestDeviceTool[]; issues: TestPlanIssue[] }
 export type TestRunState = "starting" | "running" | "paused" | "cleaning" | "completed" | "aborted" | "error";

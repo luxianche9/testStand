@@ -36,36 +36,72 @@ export function sampleIssue(samples: readonly string[]): string | undefined {
   return bad < 0 ? undefined : `第 ${bad + 1} 段不是完整的十六进制字节`;
 }
 
-export interface TrialRow { streamId: string; text: string; failed: boolean }
+/** Why the decoder rejected bytes (`reason` of `$errors` / `$unframed` records), in words. */
+const REASONS: Record<string, string> = {
+  checksum: "校验失败",
+  unmatched: "不匹配任何报文",
+  short_frame: "帧太短，字段越界",
+  decode: "字段解码失败",
+  too_long: "超过最大帧长",
+  bad_length: "长度字段不合法",
+  no_header: "找不到帧头",
+  empty: "空帧",
+  gap: "数据缺口处丢弃",
+  unframed: "未能成帧",
+  flush: "结束时残留的半帧"
+};
 
-/** Trial-decode output (`{streamId: records}`) as one line per record, messages before fields. */
-export function trialRows(decoded: Record<string, Record<string, unknown>[]> | undefined): TrialRow[] {
-  const rows: TrialRow[] = [];
-  const order = Object.keys(decoded ?? {}).sort((a, b) => depth(a) - depth(b) || a.localeCompare(b));
-  for (const streamId of order) {
-    for (const record of decoded?.[streamId] ?? []) {
-      const failed = streamId.endsWith(".$errors") || streamId.endsWith(".$unframed");
-      rows.push({ streamId, text: recordText(record), failed });
+export function decodeReason(reason: unknown): string {
+  const key = typeof reason === "string" ? reason : "";
+  return REASONS[key] ?? (key || "解码失败");
+}
+
+export interface TrialRow {
+  /** 1-based sample line the frame ended in (samples are numbered as entered). */
+  sample: number | undefined;
+  /** Message name, or 错误帧 / 未成帧. */
+  label: string;
+  text: string;
+  failed: boolean;
+  raw: string;
+}
+
+function valueText(value: unknown, unit: string | undefined): string {
+  const text = typeof value === "string" ? value : JSON.stringify(value);
+  return unit && typeof value === "number" ? `${text} ${unit}` : text;
+}
+
+/**
+ * Trial-decode output (`{streamId: records}`) as one row per frame in sample order: decoded
+ * messages with their fields (and units), rejected frames with the reason. Per-field streams
+ * (`alias.message.field`) repeat the message rows and are left out.
+ */
+export function trialRows(decoded: Record<string, Record<string, unknown>[]> | undefined,
+  units: ReadonlyMap<string, string> = new Map()): TrialRow[] {
+  const rows: Array<TrialRow & { order: number }> = [];
+  for (const [streamId, records] of Object.entries(decoded ?? {})) {
+    const tail = streamId.slice(streamId.indexOf(".") + 1);
+    const special = tail.startsWith("$");
+    if (!special && tail.includes(".")) continue;
+    for (const record of records) {
+      const seq = typeof record.seq === "number" ? record.seq : undefined;
+      const raw = typeof record.raw === "string" ? record.raw : typeof record.data === "string" ? record.data : "";
+      const fields = record.fields && typeof record.fields === "object" ? record.fields as Record<string, unknown> : {};
+      const fieldText = Object.entries(fields)
+        .map(([name, value]) => `${name}=${valueText(value, units.get(`${streamId}.${name}`))}`).join("  ");
+      const failed = special;
+      const text = failed
+        ? [decodeReason(record.reason), record.message ? `（${String(record.message)}）` : "", fieldText]
+          .filter(Boolean).join(" ")
+        : fieldText;
+      rows.push({
+        sample: seq === undefined ? undefined : seq + 1,
+        label: tail === "$errors" ? "错误帧" : tail === "$unframed" ? "未成帧" : tail,
+        text, failed, raw, order: seq ?? Number.MAX_SAFE_INTEGER
+      });
     }
   }
-  return rows;
-}
-
-function depth(streamId: string): number {
-  return streamId.split(".").length;
-}
-
-function recordText(record: Record<string, unknown>): string {
-  if ("v" in record && Object.keys(record).every((key) => ["t", "tb", "seq", "v"].includes(key))) {
-    return JSON.stringify(record.v);
-  }
-  if (record.fields && typeof record.fields === "object") {
-    return Object.entries(record.fields as Record<string, unknown>)
-      .map(([name, value]) => `${name}=${JSON.stringify(value)}`)
-      .join("  ");
-  }
-  const { t: _t, tb: _tb, seq: _seq, ...rest } = record;
-  return JSON.stringify(rest);
+  return rows.sort((a, b) => a.order - b.order).map(({ order: _order, ...row }) => row);
 }
 
 /** Starting text for a new ICD file (design §6.2). */

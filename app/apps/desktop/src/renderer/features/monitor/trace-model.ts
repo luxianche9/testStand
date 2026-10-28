@@ -1,4 +1,5 @@
 import type { StreamRecord } from "@teststand/contracts/observability";
+import { decodeReason } from "../testing/protocol-bindings.js";
 
 /**
  * Rows of the bus trace (CANoe's Trace window): one per record, or per decoded frame when an ICD
@@ -78,8 +79,7 @@ export function decodedRows(key: string, streamId: string, decoded: Record<strin
       const seq = typeof record.seq === "number" ? record.seq : -1;
       const tb = tbOf(seq);
       if (tb === undefined) continue;
-      const problem = tail === "$errors" ? String(record.reason ?? "错误帧")
-        : tail === "$unframed" ? String(record.reason ?? "未成帧") : undefined;
+      const problem = tail === "$errors" || tail === "$unframed" ? decodeReason(record.reason) : undefined;
       const message = typeof record.message === "string" ? record.message : undefined;
       rows.push({
         uid: `${key}#${seq}#${derived}#${rows.length}`,
@@ -87,7 +87,7 @@ export function decodedRows(key: string, streamId: string, decoded: Record<strin
         streamId,
         tb,
         dir: typeof record.dir === "string" ? record.dir : "rx",
-        ident: message ?? (problem ? tail : identText(record.id)),
+        ident: message ?? (problem ? (tail === "$errors" ? "错误帧" : "未成帧") : identText(record.id)),
         bytes: hexBytes(record.raw ?? record.data),
         message,
         fields: record.fields && typeof record.fields === "object"

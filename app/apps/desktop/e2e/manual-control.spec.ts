@@ -59,8 +59,10 @@ test.describe.serial("manual control and Agent hardware calls", () => {
     await expect(menu.getByRole("menuitem")).toHaveText([/set_relay/, /set_bank/, /read_bit/, /safe_state/]);
     await menu.getByRole("menuitem", { name: /set_relay/ }).click();
     const action = page.getByRole("dialog", { name: "PCI-1762 e2e · set_relay" });
-    await action.getByLabel(/Channel/).fill("2");
-    await action.getByLabel(/Closed/).check();
+    await action.getByRole("radiogroup", { name: /Channel/ }).getByRole("radio", { name: "2", exact: true }).click();
+    const closed = action.getByRole("switch", { name: /Closed/ });
+    await closed.click();
+    await expect(closed).toHaveAttribute("aria-checked", "true");
     await action.getByRole("button", { name: "确认执行" }).click();
     await expect(action.getByText("调用成功", { exact: true })).toBeVisible();
     await expect(action.locator("pre")).toContainText('"closed": true');

@@ -8,7 +8,11 @@ import type { JsonSchema } from "./schema-form-model.js";
  */
 export type Widget =
   | { kind: "channel"; min: number; max: number }
-  | { kind: "number"; min: number | undefined; max: number | undefined; integer: boolean; step: number; unit?: string }
+  | {
+      kind: "number"; min: number | undefined; max: number | undefined; integer: boolean; step: number; unit?: string;
+      /** A slider only helps over a linear range; baud rates and decades of range get chips instead. */
+      slider: boolean; presets?: number[];
+    }
   | { kind: "toggle"; on: string | undefined; off: string | undefined }
   | { kind: "segmented"; options: (string | number)[] }
   | { kind: "multi"; min: number; max: number }
@@ -19,6 +23,11 @@ export type Widget =
 const INDEX = /^(channel|ch|line|relay|port|index|bit|output|input|counter)$/i;
 const MAX_CHOICES = 128;
 const SEGMENTS = 5;
+const BAUD = /baud/i;
+const BAUD_RATES = [300, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600,
+  1_000_000, 2_000_000, 3_000_000, 4_000_000];
+/** Past this max/min ratio a slider can't land on the small values. */
+const SLIDER_SPAN = 1000;
 
 const finite = (value: unknown): number | undefined => (typeof value === "number" && Number.isFinite(value)
   ? value : undefined);
@@ -67,7 +76,15 @@ export function widgetFor(name: string, schema: JsonSchema): Widget | undefined 
   if (type === "number" || type === "integer") {
     const integer = type === "integer";
     const step = finite(schema.step) ?? finite(schema.multipleOf) ?? niceStep(min, max, integer);
-    return { kind: "number", min, max, integer, step, ...(unit ? { unit } : {}) };
+    const baud = BAUD.test(name)
+      ? BAUD_RATES.filter((rate) => (min === undefined || rate >= min) && (max === undefined || rate <= max))
+      : undefined;
+    const wide = min !== undefined && max !== undefined && min > 0 && max / min > SLIDER_SPAN;
+    return {
+      kind: "number", min, max, integer, step, ...(unit ? { unit } : {}),
+      slider: min !== undefined && max !== undefined && !baud && !wide,
+      ...(baud?.length ? { presets: baud } : {})
+    };
   }
   if (type === "array") {
     const items = schema.items && typeof schema.items === "object" ? schema.items as JsonSchema : undefined;

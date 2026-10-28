@@ -12,10 +12,12 @@ import { findStep } from "./plan-model.js";
 import { DeviceBindingsEditor } from "./DeviceBindings.js";
 import { ProtocolBindingsEditor } from "./ProtocolBindings.js";
 import { StreamStepInspector } from "./StreamStepInspector.js";
+import { EncodeEditor, encodeTargets, type EncodeSpec } from "./EncodeEditor.js";
+import { ToolFieldContext } from "../manual/widgets.js";
 import { BoundArgumentsForm, PlanParametersEditor, StepSettingsForm } from "./TestPlanForms.js";
 
 /** InvokeTool settings with their own controls above the schema form. */
-const invokeFieldsAbove = ["timeoutMs", "errorPolicy"];
+const invokeFieldsAbove = ["timeoutMs", "errorPolicy", "encode"];
 /** Steps that judge a device stream (see `STREAM_STEPS` in the backend models). */
 const streamStepTypes = new Set(["Observe", "Expect", "Guard"]);
 
@@ -194,6 +196,9 @@ function InvokeInspector({ step, hardware, catalogItem, references, update, onBi
   const tools = useTestDeviceTools(hardwareId);
   const selected = tools.data?.tools.find((tool) => tool.toolName === step.toolName);
   const outputPaths = selected ? schemaFieldPaths(selected.resultSchema) : [];
+  const encode = step.encode as EncodeSpec | undefined;
+  const toolSchema = selected?.inputSchema as JsonSchema | undefined;
+  const encodedArgument = encode ? encode.argument ?? encodeTargets(toolSchema).auto : undefined;
   return (
     <>
       <Field label="具体设备" required>
@@ -247,13 +252,24 @@ function InvokeInspector({ step, hardware, catalogItem, references, update, onBi
       )}
       {selected && (
         <>
+          <Section title="协议编码">
+            <EncodeEditor value={encode} toolSchema={toolSchema} onChange={(value) => update({ encode: value })} />
+          </Section>
           <Section title="参数绑定">
-            <BoundArgumentsForm
-              schema={selected.inputSchema as JsonSchema}
-              value={step.arguments ?? {}}
-              references={references}
-              onChange={(value) => update({ arguments: value })}
-            />
+            {encodedArgument && (
+              <p className="text-xs text-fg-3">参数 {encodedArgument} 由协议编码生成</p>
+            )}
+            <ToolFieldContext.Provider value={{
+              ...(step.hardwareId ? { hardwareId: step.hardwareId } : {}),
+              ...(step.toolName ? { tool: step.toolName } : {})
+            }}>
+              <BoundArgumentsForm
+                schema={encodedArgument ? stripSchemaProperties(toolSchema!, [encodedArgument]) : toolSchema!}
+                value={step.arguments ?? {}}
+                references={references}
+                onChange={(value) => update({ arguments: value })}
+              />
+            </ToolFieldContext.Provider>
           </Section>
           <Section title="可引用输出字段">
             <code className="block font-mono text-2xs break-all text-fg-3">

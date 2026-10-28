@@ -139,12 +139,12 @@ export function NumberControl({ value, widget, label, disabled, presets, onChang
   onCommit?: (value: number) => void;
 }) {
   const { min, max } = widget;
-  const chips = presets ?? [...new Set([min, 0, max].filter((item): item is number =>
+  const chips = presets ?? widget.presets ?? [...new Set([min, 0, max].filter((item): item is number =>
     item !== undefined && (min === undefined || item >= min) && (max === undefined || item <= max)))];
   return (
     <span className="grid gap-1">
       <span className="flex items-center gap-2">
-        {min !== undefined && max !== undefined && (
+        {widget.slider && min !== undefined && max !== undefined && (
           <input
             type="range"
             aria-label={`${label} 滑块`}

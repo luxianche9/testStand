@@ -19,6 +19,12 @@ const ERROR_CATEGORY_MESSAGES: Readonly<Partial<Record<ErrorCategory, string>>> 
   cancelled: "操作已取消"
 };
 
+/** Categories whose phrase says only *that* something was wrong: the detail says what, so it follows. */
+const DETAILED: ReadonlySet<string> = new Set([
+  "invalid_argument", "validation_failed", "not_found", "conflict", "unavailable", "invalid_response",
+  "invalid_project", "invalid_project_folder"
+]);
+
 export function errorCategoryMessage(category: string): string | undefined {
   return ERROR_CATEGORY_MESSAGES[category as ErrorCategory];
 }
@@ -27,6 +33,8 @@ export function errorMessage(value: unknown): string {
   const candidate = value as { category?: unknown } | null | undefined;
   if (typeof candidate?.category === "string") {
     const mapped = ERROR_CATEGORY_MESSAGES[candidate.category as ErrorCategory];
+    const detail = value instanceof Error ? value.message.trim() : "";
+    if (mapped && DETAILED.has(candidate.category) && detail && detail !== mapped) return `${mapped}：${detail}`;
     if (mapped) return mapped;
   }
   if (value instanceof Error) return value.message;

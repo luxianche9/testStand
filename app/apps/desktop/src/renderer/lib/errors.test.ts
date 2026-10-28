@@ -8,6 +8,12 @@ describe("renderer error messages", () => {
     expect(errorMessage(appError("safe_stop_failed", "Safe stop failed"))).toBe("设备未能安全停止，请立即检查现场状态");
   });
 
+  it("follows the phrase with the detail where the phrase alone does not say what is wrong", () => {
+    expect(errorMessage(appError("validation_failed", "The ICD declares name 'riu'; expected 'riu_cmd'")))
+      .toBe("内容校验未通过：The ICD declares name 'riu'; expected 'riu_cmd'");
+    expect(errorMessage(appError("not_found", ""))).toBe("请求的内容不存在");
+  });
+
   it("retains the original message for generic and uncategorized errors", () => {
     expect(errorMessage(appError("error", "Detailed failure"))).toBe("Detailed failure");
     expect(errorMessage(new Error("Network detail"))).toBe("Network detail");

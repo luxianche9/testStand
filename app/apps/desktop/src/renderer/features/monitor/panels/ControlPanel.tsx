@@ -99,7 +99,7 @@ function Control({ control, onRemove }: { control: MonitorControl; onRemove: () 
       {control.widget === "slider" && (
         <NumberControl value={typeof value === "number" ? value : undefined} label={name} disabled={disabled}
           widget={{
-            kind: "number", integer: numeric?.integer ?? false, step: numeric?.step ?? 0.01,
+            kind: "number", slider: true, integer: numeric?.integer ?? false, step: numeric?.step ?? 0.01,
             min: control.min ?? numeric?.min, max: control.max ?? numeric?.max,
             ...(numeric?.unit ? { unit: numeric.unit } : {})
           }}

@@ -72,7 +72,7 @@ describe("IcdEditorDialog", () => {
     });
     const result = await screen.findByRole("list", { name: "试解码结果" });
     expect(result.textContent).toContain("code=7");
-    expect(result.textContent).toContain("checksum");
+    expect(result.textContent).toContain("校验失败");
     await userEvent.click(screen.getByRole("button", { name: "保存" }));
     await waitFor(() => expect(api.testing.saveIcd).toHaveBeenCalledWith({
       input: { name: "dut_ack", text: "name: dut_ack\n" }
@@ -80,12 +80,22 @@ describe("IcdEditorDialog", () => {
     await waitFor(() => expect(onClose).toHaveBeenCalled());
   });
 
+  it("names a new ICD file after the name the YAML declares", async () => {
+    render(<IcdEditorDialog onClose={vi.fn()} />, { wrapper: Wrapper });
+    const text = await screen.findByRole("textbox", { name: "ICD 内容" });
+    expect(screen.getByText(/icd\/dut\.icd\.yaml/)).toBeTruthy();
+    fireEvent.change(text, { target: { value: "formatVersion: 1\nname: riu_cmd\n" } });
+    expect(screen.getByText(/icd\/riu_cmd\.icd\.yaml/)).toBeTruthy();
+    fireEvent.change(text, { target: { value: "formatVersion: 1\n" } });
+    expect(screen.getByText(/在 YAML 里写上 name/)).toBeTruthy();
+    expect((screen.getByRole("button", { name: "保存" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it("shows why an ICD is invalid and blocks saving it", async () => {
     api.testing.checkIcd.mockResolvedValue({
       valid: false, error: "ICD is invalid", issues: [{ path: "/framing", message: "unknown kind" }]
     });
     render(<IcdEditorDialog onClose={vi.fn()} />, { wrapper: Wrapper });
-    fireEvent.change(await screen.findByRole("textbox", { name: /文件名/ }), { target: { value: "new_icd" } });
     await userEvent.click(screen.getByRole("button", { name: "检查并试解码" }));
     const result = await screen.findByRole("region", { name: "检查结果" });
     expect(result.textContent).toContain("/framing：unknown kind");

@@ -4779,7 +4779,7 @@
     "/api/ops/testing.checkIcd": {
       "post": {
         "operationId": "testing.checkIcd",
-        "summary": "Validate ICD text (unsaved or ``name``'s file) and trial-decode sample records.",
+        "summary": "Validate ICD text (unsaved or ``name``'s file), trial-decode sample records and, with\n``encode: {message, fields}``, build the frame that encoder sends.",
         "tags": [
           "testing"
         ],

@@ -1063,7 +1063,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Validate ICD text (unsaved or ``name``'s file) and trial-decode sample records. */
+        /**
+         * Validate ICD text (unsaved or ``name``'s file), trial-decode sample records and, with
+         *     ``encode: {message, fields}``, build the frame that encoder sends.
+         */
         post: operations["testing.checkIcd"];
         delete?: never;
         options?: never;
