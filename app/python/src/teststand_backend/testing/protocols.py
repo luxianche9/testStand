@@ -417,28 +417,39 @@ def describe_icd(icd: Icd, alias: str | None = None) -> Record:
         "description": icd.description,
         "messages": [message.name for message in icd.messages],
         "layouts": {
-            message.name: [
-                {
-                    key: value
-                    for key, value in {
-                        "name": item.name,
-                        "offset": item.offset,
-                        "size": item.size,
-                        "type": item.type,
-                        "bits": item.bits,
-                        "unit": item.unit,
-                        "description": item.description,
-                    }.items()
-                    if value is not None
-                }
-                for item in message.fields
-                if item.offset is not None
-            ]
+            message.name: [_layout(item) for item in message.fields if item.offset is not None]
             for message in icd.messages
+        },
+        "encoderLayouts": {
+            encoder.name: [_layout(item) for item in encoder.fields] for encoder in icd.encoders
         },
         "encoders": [encoder.name for encoder in icd.encoders],
         "streams": streams,
     }
+
+
+def _layout(item: Any) -> Record:
+    """Where a field sits and how it reads: offset, size, type, bits, scale, unit, enum labels."""
+    layout = {
+        "name": item.name,
+        "offset": item.offset,
+        "size": item.size if item.offset is not None else None,
+        "type": item.type,
+        "bits": item.bits,
+        "scale": item.scale,
+        "bias": item.bias,
+        "unit": item.unit,
+        "description": item.description,
+        "enum": {str(key): value for key, value in item.enum.items()} if item.enum else None,
+        "default": item.default,
+    }
+    return {key: value for key, value in layout.items() if value is not None}
+
+
+def trial_encode(icd: Icd, message: str, fields: Any) -> Record:
+    """The frame ``encoders[message]`` builds from ``fields``: hex as sent, and its frame id."""
+    frame = encode(icd, message, fields if isinstance(fields, dict) else {})
+    return {"hex": frame.wire.hex(), **({"id": frame.id} if frame.id is not None else {})}
 
 
 def trial_decode(icd: Icd, samples: list[Any], alias: str | None = None) -> Record:

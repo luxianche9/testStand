@@ -40,7 +40,7 @@ describe("bus trace model", () => {
     }, (seq) => ({ 4: 100, 5: 200 } as Record<number, number>)[seq]);
     expect(rows.map((item) => [item.tb, item.ident, item.fields, item.problem])).toEqual([
       [100, "status", { voltage: 5 }, undefined],
-      [200, "$errors", undefined, "checksum"]
+      [200, "错误帧", undefined, "校验失败"]
     ]);
   });
 });

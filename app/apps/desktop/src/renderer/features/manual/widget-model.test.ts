@@ -6,9 +6,13 @@ describe("parameter widgets", () => {
     expect(widgetFor("channel", { type: "integer", minimum: 0, maximum: 7 }))
       .toEqual({ kind: "channel", min: 0, max: 7 });
     expect(widgetFor("volts", { type: "number", minimum: -10, maximum: 10 }))
-      .toMatchObject({ kind: "number", min: -10, max: 10, integer: false, step: 0.02 });
+      .toMatchObject({ kind: "number", min: -10, max: 10, integer: false, step: 0.02, slider: true });
     expect(widgetFor("baudrate", { type: "integer", minimum: 687, maximum: 2000000 }))
-      .toMatchObject({ kind: "number", integer: true, step: 1 });
+      .toMatchObject({ kind: "number", integer: true, step: 1, slider: false,
+        presets: [1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600, 1_000_000, 2_000_000] });
+    expect(widgetFor("frequency", { type: "number", minimum: 1, maximum: 1e6 }))
+      .toMatchObject({ kind: "number", slider: false });
+    expect(widgetFor("gain", { type: "number" })).toMatchObject({ kind: "number", slider: false });
     expect(widgetFor("mask", { type: "integer", minimum: 0, maximum: 4294967295 }))
       .toEqual({ kind: "bitmask", bits: 32 });
     expect(widgetFor("energized", { type: "boolean", description: "true = COM-OP, false = COM-CL." }))

@@ -11,7 +11,7 @@ from teststand_backend.util import clone, new_uuid, utc_now_iso
 
 from .catalog import step_catalog
 from .models import FLOW_ID, feature_ids, plan_hardware_ids
-from .protocols import describe_icd, trial_decode
+from .protocols import describe_icd, trial_decode, trial_encode
 
 Record = dict[str, Any]
 _UNIT_KEY = "currentUnit"
@@ -189,7 +189,8 @@ class TestingApplication:
         idempotency="natural",
     )
     def check_icd(self, context: Record, input: Record) -> Record:
-        """Validate ICD text (unsaved or ``name``'s file) and trial-decode sample records."""
+        """Validate ICD text (unsaved or ``name``'s file), trial-decode sample records and, with
+        ``encode: {message, fields}``, build the frame that encoder sends."""
         alias = input.get("alias") or None
         try:
             text = input.get("text")
@@ -206,6 +207,12 @@ class TestingApplication:
         samples = input.get("samples")
         if isinstance(samples, list) and samples:
             result["decoded"] = trial_decode(icd, samples, alias)
+        spec = input.get("encode")
+        if isinstance(spec, dict) and spec.get("message"):
+            try:
+                result["encoded"] = trial_encode(icd, str(spec["message"]), spec.get("fields"))
+            except (AppError, ValueError, OverflowError) as error:
+                result["encodeError"] = str(error)
         return result
 
     def _icds(self) -> Any:

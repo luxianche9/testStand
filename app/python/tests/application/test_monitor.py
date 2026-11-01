@@ -260,7 +260,7 @@ async def test_a_stream_the_panel_cannot_draw_is_rejected(tmp_path: Path) -> Non
 
 async def test_layout_is_replaced_and_kept(tmp_path: Path) -> None:
     monitor, _ = await fixture(tmp_path)
-    layout = {"grid": {"root": {}}, "panels": {}}
+    layout: dict[str, object] = {"grid": {"root": {}}, "panels": {}}
     assert (await monitor.update(HUMAN, {"layout": layout}))["layout"] == layout
     assert (
         await monitor.update(

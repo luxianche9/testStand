@@ -91,3 +91,35 @@ async def test_invalid_icds_are_reported_and_never_written(tmp_path: Path) -> No
     (tmp_path / "icd" / "dut_ack.icd.yaml").write_text(broken, encoding="utf-8")
     read = app.read_icd(HUMAN, "dut_ack")
     assert read["valid"] is False and read["text"] == broken
+
+
+async def test_check_trial_encodes_and_describes_field_layouts(tmp_path: Path) -> None:
+    app = application(tmp_path)
+    text = ACK_YAML.replace(
+        "      - {name: code, offset: 4, type: u8}",
+        "      - {name: code, offset: 4, type: u8, enum: {7: ok, 9: busy}, unit: n}",
+    ).replace("    fields: []", "    fields:\n      - {name: level, offset: 4, type: u8}")
+    checked = app.check_icd(
+        HUMAN, {"text": text, "encode": {"message": "ping", "fields": {"level": 3}}}
+    )
+    assert checked["icd"]["layouts"]["ack"] == [
+        {
+            "name": "code",
+            "offset": 4,
+            "size": 1,
+            "type": "u8",
+            "unit": "n",
+            "enum": {"7": "ok", "9": "busy"},
+        }
+    ]
+    assert checked["icd"]["encoderLayouts"] == {
+        "ping": [{"name": "level", "offset": 4, "size": 1, "type": "u8"}]
+    }
+    body = bytes.fromhex("AA 55 02 02 03")
+    assert checked["encoded"] == {
+        "hex": (body + checksums.compute("crc16_modbus", body[2:]).to_bytes(2, "little")).hex()
+    }
+    failed = app.check_icd(
+        HUMAN, {"text": text, "encode": {"message": "ping", "fields": {"nope": 1}}}
+    )
+    assert "encoded" not in failed and "no field(s) nope" in failed["encodeError"]

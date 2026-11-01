@@ -3,6 +3,7 @@ import type { IDockviewPanelProps } from "dockview-react";
 import { useQuery } from "@tanstack/react-query";
 import { FileSearchIcon } from "lucide-react";
 import type { IcdFieldLayout } from "@teststand/contracts/testing";
+import { queryKeys } from "../../../lib/query-keys.js";
 import { cn } from "../../../ui/index.js";
 import { clockTime } from "../../streams/stream-model.js";
 import { PanelFrame, usePanel } from "../panel-kit.js";
@@ -28,7 +29,7 @@ export function DetailPanel({ api }: IDockviewPanelProps) {
   const [{ frame }, panel] = usePanel(api.id);
   const [hover, setHover] = useState<string>();
   const icd = useQuery({
-    queryKey: ["icd", frame?.icd],
+    queryKey: queryKeys.icd(frame?.icd ?? ""),
     queryFn: () => window.teststand.testing.readIcd({ name: frame?.icd ?? "" }),
     enabled: Boolean(frame?.icd)
   });
