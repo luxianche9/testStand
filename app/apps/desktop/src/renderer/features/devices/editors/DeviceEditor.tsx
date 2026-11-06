@@ -7,6 +7,8 @@ import { z } from "zod";
 import { errorMessage } from "../../../lib/errors.js";
 import { Button, Dialog, DialogBody, DialogContent, DialogFooter, Input, Textarea } from "../../../ui";
 import { EditorAlert, EditorField, editorGrid } from "./EditorField.js";
+import { LINK_TYPE, linkIssues } from "./link-settings.js";
+import { LinkSettingsFields } from "./LinkSettingsFields.js";
 
 /** `settings` is edited as JSON text; only a JSON object is accepted. */
 function parseSettings(text: string): Record<string, unknown> | undefined {
@@ -36,12 +38,15 @@ export function DeviceEditor({ instance, onClose, onChanged }: {
   onChanged: () => Promise<void>;
 }) {
   const open = Boolean(instance);
-  const { register, reset, handleSubmit, formState } = useForm<DeviceEditorValues>({
+  const { register, reset, handleSubmit, formState, watch, setValue } = useForm<DeviceEditorValues>({
     resolver: zodResolver(deviceEditorSchema),
     mode: "onChange",
     defaultValues: { label: "", settings: "{}" }
   });
   const { errors, isValid } = formState;
+  const link = instance?.type === LINK_TYPE;
+  const settings = parseSettings(watch("settings"));
+  const linkProblem = link && settings !== undefined && Object.keys(linkIssues(settings)).length > 0;
 
   useEffect(() => {
     if (instance) reset(initialValues(instance));
@@ -70,6 +75,11 @@ export function DeviceEditor({ instance, onClose, onChanged }: {
             <EditorField label="名称">
               <Input {...register("label")} />
             </EditorField>
+            {link && settings && (
+              <LinkSettingsFields settings={settings} onChange={(next) => setValue(
+                "settings", JSON.stringify(next, null, 2), { shouldDirty: true, shouldValidate: true }
+              )} />
+            )}
             <details className="col-span-2 text-xs text-fg-2">
               <summary className="cursor-pointer select-none py-1">高级设置</summary>
               <EditorField label="驱动设置（JSON）" span error={errors.settings?.message}>
@@ -81,7 +91,8 @@ export function DeviceEditor({ instance, onClose, onChanged }: {
         </DialogBody>
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>取消</Button>
-          <Button variant="primary" type="submit" form="device-editor-form" disabled={save.isPending || !isValid}>
+          <Button variant="primary" type="submit" form="device-editor-form"
+            disabled={save.isPending || !isValid || linkProblem}>
             {save.isPending ? "正在连接…" : "保存"}
           </Button>
         </DialogFooter>
