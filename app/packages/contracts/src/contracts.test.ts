@@ -30,7 +30,7 @@ describe("public contracts", () => {
     const timestamp = "2026-08-15T00:00:00.000Z";
     const project = {
       formatVersion: 8, projectId: "PROJECT", name: "Bench", wiring: { nodes: [], connections: [] },
-      monitor: { panels: [], layout: null }, createdAt: timestamp, updatedAt: timestamp
+      monitor: { panels: [] }, createdAt: timestamp, updatedAt: timestamp
     };
     // A project without protocol bindings decodes nothing.
     expect(projectFileSchema.parse(project)).toEqual({ ...project, protocols: [] });

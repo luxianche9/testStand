@@ -1,12 +1,14 @@
 import { useState, type ReactNode } from "react";
-import type { IDockviewPanelProps } from "dockview-react";
 import { ArrowUpIcon, PlusIcon, Settings2Icon, XIcon } from "lucide-react";
 import type { MonitorPanel, StreamRef } from "@teststand/contracts/monitor";
 import { Button, IconButton, Input, Select } from "../../../ui/index.js";
 import { deviceName } from "../../streams/stream-model.js";
-import { isNumber, isString, PanelFrame, settingOf, useMonitorStatic, usePanel } from "../panel-kit.js";
+import {
+  isNumber, isString, PanelFrame, settingOf, useMonitorStatic, usePanel, type PanelProps
+} from "../panel-kit.js";
 import { PANEL_LABELS, panelTitle } from "../use-monitor-workspace.js";
 import { PanelEmpty } from "./common.js";
+import { AddControlDialog } from "./ControlPanel.js";
 import { fieldsOf, type BitField } from "./RegisterPanel.js";
 import { limitsOf } from "./ValuesPanel.js";
 
@@ -27,6 +29,17 @@ function NumberSetting({ label, value, onSave }: {
         onSave(text.trim() === "" || !Number.isFinite(parsed) ? undefined : parsed);
         setText(undefined);
       }}
+      onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} />
+  );
+}
+
+/** A text field that saves when it loses focus. */
+function TextSetting({ label, value, onSave }: { label: string; value: string; onSave: (value: string) => void }) {
+  const [text, setText] = useState<string>();
+  return (
+    <Input aria-label={label} className="h-6 text-2xs" value={text ?? value}
+      onChange={(event) => setText(event.target.value)}
+      onBlur={() => { if (text !== undefined) onSave(text); setText(undefined); }}
       onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} />
   );
 }
@@ -122,11 +135,83 @@ function FieldSettings({ panel, save }: { panel: MonitorPanel; save: (settings: 
   );
 }
 
+/** What the small widgets can be told: digits, the bit a lamp shows, its words and colour, a label's text. */
+function WidgetSettings({ panel, save }: { panel: MonitorPanel; save: (settings: Record<string, unknown>) => void }) {
+  const [setting, setSetting] = useState(false);
+  const set = (key: string, value: unknown) => save({ ...panel.settings, [key]: value });
+  const bit = settingOf(panel, "bit", undefined as number | undefined, isNumber);
+  const wanted = panel.type === "switch" ? "toggle" : panel.type === "slider" ? "slider" : "button";
+  return (
+    <>
+      {panel.type === "number" && (
+        <Row label="小数位">
+          <NumberSetting label="小数位" value={settingOf(panel, "decimals", undefined as number | undefined, isNumber)}
+            onSave={(value) => set("decimals", value === undefined ? undefined : Math.max(0, Math.min(6, value)))} />
+        </Row>
+      )}
+      {(panel.type === "lamp" || panel.type === "switch") && (
+        <Row label="看哪一位">
+          <NumberSetting label="位号" value={bit} onSave={(value) => set("bit", value)} />
+          <span className="text-fg-3">空：值不为 0 即亮</span>
+        </Row>
+      )}
+      {panel.type === "lamp" && (
+        <>
+          <Row label="亮 / 灭文字">
+            <TextSetting label="亮时文字" value={settingOf(panel, "onText", "开", isString)}
+              onSave={(value) => set("onText", value)} />
+            <TextSetting label="灭时文字" value={settingOf(panel, "offText", "关", isString)}
+              onSave={(value) => set("offText", value)} />
+          </Row>
+          <Row label="颜色">
+            <Select aria-label="指示灯颜色" className="h-6 w-24 text-2xs" value={settingOf(panel, "color", "pass", isString)}
+              onChange={(event) => set("color", event.target.value)}>
+              <option value="pass">绿</option>
+              <option value="fail">红</option>
+              <option value="run">黄</option>
+              <option value="signal">蓝</option>
+            </Select>
+          </Row>
+        </>
+      )}
+      {panel.type === "label" && (
+        <>
+          <Row label="文字">
+            <TextSetting label="标签文字" value={settingOf(panel, "text", "", isString)}
+              onSave={(value) => set("text", value)} />
+          </Row>
+          <Row label="字号">
+            <Select aria-label="字号" className="h-6 w-24 text-2xs" value={settingOf(panel, "size", "md", isString)}
+              onChange={(event) => set("size", event.target.value)}>
+              <option value="sm">小</option>
+              <option value="md">中</option>
+              <option value="lg">大</option>
+            </Select>
+          </Row>
+        </>
+      )}
+      {(panel.type === "switch" || panel.type === "slider" || panel.type === "button") && (
+        <Row label="设备动作">
+          <Button size="xs" variant="outline" onClick={() => setSetting(true)}>
+            {panel.settings.control ? "重新设置" : "设置"}
+          </Button>
+          <AddControlDialog open={setting} widgetWanted={wanted} onClose={() => setSetting(false)}
+            onAdd={(item) => set("control", item)} />
+        </Row>
+      )}
+      {(panel.type === "switch" || panel.type === "slider") && (
+        <p className="text-fg-3">把回读它状态的变量拖到控件上，控件就显示设备的真实值。</p>
+      )}
+    </>
+  );
+}
+
 function Settings({ panel }: { panel: MonitorPanel }) {
   const { workspace } = useMonitorStatic();
   const save = (settings: Record<string, unknown>) => workspace.updatePanel(panel.id, { settings });
   return (
     <>
+      <WidgetSettings panel={panel} save={save} />
       {(panel.type === "values" || panel.type === "gauge") && panel.sources.length > 0 && (
         <LimitSettings panel={panel} save={save} />
       )}
@@ -146,14 +231,24 @@ function Settings({ panel }: { panel: MonitorPanel }) {
  * title, its streams in order, and what its type can be told — limits, gauge style and range,
  * bit fields.
  */
-export function InspectorPanel({ api }: IDockviewPanelProps) {
+export function InspectorPanel({ api }: PanelProps) {
   const [{ workspace, activePanelId }, self] = usePanel(api.id);
   const panel = workspace.monitor.panels.find((item) => item.id === activePanelId && item.id !== api.id);
-  const [title, setTitle] = useState<string>();
   if (!self) return null;
   if (!panel) {
     return <PanelFrame panel={self}><PanelEmpty icon={<Settings2Icon />} text="点一个面板，这里显示它的设置" /></PanelFrame>;
   }
+  return (
+    <PanelFrame panel={self} className="overflow-auto">
+      <PanelProperties panel={panel} />
+    </PanelFrame>
+  );
+}
+
+/** A panel's properties: title, its streams in order, and its own settings. */
+export function PanelProperties({ panel }: { panel: MonitorPanel }) {
+  const { workspace } = useMonitorStatic();
+  const [title, setTitle] = useState<string>();
   const move = (index: number) => {
     const sources = [...panel.sources];
     const [item] = sources.splice(index, 1);
@@ -161,7 +256,7 @@ export function InspectorPanel({ api }: IDockviewPanelProps) {
     workspace.setSources(panel.id, sources);
   };
   return (
-    <PanelFrame panel={self} className="grid content-start gap-2 overflow-auto p-2 text-2xs" key={panel.id}>
+    <div className="grid content-start gap-2 p-2 text-2xs" key={panel.id}>
       <Row label="面板">{PANEL_LABELS[panel.type]} · <span className="font-mono text-fg-3">{panel.id}</span></Row>
       <Row label="标题">
         <Input aria-label="面板标题" className="h-6 text-2xs" value={title ?? panelTitle(panel)}
@@ -189,6 +284,6 @@ export function InspectorPanel({ api }: IDockviewPanelProps) {
         </section>
       )}
       <Settings key={panel.id} panel={panel} />
-    </PanelFrame>
+    </div>
   );
 }

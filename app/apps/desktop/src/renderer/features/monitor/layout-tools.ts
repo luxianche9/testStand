@@ -1,4 +1,6 @@
-import { monitorSchema, type Monitor, type MonitorPanel, type StreamRef } from "@teststand/contracts/monitor";
+import {
+  monitorSchema, placedPanels, type Frame, type Monitor, type MonitorPanel, type StreamRef
+} from "@teststand/contracts/monitor";
 import type { StreamDeclaration } from "@teststand/contracts/observability";
 
 /** A stream as the layout generator sees it. */
@@ -7,14 +9,13 @@ export interface LayoutStream extends StreamRef {
   declaration?: StreamDeclaration | undefined;
 }
 
-type NewPanel = Omit<MonitorPanel, "settings"> & { settings: Record<string, unknown> };
+type NewPanel = Omit<MonitorPanel, "settings" | "frame"> & { settings: Record<string, unknown>; frame: Frame };
 
 /**
- * A layout made from the data (Rerun's heuristics): measured analog streams on an oscilloscope,
- * every scalar in a values table (setpoints can be set there), lines and relays on a digital
- * panel, status words on a register view, serial ports in a terminal, buses in a trace — with the
- * data-source tree on the left and the property panel on the right. Panels without streams are
- * left out.
+ * A layout made from the data (Rerun's heuristics): measured analog streams on an oscilloscope, every scalar in
+ * a values table (setpoints can be set there), lines and relays on a digital panel, status words on a register
+ * view, serial ports in a terminal, buses in a trace — each in the first free spot of the canvas. Panels without
+ * streams are left out.
  */
 export function generatedLayout(streams: readonly LayoutStream[]): NewPanel[] {
   const ref = ({ hardwareId, streamId }: LayoutStream): StreamRef => ({ hardwareId, streamId });
@@ -26,32 +27,18 @@ export function generatedLayout(streams: readonly LayoutStream[]): NewPanel[] {
   const lines = of((item) => item.type === "bits" && item.declaration?.display !== "code");
   const serial = of((item) => item.type === "bytes");
   const buses = of((item) => item.type === "frames");
-  const panels: NewPanel[] = [{ id: "sources", type: "sources", title: "数据源", sources: [], settings: {} }];
-  const add = (panel: Omit<NewPanel, "settings">, placement: MonitorPanel["placement"]) => {
-    if (!panel.sources.length) return;
-    const reference = placement?.referenceId;
-    const known = !reference || panels.some((item) => item.id === reference);
-    panels.push({ ...panel, settings: panel.type === "trace" ? { mode: "time" } : {},
-      ...(placement ? { placement: known ? placement : { direction: placement.direction } } : {}) });
-  };
-  add({ id: "scope", type: "scope", title: "示波器", sources: measured }, { referenceId: "sources", direction: "right" });
-  add({ id: "digital", type: "digital", title: "数字量", sources: lines },
-    { referenceId: measured.length ? "scope" : "sources", direction: measured.length ? "below" : "right" });
-  add({ id: "register", type: "register", title: "状态字", sources: codes },
-    { referenceId: "digital", direction: "within" });
-  const lower = panels.at(-1)?.id ?? "sources";
-  add({ id: "terminal", type: "terminal", title: "串口", sources: serial }, { referenceId: lower, direction: "below" });
-  add({ id: "trace", type: "trace", title: "总线跟踪", sources: buses },
-    { referenceId: serial.length ? "terminal" : lower, direction: serial.length ? "within" : "below" });
-  add({ id: "values", type: "values", title: "数值", sources: scalars },
-    { referenceId: measured.length ? "scope" : lower, direction: "right" });
-  panels.push({ id: "inspector", type: "inspector", title: "属性", sources: [], settings: {},
-    placement: { referenceId: panels.some((item) => item.id === "values") ? "values" : panels.at(-1)!.id,
-      direction: panels.some((item) => item.id === "values") ? "below" : "right" } });
-  return panels;
+  const panels: Omit<NewPanel, "frame">[] = [
+    { id: "scope", type: "scope", title: "示波器", sources: measured, settings: {} },
+    { id: "values", type: "values", title: "数值", sources: scalars, settings: {} },
+    { id: "digital", type: "digital", title: "数字量", sources: lines, settings: {} },
+    { id: "register", type: "register", title: "状态字", sources: codes, settings: {} },
+    { id: "terminal", type: "terminal", title: "串口", sources: serial, settings: {} },
+    { id: "trace", type: "trace", title: "总线跟踪", sources: buses, settings: { mode: "time" } }
+  ];
+  return placedPanels(panels.filter((panel) => panel.sources.length));
 }
 
-/** A saved arrangement of the workspace, kept on this computer and usable in any project. */
+/** A saved arrangement of the canvas, kept on this computer and usable in any project. */
 export interface LayoutPreset {
   name: string;
   savedAt: string;

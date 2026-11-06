@@ -603,7 +603,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** The monitor workspace: its panels (type, title, sources, settings) and layout. */
+        /** The monitor canvas: its panels (type, title, sources, settings, frame). */
         post: operations["monitor.get"];
         delete?: never;
         options?: never;
@@ -642,14 +642,15 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Change the workspace: ``panels`` replaces every panel (a preset, a generated
-         *     layout); ``operations`` then apply in order (add / remove / update a panel, add / remove
-         *     its sources or controls); ``remove`` takes each stream off every panel and ``add`` puts
-         *     it on the first panel that draws its type (never creating one); ``layout`` replaces
-         *     the saved docking layout. A stream must belong to a registered device and, once the
-         *     device's streams are known, be one it declares and one the panel can draw; a control
-         *     must name a tool its device has, with arguments the tool takes. Stays in the project
-         *     buffer until the project is saved. Returns the workspace.
+         * Change the canvas: ``panels`` replaces every panel (a generated layout, an import);
+         *     ``operations`` then apply in order (add / remove / update — retitle, settings, move or
+         *     resize — a panel, add / remove its sources or controls); ``remove`` takes each stream off
+         *     every panel and ``add`` puts it on the first panel that draws its type (never creating
+         *     one). A new panel without a frame goes in the first free spot. A stream must belong to a
+         *     registered device and, once the device's streams are known, be one it declares (or a
+         *     protocol field) and one the panel can draw; a control must name a tool its device has,
+         *     with arguments the tool takes. An Agent's change waits for the operator to confirm it.
+         *     Stays in the project buffer until the project is saved. Returns the canvas.
          */
         post: operations["monitor.update"];
         delete?: never;

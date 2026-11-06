@@ -1,5 +1,4 @@
 import { useState } from "react";
-import type { IDockviewPanelProps } from "dockview-react";
 import {
   ActivityIcon, BinaryIcon, ChevronDownIcon, ChevronRightIcon, DatabaseIcon, PlusIcon, TerminalIcon
 } from "lucide-react";
@@ -8,7 +7,7 @@ import { cn, IconButton, Input } from "../../../ui/index.js";
 import { valueAt } from "../../streams/measure.js";
 import { formatNumber, pointMask } from "../../streams/stream-model.js";
 import { useStreamsPoints } from "../../streams/useStreamReader.js";
-import { PanelFrame, useMonitorStatic, usePanel } from "../panel-kit.js";
+import { PanelFrame, useMonitorStatic, usePanel, type PanelProps } from "../panel-kit.js";
 import { startStreamDrag, streamKey } from "../use-monitor-workspace.js";
 import { PanelEmpty } from "./common.js";
 
@@ -70,7 +69,7 @@ function DeviceRows({ device, filter }: { device: DeviceStreams; filter: string 
  * Every device and the streams it declares, with their newest values (PlotJuggler's signal tree):
  * drag a stream onto a panel that can show it, or + puts it on the panel last focused (or the first) that can.
  */
-export function SourcesPanel({ api }: IDockviewPanelProps) {
+export function SourcesPanel({ api }: PanelProps) {
   const [{ workspace }, panel] = usePanel(api.id);
   const [open, setOpen] = useState<ReadonlySet<string>>(new Set());
   const [filter, setFilter] = useState("");

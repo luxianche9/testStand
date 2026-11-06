@@ -1,20 +1,14 @@
-import { useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  DockviewDefaultTab, DockviewReact, type DockviewApi, type DockviewReadyEvent, type DockviewTheme,
-  type IDockviewHeaderActionsProps, type IDockviewPanelHeaderProps, type SerializedDockview
-} from "dockview-react";
-import {
-  ActivityIcon, ExternalLinkIcon, LayoutDashboardIcon, ListChecksIcon, Maximize2Icon, Minimize2Icon,
-  PictureInPicture2Icon, PlusIcon, RadioIcon, ShieldCheckIcon, TimerResetIcon
+  LayoutDashboardIcon, ListChecksIcon, PencilRulerIcon, RadioIcon, ShieldCheckIcon, TimerResetIcon
 } from "lucide-react";
-import type { ControlWidget, Direction, MonitorPanel, PanelType } from "@teststand/contracts/monitor";
 import { errorMessage } from "../../lib/errors.js";
 import { queryKeys } from "../../lib/query-keys.js";
 import { onRunStepFocused } from "../../lib/run-focus.js";
 import {
-  Button, cn, EmptyState, IconButton, Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger, useConfirm, useToast
+  Button, IconButton, Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger, PanelHeader, useConfirm, useToast
 } from "../../ui/index.js";
 import { RunOverview, streamUnit, type ConsoleJump, type StreamSource } from "../streams/index.js";
 import { RunControls } from "../testing/EditorToolbar.js";
@@ -25,33 +19,23 @@ import {
   deletePreset, exportText, generatedLayout, importText, readPresets, savePreset, type LayoutPreset
 } from "./layout-tools.js";
 import { useLiveKeepalive, useMonitorTime } from "./monitor-time.js";
-import { PANEL_COMPONENTS } from "./MonitorPanels.js";
+import { Canvas } from "./Canvas.js";
 import { MonitorContext, MonitorTimeContext, type MonitorStaticContextValue, type SelectedFrame } from "./panel-kit.js";
+import { PanelProperties } from "./panels/InspectorPanel.js";
 import { TimebaseControls } from "./TimebaseControls.js";
 import type { BenchRun } from "./use-bench-run.js";
 import { useManualControl } from "./use-manual-control.js";
-import { CONTROL_MIME, newControlPanelId, requestControl } from "./control-requests.js";
-import {
-  PANEL_LABELS, PANEL_MIME, panelTitle, setFocusedPanel, useMonitorWorkspace, type MonitorWorkspace
-} from "./use-monitor-workspace.js";
-
-const THEME: DockviewTheme = { name: "teststand", className: "dockview-theme-teststand", gap: 2 };
-/** Layout changes this soon after loading or a window resize are the layout settling, not edits. */
-const SETTLE_MS = 1_200;
-const SAVE_DELAY_MS = 400;
-/** The page a pop-out panel opens with; the main process allows nothing else (src/main/windows.ts). */
-const POPOUT_URL = "about:blank";
+import { setFocusedPanel, useMonitorWorkspace, type MonitorWorkspace } from "./use-monitor-workspace.js";
 
 /**
- * 运行监控 of 测试台架: a docking workspace of panels — oscilloscopes, values, gauges, XY plots,
- * digital front panels, state timelines, status words, terminals, bus traces, frame details,
- * control panels, the data-source tree and a property panel, the run's results and decoded
- * messages — each showing the device streams dropped on it, all on one time axis. The panels and
- * their layout are the project's (the Agent builds them too); panels can float or pop out to a
- * window of their own. Without a run it shows the devices' live data; a run that starts takes over
- * at once, with its event timeline under the panels; a finished run picked from the history is
- * replayed the same way. Picking an instant anywhere marks it everywhere. Devices can be
- * controlled by hand from the displays and control panels, except those a running test holds.
+ * 运行监控 of 测试台架: one canvas page of panels placed freely, like a host-computer front panel —
+ * oscilloscopes, values, gauges, big numbers, lamps, XY plots, digital front panels, state timelines, status
+ * words, terminals, bus traces, frame details, switches, sliders, buttons and control panels, labels, the
+ * run's results and decoded messages — each showing the device streams (or protocol fields) dropped on it, all
+ * on one time axis. The canvas is the project's (the Agent builds it too); 编辑布局 moves, resizes and
+ * configures panels. Without a run it shows the devices' live data; a run that starts takes over at once, with
+ * its event timeline under the canvas; a finished run picked from the history is replayed the same way.
+ * Devices can be controlled by hand from the displays and controls, except those a running test holds.
  */
 export function MonitorPane({ bench, toolbar }: {
   bench: BenchRun;
@@ -76,6 +60,7 @@ export function MonitorPane({ bench, toolbar }: {
   const [rejudging, setRejudging] = useState(false);
   const [frame, selectFrame] = useState<SelectedFrame>();
   const [activePanelId, setActivePanelId] = useState<string>();
+  const [editing, setEditing] = useState(false);
   const focus = useCallback((id: string | undefined) => {
     setActivePanelId(id);
     setFocusedPanel(id);
@@ -143,6 +128,7 @@ export function MonitorPane({ bench, toolbar }: {
     error: (message: string) => toast.error(message),
     success: (message: string) => toast.success(message)
   }), [toast]);
+  const selectedPanel = workspace.monitor.panels.find((panel) => panel.id === activePanelId);
   const context = useMemo<MonitorStaticContextValue>(() => ({
     workspace, source, bench, rows, jump, pick, zoomStep, control, frame, selectFrame, activePanelId, notify
   }), [workspace, source, bench, rows, jump, pick, zoomStep, control, frame, selectFrame, activePanelId, notify]);
@@ -156,6 +142,12 @@ export function MonitorPane({ bench, toolbar }: {
       <TimebaseControls time={time} />
       <IconButton label="复位时间轴" size="icon-sm" variant="ghost" disabled={time.follow} onClick={time.reset}>
         <TimerResetIcon />
+      </IconButton>
+      <IconButton label="编辑布局" size="icon-sm" variant="ghost" aria-pressed={editing}
+        title={editing ? "完成编辑：控件恢复可操作" : "编辑布局：拖动、改大小、设置和删除控件"}
+        className={editing ? "bg-signal/15 text-signal" : undefined}
+        onClick={() => setEditing((current) => !current)}>
+        <PencilRulerIcon />
       </IconButton>
       <LayoutMenu workspace={workspace} onError={(message) => toast.error(message)}
         onDone={(message) => toast.success(message)} />
@@ -197,10 +189,21 @@ export function MonitorPane({ bench, toolbar }: {
       )}
       <MonitorTimeContext.Provider value={time}>
         <MonitorContext.Provider value={context}>
-          <Workspace key={workspace.projectId ?? "none"} workspace={workspace}
-            onActive={focus}
-            empty={<LayoutMenu workspace={workspace} labelled onError={(message) => toast.error(message)}
-              onDone={(message) => toast.success(message)} />} />
+          <div className="flex min-h-0 flex-1">
+            <Canvas key={workspace.projectId ?? "none"} workspace={workspace} editing={editing}
+              selected={activePanelId} onSelect={focus}
+              empty={<LayoutMenu workspace={workspace} labelled onError={(message) => toast.error(message)}
+                onDone={(message) => toast.success(message)} />} />
+            {editing && (
+              <aside aria-label="属性" className="flex w-64 shrink-0 flex-col border-l border-line bg-surface-1">
+                <PanelHeader title="属性" />
+                <div className="min-h-0 flex-1 overflow-y-auto">
+                  {selectedPanel ? <PanelProperties panel={selectedPanel} />
+                    : <p className="p-3 text-2xs text-fg-3">点画布上的一个控件，这里显示它的设置。</p>}
+                </div>
+              </aside>
+            )}
+          </div>
         </MonitorContext.Provider>
       </MonitorTimeContext.Provider>
       {runId && timeline && view.range && origin !== undefined && (
@@ -237,7 +240,7 @@ function LayoutMenu({ workspace, labelled = false, onError, onDone }: {
     const panels = generatedLayout(streams.map((ref) => ({
       ...ref, type: String(workspace.typeOf(ref) ?? "scalar"), declaration: workspace.declarationOf(ref) as never
     })));
-    workspace.replace({ panels, layout: null });
+    workspace.replace({ panels });
     onDone(workspace.channels.length ? "已按现有数据流重新生成布局" : "已按所有设备的数据流生成布局");
   };
   const save = () => {
@@ -294,264 +297,4 @@ function LayoutMenu({ workspace, labelled = false, onError, onDone }: {
         }} />
     </>
   );
-}
-
-/**
- * Where a panel the layout does not have yet docks: its placement hint, else beside the panel last
- * focused — to its right when that group is wide, below it when it is narrow.
- */
-function position(api: DockviewApi, panel: MonitorPanel) {
-  const reference = panel.placement?.referenceId ?? api.activePanel?.id ?? api.panels.at(-1)?.id;
-  const target = reference ? api.getPanel(reference) : undefined;
-  if (!target) return undefined;
-  const { width, height } = target.group.api;
-  const direction = panel.placement?.direction ?? (width >= Math.max(480, height * 1.2) ? "right" : "below");
-  return { referencePanel: target.id, direction } as const;
-}
-
-let popoutsReady = false;
-
-/**
- * Makes dockview's pop-out windows work in Electron: dockview fills a new window on its `load`
- * event, but an `about:blank` window has usually loaded by the time `window.open` returns, so it is
- * told once more; the window also takes the app's theme. Covers pop-outs opened from a button and
- * those a saved layout reopens.
- */
-function preparePopouts(): void {
-  if (popoutsReady) return;
-  popoutsReady = true;
-  const open = window.open.bind(window);
-  window.open = (url, target, features) => {
-    const child = open(url, target, features);
-    if (!child || String(url) !== POPOUT_URL) return child;
-    let loaded = false;
-    child.addEventListener("load", () => { loaded = true; }, { once: true });
-    window.setTimeout(() => {
-      if (!loaded && child.document.readyState === "complete") child.dispatchEvent(new Event("load"));
-    }, 0);
-    const stop = followTheme(child);
-    child.addEventListener("beforeunload", stop, { once: true });
-    return child;
-  };
-}
-
-/** A pop-out window takes the app's theme (and keeps it when the theme changes). */
-function followTheme(target: Window): () => void {
-  const copy = () => {
-    const theme = document.documentElement.dataset.theme;
-    if (theme) target.document.documentElement.dataset.theme = theme;
-    else delete target.document.documentElement.dataset.theme;
-  };
-  copy();
-  const observer = new MutationObserver(copy);
-  observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-  return () => observer.disconnect();
-}
-
-/**
- * The dockview grid, kept in step with the project's panels: panels the project gained (from this
- * view or the Agent) are docked by their placement, ones it lost are closed, a layout replaced
- * from outside (a preset, an import) is loaded, and the user's arrangement is saved back.
- */
-function Workspace({ workspace, onActive, empty }: {
-  workspace: MonitorWorkspace;
-  onActive: (id: string | undefined) => void;
-  /** Offered while the workspace is empty, next to the hint. */
-  empty: ReactNode;
-}) {
-  const [api, setApi] = useState<DockviewApi>();
-  const { panels, layout } = workspace.monitor;
-  const latest = useRef({ workspace, layout });
-  latest.current = { workspace, layout };
-  /** The layout this view last loaded or saved, so only someone else's layout is loaded. */
-  const known = useRef<string>(JSON.stringify(layout ?? null));
-  const settledAt = useRef(0);
-  const settle = () => { settledAt.current = performance.now() + SETTLE_MS; };
-
-  const load = useCallback((target: DockviewApi, saved: Record<string, unknown> | null) => {
-    settle();
-    known.current = JSON.stringify(saved ?? null);
-    target.clear();
-    if (!saved) return;
-    try {
-      target.fromJSON(saved as unknown as SerializedDockview);
-    } catch {
-      target.clear();
-    }
-  }, []);
-
-  const onReady = useCallback((event: DockviewReadyEvent) => {
-    preparePopouts();
-    // Components dragged from the component bar dock where dockview shows; nothing else is taken.
-    event.api.onUnhandledDragOverEvent((drag) => {
-      const types = drag.nativeEvent.dataTransfer?.types ?? [];
-      if (types.includes(PANEL_MIME) || types.includes(CONTROL_MIME)) drag.accept();
-    });
-    load(event.api, latest.current.layout);
-    setApi(event.api);
-  }, [load]);
-
-  // A layout set from outside this view (preset, import, generated layout) replaces the grid.
-  useEffect(() => {
-    if (!api) return;
-    const text = JSON.stringify(layout ?? null);
-    if (text !== known.current) load(api, layout);
-  }, [api, layout, load]);
-
-  useEffect(() => {
-    if (!api) return;
-    const wanted = new Set(panels.map((panel) => panel.id));
-    for (const panel of [...api.panels]) if (!wanted.has(panel.id)) api.removePanel(panel);
-    for (const panel of panels) {
-      const docked = api.getPanel(panel.id);
-      const title = panelTitle(panel);
-      if (!docked) {
-        const at = position(api, panel);
-        api.addPanel({ id: panel.id, component: panel.type, title, ...(at ? { position: at } : {}) });
-      } else if (docked.title !== title) {
-        docked.api.setTitle(title);
-      }
-    }
-  }, [api, panels]);
-
-  useEffect(() => {
-    if (!api) return undefined;
-    let timer: number | undefined;
-    const check = () => {
-      const next = api.toJSON() as unknown as Record<string, unknown>;
-      const wait = settledAt.current - performance.now();
-      if (wait > 0) {
-        // Settling only moves sizes; a panel added or closed meanwhile is an edit, saved once settled.
-        if (samePanels(next, known.current)) return;
-        timer = window.setTimeout(check, wait);
-        return;
-      }
-      const text = JSON.stringify(next);
-      if (text === known.current) return;
-      known.current = text;
-      latest.current.workspace.saveLayout(next);
-    };
-    const changed = api.onDidLayoutChange(() => {
-      window.clearTimeout(timer);
-      timer = window.setTimeout(check, SAVE_DELAY_MS);
-    });
-    const active = api.onDidActivePanelChange((panel) => { if (panel) onActive(panel.id); });
-    window.addEventListener("resize", settle);
-    return () => {
-      changed.dispose();
-      active.dispose();
-      window.clearTimeout(timer);
-      window.removeEventListener("resize", settle);
-    };
-  }, [api, onActive]);
-
-  return (
-    <div className="min-h-0 flex-1">
-      <DockviewReact
-        theme={THEME}
-        components={PANEL_COMPONENTS}
-        defaultTabComponent={PanelTab}
-        rightHeaderActionsComponent={GroupActions}
-        onReady={onReady}
-        popoutUrl={POPOUT_URL}
-        watermarkComponent={() => <Watermark action={empty} />}
-        onDidDrop={(event) => {
-          const data = event.nativeEvent.dataTransfer;
-          const reference = event.group?.activePanel?.id;
-          const direction = DROP_DIRECTIONS[event.position] ?? "right";
-          const placement = reference ? { referenceId: reference, direction } : { direction };
-          const widget = data?.getData(CONTROL_MIME) as ControlWidget | undefined;
-          if (widget) {
-            // Onto a control panel: add it there; anywhere else: a control panel made for it.
-            const onto = latest.current.workspace.monitor.panels.find((item) => item.id === reference);
-            if (onto?.type === "control" && event.position === "center") {
-              requestControl(onto.id, widget);
-              return;
-            }
-            const id = newControlPanelId();
-            latest.current.workspace.addPanel("control", [], placement, id);
-            requestControl(id, widget);
-            return;
-          }
-          const type = data?.getData(PANEL_MIME) as PanelType | undefined;
-          if (type && PANEL_LABELS[type]) latest.current.workspace.addPanel(type, [], placement);
-        }}
-      />
-    </div>
-  );
-}
-
-/** dockview's drop positions as panel placements. */
-const DROP_DIRECTIONS: Record<string, Direction> = {
-  top: "above", bottom: "below", left: "left", right: "right", center: "within"
-};
-
-/** What an empty workspace says: components first, then signals onto them. */
-function Watermark({ action }: { action: ReactNode }) {
-  return (
-    <div className="grid h-full place-items-center p-6 text-center">
-      <div className="grid max-w-md justify-items-center gap-2 text-xs text-fg-3">
-        <LayoutDashboardIcon className="size-6" />
-        <p className="text-sm text-fg-2">从最左侧活动栏打开「组件」，把组件拖到这里</p>
-        <p>
-          再从左侧「设备管理」把信号拖到组件上：模拟量拖到示波器或数值表，数字量拖到数字量组件，
-          串口拖到终端。信号只能放进能显示它的组件。
-        </p>
-        {action}
-      </div>
-    </div>
-  );
-}
-
-/** A panel's tab; closing it removes the panel from the project. */
-function PanelTab(props: IDockviewPanelHeaderProps) {
-  const monitor = useContext(MonitorContext);
-  return <DockviewDefaultTab {...props} closeActionOverride={() => monitor?.workspace.removePanel(props.api.id)} />;
-}
-
-/** Pop out to a window of its own (another screen), float over the others, or maximize. */
-function GroupActions({ containerApi, group, activePanel }: IDockviewHeaderActionsProps) {
-  const [maximized, setMaximized] = useState(() => containerApi.hasMaximizedGroup());
-  useEffect(() => {
-    const changed = containerApi.onDidMaximizedGroupChange(() => setMaximized(containerApi.hasMaximizedGroup()));
-    return () => changed.dispose();
-  }, [containerApi]);
-  const where = group.api.location.type;
-  return (
-    <div className="flex h-full items-center gap-0.5 px-1">
-      {where !== "popout" && (
-        <IconButton label="弹出到独立窗口" size="icon-xs" variant="ghost"
-          onClick={() => void containerApi.addPopoutGroup(group, { popoutUrl: POPOUT_URL })}>
-          <ExternalLinkIcon />
-        </IconButton>
-      )}
-      {where === "grid" && (
-        <IconButton label="浮动" size="icon-xs" variant="ghost" onClick={() => containerApi.addFloatingGroup(group)}>
-          <PictureInPicture2Icon />
-        </IconButton>
-      )}
-      {where === "grid" && activePanel && (
-        <IconButton
-          label={maximized ? "还原" : "最大化"}
-          size="icon-xs"
-          variant="ghost"
-          onClick={() => (maximized ? containerApi.exitMaximizedGroup() : containerApi.maximizeGroup(activePanel))}
-        >
-          {maximized ? <Minimize2Icon /> : <Maximize2Icon />}
-        </IconButton>
-      )}
-    </div>
-  );
-}
-
-/** Whether a docking layout holds the same panels as the serialized one (`"null"`: none). */
-function samePanels(layout: Record<string, unknown>, serialized: string): boolean {
-  const ids = (value: unknown) => Object.keys(
-    (value && typeof value === "object" ? (value as { panels?: object }).panels : undefined) ?? {}
-  ).sort().join(",");
-  try {
-    return ids(layout) === ids(JSON.parse(serialized));
-  } catch {
-    return false;
-  }
 }

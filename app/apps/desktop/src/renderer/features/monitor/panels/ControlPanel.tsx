@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import type { IDockviewPanelProps } from "dockview-react";
 import { CheckIcon, PlayIcon, PlusIcon, SlidersHorizontalIcon, XIcon } from "lucide-react";
 import type { ToolCatalogItem } from "@teststand/contracts/devices";
 import { CONTROL_WIDGETS, type ControlWidget, type MonitorControl } from "@teststand/contracts/monitor";
@@ -14,7 +13,7 @@ import { widgetFor } from "../../manual/widget-model.js";
 import { NumberControl, Segmented, ToggleSwitch, ToolFieldContext } from "../../manual/widgets.js";
 import { deviceName } from "../../streams/stream-model.js";
 import { useControlRequest } from "../control-requests.js";
-import { PanelFrame, useMonitorStatic, usePanel } from "../panel-kit.js";
+import { PanelFrame, useMonitorStatic, usePanel, type PanelProps } from "../panel-kit.js";
 import { PanelEmpty } from "./common.js";
 
 function controlsOf(settings: Record<string, unknown>): MonitorControl[] {
@@ -43,11 +42,20 @@ function presetValues(text: string): (string | number)[] {
 }
 
 type Outcome = { ok: boolean; message: string } | undefined;
+const SETTLE_MS = 1500;
 
 /** One control: calls its tool with the fixed arguments and the operator's value. */
-function Control({ control, onRemove }: { control: MonitorControl; onRemove: () => void }) {
+export function Control({ control, onRemove, readback }: {
+  control: MonitorControl;
+  onRemove?: (() => void) | undefined;
+  /** The value read back from the device; shown unless the operator just set one. */
+  readback?: unknown;
+}) {
   const { control: manual } = useMonitorStatic();
-  const [value, setValue] = useState<unknown>();
+  const [own, setOwn] = useState<{ value: unknown; at: number }>();
+  // What the operator set wins for a moment, until the device's own value has had time to follow.
+  const value = own && (readback === undefined || Date.now() - own.at < SETTLE_MS) ? own.value : readback;
+  const setValue = (next: unknown) => setOwn({ value: next, at: Date.now() });
   const [busy, setBusy] = useState(false);
   const [outcome, setOutcome] = useState<Outcome>();
   const tool = manual.findTool(control.hardwareId, control.tool);
@@ -79,10 +87,12 @@ function Control({ control, onRemove }: { control: MonitorControl; onRemove: () 
         <span className="truncate text-xs text-fg">{name}</span>
         <span className="truncate text-2xs text-fg-3">{deviceName(control.hardwareId)}</span>
         {busy && <Spinner />}
-        <IconButton label={`删除控件 ${name}`} size="icon-xs" variant="ghost"
-          className="ml-auto opacity-0 group-hover/control:opacity-100 focus-visible:opacity-100" onClick={onRemove}>
-          <XIcon />
-        </IconButton>
+        {onRemove && (
+          <IconButton label={`删除控件 ${name}`} size="icon-xs" variant="ghost"
+            className="ml-auto opacity-0 group-hover/control:opacity-100 focus-visible:opacity-100" onClick={onRemove}>
+            <XIcon />
+          </IconButton>
+        )}
       </figcaption>
       {fixedText && <span className="truncate font-mono text-2xs text-fg-3" title={fixedText}>{fixedText}</span>}
       {control.widget === "button" && (
@@ -92,7 +102,8 @@ function Control({ control, onRemove }: { control: MonitorControl; onRemove: () 
         </Button>
       )}
       {control.widget === "toggle" && (
-        <ToggleSwitch checked={value === true} label={name} disabled={disabled}
+        <ToggleSwitch checked={value === true || (typeof value === "number" && value !== 0)} label={name}
+          disabled={disabled}
           {...(widget?.kind === "toggle" ? { on: widget.on, off: widget.off } : {})}
           onChange={(next) => { setValue(next); void run(next); }} />
       )}
@@ -136,7 +147,7 @@ function paramFor(widget: ControlWidget, props: Record<string, JsonSchema>): str
   return typed(["number", "integer", "string"]);
 }
 
-function AddControlDialog({ open, widgetWanted, onClose, onAdd }: {
+export function AddControlDialog({ open, widgetWanted, onClose, onAdd }: {
   open: boolean;
   /** The widget asked for (dropped from the component sidebar); otherwise suggested by the tool. */
   widgetWanted: ControlWidget | undefined;
@@ -261,7 +272,7 @@ function AddControlDialog({ open, widgetWanted, onClose, onAdd }: {
  * preset buttons bound to device tools with some arguments fixed, e.g. "AO0 = slider" or
  * "K5 closed / open". Disabled for a device a test run holds. The Agent can build it too.
  */
-export function ControlPanel({ api }: IDockviewPanelProps) {
+export function ControlPanel({ api }: PanelProps) {
   const [{ workspace, control }, panel] = usePanel(api.id);
   const [adding, setAdding] = useState(false);
   const [requested, requestDone] = useControlRequest(api.id);

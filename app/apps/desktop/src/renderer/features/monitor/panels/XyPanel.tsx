@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useRef } from "react";
-import type { IDockviewPanelProps } from "dockview-react";
 import { ScatterChartIcon } from "lucide-react";
 import type { StreamPoint } from "@teststand/contracts/observability";
 import { numericValue } from "../../streams/measure.js";
 import { formatNumber } from "../../streams/stream-model.js";
 import { tokenColor, useThemeVersion } from "../../streams/theme-colors.js";
 import { useStreamsPoints } from "../../streams/useStreamReader.js";
-import { PanelFrame, usePanel, useRemove, useWindow } from "../panel-kit.js";
+import { PanelFrame, usePanel, useRemove, useWindow, type PanelProps } from "../panel-kit.js";
 import { PanelEmpty, StreamTitle, useSize } from "./common.js";
 import { unitOf } from "./ValuesPanel.js";
 
@@ -34,7 +33,7 @@ function bounds(values: number[]): [number, number] {
 const MARGIN = { left: 48, right: 8, top: 8, bottom: 20 };
 
 /** One stream against another (an LVDT's A against B): older points fade, the newest is a dot. */
-export function XyPanel({ api }: IDockviewPanelProps) {
+export function XyPanel({ api }: PanelProps) {
   const [{ workspace }, panel] = usePanel(api.id);
   const view = useWindow();
   const remove = useRemove(panel);

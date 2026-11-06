@@ -28,13 +28,15 @@ const LOGIC_AXIS_PX = 104;
 const LOGIC_MAX_PX = 180;
 /** The follow window never lags the clock by more than this, whatever the data does. */
 const MAX_LAG_MS = 1_000;
-const SIGNALS_KEY = "teststand.scope.signals-open";
+const SIGNALS_KEY = "teststand.scope.signal-list";
 
+/** The signal list is folded unless the operator opened it: the legend above the trace already names and
+ *  toggles each signal, and signals are added from 变量. */
 function storedOpen(): boolean {
   try {
-    return globalThis.localStorage?.getItem(SIGNALS_KEY) !== "false";
+    return globalThis.localStorage?.getItem(SIGNALS_KEY) === "true";
   } catch {
-    return true;
+    return false;
   }
 }
 

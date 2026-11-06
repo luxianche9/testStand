@@ -1,5 +1,4 @@
 import { useState } from "react";
-import type { IDockviewPanelProps } from "dockview-react";
 import { Table2Icon } from "lucide-react";
 import type { StreamInfo } from "@teststand/contracts/observability";
 import { errorMessage } from "../../../lib/errors.js";
@@ -10,7 +9,7 @@ import { measure, sparkline, valueAt } from "../../streams/measure.js";
 import { CHANNEL_COLORS, formatNumber, streamUnit } from "../../streams/stream-model.js";
 import { useStreamsPoints } from "../../streams/useStreamReader.js";
 import { setpointBinding, type SetpointBinding } from "../control-bindings.js";
-import { PanelFrame, useMonitorStatic, usePanel, useRemove, useWindow } from "../panel-kit.js";
+import { PanelFrame, useMonitorStatic, usePanel, useRemove, useWindow, type PanelProps } from "../panel-kit.js";
 import { PanelEmpty, readingAt, Sparkline, StreamTitle } from "./common.js";
 
 export interface Limits { lo?: number; hi?: number }
@@ -69,7 +68,7 @@ function SetpointCell({ stream, binding, current }: {
  * Many numbers at once (CANoe's Data window): per stream the value now, min / max / mean over the
  * shown window, a sparkline, red when outside its limits. A setpoint row can be set in place.
  */
-export function ValuesPanel({ api }: IDockviewPanelProps) {
+export function ValuesPanel({ api }: PanelProps) {
   const [{ workspace, control }, panel] = usePanel(api.id);
   const view = useWindow();
   const remove = useRemove(panel);

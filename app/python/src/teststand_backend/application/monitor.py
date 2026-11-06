@@ -11,9 +11,11 @@ from typing import TYPE_CHECKING
 from teststand_backend.contracts.errors import app_error
 from teststand_backend.contracts.monitor import (
     SOURCE_TYPES,
+    free_frame,
     parse_control,
     parse_monitor,
     parse_monitor_update_input,
+    placed,
 )
 from teststand_backend.contracts.operations import operation
 
@@ -24,6 +26,10 @@ if TYPE_CHECKING:
     from teststand_backend.projects.project_service import ProjectService
     from teststand_backend.projects.protocol_bindings import ProjectProtocols
     from teststand_backend.wiring.project_wiring_service import ProjectWiringService
+
+
+ONE_CONTROL = frozenset({"button", "switch", "slider"})
+"""Widgets that hold one control in ``settings.control``."""
 
 
 def _key(channel: Json) -> tuple[str, str]:
@@ -109,8 +115,9 @@ class MonitorApplication:
         idempotency="natural",
     )
     def get(self, context: Json) -> Json:
-        """The monitor workspace: its panels (type, title, sources, settings) and layout."""
-        return self.projects.monitor()
+        """The monitor canvas: its panels (type, title, sources, settings, frame)."""
+        monitor = self.projects.monitor()
+        return {**monitor, "panels": placed(monitor["panels"])}
 
     @operation(
         "monitor.update",
@@ -118,19 +125,21 @@ class MonitorApplication:
         risk="write",
         profiles=("plan", "explore"),
         idempotency="natural",
+        confirm=True,
     )
     async def update(self, context: Json, input: Json) -> Json:
-        """Change the workspace: ``panels`` replaces every panel (a preset, a generated
-        layout); ``operations`` then apply in order (add / remove / update a panel, add / remove
-        its sources or controls); ``remove`` takes each stream off every panel and ``add`` puts
-        it on the first panel that draws its type (never creating one); ``layout`` replaces
-        the saved docking layout. A stream must belong to a registered device and, once the
-        device's streams are known, be one it declares and one the panel can draw; a control
-        must name a tool its device has, with arguments the tool takes. Stays in the project
-        buffer until the project is saved. Returns the workspace."""
+        """Change the canvas: ``panels`` replaces every panel (a generated layout, an import);
+        ``operations`` then apply in order (add / remove / update — retitle, settings, move or
+        resize — a panel, add / remove its sources or controls); ``remove`` takes each stream off
+        every panel and ``add`` puts it on the first panel that draws its type (never creating
+        one). A new panel without a frame goes in the first free spot. A stream must belong to a
+        registered device and, once the device's streams are known, be one it declares (or a
+        protocol field) and one the panel can draw; a control must name a tool its device has,
+        with arguments the tool takes. An Agent's change waits for the operator to confirm it.
+        Stays in the project buffer until the project is saved. Returns the canvas."""
         request = parse_monitor_update_input(input)
         monitor = self.projects.monitor()
-        panels: list[Json] = monitor["panels"]
+        panels: list[Json] = placed(monitor["panels"])
         if "panels" in request:
             panels = []
             for given in request["panels"]:
@@ -142,6 +151,8 @@ class MonitorApplication:
                     "settings": self._settings(given, given["settings"]),
                 }
                 self._add_sources(panel, given["sources"])
+                if not panel.get("frame"):
+                    panel["frame"] = free_frame(panels, panel["type"])
                 panels.append(panel)
         for item in request.get("operations", []):
             self._apply(panels, item)
@@ -150,8 +161,6 @@ class MonitorApplication:
             panel["sources"] = [item for item in panel["sources"] if _key(item) not in removed]
         for item in request.get("add", []):
             self._add_default(panels, item)
-        if "layout" in request:
-            monitor["layout"] = request["layout"]
         self.projects.update_monitor(parse_monitor({**monitor, "panels": panels}))
         self.wiring.notify_project_changed()
         return self.projects.monitor()
@@ -171,11 +180,7 @@ class MonitorApplication:
             }
             if spec.get("title") is not None:
                 panel["title"] = spec["title"]
-            placement = change.get("placement")
-            if placement is not None:
-                if placement.get("referenceId") is not None:
-                    _panel(panels, placement["referenceId"])
-                panel["placement"] = placement
+            panel["frame"] = spec.get("frame") or free_frame(panels, spec["type"])
             self._add_sources(panel, spec.get("sources", []))
             panels.append(panel)
             return
@@ -185,6 +190,8 @@ class MonitorApplication:
         elif op == "updatePanel":
             if "title" in change:
                 panel["title"] = change["title"]
+            if "frame" in change:
+                panel["frame"] = change["frame"]
             if "settings" in change:
                 panel["settings"] = self._settings(
                     panel, {**panel["settings"], **change["settings"]}
@@ -211,7 +218,12 @@ class MonitorApplication:
             panel["sources"] = [item for item in panel["sources"] if _key(item) not in removed]
 
     def _settings(self, panel: Json, settings: Json) -> Json:
-        """A control panel's controls checked against the tools of their devices, ids filled."""
+        """A control panel's controls, or a one-control widget's control, checked against the
+        tools of their devices, ids filled."""
+        if panel["type"] in ONE_CONTROL and isinstance(settings.get("control"), dict):
+            control = parse_control({"id": "c1", **settings["control"]})
+            self._check_control(control)
+            return {**settings, "control": control}
         if panel["type"] != "control" or "controls" not in settings:
             return dict(settings)
         given = settings["controls"]

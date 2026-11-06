@@ -391,27 +391,30 @@ PLATFORM_TOOLS = [
     ),
     _platform(
         "get_monitor",
-        "读取运行监控工作台的面板：id、类型、标题、显示的流（sources）和设置（settings）。"
-        "显示类面板：scope 示波器、digital 数字量、terminal 终端、trace 总线跟踪、values 数值表、"
-        "gauge 仪表、timeline 状态时间线、register 状态字、xy XY 图、detail 报文详情、"
-        "results 结果、messages 报文；control 控制面板的 settings.controls 是绑定设备工具的按钮、"
-        "开关、滑块与预置值。测试运行期间操作员不能手动控制。",
+        "读取运行监控画布（一整页，像上位机界面）上的面板：id、类型、标题、显示的流（sources）、"
+        "设置（settings）和位置 frame {x, y, w, h}（20px 栅格单位）。显示类：scope 示波器、"
+        "digital 数字量、terminal 终端、trace 总线跟踪、values 数值表、gauge 仪表、timeline 状态"
+        "时间线、register 状态字、xy XY 图、detail 报文详情、number 大数字、lamp 指示灯、label "
+        "文字、results 结果、messages 报文；操作类：control 控制面板（settings.controls "
+        "多个控件）、button 按钮 / switch 开关 / slider 滑块（settings.control 一个控件，第一条 "
+        "source 是回读显示的值）。测试运行期间操作员不能手动控制。",
         _EMPTY,
         _MONITOR,
         operation="monitor.get",
     ),
     _platform(
         "update_monitor",
-        "按用户要求搭建运行监控工作台和控制面板。operations 按顺序执行：addPanel 新建面板"
-        "（类型、标题、要显示的流、设置，placement 放在某面板的 right/below/left/above，"
-        "或 within 作为它的标签页）、removePanel、updatePanel 改标题或设置、"
+        "按用户要求搭建运行监控画布（上位机界面）。会先给操作员看你的改动，确认后才生效。"
+        "operations 按顺序执行：addPanel 新建面板（类型、标题、要显示的流、设置、frame 位置；"
+        "不给 frame 就放到第一个空位）、removePanel、updatePanel 改标题、设置或 frame"
+        "（移动 / 改大小）、"
         "addSources / removeSources 给面板加减流、addControl / removeControl 给 control 面板"
-        "加减控件（hardwareId、tool 设备工具名、widget、param、fixed 固定参数、"
-        "presets）；"
-        "之后 remove 把流从所有面板去掉，add 把流放到第一个能显示它的面板"
-        "（不会新建面板，没有合适的面板时先 addPanel）。每条流是设备声明的一条流"
-        "（hardwareId + streamId，从 monitor_streams 取），且类型要适合面板。界面立即显示；"
-        "save_project 前只在工程缓冲区。返回修改后的面板。",
+        "加减控件（hardwareId、tool 设备工具名、widget、param、fixed 固定参数、presets）。"
+        "做一个开关 / 滑块 / 按钮：addPanel type switch / slider / button，settings.control 是一个"
+        "控件，sources 放回读它状态的那条流。之后 remove 把流从所有面板去掉，add 把流放到第一个"
+        "能显示它的面板（不会新建面板）。每条流是设备声明的流或协议字段（hardwareId + streamId，"
+        "从 monitor_streams 取），且类型要适合面板。save_project 前只在工程缓冲区。"
+        "返回修改后的画布。",
         obj(
             {
                 "operations": array(monitor_operation_schema)

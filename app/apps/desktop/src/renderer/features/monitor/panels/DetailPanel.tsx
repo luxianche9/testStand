@@ -1,12 +1,11 @@
 import { useState } from "react";
-import type { IDockviewPanelProps } from "dockview-react";
 import { useQuery } from "@tanstack/react-query";
 import { FileSearchIcon } from "lucide-react";
 import type { IcdFieldLayout } from "@teststand/contracts/testing";
 import { queryKeys } from "../../../lib/query-keys.js";
 import { cn } from "../../../ui/index.js";
 import { clockTime } from "../../streams/stream-model.js";
-import { PanelFrame, usePanel } from "../panel-kit.js";
+import { PanelFrame, usePanel, type PanelProps } from "../panel-kit.js";
 import { PanelEmpty } from "./common.js";
 
 /** Byte indices a field covers in a frame of `length` bytes (negative offsets count from the end). */
@@ -25,7 +24,7 @@ function byteRange(bytes: number[], bits: string | undefined): string {
  * The frame picked in a trace panel (Foxglove's Raw Messages, PulseView's annotations): its bytes
  * as a grid and its decoded fields; pointing at a field marks its bytes and the other way round.
  */
-export function DetailPanel({ api }: IDockviewPanelProps) {
+export function DetailPanel({ api }: PanelProps) {
   const [{ frame }, panel] = usePanel(api.id);
   const [hover, setHover] = useState<string>();
   const icd = useQuery({

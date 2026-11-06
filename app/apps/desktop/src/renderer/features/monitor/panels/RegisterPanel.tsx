@@ -1,4 +1,3 @@
-import type { IDockviewPanelProps } from "dockview-react";
 import { BinaryIcon } from "lucide-react";
 import type { StreamInfo, StreamPoint } from "@teststand/contracts/observability";
 import { errorMessage } from "../../../lib/errors.js";
@@ -7,7 +6,7 @@ import { lastChange } from "../../streams/measure.js";
 import { bitsWidth, clockTime, codeText, hasBit, maskXor, pointAt, pointMask } from "../../streams/stream-model.js";
 import { useStreamsPoints } from "../../streams/useStreamReader.js";
 import { bitBinding } from "../control-bindings.js";
-import { PanelFrame, useMonitorStatic, usePanel, useRemove, useWindow } from "../panel-kit.js";
+import { PanelFrame, useMonitorStatic, usePanel, useRemove, useWindow, type PanelProps } from "../panel-kit.js";
 import { PanelEmpty, readingAt, StreamTitle } from "./common.js";
 
 /** A named run of bits of a status word: `lsb` is its lowest bit. */
@@ -110,7 +109,7 @@ function Word({ stream, read, at, fields, onRemove }: {
  * index, named bit fields in colour with their values, the bits of the last change framed. A bit
  * of a line the device drives toggles on click.
  */
-export function RegisterPanel({ api }: IDockviewPanelProps) {
+export function RegisterPanel({ api }: PanelProps) {
   const [{ workspace }, panel] = usePanel(api.id);
   const view = useWindow();
   const remove = useRemove(panel);

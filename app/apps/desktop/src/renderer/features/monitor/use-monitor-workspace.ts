@@ -1,8 +1,8 @@
 import { useCallback, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  monitorChannels, PANEL_SOURCE_TYPES, type ControlWidget, type Monitor, type MonitorControl, type MonitorPanel,
-  type MonitorUpdateInput, type PanelType, type Placement, type StreamRef
+  monitorChannels, PANEL_SOURCE_TYPES, placedPanels, type ControlWidget, type Frame, type Monitor, type MonitorControl,
+  type MonitorPanel, type MonitorUpdateInput, type PanelType, type StreamRef
 } from "@teststand/contracts/monitor";
 import type { DeviceStream, RunTimeline, StreamDeclaration, StreamInfo } from "@teststand/contracts/observability";
 import type { ProjectDocument } from "@teststand/contracts/projects";
@@ -36,7 +36,7 @@ export function setFocusedPanel(id: string | undefined): void {
   focusedPanelId = id;
 }
 
-const EMPTY: Monitor = { panels: [], layout: null };
+const EMPTY: Monitor = { panels: [] };
 
 export function streamKey(ref: StreamRef): string {
   return `${ref.hardwareId}__${ref.streamId}`;
@@ -96,7 +96,13 @@ export const PANEL_LABELS: Readonly<Record<PanelType, string>> = {
   sources: "数据源",
   inspector: "属性",
   results: "结果",
-  messages: "报文"
+  messages: "报文",
+  number: "数值",
+  lamp: "指示灯",
+  switch: "开关",
+  slider: "滑块",
+  button: "按钮",
+  label: "文字"
 };
 
 export function panelTitle(panel: Pick<MonitorPanel, "type" | "title">): string {
@@ -104,15 +110,17 @@ export function panelTitle(panel: Pick<MonitorPanel, "type" | "title">): string 
 }
 
 /**
- * The project's monitor workspace — its panels, the streams every device offers, and the edits the
- * workspace makes (add or remove a panel, drop a stream on one, save the docking layout). Edits go
- * to the project buffer, like the Agent's.
+ * The project's monitor canvas — its panels (each with its frame), the streams every device offers, and the
+ * edits the canvas makes (add, move or remove a panel, drop a stream on one). Edits go to the project buffer,
+ * like the Agent's.
  */
 export function useMonitorWorkspace(timeline: RunTimeline | undefined) {
   const client = useQueryClient();
   const project = useProjectDocument();
   const devices = useMonitorStreams();
-  const monitor = project.data?.file.monitor ?? EMPTY;
+  const file = project.data?.file.monitor ?? EMPTY;
+  // Panels of an older project have no frame yet: they get the first free spots, as the backend places them.
+  const monitor = useMemo<Monitor>(() => ({ panels: placedPanels(file.panels) }), [file]);
   const setMonitor = useCallback((next: (current: Monitor) => Monitor) => {
     client.setQueryData<ProjectDocument | null>(queryKeys.projectDocument, (current) => current
       ? { ...current, dirty: true, file: { ...current.file, monitor: next(current.file.monitor) } }
@@ -121,7 +129,18 @@ export function useMonitorWorkspace(timeline: RunTimeline | undefined) {
   const update = useMutation({
     mutationFn: (input: MonitorUpdateInput) => window.teststand.monitor.update({ input }),
     onMutate: (input) => {
-      if (input.layout !== undefined) setMonitor((current) => ({ ...current, layout: input.layout ?? null }));
+      // A panel moved or resized shows at its new place at once, not after the round trip.
+      const frames = new Map((input.operations ?? []).flatMap((operation) =>
+        operation.op === "updatePanel" && operation.frame ? [[operation.panelId, operation.frame] as const] : []));
+      if (frames.size) {
+        setMonitor((current) => ({
+          ...current,
+          panels: current.panels.map((panel) => {
+            const frame = frames.get(panel.id);
+            return frame ? { ...panel, frame } : panel;
+          })
+        }));
+      }
     },
     onSuccess: (result) => setMonitor(() => result),
     onSettled: () => client.invalidateQueries({ queryKey: queryKeys.projectDocument })
@@ -168,13 +187,17 @@ export function useMonitorWorkspace(timeline: RunTimeline | undefined) {
   }, [declared, monitor.panels, addTo]);
   const removeFrom = useCallback((panelId: string, ref: StreamRef) =>
     save({ operations: [{ op: "removeSources", panelId, sources: [ref] }] }), [save]);
-  const addPanel = useCallback((type: PanelType, sources: StreamRef[] = [], placement?: Placement, id?: string) =>
+  const addPanel = useCallback((type: PanelType, sources: StreamRef[] = [], frame?: Frame, id?: string,
+    settings?: Record<string, unknown>) =>
     save({ operations: [{
-      op: "addPanel", panel: { type, sources, ...(id ? { id } : {}) }, ...(placement ? { placement } : {})
+      op: "addPanel",
+      panel: { type, sources, ...(id ? { id } : {}), ...(frame ? { frame } : {}), ...(settings ? { settings } : {}) }
     }] }), [save]);
+  /** Moves or resizes a panel. */
+  const move = useCallback((panelId: string, frame: Frame) =>
+    save({ operations: [{ op: "updatePanel", panelId, frame }] }), [save]);
   const removePanel = useCallback((panelId: string) =>
     save({ operations: [{ op: "removePanel", panelId }] }), [save]);
-  const saveLayout = useCallback((layout: Record<string, unknown>) => save({ layout }), [save]);
   const updatePanel = useCallback((panelId: string, change: { title?: string; settings?: Record<string, unknown> }) =>
     save({ operations: [{ op: "updatePanel", panelId, ...change }] }), [save]);
   const addControl = useCallback((panelId: string, control: Omit<MonitorControl, "id">) =>
@@ -182,10 +205,15 @@ export function useMonitorWorkspace(timeline: RunTimeline | undefined) {
   const removeControl = useCallback((panelId: string, controlId: string) =>
     save({ operations: [{ op: "removeControl", panelId, controlId }] }), [save]);
   /**
-   * A control widget picked in the components panel: into the control panel last focused, else the
-   * first one, else a new one made for it; that panel then asks what the control is for.
+   * A control picked in the components panel: a button, switch or slider widget of its own (it asks what to
+   * call when it is set up); presets go into the control panel last focused, else the first one, else a new
+   * one made for them.
    */
   const addControlWidget = useCallback((widget: ControlWidget) => {
+    if (widget !== "presets") {
+      addPanel(widget === "toggle" ? "switch" : widget);
+      return;
+    }
     const controls = monitor.panels.filter((panel) => panel.type === "control");
     const target = controls.find((panel) => panel.id === focusedPanelId) ?? controls[0];
     if (target) {
@@ -204,12 +232,11 @@ export function useMonitorWorkspace(timeline: RunTimeline | undefined) {
       ...(sources.length ? [{ op: "addSources" as const, panelId, sources }] : [])
     ] });
   }, [monitor.panels, save]);
-  /** Replaces the whole workspace (a preset, an imported file, a generated layout). */
-  const replace = useCallback((next: Pick<Monitor, "panels" | "layout">) => save({
-    panels: next.panels.map(({ id, type, title, sources, settings, placement }) => ({
-      id, type, sources, settings, ...(title !== undefined ? { title } : {}), ...(placement ? { placement } : {})
-    })),
-    layout: next.layout
+  /** Replaces the whole canvas (a preset, an imported file, a generated layout). */
+  const replace = useCallback((next: Pick<Monitor, "panels">) => save({
+    panels: next.panels.map(({ id, type, title, sources, settings, frame }) => ({
+      id, type, sources, settings, ...(title !== undefined ? { title } : {}), ...(frame ? { frame } : {})
+    }))
   }), [save]);
 
   return {
@@ -224,7 +251,7 @@ export function useMonitorWorkspace(timeline: RunTimeline | undefined) {
     removeFrom,
     addPanel,
     removePanel,
-    saveLayout,
+    move,
     updatePanel,
     addControl,
     removeControl,

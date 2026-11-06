@@ -12,6 +12,11 @@ import {
   draggedStreamType, PANEL_LABELS, panelDraws, panelTitle, readDraggedStream, type MonitorWorkspace
 } from "./use-monitor-workspace.js";
 
+/** What the canvas hands each panel: its id (the project panel it draws). */
+export interface PanelProps {
+  api: { id: string };
+}
+
 /** A frame picked in a trace panel, for the message detail panel. */
 export interface SelectedFrame {
   row: TraceRow;
@@ -54,7 +59,7 @@ export function useMonitorTimeContext(): MonitorTime {
   return value;
 }
 
-/** The project's panel behind a dockview panel (they share the id). */
+/** The project's panel a canvas item draws. */
 export function usePanel(id: string): [MonitorStaticContextValue, MonitorPanel | undefined] {
   const monitor = useMonitorStatic();
   return [monitor, monitor.workspace.monitor.panels.find((panel) => panel.id === id)];
@@ -83,7 +88,7 @@ const TYPE_NAMES: Record<string, string> = {
  * The type of the stream being dragged anywhere in the window ("" when it did not say), or
  * undefined: panels light up where it can go while the drag lasts.
  */
-function useStreamDrag(): string | undefined {
+export function useStreamDrag(): string | undefined {
   const [type, setType] = useState<string>();
   useEffect(() => {
     const start = (event: DragEvent) => setType(draggedStreamType([...(event.dataTransfer?.types ?? [])]));

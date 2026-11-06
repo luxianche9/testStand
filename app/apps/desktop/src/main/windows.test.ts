@@ -91,7 +91,7 @@ describe("DesktopWindows security", () => {
     expect(openHandler()).toEqual({ action: "deny" });
     expect(openHandler({ url: "https://example.com" })).toEqual({ action: "deny" });
     expect(openHandler({ url: "file:///etc/passwd" })).toEqual({ action: "deny" });
-    expect(openHandler({ url: "about:blank" }).action).toBe("allow");
+    expect(openHandler({ url: "about:blank" })).toEqual({ action: "deny" });
 
     const navigate = window.webHandlers.get("will-navigate");
     const externalEvent = { preventDefault: vi.fn() };

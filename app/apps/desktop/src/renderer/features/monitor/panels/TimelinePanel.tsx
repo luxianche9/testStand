@@ -1,10 +1,9 @@
 import { useState } from "react";
-import type { IDockviewPanelProps } from "dockview-react";
 import { ChartGanttIcon } from "lucide-react";
 import { bitIntervals, everSet } from "../../streams/measure.js";
 import { bitsWidth, CHANNEL_COLORS, hasBit, relativeTime, clockTime } from "../../streams/stream-model.js";
 import { useStreamsPoints } from "../../streams/useStreamReader.js";
-import { PanelFrame, usePanel, useRemove, useWindow } from "../panel-kit.js";
+import { PanelFrame, usePanel, useRemove, useWindow, type PanelProps } from "../panel-kit.js";
 import { PanelEmpty, StreamTitle, useSize } from "./common.js";
 
 const ROW = 14;
@@ -15,7 +14,7 @@ const LABEL = 96;
  * block wherever it was set. Lines that never changed in view are folded away unless asked for.
  * A click picks that instant everywhere.
  */
-export function TimelinePanel({ api }: IDockviewPanelProps) {
+export function TimelinePanel({ api }: PanelProps) {
   const [{ workspace, pick }, panel] = usePanel(api.id);
   const view = useWindow();
   const remove = useRemove(panel);

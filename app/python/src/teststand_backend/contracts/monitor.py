@@ -1,11 +1,13 @@
-"""The project's monitor workspace: panels, each showing some device streams, and their layout.
+"""The project's monitor canvas: one page of panels, each showing some device streams.
 
 A panel has a ``type`` that decides how it draws its ``sources`` (streams a device plugin
-declares) — see :data:`SOURCE_TYPES`; a panel ignores sources it cannot draw. ``settings`` are the
-panel's own (see :data:`PANEL_SETTINGS`); a ``control`` panel's ``settings.controls`` are buttons,
-switches and sliders bound to device tools with some arguments fixed. ``layout`` is the docking
-layout the desktop app saves (opaque here); a panel missing from it is placed by its
-``placement`` hint.
+declares or protocol fields) — see :data:`SOURCE_TYPES`; a panel ignores sources it cannot draw.
+``settings`` are the panel's own (see :data:`PANEL_SETTINGS`); a ``control`` panel's
+``settings.controls`` are buttons, switches and sliders bound to device tools with some arguments
+fixed, and the one-control widgets (``button``, ``switch``, ``slider``) hold one in
+``settings.control`` and show their first source as the value read back. ``frame`` is where the
+panel sits on the canvas, in grid cells (:data:`GRID_PX` pixels); a panel without one is placed
+in the first free spot.
 """
 
 from typing import Any
@@ -40,6 +42,12 @@ SOURCE_TYPES: dict[str, tuple[str, ...]] = {
     "inspector": (),
     "results": (),
     "messages": (),
+    "number": ("scalar", "block"),
+    "lamp": ("bits", "scalar"),
+    "switch": ("bits", "scalar"),
+    "slider": ("scalar", "block"),
+    "button": (),
+    "label": (),
 }
 PANEL_TYPES = tuple(SOURCE_TYPES)
 PANEL_DESCRIPTIONS = {
@@ -60,6 +68,12 @@ PANEL_DESCRIPTIONS = {
     "inspector": "settings of the selected panel",
     "results": "the run's verdicts",
     "messages": "the run's messages decoded with its ICDs",
+    "number": "one value in large digits with its unit",
+    "lamp": "one indicator lamp: a bit of a bits stream, or a value that is not 0",
+    "switch": "an on/off switch that calls a device tool and shows the state read back",
+    "slider": "a slider / input that calls a device tool and shows the value read back",
+    "button": "a button that calls a device tool once",
+    "label": "static text: a heading or a note on the canvas",
 }
 PANEL_SETTINGS = {
     "trace": '{mode: "time" | "fixed", icd?: ICD name}',
@@ -67,9 +81,26 @@ PANEL_SETTINGS = {
     "gauge": '{style: "dial" | "bar" | "number", min?, max?, limits?}',
     "register": "{fields?: [{name, lsb, width}]}",
     "control": "{controls: [control]}",
+    "number": "{decimals?: 0..6}",
+    "lamp": '{bit?: n (of a bits stream), onText?, offText?, color?: "pass"|"fail"|"run"|"signal"}',
+    "switch": "{control: control (widget toggle), bit?: n}",
+    "slider": "{control: control (widget slider)}",
+    "button": "{control: control (widget button)}",
+    "label": '{text, size?: "sm"|"md"|"lg"}',
 }
-DIRECTIONS = ("right", "below", "left", "above", "within")
 WIDGETS = ("button", "toggle", "slider", "presets")
+GRID_PX = 20
+"""Size of a canvas grid cell in pixels."""
+CANVAS_COLUMNS = 60
+"""Columns new panels are placed within (the canvas itself grows as needed)."""
+PANEL_SIZES: dict[str, tuple[int, int]] = {
+    "scope": (30, 14), "digital": (20, 7), "terminal": (24, 12), "trace": (30, 14),
+    "values": (20, 10), "gauge": (10, 9), "timeline": (24, 9), "register": (14, 9),
+    "xy": (14, 14), "detail": (14, 12), "control": (16, 9), "sources": (12, 18),
+    "inspector": (12, 18), "results": (20, 10), "messages": (24, 12), "number": (8, 4),
+    "lamp": (5, 4), "switch": (8, 4), "slider": (12, 4), "button": (6, 3), "label": (12, 2),
+}  # fmt: skip
+"""Width and height (cells) a new panel of each type gets."""
 
 stream_ref_schema = obj(
     {
@@ -78,14 +109,12 @@ stream_ref_schema = obj(
     },
     strict=True,
 )
-placement_schema = obj(
+frame_schema = obj(
     {
-        "referenceId": string(1)
-        .optional()
-        .describe("Panel to place it next to; the last one when absent."),
-        "direction": enum(*DIRECTIONS).describe(
-            "Side of the reference panel; within = a tab in its group."
-        ),
+        "x": number(0, 10_000, integer=True).describe("Left edge, grid cells from the left."),
+        "y": number(0, 10_000, integer=True).describe("Top edge, grid cells from the top."),
+        "w": number(1, 400, integer=True).describe("Width in grid cells."),
+        "h": number(1, 400, integer=True).describe("Height in grid cells."),
     },
     strict=True,
 )
@@ -118,19 +147,17 @@ panel_schema = obj(
         "title": string(0, 80).optional(),
         "sources": array(stream_ref_schema).default([]),
         "settings": record(unknown()).default({}),
-        "placement": placement_schema.optional(),
+        "frame": frame_schema.optional(),
     },
 )
-monitor_schema = obj(
-    {
-        "panels": array(panel_schema).default([]),
-        "layout": record(unknown()).nullable().default(None),
-    },
-)
+monitor_schema = obj({"panels": array(panel_schema).default([])})
 
 _PANEL_ID = string(1).describe("Panel id, from get_monitor.")
 _SOURCES = array(stream_ref_schema, 1).describe("Streams (hardwareId + streamId).")
-_TITLE = string(0, 80).optional().describe("Title on the panel's tab.")
+_TITLE = string(0, 80).optional().describe("Title over the panel.")
+_FRAME = frame_schema.optional().describe(
+    f"Where it sits on the canvas, in {GRID_PX}px grid cells; first free spot when absent."
+)
 _SETTINGS_TEXT = "; ".join(f"{kind}: {text}" for kind, text in PANEL_SETTINGS.items())
 _NEW_PANEL = obj(
     {
@@ -141,6 +168,7 @@ _NEW_PANEL = obj(
         "title": _TITLE,
         "sources": array(stream_ref_schema).optional().describe("Streams the panel shows."),
         "settings": record(unknown()).optional().describe(f"Panel settings. {_SETTINGS_TEXT}."),
+        "frame": _FRAME,
     },
     strict=True,
 )
@@ -151,9 +179,6 @@ operation_schema = discriminated(
             {
                 "op": literal("addPanel").describe("Add a panel."),
                 "panel": _NEW_PANEL.describe("The new panel."),
-                "placement": placement_schema.optional().describe(
-                    "Where it docks; right of the last panel when absent."
-                ),
             },
             strict=True,
         ),
@@ -163,9 +188,12 @@ operation_schema = discriminated(
         ),
         "updatePanel": obj(
             {
-                "op": literal("updatePanel").describe("Retitle a panel or change its settings."),
+                "op": literal("updatePanel").describe(
+                    "Retitle a panel, change its settings or move / resize it."
+                ),
                 "panelId": _PANEL_ID,
                 "title": _TITLE,
+                "frame": frame_schema.optional().describe("New place and size, in grid cells."),
                 "settings": record(unknown())
                 .optional()
                 .describe("Merged into the panel's settings (each key replaced)."),
@@ -212,7 +240,6 @@ monitor_update_input_schema = obj(
         "operations": array(operation_schema).optional(),
         "add": array(stream_ref_schema).optional(),
         "remove": array(stream_ref_schema).optional(),
-        "layout": record(unknown()).nullable().optional(),
     },
     strict=True,
 )
@@ -228,6 +255,35 @@ def parse_monitor_update_input(value: Any) -> Record:
 
 def parse_control(value: Any) -> Record:
     return parse_record(control_schema, value)
+
+
+def free_frame(panels: list[Record], kind: str) -> Record:
+    """The first spot (top to bottom, left to right) where a new ``kind`` panel overlaps none."""
+    w, h = PANEL_SIZES.get(kind, (12, 8))
+    taken = [panel["frame"] for panel in panels if panel.get("frame")]
+
+    def free(x: int, y: int) -> bool:
+        return all(
+            x + w <= f["x"] or f["x"] + f["w"] <= x or y + h <= f["y"] or f["y"] + f["h"] <= y
+            for f in taken
+        )
+
+    y = 0
+    while True:
+        for x in range(0, max(1, CANVAS_COLUMNS - w + 1)):
+            if free(x, y):
+                return {"x": x, "y": y, "w": w, "h": h}
+        y += 1
+
+
+def placed(panels: list[Record]) -> list[Record]:
+    """``panels`` with a frame each: one without (an older project) gets the first free spot."""
+    output: list[Record] = []
+    for panel in panels:
+        output.append(
+            panel if panel.get("frame") else {**panel, "frame": free_frame(output, panel["type"])}
+        )
+    return output
 
 
 def monitor_channels(monitor: Record) -> list[Record]:

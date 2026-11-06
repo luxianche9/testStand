@@ -1,23 +1,10 @@
-import type { ComponentType, DragEvent } from "react";
-import {
-  ActivityIcon, BinaryIcon, ChartGanttIcon, CirclePlayIcon, DatabaseIcon, FileSearchIcon, GaugeIcon, ListChecksIcon,
-  ListTreeIcon, MessageSquareTextIcon, RadioTowerIcon, ScatterChartIcon,
-  Settings2Icon, SlidersHorizontalIcon, Table2Icon, TerminalIcon, ToggleLeftIcon, ToggleRightIcon
-} from "lucide-react";
+import type { DragEvent } from "react";
+import { CirclePlayIcon, RadioTowerIcon, SlidersHorizontalIcon, ToggleRightIcon } from "lucide-react";
 import type { ControlWidget, PanelType } from "@teststand/contracts/monitor";
 import { cn, PanelHeader } from "../../ui/index.js";
 import { CONTROL_MIME } from "./control-requests.js";
+import { PANEL_ICONS, type Icon } from "./panel-icons.js";
 import { PANEL_LABELS, PANEL_MIME } from "./use-monitor-workspace.js";
-
-type Icon = ComponentType<{ className?: string }>;
-
-const PANEL_ICONS: Record<PanelType, Icon> = {
-  scope: ActivityIcon, values: Table2Icon, gauge: GaugeIcon, xy: ScatterChartIcon,
-  digital: ToggleLeftIcon, timeline: ChartGanttIcon, register: BinaryIcon,
-  terminal: TerminalIcon, trace: ListTreeIcon, detail: FileSearchIcon,
-  control: SlidersHorizontalIcon,
-  sources: DatabaseIcon, inspector: Settings2Icon, results: ListChecksIcon, messages: MessageSquareTextIcon
-};
 
 /** What each component takes, under its name. */
 const PANEL_HINTS: Record<PanelType, string> = {
@@ -35,22 +22,29 @@ const PANEL_HINTS: Record<PanelType, string> = {
   sources: "所有设备的数据流",
   inspector: "当前组件的设置",
   results: "测试运行的判定",
-  messages: "运行中按 ICD 解出的报文"
+  messages: "运行中按 ICD 解出的报文",
+  number: "一个值，大号数字和单位",
+  lamp: "一位或一个值：亮 / 灭",
+  label: "标题、说明文字",
+  switch: "开关，显示设备回读状态",
+  slider: "滑块，设定数值",
+  button: "按钮，执行一个动作"
 };
 
 const CONTROLS: { widget: ControlWidget; label: string; hint: string; icon: Icon }[] = [
   { widget: "button", label: "按钮", hint: "执行一个动作", icon: CirclePlayIcon },
-  { widget: "toggle", label: "开关", hint: "继电器、DO 的开 / 关", icon: ToggleRightIcon },
-  { widget: "slider", label: "滑块", hint: "设定电压等数值", icon: SlidersHorizontalIcon },
-  { widget: "presets", label: "预置值", hint: "几个常用值一键发送", icon: RadioTowerIcon }
+  { widget: "toggle", label: "开关", hint: "继电器、DO 的开 / 关，显示回读", icon: ToggleRightIcon },
+  { widget: "slider", label: "滑块", hint: "设定电压等数值，显示回读", icon: SlidersHorizontalIcon },
+  { widget: "presets", label: "预置值", hint: "几个常用值一键发送（放进控制面板）", icon: RadioTowerIcon }
 ];
 
 const DISPLAY: { label: string; types: PanelType[] }[] = [
+  { label: "常用", types: ["number", "lamp", "label"] },
   { label: "模拟量", types: ["scope", "values", "gauge", "xy"] },
   { label: "数字量", types: ["digital", "timeline", "register"] },
   { label: "通信", types: ["terminal", "trace", "detail"] }
 ];
-const TOOLS: PanelType[] = ["sources", "inspector", "results", "messages"];
+const TOOLS: PanelType[] = ["sources", "results", "messages"];
 
 function Item({ icon: Icon, label, hint, onDragStart, onClick }: {
   icon: Icon;
@@ -78,11 +72,10 @@ function Heading({ children }: { children: string }) {
 }
 
 /**
- * 组件, the activity bar's second panel: display components (by what they show), control widgets
- * and tools for the monitor workspace. Drag one into the workspace — dockview shows where it
- * docks — or click it to put it next to the component in use. A control widget goes into a control
- * panel: dropped on one, it opens that panel's "添加控件" for this widget; anywhere else, a control
- * panel is made for it. Signals are then dragged onto the components; they never make one.
+ * 组件: display components (by what they show), controls and tools for the monitor canvas. Drag one to any
+ * spot of the canvas, or click it to put it in the first free spot. A button, switch or slider becomes a widget
+ * of its own; dropped on a control panel it is added there instead (presets always go into one). Variables are
+ * then dragged onto the components, or onto an empty spot to make a fitting one.
  */
 export function ComponentSidebar({ onAddPanel, onAddControl }: {
   onAddPanel: (type: PanelType) => void;
@@ -100,7 +93,7 @@ export function ComponentSidebar({ onAddPanel, onAddControl }: {
     <section aria-label="组件" className="flex h-full min-h-0 flex-col bg-surface-1">
       <PanelHeader title="组件" />
       <div className="min-h-0 flex-1 overflow-y-auto px-1.5 pb-2">
-        <p className="px-1.5 pt-1.5 text-2xs text-fg-3">拖到运行监控的工作区（或单击添加），再把信号拖到组件上</p>
+        <p className="px-1.5 pt-1.5 text-2xs text-fg-3">拖到运行监控画布上的任意位置（或单击添加），再把变量拖到组件上</p>
         <Heading>显示</Heading>
         {DISPLAY.map((group) => (
           <div key={group.label}>

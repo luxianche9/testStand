@@ -1,11 +1,10 @@
-import type { IDockviewPanelProps } from "dockview-react";
 import { GaugeIcon } from "lucide-react";
 import type { StreamInfo } from "@teststand/contracts/observability";
 import { cn } from "../../../ui/index.js";
 import { measure, sparkline, valueAt, type Measure } from "../../streams/measure.js";
 import { formatNumber } from "../../streams/stream-model.js";
 import { useStreamsPoints } from "../../streams/useStreamReader.js";
-import { isNumber, PanelFrame, settingOf, usePanel, useRemove, useWindow } from "../panel-kit.js";
+import { isNumber, PanelFrame, settingOf, usePanel, useRemove, useWindow, type PanelProps } from "../panel-kit.js";
 import { PanelEmpty, readingAt, Sparkline, StreamTitle } from "./common.js";
 import { limitsOf, outside, unitOf, type Limits } from "./ValuesPanel.js";
 
@@ -118,7 +117,7 @@ function Tile({ stream, style, settings, read, range, at, onRemove }: {
 }
 
 /** One dial, bar or big number per stream (Serial Studio, Grafana Gauge), red past its limits. */
-export function GaugePanel({ api }: IDockviewPanelProps) {
+export function GaugePanel({ api }: PanelProps) {
   const [{ workspace }, panel] = usePanel(api.id);
   const view = useWindow();
   const remove = useRemove(panel);

@@ -139,7 +139,7 @@ def shown(monitor: Json) -> list[tuple[str, str, list[Json]]]:
 
 async def test_an_empty_project_has_no_panels(tmp_path: Path) -> None:
     monitor, _ = await fixture(tmp_path)
-    assert monitor.get(HUMAN) == {"panels": [], "layout": None}
+    assert monitor.get(HUMAN) == {"panels": []}
 
 
 async def test_add_puts_each_stream_on_a_panel_that_draws_its_type(tmp_path: Path) -> None:
@@ -198,11 +198,7 @@ async def test_panel_operations_apply_in_order(tmp_path: Path) -> None:
         {
             "operations": [
                 {"op": "addPanel", "panel": {"id": "ai", "type": "scope", "title": "AI"}},
-                {
-                    "op": "addPanel",
-                    "panel": {"type": "terminal", "sources": [RX]},
-                    "placement": {"referenceId": "ai", "direction": "below"},
-                },
+                {"op": "addPanel", "panel": {"type": "terminal", "sources": [RX]}},
                 {"op": "addSources", "panelId": "ai", "sources": [AI0, AI1, AI0]},
                 {"op": "removeSources", "panelId": "ai", "sources": [AI0]},
                 {"op": "updatePanel", "panelId": "ai", "settings": {"timeDivMs": 10}},
@@ -217,13 +213,15 @@ async def test_panel_operations_apply_in_order(tmp_path: Path) -> None:
             "title": "模拟量",
             "sources": [AI1],
             "settings": {"timeDivMs": 10, "y": 1},
+            "frame": {"x": 0, "y": 0, "w": 30, "h": 14},
         },
         {
             "id": "terminal",
             "type": "terminal",
             "sources": [RX],
             "settings": {},
-            "placement": {"referenceId": "ai", "direction": "below"},
+            # The first free spot: right of the scope.
+            "frame": {"x": 30, "y": 0, "w": 24, "h": 12},
         },
     ]
     result = await monitor.update(HUMAN, {"operations": [{"op": "removePanel", "panelId": "ai"}]})
@@ -255,15 +253,7 @@ async def test_an_unknown_panel_is_rejected_with_the_existing_ids(tmp_path: Path
     with pytest.raises(Exception, match="no panel nope"):
         await monitor.update(
             HUMAN,
-            {
-                "operations": [
-                    {
-                        "op": "addPanel",
-                        "panel": {"type": "scope"},
-                        "placement": {"referenceId": "nope", "direction": "right"},
-                    }
-                ]
-            },
+            {"operations": [{"op": "updatePanel", "panelId": "nope", "frame": FRAME}]},
         )
 
 
@@ -281,16 +271,58 @@ async def test_a_stream_the_panel_cannot_draw_is_rejected(tmp_path: Path) -> Non
     assert projects.monitor()["panels"] == []
 
 
-async def test_layout_is_replaced_and_kept(tmp_path: Path) -> None:
+FRAME = {"x": 2, "y": 3, "w": 10, "h": 5}
+
+
+async def test_panels_sit_where_they_are_put_and_new_ones_take_a_free_spot(
+    tmp_path: Path,
+) -> None:
+    monitor, projects = await fixture(tmp_path)
+    add = {"op": "addPanel", "panel": {"id": "n", "type": "number", "frame": FRAME}}
+    result = await monitor.update(HUMAN, {"operations": [add]})
+    assert result["panels"][0]["frame"] == FRAME
+    moved = {"x": 0, "y": 0, "w": 8, "h": 4}
+    result = await monitor.update(
+        HUMAN,
+        {
+            "operations": [
+                {"op": "updatePanel", "panelId": "n", "frame": moved},
+                {"op": "addPanel", "panel": {"id": "l", "type": "lamp"}},
+            ]
+        },
+    )
+    assert [panel["frame"] for panel in result["panels"]] == [
+        moved,
+        {"x": 8, "y": 0, "w": 5, "h": 4},
+    ]
+    # A project of an earlier version has panels without frames: they are placed when read.
+    projects.update_monitor(
+        {"panels": [{"id": "s", "type": "scope"}, {"id": "v", "type": "values"}]}
+    )
+    assert [panel["frame"] for panel in monitor.get(HUMAN)["panels"]] == [
+        {"x": 0, "y": 0, "w": 30, "h": 14},
+        {"x": 30, "y": 0, "w": 20, "h": 10},
+    ]
+
+
+async def test_one_control_widgets_check_their_control(tmp_path: Path) -> None:
     monitor, _ = await fixture(tmp_path)
-    layout: dict[str, object] = {"grid": {"root": {}}, "panels": {}}
-    assert (await monitor.update(HUMAN, {"layout": layout}))["layout"] == layout
-    assert (
+    switch = {
+        "op": "addPanel",
+        "panel": {"id": "k0", "type": "switch", "sources": [DI], "settings": {"control": RELAY}},
+    }
+    result = await monitor.update(HUMAN, {"operations": [switch]})
+    assert result["panels"][0]["settings"]["control"]["tool"] == "card_set_relay"
+    broken = {**RELAY, "tool": "nope"}
+    with pytest.raises(Exception, match="nope"):
         await monitor.update(
-            HUMAN, {"operations": [{"op": "addPanel", "panel": {"type": "scope"}}], "add": [AI0]}
+            HUMAN,
+            {
+                "operations": [
+                    {"op": "updatePanel", "panelId": "k0", "settings": {"control": broken}}
+                ]
+            },
         )
-    )["layout"] == layout
-    assert (await monitor.update(HUMAN, {"layout": None}))["layout"] is None
 
 
 async def test_a_stream_of_an_unregistered_device_is_rejected(tmp_path: Path) -> None:
@@ -335,7 +367,6 @@ async def test_panels_replace_every_panel(tmp_path: Path) -> None:
                 {"id": "a", "type": "values", "sources": [AI0, AI1]},
                 {"id": "b", "type": "timeline", "sources": [DI], "settings": {"x": 1}},
             ],
-            "layout": None,
         },
     )
     assert shown(result) == [("a", "values", [AI0, AI1]), ("b", "timeline", [DI])]

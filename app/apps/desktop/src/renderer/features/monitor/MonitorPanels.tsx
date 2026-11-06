@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import type { IDockviewPanelProps } from "dockview-react";
 import { ListChecksIcon, MessageSquareTextIcon } from "lucide-react";
 import type { MonitorPanel } from "@teststand/contracts/monitor";
 import type { StreamInfo } from "@teststand/contracts/observability";
@@ -9,7 +8,7 @@ import { BusTerminal, DigitalView, SignalScope } from "../streams/index.js";
 import { RunMessages } from "../testing/RunMessages.js";
 import { ResultTable } from "../testing/ResultTable.js";
 import { bitBinding } from "./control-bindings.js";
-import { PanelFrame, useMonitorTimeContext, usePanel, useRemove } from "./panel-kit.js";
+import { PanelFrame, useMonitorTimeContext, usePanel, useRemove, type PanelProps } from "./panel-kit.js";
 import { ControlPanel } from "./panels/ControlPanel.js";
 import { DetailPanel } from "./panels/DetailPanel.js";
 import { GaugePanel } from "./panels/GaugePanel.js";
@@ -19,10 +18,11 @@ import { SourcesPanel } from "./panels/SourcesPanel.js";
 import { TimelinePanel } from "./panels/TimelinePanel.js";
 import { TracePanel } from "./panels/TracePanel.js";
 import { ValuesPanel } from "./panels/ValuesPanel.js";
+import { ControlWidget, LabelWidget, LampWidget, NumberWidget } from "./panels/Widgets.js";
 import { XyPanel } from "./panels/XyPanel.js";
 import { SendBar } from "./SendBar.js";
 
-function ScopePanel({ api }: IDockviewPanelProps) {
+function ScopePanel({ api }: PanelProps) {
   const [{ workspace, source, bench, pick }, panel] = usePanel(api.id);
   const time = useMonitorTimeContext();
   const remove = useRemove(panel);
@@ -52,7 +52,7 @@ function ScopePanel({ api }: IDockviewPanelProps) {
 }
 
 /** Lamps and relay contacts; a line the device drives switches when clicked (not during a run). */
-function DigitalPanelView({ api }: IDockviewPanelProps) {
+function DigitalPanelView({ api }: PanelProps) {
   const [{ workspace, source, control, notify }, panel] = usePanel(api.id);
   const time = useMonitorTimeContext();
   if (!panel) return null;
@@ -85,7 +85,7 @@ function DigitalPanelView({ api }: IDockviewPanelProps) {
   );
 }
 
-function TerminalPanel({ api }: IDockviewPanelProps) {
+function TerminalPanel({ api }: PanelProps) {
   const [{ workspace, source, bench, jump, pick, zoomStep }, panel] = usePanel(api.id);
   if (!panel) return null;
   const { runId, mode, view } = bench;
@@ -113,7 +113,7 @@ function TerminalPanel({ api }: IDockviewPanelProps) {
   );
 }
 
-function ResultsPanel({ api }: IDockviewPanelProps) {
+function ResultsPanel({ api }: PanelProps) {
   const [{ bench, rows, zoomStep }, panel] = usePanel(api.id);
   if (!panel) return null;
   return (
@@ -125,7 +125,7 @@ function ResultsPanel({ api }: IDockviewPanelProps) {
   );
 }
 
-function MessagesPanel({ api }: IDockviewPanelProps) {
+function MessagesPanel({ api }: PanelProps) {
   const [{ bench, jump, pick }, panel] = usePanel(api.id);
   if (!panel) return null;
   const decoded = bench.runId ? bench.view.decoded : undefined;
@@ -138,7 +138,7 @@ function MessagesPanel({ api }: IDockviewPanelProps) {
   );
 }
 
-/** Dockview components by panel type. */
+/** Canvas components by panel type. */
 export const PANEL_COMPONENTS = {
   scope: ScopePanel,
   digital: DigitalPanelView,
@@ -154,5 +154,11 @@ export const PANEL_COMPONENTS = {
   sources: SourcesPanel,
   inspector: InspectorPanel,
   results: ResultsPanel,
-  messages: MessagesPanel
-} satisfies Record<MonitorPanel["type"], (props: IDockviewPanelProps) => ReactNode>;
+  messages: MessagesPanel,
+  number: NumberWidget,
+  lamp: LampWidget,
+  switch: ControlWidget,
+  slider: ControlWidget,
+  button: ControlWidget,
+  label: LabelWidget
+} satisfies Record<MonitorPanel["type"], (props: PanelProps) => ReactNode>;
