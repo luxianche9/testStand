@@ -6,6 +6,8 @@
 - **活动栏新增「变量」面板**（第二项）：按设备列出全部变量及实时值；字节流旁「解析协议」选一份 ICD（可当场新建 / 编辑）并起别名，解出的字段挂在原始流下面，可拖到运行监控。
 - 新操作 `protocols.list` / `protocols.update`、`streams.latest`（各流最新一条记录，不等待）；Agent 工具 `list_protocol_bindings`、`update_protocol_bindings`（操作员确认后生效）、`read_stream_values`。`list_device_streams`、`monitor.streams` 包含协议字段（带 `derived` 来源）。
 - 修复：运行监控刚打开 1 秒多内新增或关闭的面板，布局不保存。
+- **协议编辑器改为表格**：帧格式（帧头 + 长度 / 分隔符 / 定长 / SLIP / COBS）、校验、报文（识别条件 + 字段表：偏移、类型、字节序、位、系数、偏置、单位、枚举或公式）、编码器逐项填写，YAML 降为「高级」视图（两种视图经后端互转，不丢内容；从表格保存时 YAML 中的注释不保留）。右侧贴入样本字节或「抓取最近报文」（从绑定的原始流取），改动后自动重新试解码；点一帧逐字节显示，已定义字段着色、识别字节加框，拖选字节显示大端 / 小端 / 有符号 / 浮点读数，一键「定义为字段」（按字节数推荐类型）或「设为识别字节」，不匹配任何报文的帧可直接新建报文；样本都以同样字节开头时提示帧头。「变量」面板底部列出项目协议，没接设备也能新建、编辑。
+- 新操作 `testing.icdDocument` / `testing.renderIcd`，`testing.checkIcd` 与 `testing.saveIcd` 接受表格文档；`streams.recent`（原始流最近的记录）；Agent 工具 `read_stream_recent`。
 - **新设备包 `comm_link`（通用通信链路）**：电脑自带 COM 口 / USB 转串口、TCP 客户端、TCP 服务端、UDP，一个实例一条链路，收发都在字节流 `link` 上（可直接「解析协议」）。设置里写好链路就在设备打开时连上（连不上显示离线及原因）；TCP 客户端断线每 2 秒自动重连；工具 `open_serial` / `connect_tcp` / `listen_tcp` / `open_udp` / `disconnect`、`write_text` / `write_hex` / `read_rx` / `clear_rx`、`link_status`、`list_serial_ports`。编辑这类设备时有「连接方式」表单（COM 口、波特率、数据位 / 校验 / 停止位，或地址 / 端口），不用手写 JSON。
 
 - **ICD 用起来更顺**：调用设备工具的步骤新增「协议编码」编辑器——选 ICD 和编码器，字段按类型填写（枚举为下拉、显示单位），选择帧写入哪个参数（默认自动），实时预览将发送的字节和编码错误；被编码占用的参数不再出现在参数表单。总线跟踪工具栏可直接编辑当前 ICD 或「新建 ICD…」，保存后立即重新解码；报文详情随 ICD 修改刷新。`testing.checkIcd` 支持 `encode: {message, fields}` 试编码，描述新增 `encoderLayouts` 及字段的 scale / bias / enum / default。

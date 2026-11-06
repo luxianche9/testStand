@@ -985,6 +985,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ops/streams.recent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * The last ``limit`` (1..500) records of one stream from the device's recent buffer,
+         *     without waiting for new data: raw frames to write or check a protocol against.
+         */
+        post: operations["streams.recent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ops/streams.window": {
         parameters: {
             query?: never;
@@ -1134,8 +1154,9 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Validate ICD text (unsaved or ``name``'s file), trial-decode sample records and, with
-         *     ``encode: {message, fields}``, build the frame that encoder sends.
+         * Validate an ICD (unsaved ``text`` or ``document``, or ``name``'s file), trial-decode
+         *     sample records and, with ``encode: {message, fields}``, build the frame that encoder
+         *     sends.
          */
         post: operations["testing.checkIcd"];
         delete?: never;
@@ -1206,6 +1227,27 @@ export interface paths {
         put?: never;
         /** Each step execution of a run with its start/end time and outcome. */
         post: operations["testing.getRunTimeline"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ops/testing.icdDocument": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * An ICD (``text`` or ``name``'s file) as the table editor edits it: ``document`` with
+         *     every default filled in, plus the checksum ``algorithms`` to choose from; ``valid: false``
+         *     with the reason when the text does not parse.
+         */
+        post: operations["testing.icdDocument"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1487,6 +1529,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ops/testing.renderIcd": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * The YAML text of an ICD ``document`` (defaults left out); ``valid: false`` with the
+         *     issues when the document is not a valid ICD.
+         */
+        post: operations["testing.renderIcd"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ops/testing.resumeRun": {
         parameters: {
             query?: never;
@@ -1513,7 +1575,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Write ``icd/<name>.icd.yaml``; an invalid ICD is rejected and nothing is written. */
+        /**
+         * Write ``icd/<name>.icd.yaml`` from ``text``, or from ``document`` (the table editor's
+         *     form, written as YAML); an invalid ICD is rejected and nothing is written.
+         */
         post: operations["testing.saveIcd"];
         delete?: never;
         options?: never;
@@ -2042,6 +2107,16 @@ export interface components {
             /** Windowms */
             windowMs: number;
         };
+        /** StreamsRecentRequest */
+        StreamsRecentRequest: {
+            /** Key */
+            key: string;
+            /**
+             * Limit
+             * @default 100
+             */
+            limit?: number;
+        };
         /** StreamsWindowRequest */
         StreamsWindowRequest: {
             /** Keys */
@@ -2104,6 +2179,11 @@ export interface components {
         TestingGetRunTimelineRequest: {
             /** Runid */
             runId: string;
+        };
+        /** TestingIcdDocumentRequest */
+        TestingIcdDocumentRequest: {
+            /** Input */
+            input: object;
         };
         /** TestingListDeviceToolsRequest */
         TestingListDeviceToolsRequest: {
@@ -2228,6 +2308,11 @@ export interface components {
         TestingRejudgeRunRequest: {
             /** Runid */
             runId: string;
+        };
+        /** TestingRenderIcdRequest */
+        TestingRenderIcdRequest: {
+            /** Input */
+            input: object;
         };
         /** TestingResumeRunRequest */
         TestingResumeRunRequest: {
@@ -4166,6 +4251,39 @@ export interface operations {
             };
         };
     };
+    "streams.recent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StreamsRecentRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": object;
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: components["schemas"]["WireError"];
+                    };
+                };
+            };
+        };
+    };
     "streams.window": {
         parameters: {
             query?: never;
@@ -4572,6 +4690,39 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["TestingGetRunTimelineRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": object;
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: components["schemas"]["WireError"];
+                    };
+                };
+            };
+        };
+    };
+    "testing.icdDocument": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TestingIcdDocumentRequest"];
             };
         };
         responses: {
@@ -5100,6 +5251,39 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["TestingRejudgeRunRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": object;
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: components["schemas"]["WireError"];
+                    };
+                };
+            };
+        };
+    };
+    "testing.renderIcd": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TestingRenderIcdRequest"];
             };
         };
         responses: {

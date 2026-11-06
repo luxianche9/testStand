@@ -6,7 +6,7 @@ from typing import Any, cast
 
 from teststand_backend.contracts.errors import AppError, app_error
 from teststand_backend.contracts.operations import operation
-from teststand_backend.protocol import load_icd
+from teststand_backend.protocol import ALGORITHM_NAMES, Icd, dump_icd, load_icd, parse_icd
 from teststand_backend.util import clone, new_uuid, utc_now_iso
 
 from .catalog import step_catalog
@@ -176,10 +176,57 @@ class TestingApplication:
         idempotency="natural",
     )
     async def save_icd(self, context: Record, input: Record) -> Record:
-        """Write ``icd/<name>.icd.yaml``; an invalid ICD is rejected and nothing is written."""
-        name, text = str(input["name"]), str(input["text"])
+        """Write ``icd/<name>.icd.yaml`` from ``text``, or from ``document`` (the table editor's
+        form, written as YAML); an invalid ICD is rejected and nothing is written."""
+        name = str(input["name"])
+        document = input.get("document")
+        text = dump_icd(parse_icd(document)) if document is not None else str(input["text"])
         icd = await asyncio.to_thread(self._icds().save_text, name, text)
         return {"name": name, "icd": describe_icd(icd)}
+
+    @operation(
+        "testing.icdDocument",
+        capability="testing.read",
+        risk="read",
+        profiles=("plan",),
+        idempotency="natural",
+    )
+    def icd_document(self, context: Record, input: Record) -> Record:
+        """An ICD (``text`` or ``name``'s file) as the table editor edits it: ``document`` with
+        every default filled in, plus the checksum ``algorithms`` to choose from; ``valid: false``
+        with the reason when the text does not parse."""
+        try:
+            icd = self._load(input)
+        except AppError as error:
+            if error.category not in {"invalid_argument", "validation_failed", "not_found"}:
+                raise
+            return {
+                "valid": False,
+                "error": str(error),
+                "issues": _issues(error),
+                "algorithms": list(ALGORITHM_NAMES),
+            }
+        return {
+            "valid": True,
+            "document": icd.model_dump(mode="json", by_alias=True),
+            "algorithms": list(ALGORITHM_NAMES),
+        }
+
+    @operation(
+        "testing.renderIcd",
+        capability="testing.read",
+        risk="read",
+        profiles=("plan",),
+        idempotency="natural",
+    )
+    def render_icd(self, context: Record, input: Record) -> Record:
+        """The YAML text of an ICD ``document`` (defaults left out); ``valid: false`` with the
+        issues when the document is not a valid ICD."""
+        try:
+            icd = parse_icd(input.get("document"))
+        except AppError as error:
+            return {"valid": False, "error": str(error), "issues": _issues(error)}
+        return {"valid": True, "text": dump_icd(icd)}
 
     @operation(
         "testing.checkIcd",
@@ -189,16 +236,12 @@ class TestingApplication:
         idempotency="natural",
     )
     def check_icd(self, context: Record, input: Record) -> Record:
-        """Validate ICD text (unsaved or ``name``'s file), trial-decode sample records and, with
-        ``encode: {message, fields}``, build the frame that encoder sends."""
+        """Validate an ICD (unsaved ``text`` or ``document``, or ``name``'s file), trial-decode
+        sample records and, with ``encode: {message, fields}``, build the frame that encoder
+        sends."""
         alias = input.get("alias") or None
         try:
-            text = input.get("text")
-            icd = (
-                load_icd(str(text))
-                if isinstance(text, str)
-                else self._icds().load(str(input["name"]))
-            )
+            icd = self._load(input)
         except AppError as error:
             if error.category not in {"invalid_argument", "validation_failed"}:
                 raise
@@ -214,6 +257,14 @@ class TestingApplication:
             except (AppError, ValueError, OverflowError) as error:
                 result["encodeError"] = str(error)
         return result
+
+    def _load(self, input: Record) -> Icd:
+        if input.get("document") is not None:
+            return parse_icd(input["document"])
+        text = input.get("text")
+        if isinstance(text, str):
+            return load_icd(text)
+        return cast(Icd, self._icds().load(str(input["name"])))
 
     def _icds(self) -> Any:
         library = getattr(self.resolver, "icds", None)

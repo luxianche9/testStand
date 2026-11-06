@@ -43,7 +43,7 @@ from .icd import (
     icd_hash,
     icd_json_schema,
 )
-from .loader import load_icd, parse_icd
+from .loader import dump_icd, load_icd, parse_icd
 
 __all__ = [
     "ALGORITHMS",
@@ -69,6 +69,7 @@ __all__ = [
     "derived_streams",
     "encode",
     "find_message",
+    "dump_icd",
     "icd_document",
     "icd_hash",
     "icd_json_schema",

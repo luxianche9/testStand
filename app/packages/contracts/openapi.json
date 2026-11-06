@@ -755,6 +755,25 @@
         "title": "StreamsObserveRequest",
         "type": "object"
       },
+      "StreamsRecentRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "limit": {
+            "default": 100,
+            "title": "Limit",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key"
+        ],
+        "title": "StreamsRecentRequest",
+        "type": "object"
+      },
       "StreamsWindowRequest": {
         "additionalProperties": false,
         "properties": {
@@ -935,6 +954,21 @@
           "runId"
         ],
         "title": "TestingGetRunTimelineRequest",
+        "type": "object"
+      },
+      "TestingIcdDocumentRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "input": {
+            "additionalProperties": true,
+            "title": "Input",
+            "type": "object"
+          }
+        },
+        "required": [
+          "input"
+        ],
+        "title": "TestingIcdDocumentRequest",
         "type": "object"
       },
       "TestingListDeviceToolsRequest": {
@@ -1213,6 +1247,21 @@
           "runId"
         ],
         "title": "TestingRejudgeRunRequest",
+        "type": "object"
+      },
+      "TestingRenderIcdRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "input": {
+            "additionalProperties": true,
+            "title": "Input",
+            "type": "object"
+          }
+        },
+        "required": [
+          "input"
+        ],
+        "title": "TestingRenderIcdRequest",
         "type": "object"
       },
       "TestingResumeRunRequest": {
@@ -4553,6 +4602,62 @@
         "x-confirm": false
       }
     },
+    "/api/ops/streams.recent": {
+      "post": {
+        "operationId": "streams.recent",
+        "summary": "The last ``limit`` (1..500) records of one stream from the device's recent buffer,\nwithout waiting for new data: raw frames to write or check a protocol against.",
+        "tags": [
+          "streams"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StreamsRecentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/WireError"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-risk": "read",
+        "x-capability": "hardware.read",
+        "x-profiles": [
+          "explore",
+          "plan"
+        ],
+        "x-idempotency": "natural",
+        "x-confirm": false
+      }
+    },
     "/api/ops/streams.window": {
       "post": {
         "operationId": "streams.window",
@@ -4991,7 +5096,7 @@
     "/api/ops/testing.checkIcd": {
       "post": {
         "operationId": "testing.checkIcd",
-        "summary": "Validate ICD text (unsaved or ``name``'s file), trial-decode sample records and, with\n``encode: {message, fields}``, build the frame that encoder sends.",
+        "summary": "Validate an ICD (unsaved ``text`` or ``document``, or ``name``'s file), trial-decode\nsample records and, with ``encode: {message, fields}``, build the frame that encoder\nsends.",
         "tags": [
           "testing"
         ],
@@ -5265,6 +5370,61 @@
         "x-capability": "testing.read",
         "x-profiles": [
           "run"
+        ],
+        "x-idempotency": "natural",
+        "x-confirm": false
+      }
+    },
+    "/api/ops/testing.icdDocument": {
+      "post": {
+        "operationId": "testing.icdDocument",
+        "summary": "An ICD (``text`` or ``name``'s file) as the table editor edits it: ``document`` with\nevery default filled in, plus the checksum ``algorithms`` to choose from; ``valid: false``\nwith the reason when the text does not parse.",
+        "tags": [
+          "testing"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestingIcdDocumentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/WireError"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-risk": "read",
+        "x-capability": "testing.read",
+        "x-profiles": [
+          "plan"
         ],
         "x-idempotency": "natural",
         "x-confirm": false
@@ -6160,6 +6320,61 @@
         "x-confirm": false
       }
     },
+    "/api/ops/testing.renderIcd": {
+      "post": {
+        "operationId": "testing.renderIcd",
+        "summary": "The YAML text of an ICD ``document`` (defaults left out); ``valid: false`` with the\nissues when the document is not a valid ICD.",
+        "tags": [
+          "testing"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestingRenderIcdRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/WireError"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-risk": "read",
+        "x-capability": "testing.read",
+        "x-profiles": [
+          "plan"
+        ],
+        "x-idempotency": "natural",
+        "x-confirm": false
+      }
+    },
     "/api/ops/testing.resumeRun": {
       "post": {
         "operationId": "testing.resumeRun",
@@ -6218,7 +6433,7 @@
     "/api/ops/testing.saveIcd": {
       "post": {
         "operationId": "testing.saveIcd",
-        "summary": "Write ``icd/<name>.icd.yaml``; an invalid ICD is rejected and nothing is written.",
+        "summary": "Write ``icd/<name>.icd.yaml`` from ``text``, or from ``document`` (the table editor's\nform, written as YAML); an invalid ICD is rejected and nothing is written.",
         "tags": [
           "testing"
         ],

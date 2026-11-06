@@ -1,9 +1,11 @@
 import { useMemo, useState, type DragEvent, type ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
 import type { StreamRef } from "@teststand/contracts/monitor";
 import type { ProtocolBindingState } from "@teststand/contracts/projects";
 import { BinaryIcon, ChevronRightIcon, FileCode2Icon, PencilIcon, PlusIcon, Unlink2Icon } from "lucide-react";
 import { errorMessage } from "../../lib/errors.js";
 import { useMonitorStreams } from "../../lib/queries.js";
+import { queryKeys } from "../../lib/query-keys.js";
 import { Button, IconButton, Input, PanelHeader, cn, useConfirm } from "../../ui/index.js";
 import { useToast } from "../../ui/toast.js";
 import { startStreamDrag } from "../monitor/use-monitor-workspace.js";
@@ -69,10 +71,46 @@ export function VariablesSidebar({ active, onAddStream }: {
             })} />
         ))}
       </div>
+      <ProtocolFiles />
       <p className="shrink-0 border-t border-line px-3 py-1.5 text-2xs text-fg-3">
         把变量拖到运行监控的组件上；字节流先「解析协议」才有字段变量
       </p>
       {binding && <BindProtocolDialog {...binding} aliases={aliases} onClose={() => setBinding(undefined)} />}
+    </section>
+  );
+}
+
+/** The project's protocols (ICD files): written here before any device is connected, bound to streams above. */
+function ProtocolFiles() {
+  const icds = useQuery({ queryKey: queryKeys.icds, queryFn: () => window.teststand.testing.listIcds() });
+  const [editing, setEditing] = useState<{ name?: string }>();
+  return (
+    <section aria-label="协议" className="shrink-0 border-t border-line px-1.5 py-1">
+      <header className="flex h-6 items-center gap-1.5 px-1">
+        <FileCode2Icon className="size-3.5 text-fg-3" />
+        <h3 className="text-xs font-medium text-fg">协议（ICD）</h3>
+        <span className="flex-1" />
+        <Button size="xs" variant="ghost" onClick={() => setEditing({})}><PlusIcon />新建协议</Button>
+      </header>
+      <ul className="max-h-32 overflow-y-auto">
+        {(icds.data ?? []).map((item) => (
+          <li key={item.name} className="group/icd flex h-6 items-center gap-1.5 pr-1 pl-6 text-2xs">
+            <span className="truncate font-mono text-fg">{item.name}</span>
+            <span className={cn("min-w-0 flex-1 truncate", item.valid ? "text-fg-3" : "text-fail")}
+              title={item.valid ? item.description ?? undefined : item.error}>
+              {item.valid ? item.description ?? "" : "无效"}
+            </span>
+            <IconButton label={`编辑协议 ${item.name}`} size="icon-xs" variant="ghost"
+              className="invisible group-hover/icd:visible" onClick={() => setEditing({ name: item.name })}>
+              <PencilIcon />
+            </IconButton>
+          </li>
+        ))}
+        {icds.isSuccess && !icds.data.length && (
+          <li className="pl-6 text-2xs text-fg-3">还没有协议。没接设备也可以先写，贴入样本字节试解码。</li>
+        )}
+      </ul>
+      {editing && <IcdEditorDialog {...editing} onClose={() => setEditing(undefined)} />}
     </section>
   );
 }
@@ -161,7 +199,10 @@ function BindingRow({ binding }: { binding: ProtocolBindingState }) {
         className="invisible group-hover/binding:visible" onClick={() => setEditing(true)}><PencilIcon /></IconButton>
       <IconButton label={`解除协议 ${binding.alias}`} size="icon-xs" variant="ghost"
         className="invisible group-hover/binding:visible" onClick={() => void unbind()}><Unlink2Icon /></IconButton>
-      {editing && <IcdEditorDialog name={binding.icd} alias={binding.alias} onClose={() => setEditing(false)} />}
+      {editing && (
+        <IcdEditorDialog name={binding.icd} alias={binding.alias} source={binding.source}
+          onClose={() => setEditing(false)} />
+      )}
       {confirmDialog}
     </div>
   );

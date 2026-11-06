@@ -50,6 +50,9 @@ MAX_PROBE_MS = 60_000.0
 PROBE_POINTS = 2000
 LATEST_PREROLL_MS = 2000.0
 """What :meth:`LiveStreams.latest` reads back of a stream it starts following."""
+RECENT_PREROLL_MS = 30_000.0
+RECENT_WAIT_S = 0.5
+MAX_RECENT = 500
 
 StreamLister = Callable[[str], Awaitable[list[Record]]]
 """``hardwareId -> [{id, type}]`` (the service's ``list_streams``)."""
@@ -169,10 +172,11 @@ class LiveStreams:
     async def latest(self, keys: list[str]) -> Record:
         """The newest record of each stream, without waiting for new data.
 
-        Asking follows the streams (from ``LATEST_PREROLL_MS`` ago, so the first answer often
-        has a value already); each ask keeps them followed for ``linger_s`` more, so a caller
-        polling faster than that always reads a live cache. ``{key: {type, state, record}}``:
-        ``record`` is ``None`` until the stream has sent one.
+        Asking follows the streams (from ``LATEST_PREROLL_MS`` ago; a stream just followed gets
+        up to ``RECENT_WAIT_S`` to read its buffer, so the first answer usually has a value);
+        each ask keeps them followed for ``linger_s`` more, so a caller polling faster than that
+        always reads a live cache. ``{key: {type, state, record}}``: ``record`` is ``None`` until
+        the stream has sent one.
         """
         keys = check_keys([str(key) for key in keys])
         for key in keys:
@@ -184,6 +188,8 @@ class LiveStreams:
             feed = await self._acquire(key, LATEST_PREROLL_MS)
             try:
                 store = feed.store
+                if store.last_i(key) is None:  # just followed: give its buffer a moment
+                    await store.wait_change(RECENT_WAIT_S)
                 last = store.last_i(key)
                 records = store.records(key, after=last - 1, limit=1) if last is not None else []
                 states = store.states(key)
@@ -195,6 +201,25 @@ class LiveStreams:
             finally:
                 self._release(feed)
         return {"t": backend_ms(), "streams": output}
+
+    async def recent(self, key: str, limit: int = 100) -> Record:
+        """The last ``limit`` records of one stream, from up to ``RECENT_PREROLL_MS`` back (the
+        device's buffer), e.g. raw frames to work out a protocol from. Does not wait for new
+        data beyond the moment a stream just followed needs to read its buffer."""
+        [key] = check_keys([str(key)])
+        if "__" not in key:
+            raise app_error("invalid_argument", f"Not a stream key: {key}", {"key": key})
+        limit = max(1, min(int(limit), MAX_RECENT))
+        feed = await self._acquire(key, RECENT_PREROLL_MS)
+        try:
+            store = feed.store
+            if store.last_i(key) is None:
+                await store.wait_change(RECENT_WAIT_S)
+            last = store.last_i(key)
+            records = store.records(key, after=max(0, last - limit)) if last is not None else []
+            return {"key": key, "type": str(store.stream(key)["type"] or ""), "records": records}
+        finally:
+            self._release(feed)
 
     async def _acquire(self, key: str, window_ms: float) -> _Feed:
         feed = self.feeds.get(key)

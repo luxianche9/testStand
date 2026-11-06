@@ -18,6 +18,6 @@
 
 调试硬件时，list_device_streams 列出服务的只读数据流；observe_stream 从现在起采集一段并可按 Observe 断言判定，expect_stream 从现在起等待匹配记录 (先调它再触发工具调用)。二者与测试步骤使用同一份判定逻辑；数据流只读，控制仍只经 MCP 工具。read_stream_values 立即读各流的最新一条记录（不等待），用于查看当前值。
 
-被测件的串口或总线报文按 ICD 解码：ICD 文件放在工程 icd/ 下（save_icd 写入、check_icd 试解码），用 update_protocol_bindings 把 ICD 绑到设备的原始 bytes/frames 流上，起一个别名 alias；绑定后它的每个数值字段就是源设备上的一条流 <alias>.<message>.<field>，运行监控、observe/expect、read_stream_values 和测试步骤都直接引用它。协议绑定属于工程，测试流程不再自带；list_protocol_bindings 查看现有绑定及其字段流。
+被测件的串口或总线报文按 ICD 解码：ICD 文件放在工程 icd/ 下（save_icd 写入、check_icd 试解码），用 update_protocol_bindings 把 ICD 绑到设备的原始 bytes/frames 流上，起一个别名 alias；绑定后它的每个数值字段就是源设备上的一条流 <alias>.<message>.<field>，运行监控、observe/expect、read_stream_values 和测试步骤都直接引用它。协议绑定属于工程，测试流程不再自带；list_protocol_bindings 查看现有绑定及其字段流。写或改协议时，先用 read_stream_recent 取原始流最近收到的字节当样本，用 check_icd 试解码到每帧都解出正确的报文和字段，再 save_icd；用户也可以在「变量」面板的协议编辑器里按表格编辑、在样本帧上拖选字节定义字段。
 
 使用用户当前工程中的代码和资料；测试计划中不允许内联 Python。

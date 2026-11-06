@@ -130,6 +130,8 @@ export interface IcdSummary {
 export interface IcdDocument { name: string; text: string; valid: boolean; icd?: IcdDescription; error?: string; issues?: IcdIssue[] }
 export interface IcdCheckInput {
   text?: string; name?: string; alias?: string; samples?: Array<string | Record<string, unknown>>;
+  /** The table editor's document, instead of `text` or `name`. */
+  document?: object;
   /** Also build the frame this encoder sends with these field values. */
   encode?: { message: string; fields?: Record<string, unknown> };
 }
@@ -141,6 +143,14 @@ export interface IcdCheck {
   encoded?: { hex: string; id?: number }; encodeError?: string;
 }
 export interface IcdSaveResult { name: string; icd: IcdDescription }
+/** `testing.icdDocument`: the ICD as the table editor edits it (defaults filled in). */
+export interface IcdDocumentResult {
+  valid: boolean; document?: Record<string, unknown>; error?: string; issues?: IcdIssue[];
+  /** Checksum algorithms an ICD may name. */
+  algorithms: string[];
+}
+/** `testing.renderIcd`: a document's YAML text. */
+export interface IcdRenderResult { valid: boolean; text?: string; error?: string; issues?: IcdIssue[] }
 export interface TestDeviceTools { hardwareId: string; tools: TestDeviceTool[]; issues: TestPlanIssue[] }
 export type TestRunState = "starting" | "running" | "paused" | "cleaning" | "completed" | "aborted" | "error";
 export type TestExecutionStatus = "Running" | "Succeeded" | "Failed" | "Aborted";

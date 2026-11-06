@@ -123,3 +123,38 @@ async def test_check_trial_encodes_and_describes_field_layouts(tmp_path: Path) -
         HUMAN, {"text": text, "encode": {"message": "ping", "fields": {"nope": 1}}}
     )
     assert "encoded" not in failed and "no field(s) nope" in failed["encodeError"]
+
+
+async def test_the_table_editor_edits_a_document_and_saves_it_as_yaml(tmp_path: Path) -> None:
+    app = application(tmp_path)
+    opened = app.icd_document(HUMAN, {"text": ACK_YAML})
+    assert opened["valid"] is True and "crc16_modbus" in opened["algorithms"]
+    document = opened["document"]
+    assert document["framing"]["lengthField"]["size"] == 1  # defaults are filled in for the table
+    document["messages"][0]["fields"].append({"name": "extra", "offset": 5, "type": "u16"})
+    rendered = app.render_icd(HUMAN, {"document": document})
+    assert rendered["valid"] is True
+    assert "- {name: extra, offset: 5, type: u16}" in rendered["text"]
+    assert 'header: "AA 55"' in rendered["text"]
+    checked = app.check_icd(HUMAN, {"document": document, "samples": [ack_frame(7).hex()]})
+    assert checked["valid"] is True
+    saved = await app.save_icd(HUMAN, {"name": "dut_ack", "document": document})
+    assert saved["icd"]["layouts"]["ack"][-1]["name"] == "extra"
+    text = app.read_icd(HUMAN, "dut_ack")["text"]
+    assert text == rendered["text"]
+    reopened = app.icd_document(HUMAN, {"name": "dut_ack"})["document"]
+    assert reopened == app.icd_document(HUMAN, {"text": rendered["text"]})["document"]
+    assert reopened["messages"][0]["fields"][-1]["endian"] == "big"  # defaults filled in again
+
+
+async def test_a_broken_document_is_explained_and_not_saved(tmp_path: Path) -> None:
+    app = application(tmp_path)
+    document = app.icd_document(HUMAN, {"text": ACK_YAML})["document"]
+    document["messages"][0]["fields"].append({"name": "bad", "offset": 5})
+    rendered = app.render_icd(HUMAN, {"document": document})
+    assert rendered["valid"] is False and rendered["issues"]
+    with pytest.raises(AppError):
+        await app.save_icd(HUMAN, {"name": "dut_ack", "document": document})
+    assert app.list_icds(HUMAN) == []
+    unreadable = app.icd_document(HUMAN, {"text": "name: [unclosed"})
+    assert unreadable["valid"] is False and unreadable["algorithms"]

@@ -198,3 +198,19 @@ async def test_ad_hoc_verdicts_on_a_setpoint_stream_are_inconclusive(tmp_path: P
         await writer
         assert expected["verdict"]["verdict"] == "inconclusive", expected["verdict"]
         await live.close()
+
+
+async def test_recent_reads_back_the_buffer_and_latest_the_newest_record(tmp_path: Path) -> None:
+    async with FakeStreamService({"rx": "bytes", "ai0": "scalar"}) as service:
+        for index in range(5):
+            service.publish("rx", dir="rx", data=bytes([index]).hex())
+        service.publish("ai0", v=2.5)
+        live = LiveStreams(service.sources(), tmp_path, frame_s=0.02, linger_s=0.1)
+        recent = await live.recent("daq__rx", limit=3)
+        assert recent["type"] == "bytes"
+        assert [record["data"] for record in recent["records"]] == ["02", "03", "04"]
+        latest = await live.latest(["daq__ai0"])
+        assert latest["streams"]["daq__ai0"]["record"]["v"] == 2.5
+        with pytest.raises(AppError):
+            await live.recent("nokey")
+        await live.close()

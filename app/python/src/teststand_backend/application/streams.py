@@ -77,6 +77,18 @@ class StreamsApplication:
         return await self.live.latest(keys)
 
     @operation(
+        "streams.recent",
+        capability="hardware.read",
+        risk="read",
+        profiles=("plan", "explore"),
+        idempotency="natural",
+    )
+    async def recent(self, context: Json, key: str, limit: int = 100) -> Json:
+        """The last ``limit`` (1..500) records of one stream from the device's recent buffer,
+        without waiting for new data: raw frames to write or check a protocol against."""
+        return await self.live.recent(key, limit)
+
+    @operation(
         "streams.window",
         capability="testing.read",
         risk="read",
@@ -174,6 +186,22 @@ STREAM_TOOLS = [
         {"type": "object"},
         operation="streams.latest",
         fields=("keys",),
+    ),
+    Tool(
+        "read_stream_recent",
+        "Read the last records of one stream from the device's recent buffer (up to ~30 s back), "
+        "without waiting: e.g. the raw bytes a DUT sent, to work out or check its protocol (ICD) "
+        "with check_icd samples. bytes records are {dir: rx|tx|mark, data: hex}.",
+        obj(
+            {
+                "key": string(3).describe("Stream key <hardwareId>__<streamId>, e.g. COM3__link."),
+                "limit": number(1, 500, integer=True).default(100).describe("Most recent records."),
+            },
+            strict=True,
+        ),
+        {"type": "object"},
+        operation="streams.recent",
+        fields=("key", "limit"),
     ),
     Tool(
         "observe_stream",

@@ -384,6 +384,13 @@ export interface DeviceStream {
   [key: string]: unknown;
 }
 
+/** `streams.recent`: the last records of one stream from the device's recent buffer. */
+export interface StreamRecent {
+  key: string;
+  type: StreamType | string;
+  records: { t: number; tb: number; seq?: number; dir?: string; data?: string; [key: string]: unknown }[];
+}
+
 /** `streams.latest`: the newest record of each stream (`record` is null until it sent one). */
 export interface StreamLatest {
   t: number;

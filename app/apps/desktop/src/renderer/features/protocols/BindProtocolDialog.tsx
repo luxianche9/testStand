@@ -86,6 +86,7 @@ export function BindProtocolDialog({ hardwareId, streamId, streamType, aliases, 
         <IcdEditorDialog
           {...editing}
           alias={name}
+          source={{ hardwareId, streamId }}
           onClose={() => setEditing(undefined)}
           onSaved={(saved) => setIcd(saved)}
         />

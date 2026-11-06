@@ -1,6 +1,7 @@
 import { vi } from "vitest";
 import type { RunMessages } from "@teststand/contracts/observability";
 import type {
+  IcdDocumentResult, IcdRenderResult,
   IcdCheck, IcdDocument, IcdSummary, TestPlan, TestRunSnapshot, TestRunSummary
 } from "@teststand/contracts/testing";
 
@@ -117,7 +118,9 @@ export function installTestingApi(plans: TestPlan[]) {
     listIcds: vi.fn(async (): Promise<IcdSummary[]> => []),
     readIcd: vi.fn(async ({ name }: { name: string }): Promise<IcdDocument> => ({ name, text: "", valid: false })),
     checkIcd: vi.fn(async (): Promise<IcdCheck> => ({ valid: false })),
-    saveIcd: vi.fn(async ({ input }: { input: { name: string; text: string } }) => ({
+    icdDocument: vi.fn(async (): Promise<IcdDocumentResult> => ({ valid: false, error: "bad", algorithms: ["sum8"] })),
+    renderIcd: vi.fn(async (): Promise<IcdRenderResult> => ({ valid: true, text: "name: x\n" })),
+    saveIcd: vi.fn(async ({ input }: { input: { name: string; text?: string; document?: object } }) => ({
       name: input.name,
       icd: { name: input.name, icdHash: "h", transport: "bytes" as const, messages: [], encoders: [], streams: [] }
     })),

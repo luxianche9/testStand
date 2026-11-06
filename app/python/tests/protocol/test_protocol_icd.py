@@ -234,3 +234,20 @@ def test_models_are_frozen() -> None:
     assert isinstance(icd, Icd)
     with pytest.raises(ValueError):
         icd.name = "other"
+
+
+def test_dumped_yaml_loads_back_to_the_same_icd() -> None:
+    from teststand_backend.protocol import dump_icd
+
+    from .icd_fixtures import DUT_CMD_YAML
+
+    icd = load_icd(DUT_CMD_YAML)
+    text = dump_icd(icd)
+    assert load_icd(text) == icd
+    assert 'header: "AA 55"' in text and "maxLength: 260" in text
+    assert "size: 1" not in text  # defaults are left out
+    single = load_icd(
+        "formatVersion: 1\nname: t\ntransport: bytes\nframing: {kind: delimiter, delimiter: '10'}\n"
+        "messages:\n  - {name: m, match: {length: 1}}\n"
+    )
+    assert load_icd(dump_icd(single)) == single  # a one-byte hex like 10 stays text
