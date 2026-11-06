@@ -19,7 +19,7 @@ from teststand_backend.util import Record
 
 from .clock import SHARED_CLOCK, SharedClock, backend_ms
 from .data import stream_key
-from .source import StreamSource, StreamSources
+from .source import EventSource, StreamSources
 from .store import StreamStore
 
 log = logging.getLogger("teststand_backend.streams.recorder")
@@ -40,7 +40,7 @@ class _Track:
         self.hardware_id, self.stream_id = hardware_id, stream_id
         self.key = stream_key(hardware_id, stream_id)
         self.stream_type: str | None = None
-        self.source: StreamSource | None = None
+        self.source: EventSource | None = None
         self.task: asyncio.Task[None] | None = None
         self.watermark: float | None = None
         self.watermark_tb: float | None = None
@@ -55,7 +55,7 @@ class _Track:
     def store(self) -> StreamStore:
         return self.recorder.store
 
-    async def run(self, source: StreamSource) -> None:
+    async def run(self, source: EventSource) -> None:
         self.source = source
         try:
             async for event in source.events():

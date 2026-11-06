@@ -12,8 +12,12 @@ from teststand_backend.application import HUMAN_REQUEST_CONTEXT as HUMAN
 from teststand_backend.application import DefaultAuthorizer, MonitorApplication
 from teststand_backend.devices import DeviceCatalogService, DeviceStore
 from teststand_backend.projects import ProjectService
+from teststand_backend.projects.icd_library import IcdLibrary
+from teststand_backend.projects.protocol_bindings import ProjectProtocols
 from teststand_backend.storage import SettingsStore
 from teststand_backend.wiring import ProjectWiringService
+
+from ..protocol.icd_fixtures import DUT_CMD_YAML
 
 Json = dict[str, Any]
 
@@ -34,7 +38,9 @@ def managed(hardware_id: str, label: str) -> Json:
     }
 
 
-async def fixture(root: Path, *, known: bool = True) -> tuple[MonitorApplication, ProjectService]:
+async def fixture(
+    root: Path, *, known: bool = True, protocols: bool = False
+) -> tuple[MonitorApplication, ProjectService]:
     """The monitor over one managed card (``known``: its streams were listed) and a passive DUT."""
     settings = SettingsStore(str(root / "settings.json"))
     await settings.initialize()
@@ -82,7 +88,13 @@ async def fixture(root: Path, *, known: bool = True) -> tuple[MonitorApplication
         known_streams=lambda hardware_id: streams if known and hardware_id == "CARD" else None,
         list_tools=lambda: tools if known else [],
     )
-    monitor = MonitorApplication(DefaultAuthorizer(), projects, wiring, catalog, devices)
+    bindings = None
+    if protocols:
+        (project_root / "icd").mkdir()
+        (project_root / "icd" / "dut_cmd.icd.yaml").write_text(DUT_CMD_YAML, encoding="utf-8")
+        projects.update_protocols([{"icd": "dut_cmd", "alias": "dut", "source": RX}])
+        bindings = ProjectProtocols(projects, IcdLibrary(projects))
+    monitor = MonitorApplication(DefaultAuthorizer(), projects, wiring, catalog, devices, bindings)
     return monitor, projects
 
 
@@ -108,6 +120,17 @@ async def test_streams_marks_a_device_never_connected_as_unknown(tmp_path: Path)
     assert monitor.streams(HUMAN) == [
         {"hardwareId": "CARD", "label": "采集卡", "known": False, "streams": []}
     ]
+
+
+async def test_protocol_fields_are_streams_of_their_source_device(tmp_path: Path) -> None:
+    monitor, _ = await fixture(tmp_path, protocols=True)
+    [card] = monitor.streams(HUMAN)
+    voltage = next(item for item in card["streams"] if item["id"] == "dut.status.voltage")
+    assert voltage["type"] == "scalar" and voltage["derived"]["sourceStreamId"] == "rx"
+    field = {"hardwareId": "CARD", "streamId": "dut.status.voltage"}
+    await monitor.update(HUMAN, {"operations": [{"op": "addPanel", "panel": {"type": "values"}}]})
+    result = await monitor.update(HUMAN, {"add": [field]})
+    assert shown(result) == [("values", "values", [field])]
 
 
 def shown(monitor: Json) -> list[tuple[str, str, list[Json]]]:

@@ -23,6 +23,7 @@ from .authorization import Authorizer, Json
 
 if TYPE_CHECKING:
     from teststand_backend.devices import DeviceService
+    from teststand_backend.projects.protocol_bindings import ProjectProtocols
     from teststand_backend.streams.live import LiveStreams
     from teststand_backend.testing.engine import TestEngine
 
@@ -35,9 +36,10 @@ class StreamsApplication:
         live: LiveStreams | None = None,
         *,
         runs: TestEngine | None = None,
+        protocols: ProjectProtocols | None = None,
     ) -> None:
         self.authorizer, self.devices, self._live = authorizer, devices, live
-        self.runs = runs
+        self.runs, self.protocols = runs, protocols
 
     @property
     def live(self) -> LiveStreams:
@@ -53,7 +55,26 @@ class StreamsApplication:
         idempotency="natural",
     )
     async def list_streams(self, context: Json, hardware_id: str) -> list[Json]:
-        return await self.devices.list_streams(hardware_id)
+        """The streams the device declares, then the protocol fields derived on it
+        (``derived``: which binding decodes them from which raw stream)."""
+        streams = await self.devices.list_streams(hardware_id)
+        if self.protocols is None:
+            return streams
+        return [*streams, *self.protocols.streams(hardware_id)]
+
+    @operation(
+        "streams.latest",
+        capability="hardware.read",
+        risk="read",
+        profiles=("plan", "explore"),
+        idempotency="natural",
+    )
+    async def latest(self, context: Json, keys: list[str]) -> Json:
+        """The newest record of each stream (``<hardwareId>__<streamId>``) without waiting:
+        ``{t, streams: {key: {type, state, record}}}``; ``record`` is ``None`` until the
+        stream sent one. Asking keeps the streams followed a few seconds, so polling reads a
+        live cache."""
+        return await self.live.latest(keys)
 
     @operation(
         "streams.window",
@@ -129,11 +150,30 @@ _PROBE_OUTPUT = {
 STREAM_TOOLS = [
     Tool(
         "list_device_streams",
-        "List the read-only data streams one hardware service publishes, as {id, type}.",
+        "List the read-only data streams one hardware service publishes, as {id, type}, "
+        "followed by the protocol fields decoded on it (derived: the binding).",
         obj({"hardwareId": _STREAM["hardwareId"]}, strict=True),
         _ANY_LIST,
         operation="streams.listStreams",
         fields=("hardwareId",),
+    ),
+    Tool(
+        "read_stream_values",
+        "Read the newest record of each stream right now, without waiting for new data: "
+        "scalar {v}, bits {v}, protocol field {v} (engineering value) ... plus the stream's "
+        "connection state. record is null until the stream has sent one; ask again after a "
+        "moment. Use it to check current values; use observe_stream to judge a window.",
+        obj(
+            {
+                "keys": array(string(3), 1, 64).describe(
+                    "Stream keys <hardwareId>__<streamId>, e.g. DUT1__dut.status.voltage."
+                ),
+            },
+            strict=True,
+        ),
+        {"type": "object"},
+        operation="streams.latest",
+        fields=("keys",),
     ),
     Tool(
         "observe_stream",

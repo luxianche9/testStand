@@ -4,6 +4,7 @@ from typing import Any
 
 from teststand_backend.contracts.operations import collect_operations
 from teststand_backend.projects.icd_library import IcdLibrary
+from teststand_backend.projects.protocol_bindings import ProjectProtocols
 from teststand_backend.testing import TestEngine, TestingApplication, TestPlanStore
 from teststand_backend.testing.resolver import DeviceToolResolver
 
@@ -28,6 +29,7 @@ from .control import (
 from .execution import ExecutionCoordinator as ExecutionCoordinator
 from .execution import ExecutionHandle as ExecutionHandle
 from .monitor import MonitorApplication as MonitorApplication
+from .protocols import ProtocolsApplication as ProtocolsApplication
 from .services import (
     ApplicationSystemPort as ApplicationSystemPort,
 )
@@ -51,6 +53,7 @@ NAMESPACES: dict[str, type] = {
     "projects": ProjectsApplication,
     "wiring": WiringApplication,
     "monitor": MonitorApplication,
+    "protocols": ProtocolsApplication,
     "manual": ManualControlApplication,
     "testing": TestingApplication,
     "system": SystemApplication,
@@ -64,8 +67,11 @@ class TestStandApplication:
 
     def __init__(self, dependencies: dict[str, Any]) -> None:
         execution = dependencies.get("execution") or ExecutionCoordinator()
+        protocols = dependencies.get("protocols") or ProjectProtocols(
+            dependencies["projects"], IcdLibrary(dependencies["projects"])
+        )
         test_resolver = dependencies.get("test_resolver") or DeviceToolResolver(
-            dependencies["devices"], dependencies["catalog"], IcdLibrary(dependencies["projects"])
+            dependencies["devices"], dependencies["catalog"], protocols.icds
         )
         test_plan_store = dependencies.get("test_plan_store") or TestPlanStore(
             dependencies["projects"],
@@ -90,6 +96,7 @@ class TestStandApplication:
             dependencies["devices"],
             dependencies.get("live_streams"),
             runs=test_engine,
+            protocols=protocols,
         )
         self.projects = ProjectsApplication(
             self.authorizer,
@@ -106,6 +113,15 @@ class TestStandApplication:
         self.monitor = MonitorApplication(
             self.authorizer,
             dependencies["projects"],
+            dependencies["wiring"],
+            dependencies["catalog"],
+            dependencies["devices"],
+            protocols,
+        )
+        self.protocols = ProtocolsApplication(
+            self.authorizer,
+            dependencies["projects"],
+            protocols,
             dependencies["wiring"],
             dependencies["catalog"],
             dependencies["devices"],

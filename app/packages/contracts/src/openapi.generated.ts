@@ -622,7 +622,8 @@ export interface paths {
         put?: never;
         /**
          * Every device with the streams it declares (``known`` is false until the device was
-         *     connected once; the cached declaration is used while it is offline).
+         *     connected once; the cached declaration is used while it is offline), then the protocol
+         *     fields decoded on it (``derived``).
          */
         post: operations["monitor.streams"];
         delete?: never;
@@ -793,6 +794,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ops/protocols.list": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * The project's protocol bindings: ICD, alias and source stream; ``ok`` with the field
+         *     streams each derives, or ``error`` when its ICD is missing or invalid. None without a
+         *     project.
+         */
+        post: operations["protocols.list"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ops/protocols.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Apply ``operations`` in order: ``add`` a binding (alias, icd, source), ``update`` the
+         *     one with that alias (icd and / or source), ``remove`` it. The ICD must be a valid file of
+         *     the project, the source a managed hardware's ``bytes`` / ``frames`` stream of the type
+         *     the ICD decodes, and the alias unique. Stays in the project buffer until the project is
+         *     saved. Returns every binding with its state.
+         */
+        post: operations["protocols.update"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ops/settings.get": {
         parameters: {
             query?: never;
@@ -881,6 +926,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ops/streams.latest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * The newest record of each stream (``<hardwareId>__<streamId>``) without waiting:
+         *     ``{t, streams: {key: {type, state, record}}}``; ``record`` is ``None`` until the
+         *     stream sent one. Asking keeps the streams followed a few seconds, so polling reads a
+         *     live cache.
+         */
+        post: operations["streams.latest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ops/streams.listStreams": {
         parameters: {
             query?: never;
@@ -890,7 +957,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** streams.listStreams */
+        /**
+         * The streams the device declares, then the protocol fields derived on it
+         *     (``derived``: which binding decodes them from which raw stream).
+         */
         post: operations["streams.listStreams"];
         delete?: never;
         options?: never;
@@ -1880,6 +1950,13 @@ export interface components {
         };
         /** ProjectsSaveProjectRequest */
         ProjectsSaveProjectRequest: Record<string, never>;
+        /** ProtocolsListRequest */
+        ProtocolsListRequest: Record<string, never>;
+        /** ProtocolsUpdateRequest */
+        ProtocolsUpdateRequest: {
+            /** Input */
+            input: object;
+        };
         /** SettingsGetLlmRequest */
         SettingsGetLlmRequest: Record<string, never>;
         /** SettingsGetRequest */
@@ -1935,6 +2012,11 @@ export interface components {
             streamId: string;
             /** Withinms */
             withinMs: number;
+        };
+        /** StreamsLatestRequest */
+        StreamsLatestRequest: {
+            /** Keys */
+            keys: string[];
         };
         /** StreamsListStreamsRequest */
         StreamsListStreamsRequest: {
@@ -3754,6 +3836,72 @@ export interface operations {
             };
         };
     };
+    "protocols.list": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ProtocolsListRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": object[];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: components["schemas"]["WireError"];
+                    };
+                };
+            };
+        };
+    };
+    "protocols.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProtocolsUpdateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": object[];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: components["schemas"]["WireError"];
+                    };
+                };
+            };
+        };
+    };
     "settings.get": {
         parameters: {
             query?: never;
@@ -3896,6 +4044,39 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["StreamsExpectRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": object;
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: components["schemas"]["WireError"];
+                    };
+                };
+            };
+        };
+    };
+    "streams.latest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StreamsLatestRequest"];
             };
         };
         responses: {

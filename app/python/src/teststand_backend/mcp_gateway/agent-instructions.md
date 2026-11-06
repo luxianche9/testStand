@@ -16,6 +16,8 @@
 
 每次启动测试前先做一次一致性检查：列出测试流程用到的每台设备和每个通道（工具参数里的通道号、Observe/Expect/Guard 的流）；对照 get_project 的接线，确认这些通道都有物理接线，缺的用 request_wiring 补上或告诉用户；对照 get_monitor，确认这些通道的数据流都在运行监控的某个面板上，缺的用 update_monitor 的 add 加上。检查完再运行。启动测试时必须使用刚验证通过的 revision 和唯一 requestId。运行后使用 wait_for_test_run 增量等待，再用 read_test_run_results 读取真实结果；清楚区分设定值、测量值、Fail、Error、Aborted 与 outcomeKnown=false。未知物理结果不得自动重发电压写入、复位、继电器切换或烧录操作。结果不符时用 testing_read_run_io 查看该步骤实际下发的调用、判定窗口与各数据流的收发内容，再决定改计划还是改接线；计划绑定了 ICD 时，用 testing_read_run_messages 查看按录制时冻结的 ICD 解出的报文、校验失败帧与未成帧字节。
 
-调试硬件时，list_device_streams 列出服务的只读数据流；observe_stream 从现在起采集一段并可按 Observe 断言判定，expect_stream 从现在起等待匹配记录 (先调它再触发工具调用)。二者与测试步骤使用同一份判定逻辑；数据流只读，控制仍只经 MCP 工具。
+调试硬件时，list_device_streams 列出服务的只读数据流；observe_stream 从现在起采集一段并可按 Observe 断言判定，expect_stream 从现在起等待匹配记录 (先调它再触发工具调用)。二者与测试步骤使用同一份判定逻辑；数据流只读，控制仍只经 MCP 工具。read_stream_values 立即读各流的最新一条记录（不等待），用于查看当前值。
+
+被测件的串口或总线报文按 ICD 解码：ICD 文件放在工程 icd/ 下（save_icd 写入、check_icd 试解码），用 update_protocol_bindings 把 ICD 绑到设备的原始 bytes/frames 流上，起一个别名 alias；绑定后它的每个数值字段就是源设备上的一条流 <alias>.<message>.<field>，运行监控、observe/expect、read_stream_values 和测试步骤都直接引用它。协议绑定属于工程，测试流程不再自带；list_protocol_bindings 查看现有绑定及其字段流。
 
 使用用户当前工程中的代码和资料；测试计划中不允许内联 Python。

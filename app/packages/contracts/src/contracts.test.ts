@@ -32,8 +32,13 @@ describe("public contracts", () => {
       formatVersion: 8, projectId: "PROJECT", name: "Bench", wiring: { nodes: [], connections: [] },
       monitor: { panels: [], layout: null }, createdAt: timestamp, updatedAt: timestamp
     };
-    expect(projectFileSchema.parse(project)).toEqual(project);
-    expect(projectFileSchema.parse({ ...project, task: {}, ignored: true })).toEqual(project);
+    // A project without protocol bindings decodes nothing.
+    expect(projectFileSchema.parse(project)).toEqual({ ...project, protocols: [] });
+    expect(projectFileSchema.parse({ ...project, task: {}, ignored: true })).toEqual({ ...project, protocols: [] });
+    const protocols = [{ icd: "dut_cmd", alias: "dut", source: { hardwareId: "COM", streamId: "rx" } }];
+    expect(projectFileSchema.parse({ ...project, protocols }).protocols).toEqual(protocols);
+    expect(projectFileSchema.safeParse({ ...project, protocols: [{ ...protocols[0], alias: "1x" }] }).success)
+      .toBe(false);
     expect(projectFileSchema.safeParse({ ...project, formatVersion: 6 }).success).toBe(false);
   });
 

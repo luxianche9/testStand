@@ -5,7 +5,7 @@ import { PencilIcon } from "lucide-react";
 import { Checkbox, cn, IconButton, Input, Select } from "../../ui";
 import { queryKeys } from "../../lib/query-keys.js";
 import type { JsonSchema } from "../manual/schema-form-model.js";
-import { IcdEditorDialog } from "./ProtocolBindings.js";
+import { IcdEditorDialog } from "../protocols/IcdEditorDialog.js";
 
 /** `InvokeTool.encode`: build the frame to send with an ICD encoder (design §6.5). */
 export interface EncodeSpec {

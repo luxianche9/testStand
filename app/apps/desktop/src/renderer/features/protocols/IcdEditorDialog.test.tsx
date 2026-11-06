@@ -6,8 +6,8 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ToastProvider } from "../../ui/toast";
-import { IcdEditorDialog, ProtocolBindingsEditor } from "./ProtocolBindings.js";
-import { installTestingApi, makePlan } from "./testing-api.fixture.js";
+import { installTestingApi, makePlan } from "../testing/testing-api.fixture.js";
+import { IcdEditorDialog } from "./IcdEditorDialog.js";
 
 let api: ReturnType<typeof installTestingApi>;
 
@@ -27,30 +27,6 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
-});
-
-describe("ProtocolBindingsEditor", () => {
-  it("adds a binding on the first valid ICD and reports duplicate aliases", async () => {
-    const onChange = vi.fn();
-    const source = { hardwareId: "dev", streamId: "uart" };
-    const first = { icd: "dut_ack", alias: "dut", source };
-    const { rerender } = render(<ProtocolBindingsEditor value={[first]} hardware={[]} onChange={onChange} />, {
-      wrapper: Wrapper
-    });
-    expect(await screen.findByRole("option", { name: "broken（无效）" })).toBeTruthy();
-    await userEvent.click(screen.getByRole("button", { name: "添加绑定" }));
-    expect(onChange).toHaveBeenLastCalledWith([
-      first, { icd: "dut_ack", alias: "dut_ack", source: { hardwareId: "", streamId: "" } }
-    ]);
-    rerender(
-      <ProtocolBindingsEditor
-        value={[{ icd: "dut_ack", alias: "dut", source }, { icd: "broken", alias: "dut", source }]}
-        hardware={[]}
-        onChange={onChange}
-      />
-    );
-    expect(await screen.findAllByText("别名 dut 重复")).toHaveLength(2);
-  });
 });
 
 describe("IcdEditorDialog", () => {

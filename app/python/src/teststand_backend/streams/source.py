@@ -14,6 +14,11 @@ Events yielded by :meth:`StreamSource.events`:
 * ``status`` — device status ``{state, sampling, errors, lastError?, watermark}``
 * ``state``  — connection state ``{state: disconnected | unknown_stream, message}``;
   ``unknown_stream`` ends the iteration
+
+A stream the device does not declare may be *derived* from one it does (a protocol field
+decoded from a raw ``bytes``/``frames`` stream): :class:`StreamSources` asks its ``derived``
+resolver and then follows the raw stream with a :class:`DerivedSource`, which yields the same
+events, so recorders, the live view and verdicts treat both alike.
 """
 
 from __future__ import annotations
@@ -22,7 +27,8 @@ import asyncio
 import contextlib
 import weakref
 from collections.abc import AsyncIterator, Callable
-from typing import Any
+from dataclasses import dataclass
+from typing import Any, Protocol
 
 from teststand_backend.contracts.errors import app_error
 from teststand_backend.util import Record
@@ -38,15 +44,37 @@ DeviceResolver = Callable[[str], Any]
 """``hardwareId`` -> the loaded device (``DeviceHandle``), ``None`` when none is loaded."""
 
 
+class Decoder(Protocol):
+    def on_event(self, event: Record) -> list[Record]:
+        """One raw-stream event -> derived events (``batch`` as ``{streams: {id: records}}``)."""
+        ...
+
+
+@dataclass(frozen=True)
+class DerivedSpec:
+    """A stream computed from another stream of the same device (a protocol field)."""
+
+    source_stream_id: str
+    stream_type: str
+    decoder: Callable[[], Decoder]
+    """A fresh decoder: one per source session, so a restarted device starts clean."""
+    declaration: Record | None = None
+
+
+DerivedResolver = Callable[[str, str], DerivedSpec | None]
+"""``(hardwareId, streamId)`` -> how to derive it, ``None`` for a stream the device declares."""
+
+
 class StreamSources:
     """Creates stream sources for the loaded devices."""
 
-    def __init__(self, devices: DeviceResolver) -> None:
+    def __init__(self, devices: DeviceResolver, derived: DerivedResolver | None = None) -> None:
         self.devices = devices
+        self.derived = derived
 
     def source(
         self, hardware_id: str, stream_id: str, *, since: float | None = None
-    ) -> StreamSource:
+    ) -> EventSource:
         """``since``: time of the first wanted record (pre-roll); ``None`` = new only."""
         device = self.devices(hardware_id)
         if device is None:
@@ -55,6 +83,10 @@ class StreamSources:
                 f"No loaded device for hardware {hardware_id}",
                 {"hardwareId": hardware_id},
             )
+        spec = self.derived(hardware_id, stream_id) if self.derived is not None else None
+        if spec is not None:
+            raw = StreamSource(device, spec.source_stream_id, since=since)
+            return DerivedSource(raw, stream_id, spec)
         return StreamSource(device, stream_id, since=since)
 
     def clock(self, hardware_id: str) -> SharedClock:
@@ -209,3 +241,45 @@ class StreamSource:
 
 def _without_watermark(status: Record) -> Record:
     return {key: value for key, value in status.items() if key != "watermark"}
+
+
+class EventSource(Protocol):
+    def events(self) -> AsyncIterator[Record]: ...
+
+
+class DerivedSource:
+    """A derived stream: follows the raw stream it is computed from and decodes as it goes.
+
+    Same events as :class:`StreamSource`. ``hello`` carries the derived type and declaration
+    (and starts a fresh decoder); each raw ``batch`` becomes a batch of this stream's derived
+    records, possibly empty, which still advances the watermark; a raw ``gap`` first flushes
+    the decoder's partial bytes, then passes through; ``status`` and ``state`` pass through.
+    """
+
+    def __init__(self, raw: EventSource, stream_id: str, spec: DerivedSpec) -> None:
+        self.raw, self.stream_id, self.spec = raw, stream_id, spec
+
+    async def events(self) -> AsyncIterator[Record]:
+        decoder: Decoder | None = None
+        async for event in self.raw.events():
+            kind = event.get("type")
+            if kind == "hello":
+                decoder = self.spec.decoder()
+                hello: Record = {**event, "streamType": self.spec.stream_type}
+                hello.pop("declaration", None)
+                if self.spec.declaration:
+                    hello["declaration"] = dict(self.spec.declaration)
+                yield hello
+            elif kind in ("batch", "gap") and decoder is not None:
+                for derived in decoder.on_event(event):
+                    if derived.get("type") == "batch":
+                        records = (derived.get("streams") or {}).get(self.stream_id) or []
+                        yield {
+                            "type": "batch",
+                            "records": records,
+                            "watermark": derived.get("watermark"),
+                        }
+                    else:
+                        yield derived
+            else:
+                yield event

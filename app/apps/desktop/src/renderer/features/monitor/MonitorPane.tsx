@@ -417,16 +417,23 @@ function Workspace({ workspace, onActive, empty }: {
   useEffect(() => {
     if (!api) return undefined;
     let timer: number | undefined;
+    const check = () => {
+      const next = api.toJSON() as unknown as Record<string, unknown>;
+      const wait = settledAt.current - performance.now();
+      if (wait > 0) {
+        // Settling only moves sizes; a panel added or closed meanwhile is an edit, saved once settled.
+        if (samePanels(next, known.current)) return;
+        timer = window.setTimeout(check, wait);
+        return;
+      }
+      const text = JSON.stringify(next);
+      if (text === known.current) return;
+      known.current = text;
+      latest.current.workspace.saveLayout(next);
+    };
     const changed = api.onDidLayoutChange(() => {
       window.clearTimeout(timer);
-      timer = window.setTimeout(() => {
-        if (performance.now() < settledAt.current) return;
-        const next = api.toJSON() as unknown as Record<string, unknown>;
-        const text = JSON.stringify(next);
-        if (text === known.current) return;
-        known.current = text;
-        latest.current.workspace.saveLayout(next);
-      }, SAVE_DELAY_MS);
+      timer = window.setTimeout(check, SAVE_DELAY_MS);
     });
     const active = api.onDidActivePanelChange((panel) => { if (panel) onActive(panel.id); });
     window.addEventListener("resize", settle);
@@ -535,4 +542,16 @@ function GroupActions({ containerApi, group, activePanel }: IDockviewHeaderActio
       )}
     </div>
   );
+}
+
+/** Whether a docking layout holds the same panels as the serialized one (`"null"`: none). */
+function samePanels(layout: Record<string, unknown>, serialized: string): boolean {
+  const ids = (value: unknown) => Object.keys(
+    (value && typeof value === "object" ? (value as { panels?: object }).panels : undefined) ?? {}
+  ).sort().join(",");
+  try {
+    return ids(layout) === ids(JSON.parse(serialized));
+  } catch {
+    return false;
+  }
 }

@@ -22,6 +22,7 @@ from .authorization import Authorizer, Json
 if TYPE_CHECKING:
     from teststand_backend.devices import DeviceCatalogService, DeviceService
     from teststand_backend.projects.project_service import ProjectService
+    from teststand_backend.projects.protocol_bindings import ProjectProtocols
     from teststand_backend.wiring.project_wiring_service import ProjectWiringService
 
 
@@ -67,9 +68,10 @@ class MonitorApplication:
         wiring: ProjectWiringService,
         catalog: DeviceCatalogService,
         devices: DeviceService,
+        protocols: ProjectProtocols | None = None,
     ) -> None:
         self.authorizer, self.projects, self.wiring = authorizer, projects, wiring
-        self.catalog, self.devices = catalog, devices
+        self.catalog, self.devices, self.protocols = catalog, devices, protocols
 
     @operation(
         "monitor.streams",
@@ -80,12 +82,15 @@ class MonitorApplication:
     )
     def streams(self, context: Json) -> list[Json]:
         """Every device with the streams it declares (``known`` is false until the device was
-        connected once; the cached declaration is used while it is offline)."""
+        connected once; the cached declaration is used while it is offline), then the protocol
+        fields decoded on it (``derived``)."""
         result: list[Json] = []
         for hardware in self.catalog.list_hardware():
             if hardware["kind"] != "managed":
                 continue
             streams = self.devices.known_streams(hardware["hardwareId"])
+            if streams is not None and self.protocols is not None:
+                streams = [*streams, *self.protocols.streams(hardware["hardwareId"])]
             result.append(
                 {
                     "hardwareId": hardware["hardwareId"],
@@ -318,6 +323,8 @@ class MonitorApplication:
         streams = self.devices.known_streams(channel["hardwareId"])
         if streams is None:
             return None
+        if self.protocols is not None:
+            streams = [*streams, *self.protocols.streams(channel["hardwareId"])]
         for item in streams:
             if item["id"] == channel["streamId"]:
                 return str(item["type"])

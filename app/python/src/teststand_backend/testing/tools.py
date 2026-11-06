@@ -158,9 +158,9 @@ GLOSSARY = {
     "type": "Operation kind.",
     "patch": (
         "Fields to set: plan fields for set_plan_fields (name, description, stopOnFail, "
-        "bindings {name: {hardwareId, streamId?}} where ${param} takes a run parameter, "
-        "protocolBindings [{icd, alias, source: {hardwareId, streamId}}]), step root fields "
-        "for update_step."
+        "bindings {name: {hardwareId, streamId?}} where ${param} takes a run parameter; "
+        "protocol bindings belong to the project: update_protocol_bindings), step root "
+        "fields for update_step."
     ),
     "parameters": "Complete list of typed run parameter definitions.",
     "region": (

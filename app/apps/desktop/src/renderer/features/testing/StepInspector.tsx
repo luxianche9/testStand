@@ -10,7 +10,6 @@ import { stripSchemaProperties, type JsonSchema } from "../manual/schema-form-mo
 import { collectRequirementSteps, schemaFieldPaths } from "./plan-helpers.js";
 import { findStep } from "./plan-model.js";
 import { DeviceBindingsEditor } from "./DeviceBindings.js";
-import { ProtocolBindingsEditor } from "./ProtocolBindings.js";
 import { StreamStepInspector } from "./StreamStepInspector.js";
 import { EncodeEditor, encodeTargets, type EncodeSpec } from "./EncodeEditor.js";
 import { ToolFieldContext } from "../manual/widgets.js";
@@ -138,16 +137,9 @@ function PlanInspector({ plan, hardware, mutate }: { plan: TestPlan; hardware: H
         />
         任一步骤失败时停止
       </label>
-      <Field label="协议绑定" hint="用 ICD 解码设备的原始数据流；步骤以「别名.报文.字段」引用解出的数据流。">
-        <ProtocolBindingsEditor
-          value={plan.protocolBindings ?? []}
-          hardware={hardware}
-          onChange={(bindings) => mutate((next) => {
-            if (bindings.length) next.protocolBindings = bindings;
-            else delete next.protocolBindings;
-          })}
-        />
-      </Field>
+      <p className="text-2xs text-fg-3">
+        被测件报文按「变量」侧栏里的协议绑定解码；步骤以「别名.报文.字段」引用解出的数据流。
+      </p>
       <Field label="设备绑定" hint="步骤可用绑定名代替设备；${参数} 取运行参数，批量运行时按工位展开。">
         <DeviceBindingsEditor
           value={plan.bindings ?? {}}

@@ -1,24 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { bindingIssues, nextAlias, parseSamples, sampleIssue, trialRows } from "./protocol-bindings.js";
+import { nextAlias, parseSamples, sampleIssue, trialRows } from "./icd-model.js";
 
-const source = { hardwareId: "dev", streamId: "uart" };
-
-describe("protocol bindings", () => {
-  it("flags bad and duplicate aliases and missing sources", () => {
-    expect(bindingIssues([
-      { icd: "a", alias: "dut", source },
-      { icd: "a", alias: "dut", source },
-      { icd: "a", alias: "1x", source },
-      { icd: "a", alias: "ok", source: { hardwareId: "dev", streamId: "" } },
-      { icd: "a", alias: "fine", source }
-    ])).toEqual([
-      "别名 dut 重复", "别名 dut 重复", expect.stringContaining("别名只能"), "选择原始数据流", undefined
-    ]);
-  });
-
+describe("ICD authoring", () => {
   it("picks an unused alias from the ICD name", () => {
     expect(nextAlias([], "dut_ack")).toBe("dut_ack");
-    expect(nextAlias([{ icd: "x", alias: "dut", source }], "x-y")).toBe("dut2");
+    expect(nextAlias(["dut"], "x-y")).toBe("dut2");
   });
 
   it("parses hex sample lines and reports broken ones", () => {

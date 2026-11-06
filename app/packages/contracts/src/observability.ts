@@ -379,7 +379,19 @@ export interface RunRejudge {
 export interface DeviceStream {
   id: string;
   type: StreamType | string;
+  /** A protocol field: decoded by a project protocol binding from a raw stream of the same device. */
+  derived?: { icd: string; alias: string; sourceStreamId: string; message?: string; field?: string };
   [key: string]: unknown;
+}
+
+/** `streams.latest`: the newest record of each stream (`record` is null until it sent one). */
+export interface StreamLatest {
+  t: number;
+  streams: Record<string, {
+    type: StreamType | string;
+    state: { state: string; message?: string | null } | null;
+    record: { t: number; tb: number; seq?: number; v?: unknown; [key: string]: unknown } | null;
+  }>;
 }
 
 /** Stream assertion verdict with its evidence (metrics, the matching record, ...). */

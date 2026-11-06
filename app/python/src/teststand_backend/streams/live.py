@@ -48,6 +48,8 @@ WATERMARK_GRACE_S = 2.0
 EXPECT_POLL_S = 0.2
 MAX_PROBE_MS = 60_000.0
 PROBE_POINTS = 2000
+LATEST_PREROLL_MS = 2000.0
+"""What :meth:`LiveStreams.latest` reads back of a stream it starts following."""
 
 StreamLister = Callable[[str], Awaitable[list[Record]]]
 """``hardwareId -> [{id, type}]`` (the service's ``list_streams``)."""
@@ -163,6 +165,36 @@ class LiveStreams:
         finally:
             for feed in feeds:
                 self._release(feed)
+
+    async def latest(self, keys: list[str]) -> Record:
+        """The newest record of each stream, without waiting for new data.
+
+        Asking follows the streams (from ``LATEST_PREROLL_MS`` ago, so the first answer often
+        has a value already); each ask keeps them followed for ``linger_s`` more, so a caller
+        polling faster than that always reads a live cache. ``{key: {type, state, record}}``:
+        ``record`` is ``None`` until the stream has sent one.
+        """
+        keys = check_keys([str(key) for key in keys])
+        for key in keys:
+            hardware_id, _, stream_id = key.partition("__")
+            if not hardware_id or not stream_id:
+                raise app_error("invalid_argument", f"Not a stream key: {key}", {"key": key})
+        output: Record = {}
+        for key in keys:
+            feed = await self._acquire(key, LATEST_PREROLL_MS)
+            try:
+                store = feed.store
+                last = store.last_i(key)
+                records = store.records(key, after=last - 1, limit=1) if last is not None else []
+                states = store.states(key)
+                output[key] = {
+                    "type": str(store.stream(key)["type"] or ""),
+                    "state": states[-1] if states else None,
+                    "record": records[0] if records else None,
+                }
+            finally:
+                self._release(feed)
+        return {"t": backend_ms(), "streams": output}
 
     async def _acquire(self, key: str, window_ms: float) -> _Feed:
         feed = self.feeds.get(key)

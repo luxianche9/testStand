@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { useQueryClient } from "@tanstack/react-query";
 import { ReactFlowProvider, useEdgesState, useNodesState } from "@xyflow/react";
 import type { DeviceInstance, Hardware, ToolCatalogItem } from "@teststand/contracts/devices";
+import type { StreamRef } from "@teststand/contracts/monitor";
 import { PlusIcon, RefreshCwIcon, TriangleAlertIcon } from "lucide-react";
 import { errorMessage } from "../../lib/errors.js";
 import { resolvePortRef } from "../../lib/hardware.js";
@@ -23,6 +24,7 @@ import { useBenchRun } from "../monitor/use-bench-run.js";
 import { streamKey, useMonitorWorkspace } from "../monitor/use-monitor-workspace.js";
 import { RunHistory } from "../testing/RunHistory.js";
 import { TestPanel } from "../testing/TestPanel.js";
+import { VariablesSidebar } from "../variables/VariablesSidebar.js";
 import { EditPinsModal, ListCreateConnectionModal } from "../wiring/ConnectionEditor.js";
 import { PinList } from "../wiring/PinList.js";
 import {
@@ -279,6 +281,12 @@ function Bench({ panel, view, onView }: {
       )}
     />
   );
+  const addStream = (ref: StreamRef) => {
+    onView("monitor");
+    const target = monitor.place(ref);
+    if (target) toast.success(`${ref.streamId} 已加到「${target}」`);
+    else toast.error(`运行监控里还没有能显示 ${ref.streamId} 的组件：先从「组件」里拖一个进来`);
+  };
   // `hidden` comes last: merged after a display class such as `flex`, it would lose.
   const panelClass = (side: SidePanel, className?: string) =>
     cn("min-h-0 min-w-0", className, panel !== side && "hidden");
@@ -301,18 +309,16 @@ function Bench({ panel, view, onView }: {
             placed={placed}
             onOpen={(item) => openInfo(item.hardwareId)}
             onControl={openControl}
-            onAddStream={(ref) => {
-              onView("monitor");
-              const target = monitor.place(ref);
-              if (target) toast.success(`${ref.streamId} 已加到「${target}」`);
-              else toast.error(`运行监控里还没有能显示 ${ref.streamId} 的组件：先从「组件」里拖一个进来`);
-            }}
+            onAddStream={addStream}
             footer={hardware.length > 0 && (
               <p className="shrink-0 border-t border-line px-3 py-1.5 text-2xs text-fg-3">
                 展开设备，把数据流拖到运行监控；把设备拖到端口连线画布上放置
               </p>
             )}
           />
+        </div>
+        <div id="bench-side-variables" className={panelClass("variables")}>
+          <VariablesSidebar active={panel === "variables"} onAddStream={addStream} />
         </div>
         <div id="bench-side-components" className={panelClass("components")}>
           <ComponentSidebar

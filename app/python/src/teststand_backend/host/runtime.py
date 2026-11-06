@@ -46,6 +46,7 @@ from teststand_backend.host.settings import SettingsApplication
 from teststand_backend.mcp_gateway import LocalMcpGateway
 from teststand_backend.projects import ProjectService
 from teststand_backend.projects.icd_library import IcdLibrary
+from teststand_backend.projects.protocol_bindings import ProjectProtocols
 from teststand_backend.storage import AuditLog, SecretBackend, SecretStore, SettingsStore
 from teststand_backend.storage.secrets import FileSecretBackend
 from teststand_backend.streams.live import LiveStreams
@@ -169,9 +170,10 @@ class HostRuntime:
         execution = ExecutionCoordinator()
         test_step_plugins = load_plugins("teststand.test_steps")
         result_listeners = load_plugins("teststand.result_listeners")
-        test_resolver = DeviceToolResolver(devices, catalog, IcdLibrary(projects))
+        protocols = ProjectProtocols(projects, IcdLibrary(projects))
+        test_resolver = DeviceToolResolver(devices, catalog, protocols.icds)
         test_plan_store = TestPlanStore(projects, test_resolver, test_step_plugins, wiring)
-        stream_sources = StreamSources(plugins.device_for)
+        stream_sources = StreamSources(plugins.device_for, protocols.derived)
         live_root = root / "live-streams"
         live_root.mkdir(exist_ok=True)
         for stale in live_root.glob("*.sqlite*"):
@@ -180,7 +182,7 @@ class HostRuntime:
         live_streams = LiveStreams(
             stream_sources,
             live_root,
-            list_streams=devices.list_streams,
+            list_streams=protocols.with_derived(devices.list_streams),
             fetch_blob=devices.read_blob,
         )
         test_engine = TestEngine(
@@ -207,6 +209,7 @@ class HostRuntime:
                 "test_engine": test_engine,
                 "test_step_plugins": test_step_plugins,
                 "live_streams": live_streams,
+                "protocols": protocols,
             }
         )
         protected = installation_folders(root, options.opencode)

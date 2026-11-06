@@ -39,6 +39,8 @@ export const eventInvalidations: Record<TestStandEventName, readonly Invalidatio
   execution: [{ key: queryKeys.dashboard }],
   project: [
     { key: queryKeys.projectDocument },
+    // Protocol bindings live in the project; when they change, their hook refetches the stream lists.
+    { key: queryKeys.protocols },
     { key: queryKeys.wiringTasks },
     // Pin list edits are logged by the backend as they are applied.
     { key: queryKeys.wiringChanges }

@@ -43,14 +43,6 @@ export const testStepSchema: z.ZodType<TestStep> = z.lazy(() => z.object({
   stopOnFail: z.boolean().optional()
 }).passthrough());
 
-/** An ICD on a raw bytes/frames stream (design §6.4); steps name its derived streams. */
-export const protocolBindingSchema = z.object({
-  icd: z.string().min(1),
-  alias: z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/),
-  source: z.object({ hardwareId: z.string().min(1), streamId: z.string().min(1) }).strict()
-}).strict();
-export type ProtocolBinding = z.infer<typeof protocolBindingSchema>;
-
 /** A logical device name (design §7.6); `${param}` takes that run parameter, per station in a batch. */
 export const planBindingSchema = z.object({
   hardwareId: z.string().min(1),
@@ -67,7 +59,6 @@ export const testPlanSchema = z.object({
   parameters: z.array(testParameterSchema).default([]),
   requirements: z.array(z.object({ id: z.string().min(1), name: z.string().min(1), description: z.string().optional() }).strict()).default([]),
   stopOnFail: z.boolean().default(false),
-  protocolBindings: z.array(protocolBindingSchema).optional(),
   bindings: z.record(planBindingSchema).optional(),
   regions: z.object({ prepare: z.array(testStepSchema), test: z.array(testStepSchema), cleanup: z.array(testStepSchema) }).strict(),
   createdAt: z.string(),
@@ -92,7 +83,7 @@ export interface TestPlanDraftAnalysis {
 const regionSchema = z.enum(["prepare", "test", "cleanup"]);
 const branchSchema = z.enum(["children", "elseChildren"]);
 export const testPlanOperationSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("set_plan_fields"), patch: z.object({ name: z.string().min(1).optional(), description: z.string().optional(), stopOnFail: z.boolean().optional(), protocolBindings: z.array(protocolBindingSchema).optional(), bindings: z.record(planBindingSchema).optional() }).strict() }).strict(),
+  z.object({ type: z.literal("set_plan_fields"), patch: z.object({ name: z.string().min(1).optional(), description: z.string().optional(), stopOnFail: z.boolean().optional(), bindings: z.record(planBindingSchema).optional() }).strict() }).strict(),
   z.object({ type: z.literal("set_parameters"), parameters: z.array(testParameterSchema) }).strict(),
   z.object({ type: z.literal("insert_step"), region: regionSchema.optional(), parentId: z.string().optional(), branch: branchSchema.optional(), index: z.number().int().min(0).optional(), step: testStepSchema }).strict(),
   z.object({ type: z.literal("update_step"), stepId: z.string().min(1), patch: z.record(z.unknown()) }).strict(),

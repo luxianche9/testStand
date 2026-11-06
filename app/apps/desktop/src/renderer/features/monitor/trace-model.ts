@@ -1,5 +1,5 @@
 import type { StreamRecord } from "@teststand/contracts/observability";
-import { decodeReason } from "../testing/protocol-bindings.js";
+import { decodeReason } from "../protocols/icd-model.js";
 
 /**
  * Rows of the bus trace (CANoe's Trace window): one per record, or per decoded frame when an ICD

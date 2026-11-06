@@ -5,7 +5,11 @@ from pathlib import Path
 
 from teststand_backend.contracts.errors import app_error
 from teststand_backend.contracts.monitor import monitor_channels, parse_monitor
-from teststand_backend.contracts.projects import PROJECT_FORMAT_VERSION, parse_project_file
+from teststand_backend.contracts.projects import (
+    PROJECT_FORMAT_VERSION,
+    parse_project_file,
+    parse_protocol_bindings,
+)
 from teststand_backend.contracts.wiring import parse_project_wiring
 from teststand_backend.storage import SettingsStore, atomic_json, read_json
 from teststand_backend.util import UNDEFINED, Record, clone, new_uuid, utc_now_iso
@@ -172,6 +176,23 @@ class ProjectService:
     def update_monitor(self, monitor: Record) -> Record:
         file = self._require_file()
         self._file = {**file, "monitor": parse_monitor(monitor), "updatedAt": utc_now_iso()}
+        self._dirty = True
+        return self._require_document()
+
+    def protocols(self) -> list[Record]:
+        """The protocol bindings, ``[]`` without a project (nothing is decoded then)."""
+        if self._file is None:
+            return []
+        result: list[Record] = clone(self._file.get("protocols") or [])
+        return result
+
+    def update_protocols(self, protocols: list[Record]) -> Record:
+        file = self._require_file()
+        self._file = {
+            **file,
+            "protocols": parse_protocol_bindings(protocols),
+            "updatedAt": utc_now_iso(),
+        }
         self._dirty = True
         return self._require_document()
 

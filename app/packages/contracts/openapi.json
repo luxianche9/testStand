@@ -513,6 +513,27 @@
         "title": "ProjectsSaveProjectRequest",
         "type": "object"
       },
+      "ProtocolsListRequest": {
+        "additionalProperties": false,
+        "properties": {},
+        "title": "ProtocolsListRequest",
+        "type": "object"
+      },
+      "ProtocolsUpdateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "input": {
+            "additionalProperties": true,
+            "title": "Input",
+            "type": "object"
+          }
+        },
+        "required": [
+          "input"
+        ],
+        "title": "ProtocolsUpdateRequest",
+        "type": "object"
+      },
       "SettingsGetLlmRequest": {
         "additionalProperties": false,
         "properties": {},
@@ -656,6 +677,23 @@
           "match"
         ],
         "title": "StreamsExpectRequest",
+        "type": "object"
+      },
+      "StreamsLatestRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "keys": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Keys",
+            "type": "array"
+          }
+        },
+        "required": [
+          "keys"
+        ],
+        "title": "StreamsLatestRequest",
         "type": "object"
       },
       "StreamsListStreamsRequest": {
@@ -3403,7 +3441,7 @@
     "/api/ops/monitor.streams": {
       "post": {
         "operationId": "monitor.streams",
-        "summary": "Every device with the streams it declares (``known`` is false until the device was\nconnected once; the cached declaration is used while it is offline).",
+        "summary": "Every device with the streams it declares (``known`` is false until the device was\nconnected once; the cached declaration is used while it is offline), then the protocol\nfields decoded on it (``derived``).",
         "tags": [
           "monitor"
         ],
@@ -3958,6 +3996,124 @@
         "x-confirm": false
       }
     },
+    "/api/ops/protocols.list": {
+      "post": {
+        "operationId": "protocols.list",
+        "summary": "The project's protocol bindings: ICD, alias and source stream; ``ok`` with the field\nstreams each derives, or ``error`` when its ICD is missing or invalid. None without a\nproject.",
+        "tags": [
+          "protocols"
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProtocolsListRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/WireError"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-risk": "read",
+        "x-capability": "projects.read",
+        "x-profiles": [
+          "explore",
+          "plan"
+        ],
+        "x-idempotency": "natural",
+        "x-confirm": false
+      }
+    },
+    "/api/ops/protocols.update": {
+      "post": {
+        "operationId": "protocols.update",
+        "summary": "Apply ``operations`` in order: ``add`` a binding (alias, icd, source), ``update`` the\none with that alias (icd and / or source), ``remove`` it. The ICD must be a valid file of\nthe project, the source a managed hardware's ``bytes`` / ``frames`` stream of the type\nthe ICD decodes, and the alias unique. Stays in the project buffer until the project is\nsaved. Returns every binding with its state.",
+        "tags": [
+          "protocols"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProtocolsUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/WireError"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-risk": "write",
+        "x-capability": "projects.manage",
+        "x-profiles": [
+          "explore",
+          "plan"
+        ],
+        "x-idempotency": "natural",
+        "x-confirm": true
+      }
+    },
     "/api/ops/settings.get": {
       "post": {
         "operationId": "settings.get",
@@ -4226,10 +4382,66 @@
         "x-confirm": false
       }
     },
+    "/api/ops/streams.latest": {
+      "post": {
+        "operationId": "streams.latest",
+        "summary": "The newest record of each stream (``<hardwareId>__<streamId>``) without waiting:\n``{t, streams: {key: {type, state, record}}}``; ``record`` is ``None`` until the\nstream sent one. Asking keeps the streams followed a few seconds, so polling reads a\nlive cache.",
+        "tags": [
+          "streams"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StreamsLatestRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/WireError"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-risk": "read",
+        "x-capability": "hardware.read",
+        "x-profiles": [
+          "explore",
+          "plan"
+        ],
+        "x-idempotency": "natural",
+        "x-confirm": false
+      }
+    },
     "/api/ops/streams.listStreams": {
       "post": {
         "operationId": "streams.listStreams",
-        "summary": "streams.listStreams",
+        "summary": "The streams the device declares, then the protocol fields derived on it\n(``derived``: which binding decodes them from which raw stream).",
         "tags": [
           "streams"
         ],

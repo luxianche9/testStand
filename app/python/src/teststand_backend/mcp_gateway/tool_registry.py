@@ -24,6 +24,7 @@ from typing import Any
 
 from teststand_backend import CONTRACT_REVISION
 from teststand_backend.application import OPERATIONS
+from teststand_backend.application.protocols import PROTOCOL_TOOLS
 from teststand_backend.application.registry import OperationRegistry
 from teststand_backend.application.streams import STREAM_TOOLS
 from teststand_backend.application.tools import PLATFORM_TOOLS
@@ -48,6 +49,7 @@ BUILTIN_TOOLS: list[Tool] = [
     *AGENT_TOOLS,
     *CONTRACT_TOOLS,
     *STREAM_TOOLS,
+    *PROTOCOL_TOOLS,
     *TESTING_TOOLS,
 ]
 """Curated tools; profiled operations without one are generated."""

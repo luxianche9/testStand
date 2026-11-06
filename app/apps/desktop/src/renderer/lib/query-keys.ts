@@ -17,6 +17,7 @@ export const queryKeys = {
   testRecovery: ["test-recovery"] as const,
   testRunTimeline: (runId: string) => ["test-run-timeline", runId] as const,
   testRunMessages: (runId: string) => ["test-run-messages", runId] as const,
+  protocols: ["protocols"] as const,
   icds: ["icds"] as const,
   icd: (name: string) => ["icds", name] as const,
   deviceStreamsAll: ["device-streams"] as const,

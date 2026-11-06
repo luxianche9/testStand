@@ -23,6 +23,9 @@ from .validation import validate_plan
 
 Record = dict[str, Any]
 PLAN_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$")
+PROJECT_PROTOCOLS = "protocolBindings"
+"""Not stored in a plan: validation and compilation take the project's protocol bindings
+(``project.json`` ``protocols``), so the monitor and every plan decode alike."""
 
 
 class TestPlanStore:
@@ -86,7 +89,17 @@ class TestPlanStore:
         path = self._path(plan_id)
         if not path.exists():
             raise app_error("not_found", f"Test plan not found: {plan_id}")
-        return clone(self._read(path))
+        plan = clone(self._read(path))
+        plan.pop(PROJECT_PROTOCOLS, None)
+        return plan
+
+    def _effective(self, plan: Record) -> Record:
+        """``plan`` with the project's protocol bindings, as validation and runs see it."""
+        protocols = getattr(self.projects, "protocols", None)
+        return {**plan, PROJECT_PROTOCOLS: protocols() if protocols is not None else []}
+
+    def _validate(self, plan: Record) -> builtins.list[Record]:
+        return validate_plan(self._effective(plan), self.resolver, self.plugins)
 
     async def create(self, value: Record) -> Record:
         async with self._lock:
@@ -100,7 +113,6 @@ class TestPlanStore:
                 "parameters",
                 "requirements",
                 "stopOnFail",
-                "protocolBindings",
                 "bindings",
                 "regions",
             ):
@@ -110,7 +122,7 @@ class TestPlanStore:
             await asyncio.to_thread(self._write, path, plan)
             return {
                 "plan": clone(plan),
-                "issues": validate_plan(plan, self.resolver, self.plugins),
+                "issues": self._validate(plan),
             }
 
     async def save(self, plan: Record, base_revision: int) -> Record:
@@ -127,6 +139,9 @@ class TestPlanStore:
                     {"currentRevision": current["revision"]},
                 )
             next_plan = clone(plan)
+            next_plan.pop(PROJECT_PROTOCOLS, None)
+            if isinstance(document, MutableMapping):
+                document.pop(PROJECT_PROTOCOLS, None)
             next_plan["revision"] = base_revision + 1
             next_plan["createdAt"] = current.get("createdAt", utc_now_iso())
             next_plan["updatedAt"] = utc_now_iso()
@@ -136,7 +151,7 @@ class TestPlanStore:
             await asyncio.to_thread(self._write, path, merged)
             return {
                 "plan": next_plan,
-                "issues": validate_plan(next_plan, self.resolver, self.plugins),
+                "issues": self._validate(next_plan),
             }
 
     async def apply_operations(
@@ -152,6 +167,7 @@ class TestPlanStore:
                 raise app_error(
                     "conflict", "Test plan revision changed", {"currentRevision": plan["revision"]}
                 )
+            plan.pop(PROJECT_PROTOCOLS, None)
             for operation in operations:
                 _apply_operation(plan, operation, self.resolver)
             plan["revision"] = base_revision + 1
@@ -161,13 +177,13 @@ class TestPlanStore:
             await asyncio.to_thread(self._write, path, plan)
             return {
                 "plan": plain_plan,
-                "issues": validate_plan(plain_plan, self.resolver, self.plugins),
+                "issues": self._validate(plain_plan),
                 "appliedOperations": len(operations),
             }
 
     def validate(self, plan_id: str) -> Record:
         plan = self.load(plan_id)
-        compiled = compile_plan(plan, self.resolver, self.plugins, self.wiring)
+        compiled = compile_plan(self._effective(plan), self.resolver, self.plugins, self.wiring)
         issues = compiled["issues"]
         return {
             "planId": plan_id,
@@ -180,7 +196,8 @@ class TestPlanStore:
         }
 
     def compile(self, plan_id: str, values: Record | None = None) -> Record:
-        return compile_plan(self.load(plan_id), self.resolver, self.plugins, self.wiring, values)
+        plan = self._effective(self.load(plan_id))
+        return compile_plan(plan, self.resolver, self.plugins, self.wiring, values)
 
     def analyze(self, plan: Record, base_revision: int) -> Record:
         current = self.load(str(plan.get("id", "")))
@@ -191,7 +208,8 @@ class TestPlanStore:
                 {"currentRevision": current.get("revision")},
             )
         self._validate_structure(clone(plan))
-        return analyze_plan_draft(clone(plan), self.resolver, self.plugins, self.wiring)
+        draft = self._effective(clone(plan))
+        return analyze_plan_draft(draft, self.resolver, self.plugins, self.wiring)
 
     def _create_flow(self, path: Path) -> None:
         """Create the project's test flow. Plans of an older project, one per functional test
@@ -344,15 +362,13 @@ def _merge_as_feature(flow: Record, plan: Record) -> None:
         bindings = flow.setdefault("bindings", {})
         for name, value in plan["bindings"].items():
             bindings.setdefault(name, clone(value))
-    if isinstance(plan.get("protocolBindings"), list):
-        flow.setdefault("protocolBindings", []).extend(clone(plan["protocolBindings"]))
 
 
 def _apply_operation(plan: Record, operation: Record, resolver: Any | None = None) -> None:
     kind = operation.get("type")
     if kind == "set_plan_fields":
         patch = operation.get("patch", {})
-        for key in ("name", "description", "stopOnFail", "protocolBindings", "bindings"):
+        for key in ("name", "description", "stopOnFail", "bindings"):
             if key in patch:
                 plan[key] = clone(patch[key])
         return

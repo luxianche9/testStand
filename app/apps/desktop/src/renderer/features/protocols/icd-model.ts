@@ -1,27 +1,12 @@
-import type { ProtocolBinding } from "@teststand/contracts/testing";
-
-/** Same rule as the backend: an alias prefixes derived stream ids (`<alias>.<message>`). */
-const ALIAS = /^[A-Za-z_][A-Za-z0-9_]*$/;
-
-/** Per-binding problems the plan validator would also report, shown next to the row. */
-export function bindingIssues(bindings: readonly ProtocolBinding[]): Array<string | undefined> {
-  const counts = new Map<string, number>();
-  for (const binding of bindings) counts.set(binding.alias, (counts.get(binding.alias) ?? 0) + 1);
-  return bindings.map((binding) => {
-    if (!ALIAS.test(binding.alias)) return "别名只能包含字母、数字和下划线，且不能以数字开头";
-    if ((counts.get(binding.alias) ?? 0) > 1) return `别名 ${binding.alias} 重复`;
-    if (!binding.icd) return "选择 ICD";
-    if (!binding.source.hardwareId || !binding.source.streamId) return "选择原始数据流";
-    return undefined;
-  });
-}
+/** Same rule as the backend: an alias prefixes derived stream ids (`<alias>.<message>.<field>`). */
+export const ALIAS = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 /** An unused alias for a new binding, derived from the ICD name when it is a valid alias. */
-export function nextAlias(bindings: readonly ProtocolBinding[], icd = ""): string {
+export function nextAlias(used: readonly string[], icd = ""): string {
   const base = ALIAS.test(icd) ? icd : "dut";
-  const used = new Set(bindings.map((binding) => binding.alias));
-  if (!used.has(base)) return base;
-  for (let index = 2; ; index += 1) if (!used.has(`${base}${index}`)) return `${base}${index}`;
+  const taken = new Set(used);
+  if (!taken.has(base)) return base;
+  for (let index = 2; ; index += 1) if (!taken.has(`${base}${index}`)) return `${base}${index}`;
 }
 
 /** Trial-decode samples: one hex chunk per line, spaces allowed, `#` starts a comment. */

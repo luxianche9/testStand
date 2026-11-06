@@ -1,10 +1,10 @@
 import type { AgentConfirmation, AgentConfirmationAnswer, AgentIntegrationPreview, AgentIntegrationStatus, AgentToolInfo, McpGatewayStatus, OpenCodeRuntimeStatus } from "./agents.js";
 import type { DeviceAdded, DevicePackageInspection, DevicePackageUpdated, DevicePackages, Hardware, HardwareAvailability, ManagedDeviceDefinition, ManagedHardware, DeviceInstance, DeviceStatus, StoredHardwareDefinition, ToolCatalogItem } from "./devices.js";
 import type { ExecutionActivity, ManualToolInvocationResult } from "./execution.js";
-import type { DeviceStream, RunIo, RunMessages, RunRejudge, RunStreams, RunStreamWindow, RunTimeline, StreamProbe, StreamRead } from "./observability.js";
+import type { DeviceStream, RunIo, RunMessages, RunRejudge, RunStreams, RunStreamWindow, RunTimeline, StreamLatest, StreamProbe, StreamRead } from "./observability.js";
 import type { operations } from "./openapi.generated.js";
 import type { OperationName } from "./operations.generated.js";
-import type { ProjectDocument, ProjectFolderSelection, RecentProjectSummary } from "./projects.js";
+import type { ProjectDocument, ProjectFolderSelection, ProtocolBindingState, RecentProjectSummary } from "./projects.js";
 import type { LlmSettings, UserSettings } from "./storage.js";
 import type { IcdCheck, IcdDocument, IcdSaveResult, IcdSummary, TestDeviceTools, TestOperationSnapshot, TestPlan, TestPlanDraftAnalysis, TestPlanMutationResult, TestPlanValidation, TestRunLog, TestRunPage, TestRunSnapshot, TestStepCatalogItem, TestUnit } from "./testing.js";
 import type { DeviceStreams, Monitor } from "./monitor.js";
@@ -67,6 +67,7 @@ export interface OperationResults {
   "devices.callTool": unknown;
   "devices.listTools": ToolCatalogItem[];
   "streams.listStreams": DeviceStream[];
+  "streams.latest": StreamLatest;
   "streams.window": RunStreamWindow;
   "streams.observe": StreamProbe;
   "streams.expect": StreamProbe;
@@ -89,6 +90,8 @@ export interface OperationResults {
   "monitor.streams": DeviceStreams[];
   "monitor.get": Monitor;
   "monitor.update": Monitor;
+  "protocols.list": ProtocolBindingState[];
+  "protocols.update": ProtocolBindingState[];
   "manual.invokeTool": ManualToolInvocationResult;
   "testing.loadPlan": TestPlan;
   "testing.savePlan": TestPlanMutationResult;
