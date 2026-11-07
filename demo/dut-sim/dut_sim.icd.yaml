@@ -1,0 +1,50 @@
+formatVersion: 1
+name: dut_sim
+description: 虚拟被测件（demo/dut-sim/dut_sim.py）的串口协议
+transport: bytes
+framing:
+  kind: header_length
+  header: "AA 55"
+  lengthField: {offset: 2}
+  trailer: checksum
+  maxLength: 64
+checksum:
+  algorithm: crc16_modbus
+  range: {from: 2, to: -2}
+  offset: -2
+  endian: little
+messages:
+  - name: status
+    description: 每 100 ms 上报的状态
+    match:
+      - {offset: 3, value: 0x81}
+    fields:
+      - {name: voltage, offset: 4, type: u16, endian: little, scale: 0.001, unit: V, description: 输出电压}
+      - {name: temp, offset: 6, type: i16, endian: little, scale: 0.1, unit: degC, description: 板温}
+      - {name: led, offset: 8, type: u8, bits: "0", enum: {0: 灭, 1: 亮}}
+      - {name: fan, offset: 8, type: u8, bits: "1", enum: {0: 停, 1: 转}}
+      - {name: fault, offset: 8, type: u8, bits: "2", enum: {0: 正常, 1: 故障}}
+      - {name: counter, offset: 9, type: u16, endian: little, description: 帧计数}
+  - name: ack
+    description: 命令应答
+    match:
+      - {offset: 3, value: 0x01}
+    fields:
+      - {name: code, offset: 4, type: u8, enum: {0: 成功, 1: 无效命令}}
+encoders:
+  - name: set_led
+    template: {cmd: 0x10}
+    fields:
+      - {name: on, offset: 4, type: u8}
+  - name: set_fan
+    template: {cmd: 0x11}
+    fields:
+      - {name: on, offset: 4, type: u8}
+  - name: set_voltage
+    template: {cmd: 0x12}
+    fields:
+      - {name: mv, offset: 4, type: u16, endian: little}
+  - name: set_fault
+    template: {cmd: 0x13}
+    fields:
+      - {name: on, offset: 4, type: u8}
