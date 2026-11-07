@@ -15,7 +15,7 @@ pnpm install
 pnpm python:setup
 cd ..\devices
 uv sync
-python pack.py comm_link        # -> devices\dist\comm_link-1.0.0.tsdev
+uv run python pack.py comm_link   # -> devices\dist\comm_link-1.0.0.tsdev
 cd ..\app
 pnpm dev                        # 启动 testStand（开发模式）
 ```
